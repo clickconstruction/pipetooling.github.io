@@ -29,7 +29,14 @@ function displayNameForTeamMember(
   return `User (${memberUserId.slice(-6)})`
 }
 
-export type TeamMemberRosterRow = { assignmentId: string; userId: string; displayName: string }
+export type DashboardHoursVisibility = 'full' | 'strip_only'
+
+export type TeamMemberRosterRow = {
+  assignmentId: string
+  userId: string
+  displayName: string
+  dashboard_visibility: DashboardHoursVisibility
+}
 
 /** Pending = clocked out, awaiting approval; active = still clocked in (unapproved). manual = People Hours grid sum minus approved clock hours for the week (avoids double-count when approval merges into `people_hours`). total = active + pending + approved + manual. */
 export type TeamHoursSummary = { active: number; pending: number; approved: number; manual: number; total: number }
@@ -130,7 +137,7 @@ export function useDashboardMyTeamSectionState(
           supabase
             .from('team_leader_assignments')
             .select(
-              'id, member_user_id, users!team_leader_assignments_member_user_id_fkey(id, name, email)',
+              'id, member_user_id, dashboard_hours_visibility, users!team_leader_assignments_member_user_id_fkey(id, name, email)',
             )
             .eq('leader_user_id', authUserId),
         'load team leader assignments',
@@ -138,6 +145,7 @@ export function useDashboardMyTeamSectionState(
       type Row = {
         id: string
         member_user_id: string
+        dashboard_hours_visibility: string | null
         users: { id: string; name: string | null; email: string | null } | null
       }
       const list = (rows ?? []) as Row[]
@@ -146,6 +154,8 @@ export function useDashboardMyTeamSectionState(
           assignmentId: r.id,
           userId: r.member_user_id,
           displayName: displayNameForTeamMember(r.member_user_id, r.users),
+          dashboard_visibility:
+            r.dashboard_hours_visibility === 'strip_only' ? ('strip_only' as const) : ('full' as const),
         }))
         .sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' }))
       setTeamMemberRoster(roster)
@@ -255,7 +265,10 @@ export function useDashboardMyTeamSectionState(
   }, [authUserId, dateStart, dateEnd, loadTodayClockSessionsOrg])
 
   const loadTeamHoursSummary = useCallback(async () => {
-    if (!authUserId || memberUserIds.length === 0) {
+    const fullDetailIds = teamMemberRoster
+      .filter((r) => r.dashboard_visibility !== 'strip_only')
+      .map((r) => r.userId)
+    if (!authUserId || fullDetailIds.length === 0) {
       setHoursSummaryByUserId({})
       return
     }
@@ -266,7 +279,7 @@ export function useDashboardMyTeamSectionState(
           supabase
             .from('clock_sessions')
             .select('user_id, clocked_in_at, clocked_out_at, approved_at, rejected_at, revoked_at')
-            .in('user_id', memberUserIds)
+            .in('user_id', fullDetailIds)
             .gte('work_date', dateStart)
             .lte('work_date', dateEnd),
         'load team hours summary',
@@ -281,7 +294,7 @@ export function useDashboardMyTeamSectionState(
         revoked_at: string | null
       }
       const byUser: Record<string, TeamHoursSummary> = {}
-      for (const uid of memberUserIds) {
+      for (const uid of fullDetailIds) {
         byUser[uid] = { active: 0, pending: 0, approved: 0, manual: 0, total: 0 }
       }
       for (const row of (data ?? []) as SlimRow[]) {
@@ -300,8 +313,7 @@ export function useDashboardMyTeamSectionState(
       }
 
       const memberEmails = await withSupabaseRetry(
-        async () =>
-          supabase.from('users').select('id, email').in('id', memberUserIds),
+        async () => supabase.from('users').select('id, email').in('id', fullDetailIds),
         'load team member emails for manual hours',
       )
       const emailByUserId = new Map<string, string | null>(
@@ -309,7 +321,7 @@ export function useDashboardMyTeamSectionState(
       )
       const namesByUserId = new Map<string, Set<string>>()
       const allNames: string[] = []
-      for (const uid of memberUserIds) {
+      for (const uid of fullDetailIds) {
         const names = await getPersonNamesForUser(uid, emailByUserId.get(uid) ?? null)
         const set = new Set(names.map((n) => n.trim()).filter(Boolean))
         namesByUserId.set(uid, set)
@@ -332,7 +344,7 @@ export function useDashboardMyTeamSectionState(
           if (!pn) continue
           const hrs = typeof raw.hours === 'number' ? raw.hours : Number(raw.hours)
           if (!Number.isFinite(hrs)) continue
-          for (const uid of memberUserIds) {
+          for (const uid of fullDetailIds) {
             const set = namesByUserId.get(uid)
             if (set?.has(pn)) {
               const u = byUser[uid]
@@ -343,7 +355,7 @@ export function useDashboardMyTeamSectionState(
         }
       }
 
-      for (const uid of memberUserIds) {
+      for (const uid of fullDetailIds) {
         const u = byUser[uid]
         if (!u) continue
         const gridSum = u.manual
@@ -357,7 +369,7 @@ export function useDashboardMyTeamSectionState(
     } finally {
       setLoadingHours(false)
     }
-  }, [authUserId, memberUserIds, dateStart, dateEnd])
+  }, [authUserId, teamMemberRoster, dateStart, dateEnd])
 
   const loadPending = useCallback(async (options?: { silent?: boolean }) => {
     const silent = options?.silent === true
@@ -435,7 +447,10 @@ export function useDashboardMyTeamSectionState(
   }, [orgWideStripEnabled, authUserId, dateStart, dateEnd, loadOrgWidePending])
 
   const loadLedger = useCallback(async () => {
-    if (!authUserId || memberUserIds.length === 0) {
+    const fullDetailIds = teamMemberRoster
+      .filter((r) => r.dashboard_visibility !== 'strip_only')
+      .map((r) => r.userId)
+    if (!authUserId || fullDetailIds.length === 0) {
       setLedgerSessions([])
       return
     }
@@ -447,7 +462,7 @@ export function useDashboardMyTeamSectionState(
           supabase
             .from('clock_sessions')
             .select(CLOCK_SESSION_LIST_SELECT)
-            .in('user_id', memberUserIds)
+            .in('user_id', fullDetailIds)
             .gte('work_date', dateStart)
             .lte('work_date', dateEnd)
             .order('clocked_in_at', { ascending: false }),
@@ -460,7 +475,7 @@ export function useDashboardMyTeamSectionState(
     } finally {
       setLoadingLedger(false)
     }
-  }, [authUserId, memberUserIds, dateStart, dateEnd])
+  }, [authUserId, teamMemberRoster, dateStart, dateEnd])
 
   useEffect(() => {
     void loadLedger()
@@ -611,14 +626,31 @@ export function useDashboardMyTeamSectionState(
     return out
   }, [todaySessionsRowsOrg, todayHoursNowMs])
 
+  const fullDetailMemberUserIdSet = useMemo(
+    () =>
+      new Set(
+        teamMemberRoster.filter((r) => r.dashboard_visibility !== 'strip_only').map((r) => r.userId),
+      ),
+    [teamMemberRoster],
+  )
+
+  const fullDetailMemberIds = useMemo(
+    () => [...fullDetailMemberUserIdSet],
+    [fullDetailMemberUserIdSet],
+  )
+
   const pendingApprovalCount = useMemo(
-    () => pendingSessions.filter((s) => s.clocked_out_at != null).length,
-    [pendingSessions],
+    () =>
+      pendingSessions.filter(
+        (s) => s.clocked_out_at != null && fullDetailMemberUserIdSet.has(s.user_id),
+      ).length,
+    [pendingSessions, fullDetailMemberUserIdSet],
   )
 
   return {
     authUserId,
     memberUserIds,
+    fullDetailMemberIds,
     teamMemberRoster,
     hoursSummaryByUserId,
     loadingHours,

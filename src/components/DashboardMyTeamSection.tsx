@@ -57,6 +57,7 @@ export default function DashboardMyTeamSection({ myTeam }: Props) {
   const {
     authUserId,
     memberUserIds,
+    fullDetailMemberIds,
     teamMemberRoster,
     hoursSummaryByUserId,
     loadingHours,
@@ -101,19 +102,35 @@ export default function DashboardMyTeamSection({ myTeam }: Props) {
     })
   }, [loadPending])
 
+  const fullDetailUserIdSet = useMemo(() => new Set(fullDetailMemberIds), [fullDetailMemberIds])
+
+  const rosterFullDetail = useMemo(
+    () => teamMemberRoster.filter((m) => m.dashboard_visibility !== 'strip_only'),
+    [teamMemberRoster],
+  )
+
   const activeClockSessions = useMemo(
-    () => pendingSessions.filter((s) => s.clocked_out_at == null),
-    [pendingSessions],
+    () =>
+      pendingSessions.filter(
+        (s) => s.clocked_out_at == null && fullDetailUserIdSet.has(s.user_id),
+      ),
+    [pendingSessions, fullDetailUserIdSet],
   )
   const pendingApprovalClockSessions = useMemo(
-    () => pendingSessions.filter((s) => s.clocked_out_at != null),
-    [pendingSessions],
+    () =>
+      pendingSessions.filter(
+        (s) => s.clocked_out_at != null && fullDetailUserIdSet.has(s.user_id),
+      ),
+    [pendingSessions, fullDetailUserIdSet],
   )
 
   if (!authUserId || loadingMeta) {
     return null
   }
   if (memberUserIds.length === 0) {
+    return null
+  }
+  if (fullDetailMemberIds.length === 0) {
     return null
   }
 
@@ -201,7 +218,7 @@ export default function DashboardMyTeamSection({ myTeam }: Props) {
               next week →
             </button>
           </div>
-          {teamMemberRoster.length > 0 && (
+          {rosterFullDetail.length > 0 && (
             <div style={{ marginBottom: '1rem' }}>
               <div style={{ overflowX: 'auto' }}>
                 <table
@@ -256,7 +273,7 @@ export default function DashboardMyTeamSection({ myTeam }: Props) {
                         </td>
                       </tr>
                     ) : (
-                      teamMemberRoster.map((m) => {
+                      rosterFullDetail.map((m) => {
                         const h = hoursSummaryByUserId[m.userId] ?? {
                           active: 0,
                           pending: 0,

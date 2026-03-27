@@ -467,8 +467,14 @@ export default function Settings() {
   const [dailyGoalsRows, setDailyGoalsRows] = useState<Array<{ id: string; body: string; sort_order: number }>>([])
   const [dailyGoalsLoading, setDailyGoalsLoading] = useState(false)
   const [teamLeaderAssignments, setTeamLeaderAssignments] = useState<
-    Array<{ id: string; leader_user_id: string; member_user_id: string }>
+    Array<{
+      id: string
+      leader_user_id: string
+      member_user_id: string
+      dashboard_hours_visibility: 'full' | 'strip_only'
+    }>
   >([])
+  const [teamLeaderVisibilitySavingId, setTeamLeaderVisibilitySavingId] = useState<string | null>(null)
   const [teamAssignLeaderId, setTeamAssignLeaderId] = useState('')
   const [teamAssignMemberId, setTeamAssignMemberId] = useState('')
   const [teamAssignSaving, setTeamAssignSaving] = useState(false)
@@ -1506,10 +1512,24 @@ export default function Settings() {
 
       const { data: tlaRows, error: tlaErr } = await supabase
         .from('team_leader_assignments')
-        .select('id, leader_user_id, member_user_id')
+        .select('id, leader_user_id, member_user_id, dashboard_hours_visibility')
         .order('created_at', { ascending: false })
       if (tlaErr) setError(tlaErr.message)
-      else setTeamLeaderAssignments((tlaRows ?? []) as Array<{ id: string; leader_user_id: string; member_user_id: string }>)
+      else
+        setTeamLeaderAssignments(
+          ((tlaRows ?? []) as Array<{
+            id: string
+            leader_user_id: string
+            member_user_id: string
+            dashboard_hours_visibility: string | null
+          }>).map((r) => ({
+            id: r.id,
+            leader_user_id: r.leader_user_id,
+            member_user_id: r.member_user_id,
+            dashboard_hours_visibility:
+              r.dashboard_hours_visibility === 'strip_only' ? 'strip_only' : 'full',
+          })),
+        )
     }
     
     // Load dev-only data (users, people, etc.)
@@ -4667,6 +4687,32 @@ export default function Settings() {
     })
   }, [sortedTeamLeaderAssignments, goalPickerUsers, teamLeaderAssignmentsSearchQuery])
 
+  const teamHoursMemberPickerUsers = useMemo(() => {
+    if (!teamAssignLeaderId) return []
+    const assignedIds = new Set(
+      teamLeaderAssignments
+        .filter((r) => r.leader_user_id === teamAssignLeaderId)
+        .map((r) => r.member_user_id),
+    )
+    return goalPickerUsers.filter((u) => u.id !== teamAssignLeaderId && !assignedIds.has(u.id))
+  }, [teamAssignLeaderId, teamLeaderAssignments, goalPickerUsers])
+
+  useEffect(() => {
+    if (!teamAssignMemberId || !teamAssignLeaderId) return
+    if (!teamHoursMemberPickerUsers.some((u) => u.id === teamAssignMemberId)) {
+      setTeamAssignMemberId('')
+    }
+  }, [teamAssignLeaderId, teamAssignMemberId, teamHoursMemberPickerUsers])
+
+  const teamHoursNoMembersAvailable = Boolean(teamAssignLeaderId && teamHoursMemberPickerUsers.length === 0)
+  const teamHoursMemberPickerDisabled =
+    !teamAssignLeaderId || teamAssignSaving || teamHoursNoMembersAvailable
+  const teamHoursMemberPlaceholder = !teamAssignLeaderId
+    ? 'Choose a leader first…'
+    : teamHoursNoMembersAvailable
+      ? 'No users left to assign'
+      : 'Select user…'
+
   const settingsJumpGroups = useMemo(() => getSettingsJumpGroups(myRole), [myRole])
 
   useEffect(() => {
@@ -5821,15 +5867,18 @@ export default function Settings() {
           {teamLeadAssignmentsSectionOpen && (
             <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
           <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem', marginTop: 0 }}>
-            Link a leader to a member for team hours sharing—the leader can approve that member&apos;s hours from Dashboard → My Team. Any account role can be leader or member. A member can have more than one leader.
+            Link a leader to a member for team hours sharing—the leader can approve that member&apos;s hours from Dashboard → My Team. Any account role can be leader or member. A member can have more than one leader (with a different leader each time). The member list skips people already linked to the leader you pick.
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end', marginBottom: '1rem' }}>
             <div>
               <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.875rem', fontWeight: 500 }}>Leader</label>
               <select
                 value={teamAssignLeaderId}
-                onChange={(e) => setTeamAssignLeaderId(e.target.value)}
-                style={{ padding: '0.35rem 0.5rem', maxWidth: 320, width: '100%', minWidth: 200 }}
+                onChange={(e) => {
+                  setTeamAssignLeaderId(e.target.value)
+                  setTeamAssignMemberId('')
+                }}
+                style={{ padding: '0.35rem 0.5rem', maxWidth: 320, width: '100%', minWidth: 200, border: '1px solid #d1d5db' }}
               >
                 <option value="">Select user…</option>
                 {goalPickerUsers.map((u) => (
@@ -5843,11 +5892,30 @@ export default function Settings() {
               <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.875rem', fontWeight: 500 }}>Member</label>
               <select
                 value={teamAssignMemberId}
+                disabled={teamHoursMemberPickerDisabled}
                 onChange={(e) => setTeamAssignMemberId(e.target.value)}
-                style={{ padding: '0.35rem 0.5rem', maxWidth: 320, width: '100%', minWidth: 200 }}
+                style={{
+                  padding: '0.35rem 0.5rem',
+                  maxWidth: 320,
+                  width: '100%',
+                  minWidth: 200,
+                  ...(teamHoursMemberPickerDisabled
+                    ? {
+                        background: '#f3f4f6',
+                        color: '#9ca3af',
+                        cursor: 'not-allowed',
+                        border: '1px solid #e5e7eb',
+                      }
+                    : {
+                        background: 'white',
+                        color: 'inherit',
+                        cursor: 'pointer',
+                        border: '1px solid #d1d5db',
+                      }),
+                }}
               >
-                <option value="">Select user…</option>
-                {goalPickerUsers.map((u) => (
+                <option value="">{teamHoursMemberPlaceholder}</option>
+                {teamHoursMemberPickerUsers.map((u) => (
                   <option key={u.id} value={u.id}>
                     {(u.name?.trim() || u.email || u.id).slice(0, 80)}
                   </option>
@@ -5874,7 +5942,7 @@ export default function Settings() {
                           member_user_id: teamAssignMemberId,
                           created_by_user_id: authUser.id,
                         })
-                        .select('id, leader_user_id, member_user_id')
+                        .select('id, leader_user_id, member_user_id, dashboard_hours_visibility')
                         .single(),
                     'add team lead assignment',
                   )
@@ -5882,8 +5950,22 @@ export default function Settings() {
                     setError('Could not add assignment.')
                     return
                   }
-                  const row = inserted as { id: string; leader_user_id: string; member_user_id: string }
-                  setTeamLeaderAssignments((prev) => [row, ...prev])
+                  const row = inserted as {
+                    id: string
+                    leader_user_id: string
+                    member_user_id: string
+                    dashboard_hours_visibility: string | null
+                  }
+                  setTeamLeaderAssignments((prev) => [
+                    {
+                      id: row.id,
+                      leader_user_id: row.leader_user_id,
+                      member_user_id: row.member_user_id,
+                      dashboard_hours_visibility:
+                        row.dashboard_hours_visibility === 'strip_only' ? 'strip_only' : 'full',
+                    },
+                    ...prev,
+                  ])
                   setTeamAssignLeaderId('')
                   setTeamAssignMemberId('')
                 } catch (e) {
@@ -6027,6 +6109,9 @@ export default function Settings() {
                         )}
                       </button>
                     </th>
+                    <th scope="col" style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>
+                      Leader dashboard
+                    </th>
                     <th scope="col" style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb', width: 100 }} />
                   </tr>
                 </thead>
@@ -6038,6 +6123,57 @@ export default function Settings() {
                       <tr key={row.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                         <td style={{ padding: '0.5rem 0.75rem' }}>{leaderLabel}</td>
                         <td style={{ padding: '0.5rem 0.75rem' }}>{memberLabel}</td>
+                        <td style={{ padding: '0.5rem 0.75rem', maxWidth: 220 }}>
+                          <select
+                            value={row.dashboard_hours_visibility}
+                            disabled={myRole !== 'dev' || teamLeaderVisibilitySavingId === row.id}
+                            title={
+                              myRole !== 'dev'
+                                ? 'Only a developer can change this setting.'
+                                : 'What this leader sees on their Dashboard for this member'
+                            }
+                            onChange={(e) => {
+                              const next = e.target.value === 'strip_only' ? 'strip_only' : 'full'
+                              if (next === row.dashboard_hours_visibility) return
+                              setTeamLeaderVisibilitySavingId(row.id)
+                              void (async () => {
+                                try {
+                                  await withSupabaseRetry(
+                                    async () =>
+                                      supabase
+                                        .from('team_leader_assignments')
+                                        .update({ dashboard_hours_visibility: next })
+                                        .eq('id', row.id),
+                                    'update team leader dashboard visibility',
+                                  )
+                                  setTeamLeaderAssignments((prev) =>
+                                    prev.map((r) => (r.id === row.id ? { ...r, dashboard_hours_visibility: next } : r)),
+                                  )
+                                } catch (err) {
+                                  setError(formatErrorMessage(err))
+                                } finally {
+                                  setTeamLeaderVisibilitySavingId(null)
+                                }
+                              })()
+                            }}
+                            style={{
+                              width: '100%',
+                              maxWidth: 200,
+                              padding: '0.35rem 0.5rem',
+                              fontSize: '0.8125rem',
+                              border: '1px solid #d1d5db',
+                              borderRadius: 4,
+                              background: myRole !== 'dev' ? '#f3f4f6' : 'white',
+                              cursor: myRole !== 'dev' ? 'not-allowed' : 'pointer',
+                            }}
+                          >
+                            <option value="full">Full My Team</option>
+                            <option value="strip_only">Clock strip only</option>
+                          </select>
+                          {myRole !== 'dev' ? (
+                            <div style={{ fontSize: '0.7rem', color: '#9ca3af', marginTop: 4 }}>Dev only</div>
+                          ) : null}
+                        </td>
                         <td style={{ padding: '0.5rem 0.75rem' }}>
                           <button
                             type="button"

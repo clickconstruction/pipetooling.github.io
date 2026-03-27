@@ -304,6 +304,18 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: New/Edit Bid: changing **Bid Date Sent** opens attestation; save writes columns; clearing sent date clears attestations; UI shows days since sent and acknowledger
 - **Category**: Bids / Schema
 
+**`20260327220518_dispatch_request_notes.sql`**
+- **Purpose**: Thread notes on Task Dispatch inbox items (Dashboard expand row)
+- **Changes**: Create `dispatch_request_notes` (`request_id` FK → `dispatch_requests` ON DELETE CASCADE, `author_user_id` FK → `users`, `body`, `created_at`); index `(request_id, created_at)`; RLS SELECT same visibility as parent `dispatch_requests`; INSERT only when `author_user_id = auth.uid()` and user is dev or dispatch group member
+- **Impact**: Dashboard Dispatch inbox: expand task for activity thread (preset notes, Central Time + days ago); **Marked closed** block last from `dispatch_requests` close fields; realtime refresh when notes insert (if replication enabled)
+- **Category**: Task Dispatch / Schema
+
+**`20260327230514_team_leader_assignment_dashboard_visibility.sql`**
+- **Purpose**: Per leader→member link, control whether the leader sees full **My Team** on Dashboard or **Currently clocked in** strip only
+- **Changes**: Add `team_leader_assignments.dashboard_hours_visibility` (`'full'` | `'strip_only'`, default `'full'`); trigger `team_leader_assignments_dashboard_visibility_dev_only_trg` + function `team_leader_assignments_dashboard_visibility_dev_only()` — only `is_dev()` may change the column
+- **Impact**: Settings → Team Hours Sharing → **Leader dashboard** (dev edits); hook/UI omit strip-only members from detailed My Team and pending banner counts; strip unchanged
+- **Category**: Hours / Dashboard / RLS
+
 ### June 2026
 
 #### June 21, 2026

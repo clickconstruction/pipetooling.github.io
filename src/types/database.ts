@@ -1421,6 +1421,45 @@ export type Database = {
           },
         ]
       }
+      dispatch_request_notes: {
+        Row: {
+          author_user_id: string
+          body: string
+          created_at: string
+          id: string
+          request_id: string
+        }
+        Insert: {
+          author_user_id: string
+          body: string
+          created_at?: string
+          id?: string
+          request_id: string
+        }
+        Update: {
+          author_user_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          request_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_request_notes_author_user_id_fkey"
+            columns: ["author_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispatch_request_notes_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "dispatch_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dispatch_requests: {
         Row: {
           bid_id: string | null
@@ -5141,6 +5180,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by_user_id: string | null
+          dashboard_hours_visibility: string
           id: string
           leader_user_id: string
           member_user_id: string
@@ -5148,6 +5188,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by_user_id?: string | null
+          dashboard_hours_visibility?: string
           id?: string
           leader_user_id: string
           member_user_id: string
@@ -5155,6 +5196,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by_user_id?: string | null
+          dashboard_hours_visibility?: string
           id?: string
           leader_user_id?: string
           member_user_id?: string
@@ -6156,6 +6198,14 @@ export type Database = {
       create_view_link: {
         Args: { p_expires_at?: string; p_name?: string; p_project_id: string }
         Returns: Json
+      }
+      dispatch_inbox_note_stats: {
+        Args: { p_request_ids: string[] }
+        Returns: {
+          request_id: string
+          note_count: number
+          last_note_at: string
+        }[]
       }
       debug_cost_estimate_check: { Args: { p_bid_id: string }; Returns: Json }
       debug_cost_estimate_policies: {

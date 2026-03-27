@@ -31,6 +31,11 @@ import DashboardMyTeamPendingBanner from '../components/DashboardMyTeamPendingBa
 import DashboardMyTeamSection from '../components/DashboardMyTeamSection'
 import { DashboardTeamActiveClockStrip } from '../components/DashboardTeamActiveClockStrip'
 import { useDashboardMyTeamSectionState } from '../hooks/useDashboardMyTeamSectionState'
+import {
+  DispatchInboxSection,
+  type DispatchInboxRow,
+  type DispatchThreadNoteRow,
+} from '../components/DispatchInboxSection'
 import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
 import AssignedStageCard from '../components/AssignedStageCard'
 import { getNextDisplayOrders } from '../utils/checklistOrder'
@@ -436,29 +441,17 @@ export default function Dashboard() {
   const [teamFeedbackWizardOpen, setTeamFeedbackWizardOpen] = useState(false)
   const [dispatchInboxEligible, setDispatchInboxEligible] = useState(false)
   const [dispatchRequestsOpen, setDispatchRequestsOpen] = useState(true)
-  type DispatchInboxRow = {
-    id: string
-    title: string
-    links: string[] | null
-    created_at: string | null
-    from_user_id: string
-    reference_summary: string | null
-    location_lat: number | null
-    location_lng: number | null
-    sender: { name: string | null; email: string | null } | null
-    status: 'open' | 'closed'
-    closed_at: string | null
-    closed_by_user_id: string | null
-    closed_by: { name: string | null } | null
-    closed_note: string | null
-  }
   const [dispatchRequests, setDispatchRequests] = useState<DispatchInboxRow[]>([])
   const [dispatchRequestsLoading, setDispatchRequestsLoading] = useState(false)
-  const [dispatchRequestClosingId, setDispatchRequestClosingId] = useState<string | null>(null)
   const [dispatchRequestDismissingId, setDispatchRequestDismissingId] = useState<string | null>(null)
-  const [closeNoteModalRequestId, setCloseNoteModalRequestId] = useState<string | null>(null)
-  const [closeNoteText, setCloseNoteText] = useState('')
-  const [closeNoteError, setCloseNoteError] = useState<string | null>(null)
+  const [expandedDispatchRequestId, setExpandedDispatchRequestId] = useState<string | null>(null)
+  const [dispatchThreadNotesByRequestId, setDispatchThreadNotesByRequestId] = useState<
+    Record<string, DispatchThreadNoteRow[]>
+  >({})
+  const [dispatchNotesLoadingRequestId, setDispatchNotesLoadingRequestId] = useState<string | null>(null)
+  const [dispatchNoteSubmitRequestId, setDispatchNoteSubmitRequestId] = useState<string | null>(null)
+  const [dispatchNoteDraft, setDispatchNoteDraft] = useState('')
+  const expandedDispatchRequestIdRef = useRef<string | null>(null)
 
   type MyBidOthersBidItem = {
     id: string
@@ -582,7 +575,7 @@ export default function Dashboard() {
       return
     }
     setDispatchRequestsLoading(true)
-    Promise.all([
+    void Promise.all([
       supabase
         .from('dispatch_requests')
         .select(
@@ -590,9 +583,9 @@ export default function Dashboard() {
         )
         .order('created_at', { ascending: false }),
       supabase.from('dispatch_request_dismissals').select('request_id').eq('user_id', authUser.id),
-    ]).then(([requestsRes, dismissalsRes]) => {
-      setDispatchRequestsLoading(false)
+    ]).then(async ([requestsRes, dismissalsRes]) => {
       if (requestsRes.error) {
+        setDispatchRequestsLoading(false)
         console.error('Dispatch inbox load:', requestsRes.error)
         return
       }
@@ -610,9 +603,81 @@ export default function Dashboard() {
         const bDate = b.status === 'closed' ? (b.closed_at ?? b.created_at ?? '') : (b.created_at ?? '')
         return bDate.localeCompare(aDate)
       })
-      setDispatchRequests(rows)
+
+      let merged: DispatchInboxRow[] = rows.map((r) => ({
+        ...r,
+        note_count: 0,
+        last_note_at: null,
+      }))
+
+      if (rows.length > 0) {
+        try {
+          const statsRows = await withSupabaseRetry(
+            async () =>
+              supabase.rpc('dispatch_inbox_note_stats', { p_request_ids: rows.map((r) => r.id) }),
+            'dispatch inbox note stats',
+          )
+          type StatRow = { request_id: string; note_count: number; last_note_at: string | null }
+          const list = (statsRows ?? []) as StatRow[]
+          const byId = new Map(
+            list.map((s) => [
+              s.request_id,
+              { note_count: Number(s.note_count), last_note_at: s.last_note_at ?? null },
+            ]),
+          )
+          merged = rows.map((r) => {
+            const s = byId.get(r.id)
+            return {
+              ...r,
+              note_count: s?.note_count ?? 0,
+              last_note_at: s?.last_note_at ?? null,
+            }
+          })
+        } catch (e) {
+          console.error('Dispatch inbox note stats:', e)
+        }
+      }
+
+      setDispatchRequests(merged)
+      setDispatchRequestsLoading(false)
     })
   }, [authUser?.id, dispatchInboxEligible])
+
+  const loadDispatchNotesForRequest = useCallback(
+    async (requestId: string) => {
+      setDispatchNotesLoadingRequestId(requestId)
+      try {
+        const data = await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('dispatch_request_notes')
+              .select(
+                'id, body, created_at, author:users!dispatch_request_notes_author_user_id_fkey(name)',
+              )
+              .eq('request_id', requestId)
+              .order('created_at', { ascending: true }),
+          'load dispatch_request notes',
+        )
+        const rows = (data as DispatchThreadNoteRow[] | null) ?? []
+        setDispatchThreadNotesByRequestId((prev) => ({ ...prev, [requestId]: rows }))
+      } catch (e) {
+        showToast(formatErrorMessage(e, 'Failed to load dispatch notes'), 'error')
+      } finally {
+        setDispatchNotesLoadingRequestId(null)
+      }
+    },
+    [showToast],
+  )
+
+  useEffect(() => {
+    expandedDispatchRequestIdRef.current = expandedDispatchRequestId
+  }, [expandedDispatchRequestId])
+
+  useEffect(() => {
+    if (!expandedDispatchRequestId) return
+    setDispatchNoteDraft('')
+    void loadDispatchNotesForRequest(expandedDispatchRequestId)
+  }, [expandedDispatchRequestId, loadDispatchNotesForRequest])
 
   useEffect(() => {
     if (!authUser?.id || !dispatchInboxEligible) {
@@ -634,6 +699,27 @@ export default function Dashboard() {
       supabase.removeChannel(channel)
     }
   }, [authUser?.id, dispatchInboxEligible, loadDispatchRequests])
+
+  useEffect(() => {
+    if (!authUser?.id || !dispatchInboxEligible) return
+    const channel = supabase
+      .channel('dashboard-dispatch-request-notes')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'dispatch_request_notes' },
+        (payload) => {
+          const rid = (payload.new as { request_id?: string } | null)?.request_id
+          if (rid && expandedDispatchRequestIdRef.current === rid) {
+            void loadDispatchNotesForRequest(rid)
+          }
+          loadDispatchRequests()
+        },
+      )
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [authUser?.id, dispatchInboxEligible, loadDispatchNotesForRequest, loadDispatchRequests])
 
   useEffect(() => {
     if (!authUser?.id) {
@@ -2393,33 +2479,147 @@ export default function Dashboard() {
     await loadAssignedSteps()
   }
 
-  async function closeDispatchRequest(requestId: string, closedNote: string) {
+  function toggleExpandDispatchRequest(requestId: string) {
+    setExpandedDispatchRequestId((prev) => (prev === requestId ? null : requestId))
+  }
+
+  async function submitDispatchNote(requestId: string) {
     if (!authUser?.id) return
-    const note = closedNote?.trim()
-    if (!note) {
-      showToast('Close note is required.', 'error')
+    const body = dispatchNoteDraft.trim()
+    if (!body) {
+      showToast('Enter a note.', 'error')
       return
     }
-    setDispatchRequestClosingId(requestId)
-    const { error } = await supabase
-      .from('dispatch_requests')
-      .update({
-        status: 'closed',
-        closed_at: new Date().toISOString(),
-        closed_by_user_id: authUser.id,
-        closed_note: note,
-      })
-      .eq('id', requestId)
-    setDispatchRequestClosingId(null)
-    if (error) {
-      setCloseNoteError(error.message)
+    if (body.length > 2000) {
+      showToast('Note must be 2000 characters or less.', 'error')
       return
     }
-    setCloseNoteModalRequestId(null)
-    setCloseNoteText('')
-    setCloseNoteError(null)
-    loadDispatchRequests()
-    showToast('Marked closed.', 'success')
+
+    let wasClosed = false
+    const row = dispatchRequests.find((r) => r.id === requestId)
+    if (row) {
+      wasClosed = row.status === 'closed'
+    } else {
+      const { data: statusRow, error: statusErr } = await supabase
+        .from('dispatch_requests')
+        .select('status')
+        .eq('id', requestId)
+        .maybeSingle()
+      if (statusErr) {
+        showToast(statusErr.message, 'error')
+        return
+      }
+      wasClosed = statusRow?.status === 'closed'
+    }
+
+    setDispatchNoteSubmitRequestId(requestId)
+    try {
+      await withSupabaseRetry(
+        async () =>
+          supabase.from('dispatch_request_notes').insert({
+            request_id: requestId,
+            author_user_id: authUser.id,
+            body,
+          }),
+        'insert dispatch_request note',
+      )
+
+      if (wasClosed) {
+        try {
+          await withSupabaseRetry(
+            async () =>
+              supabase
+                .from('dispatch_requests')
+                .update({
+                  status: 'open',
+                  closed_at: null,
+                  closed_by_user_id: null,
+                  closed_note: null,
+                })
+                .eq('id', requestId),
+            'reopen dispatch request',
+          )
+        } catch (reopenErr) {
+          setDispatchNoteDraft('')
+          await loadDispatchNotesForRequest(requestId)
+          loadDispatchRequests()
+          showToast(formatErrorMessage(reopenErr, 'Note saved, but reopen failed.'), 'error')
+          return
+        }
+      }
+
+      setDispatchNoteDraft('')
+      await loadDispatchNotesForRequest(requestId)
+      loadDispatchRequests()
+      showToast(wasClosed ? 'Note added and task reopened.' : 'Note added.', 'success')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Failed to add note'), 'error')
+    } finally {
+      setDispatchNoteSubmitRequestId(null)
+    }
+  }
+
+  async function submitDispatchNoteAndClose(requestId: string) {
+    if (!authUser?.id) return
+    const body = dispatchNoteDraft.trim()
+    if (!body) {
+      showToast('Enter a note.', 'error')
+      return
+    }
+    if (body.length > 2000) {
+      showToast('Note must be 2000 characters or less.', 'error')
+      return
+    }
+
+    const row = dispatchRequests.find((r) => r.id === requestId)
+    if (row?.status === 'closed') {
+      showToast('This request is already closed.', 'error')
+      return
+    }
+
+    setDispatchNoteSubmitRequestId(requestId)
+    try {
+      await withSupabaseRetry(
+        async () =>
+          supabase.from('dispatch_request_notes').insert({
+            request_id: requestId,
+            author_user_id: authUser.id,
+            body,
+          }),
+        'insert dispatch_request note',
+      )
+
+      try {
+        await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('dispatch_requests')
+              .update({
+                status: 'closed',
+                closed_at: new Date().toISOString(),
+                closed_by_user_id: authUser.id,
+                closed_note: body,
+              })
+              .eq('id', requestId),
+          'close dispatch request',
+        )
+      } catch (closeErr) {
+        setDispatchNoteDraft('')
+        await loadDispatchNotesForRequest(requestId)
+        loadDispatchRequests()
+        showToast(formatErrorMessage(closeErr, 'Note saved, but mark closed failed.'), 'error')
+        return
+      }
+
+      setDispatchNoteDraft('')
+      await loadDispatchNotesForRequest(requestId)
+      loadDispatchRequests()
+      showToast('Note added and request marked closed.', 'success')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Failed to add note'), 'error')
+    } finally {
+      setDispatchNoteSubmitRequestId(null)
+    }
   }
 
   async function dismissDispatchRequest(requestId: string) {
@@ -2435,6 +2635,7 @@ export default function Dashboard() {
       return
     }
     setDispatchRequests((prev) => prev.filter((r) => r.id !== requestId))
+    setExpandedDispatchRequestId((ex) => (ex === requestId ? null : ex))
     showToast('Dismissed.', 'success')
   }
 
@@ -2442,23 +2643,6 @@ export default function Dashboard() {
   const showAssigned = assignedLoading || assignedSteps.length > 0
   const showSubscribed = role === 'dev' || role === 'master_technician' || role === 'assistant'
   const showRecent = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
-
-  const handleCloseNoteModalClose = () => {
-    setCloseNoteModalRequestId(null)
-    setCloseNoteText('')
-    setCloseNoteError(null)
-  }
-
-  const handleCloseNoteSubmit = () => {
-    const note = closeNoteText.trim()
-    if (!note) {
-      setCloseNoteError('Close note is required.')
-      return
-    }
-    if (closeNoteModalRequestId) {
-      closeDispatchRequest(closeNoteModalRequestId, note)
-    }
-  }
 
   const showDashboardQuickButtons = role === 'dev' || role === 'master_technician' || role === 'assistant'
   const quickActionLinkStyle: CSSProperties = {
@@ -2628,92 +2812,6 @@ export default function Dashboard() {
 
   return (
     <div>
-      {closeNoteModalRequestId && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 60,
-          }}
-          onClick={(e) => e.target === e.currentTarget && handleCloseNoteModalClose()}
-        >
-          <div
-            style={{
-              background: 'white',
-              padding: '1.5rem',
-              borderRadius: 8,
-              minWidth: 360,
-              maxWidth: 480,
-              boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Close dispatch request</h2>
-              <button
-                type="button"
-                onClick={handleCloseNoteModalClose}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.5rem', color: '#6b7280', lineHeight: 1 }}
-                aria-label="Close"
-              >
-                ×
-              </button>
-            </div>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                handleCloseNoteSubmit()
-              }}
-            >
-              <textarea
-                value={closeNoteText}
-                onChange={(e) => setCloseNoteText(e.target.value)}
-                placeholder="Enter close note..."
-                rows={4}
-                style={{
-                  width: '100%',
-                  padding: '0.5rem 0.75rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: 4,
-                  fontSize: '0.875rem',
-                  resize: 'vertical',
-                  boxSizing: 'border-box',
-                }}
-              />
-              {closeNoteError && (
-                <p style={{ color: '#b91c1c', marginTop: '0.5rem', marginBottom: '1rem', fontSize: '0.875rem' }}>{closeNoteError}</p>
-              )}
-              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                <button
-                  type="button"
-                  onClick={handleCloseNoteModalClose}
-                  style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={dispatchRequestClosingId === closeNoteModalRequestId}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    background: dispatchRequestClosingId === closeNoteModalRequestId ? '#9ca3af' : '#2563eb',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: 4,
-                    cursor: dispatchRequestClosingId === closeNoteModalRequestId ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  {dispatchRequestClosingId === closeNoteModalRequestId ? '…' : 'Submit'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
       {showDashboardQuickButtons && quickButtonsPlacement === 'top' && (
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem', justifyContent: 'center' }}>
           {quickActionDefs.map((b) => (
@@ -2926,112 +3024,24 @@ export default function Dashboard() {
             )}
           </div>
           {authUser?.id && dispatchInboxEligible && (
-            <div style={{ marginBottom: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
-              <button
-                type="button"
-                onClick={() => setDispatchRequestsOpen((o) => !o)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  width: '100%',
-                  padding: '0.75rem 1rem',
-                  margin: 0,
-                  background: '#f9fafb',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '1rem',
-                  fontWeight: 600,
-                  textAlign: 'left',
-                }}
-              >
-                <span aria-hidden>{dispatchRequestsOpen ? '▼' : '▶'}</span>
-                Dispatch inbox
-                {!dispatchRequestsLoading && dispatchRequests.length > 0 ? (
-                  <span style={{ marginLeft: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: '#2563eb' }}>
-                    ({dispatchRequests.filter((r) => r.status === 'open').length} open)
-                  </span>
-                ) : null}
-              </button>
-              {dispatchRequestsOpen && (
-                <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-                  {dispatchRequestsLoading ? (
-                    <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
-                  ) : dispatchRequests.length === 0 ? (
-                    <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No dispatch requests.</p>
-                  ) : (
-                    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                      {dispatchRequests.map((req) => {
-                        const fromLabel = req.sender?.name?.trim() || req.sender?.email?.trim() || 'Unknown'
-                        const isClosed = req.status === 'closed'
-                        const closedByLabel = req.closed_by?.name?.trim() || 'Unknown'
-                        return (
-                          <li
-                            key={req.id}
-                            style={{
-                              display: 'flex',
-                              flexWrap: 'wrap',
-                              alignItems: 'flex-start',
-                              gap: '0.5rem',
-                              padding: '0.75rem 0',
-                              borderBottom: '1px solid #f3f4f6',
-                              opacity: isClosed ? 0.85 : 1,
-                              background: isClosed ? '#f9fafb' : undefined,
-                            }}
-                          >
-                            <div style={{ flex: 1, minWidth: 200 }}>
-                              <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 4 }}>
-                                From {fromLabel}
-                                {req.created_at ? (
-                                  <span style={{ marginLeft: '0.5rem' }}>· {formatDatetime(req.created_at)}</span>
-                                ) : null}
-                              </div>
-                              <div style={{ fontWeight: 500 }}>
-                                <ChecklistTitleWithLinks title={req.title} links={req.links ?? []} />
-                              </div>
-                              {req.reference_summary?.trim() ? (
-                                <div style={{ marginTop: 6, fontSize: '0.8125rem', color: '#4b5563' }}>
-                                  Ref: {req.reference_summary.trim()}
-                                </div>
-                              ) : null}
-                              {req.location_lat != null && req.location_lng != null ? (
-                                <div style={{ marginTop: 4, fontSize: '0.8125rem' }}>
-                                  <a href={`https://www.google.com/maps?q=${req.location_lat},${req.location_lng}`} target="_blank" rel="noopener noreferrer" title="View location in Google Maps" style={{ color: '#2563eb', textDecoration: 'none' }}>
-                                    View location
-                                  </a>
-                                </div>
-                              ) : null}
-                            </div>
-                            {isClosed ? (
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                                <button type="button" onClick={() => dismissDispatchRequest(req.id)} disabled={dispatchRequestDismissingId === req.id} style={{ padding: '0.35rem 0.75rem', background: '#e5e7eb', border: 'none', borderRadius: 4, cursor: dispatchRequestDismissingId === req.id ? 'not-allowed' : 'pointer', fontSize: '0.875rem' }}>
-                                  {dispatchRequestDismissingId === req.id ? '…' : 'Dismiss'}
-                                </button>
-                                <div style={{ fontSize: '0.8125rem', color: '#6b7280' }}>Closed by {closedByLabel}</div>
-                                {req.closed_note?.trim() ? (
-                                  <div style={{ fontSize: '0.8125rem', color: '#4b5563', marginTop: 2, maxWidth: 200, textAlign: 'right' }}>
-                                    "{req.closed_note.trim()}"
-                                  </div>
-                                ) : null}
-                              </div>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => { setCloseNoteModalRequestId(req.id); setCloseNoteText(''); setCloseNoteError(null) }}
-                                disabled={dispatchRequestClosingId === req.id}
-                                style={{ padding: '0.35rem 0.75rem', background: '#e5e7eb', border: 'none', borderRadius: 4, cursor: dispatchRequestClosingId === req.id ? 'not-allowed' : 'pointer', fontSize: '0.875rem' }}
-                              >
-                                {dispatchRequestClosingId === req.id ? '…' : 'Mark closed'}
-                              </button>
-                            )}
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  )}
-                </div>
-              )}
-            </div>
+            <DispatchInboxSection
+              sectionOpen={dispatchRequestsOpen}
+              onToggleSection={() => setDispatchRequestsOpen((o) => !o)}
+              requests={dispatchRequests}
+              loading={dispatchRequestsLoading}
+              expandedRequestId={expandedDispatchRequestId}
+              onToggleExpandRequest={toggleExpandDispatchRequest}
+              notesByRequestId={dispatchThreadNotesByRequestId}
+              notesLoadingRequestId={dispatchNotesLoadingRequestId}
+              noteSubmitRequestId={dispatchNoteSubmitRequestId}
+              canAddNotes={dispatchInboxEligible}
+              dispatchRequestDismissingId={dispatchRequestDismissingId}
+              noteDraft={dispatchNoteDraft}
+              onNoteDraftChange={setDispatchNoteDraft}
+              onSubmitNote={submitDispatchNote}
+              onSubmitNoteAndClose={submitDispatchNoteAndClose}
+              onDismiss={dismissDispatchRequest}
+            />
           )}
           {(waitingForPaymentLoading || waitingForPaymentInvoices.length > 0 || waitingForPaymentJobs.length > 0) && (
             <div style={{ marginTop: '2rem', marginBottom: '1rem' }}>
@@ -3222,149 +3232,24 @@ export default function Dashboard() {
       )}
       {isDev && authUser?.id && <DashboardDevRejectedNotification />}
       {authUser?.id && dispatchInboxEligible && role !== 'assistant' && (
-        <div style={{ marginBottom: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
-          <button
-            type="button"
-            onClick={() => setDispatchRequestsOpen((o) => !o)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-              width: '100%',
-              padding: '0.75rem 1rem',
-              margin: 0,
-              background: '#f9fafb',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '1rem',
-              fontWeight: 600,
-              textAlign: 'left',
-            }}
-          >
-            <span aria-hidden>{dispatchRequestsOpen ? '▼' : '▶'}</span>
-            Dispatch inbox
-            {!dispatchRequestsLoading && dispatchRequests.length > 0 ? (
-              <span style={{ marginLeft: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: '#2563eb' }}>
-                ({dispatchRequests.filter((r) => r.status === 'open').length} open)
-              </span>
-            ) : null}
-          </button>
-          {dispatchRequestsOpen && (
-            <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-              {dispatchRequestsLoading ? (
-                <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
-              ) : dispatchRequests.length === 0 ? (
-                <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No dispatch requests.</p>
-              ) : (
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                  {dispatchRequests.map((req) => {
-                    const fromLabel = req.sender?.name?.trim() || req.sender?.email?.trim() || 'Unknown'
-                    const isClosed = req.status === 'closed'
-                    const closedByLabel = req.closed_by?.name?.trim() || 'Unknown'
-                    return (
-                      <li
-                        key={req.id}
-                        style={{
-                          display: 'flex',
-                          flexWrap: 'wrap',
-                          alignItems: 'flex-start',
-                          gap: '0.5rem',
-                          padding: '0.75rem 0',
-                          borderBottom: '1px solid #f3f4f6',
-                          opacity: isClosed ? 0.85 : 1,
-                          background: isClosed ? '#f9fafb' : undefined,
-                        }}
-                      >
-                        <div style={{ flex: 1, minWidth: 200 }}>
-                          <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 4 }}>
-                            From {fromLabel}
-                            {req.created_at ? (
-                              <span style={{ marginLeft: '0.5rem' }}>· {formatDatetime(req.created_at)}</span>
-                            ) : null}
-                          </div>
-                          <div style={{ fontWeight: 500 }}>
-                            <ChecklistTitleWithLinks title={req.title} links={req.links ?? []} />
-                          </div>
-                          {req.reference_summary?.trim() ? (
-                            <div
-                              style={{
-                                marginTop: 6,
-                                fontSize: '0.8125rem',
-                                color: '#4b5563',
-                              }}
-                            >
-                              Ref: {req.reference_summary.trim()}
-                            </div>
-                          ) : null}
-                          {req.location_lat != null && req.location_lng != null ? (
-                            <div style={{ marginTop: 4, fontSize: '0.8125rem' }}>
-                              <a
-                                href={`https://www.google.com/maps?q=${req.location_lat},${req.location_lng}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title="View location in Google Maps"
-                                style={{ color: '#2563eb', textDecoration: 'none' }}
-                              >
-                                View location
-                              </a>
-                            </div>
-                          ) : null}
-                        </div>
-                        {isClosed ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                            <button
-                              type="button"
-                              onClick={() => dismissDispatchRequest(req.id)}
-                              disabled={dispatchRequestDismissingId === req.id}
-                              style={{
-                                padding: '0.35rem 0.75rem',
-                                background: '#e5e7eb',
-                                border: 'none',
-                                borderRadius: 4,
-                                cursor: dispatchRequestDismissingId === req.id ? 'not-allowed' : 'pointer',
-                                fontSize: '0.875rem',
-                              }}
-                            >
-                              {dispatchRequestDismissingId === req.id ? '…' : 'Dismiss'}
-                            </button>
-                            <div style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
-                              Closed by {closedByLabel}
-                            </div>
-                            {req.closed_note?.trim() ? (
-                              <div style={{ fontSize: '0.8125rem', color: '#4b5563', marginTop: 2, maxWidth: 200, textAlign: 'right' }}>
-                                "{req.closed_note.trim()}"
-                              </div>
-                            ) : null}
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setCloseNoteModalRequestId(req.id)
-                              setCloseNoteText('')
-                              setCloseNoteError(null)
-                            }}
-                            disabled={dispatchRequestClosingId === req.id}
-                            style={{
-                              padding: '0.35rem 0.75rem',
-                              background: '#e5e7eb',
-                              border: 'none',
-                              borderRadius: 4,
-                              cursor: dispatchRequestClosingId === req.id ? 'not-allowed' : 'pointer',
-                              fontSize: '0.875rem',
-                            }}
-                          >
-                            {dispatchRequestClosingId === req.id ? '…' : 'Mark closed'}
-                          </button>
-                        )}
-                      </li>
-                    )
-                  })}
-                </ul>
-              )}
-            </div>
-          )}
-        </div>
+        <DispatchInboxSection
+          sectionOpen={dispatchRequestsOpen}
+          onToggleSection={() => setDispatchRequestsOpen((o) => !o)}
+          requests={dispatchRequests}
+          loading={dispatchRequestsLoading}
+          expandedRequestId={expandedDispatchRequestId}
+          onToggleExpandRequest={toggleExpandDispatchRequest}
+          notesByRequestId={dispatchThreadNotesByRequestId}
+          notesLoadingRequestId={dispatchNotesLoadingRequestId}
+          noteSubmitRequestId={dispatchNoteSubmitRequestId}
+          canAddNotes={dispatchInboxEligible}
+          dispatchRequestDismissingId={dispatchRequestDismissingId}
+          noteDraft={dispatchNoteDraft}
+          onNoteDraftChange={setDispatchNoteDraft}
+          onSubmitNote={submitDispatchNote}
+          onSubmitNoteAndClose={submitDispatchNoteAndClose}
+          onDismiss={dismissDispatchRequest}
+        />
       )}
       {(role === 'dev' || role === 'master_technician') && (
         <div style={{ marginTop: '2rem', marginBottom: '1rem' }}>

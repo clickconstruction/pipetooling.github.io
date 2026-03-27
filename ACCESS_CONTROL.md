@@ -110,7 +110,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 - Claim dev role via Settings (enter promotion code from DEV_PROMOTION_CODE secret)
 - Manage Pay Approved Masters (**Settings → People & accounts**); only dev can change Show in Hours per person
 - Manage **Task Dispatch** group in **Settings → People & accounts**: choose which **assistants** receive dispatch pushes and see the Dispatch inbox on Dashboard
-- Manage **Team Hours Sharing** (Settings → Dashboard & alerts): link leaders to members for My Team hours approval on Dashboard
+- Manage **Team Hours Sharing** (Settings → Dashboard & alerts): link leaders to members for My Team hours approval on Dashboard; **only dev** can set per-assignment **Leader dashboard** (full My Team vs clock strip only)
 - **Dashboard → Rejected sessions (all users)**: org-wide rejected clock sessions for review (same delete as People → Hours)
 - Delete reports (Jobs Reports tab); masters, assistants, primaries cannot delete reports
 
@@ -518,7 +518,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 | Feature | dev | master | assistant | sub | estimator | primary | superintendent |
 |---------|-----|--------|-----------|-----|-----------|---------|----------------|
 | People & accounts (`#settings-people`): adoption, master sharing, primaries/superintendents, Share Cost Matrix and Teams (dev); dev-only user tools and Task Dispatch above sharing | ✅ | ✅ (sharing block only) | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Team Hours Sharing (leader → member links for My Team; Dashboard & alerts) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Team Hours Sharing (leader → member links for My Team; Dashboard & alerts); **Leader dashboard** column (full vs strip only) **editable dev-only** | ✅ | ✅ view | ✅ view | ❌ | ❌ | ❌ | ❌ |
 
 ### Customer Management
 

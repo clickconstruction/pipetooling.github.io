@@ -15,6 +15,9 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.169)"
+    line: ~451
+    description: "Dashboard Dispatch inbox thread notes (expand row, presets, CST + days ago, closed as final block); dispatch_request_notes migration"
   - name: "Latest Version (v2.168)"
     line: ~451
     description: "Bids: Bid Date Sent attestation modal (three checkboxes), persistence on bids, days ago + acknowledger under field"
@@ -448,6 +451,20 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.169)
+
+**Date**: 2026-03-27
+
+### Dashboard — Dispatch inbox thread notes
+
+- Expand a dispatch request (click the row; title links still open without toggling). **Activity / notes** loads `dispatch_request_notes` with author name, weekday + time in **America/Chicago**, and **calendar days ago** in that timezone.
+- Dev and dispatch group members add notes via a **single combobox** ([`src/components/DispatchNoteCombobox.tsx`](src/components/DispatchNoteCombobox.tsx)): type freely or filter/pick from `DISPATCH_NOTE_PRESETS` (arrows + Enter on a highlighted row, or click). Submit rejects empty notes and text over 2000 characters. Inserts use `withSupabaseRetry`. Closed requests show **Marked closed (final)** after notes, using existing `closed_by`, `closed_at`, and `closed_note`.
+- Shared UI: [`src/components/DispatchInboxSection.tsx`](src/components/DispatchInboxSection.tsx); helpers [`src/utils/dispatchNoteDisplay.ts`](src/utils/dispatchNoteDisplay.ts), [`src/lib/dispatchNotePresets.ts`](src/lib/dispatchNotePresets.ts). Realtime channel on `dispatch_request_notes` refreshes the expanded thread on `INSERT` when replication is available.
+
+**Files**: [`supabase/migrations/20260327220518_dispatch_request_notes.sql`](supabase/migrations/20260327220518_dispatch_request_notes.sql), [`src/pages/Dashboard.tsx`](src/pages/Dashboard.tsx), [`src/types/database.ts`](src/types/database.ts), [`src/components/DispatchNoteCombobox.tsx`](src/components/DispatchNoteCombobox.tsx)
 
 ---
 
