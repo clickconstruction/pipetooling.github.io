@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useIntervalNowMs } from './useIntervalNowMs'
 import { CLOCK_SESSION_LIST_SELECT } from '../lib/clockSessionSelect'
 import { getPersonNamesForUser } from '../lib/cascadePersonName'
 import { supabase } from '../lib/supabase'
@@ -43,6 +44,14 @@ function sessionDurationSeconds(
   return Math.max(0, Math.floor((outMs - inMs) / 1000))
 }
 
+type TodaySessionRow = {
+  user_id: string
+  clocked_in_at: string
+  clocked_out_at: string | null
+  rejected_at: string | null
+  revoked_at: string | null
+}
+
 const CLOCK_ACTIVITY_SIMPLE_STORAGE_KEY = 'dashboard_my_team_clock_activity_simple'
 const CLOCK_ACTIVITY_LIST_MODE_STORAGE_KEY = 'dashboard_my_team_clock_activity_list_mode'
 
@@ -84,6 +93,7 @@ export function useDashboardMyTeamSectionState(authUserId: string | undefined) {
   const [loadingLedger, setLoadingLedger] = useState(false)
   const [loadingMeta, setLoadingMeta] = useState(true)
   const [pendingSessions, setPendingSessions] = useState<ClockSessionRow[]>([])
+  const [todaySessionsRows, setTodaySessionsRows] = useState<TodaySessionRow[]>([])
   const [loadingSessions, setLoadingSessions] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [myTeamExpanded, setMyTeamExpanded] = useState(true)
@@ -95,6 +105,7 @@ export function useDashboardMyTeamSectionState(authUserId: string | undefined) {
       setTeamMemberRoster([])
       setNotifyByAssignment({})
       setHoursSummaryByUserId({})
+      setTodaySessionsRows([])
       setLoadingMeta(false)
       return
     }
@@ -151,10 +162,33 @@ export function useDashboardMyTeamSectionState(authUserId: string | undefined) {
       setTeamMemberRoster([])
       setNotifyByAssignment({})
       setHoursSummaryByUserId({})
+      setTodaySessionsRows([])
     } finally {
       setLoadingMeta(false)
     }
   }, [authUserId])
+
+  const loadTodayClockSessions = useCallback(async () => {
+    if (!authUserId || memberUserIds.length === 0) {
+      setTodaySessionsRows([])
+      return
+    }
+    const today = new Date().toLocaleDateString('en-CA')
+    try {
+      const data = await withSupabaseRetry(
+        async () =>
+          supabase
+            .from('clock_sessions')
+            .select('user_id, clocked_in_at, clocked_out_at, rejected_at, revoked_at')
+            .in('user_id', memberUserIds)
+            .eq('work_date', today),
+        'load team today clock sessions',
+      )
+      setTodaySessionsRows((data ?? []) as TodaySessionRow[])
+    } catch {
+      setTodaySessionsRows([])
+    }
+  }, [authUserId, memberUserIds])
 
   const loadTeamHoursSummary = useCallback(async () => {
     if (!authUserId || memberUserIds.length === 0) {
@@ -266,6 +300,7 @@ export function useDashboardMyTeamSectionState(authUserId: string | undefined) {
     if (!authUserId || memberUserIds.length === 0) {
       setPendingSessions([])
       setHoursSummaryByUserId({})
+      setTodaySessionsRows([])
       return
     }
     if (!silent) {
@@ -289,6 +324,7 @@ export function useDashboardMyTeamSectionState(authUserId: string | undefined) {
       )
       setPendingSessions((data ?? []) as unknown as ClockSessionRow[])
       await loadTeamHoursSummary()
+      await loadTodayClockSessions()
     } catch (e) {
       setError(formatErrorMessage(e))
       if (!silent) {
@@ -299,7 +335,7 @@ export function useDashboardMyTeamSectionState(authUserId: string | undefined) {
         setLoadingSessions(false)
       }
     }
-  }, [authUserId, memberUserIds, dateStart, dateEnd, loadTeamHoursSummary])
+  }, [authUserId, memberUserIds, dateStart, dateEnd, loadTeamHoursSummary, loadTodayClockSessions])
 
   const removePendingSessionFromState = useCallback((sessionId: string) => {
     setPendingSessions((prev) => prev.filter((s) => s.id !== sessionId))
@@ -464,6 +500,22 @@ export function useDashboardMyTeamSectionState(authUserId: string | undefined) {
     })
   }, [])
 
+  const todayHoursNowMs = useIntervalNowMs(45_000)
+  const hoursTodayByUserId = useMemo(() => {
+    const out: Record<string, number> = {}
+    const memberSet = new Set(memberUserIds)
+    for (const uid of memberUserIds) {
+      out[uid] = 0
+    }
+    for (const row of todaySessionsRows) {
+      if (row.rejected_at || row.revoked_at) continue
+      if (!memberSet.has(row.user_id)) continue
+      const sec = sessionDurationSeconds(row.clocked_in_at, row.clocked_out_at, todayHoursNowMs)
+      out[row.user_id] = (out[row.user_id] ?? 0) + sec / 3600
+    }
+    return out
+  }, [memberUserIds, todaySessionsRows, todayHoursNowMs])
+
   const pendingApprovalCount = useMemo(
     () => pendingSessions.filter((s) => s.clocked_out_at != null).length,
     [pendingSessions],
@@ -489,6 +541,7 @@ export function useDashboardMyTeamSectionState(authUserId: string | undefined) {
     loadingLedger,
     loadingMeta,
     pendingSessions,
+    hoursTodayByUserId,
     pendingApprovalCount,
     loadingSessions,
     error,

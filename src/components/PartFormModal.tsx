@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { Database } from '../types/database'
+import { SupplyHouseWebsiteLink } from './SupplyHouseWebsiteLink'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
@@ -328,6 +329,8 @@ export function PartFormModal({
                           ×
                         </button>
                       </div>
+
+                      <SupplyHouseWebsiteLink websiteUrl={supplyHouses.find((sh) => sh.id === priceItem.supply_house_id)?.website_url} />
 
                       <input
                         type="date"

@@ -1,4 +1,5 @@
 import type { Database } from '../types/database'
+import { normalizeSupplyHouseWebsiteUrlForStorage } from '../lib/supplyHouseWebsite'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator' | 'primary' | 'superintendent'
@@ -9,6 +10,7 @@ export interface SupplyHouseFormData {
   phone: string
   email: string
   address: string
+  website_url: string | null
   notes: string
   monthly_payment_day: number | null
 }
@@ -20,6 +22,7 @@ interface SupplyHouseFormProps {
   phone: string
   email: string
   address: string
+  websiteUrl: string
   notes: string
   monthlyPaymentDay: string
   onChange: (field: keyof SupplyHouseFormData, value: string) => void
@@ -42,6 +45,7 @@ export function SupplyHouseForm({
   phone,
   email,
   address,
+  websiteUrl,
   notes,
   monthlyPaymentDay,
   onChange,
@@ -67,6 +71,7 @@ export function SupplyHouseForm({
       phone: phone.trim() || '',
       email: email.trim() || '',
       address: address.trim() || '',
+      website_url: normalizeSupplyHouseWebsiteUrlForStorage(websiteUrl),
       notes: notes.trim() || '',
       monthly_payment_day: day,
     })
@@ -100,6 +105,16 @@ export function SupplyHouseForm({
       <div style={rowStyles}>
         <label style={labelStyles}>Address</label>
         <textarea value={address} onChange={(e) => onChange('address', e.target.value)} rows={2} style={fieldStyles} />
+      </div>
+      <div style={rowStyles}>
+        <label style={labelStyles}>Website / order portal</label>
+        <input
+          type="url"
+          value={websiteUrl}
+          onChange={(e) => onChange('website_url', e.target.value)}
+          placeholder="https://…"
+          style={fieldStyles}
+        />
       </div>
       <div style={rowStyles}>
         <label style={labelStyles}>Monthly payment date</label>

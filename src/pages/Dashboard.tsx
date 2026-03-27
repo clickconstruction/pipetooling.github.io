@@ -29,6 +29,7 @@ import DashboardMyTimeSection from '../components/DashboardMyTimeSection'
 import DashboardDevRejectedNotification from '../components/DashboardDevRejectedNotification'
 import DashboardMyTeamPendingBanner from '../components/DashboardMyTeamPendingBanner'
 import DashboardMyTeamSection from '../components/DashboardMyTeamSection'
+import { DashboardTeamActiveClockStrip } from '../components/DashboardTeamActiveClockStrip'
 import { useDashboardMyTeamSectionState } from '../hooks/useDashboardMyTeamSectionState'
 import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
 import AssignedStageCard from '../components/AssignedStageCard'
@@ -295,6 +296,10 @@ export default function Dashboard() {
       })
     })
   }, [myTeam.setMyTeamExpanded])
+  const activeClockSessions = useMemo(
+    () => myTeam.pendingSessions.filter((s) => s.clocked_out_at == null),
+    [myTeam.pendingSessions],
+  )
   const isMobile = useIsMobile()
   const [subscribedSteps, setSubscribedSteps] = useState<SubscribedStep[]>([])
   const [assignedSteps, setAssignedSteps] = useState<AssignedStep[]>([])
@@ -2717,6 +2722,9 @@ export default function Dashboard() {
         />
       )}
       {role === 'assistant' && tallyAndPinnedBlock}
+      {role === 'assistant' && authUser?.id && activeClockSessions.length > 0 && (
+        <DashboardTeamActiveClockStrip sessions={activeClockSessions} hoursTodayByUserId={myTeam.hoursTodayByUserId} />
+      )}
       {role === 'assistant' && authUser?.id && (
         <DashboardMyTeamPendingBanner
           pendingApprovalCount={myTeam.pendingApprovalCount}
@@ -3154,6 +3162,9 @@ export default function Dashboard() {
         </div>
       )}
       {role !== 'assistant' && tallyAndPinnedBlock}
+      {role !== 'assistant' && authUser?.id && activeClockSessions.length > 0 && (
+        <DashboardTeamActiveClockStrip sessions={activeClockSessions} hoursTodayByUserId={myTeam.hoursTodayByUserId} />
+      )}
       {role !== 'assistant' && authUser?.id && (
         <DashboardMyTeamPendingBanner
           pendingApprovalCount={myTeam.pendingApprovalCount}

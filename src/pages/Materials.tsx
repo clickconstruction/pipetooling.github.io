@@ -7,6 +7,7 @@ import { Database } from '../types/database'
 import { PartFormModal } from '../components/PartFormModal'
 import { SupplyHousesTab } from '../components/SupplyHousesTab'
 import { SupplyHouseForm } from '../components/SupplyHouseForm'
+import { SupplyHouseWebsiteLink } from '../components/SupplyHouseWebsiteLink'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
@@ -179,6 +180,7 @@ export default function Materials() {
   const [supplyHousePhone, setSupplyHousePhone] = useState('')
   const [supplyHouseEmail, setSupplyHouseEmail] = useState('')
   const [supplyHouseAddress, setSupplyHouseAddress] = useState('')
+  const [supplyHouseWebsiteUrl, setSupplyHouseWebsiteUrl] = useState('')
   const [supplyHouseNotes, setSupplyHouseNotes] = useState('')
   const [supplyHouseMonthlyPaymentDay, setSupplyHouseMonthlyPaymentDay] = useState('')
   const [savingSupplyHouse, setSavingSupplyHouse] = useState(false)
@@ -389,7 +391,7 @@ export default function Materials() {
       .select('*')
       .order('name')
     if (error) {
-      const fallback = await supabase.from('supply_houses').select('id, name, contact_name, phone, email, address, notes, created_at, updated_at').order('name')
+      const fallback = await supabase.from('supply_houses').select('id, name, contact_name, phone, email, address, notes, website_url, created_at, updated_at').order('name')
       if (fallback.error) {
         setError(`Failed to load supply houses: ${error.message}`)
         return
@@ -1390,6 +1392,7 @@ export default function Materials() {
     setSupplyHousePhone('')
     setSupplyHouseEmail('')
     setSupplyHouseAddress('')
+    setSupplyHouseWebsiteUrl('')
     setSupplyHouseNotes('')
     setSupplyHouseMonthlyPaymentDay('')
     setSupplyHouseFormOpen(true)
@@ -1403,6 +1406,7 @@ export default function Materials() {
     setSupplyHousePhone(supplyHouse.phone || '')
     setSupplyHouseEmail(supplyHouse.email || '')
     setSupplyHouseAddress(supplyHouse.address || '')
+    setSupplyHouseWebsiteUrl(supplyHouse.website_url || '')
     setSupplyHouseNotes(supplyHouse.notes || '')
     setSupplyHouseMonthlyPaymentDay(supplyHouse.monthly_payment_day != null ? String(supplyHouse.monthly_payment_day) : '')
     setSupplyHouseFormOpen(true)
@@ -1414,7 +1418,7 @@ export default function Materials() {
     setEditingSupplyHouse(null)
   }
 
-  async function saveSupplyHouseFromFormData(data: { name: string; contact_name: string; phone: string; email: string; address: string; notes: string; monthly_payment_day: number | null }) {
+  async function saveSupplyHouseFromFormData(data: { name: string; contact_name: string; phone: string; email: string; address: string; website_url: string | null; notes: string; monthly_payment_day: number | null }) {
     if (!data.name.trim()) {
       setError('Supply house name is required')
       return
@@ -1431,6 +1435,7 @@ export default function Materials() {
           phone: data.phone.trim() || null,
           email: data.email.trim() || null,
           address: data.address.trim() || null,
+          website_url: data.website_url,
           notes: data.notes.trim() || null,
           monthly_payment_day: data.monthly_payment_day,
         })
@@ -1450,6 +1455,7 @@ export default function Materials() {
           phone: data.phone.trim() || null,
           email: data.email.trim() || null,
           address: data.address.trim() || null,
+          website_url: data.website_url,
           notes: data.notes.trim() || null,
           monthly_payment_day: data.monthly_payment_day,
         })
@@ -3251,6 +3257,7 @@ export default function Materials() {
                 phone={supplyHousePhone}
                 email={supplyHouseEmail}
                 address={supplyHouseAddress}
+                websiteUrl={supplyHouseWebsiteUrl}
                 notes={supplyHouseNotes}
                 monthlyPaymentDay={supplyHouseMonthlyPaymentDay}
                 onChange={(field, value) => {
@@ -3260,6 +3267,7 @@ export default function Materials() {
                     case 'phone': setSupplyHousePhone(value); break
                     case 'email': setSupplyHouseEmail(value); break
                     case 'address': setSupplyHouseAddress(value); break
+                    case 'website_url': setSupplyHouseWebsiteUrl(value); break
                     case 'notes': setSupplyHouseNotes(value); break
                     case 'monthly_payment_day': setSupplyHouseMonthlyPaymentDay(value); break
                   }
@@ -5354,6 +5362,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                             <option key={sh.id} value={sh.id}>{sh.name}</option>
                                           ))}
                                         </select>
+                                        <SupplyHouseWebsiteLink websiteUrl={supplyHouses.find((s) => s.id === addPriceSupplyHouseId)?.website_url} />
                                         <input
                                           type="number"
                                           step="0.01"
@@ -5395,40 +5404,43 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                 )}
                               </div>
                             ) : selectedPO.status === 'draft' ? (
-                              <select
-                                value={item.supply_house?.id ?? ''}
-                                onFocus={() => loadSupplyHouseOptionsForPart(item.part.id)}
-                                onChange={(e) => {
-                                  const val = e.target.value
-                                  if (val === '') {
-                                    updatePOItemSupplyHouse(item.id, '', 0)
-                                    return
-                                  }
-                                  const opts = draftPOSupplyHouseOptionsPartId === item.part.id ? draftPOSupplyHouseOptions : []
-                                  const opt = opts.find(o => o.supply_house_id === val)
-                                  if (opt) updatePOItemSupplyHouse(item.id, opt.supply_house_id, opt.price)
-                                  else if (item.supply_house?.id === val) updatePOItemSupplyHouse(item.id, item.supply_house.id, item.price_at_time)
-                                }}
-                                style={{ minWidth: '10rem', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                              >
-                                {draftPOSupplyHouseOptionsPartId === item.part.id ? (
-                                  loadingDraftPOSupplyHouseOptions ? (
-                                    <option value={item.supply_house?.id ?? ''}>Loading...</option>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
+                                <select
+                                  value={item.supply_house?.id ?? ''}
+                                  onFocus={() => loadSupplyHouseOptionsForPart(item.part.id)}
+                                  onChange={(e) => {
+                                    const val = e.target.value
+                                    if (val === '') {
+                                      updatePOItemSupplyHouse(item.id, '', 0)
+                                      return
+                                    }
+                                    const opts = draftPOSupplyHouseOptionsPartId === item.part.id ? draftPOSupplyHouseOptions : []
+                                    const opt = opts.find(o => o.supply_house_id === val)
+                                    if (opt) updatePOItemSupplyHouse(item.id, opt.supply_house_id, opt.price)
+                                    else if (item.supply_house?.id === val) updatePOItemSupplyHouse(item.id, item.supply_house.id, item.price_at_time)
+                                  }}
+                                  style={{ minWidth: '10rem', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                                >
+                                  {draftPOSupplyHouseOptionsPartId === item.part.id ? (
+                                    loadingDraftPOSupplyHouseOptions ? (
+                                      <option value={item.supply_house?.id ?? ''}>Loading...</option>
+                                    ) : (
+                                      <>
+                                        <option value="">None</option>
+                                        {item.supply_house && !draftPOSupplyHouseOptions.some(o => o.supply_house_id === item.supply_house?.id) && (
+                                          <option value={item.supply_house.id}>{item.supply_house.name} - ${formatCurrency(item.price_at_time)}</option>
+                                        )}
+                                        {draftPOSupplyHouseOptions.map(o => (
+                                          <option key={o.supply_house_id} value={o.supply_house_id}>{o.supply_house_name} - ${formatCurrency(o.price)}</option>
+                                        ))}
+                                      </>
+                                    )
                                   ) : (
-                                    <>
-                                      <option value="">None</option>
-                                      {item.supply_house && !draftPOSupplyHouseOptions.some(o => o.supply_house_id === item.supply_house?.id) && (
-                                        <option value={item.supply_house.id}>{item.supply_house.name} - ${formatCurrency(item.price_at_time)}</option>
-                                      )}
-                                      {draftPOSupplyHouseOptions.map(o => (
-                                        <option key={o.supply_house_id} value={o.supply_house_id}>{o.supply_house_name} - ${formatCurrency(o.price)}</option>
-                                      ))}
-                                    </>
-                                  )
-                                ) : (
-                                  <option value={item.supply_house?.id ?? ''}>{item.supply_house ? `${item.supply_house.name} - $${formatCurrency(item.price_at_time)}` : 'None'}</option>
-                                )}
-                              </select>
+                                    <option value={item.supply_house?.id ?? ''}>{item.supply_house ? `${item.supply_house.name} - $${formatCurrency(item.price_at_time)}` : 'None'}</option>
+                                  )}
+                                </select>
+                                <SupplyHouseWebsiteLink websiteUrl={item.supply_house?.website_url} />
+                              </div>
                             ) : (
                               item.supply_house?.name || '-'
                             )}
@@ -5891,6 +5903,7 @@ function PartPricesManager({
                     <option key={sh.id} value={sh.id}>{sh.name}</option>
                   ))}
                 </select>
+                <SupplyHouseWebsiteLink websiteUrl={supplyHouses.find((sh) => sh.id === selectedSupplyHouse)?.website_url} />
               </div>
               <div style={{ marginBottom: '0.5rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Price *</label>

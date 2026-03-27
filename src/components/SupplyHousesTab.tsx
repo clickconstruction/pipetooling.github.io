@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { formatCurrency } from '../lib/format'
 import { SupplyHouseForm } from './SupplyHouseForm'
+import { SupplyHouseWebsiteLink } from './SupplyHouseWebsiteLink'
 import type { Database } from '../types/database'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
@@ -56,6 +57,7 @@ export function SupplyHousesTab({
   const [supplyHousePhone, setSupplyHousePhone] = useState('')
   const [supplyHouseEmail, setSupplyHouseEmail] = useState('')
   const [supplyHouseAddress, setSupplyHouseAddress] = useState('')
+  const [supplyHouseWebsiteUrl, setSupplyHouseWebsiteUrl] = useState('')
   const [supplyHouseNotes, setSupplyHouseNotes] = useState('')
   const [supplyHouseMonthlyPaymentDay, setSupplyHouseMonthlyPaymentDay] = useState('')
   const [savingSupplyHouse, setSavingSupplyHouse] = useState(false)
@@ -96,7 +98,7 @@ export function SupplyHousesTab({
   async function loadSupplyHousesInternal() {
     const { data, error: err } = await supabase.from('supply_houses').select('*').order('name')
     if (err) {
-      const fallback = await supabase.from('supply_houses').select('id, name, contact_name, phone, email, address, notes, created_at, updated_at').order('name')
+      const fallback = await supabase.from('supply_houses').select('id, name, contact_name, phone, email, address, notes, website_url, created_at, updated_at').order('name')
       if (fallback.error) setError(`Failed to load supply houses: ${err.message}`)
       else setSupplyHousesState((fallback.data ?? []).map((h) => ({ ...h, monthly_payment_day: null })) as SupplyHouse[])
     } else {
@@ -162,7 +164,7 @@ export function SupplyHousesTab({
     setSupplyHouseDetailLoading(true)
     const shRes = await supabase.from('supply_houses').select('*').eq('id', sh.id).single()
     const shData = shRes.error
-      ? (await supabase.from('supply_houses').select('id, name, contact_name, phone, email, address, notes, created_at, updated_at').eq('id', sh.id).single()).data
+      ? (await supabase.from('supply_houses').select('id, name, contact_name, phone, email, address, notes, website_url, created_at, updated_at').eq('id', sh.id).single()).data
       : shRes.data
     setSelectedSupplyHouseForDetail((shData as SupplyHouse) ?? sh)
     const [invRes, poRes, allocRes] = await Promise.all([
@@ -268,12 +270,13 @@ export function SupplyHousesTab({
       case 'phone': setSupplyHousePhone(value); break
       case 'email': setSupplyHouseEmail(value); break
       case 'address': setSupplyHouseAddress(value); break
+      case 'website_url': setSupplyHouseWebsiteUrl(value); break
       case 'notes': setSupplyHouseNotes(value); break
       case 'monthly_payment_day': setSupplyHouseMonthlyPaymentDay(value); break
     }
   }
 
-  async function handleSupplyHouseSubmit(data: { name: string; contact_name: string; phone: string; email: string; address: string; notes: string; monthly_payment_day: number | null }) {
+  async function handleSupplyHouseSubmit(data: { name: string; contact_name: string; phone: string; email: string; address: string; website_url: string | null; notes: string; monthly_payment_day: number | null }) {
     if (!data.name.trim()) {
       setError('Supply house name is required')
       return
@@ -290,6 +293,7 @@ export function SupplyHousesTab({
           phone: data.phone.trim() || null,
           email: data.email.trim() || null,
           address: data.address.trim() || null,
+          website_url: data.website_url,
           notes: data.notes.trim() || null,
           monthly_payment_day: data.monthly_payment_day,
         })
@@ -309,6 +313,7 @@ export function SupplyHousesTab({
           phone: data.phone.trim() || null,
           email: data.email.trim() || null,
           address: data.address.trim() || null,
+          website_url: data.website_url,
           notes: data.notes.trim() || null,
           monthly_payment_day: data.monthly_payment_day,
         })
@@ -348,6 +353,7 @@ export function SupplyHousesTab({
     setSupplyHousePhone('')
     setSupplyHouseEmail('')
     setSupplyHouseAddress('')
+    setSupplyHouseWebsiteUrl('')
     setSupplyHouseNotes('')
     setSupplyHouseMonthlyPaymentDay('')
     setSupplyHouseFormOpen(true)
@@ -361,6 +367,7 @@ export function SupplyHousesTab({
     setSupplyHousePhone(sh.phone ?? '')
     setSupplyHouseEmail(sh.email ?? '')
     setSupplyHouseAddress(sh.address ?? '')
+    setSupplyHouseWebsiteUrl(sh.website_url ?? '')
     setSupplyHouseNotes(sh.notes ?? '')
     setSupplyHouseMonthlyPaymentDay(sh.monthly_payment_day != null ? String(sh.monthly_payment_day) : '')
     setSupplyHouseFormOpen(true)
@@ -634,8 +641,13 @@ export function SupplyHousesTab({
                                     {selectedSupplyHouseForDetail.address && (
                                       <div><strong>Address:</strong> {selectedSupplyHouseForDetail.address}</div>
                                     )}
-                                    {selectedSupplyHouseForDetail.phone && (
-                                      <div><strong>Phone:</strong> {selectedSupplyHouseForDetail.phone}</div>
+                                    {(selectedSupplyHouseForDetail.phone || selectedSupplyHouseForDetail.website_url?.trim()) && (
+                                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem' }}>
+                                        {selectedSupplyHouseForDetail.phone && (
+                                          <span><strong>Phone:</strong> {selectedSupplyHouseForDetail.phone}</span>
+                                        )}
+                                        <SupplyHouseWebsiteLink websiteUrl={selectedSupplyHouseForDetail.website_url} />
+                                      </div>
                                     )}
                                     {selectedSupplyHouseForDetail.email && (
                                       <div><strong>Email:</strong> {selectedSupplyHouseForDetail.email}</div>
@@ -823,6 +835,7 @@ export function SupplyHousesTab({
           phone={supplyHousePhone}
           email={supplyHouseEmail}
           address={supplyHouseAddress}
+          websiteUrl={supplyHouseWebsiteUrl}
           notes={supplyHouseNotes}
           monthlyPaymentDay={supplyHouseMonthlyPaymentDay}
           onChange={handleSupplyHouseChange}

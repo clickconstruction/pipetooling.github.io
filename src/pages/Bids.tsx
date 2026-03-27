@@ -1,11 +1,11 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { jsPDF } from 'jspdf'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '../lib/supabase'
+import { loadJsPDF } from '../lib/loadJsPDF'
 import { upsertBidNotesReadWatermark } from '../lib/userBidNotesReadState'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
@@ -20,6 +20,7 @@ import { PartFormModal } from '../components/PartFormModal'
 import { BidNotesTable, type BidSubmissionEntry } from '../components/bidNotes/BidNotesTable'
 import { CustomerNotesTable } from '../components/customerNotes/CustomerNotesTable'
 import { UnifiedBidCustomerNotes } from '../components/bidBoard/UnifiedBidCustomerNotes'
+import { SupplyHouseWebsiteLink } from '../components/SupplyHouseWebsiteLink'
 import { Database } from '../types/database'
 import type { Json } from '../types/database'
 
@@ -1123,7 +1124,7 @@ export default function Bids() {
 
   // Part Prices modal (check/modify prices from Add Assembly / Edit Assembly item rows)
   const [partPricesModal, setPartPricesModal] = useState<{ partId: string; partName: string } | null>(null)
-  const [partPricesModalData, setPartPricesModalData] = useState<Array<{ price_id: string; supply_house_name: string; supply_house_id: string; price: number }> | 'loading' | null>(null)
+  const [partPricesModalData, setPartPricesModalData] = useState<Array<{ price_id: string; supply_house_name: string; supply_house_id: string; price: number; website_url: string | null }> | 'loading' | null>(null)
   const [partPricesModalEditing, setPartPricesModalEditing] = useState<Record<string, string>>({})
   const [partPricesModalUpdating, setPartPricesModalUpdating] = useState<string | null>(null)
   const [partPricesModalAddSupplyHouseId, setPartPricesModalAddSupplyHouseId] = useState('')
@@ -4415,10 +4416,11 @@ export default function Bids() {
     win.onafterprint = () => win.close()
   }
 
-  function downloadSubmissionSummaryPdf() {
+  async function downloadSubmissionSummaryPdf() {
     if (!selectedBidForSubmission) return
     const b = selectedBidForSubmission
-    const doc = new jsPDF({ format: 'a4', unit: 'mm' })
+    const JsPDF = await loadJsPDF()
+    const doc = new JsPDF({ format: 'a4', unit: 'mm' })
     const margin = 20
     const lineHeight = 7
     let y = margin
@@ -4478,7 +4480,8 @@ export default function Bids() {
     const bidId = b.id
     const margin = 20
     const lineHeight = 6
-    const doc = new jsPDF({ format: 'a4', unit: 'mm' })
+    const JsPDF = await loadJsPDF()
+    const doc = new JsPDF({ format: 'a4', unit: 'mm' })
     let pageW = doc.internal.pageSize.getWidth()
     let pageH = doc.internal.pageSize.getHeight()
     let y = margin
@@ -5131,7 +5134,8 @@ export default function Bids() {
       return '—'
     }
 
-    const doc = new jsPDF({ format: 'a4', unit: 'mm' })
+    const JsPDF = await loadJsPDF()
+    const doc = new JsPDF({ format: 'a4', unit: 'mm' })
     const margin = 10
     const lineHeight = 5
     let y = margin
@@ -6000,7 +6004,7 @@ export default function Bids() {
     setPartPricesModalData('loading')
     supabase
       .from('material_part_prices')
-      .select('id, price, supply_house_id, supply_houses(name)')
+      .select('id, price, supply_house_id, supply_houses(name, website_url)')
       .eq('part_id', partPricesModal.partId)
       .order('price', { ascending: true })
       .then(({ data, error }) => {
@@ -6008,11 +6012,12 @@ export default function Bids() {
           setPartPricesModalData(null)
           return
         }
-        const rows = (data ?? []).map((r: { id: string; price: number; supply_house_id: string; supply_houses: { name: string } | null }) => ({
+        const rows = (data ?? []).map((r: { id: string; price: number; supply_house_id: string; supply_houses: { name: string; website_url: string | null } | null }) => ({
           price_id: r.id,
           supply_house_name: (r.supply_houses as { name: string } | null)?.name ?? '—',
           supply_house_id: r.supply_house_id,
           price: r.price,
+          website_url: (r.supply_houses as { website_url?: string | null } | null)?.website_url ?? null,
         }))
         setPartPricesModalData(rows)
         setPartPricesModalEditing({})
@@ -6045,18 +6050,19 @@ export default function Bids() {
     const { data, error } = await supabase
       .from('material_part_prices')
       .insert({ part_id: partPricesModal.partId, supply_house_id: supplyHouseId, price })
-      .select('id, price, supply_house_id, supply_houses(name)')
+      .select('id, price, supply_house_id, supply_houses(name, website_url)')
       .single()
     setPartPricesModalAdding(false)
     if (error) {
       setError(`Failed to add price: ${error.message}`)
       return
     }
-    const raw = data as { id: string; supply_houses?: { name: string } | null } | null
+    const raw = data as { id: string; supply_houses?: { name: string; website_url: string | null } | null } | null
     const supplyHouseName = raw?.supply_houses?.name ?? supplyHouses.find((sh) => sh.id === supplyHouseId)?.name ?? '—'
+    const websiteUrl = raw?.supply_houses?.website_url ?? supplyHouses.find((sh) => sh.id === supplyHouseId)?.website_url ?? null
     setPartPricesModalData((prev) => {
       if (!prev || prev === 'loading') return prev
-      return [...prev, { price_id: raw!.id, supply_house_name: supplyHouseName, supply_house_id: supplyHouseId, price }]
+      return [...prev, { price_id: raw!.id, supply_house_name: supplyHouseName, supply_house_id: supplyHouseId, price, website_url: websiteUrl }]
     })
     setPartPricesModalAddSupplyHouseId('')
     setPartPricesModalAddPrice('')
@@ -11822,7 +11828,7 @@ export default function Bids() {
             </button>
             <button
               type="button"
-              onClick={() => downloadFollowupSheetPdf(selectedAccountManagerForPrint)}
+              onClick={() => void downloadFollowupSheetPdf(selectedAccountManagerForPrint)}
               disabled={!selectedAccountManagerForPrint}
               style={{ 
                 padding: '0.5rem 1rem', 
@@ -11855,7 +11861,7 @@ export default function Bids() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => downloadSubmissionSummaryPdf()}
+                    onClick={() => void downloadSubmissionSummaryPdf()}
                     style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                   >
                     PDF
@@ -14832,7 +14838,12 @@ We saw some structural issues with your plans and I wanted to get clarity...
                         const isValid = !isNaN(numVal) && numVal >= 0
                         return (
                           <tr key={row.price_id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                            <td style={{ padding: '0.5rem' }}>{row.supply_house_name}</td>
+                            <td style={{ padding: '0.5rem' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
+                                <span>{row.supply_house_name}</span>
+                                <SupplyHouseWebsiteLink websiteUrl={row.website_url} />
+                              </div>
+                            </td>
                             <td style={{ padding: '0.5rem' }}>
                               <input
                                 type="number"
@@ -14879,6 +14890,7 @@ We saw some structural issues with your plans and I wanted to get clarity...
                           <option key={sh.id} value={sh.id}>{sh.name}</option>
                         ))}
                       </select>
+                      <SupplyHouseWebsiteLink websiteUrl={supplyHouses.find((sh) => sh.id === partPricesModalAddSupplyHouseId)?.website_url} />
                       <input
                         type="number"
                         step="0.01"

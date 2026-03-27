@@ -322,7 +322,7 @@ export default function People() {
   })
   const [editingHoursCell, setEditingHoursCell] = useState<{ personName: string; workDate: string } | null>(null)
   const [editingHoursValue, setEditingHoursValue] = useState('')
-  const [editingUserNote, setEditingUserNote] = useState<{ id: string; name: string; notes: string } | null>(null)
+  const [editingUserNote, setEditingUserNote] = useState<{ id: string; name: string; notes: string; phone: string } | null>(null)
   const [userNoteSaving, setUserNoteSaving] = useState(false)
   const [authUserRole, setAuthUserRole] = useState<string | null>(null)
 
@@ -4710,8 +4710,8 @@ export default function People() {
                         {canEditUserNotes && (
                           <button
                             type="button"
-                            title="Edit note"
-                            onClick={() => setEditingUserNote({ id: u.id, name: u.name, notes: u.notes ?? '' })}
+                            title="Update notes and phone"
+                            onClick={() => setEditingUserNote({ id: u.id, name: u.name, notes: u.notes ?? '', phone: u.phone ?? '' })}
                             style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 6px', background: 'none', border: 'none', cursor: 'pointer', verticalAlign: 'middle' }}
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
@@ -4849,8 +4849,8 @@ export default function People() {
                       {canEditUserNotes && (
                         <button
                           type="button"
-                          title="Edit note"
-                          onClick={() => setEditingUserNote({ id: u.id, name: u.name || '', notes: u.notes ?? '' })}
+                          title="Update notes and phone"
+                          onClick={() => setEditingUserNote({ id: u.id, name: u.name || '', notes: u.notes ?? '', phone: u.phone ?? '' })}
                           style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 6px', background: 'none', border: 'none', cursor: 'pointer', verticalAlign: 'middle' }}
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
@@ -5210,8 +5210,15 @@ export default function People() {
                                   {item.source === 'user' && canEditUserNotes && (
                                     <button
                                       type="button"
-                                      title="Edit note"
-                                      onClick={() => setEditingUserNote({ id: item.id, name: item.name, notes: ('notes' in item ? item.notes : null) ?? '' })}
+                                      title="Update notes and phone"
+                                      onClick={() =>
+                                        setEditingUserNote({
+                                          id: item.id,
+                                          name: item.name,
+                                          notes: ('notes' in item ? item.notes : null) ?? '',
+                                          phone: ('phone' in item ? item.phone : null) ?? '',
+                                        })
+                                      }
                                       style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 6px', background: 'none', border: 'none', cursor: 'pointer', verticalAlign: 'middle' }}
                                     >
                                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
@@ -9494,14 +9501,26 @@ export default function People() {
       {editingUserNote && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001 }}>
           <div style={{ background: 'white', padding: '1rem 2rem 2rem', borderRadius: 8, maxWidth: 500, width: '90%' }}>
-            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem' }}>Edit note for {editingUserNote.name}</h3>
+            <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.125rem' }}>Update Notes and Phone</h3>
+            <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#6b7280' }}>{editingUserNote.name}</p>
             <textarea
               value={editingUserNote.notes}
               onChange={(e) => setEditingUserNote((prev) => (prev ? { ...prev, notes: e.target.value } : null))}
               rows={4}
               placeholder="General note about this user..."
-              style={{ width: '100%', padding: '0.5rem', marginBottom: '1rem', resize: 'vertical' }}
+              style={{ width: '100%', padding: '0.5rem', marginBottom: '0.75rem', resize: 'vertical' }}
               autoFocus
+            />
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.35rem' }} htmlFor="editing-user-phone">
+              Phone
+            </label>
+            <input
+              id="editing-user-phone"
+              type="tel"
+              value={editingUserNote.phone}
+              onChange={(e) => setEditingUserNote((prev) => (prev ? { ...prev, phone: e.target.value } : null))}
+              placeholder="Phone number"
+              style={{ width: '100%', padding: '0.5rem', marginBottom: '1rem', boxSizing: 'border-box' }}
             />
             <div style={{ display: 'flex', gap: 8 }}>
               <button
@@ -9510,8 +9529,12 @@ export default function People() {
                   if (!editingUserNote) return
                   setUserNoteSaving(true)
                   setError(null)
-                  const trimmed = editingUserNote.notes.trim()
-                  const { error: err } = await supabase.from('users').update({ notes: trimmed || null }).eq('id', editingUserNote.id)
+                  const trimmedNotes = editingUserNote.notes.trim()
+                  const trimmedPhone = editingUserNote.phone.trim()
+                  const { error: err } = await supabase
+                    .from('users')
+                    .update({ notes: trimmedNotes || null, phone: trimmedPhone || null })
+                    .eq('id', editingUserNote.id)
                   setUserNoteSaving(false)
                   if (err) setError(err.message)
                   else {

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, lazy } from 'react'
 import { Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import { supabase } from './lib/supabase'
@@ -8,23 +8,23 @@ import DevLogin from './pages/DevLogin'
 import SignUp from './pages/SignUp'
 import ResetPassword from './pages/ResetPassword'
 import ResetPasswordConfirm from './pages/ResetPasswordConfirm'
-import Customers from './pages/Customers'
-import Projects from './pages/Projects'
-import ProjectForm from './pages/ProjectForm'
-import Workflow from './pages/Workflow'
-import Settings from './pages/Settings'
-import Calendar from './pages/Calendar'
-import Dashboard from './pages/Dashboard'
-import Templates from './pages/Templates'
-import People from './pages/People'
-import Jobs from './pages/Jobs'
-import Materials from './pages/Materials'
-import Quickfill from './pages/Quickfill'
-import Bids from './pages/Bids'
-import Prospects from './pages/Prospects'
-import Duplicates from './pages/Duplicates'
-import Checklist from './pages/Checklist'
-import JobTally from './pages/JobTally'
+const Customers = lazy(() => import('./pages/Customers'))
+const Projects = lazy(() => import('./pages/Projects'))
+const ProjectForm = lazy(() => import('./pages/ProjectForm'))
+const Workflow = lazy(() => import('./pages/Workflow'))
+const Settings = lazy(() => import('./pages/Settings'))
+const Calendar = lazy(() => import('./pages/Calendar'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Templates = lazy(() => import('./pages/Templates'))
+const People = lazy(() => import('./pages/People'))
+const Jobs = lazy(() => import('./pages/Jobs'))
+const Materials = lazy(() => import('./pages/Materials'))
+const Quickfill = lazy(() => import('./pages/Quickfill'))
+const Bids = lazy(() => import('./pages/Bids'))
+const Prospects = lazy(() => import('./pages/Prospects'))
+const Duplicates = lazy(() => import('./pages/Duplicates'))
+const Checklist = lazy(() => import('./pages/Checklist'))
+const JobTally = lazy(() => import('./pages/JobTally'))
 import { ToastProvider, useToastContext } from './contexts/ToastContext'
 import { registerSW } from 'virtual:pwa-register'
 import { ForceReloadProvider } from './contexts/ForceReloadContext'

@@ -4740,6 +4740,7 @@ export type Database = {
           notes: string | null
           phone: string | null
           updated_at: string | null
+          website_url: string | null
         }
         Insert: {
           address?: string | null
@@ -4752,6 +4753,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           updated_at?: string | null
+          website_url?: string | null
         }
         Update: {
           address?: string | null
@@ -4764,6 +4766,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           updated_at?: string | null
+          website_url?: string | null
         }
         Relationships: []
       }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, Suspense } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -691,7 +691,9 @@ export default function Layout() {
       </nav>
       <main className="appMain" style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
         <div style={{ flex: 1 }}>
-          <Outlet />
+          <Suspense fallback={<div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>}>
+            <Outlet />
+          </Suspense>
         </div>
         {authUser?.id && location.pathname !== '/dashboard' && PINNABLE_PATHS.includes(location.pathname as typeof PINNABLE_PATHS[number]) && (
           <div
