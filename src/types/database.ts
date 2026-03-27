@@ -212,6 +212,14 @@ export type Database = {
           address: string | null
           agreed_value: number | null
           bid_date_sent: string | null
+          bid_date_sent_ack_email_at: string | null
+          bid_date_sent_ack_email_by: string | null
+          bid_date_sent_ack_honesty_at: string | null
+          bid_date_sent_ack_honesty_by: string | null
+          bid_date_sent_ack_phone_at: string | null
+          bid_date_sent_ack_phone_by: string | null
+          bid_date_sent_attested_at: string | null
+          bid_date_sent_attested_by: string | null
           bid_due_date: string | null
           bid_number: string | null
           bid_submission_link: string | null
@@ -250,6 +258,14 @@ export type Database = {
           address?: string | null
           agreed_value?: number | null
           bid_date_sent?: string | null
+          bid_date_sent_ack_email_at?: string | null
+          bid_date_sent_ack_email_by?: string | null
+          bid_date_sent_ack_honesty_at?: string | null
+          bid_date_sent_ack_honesty_by?: string | null
+          bid_date_sent_ack_phone_at?: string | null
+          bid_date_sent_ack_phone_by?: string | null
+          bid_date_sent_attested_at?: string | null
+          bid_date_sent_attested_by?: string | null
           bid_due_date?: string | null
           bid_number?: string | null
           bid_submission_link?: string | null
@@ -288,6 +304,14 @@ export type Database = {
           address?: string | null
           agreed_value?: number | null
           bid_date_sent?: string | null
+          bid_date_sent_ack_email_at?: string | null
+          bid_date_sent_ack_email_by?: string | null
+          bid_date_sent_ack_honesty_at?: string | null
+          bid_date_sent_ack_honesty_by?: string | null
+          bid_date_sent_ack_phone_at?: string | null
+          bid_date_sent_ack_phone_by?: string | null
+          bid_date_sent_attested_at?: string | null
+          bid_date_sent_attested_by?: string | null
           bid_due_date?: string | null
           bid_number?: string | null
           bid_submission_link?: string | null

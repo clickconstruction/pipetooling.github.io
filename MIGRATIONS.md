@@ -298,6 +298,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Settings → Task Dispatch group can add estimators; Dashboard dispatch inbox eligibility for estimators in group; header Task Dispatch / Task buttons for estimators are client-side (`Layout.tsx`)
 - **Category**: Task Dispatch / RLS / Access Control
 
+**`20260327201115_bid_date_sent_attestation.sql`**
+- **Purpose**: Persist mandatory **Bid Date Sent** attestation (modal checkboxes) on `bids`
+- **Changes**: Add nullable `bid_date_sent_attested_at`, `bid_date_sent_attested_by`, and `bid_date_sent_ack_{email,phone,honesty}_{at,by}` with FK → `public.users(id)` ON DELETE SET NULL
+- **Impact**: New/Edit Bid: changing **Bid Date Sent** opens attestation; save writes columns; clearing sent date clears attestations; UI shows days since sent and acknowledger
+- **Category**: Bids / Schema
+
 ### June 2026
 
 #### June 21, 2026
@@ -459,7 +465,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260425120000_add_job_owner_override_robert.sql`**
 - **Purpose**: Job owner override so devs (e.g., Robert) can create jobs assigned to another user (e.g., Malachi)
 - **Changes**: Insert `app_settings` row `job_owner_override_<robert_id>` = Malachi's user ID (by name matching)
-- **Impact**: Jobs page New Job uses override when present; Settings → Job creation overrides (dev-only) to configure
+- **Impact**: Jobs page New Job uses override when present; Settings → Jobs & dispatch → Job creation overrides (dev-only) to configure
 - **Category**: Jobs / Settings
 
 #### April 23, 2026

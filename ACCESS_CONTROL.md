@@ -108,9 +108,9 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 - Delete any resource
 - Export all data
 - Claim dev role via Settings (enter promotion code from DEV_PROMOTION_CODE secret)
-- Manage Pay Approved Masters (Settings); only dev can change Show in Hours per person
-- Manage **Task Dispatch** group in Settings: choose which **assistants** receive dispatch pushes and see the Dispatch inbox on Dashboard
-- Manage **Team Hours Sharing** (Settings): link leaders to members for My Team hours approval on Dashboard
+- Manage Pay Approved Masters (**Settings → People & accounts**); only dev can change Show in Hours per person
+- Manage **Task Dispatch** group in **Settings → People & accounts**: choose which **assistants** receive dispatch pushes and see the Dispatch inbox on Dashboard
+- Manage **Team Hours Sharing** (Settings → Dashboard & alerts): link leaders to members for My Team hours approval on Dashboard
 - **Dashboard → Rejected sessions (all users)**: org-wide rejected clock sessions for review (same delete as People → Hours)
 - Delete reports (Jobs Reports tab); masters, assistants, primaries cannot delete reports
 
@@ -159,7 +159,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 - Jobs page — Stages tab: Billed Awaiting Payment section with Total by Name modal
 - Jobs page — Labor tab: Add labor jobs per person (fixture rows, job #, date, labor rate)
 - Jobs page — Sub Sheet Ledger tab: View all labor jobs; Edit and Delete (own jobs); shared jobs show "Created by [name]"
-- Pay tab (dev, Pay Approved Masters, or shared by dev): Due by Trade, Due by Team, Cost matrix, Teams; People pay config, Share Cost Matrix and Teams (in Settings), Tag colors at bottom. Cost matrix date headers on two lines (Mon / 2/16) on mobile. Dev can share Cost matrix and Teams (view-only) with selected masters or assistants via Settings "Share Cost Matrix and Teams" section
+- Pay tab (dev, Pay Approved Masters, or shared by dev): Due by Trade, Due by Team, Cost matrix, Teams; People pay config, Share Cost Matrix and Teams (**Settings → People & accounts** → Sharing and Adoption), Tag colors at bottom. Cost matrix date headers on two lines (Mon / 2/16) on mobile. Dev can share Cost matrix and Teams (view-only) with selected masters or assistants from that Settings section
 - Pay Stubs tab (dev, Pay Approved Masters, and their assistants): Ledger of generated pay stubs; generator to create pay stubs by person and date range; view/print to PDF
 - Hours tab (dev, Pay Approved Masters, and their assistants): Timesheet entry
 
@@ -177,12 +177,10 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 - View price history
 
 **Settings**:
-- Adopt/unadopt assistants
-- Share/unshare with other masters
-- View adopted assistants and shared masters
+- **People & accounts** (in-page jump `settings-people`): Adopt/unadopt assistants, primaries, superintendents; share/unshare with other masters; view adopted assistants and shared masters; (dev) Share Cost Matrix and Teams inside **Sharing and Adoption**
 - Change own password
 - No user management
-- (Dev only) Pin Billed Awaiting Payment, Supply Houses AP, Sub Labor Due, Cost matrix to masters/devs dashboards; Share Cost Matrix and Teams
+- (Dev only) Pin Billed Awaiting Payment, Supply Houses AP, Sub Labor Due, Cost matrix to masters/devs dashboards (**Dashboard & alerts** → Dashboard Page Pins)
 
 **Edge Functions**:
 - Can call `login-as-user` (impersonate assistants/subs; cannot impersonate devs)
@@ -279,7 +277,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 - Cannot see stages they're not assigned to
 - Cannot access any management pages
 - Navigation: Dashboard, Checklist, Settings, Tally (Calendar hidden)
-- In Settings: Cannot edit own name; Advanced section hidden
+- In Settings: Cannot edit own name; dev-only People & accounts tools (Pay Approved Masters, team feedback admin, Additional People) not shown
 
 **Dashboard**:
 - View only assigned stages
@@ -376,7 +374,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 - **Non-empty array** = primary sees only those service types in Materials
 
 **Master-Primaries Adoption**:
-- Masters can adopt primaries via `master_primaries` table (Settings → Adopt primaries)
+- Masters can adopt primaries via `master_primaries` table (**Settings → People & accounts** → Sharing and Adoption)
 - Adopted primaries can add materials to jobs in Jobs Billing tab
 - Primaries appear in task assignee dropdown when adopted by the viewing user's master
 
@@ -438,7 +436,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 - Superintendents gain access **only** via project assignment. Adoption (`master_superintendents`) no longer grants project access.
 
 **Master-Superintendents Adoption** (legacy; does not grant project access):
-- Masters can adopt superintendents via `master_superintendents` (Settings → Adopt superintendents) for other purposes
+- Masters can adopt superintendents via `master_superintendents` (**Settings → People & accounts** → Sharing and Adoption) for other purposes
 - Project access is via `project_superintendents` only
 
 **Permissions**:
@@ -519,7 +517,8 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 
 | Feature | dev | master | assistant | sub | estimator | primary | superintendent |
 |---------|-----|--------|-----------|-----|-----------|---------|----------------|
-| Team Hours Sharing (leader → member links for My Team) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| People & accounts (`#settings-people`): adoption, master sharing, primaries/superintendents, Share Cost Matrix and Teams (dev); dev-only user tools and Task Dispatch above sharing | ✅ | ✅ (sharing block only) | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Team Hours Sharing (leader → member links for My Team; Dashboard & alerts) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 ### Customer Management
 

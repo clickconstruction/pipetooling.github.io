@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-03-30
+last_updated: 2026-03-27
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,8 +15,23 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.168)"
+    line: ~451
+    description: "Bids: Bid Date Sent attestation modal (three checkboxes), persistence on bids, days ago + acknowledger under field"
+  - name: "Latest Version (v2.167)"
+    line: ~464
+    description: "Settings: Pay Approved Masters, team feedback, Additional People moved into People & accounts; Advanced group and Role & access jump removed"
+  - name: "Latest Version (v2.166)"
+    line: ~458
+    description: "Settings (dev): Your account shows days since last successful Export all backup; localStorage per auth user"
+  - name: "Latest Version (v2.165)"
+    line: ~470
+    description: "Settings: Sharing and Adoption merged into People & accounts; jump link settings-people for dev and master; docs updated"
+  - name: "Latest Version (v2.164)"
+    line: ~468
+    description: "Settings (dev): Ignored task types under Dashboard & alerts; list and Un-ignore for dev_ignored_checklist_items"
   - name: "Latest Version (v2.163)"
-    line: ~434
+    line: ~448
     description: "Dashboard clock strip (Today, My team/Everyone); Materials supply house website in expanded row"
   - name: "Latest Version (v2.162)"
     line: ~450
@@ -325,18 +340,19 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.163)](#latest-updates-v2163) - Dashboard clock strip; supply house website in expanded row
-2. [Latest Updates (v2.162)](#latest-updates-v2162) - Team feedback: dev eligibility reset, submissions RLS, raw submission names
-3. [Latest Updates (v2.153)](#latest-updates-v2153) - Dashboard My Team layout; pending banner jump UX
-4. [Latest Updates (v2.152)](#latest-updates-v2152) - My Team: People you lead hours table (Pending/Approved/Total)
-5. [Latest Updates (v2.151)](#latest-updates-v2151) - My Team clock notify + ledger; Edge Function
-6. [Latest Updates (v2.150)](#latest-updates-v2150) - Dashboard My Team: People you lead roster
-7. [Latest Updates (v2.149)](#latest-updates-v2149) - Clock sessions UX; daily goals gate; goals tables
-8. [Latest Updates (v2.148)](#latest-updates-v2148) - Bid Board All notes; customer notes UX; contact_method
-9. [Latest Updates (v2.145)](#latest-updates-v2145) - Master tech mobile nav Quickfill and Review in hamburger
-10. [Latest Updates (v2.144)](#latest-updates-v2144) - Assistant billing sections at top of Dashboard
-11. [Latest Updates (v2.143)](#latest-updates-v2143) - Assistant Dashboard section reorder
-12. [Latest Updates (v2.142)](#latest-updates-v2142) - Dashboard Assigned Jobs and Superintendent Jobs UX
+1. [Latest Updates (v2.164)](#latest-updates-v2164) - Settings (dev): Ignored task types list under Dashboard & alerts
+2. [Latest Updates (v2.163)](#latest-updates-v2163) - Dashboard clock strip; supply house website in expanded row
+3. [Latest Updates (v2.162)](#latest-updates-v2162) - Team feedback: dev eligibility reset, submissions RLS, raw submission names
+4. [Latest Updates (v2.153)](#latest-updates-v2153) - Dashboard My Team layout; pending banner jump UX
+5. [Latest Updates (v2.152)](#latest-updates-v2152) - My Team: People you lead hours table (Pending/Approved/Total)
+6. [Latest Updates (v2.151)](#latest-updates-v2151) - My Team clock notify + ledger; Edge Function
+7. [Latest Updates (v2.150)](#latest-updates-v2150) - Dashboard My Team: People you lead roster
+8. [Latest Updates (v2.149)](#latest-updates-v2149) - Clock sessions UX; daily goals gate; goals tables
+9. [Latest Updates (v2.148)](#latest-updates-v2148) - Bid Board All notes; customer notes UX; contact_method
+10. [Latest Updates (v2.145)](#latest-updates-v2145) - Master tech mobile nav Quickfill and Review in hamburger
+11. [Latest Updates (v2.144)](#latest-updates-v2144) - Assistant billing sections at top of Dashboard
+12. [Latest Updates (v2.143)](#latest-updates-v2143) - Assistant Dashboard section reorder
+13. [Latest Updates (v2.142)](#latest-updates-v2142) - Dashboard Assigned Jobs and Superintendent Jobs UX
 2. [Latest Updates (v2.139)](#latest-updates-v2139) - Fix cost_estimates RLS for assistants
 3. [Latest Updates (v2.138)](#latest-updates-v2138) - Revoke superintendent Jobs Billing access
 2. [Latest Updates (v2.135)](#latest-updates-v2135) - Workflow: Collapse old stages toggle, breadcrumb below buttons, no-wrap scroll
@@ -432,6 +448,69 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.168)
+
+**Date**: 2026-03-27
+
+### Bids — Bid Date Sent attestation
+
+- Setting or changing **Bid Date Sent** in the New/Edit Bid modal opens an attestation dialog: email sent (client knew), phone follow-up, and honesty/suspension acknowledgment. Each checked line shows the current user’s display name and local time; **Confirm** requires all three. **Cancel** restores the previous date.
+- On save, the app persists `bid_date_sent_attested_at` / `bid_date_sent_attested_by` and per-checkbox `bid_date_sent_ack_{email,phone,honesty}_{at,by}` (FK to `users`). Clearing **Bid Date Sent** clears all attestation columns.
+- Below the date field: **Sent N days ago** (whole calendar days) and **Acknowledged by …** when attested; legacy rows with a sent date but no attestation show an optional “no attestation on file” line.
+
+**Files**: [`supabase/migrations/20260327201115_bid_date_sent_attestation.sql`](supabase/migrations/20260327201115_bid_date_sent_attestation.sql), [`src/pages/Bids.tsx`](src/pages/Bids.tsx), [`src/types/database.ts`](src/types/database.ts)
+
+---
+
+## Latest Updates (v2.167)
+
+**Date**: 2026-03-27
+
+### Settings — People & accounts consolidation
+
+- **Pay Approved Masters**, **Team feedback** (dev tools and pay-approved master aggregates), and **Additional People** (People Created by Me / Other Users) now live inside **People & accounts** (`settings-people`), in that order before **Sharing and Adoption** (master aggregates remain after sharing). No behavior or RLS changes—layout only.
+- Removed the empty **Advanced** `SettingsGroup` and the dev jump link **Role & access** (`settings-advanced`).
+
+**Files**: [`src/pages/Settings.tsx`](src/pages/Settings.tsx)
+
+---
+
+## Latest Updates (v2.166)
+
+**Date**: 2026-03-27
+
+### Settings — Days since last full backup (dev)
+
+- **Your account**: Next to the **Export all backup** icon, shows **Time since manual DB backup: N days** (whole elapsed days) or **Never** if no successful full export yet. Timestamp is saved only after a successful **Export all backup** (`downloadJson` completes), in **`localStorage`** under `pipetooling_last_full_backup_at_<userId>` (or prefix-only key if no user id). Same write path for the header icon and **Data & migration → Export all backup**.
+
+**Files**: [`src/pages/Settings.tsx`](src/pages/Settings.tsx)
+
+---
+
+## Latest Updates (v2.165)
+
+**Date**: 2026-03-27
+
+### Settings — Sharing merged into People & accounts
+
+- **People & accounts** (`settings-people`): All **Sharing and Adoption** UI (adopt assistants/primaries/superintendents, master-to-master sharing, **Share Cost Matrix and Teams**, etc.) now lives in the same `SettingsGroup` as dev-only people tools (Active Accounts, role visibility, job overrides, Task Dispatch). **Masters** only see the sharing block in this group; **devs** see dev blocks first, then sharing. (Orphaned material prices review remains under **Catalogs & trades**.)
+- **Jump navigation**: Removed separate **Sharing & access** (`settings-sharing`). **Dev** and **master_technician** use a single **People & accounts** jump link to `#settings-people`.
+- **Docs**: `PROJECT_DOCUMENTATION.md` (Settings §9, roles), `ACCESS_CONTROL.md` (master Settings bullets, Settings matrix), this file.
+
+**Files**: [`src/pages/Settings.tsx`](src/pages/Settings.tsx)
+
+---
+
+## Latest Updates (v2.164)
+
+**Date**: 2026-03-27
+
+### Settings — Ignored task types (dev)
+
+- **Dashboard & alerts**: Collapsible **Ignored task types (Dashboard)** (below Muted Tasks) lists `dev_ignored_checklist_items` for the signed-in dev with titles from `checklist_items`, **Un-ignore** deletes the row (same as Dashboard Recently Completed Tasks). Helper copy distinguishes this from **Muted Tasks** (notifications). **File**: [`Settings.tsx`](src/pages/Settings.tsx).
 
 ---
 
@@ -1072,7 +1151,7 @@ when_to_read:
 
 - **Create jobs as another user**: When a user creates a new job, it can be assigned to a different owner (master or assistant) instead of themselves. Useful for devs who create jobs on behalf of a master.
 - **app_settings**: Per-user override stored as `job_owner_override_<user_id>` = target user ID in `app_settings`.
-- **Settings → Job creation overrides**: Dev-only section to configure which user each creator (dev, master, assistant) creates jobs as. Dropdown: Self (default) or pick a master/assistant.
+- **Settings → Jobs & dispatch → Job creation overrides**: Dev-only section to configure which user each creator (dev, master, assistant) creates jobs as. Dropdown: Self (default) or pick a master/assistant.
 - **Migration**: `20260425120000_add_job_owner_override_robert.sql` sets Robert (dev) to create jobs as Malachi (by name matching).
 
 **Files**: `src/pages/Jobs.tsx`, `src/pages/Settings.tsx`, `supabase/migrations/20260425120000_add_job_owner_override_robert.sql`

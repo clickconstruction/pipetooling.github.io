@@ -191,19 +191,49 @@ function SettingsGroup({
   id,
   title,
   description,
+  titleTrailing,
   children,
 }: {
   id: string
   title: string
   description?: string
+  titleTrailing?: React.ReactNode
   children: React.ReactNode
 }) {
   const headingId = `${id}-heading`
+  const titleRowMarginBottom = description ? '0.5rem' : '0.75rem'
+  const heading = (
+    <h2
+      id={headingId}
+      style={{
+        fontSize: '1.125rem',
+        marginTop: 0,
+        marginBottom: titleTrailing ? 0 : titleRowMarginBottom,
+        fontWeight: 600,
+        color: '#111827',
+      }}
+    >
+      {title}
+    </h2>
+  )
   return (
     <section id={id} aria-labelledby={headingId} style={{ marginBottom: '2rem', scrollMarginTop: '0.75rem' }}>
-      <h2 id={headingId} style={{ fontSize: '1.125rem', marginTop: 0, marginBottom: description ? '0.5rem' : '0.75rem', fontWeight: 600, color: '#111827' }}>
-        {title}
-      </h2>
+      {titleTrailing ? (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '0.5rem',
+            marginBottom: titleRowMarginBottom,
+          }}
+        >
+          {heading}
+          {titleTrailing}
+        </div>
+      ) : (
+        heading
+      )}
       {description ? (
         <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem', marginTop: 0 }}>{description}</p>
       ) : null}
@@ -242,17 +272,31 @@ function getSettingsJumpGroups(myRole: UserRole | null): { id: string; label: st
   const groups: { id: string; label: string }[] = []
   groups.push({ id: 'settings-account', label: 'Your account' })
   groups.push({ id: 'settings-dashboard', label: 'Dashboard & alerts' })
-  if (r === 'dev') groups.push({ id: 'settings-people', label: 'People & accounts' })
+  if (r === 'dev' || r === 'master_technician') {
+    groups.push({ id: 'settings-people', label: 'People & accounts' })
+  }
   if (r === 'dev') {
     groups.push({ id: 'settings-data', label: 'Data & migration' })
     groups.push({ id: 'settings-jobs', label: 'Jobs & dispatch' })
-    groups.push({ id: 'settings-advanced', label: 'Role & access' })
   }
-  if (r === 'dev' || r === 'master_technician') groups.push({ id: 'settings-sharing', label: 'Sharing & access' })
   if (r === 'dev' || r === 'estimator') groups.push({ id: 'settings-catalogs', label: 'Catalogs & trades' })
   if (r === 'dev') groups.push({ id: 'settings-templates', label: 'Templates & testing' })
   if (r !== 'subcontractor') groups.push({ id: 'settings-advanced-tools', label: 'Advanced' })
   return groups
+}
+
+const LAST_FULL_BACKUP_AT_KEY_PREFIX = 'pipetooling_last_full_backup_at'
+
+function getLastFullBackupStorageKey(userId: string | undefined): string {
+  return userId ? `${LAST_FULL_BACKUP_AT_KEY_PREFIX}_${userId}` : LAST_FULL_BACKUP_AT_KEY_PREFIX
+}
+
+/** Whole elapsed days since ISO timestamp; null if invalid. */
+function wholeDaysSince(iso: string): number | null {
+  const t = Date.parse(iso)
+  if (Number.isNaN(t)) return null
+  const days = Math.floor((Date.now() - t) / 86400000)
+  return Math.max(0, days)
 }
 
 export default function Settings() {
@@ -437,6 +481,7 @@ export default function Settings() {
   const [teamLeadAssignmentsSectionOpen, setTeamLeadAssignmentsSectionOpen] = useState(false)
   const [reportNotificationsSectionOpen, setReportNotificationsSectionOpen] = useState(false)
   const [defaultLaborRateSectionOpen, setDefaultLaborRateSectionOpen] = useState(false)
+  const [dataBackupSectionOpen, setDataBackupSectionOpen] = useState(false)
   const [dispatchMemberIds, setDispatchMemberIds] = useState<Set<string>>(new Set())
   const [dispatchGroupError, setDispatchGroupError] = useState<string | null>(null)
   const [dispatchGroupSavingUserId, setDispatchGroupSavingUserId] = useState<string | null>(null)
@@ -517,6 +562,7 @@ export default function Settings() {
 
   const [viewingOrphanPrices, setViewingOrphanPrices] = useState(false)
   const [roleVisibilityExpanded, setRoleVisibilityExpanded] = useState(false)
+  const [payApprovedMastersSectionOpen, setPayApprovedMastersSectionOpen] = useState(false)
   const [orphanPrices, setOrphanPrices] = useState<OrphanedPriceRow[]>([])
   const [loadingOrphanPrices, setLoadingOrphanPrices] = useState(false)
   const [orphanError, setOrphanError] = useState<string | null>(null)
@@ -618,6 +664,12 @@ export default function Settings() {
   const [mutedTasksOpen, setMutedTasksOpen] = useState(false)
   const [mutedTasks, setMutedTasks] = useState<Array<{ checklist_item_id: string; task_title: string; muted_until: string }>>([])
   const [mutedTasksLoading, setMutedTasksLoading] = useState(false)
+  const [ignoredTaskTypesOpen, setIgnoredTaskTypesOpen] = useState(false)
+  const [ignoredTaskTypes, setIgnoredTaskTypes] = useState<
+    Array<{ checklist_item_id: string; task_title: string; ignored_at: string }>
+  >([])
+  const [ignoredTaskTypesLoading, setIgnoredTaskTypesLoading] = useState(false)
+  const [ignoredTaskTypesUnignoringId, setIgnoredTaskTypesUnignoringId] = useState<string | null>(null)
   const [muteModalItemId, setMuteModalItemId] = useState<string | null>(null)
   const [muteModalTitle, setMuteModalTitle] = useState('')
   const [notificationHistory, setNotificationHistory] = useState<NotificationHistoryRow[]>([])
@@ -662,6 +714,7 @@ export default function Settings() {
   const [exportProspectsLoading, setExportProspectsLoading] = useState(false)
   const [exportSettingsLoading, setExportSettingsLoading] = useState(false)
   const [exportAllLoading, setExportAllLoading] = useState(false)
+  const [lastFullBackupAtIso, setLastFullBackupAtIso] = useState<string | null>(null)
   const [exportError, setExportError] = useState<string | null>(null)
   const [reportTemplates, setReportTemplates] = useState<Array<{ id: string; name: string }>>([])
   const [reportNotificationTemplateIds, setReportNotificationTemplateIds] = useState<Set<string>>(new Set())
@@ -1317,6 +1370,14 @@ export default function Settings() {
         },
       }
       downloadJson(`full-backup-${new Date().toISOString().slice(0, 10)}.json`, payload)
+      const backupKey = getLastFullBackupStorageKey(authUser?.id)
+      const nowIso = new Date().toISOString()
+      try {
+        localStorage.setItem(backupKey, nowIso)
+      } catch {
+        /* quota or private mode */
+      }
+      setLastFullBackupAtIso(nowIso)
     } catch (e) {
       setExportError(e instanceof Error ? e.message : 'Export failed')
     } finally {
@@ -3656,6 +3717,48 @@ export default function Settings() {
     loadMutedTasks().finally(() => setMutedTasksLoading(false))
   }, [mutedTasksOpen, authUser?.id])
 
+  async function loadIgnoredTaskTypes() {
+    if (!authUser?.id) return
+    try {
+      const rows = await withSupabaseRetry(
+        async () =>
+          supabase
+            .from('dev_ignored_checklist_items')
+            .select('checklist_item_id, ignored_at')
+            .eq('dev_user_id', authUser.id),
+        'load dev ignored checklist items',
+      )
+      const prefs = (rows ?? []) as Array<{ checklist_item_id: string; ignored_at: string }>
+      const itemIds = prefs.map((p) => p.checklist_item_id)
+      if (itemIds.length === 0) {
+        setIgnoredTaskTypes([])
+        return
+      }
+      const items = await withSupabaseRetry(
+        async () => supabase.from('checklist_items').select('id, title').in('id', itemIds),
+        'load checklist items for ignored types',
+      )
+      const itemRows = (items ?? []) as Array<{ id: string; title: string | null }>
+      const titleMap = new Map(itemRows.map((i) => [i.id, i.title ?? 'Untitled']))
+      const list = prefs.map((p) => ({
+        checklist_item_id: p.checklist_item_id,
+        task_title: titleMap.get(p.checklist_item_id) ?? 'Untitled',
+        ignored_at: p.ignored_at,
+      }))
+      list.sort((a, b) => new Date(b.ignored_at).getTime() - new Date(a.ignored_at).getTime())
+      setIgnoredTaskTypes(list)
+    } catch (e) {
+      setError(formatErrorMessage(e))
+      setIgnoredTaskTypes([])
+    }
+  }
+
+  useEffect(() => {
+    if (!ignoredTaskTypesOpen || !authUser?.id || myRole !== 'dev') return
+    setIgnoredTaskTypesLoading(true)
+    loadIgnoredTaskTypes().finally(() => setIgnoredTaskTypesLoading(false))
+  }, [ignoredTaskTypesOpen, authUser?.id, myRole])
+
   const showMyReports = myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'primary' || myRole === 'subcontractor'
 
   useEffect(() => {
@@ -4566,6 +4669,12 @@ export default function Settings() {
 
   const settingsJumpGroups = useMemo(() => getSettingsJumpGroups(myRole), [myRole])
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const k = getLastFullBackupStorageKey(authUser?.id)
+    setLastFullBackupAtIso(localStorage.getItem(k))
+  }, [authUser?.id])
+
   if (loading) return <p>Loading…</p>
   if (error && !myRole) return <p style={{ color: '#b91c1c' }}>{error}</p>
 
@@ -4574,6 +4683,18 @@ export default function Settings() {
     ? serviceTypes.filter((st) => estimatorServiceTypeIds.includes(st.id))
     : serviceTypes
   const canDeleteMaterialTypes = myRole === 'dev'
+
+  const exportBackupBusy =
+    exportProjectsLoading ||
+    exportMaterialsLoading ||
+    exportBidsLoading ||
+    exportPeopleLoading ||
+    exportJobsLoading ||
+    exportChecklistLoading ||
+    exportReportsLoading ||
+    exportProspectsLoading ||
+    exportSettingsLoading ||
+    exportAllLoading
 
   return (
     <div>
@@ -4629,8 +4750,69 @@ export default function Settings() {
 
       <SettingsJumpNav groups={settingsJumpGroups} />
 
-      <SettingsGroup id="settings-account" title="Your account">
-
+      <SettingsGroup
+        id="settings-account"
+        title="Your account"
+        titleTrailing={
+          myRole === 'dev' ? (
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                justifyContent: 'flex-end',
+                        gap: '0.5rem',
+                flexShrink: 1,
+                minWidth: 0,
+                maxWidth: 'min(100%, 22rem)',
+                flexWrap: 'wrap',
+              }}
+            >
+              <span
+                style={{
+                  fontSize: '0.75rem',
+                  color: '#6b7280',
+                  lineHeight: 1.35,
+                  textAlign: 'right',
+                }}
+              >
+                Time since manual DB backup:{' '}
+                {lastFullBackupAtIso == null
+                  ? 'Never'
+                  : (() => {
+                      const d = wholeDaysSince(lastFullBackupAtIso)
+                      return d === null ? 'Never' : `${d} day${d === 1 ? '' : 's'}`
+                    })()}
+              </span>
+                        <button
+                          type="button"
+                onClick={() => {
+                  void exportAllBackup()
+                }}
+                disabled={exportBackupBusy}
+                aria-label="Export all backup"
+                title="Export all backup"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  padding: '0.35rem',
+                  border: 'none',
+                  borderRadius: 6,
+                  background: 'transparent',
+                  color: '#374151',
+                  cursor: exportBackupBusy ? 'not-allowed' : 'pointer',
+                  opacity: exportBackupBusy ? 0.55 : 1,
+                }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden style={{ width: '1.25rem', height: '1.25rem', display: 'block' }}>
+                  <path fill="currentColor" d="M544 269.8C529.2 279.6 512.2 287.5 494.5 293.8C447.5 310.6 385.8 320 320 320C254.2 320 192.4 310.5 145.5 293.8C127.9 287.5 110.8 279.6 96 269.8L96 352C96 396.2 196.3 432 320 432C443.7 432 544 396.2 544 352L544 269.8zM544 192L544 144C544 99.8 443.7 64 320 64C196.3 64 96 99.8 96 144L96 192C96 236.2 196.3 272 320 272C443.7 272 544 236.2 544 192zM494.5 453.8C447.6 470.5 385.9 480 320 480C254.1 480 192.4 470.5 145.5 453.8C127.9 447.5 110.8 439.6 96 429.8L96 496C96 540.2 196.3 576 320 576C443.7 576 544 540.2 544 496L544 429.8C529.2 439.6 512.2 447.5 494.5 453.8z" />
+                </svg>
+                        </button>
+                    </div>
+          ) : null
+        }
+      >
 
 
       <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: '#f9fafb' }}>
@@ -4718,14 +4900,14 @@ export default function Settings() {
               {pushNotifications.isSubscribed ? (
                 <>
                   <span style={{ fontSize: '0.875rem', color: '#059669' }}>Enabled</span>
-                  <button
-                    type="button"
+        <button
+          type="button"
                     onClick={() => pushNotifications.disable()}
                     disabled={pushNotifications.loading}
                     style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}
                   >
                     {pushNotifications.loading ? 'Disabling…' : 'Disable'}
-                  </button>
+        </button>
                 </>
               ) : (
                 <button
@@ -4736,17 +4918,17 @@ export default function Settings() {
                 >
                   {pushNotifications.loading ? 'Enabling…' : 'Enable push notifications'}
                 </button>
-              )}
-            </div>
+            )}
+          </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-              <button
-                type="button"
+          <button
+            type="button"
                 onClick={handleTestNotification}
                 disabled={!pushNotifications.isSubscribed || testNotificationSending || !pushNotifications.vapidConfigured}
                 style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', background: 'white' }}
               >
                 {testNotificationSending ? 'Sending…' : 'Test notification'}
-              </button>
+          </button>
               {!pushNotifications.isSubscribed && pushNotifications.vapidConfigured && (
                 <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>Enable push notifications first to test</span>
               )}
@@ -4762,25 +4944,25 @@ export default function Settings() {
                   Location based reminders disabled — enable in browser settings to allow location based reminders
                 </span>
               ) : (
-                <button
-                  type="button"
+                          <button
+                            type="button"
                   onClick={handleEnableLocation}
                   disabled={locationLoading}
                   style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', background: 'white' }}
-                >
+                          >
                   {locationLoading ? 'Requesting…' : 'Enable Location based Reminders'}
-                </button>
+                          </button>
               )}
-            </div>
+                        </div>
             {testNotificationSuccess && (
               <p style={{ color: '#059669', margin: 0, fontSize: '0.875rem' }}>{testNotificationSuccess}</p>
             )}
             {testNotificationError && (
               <p style={{ color: '#b91c1c', margin: 0, fontSize: '0.875rem' }}>{testNotificationError}</p>
-            )}
-          </div>
-        )}
-      </div>
+              )}
+            </div>
+          )}
+        </div>
 
       {/* Inline Change Password form - toggled from header button */}
       {passwordChangeOpen && (
@@ -4845,302 +5027,6 @@ export default function Settings() {
       </SettingsGroup>
 
       <SettingsGroup id="settings-dashboard" title="Dashboard & alerts">
-
-      {showMyReports && (
-        <div
-          style={{
-            marginBottom: '2rem',
-            marginTop: 0,
-            border: '1px solid #e5e7eb',
-            borderRadius: 8,
-            background: '#f9fafb',
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => setMyReportsExpanded((prev) => !prev)}
-            aria-expanded={myReportsExpanded}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '0.5rem',
-              flexWrap: 'wrap',
-              margin: 0,
-              padding: '1rem',
-              width: '100%',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '1rem',
-              fontWeight: 600,
-              textAlign: 'left',
-            }}
-          >
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-              <span style={{ fontSize: '0.75rem' }} aria-hidden>{myReportsExpanded ? '▼' : '▶'}</span>
-              My Reports
-            </span>
-            {myReportsExpanded && !myReportsLoading && myReports.length > 1 && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); setMyReportsModalOpen(true) }}
-                style={{ background: 'none', border: 'none', padding: 0, fontSize: '0.875rem', color: '#2563eb', cursor: 'pointer' }}
-              >
-                Show more →
-              </button>
-            )}
-          </button>
-          {myReportsExpanded && (
-            <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-              {myReportsLoading ? (
-                <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>Loading reports…</p>
-              ) : myReports.length > 0 ? (
-                (() => {
-                  const r = myReports[0]!
-                  const editWindowMs = myReportsReportEditWindowDays * 24 * 60 * 60 * 1000
-                  const isWithinEditWindow = new Date(r.created_at).getTime() >= Date.now() - editWindowMs
-                  return (
-                    <div
-                      style={{
-                        padding: '0.5rem 0.75rem',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: 8,
-                        background: '#fff',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                      }}
-                    >
-                      <div
-                        style={{ flex: 1, minWidth: 0 }}
-                        onClick={() => {
-                          setSelectedReport({ id: r.id, template_name: r.template_name, job_display_name: r.job_display_name, created_at: r.created_at, created_by_name: r.created_by_name, field_values: r.field_values, reported_at_lat: r.reported_at_lat ?? null, reported_at_lng: r.reported_at_lng ?? null })
-                          setViewReportModalOpen(true)
-                        }}
-                      >
-                        <span style={{ fontWeight: 500 }}>{r.job_display_name || 'Unknown job'}</span>
-                        <span style={{ color: '#6b7280', fontSize: '0.875rem', marginLeft: '0.5rem' }}>· {r.template_name}</span>
-                        <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                          {new Date(r.created_at).toLocaleString()}
-                        </div>
-                      </div>
-                      {isWithinEditWindow && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setReportForEdit({ id: r.id, template_id: r.template_id, template_name: r.template_name, job_display_name: r.job_display_name, created_at: r.created_at, field_values: r.field_values })
-                            setEditReportModalOpen(true)
-                          }}
-                          style={{ flexShrink: 0, padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                        >
-                          Edit
-                        </button>
-                      )}
-                    </div>
-                  )
-                })()
-              ) : (
-                <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No reports yet. Create one from a job.</p>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {hasNotificationHistory === true && (
-      <div
-        style={{
-          marginBottom: '2rem',
-          border: '1px solid #e5e7eb',
-          borderRadius: 8,
-          background: '#f9fafb',
-        }}
-      >
-        <button
-          type="button"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.35rem',
-            margin: 0,
-            padding: '1rem',
-            width: '100%',
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: '1rem',
-            fontWeight: 600,
-            textAlign: 'left',
-          }}
-          onClick={() => setNotificationHistoryOpen((o) => !o)}
-          aria-expanded={notificationHistoryOpen}
-          aria-controls="notification-history-content"
-        >
-          <span style={{ fontSize: '0.75rem' }} aria-hidden>{notificationHistoryOpen ? '▼' : '▶'}</span>
-          My Notification History
-        </button>
-        {notificationHistoryOpen && (
-          <div id="notification-history-content" style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-            {notificationHistoryLoading ? (
-              <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
-            ) : notificationHistoryError ? (
-              <p style={{ color: '#b91c1c', fontSize: '0.875rem', margin: 0 }}>{notificationHistoryError}</p>
-            ) : notificationHistory.length === 0 ? (
-              <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No notifications yet.</p>
-            ) : (
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {notificationHistory.map((row) => {
-                  const channelLabel = row.channel === 'both' ? 'Email + Push' : row.channel === 'email' ? 'Email' : 'Push'
-                  const link =
-                    row.project_id && row.step_id
-                      ? `/workflows/${row.project_id}#step-${row.step_id}`
-                      : row.checklist_instance_id
-                        ? '/checklist'
-                        : null
-                  return (
-                    <li
-                      key={row.id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.75rem',
-                        padding: '0.5rem 0.75rem',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: 8,
-                        marginBottom: '0.5rem',
-                        background: '#fff',
-                      }}
-                    >
-                      <span style={{ fontSize: '0.8125rem', color: '#6b7280', minWidth: 140 }}>
-                        {formatNotificationDatetime(row.sent_at)}
-                      </span>
-                      <span style={{ flex: 1, fontWeight: 500 }}>{row.title}</span>
-                      <span
-                        style={{
-                          fontSize: '0.75rem',
-                          padding: '2px 6px',
-                          borderRadius: 4,
-                          background: '#f3f4f6',
-                          color: '#374151',
-                        }}
-                      >
-                        {channelLabel}
-                      </span>
-                      {link && (
-                        <Link to={link} style={{ fontSize: '0.875rem', color: '#2563eb' }}>
-                          View →
-                        </Link>
-                      )}
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-          </div>
-        )}
-      </div>
-      )}
-
-      {authUser?.id && (
-        <div
-          style={{
-            marginBottom: '2rem',
-            border: '1px solid #e5e7eb',
-            borderRadius: 8,
-            background: '#f9fafb',
-          }}
-        >
-          <button
-            type="button"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-              margin: 0,
-              padding: '1rem',
-              width: '100%',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '1rem',
-              fontWeight: 600,
-              textAlign: 'left',
-            }}
-            onClick={() => setMutedTasksOpen((o) => !o)}
-            aria-expanded={mutedTasksOpen}
-            aria-controls="muted-tasks-content"
-          >
-            <span style={{ fontSize: '0.75rem' }} aria-hidden>{mutedTasksOpen ? '▼' : '▶'}</span>
-            Muted Tasks
-          </button>
-          {mutedTasksOpen && (
-            <div id="muted-tasks-content" style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-              {mutedTasksLoading ? (
-                <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
-              ) : mutedTasks.length === 0 ? (
-                <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>
-                  You are not muting any task notifications. Use the mute icon on a task (Checklist or Dashboard) to mute it.
-                </p>
-              ) : (
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {mutedTasks.map((m) => {
-                    const until = new Date(m.muted_until)
-                    const isForever = until > new Date('9999-01-01')
-                    const expiryText = isForever ? 'Forever' : until.toLocaleDateString(undefined, { dateStyle: 'medium' })
-                    return (
-                      <li
-                        key={m.checklist_item_id}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: '0.75rem',
-                          padding: '0.5rem 0.75rem',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: 6,
-                          background: '#f9fafb',
-                        }}
-                      >
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 500, fontSize: '0.875rem' }}>{m.task_title}</div>
-                          <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Muted until: {expiryText}</div>
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
-                          <button
-                            type="button"
-                            onClick={() => { setMuteModalItemId(m.checklist_item_id); setMuteModalTitle(m.task_title) }}
-                            style={{ padding: '0.35rem 0.6rem', fontSize: '0.8125rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                          >
-                            Change
-                          </button>
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              if (!authUser?.id) return
-                              await supabase
-                                .from('user_checklist_item_mute_preferences')
-                                .delete()
-                                .eq('user_id', authUser.id)
-                                .eq('checklist_item_id', m.checklist_item_id)
-                              loadMutedTasks()
-                            }}
-                            style={{ padding: '0.35rem 0.6rem', fontSize: '0.8125rem', background: 'white', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
-                          >
-                            Unmute
-                          </button>
-                        </div>
-                      </li>
-                    )
-                  })}
-                </ul>
-              )}
-            </div>
-          )}
-        </div>
-      )}
 
       {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
         <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb' }}>
@@ -5246,460 +5132,6 @@ export default function Settings() {
                   </label>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
-        <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb' }}>
-          <button
-            type="button"
-            aria-expanded={dailyGoalsSectionOpen}
-            onClick={() => setDailyGoalsSectionOpen((prev) => !prev)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-              margin: 0,
-              padding: '1rem',
-              width: '100%',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '1rem',
-              fontWeight: 600,
-              textAlign: 'left',
-            }}
-          >
-            <span style={{ fontSize: '0.75rem' }}>{dailyGoalsSectionOpen ? '▼' : '▶'}</span>
-            Daily goals (clock-in gate)
-          </button>
-          {dailyGoalsSectionOpen && (
-            <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-              <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem', marginTop: 0 }}>
-                After a user&apos;s first clock-in each calendar day, they must check off these goals before using the app. Leave empty to disable the gate for that user.
-              </p>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>User</label>
-              <select
-                value={dailyGoalsTargetUserId}
-                onChange={(e) => setDailyGoalsTargetUserId(e.target.value)}
-                style={{ padding: '0.35rem 0.5rem', marginBottom: '1rem', maxWidth: 420, width: '100%' }}
-              >
-                <option value="">Select user…</option>
-                {goalPickerUsers.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {(u.name?.trim() || u.email || u.id).slice(0, 80)}
-                  </option>
-                ))}
-              </select>
-              {dailyGoalsTargetUserId &&
-                (dailyGoalsLoading ? (
-                  <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
-                ) : (
-                  <>
-                    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                      {dailyGoalsRows.map((row) => (
-                        <li key={row.id} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'flex-start' }}>
-                          <textarea
-                            value={row.body}
-                            onChange={(e) => {
-                              const v = e.target.value
-                              setDailyGoalsRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, body: v } : r)))
-                            }}
-                            onBlur={async (e) => {
-                              const body = e.currentTarget.value.trim()
-                              if (!body) return
-                              const { error: err } = await supabase.from('user_dashboard_goals').update({ body }).eq('id', row.id)
-                              if (err) setError(err.message)
-                            }}
-                            rows={2}
-                            style={{ flex: 1, padding: '0.5rem', fontSize: '0.875rem' }}
-                          />
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              if (!confirm('Delete this goal?')) return
-                              const { error: err } = await supabase.from('user_dashboard_goals').delete().eq('id', row.id)
-                              if (err) setError(err.message)
-                              else setDailyGoalsRows((prev) => prev.filter((r) => r.id !== row.id))
-                            }}
-                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', color: '#b91c1c' }}
-                          >
-                            Delete
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        if (!dailyGoalsTargetUserId) return
-                        const nextOrder =
-                          dailyGoalsRows.length === 0 ? 0 : Math.max(...dailyGoalsRows.map((r) => r.sort_order), 0) + 1
-                        const { data, error: err } = await supabase
-                          .from('user_dashboard_goals')
-                          .insert({ user_id: dailyGoalsTargetUserId, body: 'New goal', sort_order: nextOrder })
-                          .select('id, body, sort_order')
-                          .single()
-                        if (err) setError(err.message)
-                        else if (data)
-                          setDailyGoalsRows((prev) => [...prev, data as { id: string; body: string; sort_order: number }])
-                      }}
-                      style={{ marginTop: '0.5rem', padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}
-                    >
-                      Add goal
-                    </button>
-                  </>
-                ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
-        <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb' }}>
-          <button
-            type="button"
-            aria-expanded={teamLeadAssignmentsSectionOpen}
-            onClick={() => setTeamLeadAssignmentsSectionOpen((prev) => !prev)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-              margin: 0,
-              padding: '1rem',
-              width: '100%',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '1rem',
-              fontWeight: 600,
-              textAlign: 'left',
-            }}
-          >
-            <span style={{ fontSize: '0.75rem' }}>{teamLeadAssignmentsSectionOpen ? '▼' : '▶'}</span>
-            Team Hours Sharing
-          </button>
-          {teamLeadAssignmentsSectionOpen && (
-            <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-          <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem', marginTop: 0 }}>
-            Link a leader to a member for team hours sharing—the leader can approve that member&apos;s hours from Dashboard → My Team. Any account role can be leader or member. A member can have more than one leader.
-          </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end', marginBottom: '1rem' }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.875rem', fontWeight: 500 }}>Leader</label>
-              <select
-                value={teamAssignLeaderId}
-                onChange={(e) => setTeamAssignLeaderId(e.target.value)}
-                style={{ padding: '0.35rem 0.5rem', maxWidth: 320, width: '100%', minWidth: 200 }}
-              >
-                <option value="">Select user…</option>
-                {goalPickerUsers.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {(u.name?.trim() || u.email || u.id).slice(0, 80)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.875rem', fontWeight: 500 }}>Member</label>
-              <select
-                value={teamAssignMemberId}
-                onChange={(e) => setTeamAssignMemberId(e.target.value)}
-                style={{ padding: '0.35rem 0.5rem', maxWidth: 320, width: '100%', minWidth: 200 }}
-              >
-                <option value="">Select user…</option>
-                {goalPickerUsers.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {(u.name?.trim() || u.email || u.id).slice(0, 80)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <button
-              type="button"
-              disabled={teamAssignSaving || !teamAssignLeaderId || !teamAssignMemberId || teamAssignLeaderId === teamAssignMemberId}
-              onClick={async () => {
-                if (!authUser?.id || !teamAssignLeaderId || !teamAssignMemberId) return
-                if (teamAssignLeaderId === teamAssignMemberId) {
-                  setError('Leader and member must be different users.')
-                  return
-                }
-                setTeamAssignSaving(true)
-                try {
-                  const inserted = await withSupabaseRetry(
-                    async () =>
-                      supabase
-                        .from('team_leader_assignments')
-                        .insert({
-                          leader_user_id: teamAssignLeaderId,
-                          member_user_id: teamAssignMemberId,
-                          created_by_user_id: authUser.id,
-                        })
-                        .select('id, leader_user_id, member_user_id')
-                        .single(),
-                    'add team lead assignment',
-                  )
-                  if (!inserted) {
-                    setError('Could not add assignment.')
-                    return
-                  }
-                  const row = inserted as { id: string; leader_user_id: string; member_user_id: string }
-                  setTeamLeaderAssignments((prev) => [row, ...prev])
-                  setTeamAssignLeaderId('')
-                  setTeamAssignMemberId('')
-                } catch (e) {
-                  setError(formatErrorMessage(e))
-                } finally {
-                  setTeamAssignSaving(false)
-                }
-              }}
-              style={{
-                padding: '0.4rem 0.85rem',
-                fontSize: '0.875rem',
-                borderRadius: 4,
-                border: '1px solid #2563eb',
-                background: '#2563eb',
-                color: 'white',
-                cursor: teamAssignSaving ? 'wait' : 'pointer',
-                opacity: teamAssignSaving ? 0.7 : 1,
-              }}
-            >
-              Add
-            </button>
-          </div>
-          {teamLeaderAssignments.length === 0 ? (
-            <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>No assignments yet.</p>
-          ) : (
-            <React.Fragment>
-              <div style={{ marginBottom: '0.75rem' }}>
-                <input
-                  type="search"
-                  value={teamLeaderAssignmentsSearchQuery}
-                  onChange={(e) => setTeamLeaderAssignmentsSearchQuery(e.target.value)}
-                  placeholder="Search by leader or member…"
-                  aria-label="Search team hours assignments by leader or member"
-                  style={{
-                    width: '100%',
-                    maxWidth: 420,
-                    padding: '0.5rem 0.75rem',
-                    fontSize: '0.875rem',
-                    border: '1px solid #d1d5db',
-                    borderRadius: 4,
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-              {filteredTeamLeaderAssignments.length === 0 ? (
-                <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>No assignments match your search.</p>
-              ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                <thead>
-                  <tr style={{ background: '#f3f4f6', textAlign: 'left' }}>
-                    <th
-                      scope="col"
-                      aria-sort={
-                        teamLeaderSortColumn === 'leader'
-                          ? teamLeaderSortDir === 'asc'
-                            ? 'ascending'
-                            : 'descending'
-                          : 'none'
-                      }
-                      style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (teamLeaderSortColumn === 'leader') {
-                            setTeamLeaderSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-                          } else {
-                            setTeamLeaderSortColumn('leader')
-                            setTeamLeaderSortDir('asc')
-                          }
-                        }}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.25rem',
-                          width: '100%',
-                          padding: 0,
-                          border: 'none',
-                          background: 'none',
-                          cursor: 'pointer',
-                          fontFamily: 'inherit',
-                          fontSize: 'inherit',
-                          fontStyle: 'inherit',
-                          lineHeight: 'inherit',
-                          fontWeight: 600,
-                          textAlign: 'left',
-                        }}
-                      >
-                        Leader
-                        {teamLeaderSortColumn === 'leader' && (
-                          <span aria-hidden style={{ fontSize: '0.7rem', color: '#6b7280' }}>
-                            {teamLeaderSortDir === 'asc' ? '\u25B2' : '\u25BC'}
-                          </span>
-                        )}
-                      </button>
-                    </th>
-                    <th
-                      scope="col"
-                      aria-sort={
-                        teamLeaderSortColumn === 'member'
-                          ? teamLeaderSortDir === 'asc'
-                            ? 'ascending'
-                            : 'descending'
-                          : 'none'
-                      }
-                      style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (teamLeaderSortColumn === 'member') {
-                            setTeamLeaderSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-                          } else {
-                            setTeamLeaderSortColumn('member')
-                            setTeamLeaderSortDir('asc')
-                          }
-                        }}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.25rem',
-                          width: '100%',
-                          padding: 0,
-                          border: 'none',
-                          background: 'none',
-                          cursor: 'pointer',
-                          fontFamily: 'inherit',
-                          fontSize: 'inherit',
-                          fontStyle: 'inherit',
-                          lineHeight: 'inherit',
-                          fontWeight: 600,
-                          textAlign: 'left',
-                        }}
-                      >
-                        Member
-                        {teamLeaderSortColumn === 'member' && (
-                          <span aria-hidden style={{ fontSize: '0.7rem', color: '#6b7280' }}>
-                            {teamLeaderSortDir === 'asc' ? '\u25B2' : '\u25BC'}
-                          </span>
-                        )}
-                      </button>
-                    </th>
-                    <th scope="col" style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb', width: 100 }} />
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredTeamLeaderAssignments.map((row) => {
-                    const leaderLabel = displayLabelForGoalPickerUser(row.leader_user_id, goalPickerUsers)
-                    const memberLabel = displayLabelForGoalPickerUser(row.member_user_id, goalPickerUsers)
-                    return (
-                      <tr key={row.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                        <td style={{ padding: '0.5rem 0.75rem' }}>{leaderLabel}</td>
-                        <td style={{ padding: '0.5rem 0.75rem' }}>{memberLabel}</td>
-                        <td style={{ padding: '0.5rem 0.75rem' }}>
-                          <button
-                            type="button"
-                            disabled={teamAssignSaving}
-                            onClick={async () => {
-                              if (!confirm('Remove this team lead assignment?')) return
-                              setTeamAssignSaving(true)
-                              try {
-                                await withSupabaseRetry(
-                                  async () => supabase.from('team_leader_assignments').delete().eq('id', row.id),
-                                  'remove team lead assignment',
-                                )
-                                setTeamLeaderAssignments((prev) => prev.filter((r) => r.id !== row.id))
-                              } catch (e) {
-                                setError(formatErrorMessage(e))
-                              } finally {
-                                setTeamAssignSaving(false)
-                              }
-                            }}
-                            style={{
-                              padding: '0.25rem 0.5rem',
-                              fontSize: '0.8125rem',
-                              color: '#b91c1c',
-                              border: '1px solid #fecaca',
-                              borderRadius: 4,
-                              background: '#fef2f2',
-                              cursor: teamAssignSaving ? 'wait' : 'pointer',
-                            }}
-                          >
-                            Remove
-                          </button>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-              )}
-            </React.Fragment>
-          )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
-        <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
-          <button
-            type="button"
-            aria-expanded={reportNotificationsSectionOpen}
-            onClick={() => setReportNotificationsSectionOpen((prev) => !prev)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-              margin: 0,
-              padding: '1rem',
-              width: '100%',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '1rem',
-              fontWeight: 600,
-              textAlign: 'left',
-            }}
-          >
-            <span style={{ fontSize: '0.75rem' }}>{reportNotificationsSectionOpen ? '▼' : '▶'}</span>
-            Report notifications
-          </button>
-          {reportNotificationsSectionOpen && (
-            <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-              <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
-                Get a push notification when someone submits these report types. Enable push notifications above first.
-              </p>
-              <form onSubmit={saveReportNotificationPreferences}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
-                  {reportTemplates.map((t) => (
-                    <label key={t.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
-                      <input
-                        type="checkbox"
-                        checked={reportNotificationTemplateIds.has(t.id)}
-                        onChange={() => toggleReportNotificationTemplate(t.id)}
-                      />
-                      Notify me when someone submits: {t.name}
-                    </label>
-                  ))}
-                  {reportTemplates.length === 0 && (
-                    <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>No report templates.</p>
-                  )}
-                </div>
-                <button
-                  type="submit"
-                  disabled={reportNotificationSaving}
-                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: reportNotificationSaving ? 'not-allowed' : 'pointer' }}
-                >
-                  {reportNotificationSaving ? 'Saving…' : 'Save report notification preferences'}
-                </button>
-              </form>
             </div>
           )}
         </div>
@@ -6256,6 +5688,868 @@ export default function Settings() {
         </div>
       )}
 
+      {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
+        <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb' }}>
+          <button
+            type="button"
+            aria-expanded={dailyGoalsSectionOpen}
+            onClick={() => setDailyGoalsSectionOpen((prev) => !prev)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              margin: 0,
+              padding: '1rem',
+              width: '100%',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '1rem',
+              fontWeight: 600,
+              textAlign: 'left',
+            }}
+          >
+            <span style={{ fontSize: '0.75rem' }}>{dailyGoalsSectionOpen ? '▼' : '▶'}</span>
+            Daily goals (clock-in gate)
+          </button>
+          {dailyGoalsSectionOpen && (
+            <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+              <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem', marginTop: 0 }}>
+                After a user&apos;s first clock-in each calendar day, they must check off these goals before using the app. Leave empty to disable the gate for that user.
+              </p>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>User</label>
+              <select
+                value={dailyGoalsTargetUserId}
+                onChange={(e) => setDailyGoalsTargetUserId(e.target.value)}
+                style={{ padding: '0.35rem 0.5rem', marginBottom: '1rem', maxWidth: 420, width: '100%' }}
+              >
+                <option value="">Select user…</option>
+                {goalPickerUsers.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {(u.name?.trim() || u.email || u.id).slice(0, 80)}
+                  </option>
+                ))}
+              </select>
+              {dailyGoalsTargetUserId &&
+                (dailyGoalsLoading ? (
+                  <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
+                ) : (
+                  <>
+                    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                      {dailyGoalsRows.map((row) => (
+                        <li key={row.id} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'flex-start' }}>
+                          <textarea
+                            value={row.body}
+                            onChange={(e) => {
+                              const v = e.target.value
+                              setDailyGoalsRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, body: v } : r)))
+                            }}
+                            onBlur={async (e) => {
+                              const body = e.currentTarget.value.trim()
+                              if (!body) return
+                              const { error: err } = await supabase.from('user_dashboard_goals').update({ body }).eq('id', row.id)
+                              if (err) setError(err.message)
+                            }}
+                            rows={2}
+                            style={{ flex: 1, padding: '0.5rem', fontSize: '0.875rem' }}
+                          />
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!confirm('Delete this goal?')) return
+                              const { error: err } = await supabase.from('user_dashboard_goals').delete().eq('id', row.id)
+                              if (err) setError(err.message)
+                              else setDailyGoalsRows((prev) => prev.filter((r) => r.id !== row.id))
+                            }}
+                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', color: '#b91c1c' }}
+                          >
+                            Delete
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!dailyGoalsTargetUserId) return
+                        const nextOrder =
+                          dailyGoalsRows.length === 0 ? 0 : Math.max(...dailyGoalsRows.map((r) => r.sort_order), 0) + 1
+                        const { data, error: err } = await supabase
+                          .from('user_dashboard_goals')
+                          .insert({ user_id: dailyGoalsTargetUserId, body: 'New goal', sort_order: nextOrder })
+                          .select('id, body, sort_order')
+                          .single()
+                        if (err) setError(err.message)
+                        else if (data)
+                          setDailyGoalsRows((prev) => [...prev, data as { id: string; body: string; sort_order: number }])
+                      }}
+                      style={{ marginTop: '0.5rem', padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}
+                    >
+                      Add goal
+                    </button>
+                  </>
+                ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
+        <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb' }}>
+          <button
+            type="button"
+            aria-expanded={teamLeadAssignmentsSectionOpen}
+            onClick={() => setTeamLeadAssignmentsSectionOpen((prev) => !prev)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              margin: 0,
+              padding: '1rem',
+              width: '100%',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '1rem',
+              fontWeight: 600,
+              textAlign: 'left',
+            }}
+          >
+            <span style={{ fontSize: '0.75rem' }}>{teamLeadAssignmentsSectionOpen ? '▼' : '▶'}</span>
+            Team Hours Sharing
+          </button>
+          {teamLeadAssignmentsSectionOpen && (
+            <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+          <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem', marginTop: 0 }}>
+            Link a leader to a member for team hours sharing—the leader can approve that member&apos;s hours from Dashboard → My Team. Any account role can be leader or member. A member can have more than one leader.
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end', marginBottom: '1rem' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.875rem', fontWeight: 500 }}>Leader</label>
+              <select
+                value={teamAssignLeaderId}
+                onChange={(e) => setTeamAssignLeaderId(e.target.value)}
+                style={{ padding: '0.35rem 0.5rem', maxWidth: 320, width: '100%', minWidth: 200 }}
+              >
+                <option value="">Select user…</option>
+                {goalPickerUsers.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {(u.name?.trim() || u.email || u.id).slice(0, 80)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.875rem', fontWeight: 500 }}>Member</label>
+              <select
+                value={teamAssignMemberId}
+                onChange={(e) => setTeamAssignMemberId(e.target.value)}
+                style={{ padding: '0.35rem 0.5rem', maxWidth: 320, width: '100%', minWidth: 200 }}
+              >
+                <option value="">Select user…</option>
+                {goalPickerUsers.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {(u.name?.trim() || u.email || u.id).slice(0, 80)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="button"
+              disabled={teamAssignSaving || !teamAssignLeaderId || !teamAssignMemberId || teamAssignLeaderId === teamAssignMemberId}
+              onClick={async () => {
+                if (!authUser?.id || !teamAssignLeaderId || !teamAssignMemberId) return
+                if (teamAssignLeaderId === teamAssignMemberId) {
+                  setError('Leader and member must be different users.')
+                  return
+                }
+                setTeamAssignSaving(true)
+                try {
+                  const inserted = await withSupabaseRetry(
+                    async () =>
+                      supabase
+                        .from('team_leader_assignments')
+                        .insert({
+                          leader_user_id: teamAssignLeaderId,
+                          member_user_id: teamAssignMemberId,
+                          created_by_user_id: authUser.id,
+                        })
+                        .select('id, leader_user_id, member_user_id')
+                        .single(),
+                    'add team lead assignment',
+                  )
+                  if (!inserted) {
+                    setError('Could not add assignment.')
+                    return
+                  }
+                  const row = inserted as { id: string; leader_user_id: string; member_user_id: string }
+                  setTeamLeaderAssignments((prev) => [row, ...prev])
+                  setTeamAssignLeaderId('')
+                  setTeamAssignMemberId('')
+                } catch (e) {
+                  setError(formatErrorMessage(e))
+                } finally {
+                  setTeamAssignSaving(false)
+                }
+              }}
+              style={{
+                padding: '0.4rem 0.85rem',
+                fontSize: '0.875rem',
+                borderRadius: 4,
+                border: '1px solid #2563eb',
+                background: '#2563eb',
+                color: 'white',
+                cursor: teamAssignSaving ? 'wait' : 'pointer',
+                opacity: teamAssignSaving ? 0.7 : 1,
+              }}
+            >
+              Add
+            </button>
+          </div>
+          {teamLeaderAssignments.length === 0 ? (
+            <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>No assignments yet.</p>
+          ) : (
+            <React.Fragment>
+              <div style={{ marginBottom: '0.75rem' }}>
+                <input
+                  type="search"
+                  value={teamLeaderAssignmentsSearchQuery}
+                  onChange={(e) => setTeamLeaderAssignmentsSearchQuery(e.target.value)}
+                  placeholder="Search by leader or member…"
+                  aria-label="Search team hours assignments by leader or member"
+                  style={{
+                    width: '100%',
+                    maxWidth: 420,
+                    padding: '0.5rem 0.75rem',
+                    fontSize: '0.875rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: 4,
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+              {filteredTeamLeaderAssignments.length === 0 ? (
+                <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>No assignments match your search.</p>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                <thead>
+                  <tr style={{ background: '#f3f4f6', textAlign: 'left' }}>
+                    <th
+                      scope="col"
+                      aria-sort={
+                        teamLeaderSortColumn === 'leader'
+                          ? teamLeaderSortDir === 'asc'
+                            ? 'ascending'
+                            : 'descending'
+                          : 'none'
+                      }
+                      style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (teamLeaderSortColumn === 'leader') {
+                            setTeamLeaderSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+                          } else {
+                            setTeamLeaderSortColumn('leader')
+                            setTeamLeaderSortDir('asc')
+                          }
+                        }}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          width: '100%',
+                          padding: 0,
+                          border: 'none',
+                          background: 'none',
+                          cursor: 'pointer',
+                          fontFamily: 'inherit',
+                          fontSize: 'inherit',
+                          fontStyle: 'inherit',
+                          lineHeight: 'inherit',
+                          fontWeight: 600,
+                          textAlign: 'left',
+                        }}
+                      >
+                        Leader
+                        {teamLeaderSortColumn === 'leader' && (
+                          <span aria-hidden style={{ fontSize: '0.7rem', color: '#6b7280' }}>
+                            {teamLeaderSortDir === 'asc' ? '\u25B2' : '\u25BC'}
+                          </span>
+                        )}
+                      </button>
+                    </th>
+                    <th
+                      scope="col"
+                      aria-sort={
+                        teamLeaderSortColumn === 'member'
+                          ? teamLeaderSortDir === 'asc'
+                            ? 'ascending'
+                            : 'descending'
+                          : 'none'
+                      }
+                      style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (teamLeaderSortColumn === 'member') {
+                            setTeamLeaderSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+                          } else {
+                            setTeamLeaderSortColumn('member')
+                            setTeamLeaderSortDir('asc')
+                          }
+                        }}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          width: '100%',
+                          padding: 0,
+                          border: 'none',
+                          background: 'none',
+                          cursor: 'pointer',
+                          fontFamily: 'inherit',
+                          fontSize: 'inherit',
+                          fontStyle: 'inherit',
+                          lineHeight: 'inherit',
+                          fontWeight: 600,
+                          textAlign: 'left',
+                        }}
+                      >
+                        Member
+                        {teamLeaderSortColumn === 'member' && (
+                          <span aria-hidden style={{ fontSize: '0.7rem', color: '#6b7280' }}>
+                            {teamLeaderSortDir === 'asc' ? '\u25B2' : '\u25BC'}
+                          </span>
+                        )}
+                      </button>
+                    </th>
+                    <th scope="col" style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb', width: 100 }} />
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredTeamLeaderAssignments.map((row) => {
+                    const leaderLabel = displayLabelForGoalPickerUser(row.leader_user_id, goalPickerUsers)
+                    const memberLabel = displayLabelForGoalPickerUser(row.member_user_id, goalPickerUsers)
+                    return (
+                      <tr key={row.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                        <td style={{ padding: '0.5rem 0.75rem' }}>{leaderLabel}</td>
+                        <td style={{ padding: '0.5rem 0.75rem' }}>{memberLabel}</td>
+                        <td style={{ padding: '0.5rem 0.75rem' }}>
+                          <button
+                            type="button"
+                            disabled={teamAssignSaving}
+                            onClick={async () => {
+                              if (!confirm('Remove this team lead assignment?')) return
+                              setTeamAssignSaving(true)
+                              try {
+                                await withSupabaseRetry(
+                                  async () => supabase.from('team_leader_assignments').delete().eq('id', row.id),
+                                  'remove team lead assignment',
+                                )
+                                setTeamLeaderAssignments((prev) => prev.filter((r) => r.id !== row.id))
+                              } catch (e) {
+                                setError(formatErrorMessage(e))
+                              } finally {
+                                setTeamAssignSaving(false)
+                              }
+                            }}
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              fontSize: '0.8125rem',
+                              color: '#b91c1c',
+                              border: '1px solid #fecaca',
+                              borderRadius: 4,
+                              background: '#fef2f2',
+                              cursor: teamAssignSaving ? 'wait' : 'pointer',
+                            }}
+                          >
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+            </React.Fragment>
+          )}
+        </div>
+      )}
+        </div>
+      )}
+
+      {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
+        <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <button
+            type="button"
+            aria-expanded={reportNotificationsSectionOpen}
+            onClick={() => setReportNotificationsSectionOpen((prev) => !prev)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              margin: 0,
+              padding: '1rem',
+              width: '100%',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '1rem',
+              fontWeight: 600,
+              textAlign: 'left',
+            }}
+          >
+            <span style={{ fontSize: '0.75rem' }}>{reportNotificationsSectionOpen ? '▼' : '▶'}</span>
+            Report notifications
+          </button>
+          {reportNotificationsSectionOpen && (
+            <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+              <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+                Get a push notification when someone submits these report types. Enable push notifications above first.
+              </p>
+              <form onSubmit={saveReportNotificationPreferences}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+                  {reportTemplates.map((t) => (
+                    <label key={t.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                      <input
+                        type="checkbox"
+                        checked={reportNotificationTemplateIds.has(t.id)}
+                        onChange={() => toggleReportNotificationTemplate(t.id)}
+                      />
+                      Notify me when someone submits: {t.name}
+                    </label>
+                  ))}
+                  {reportTemplates.length === 0 && (
+                    <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>No report templates.</p>
+                  )}
+                </div>
+                <button
+                  type="submit"
+                  disabled={reportNotificationSaving}
+                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: reportNotificationSaving ? 'not-allowed' : 'pointer' }}
+                >
+                  {reportNotificationSaving ? 'Saving…' : 'Save report notification preferences'}
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
+      )}
+
+
+      {showMyReports && (
+        <div
+          style={{
+            marginBottom: '2rem',
+            marginTop: 0,
+            border: '1px solid #e5e7eb',
+            borderRadius: 8,
+            background: '#f9fafb',
+          }}
+        >
+            <button
+              type="button"
+            onClick={() => setMyReportsExpanded((prev) => !prev)}
+            aria-expanded={myReportsExpanded}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '0.5rem',
+              flexWrap: 'wrap',
+              margin: 0,
+              padding: '1rem',
+              width: '100%',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '1rem',
+              fontWeight: 600,
+              textAlign: 'left',
+            }}
+          >
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+              <span style={{ fontSize: '0.75rem' }} aria-hidden>{myReportsExpanded ? '▼' : '▶'}</span>
+              My Reports
+            </span>
+            {myReportsExpanded && !myReportsLoading && myReports.length > 1 && (
+            <button
+              type="button"
+                onClick={(e) => { e.stopPropagation(); setMyReportsModalOpen(true) }}
+                style={{ background: 'none', border: 'none', padding: 0, fontSize: '0.875rem', color: '#2563eb', cursor: 'pointer' }}
+            >
+                Show more →
+            </button>
+            )}
+            </button>
+          {myReportsExpanded && (
+            <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+              {myReportsLoading ? (
+                <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>Loading reports…</p>
+              ) : myReports.length > 0 ? (
+                (() => {
+                  const r = myReports[0]!
+                  const editWindowMs = myReportsReportEditWindowDays * 24 * 60 * 60 * 1000
+                  const isWithinEditWindow = new Date(r.created_at).getTime() >= Date.now() - editWindowMs
+                  return (
+                    <div
+                      style={{
+                        padding: '0.5rem 0.75rem',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: 8,
+                        background: '#fff',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                      }}
+                    >
+                      <div
+                        style={{ flex: 1, minWidth: 0 }}
+                        onClick={() => {
+                          setSelectedReport({ id: r.id, template_name: r.template_name, job_display_name: r.job_display_name, created_at: r.created_at, created_by_name: r.created_by_name, field_values: r.field_values, reported_at_lat: r.reported_at_lat ?? null, reported_at_lng: r.reported_at_lng ?? null })
+                          setViewReportModalOpen(true)
+                        }}
+                      >
+                        <span style={{ fontWeight: 500 }}>{r.job_display_name || 'Unknown job'}</span>
+                        <span style={{ color: '#6b7280', fontSize: '0.875rem', marginLeft: '0.5rem' }}>· {r.template_name}</span>
+                        <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                          {new Date(r.created_at).toLocaleString()}
+                        </div>
+                      </div>
+                      {isWithinEditWindow && (
+            <button
+              type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setReportForEdit({ id: r.id, template_id: r.template_id, template_name: r.template_name, job_display_name: r.job_display_name, created_at: r.created_at, field_values: r.field_values })
+                            setEditReportModalOpen(true)
+                          }}
+                          style={{ flexShrink: 0, padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                        >
+                          Edit
+            </button>
+                      )}
+          </div>
+                  )
+                })()
+              ) : (
+                <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No reports yet. Create one from a job.</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {hasNotificationHistory === true && (
+      <div
+        style={{
+          marginBottom: '2rem',
+          border: '1px solid #e5e7eb',
+          borderRadius: 8,
+          background: '#f9fafb',
+        }}
+      >
+            <button
+              type="button"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                padding: '1rem',
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                fontWeight: 600,
+                textAlign: 'left',
+              }}
+          onClick={() => setNotificationHistoryOpen((o) => !o)}
+          aria-expanded={notificationHistoryOpen}
+          aria-controls="notification-history-content"
+            >
+          <span style={{ fontSize: '0.75rem' }} aria-hidden>{notificationHistoryOpen ? '▼' : '▶'}</span>
+          My Notification History
+            </button>
+        {notificationHistoryOpen && (
+          <div id="notification-history-content" style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+            {notificationHistoryLoading ? (
+              <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
+            ) : notificationHistoryError ? (
+              <p style={{ color: '#b91c1c', fontSize: '0.875rem', margin: 0 }}>{notificationHistoryError}</p>
+            ) : notificationHistory.length === 0 ? (
+              <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No notifications yet.</p>
+            ) : (
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {notificationHistory.map((row) => {
+                  const channelLabel = row.channel === 'both' ? 'Email + Push' : row.channel === 'email' ? 'Email' : 'Push'
+                  const link =
+                    row.project_id && row.step_id
+                      ? `/workflows/${row.project_id}#step-${row.step_id}`
+                      : row.checklist_instance_id
+                        ? '/checklist'
+                        : null
+                  return (
+                    <li
+                      key={row.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        padding: '0.5rem 0.75rem',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: 8,
+                        marginBottom: '0.5rem',
+                        background: '#fff',
+                      }}
+                    >
+                      <span style={{ fontSize: '0.8125rem', color: '#6b7280', minWidth: 140 }}>
+                        {formatNotificationDatetime(row.sent_at)}
+                      </span>
+                      <span style={{ flex: 1, fontWeight: 500 }}>{row.title}</span>
+                      <span
+                        style={{
+                          fontSize: '0.75rem',
+                          padding: '2px 6px',
+                          borderRadius: 4,
+                          background: '#f3f4f6',
+                          color: '#374151',
+                        }}
+                      >
+                        {channelLabel}
+                      </span>
+                      {link && (
+                        <Link to={link} style={{ fontSize: '0.875rem', color: '#2563eb' }}>
+                          View →
+                        </Link>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+              </div>
+            )}
+          </div>
+      )}
+
+      {authUser?.id && (
+        <div
+          style={{
+            marginBottom: '2rem',
+            border: '1px solid #e5e7eb',
+            borderRadius: 8,
+            background: '#f9fafb',
+          }}
+        >
+            <button
+              type="button"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                padding: '1rem',
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                fontWeight: 600,
+                textAlign: 'left',
+              }}
+            onClick={() => setMutedTasksOpen((o) => !o)}
+            aria-expanded={mutedTasksOpen}
+            aria-controls="muted-tasks-content"
+            >
+            <span style={{ fontSize: '0.75rem' }} aria-hidden>{mutedTasksOpen ? '▼' : '▶'}</span>
+            Muted Tasks
+            </button>
+          {mutedTasksOpen && (
+            <div id="muted-tasks-content" style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+              {mutedTasksLoading ? (
+                <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
+              ) : mutedTasks.length === 0 ? (
+                <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>
+                  You are not muting any task notifications. Use the mute icon on a task (Checklist or Dashboard) to mute it.
+                </p>
+              ) : (
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {mutedTasks.map((m) => {
+                    const until = new Date(m.muted_until)
+                    const isForever = until > new Date('9999-01-01')
+                    const expiryText = isForever ? 'Forever' : until.toLocaleDateString(undefined, { dateStyle: 'medium' })
+                    return (
+                      <li
+                        key={m.checklist_item_id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '0.75rem',
+                          padding: '0.5rem 0.75rem',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: 6,
+                          background: '#f9fafb',
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 500, fontSize: '0.875rem' }}>{m.task_title}</div>
+                          <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Muted until: {expiryText}</div>
+                  </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+                  <button
+                            type="button"
+                            onClick={() => { setMuteModalItemId(m.checklist_item_id); setMuteModalTitle(m.task_title) }}
+                            style={{ padding: '0.35rem 0.6rem', fontSize: '0.8125rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                          >
+                            Change
+                  </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!authUser?.id) return
+                              await supabase
+                                .from('user_checklist_item_mute_preferences')
+                                .delete()
+                                .eq('user_id', authUser.id)
+                                .eq('checklist_item_id', m.checklist_item_id)
+                              loadMutedTasks()
+                            }}
+                            style={{ padding: '0.35rem 0.6rem', fontSize: '0.8125rem', background: 'white', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                          >
+                            Unmute
+                          </button>
+              </div>
+                      </li>
+                    )
+                  })}
+                </ul>
+            )}
+          </div>
+          )}
+        </div>
+      )}
+
+      {myRole === 'dev' && authUser?.id && (
+        <div
+          style={{
+            marginBottom: '2rem',
+            border: '1px solid #e5e7eb',
+            borderRadius: 8,
+            background: '#f9fafb',
+          }}
+        >
+            <button
+              type="button"
+            aria-expanded={ignoredTaskTypesOpen}
+            onClick={() => setIgnoredTaskTypesOpen((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                padding: '1rem',
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                fontWeight: 600,
+                textAlign: 'left',
+              }}
+            >
+            <span style={{ fontSize: '0.75rem' }} aria-hidden>{ignoredTaskTypesOpen ? '▼' : '▶'}</span>
+            Ignored task types (Dashboard)
+            </button>
+          {ignoredTaskTypesOpen && (
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+              <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: '0 0 0.75rem 0' }}>
+                These affect which task types appear in Recently Completed Tasks on the Dashboard. They are not the same as
+                Muted Tasks (notifications).
+              </p>
+              {ignoredTaskTypesLoading ? (
+                <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
+              ) : ignoredTaskTypes.length === 0 ? (
+                <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>
+                  No ignored task types. On the Dashboard, use Ignore in Recently Completed Tasks to move a type here.
+                </p>
+              ) : (
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {ignoredTaskTypes.map((row) => (
+                    <li
+                      key={row.checklist_item_id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '0.75rem',
+                        padding: '0.5rem 0.75rem',
+                            border: '1px solid #e5e7eb',
+                        borderRadius: 6,
+                        background: '#fff',
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 500, fontSize: '0.875rem' }}>{row.task_title}</div>
+                        <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                          Ignored {new Date(row.ignored_at).toLocaleString()}
+                  </div>
+              </div>
+                      <button
+                        type="button"
+                        disabled={ignoredTaskTypesUnignoringId != null}
+                        onClick={async () => {
+                          if (!authUser?.id) return
+                          setIgnoredTaskTypesUnignoringId(row.checklist_item_id)
+                          try {
+                            await withSupabaseRetry(
+                              async () =>
+                                supabase
+                                  .from('dev_ignored_checklist_items')
+                                  .delete()
+                                  .eq('dev_user_id', authUser.id)
+                                  .eq('checklist_item_id', row.checklist_item_id),
+                              'unignore checklist item type',
+                            )
+                            showToast('Task type removed from ignored list.', 'success')
+                            await loadIgnoredTaskTypes()
+                          } catch (e) {
+                            setError(formatErrorMessage(e))
+                          } finally {
+                            setIgnoredTaskTypesUnignoringId(null)
+                          }
+                        }}
+                        style={{
+                          padding: '0.35rem 0.6rem',
+                          fontSize: '0.8125rem',
+                          background: 'white',
+                          color: '#374151',
+                          border: '1px solid #d1d5db',
+                          borderRadius: 4,
+                          cursor: ignoredTaskTypesUnignoringId != null ? 'wait' : 'pointer',
+                          flexShrink: 0,
+                        }}
+                      >
+                        {ignoredTaskTypesUnignoringId === row.checklist_item_id ? 'Removing…' : 'Un-ignore'}
+              </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+        )}
+
       </SettingsGroup>
 
       <SettingsGroup id="settings-people" title="People & accounts">
@@ -6795,11 +7089,10 @@ export default function Settings() {
             )}
           </div>
 
-          {/* Job creation overrides */}
           <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
             <button
               type="button"
-              onClick={() => setJobOwnerOverridesSectionOpen((prev) => !prev)}
+              onClick={() => setRoleVisibilityExpanded((prev) => !prev)}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -6815,146 +7108,50 @@ export default function Settings() {
                 textAlign: 'left',
               }}
             >
-              <span style={{ fontSize: '0.75rem' }}>{jobOwnerOverridesSectionOpen ? '▼' : '▶'}</span>
-              Job creation overrides
+              <span style={{ fontSize: '0.75rem' }}>{roleVisibilityExpanded ? '▼' : '▶'}</span>
+              Role visibility (what each role can see)
             </button>
-            {jobOwnerOverridesSectionOpen && (
+            {roleVisibilityExpanded && (
               <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-                <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
-                  When a user creates a job, assign it to another user instead of themselves.
+                <p style={{ marginBottom: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
+                  Page access by role. See ACCESS_CONTROL.md for full feature-level permissions.
                 </p>
-                <form onSubmit={saveJobOwnerOverrides}>
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', maxWidth: 640 }}>
+                <div style={{ overflowX: 'auto', marginBottom: '0.75rem' }}>
+                  <table style={{ borderCollapse: 'collapse', fontSize: '0.875rem', minWidth: 520 }}>
                       <thead>
-                        <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
-                          <th style={{ padding: '0.5rem 0.75rem' }}>User</th>
-                          <th style={{ padding: '0.5rem 0.75rem' }}>Create jobs as</th>
-                          <th style={{ padding: '0.5rem 0.75rem' }}>Jobs</th>
-                          <th style={{ padding: '0.5rem 0.75rem' }}>Re-assign all to</th>
+                      <tr>
+                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'left', background: '#f9fafb' }}>Page</th>
+                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Dev</th>
+                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Master</th>
+                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Assistant</th>
+                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Sub</th>
+                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Estimator</th>
+                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Primary</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {users
-                          .filter((u) => ['dev', 'master_technician', 'assistant'].includes(u.role))
-                          .map((u) => (
-                            <tr key={u.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                              <td style={{ padding: '0.5rem 0.75rem' }}>{u.name || u.email}</td>
-                              <td style={{ padding: '0.5rem 0.75rem' }}>
-                                <select
-                                  value={jobOwnerOverrideByUserId[u.id] ?? ''}
-                                  onChange={(e) =>
-                                    setJobOwnerOverrideByUserId((prev) => ({
-                                      ...prev,
-                                      [u.id]: e.target.value,
-                                    }))
-                                  }
-                                  disabled={jobOwnerOverridesSaving}
-                                  style={{ padding: '0.25rem 0.5rem', minWidth: 160 }}
-                                >
-                                  <option value="">Self</option>
-                                  {users
-                                    .filter((o) => ['master_technician', 'assistant'].includes(o.role) && o.id !== u.id)
-                                    .map((o) => (
-                                      <option key={o.id} value={o.id}>
-                                        {o.name || o.email}
-                                      </option>
-                                    ))}
-                                </select>
+                      {PAGE_ACCESS.map((row) => (
+                        <tr key={row.page}>
+                          <td style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', fontWeight: 500 }}>{row.page}</td>
+                          {(['dev', 'master', 'assistant', 'sub', 'estimator', 'primary', 'superintendent'] as const).map((role) => {
+                            const val = row[role]
+                            return (
+                              <td key={role} style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                                {val === 'yes' ? '✓' : val === 'no' ? '✗' : val}
                               </td>
-                              <td style={{ padding: '0.5rem 0.75rem' }}>{jobCountByUserId[u.id] ?? 0}</td>
-                              <td style={{ padding: '0.5rem 0.75rem' }}>
-                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                  <select
-                                    value={reassignTargetByUserId[u.id] ?? ''}
-                                    onChange={(e) =>
-                                      setReassignTargetByUserId((prev) => ({
-                                        ...prev,
-                                        [u.id]: e.target.value,
-                                      }))
-                                    }
-                                    disabled={reassignSubmitting || (jobCountByUserId[u.id] ?? 0) === 0}
-                                    style={{ padding: '0.25rem 0.5rem', minWidth: 140 }}
-                                  >
-                                    <option value="">—</option>
-                                    {users
-                                      .filter((o) => ['master_technician', 'assistant'].includes(o.role) && o.id !== u.id)
-                                      .map((o) => (
-                                        <option key={o.id} value={o.id}>
-                                          {o.name || o.email}
-                                        </option>
-                                      ))}
-                                  </select>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const target = reassignTargetByUserId[u.id]
-                                      if (target) {
-                                        setReassignSourceUserId(u.id)
-                                        setReassignTargetUserId(target)
-                                        setReassignConfirmOpen(true)
-                                      }
-                                    }}
-                                    disabled={
-                                      reassignSubmitting ||
-                                      (jobCountByUserId[u.id] ?? 0) === 0 ||
-                                      !reassignTargetByUserId[u.id]
-                                    }
-                                    style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
-                                  >
-                                    Re-assign
-                                  </button>
-                                </div>
-                              </td>
+                            )
+                          })}
                             </tr>
                           ))}
                       </tbody>
                     </table>
                   </div>
-                  <button
-                    type="submit"
-                    disabled={jobOwnerOverridesSaving}
-                    style={{ marginTop: '1rem', padding: '0.5rem 1rem' }}
-                  >
-                    {jobOwnerOverridesSaving ? 'Saving…' : 'Save job creation overrides'}
-                  </button>
-                </form>
+                <p style={{ margin: 0, color: '#6b7280', fontSize: '0.8125rem' }}>
+                  Redirection: Subcontractors → /dashboard; Estimators → /bids; Primary → /dashboard (Jobs: Reports tab only; Bids: Bid Board, RFI, Change Order, Lien Release; Projects hidden).
+                </p>
               </div>
             )}
           </div>
-
-          {reassignConfirmOpen && reassignSourceUserId && reassignTargetUserId && (
-            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
-              <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480 }}>
-                <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Re-assign jobs</h2>
-                <p style={{ color: '#6b7280', marginBottom: '1rem', fontSize: '0.875rem' }}>
-                  Re-assign {jobCountByUserId[reassignSourceUserId] ?? 0} jobs from {users.find((u) => u.id === reassignSourceUserId)?.name || 'Unknown'} to {users.find((u) => u.id === reassignTargetUserId)?.name || 'Unknown'}? This cannot be undone.
-                </p>
-                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setReassignConfirmOpen(false)
-                      setReassignSourceUserId(null)
-                      setReassignTargetUserId(null)
-                    }}
-                    disabled={reassignSubmitting}
-                    style={{ padding: '0.5rem 1rem' }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={confirmReassignJobs}
-                    disabled={reassignSubmitting}
-                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: reassignSubmitting ? 'not-allowed' : 'pointer' }}
-                  >
-                    {reassignSubmitting ? 'Re-assigning…' : 'Confirm'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
 
           <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
             <button
@@ -7027,113 +7224,10 @@ export default function Settings() {
               </div>
             )}
           </div>
-        </>
-      )}
-
-      </SettingsGroup>
-
-      <SettingsGroup id="settings-data" title="Data & migration">
-      {myRole === 'dev' && (
-        <>
-          <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Data backup (dev)</h2>
-          <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
-            Export projects, materials, bids, people & access, jobs, checklist, reports, prospects, or settings & reference as JSON for backup. Use &quot;Export all backup&quot; to download everything in one file. Files respect RLS. Export may take several minutes for large datasets and uses significant database resources.
-          </p>
-          {exportError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{exportError}</p>}
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
-            <button
-              type="button"
-              onClick={exportProjectsBackup}
-              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading || exportPeopleLoading || exportJobsLoading || exportChecklistLoading || exportReportsLoading || exportProspectsLoading || exportSettingsLoading || exportAllLoading}
-              style={{ padding: '0.5rem 1rem', background: '#1e40af', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-            >
-              {exportProjectsLoading ? 'Exporting…' : 'Export projects backup'}
-            </button>
-            <button
-              type="button"
-              onClick={exportMaterialsBackup}
-              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading || exportPeopleLoading || exportJobsLoading || exportChecklistLoading || exportReportsLoading || exportProspectsLoading || exportSettingsLoading || exportAllLoading}
-              style={{ padding: '0.5rem 1rem', background: '#065f46', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-            >
-              {exportMaterialsLoading ? 'Exporting…' : 'Export materials backup'}
-            </button>
-            <button
-              type="button"
-              onClick={exportBidsBackup}
-              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading || exportPeopleLoading || exportJobsLoading || exportChecklistLoading || exportReportsLoading || exportProspectsLoading || exportSettingsLoading || exportAllLoading}
-              style={{ padding: '0.5rem 1rem', background: '#7c2d12', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-            >
-              {exportBidsLoading ? 'Exporting…' : 'Export bids backup'}
-            </button>
-            <button
-              type="button"
-              onClick={exportPeopleBackup}
-              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading || exportPeopleLoading || exportJobsLoading || exportChecklistLoading || exportReportsLoading || exportProspectsLoading || exportSettingsLoading || exportAllLoading}
-              style={{ padding: '0.5rem 1rem', background: '#4c1d95', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-            >
-              {exportPeopleLoading ? 'Exporting…' : 'Export people backup'}
-            </button>
-            <button
-              type="button"
-              onClick={exportJobsBackup}
-              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading || exportPeopleLoading || exportJobsLoading || exportChecklistLoading || exportReportsLoading || exportProspectsLoading || exportSettingsLoading || exportAllLoading}
-              style={{ padding: '0.5rem 1rem', background: '#0e7490', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-            >
-              {exportJobsLoading ? 'Exporting…' : 'Export jobs backup'}
-            </button>
-            <button
-              type="button"
-              onClick={exportChecklistBackup}
-              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading || exportPeopleLoading || exportJobsLoading || exportChecklistLoading || exportReportsLoading || exportProspectsLoading || exportSettingsLoading || exportAllLoading}
-              style={{ padding: '0.5rem 1rem', background: '#b45309', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-            >
-              {exportChecklistLoading ? 'Exporting…' : 'Export checklist backup'}
-            </button>
-            <button
-              type="button"
-              onClick={exportReportsBackup}
-              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading || exportPeopleLoading || exportJobsLoading || exportChecklistLoading || exportReportsLoading || exportProspectsLoading || exportSettingsLoading || exportAllLoading}
-              style={{ padding: '0.5rem 1rem', background: '#1e3a8a', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-            >
-              {exportReportsLoading ? 'Exporting…' : 'Export reports backup'}
-            </button>
-            <button
-              type="button"
-              onClick={exportProspectsBackup}
-              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading || exportPeopleLoading || exportJobsLoading || exportChecklistLoading || exportReportsLoading || exportProspectsLoading || exportSettingsLoading || exportAllLoading}
-              style={{ padding: '0.5rem 1rem', background: '#6b21a8', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-            >
-              {exportProspectsLoading ? 'Exporting…' : 'Export prospects backup'}
-            </button>
-            <button
-              type="button"
-              onClick={exportSettingsBackup}
-              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading || exportPeopleLoading || exportJobsLoading || exportChecklistLoading || exportReportsLoading || exportProspectsLoading || exportSettingsLoading || exportAllLoading}
-              style={{ padding: '0.5rem 1rem', background: '#374151', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-            >
-              {exportSettingsLoading ? 'Exporting…' : 'Export settings backup'}
-            </button>
-            <button
-              type="button"
-              onClick={exportAllBackup}
-              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading || exportPeopleLoading || exportJobsLoading || exportChecklistLoading || exportReportsLoading || exportProspectsLoading || exportSettingsLoading || exportAllLoading}
-              style={{ padding: '0.5rem 1rem', background: '#111827', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}
-            >
-              {exportAllLoading ? 'Exporting…' : 'Export all backup'}
-            </button>
-          </div>
-        </>
-      )}
-      </SettingsGroup>
-
-      <SettingsGroup id="settings-jobs" title="Jobs & dispatch">
-      {myRole === 'dev' && (
-        <>
           <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
-            <button
-              type="button"
-              aria-expanded={defaultLaborRateSectionOpen}
-              onClick={() => setDefaultLaborRateSectionOpen((prev) => !prev)}
+              <button
+                type="button"
+              onClick={() => setPayApprovedMastersSectionOpen((prev) => !prev)}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -7149,197 +7243,11 @@ export default function Settings() {
                 textAlign: 'left',
               }}
             >
-              <span style={{ fontSize: '0.75rem' }}>{defaultLaborRateSectionOpen ? '▼' : '▶'}</span>
-              Default Labor Rate (dev)
-            </button>
-            {defaultLaborRateSectionOpen && (
+              <span style={{ fontSize: '0.75rem' }}>{payApprovedMastersSectionOpen ? '▼' : '▶'}</span>
+              Pay Approved Masters
+              </button>
+            {payApprovedMastersSectionOpen && (
               <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-                <p style={{ marginBottom: '1rem', marginTop: 0, color: '#6b7280', fontSize: '0.875rem' }}>
-                  Set the default Labor rate ($/hr) used when adding a new labor job in Jobs → + Labor. Leave blank for no default.
-                </p>
-                <form onSubmit={saveDefaultLaborRate} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                  <label htmlFor="default-labor-rate" style={{ fontWeight: 500 }}>Labor rate ($/hr)</label>
-                  <input
-                    id="default-labor-rate"
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    value={defaultLaborRate}
-                    onChange={(e) => setDefaultLaborRate(e.target.value)}
-                    placeholder="e.g. 75"
-                    style={{ width: 120, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                  />
-                  <button
-                    type="submit"
-                    disabled={defaultLaborRateSaving}
-                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: defaultLaborRateSaving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
-                  >
-                    {defaultLaborRateSaving ? 'Saving…' : 'Save'}
-                  </button>
-                </form>
-              </div>
-            )}
-          </div>
-        </>
-      )}
-      </SettingsGroup>
-
-      {myRole === 'dev' && (
-        <>
-          <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
-            <button
-              type="button"
-              onClick={() => setProspectCopySectionOpen((prev) => !prev)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                margin: 0,
-                padding: '1rem',
-                width: '100%',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '1rem',
-                fontWeight: 600,
-                textAlign: 'left',
-              }}
-            >
-              <span style={{ fontSize: '0.75rem' }}>{prospectCopySectionOpen ? '▼' : '▶'}</span>
-              Prospect copy templates (dev)
-            </button>
-            {prospectCopySectionOpen && (
-              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-                <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
-                  Default text for the three copy buttons in Prospects → Follow Up. Users can override with their own text. Placeholders: [User name], [user email], [user phone number], [company name], [prospect phone number], [prospect contact name], [prospect last contact], [prospect last successful contact] (and _______ for Phone call / Just checking in).
-                </p>
-                <form onSubmit={saveProspectCopyDefaults}>
-                  <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>No Response Email</label>
-                    <input
-                      type="text"
-                      value={prospectCopyNoResponseSubject}
-                      onChange={(e) => setProspectCopyNoResponseSubject(e.target.value)}
-                      placeholder="Subject (e.g. Follow up - [company name])"
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '0.5rem' }}
-                    />
-                    <textarea
-                      value={prospectCopyNoResponse}
-                      onChange={(e) => setProspectCopyNoResponse(e.target.value)}
-                      rows={6}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box' }}
-                    />
-                  </div>
-                  <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Phone call Follow up Email</label>
-                    <input
-                      type="text"
-                      value={prospectCopyPhoneFollowupSubject}
-                      onChange={(e) => setProspectCopyPhoneFollowupSubject(e.target.value)}
-                      placeholder="Subject (e.g. Re: [company name])"
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '0.5rem' }}
-                    />
-                    <textarea
-                      value={prospectCopyPhoneFollowup}
-                      onChange={(e) => setProspectCopyPhoneFollowup(e.target.value)}
-                      rows={6}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box' }}
-                    />
-                  </div>
-                  <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Just checking in Email</label>
-                    <input
-                      type="text"
-                      value={prospectCopyJustCheckingInSubject}
-                      onChange={(e) => setProspectCopyJustCheckingInSubject(e.target.value)}
-                      placeholder="Subject (e.g. Re: [company name])"
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '0.5rem' }}
-                    />
-                    <textarea
-                      value={prospectCopyJustCheckingIn}
-                      onChange={(e) => setProspectCopyJustCheckingIn(e.target.value)}
-                      rows={6}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box' }}
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={prospectCopySaving}
-                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: prospectCopySaving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
-                  >
-                    {prospectCopySaving ? 'Saving…' : 'Save'}
-                  </button>
-                </form>
-              </div>
-            )}
-          </div>
-        </>
-      )}
-
-      <SettingsGroup id="settings-advanced" title="Advanced">
-      {myRole === 'dev' && (
-        <>
-          <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
-            <button
-              type="button"
-              onClick={() => setRoleVisibilityExpanded((prev) => !prev)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                margin: 0,
-                padding: '1rem',
-                width: '100%',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '1rem',
-                fontWeight: 600,
-                textAlign: 'left',
-              }}
-            >
-              <span style={{ fontSize: '0.75rem' }}>{roleVisibilityExpanded ? '▼' : '▶'}</span>
-              Role visibility (what each role can see)
-            </button>
-            {roleVisibilityExpanded && (
-              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-                <p style={{ marginBottom: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
-                  Page access by role. See ACCESS_CONTROL.md for full feature-level permissions.
-                </p>
-                <div style={{ overflowX: 'auto', marginBottom: '0.75rem' }}>
-                  <table style={{ borderCollapse: 'collapse', fontSize: '0.875rem', minWidth: 520 }}>
-                    <thead>
-                      <tr>
-                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'left', background: '#f9fafb' }}>Page</th>
-                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Dev</th>
-                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Master</th>
-                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Assistant</th>
-                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Sub</th>
-                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Estimator</th>
-                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Primary</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {PAGE_ACCESS.map((row) => (
-                        <tr key={row.page}>
-                          <td style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', fontWeight: 500 }}>{row.page}</td>
-                          {(['dev', 'master', 'assistant', 'sub', 'estimator', 'primary', 'superintendent'] as const).map((role) => {
-                            const val = row[role]
-                            return (
-                              <td key={role} style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center' }}>
-                                {val === 'yes' ? '✓' : val === 'no' ? '✗' : val}
-                              </td>
-                            )
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <p style={{ margin: 0, color: '#6b7280', fontSize: '0.8125rem' }}>
-                  Redirection: Subcontractors → /dashboard; Estimators → /bids; Primary → /dashboard (Jobs: Reports tab only; Bids: Bid Board, RFI, Change Order, Lien Release; Projects hidden).
-                </p>
-                <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Pay Approved Masters</h2>
                 <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
                   Masters selected here can access the Pay and Hours tabs on the People page. Their assistants can enter hours in the Hours tab.
                 </p>
@@ -7390,139 +7298,230 @@ export default function Settings() {
                         </label>
                       )
                     })}
-                  </div>
+          </div>
                 )}
-              </div>
-            )}
-          </div>
-        </>
-      )}
-      </SettingsGroup>
-
-      {mergeDuplicatesModalOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Find duplicates</h2>
-              <button
-                type="button"
-                onClick={() => setMergeDuplicatesModalOpen(false)}
-                style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1 }}
-              >
-                ×
-              </button>
-            </div>
-            {mergeDuplicatesLoading ? (
-              <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>Checking…</p>
-            ) : mergeDuplicates.length === 0 ? (
-              <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>No duplicates found.</p>
-            ) : (
-              <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
-                {mergeDuplicates.map((dup) => (
-                  <li key={dup.personName} style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span>{dup.personName} → {dup.userDisplayName}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleMergeDuplicate(dup)}
-                      disabled={mergingPersonName === dup.personName}
-                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', cursor: mergingPersonName === dup.personName ? 'not-allowed' : 'pointer', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4 }}
-                    >
-                      {mergingPersonName === dup.personName ? 'Merging…' : 'Merge'}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
         </div>
       )}
+          </div>
 
-      {viewingOrphanPrices && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: '900px', width: '95%', maxHeight: '90vh', overflow: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h2 style={{ margin: 0 }}>Orphaned material prices</h2>
+          <TeamFeedbackDevSettingsBlock />
+
+          <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
               <button
                 type="button"
-                onClick={() => {
-                  setViewingOrphanPrices(false)
-                  setOrphanError(null)
-                  setOrphanPrices([])
-                }}
-                style={{ padding: '0.25rem 0.5rem', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#6b7280' }}
-              >
-                ×
+              onClick={() => setAdditionalPeopleSectionOpen((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                padding: '1rem',
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                fontWeight: 600,
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: '0.75rem' }}>{additionalPeopleSectionOpen ? '▼' : '▶'}</span>
+              Additional People
               </button>
-            </div>
-            <p style={{ marginTop: 0, marginBottom: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
-              These are material prices whose part or supply house no longer exists. They do not appear in the Materials Price Book.
+            {additionalPeopleSectionOpen && (
+            <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+            <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>People Created by Me</h2>
+            <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
+              People entries in your roster.
             </p>
-            {loadingOrphanPrices && <p>Loading orphaned prices…</p>}
-            {orphanError && <p style={{ color: '#b91c1c', marginBottom: '0.75rem' }}>{orphanError}</p>}
-            {!loadingOrphanPrices && orphanPrices.length === 0 && !orphanError && (
-              <p style={{ marginBottom: '0.75rem', color: '#16a34a' }}>No orphaned prices found.</p>
-            )}
-            {!loadingOrphanPrices && orphanPrices.length > 0 && (
-              <>
-                <p style={{ marginBottom: '0.75rem', fontSize: '0.875rem', color: '#374151' }}>
-                  Found {orphanPrices.length} orphaned price{orphanPrices.length === 1 ? '' : 's'}.
-                </p>
-                <div style={{ marginBottom: '0.75rem' }}>
-                  <button
-                    type="button"
-                    onClick={deleteAllOrphanPrices}
-                    style={{ padding: '0.35rem 0.75rem', background: '#b91c1c', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
-                  >
-                    Delete all shown
-                  </button>
+            {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', maxWidth: 640 }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
+                    <th style={{ padding: '0.5rem 0.75rem' }}>Name</th>
+                    <th style={{ padding: '0.5rem 0.75rem' }}>Email</th>
+                    <th style={{ padding: '0.5rem 0.75rem' }}>Phone</th>
+                    <th style={{ padding: '0.5rem 0.75rem' }}>Kind</th>
+                    <th style={{ padding: '0.5rem 0.75rem' }}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {myPeople.map((p) => (
+                    <tr key={p.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                      <td style={{ padding: '0.5rem 0.75rem' }}>{p.name}</td>
+                      <td style={{ padding: '0.5rem 0.75rem' }}>
+                        {p.email ? (
+                          <a href={`mailto:${p.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                            {p.email}
+                          </a>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      <td style={{ padding: '0.5rem 0.75rem' }}>
+                        {p.phone ? (
+                          <a href={`tel:${p.phone}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                            {p.phone}
+                          </a>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      <td style={{ padding: '0.5rem 0.75rem' }}>
+                        {p.kind === 'assistant' ? 'Assistant' : p.kind === 'master_technician' ? 'Master Technician' : 'Subcontractor'}
+                      </td>
+                      <td style={{ padding: '0.5rem 0.75rem' }}>
+                        {p.is_user ? (
+                          <span style={{ color: '#059669', fontWeight: 500 }}>Has account</span>
+                        ) : (
+                          <span style={{ color: '#6b7280' }}>No account</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
                 </div>
-                <div style={{ maxHeight: '60vh', overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                    <thead style={{ background: '#f9fafb' }}>
-                      <tr>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Part</th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Supply house</th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Price</th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Effective date</th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Reason</th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
+            {myPeople.length === 0 && <p style={{ marginTop: '1rem' }}>No people entries created by you.</p>}
+
+            <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>People Created by Other Users</h2>
+            <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
+              People entries in rosters created by other users, and who created them.
+            </p>
+            {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+            {nonUserPeople.length === 0 && allPeopleCount > 0 && (
+              <p style={{ color: '#f59e0b', marginBottom: '1rem', fontSize: '0.875rem' }}>
+                Note: All {allPeopleCount} visible people entry{allPeopleCount !== 1 ? 'ies' : ''} belong to you. The RLS policy for the &apos;people&apos; table may be restricting access to other users&apos; entries. To see people created by other users, the RLS policy needs to allow owners to read all entries.
+              </p>
+            )}
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', maxWidth: 640 }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
+                    <th style={{ padding: '0.5rem 0.75rem' }}>Name</th>
+                    <th style={{ padding: '0.5rem 0.75rem' }}>Email</th>
+                    <th style={{ padding: '0.5rem 0.75rem' }}>Phone</th>
+                    <th style={{ padding: '0.5rem 0.75rem' }}>Kind</th>
+                    <th style={{ padding: '0.5rem 0.75rem' }}>Status</th>
+                    <th style={{ padding: '0.5rem 0.75rem' }}>Created by</th>
+                    <th style={{ padding: '0.5rem 0.75rem' }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {orphanPrices.map((row) => (
-                        <tr key={row.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                          <td style={{ padding: '0.5rem 0.75rem' }}>{row.partName}</td>
-                          <td style={{ padding: '0.5rem 0.75rem' }}>{row.supplyHouseName}</td>
-                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${row.price.toFixed(2)}</td>
-                          <td style={{ padding: '0.5rem 0.75rem' }}>{row.effectiveDate || '—'}</td>
+                  {nonUserPeople.map((p) => (
+                    <tr key={p.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                      <td style={{ padding: '0.5rem 0.75rem' }}>{p.name}</td>
                           <td style={{ padding: '0.5rem 0.75rem' }}>
-                            {row.reason === 'both'
-                              ? 'Missing part & supply house'
-                              : row.reason === 'missing_part'
-                              ? 'Missing part'
-                              : 'Missing supply house'}
+                        {p.email ? (
+                          <a href={`mailto:${p.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                            {p.email}
+                          </a>
+                        ) : (
+                          '—'
+                        )}
                           </td>
                           <td style={{ padding: '0.5rem 0.75rem' }}>
+                        {p.phone ? (
+                          <a href={`tel:${p.phone}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                            {p.phone}
+                          </a>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      <td style={{ padding: '0.5rem 0.75rem' }}>
+                        {p.kind === 'assistant' ? 'Assistant' : p.kind === 'master_technician' ? 'Master Technician' : 'Subcontractor'}
+                      </td>
+                      <td style={{ padding: '0.5rem 0.75rem' }}>
+                        {p.is_user ? (
+                          <span style={{ color: '#059669', fontWeight: 500 }}>Has account</span>
+                        ) : (
+                          <span style={{ color: '#6b7280' }}>No account</span>
+                        )}
+                      </td>
+                      <td style={{ padding: '0.5rem 0.75rem' }}>
+                        {p.creator_name || p.creator_email ? (
+                          <span>
+                            {p.creator_name || 'Unknown'}
+                            {p.creator_email && (
+                              <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.35rem' }}>
+                                ({p.creator_email})
+                              </span>
+                            )}
+                          </span>
+                        ) : (
+                          'Unknown'
+                        )}
+                      </td>
+                      <td style={{ padding: '0.5rem 0.75rem' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'nowrap' }}>
                             <button
                               type="button"
-                              onClick={() => deleteOrphanPrice(row.id)}
-                              style={{ padding: '0.25rem 0.5rem', background: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
-                            >
-                              Delete
+                            onClick={() => {
+                              setEditingNonUserPerson(p)
+                              setEditPersonName(p.name)
+                              setEditPersonEmail(p.email ?? '')
+                              setEditPersonPhone(p.phone ?? '')
+                              setEditPersonNotes(p.notes ?? '')
+                              setEditPersonError(null)
+                            }}
+                            style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
+                          >
+                            Edit
                             </button>
+                          <button
+                            type="button"
+                            onClick={() => deleteNonUserPerson(p)}
+                            disabled={deletingPersonId === p.id}
+                            style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap', background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
+                          >
+                            {deletingPersonId === p.id ? 'Deleting…' : 'Delete'}
+                          </button>
+                        </div>
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
-              </>
+            {editingNonUserPerson && (
+              <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+                <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 400 }}>
+                  <h2 style={{ marginTop: 0 }}>Edit person: {editingNonUserPerson.name}</h2>
+                  {editPersonError && <p style={{ color: '#b91c1c', marginBottom: '0.75rem' }}>{editPersonError}</p>}
+                  <form onSubmit={saveNonUserPersonEdit}>
+                    <div style={{ marginBottom: '0.75rem' }}>
+                      <label style={{ display: 'block', marginBottom: 4 }}>Name *</label>
+                      <input type="text" value={editPersonName} onChange={(e) => setEditPersonName(e.target.value)} required style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box' }} />
+                    </div>
+                    <div style={{ marginBottom: '0.75rem' }}>
+                      <label style={{ display: 'block', marginBottom: 4 }}>Email</label>
+                      <input type="email" value={editPersonEmail} onChange={(e) => setEditPersonEmail(e.target.value)} style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box' }} />
+                    </div>
+                    <div style={{ marginBottom: '0.75rem' }}>
+                      <label style={{ display: 'block', marginBottom: 4 }}>Phone</label>
+                      <input type="tel" value={editPersonPhone} onChange={(e) => setEditPersonPhone(e.target.value)} style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box' }} />
+                    </div>
+                    <div style={{ marginBottom: '1rem' }}>
+                      <label style={{ display: 'block', marginBottom: 4 }}>Notes</label>
+                      <textarea value={editPersonNotes} onChange={(e) => setEditPersonNotes(e.target.value)} style={{ width: '100%', padding: '0.5rem', minHeight: 60, boxSizing: 'border-box' }} />
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button type="submit" disabled={editPersonSaving}>{editPersonSaving ? 'Saving…' : 'Save'}</button>
+                      <button type="button" onClick={() => { setEditingNonUserPerson(null); setEditPersonError(null) }} disabled={editPersonSaving}>Cancel</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
             )}
+            {nonUserPeople.length === 0 && <p style={{ marginTop: '1rem' }}>No people entries created by other users.</p>}
           </div>
+            )}
         </div>
+        </>
       )}
 
-      <SettingsGroup id="settings-sharing" title="Sharing & access">
       {(myRole === 'master_technician' || myRole === 'dev') && (
         <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
           <button
@@ -7806,19 +7805,21 @@ export default function Settings() {
           )}
         </div>
       )}
-      </SettingsGroup>
-
-      {myRole === 'dev' && <TeamFeedbackDevSettingsBlock />}
 
       {myRole === 'master_technician' && authUser?.id && payApprovedMasterIds.has(authUser.id) && (
         <TeamFeedbackMasterAggregates />
       )}
 
+      </SettingsGroup>
+
+      <SettingsGroup id="settings-data" title="Data & migration">
       {myRole === 'dev' && (
-        <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+        <>
+          <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
           <button
             type="button"
-            onClick={() => setAdditionalPeopleSectionOpen((prev) => !prev)}
+              aria-expanded={dataBackupSectionOpen}
+              onClick={() => setDataBackupSectionOpen((prev) => !prev)}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -7834,199 +7835,535 @@ export default function Settings() {
               textAlign: 'left',
             }}
           >
-            <span style={{ fontSize: '0.75rem' }}>{additionalPeopleSectionOpen ? '▼' : '▶'}</span>
-            Additional People
+              <span style={{ fontSize: '0.75rem' }}>{dataBackupSectionOpen ? '▼' : '▶'}</span>
+              Data backup (dev)
           </button>
-          {additionalPeopleSectionOpen && (
+            {dataBackupSectionOpen && (
           <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-          <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>People Created by Me</h2>
-          <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
-            People entries in your roster.
-          </p>
-          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', maxWidth: 640 }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
-                  <th style={{ padding: '0.5rem 0.75rem' }}>Name</th>
-                  <th style={{ padding: '0.5rem 0.75rem' }}>Email</th>
-                  <th style={{ padding: '0.5rem 0.75rem' }}>Phone</th>
-                  <th style={{ padding: '0.5rem 0.75rem' }}>Kind</th>
-                  <th style={{ padding: '0.5rem 0.75rem' }}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {myPeople.map((p) => (
-                  <tr key={p.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                    <td style={{ padding: '0.5rem 0.75rem' }}>{p.name}</td>
-                    <td style={{ padding: '0.5rem 0.75rem' }}>
-                      {p.email ? (
-                        <a href={`mailto:${p.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
-                          {p.email}
-                        </a>
-                      ) : (
-                        '—'
-                      )}
-                    </td>
-                    <td style={{ padding: '0.5rem 0.75rem' }}>
-                      {p.phone ? (
-                        <a href={`tel:${p.phone}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
-                          {p.phone}
-                        </a>
-                      ) : (
-                        '—'
-                      )}
-                    </td>
-                    <td style={{ padding: '0.5rem 0.75rem' }}>
-                      {p.kind === 'assistant' ? 'Assistant' : p.kind === 'master_technician' ? 'Master Technician' : 'Subcontractor'}
-                    </td>
-                    <td style={{ padding: '0.5rem 0.75rem' }}>
-                      {p.is_user ? (
-                        <span style={{ color: '#059669', fontWeight: 500 }}>Has account</span>
-                      ) : (
-                        <span style={{ color: '#6b7280' }}>No account</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                <p style={{ marginBottom: '1rem', marginTop: 0, color: '#6b7280', fontSize: '0.875rem' }}>
+                  Export projects, materials, bids, people & access, jobs, checklist, reports, prospects, or settings & reference as JSON for backup. Use &quot;Export all backup&quot; to download everything in one file. Files respect RLS. Export may take several minutes for large datasets and uses significant database resources.
+                </p>
+                {exportError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{exportError}</p>}
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={exportProjectsBackup}
+                    disabled={exportBackupBusy}
+                    style={{ padding: '0.5rem 1rem', background: '#1e40af', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                  >
+                    {exportProjectsLoading ? 'Exporting…' : 'Export projects backup'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={exportMaterialsBackup}
+                    disabled={exportBackupBusy}
+                    style={{ padding: '0.5rem 1rem', background: '#065f46', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                  >
+                    {exportMaterialsLoading ? 'Exporting…' : 'Export materials backup'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={exportBidsBackup}
+                    disabled={exportBackupBusy}
+                    style={{ padding: '0.5rem 1rem', background: '#7c2d12', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                  >
+                    {exportBidsLoading ? 'Exporting…' : 'Export bids backup'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={exportPeopleBackup}
+                    disabled={exportBackupBusy}
+                    style={{ padding: '0.5rem 1rem', background: '#4c1d95', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                  >
+                    {exportPeopleLoading ? 'Exporting…' : 'Export people backup'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={exportJobsBackup}
+                    disabled={exportBackupBusy}
+                    style={{ padding: '0.5rem 1rem', background: '#0e7490', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                  >
+                    {exportJobsLoading ? 'Exporting…' : 'Export jobs backup'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={exportChecklistBackup}
+                    disabled={exportBackupBusy}
+                    style={{ padding: '0.5rem 1rem', background: '#b45309', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                  >
+                    {exportChecklistLoading ? 'Exporting…' : 'Export checklist backup'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={exportReportsBackup}
+                    disabled={exportBackupBusy}
+                    style={{ padding: '0.5rem 1rem', background: '#1e3a8a', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                  >
+                    {exportReportsLoading ? 'Exporting…' : 'Export reports backup'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={exportProspectsBackup}
+                    disabled={exportBackupBusy}
+                    style={{ padding: '0.5rem 1rem', background: '#6b21a8', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                  >
+                    {exportProspectsLoading ? 'Exporting…' : 'Export prospects backup'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={exportSettingsBackup}
+                    disabled={exportBackupBusy}
+                    style={{ padding: '0.5rem 1rem', background: '#374151', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                  >
+                    {exportSettingsLoading ? 'Exporting…' : 'Export settings backup'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={exportAllBackup}
+                    disabled={exportBackupBusy}
+                    style={{ padding: '0.5rem 1rem', background: '#111827', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}
+                  >
+                    {exportAllLoading ? 'Exporting…' : 'Export all backup'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-          {myPeople.length === 0 && <p style={{ marginTop: '1rem' }}>No people entries created by you.</p>}
+        </>
+      )}
+      </SettingsGroup>
 
-          <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>People Created by Other Users</h2>
-          <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
-            People entries in rosters created by other users, and who created them.
-          </p>
-          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
-          {nonUserPeople.length === 0 && allPeopleCount > 0 && (
-            <p style={{ color: '#f59e0b', marginBottom: '1rem', fontSize: '0.875rem' }}>
-              Note: All {allPeopleCount} visible people entry{allPeopleCount !== 1 ? 'ies' : ''} belong to you. The RLS policy for the &apos;people&apos; table may be restricting access to other users&apos; entries. To see people created by other users, the RLS policy needs to allow owners to read all entries.
-            </p>
-          )}
+      <SettingsGroup id="settings-jobs" title="Jobs & dispatch">
+      {myRole === 'dev' && (
+        <>
+          {/* Job creation overrides */}
+          <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+            <button
+              type="button"
+              onClick={() => setJobOwnerOverridesSectionOpen((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                padding: '1rem',
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                fontWeight: 600,
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: '0.75rem' }}>{jobOwnerOverridesSectionOpen ? '▼' : '▶'}</span>
+              Job creation overrides
+            </button>
+            {jobOwnerOverridesSectionOpen && (
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+                <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+                  When a user creates a job, assign it to another user instead of themselves.
+                </p>
+                <form onSubmit={saveJobOwnerOverrides}>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', maxWidth: 640 }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
-                  <th style={{ padding: '0.5rem 0.75rem' }}>Name</th>
-                  <th style={{ padding: '0.5rem 0.75rem' }}>Email</th>
-                  <th style={{ padding: '0.5rem 0.75rem' }}>Phone</th>
-                  <th style={{ padding: '0.5rem 0.75rem' }}>Kind</th>
-                  <th style={{ padding: '0.5rem 0.75rem' }}>Status</th>
-                  <th style={{ padding: '0.5rem 0.75rem' }}>Created by</th>
-                  <th style={{ padding: '0.5rem 0.75rem' }}>Actions</th>
+                          <th style={{ padding: '0.5rem 0.75rem' }}>User</th>
+                          <th style={{ padding: '0.5rem 0.75rem' }}>Create jobs as</th>
+                          <th style={{ padding: '0.5rem 0.75rem' }}>Jobs</th>
+                          <th style={{ padding: '0.5rem 0.75rem' }}>Re-assign all to</th>
                 </tr>
               </thead>
               <tbody>
-                {nonUserPeople.map((p) => (
-                  <tr key={p.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                    <td style={{ padding: '0.5rem 0.75rem' }}>{p.name}</td>
+                        {users
+                          .filter((u) => ['dev', 'master_technician', 'assistant'].includes(u.role))
+                          .map((u) => (
+                            <tr key={u.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                              <td style={{ padding: '0.5rem 0.75rem' }}>{u.name || u.email}</td>
                     <td style={{ padding: '0.5rem 0.75rem' }}>
-                      {p.email ? (
-                        <a href={`mailto:${p.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
-                          {p.email}
-                        </a>
-                      ) : (
-                        '—'
-                      )}
+                                <select
+                                  value={jobOwnerOverrideByUserId[u.id] ?? ''}
+                                  onChange={(e) =>
+                                    setJobOwnerOverrideByUserId((prev) => ({
+                                      ...prev,
+                                      [u.id]: e.target.value,
+                                    }))
+                                  }
+                                  disabled={jobOwnerOverridesSaving}
+                                  style={{ padding: '0.25rem 0.5rem', minWidth: 160 }}
+                                >
+                                  <option value="">Self</option>
+                                  {users
+                                    .filter((o) => ['master_technician', 'assistant'].includes(o.role) && o.id !== u.id)
+                                    .map((o) => (
+                                      <option key={o.id} value={o.id}>
+                                        {o.name || o.email}
+                                      </option>
+                                    ))}
+                                </select>
                     </td>
+                              <td style={{ padding: '0.5rem 0.75rem' }}>{jobCountByUserId[u.id] ?? 0}</td>
                     <td style={{ padding: '0.5rem 0.75rem' }}>
-                      {p.phone ? (
-                        <a href={`tel:${p.phone}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
-                          {p.phone}
-                        </a>
-                      ) : (
-                        '—'
-                      )}
-                    </td>
-                    <td style={{ padding: '0.5rem 0.75rem' }}>
-                      {p.kind === 'assistant' ? 'Assistant' : p.kind === 'master_technician' ? 'Master Technician' : 'Subcontractor'}
-                    </td>
-                    <td style={{ padding: '0.5rem 0.75rem' }}>
-                      {p.is_user ? (
-                        <span style={{ color: '#059669', fontWeight: 500 }}>Has account</span>
-                      ) : (
-                        <span style={{ color: '#6b7280' }}>No account</span>
-                      )}
-                    </td>
-                    <td style={{ padding: '0.5rem 0.75rem' }}>
-                      {p.creator_name || p.creator_email ? (
-                        <span>
-                          {p.creator_name || 'Unknown'}
-                          {p.creator_email && (
-                            <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.35rem' }}>
-                              ({p.creator_email})
-                            </span>
-                          )}
-                        </span>
-                      ) : (
-                        'Unknown'
-                      )}
-                    </td>
-                    <td style={{ padding: '0.5rem 0.75rem' }}>
-                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'nowrap' }}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingNonUserPerson(p)
-                            setEditPersonName(p.name)
-                            setEditPersonEmail(p.email ?? '')
-                            setEditPersonPhone(p.phone ?? '')
-                            setEditPersonNotes(p.notes ?? '')
-                            setEditPersonError(null)
-                          }}
-                          style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => deleteNonUserPerson(p)}
-                          disabled={deletingPersonId === p.id}
-                          style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap', background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
-                        >
-                          {deletingPersonId === p.id ? 'Deleting…' : 'Delete'}
-                        </button>
-                      </div>
+                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                  <select
+                                    value={reassignTargetByUserId[u.id] ?? ''}
+                                    onChange={(e) =>
+                                      setReassignTargetByUserId((prev) => ({
+                                        ...prev,
+                                        [u.id]: e.target.value,
+                                      }))
+                                    }
+                                    disabled={reassignSubmitting || (jobCountByUserId[u.id] ?? 0) === 0}
+                                    style={{ padding: '0.25rem 0.5rem', minWidth: 140 }}
+                                  >
+                                    <option value="">—</option>
+                                    {users
+                                      .filter((o) => ['master_technician', 'assistant'].includes(o.role) && o.id !== u.id)
+                                      .map((o) => (
+                                        <option key={o.id} value={o.id}>
+                                          {o.name || o.email}
+                                        </option>
+                                      ))}
+                                  </select>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const target = reassignTargetByUserId[u.id]
+                                      if (target) {
+                                        setReassignSourceUserId(u.id)
+                                        setReassignTargetUserId(target)
+                                        setReassignConfirmOpen(true)
+                                      }
+                                    }}
+                                    disabled={
+                                      reassignSubmitting ||
+                                      (jobCountByUserId[u.id] ?? 0) === 0 ||
+                                      !reassignTargetByUserId[u.id]
+                                    }
+                                    style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
+                                  >
+                                    Re-assign
+                                  </button>
+                                </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          {editingNonUserPerson && (
-            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-              <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 400 }}>
-                <h2 style={{ marginTop: 0 }}>Edit person: {editingNonUserPerson.name}</h2>
-                {editPersonError && <p style={{ color: '#b91c1c', marginBottom: '0.75rem' }}>{editPersonError}</p>}
-                <form onSubmit={saveNonUserPersonEdit}>
-                  <div style={{ marginBottom: '0.75rem' }}>
-                    <label style={{ display: 'block', marginBottom: 4 }}>Name *</label>
-                    <input type="text" value={editPersonName} onChange={(e) => setEditPersonName(e.target.value)} required style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box' }} />
-                  </div>
-                  <div style={{ marginBottom: '0.75rem' }}>
-                    <label style={{ display: 'block', marginBottom: 4 }}>Email</label>
-                    <input type="email" value={editPersonEmail} onChange={(e) => setEditPersonEmail(e.target.value)} style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box' }} />
-                  </div>
-                  <div style={{ marginBottom: '0.75rem' }}>
-                    <label style={{ display: 'block', marginBottom: 4 }}>Phone</label>
-                    <input type="tel" value={editPersonPhone} onChange={(e) => setEditPersonPhone(e.target.value)} style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box' }} />
-                  </div>
-                  <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: 4 }}>Notes</label>
-                    <textarea value={editPersonNotes} onChange={(e) => setEditPersonNotes(e.target.value)} style={{ width: '100%', padding: '0.5rem', minHeight: 60, boxSizing: 'border-box' }} />
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button type="submit" disabled={editPersonSaving}>{editPersonSaving ? 'Saving…' : 'Save'}</button>
-                    <button type="button" onClick={() => { setEditingNonUserPerson(null); setEditPersonError(null) }} disabled={editPersonSaving}>Cancel</button>
-                  </div>
+                  <button
+                    type="submit"
+                    disabled={jobOwnerOverridesSaving}
+                    style={{ marginTop: '1rem', padding: '0.5rem 1rem' }}
+                  >
+                    {jobOwnerOverridesSaving ? 'Saving…' : 'Save job creation overrides'}
+                  </button>
                 </form>
+              </div>
+            )}
+          </div>
+
+          {reassignConfirmOpen && reassignSourceUserId && reassignTargetUserId && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
+              <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480 }}>
+                <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Re-assign jobs</h2>
+                <p style={{ color: '#6b7280', marginBottom: '1rem', fontSize: '0.875rem' }}>
+                  Re-assign {jobCountByUserId[reassignSourceUserId] ?? 0} jobs from {users.find((u) => u.id === reassignSourceUserId)?.name || 'Unknown'} to {users.find((u) => u.id === reassignTargetUserId)?.name || 'Unknown'}? This cannot be undone.
+                </p>
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setReassignConfirmOpen(false)
+                      setReassignSourceUserId(null)
+                      setReassignTargetUserId(null)
+                    }}
+                    disabled={reassignSubmitting}
+                    style={{ padding: '0.5rem 1rem' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmReassignJobs}
+                    disabled={reassignSubmitting}
+                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: reassignSubmitting ? 'not-allowed' : 'pointer' }}
+                  >
+                    {reassignSubmitting ? 'Re-assigning…' : 'Confirm'}
+                  </button>
+                </div>
               </div>
             </div>
           )}
-          {nonUserPeople.length === 0 && <p style={{ marginTop: '1rem' }}>No people entries created by other users.</p>}
+
+          <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+            <button
+              type="button"
+              aria-expanded={defaultLaborRateSectionOpen}
+              onClick={() => setDefaultLaborRateSectionOpen((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                padding: '1rem',
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                fontWeight: 600,
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: '0.75rem' }}>{defaultLaborRateSectionOpen ? '▼' : '▶'}</span>
+              Default Labor Rate (dev)
+            </button>
+            {defaultLaborRateSectionOpen && (
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+                <p style={{ marginBottom: '1rem', marginTop: 0, color: '#6b7280', fontSize: '0.875rem' }}>
+                  Set the default Labor rate ($/hr) used when adding a new labor job in Jobs → + Labor. Leave blank for no default.
+                </p>
+                <form onSubmit={saveDefaultLaborRate} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <label htmlFor="default-labor-rate" style={{ fontWeight: 500 }}>Labor rate ($/hr)</label>
+                  <input
+                    id="default-labor-rate"
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    value={defaultLaborRate}
+                    onChange={(e) => setDefaultLaborRate(e.target.value)}
+                    placeholder="e.g. 75"
+                    style={{ width: 120, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={defaultLaborRateSaving}
+                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: defaultLaborRateSaving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
+                  >
+                    {defaultLaborRateSaving ? 'Saving…' : 'Save'}
+                  </button>
+                </form>
+              </div>
+            )}
           </div>
-          )}
+        </>
+      )}
+      </SettingsGroup>
+
+      {myRole === 'dev' && (
+        <>
+          <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+            <button
+              type="button"
+              onClick={() => setProspectCopySectionOpen((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                padding: '1rem',
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                fontWeight: 600,
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: '0.75rem' }}>{prospectCopySectionOpen ? '▼' : '▶'}</span>
+              Prospect copy templates (dev)
+            </button>
+            {prospectCopySectionOpen && (
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+                <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+                  Default text for the three copy buttons in Prospects → Follow Up. Users can override with their own text. Placeholders: [User name], [user email], [user phone number], [company name], [prospect phone number], [prospect contact name], [prospect last contact], [prospect last successful contact] (and _______ for Phone call / Just checking in).
+                </p>
+                <form onSubmit={saveProspectCopyDefaults}>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>No Response Email</label>
+                    <input
+                      type="text"
+                      value={prospectCopyNoResponseSubject}
+                      onChange={(e) => setProspectCopyNoResponseSubject(e.target.value)}
+                      placeholder="Subject (e.g. Follow up - [company name])"
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '0.5rem' }}
+                    />
+                    <textarea
+                      value={prospectCopyNoResponse}
+                      onChange={(e) => setProspectCopyNoResponse(e.target.value)}
+                      rows={6}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Phone call Follow up Email</label>
+                    <input
+                      type="text"
+                      value={prospectCopyPhoneFollowupSubject}
+                      onChange={(e) => setProspectCopyPhoneFollowupSubject(e.target.value)}
+                      placeholder="Subject (e.g. Re: [company name])"
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '0.5rem' }}
+                    />
+                    <textarea
+                      value={prospectCopyPhoneFollowup}
+                      onChange={(e) => setProspectCopyPhoneFollowup(e.target.value)}
+                      rows={6}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Just checking in Email</label>
+                    <input
+                      type="text"
+                      value={prospectCopyJustCheckingInSubject}
+                      onChange={(e) => setProspectCopyJustCheckingInSubject(e.target.value)}
+                      placeholder="Subject (e.g. Re: [company name])"
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '0.5rem' }}
+                    />
+                    <textarea
+                      value={prospectCopyJustCheckingIn}
+                      onChange={(e) => setProspectCopyJustCheckingIn(e.target.value)}
+                      rows={6}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={prospectCopySaving}
+                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: prospectCopySaving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
+                  >
+                    {prospectCopySaving ? 'Saving…' : 'Save'}
+                  </button>
+                </form>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {mergeDuplicatesModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Find duplicates</h2>
+              <button
+                type="button"
+                onClick={() => setMergeDuplicatesModalOpen(false)}
+                style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1 }}
+              >
+                ×
+              </button>
+            </div>
+            {mergeDuplicatesLoading ? (
+              <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>Checking…</p>
+            ) : mergeDuplicates.length === 0 ? (
+              <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>No duplicates found.</p>
+            ) : (
+              <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
+                {mergeDuplicates.map((dup) => (
+                  <li key={dup.personName} style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span>{dup.personName} → {dup.userDisplayName}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleMergeDuplicate(dup)}
+                      disabled={mergingPersonName === dup.personName}
+                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', cursor: mergingPersonName === dup.personName ? 'not-allowed' : 'pointer', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4 }}
+                    >
+                      {mergingPersonName === dup.personName ? 'Merging…' : 'Merge'}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
+
+      {viewingOrphanPrices && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: '900px', width: '95%', maxHeight: '90vh', overflow: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h2 style={{ margin: 0 }}>Orphaned material prices</h2>
+                        <button
+                          type="button"
+                          onClick={() => {
+                  setViewingOrphanPrices(false)
+                  setOrphanError(null)
+                  setOrphanPrices([])
+                }}
+                style={{ padding: '0.25rem 0.5rem', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#6b7280' }}
+              >
+                ×
+                        </button>
+            </div>
+            <p style={{ marginTop: 0, marginBottom: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
+              These are material prices whose part or supply house no longer exists. They do not appear in the Materials Price Book.
+            </p>
+            {loadingOrphanPrices && <p>Loading orphaned prices…</p>}
+            {orphanError && <p style={{ color: '#b91c1c', marginBottom: '0.75rem' }}>{orphanError}</p>}
+            {!loadingOrphanPrices && orphanPrices.length === 0 && !orphanError && (
+              <p style={{ marginBottom: '0.75rem', color: '#16a34a' }}>No orphaned prices found.</p>
+            )}
+            {!loadingOrphanPrices && orphanPrices.length > 0 && (
+              <>
+                <p style={{ marginBottom: '0.75rem', fontSize: '0.875rem', color: '#374151' }}>
+                  Found {orphanPrices.length} orphaned price{orphanPrices.length === 1 ? '' : 's'}.
+                </p>
+                <div style={{ marginBottom: '0.75rem' }}>
+                        <button
+                          type="button"
+                    onClick={deleteAllOrphanPrices}
+                    style={{ padding: '0.35rem 0.75rem', background: '#b91c1c', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                        >
+                    Delete all shown
+                        </button>
+                      </div>
+                <div style={{ maxHeight: '60vh', overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                    <thead style={{ background: '#f9fafb' }}>
+                      <tr>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Part</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Supply house</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Price</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Effective date</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Reason</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orphanPrices.map((row) => (
+                        <tr key={row.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <td style={{ padding: '0.5rem 0.75rem' }}>{row.partName}</td>
+                          <td style={{ padding: '0.5rem 0.75rem' }}>{row.supplyHouseName}</td>
+                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${row.price.toFixed(2)}</td>
+                          <td style={{ padding: '0.5rem 0.75rem' }}>{row.effectiveDate || '—'}</td>
+                          <td style={{ padding: '0.5rem 0.75rem' }}>
+                            {row.reason === 'both'
+                              ? 'Missing part & supply house'
+                              : row.reason === 'missing_part'
+                              ? 'Missing part'
+                              : 'Missing supply house'}
+                          </td>
+                          <td style={{ padding: '0.5rem 0.75rem' }}>
+                            <button
+                              type="button"
+                              onClick={() => deleteOrphanPrice(row.id)}
+                              style={{ padding: '0.25rem 0.5rem', background: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
+                            >
+                              Delete
+                            </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+              </>
+            )}
+          </div>
         </div>
       )}
 

@@ -1218,6 +1218,8 @@ uuid3           | Supply House C    | 0
   - `gc_contact_email` (text, nullable) - Project contact email for this bid
   - `bid_due_date` (date, nullable)
   - `bid_date_sent` (date, nullable)
+  - `bid_date_sent_attested_at` (timestamptz, nullable), `bid_date_sent_attested_by` (uuid, FK → `users.id` ON DELETE SET NULL) — when/how bid “sent” was confirmed in the attestation modal
+  - `bid_date_sent_ack_email_at` / `bid_date_sent_ack_email_by`, `bid_date_sent_ack_phone_at` / `bid_date_sent_ack_phone_by`, `bid_date_sent_ack_honesty_at` / `bid_date_sent_ack_honesty_by` — per-checkbox acknowledgment timestamps and users (FK → `users.id` ON DELETE SET NULL)
   - `submitted_to` (text, nullable) - Submitted to: name, phone, email (architect/engineer or via GC); used in RFI
   - `outcome` (text, nullable) - `'won' | 'lost' | 'started_or_complete'`
   - `loss_reason` (text, nullable) - Why bid was lost (when outcome is 'lost')
@@ -1242,7 +1244,7 @@ uuid3           | Supply House C    | 0
   - Legacy `gc_builder_id` retained for backward compatibility
   - Clicking GC/Builder name opens modal with customer details and all bid statuses
   - "Save and start Counts" button in New Bid modal
-- **Migrations**: `create_bids.sql`, `add_bids_customer_id.sql`, `split_bids_project_name_and_address.sql`, `add_bids_estimated_job_start_date.sql`, `add_bids_gc_contact.sql`, `add_bids_estimator_id.sql`, `add_bids_loss_reason.sql`, `add_bids_outcome_started_or_complete.sql`, `20260231000000_add_bids_submitted_to.sql`, `20260320120000_add_bid_number_to_bids.sql`, `20260320120002_bid_number_auto_generate.sql`, `20260320120004_prevent_estimator_primary_edit_bid_number.sql`, `allow_assistants_access_bids.sql`, `allow_estimators_access_bids.sql`
+- **Migrations**: `create_bids.sql`, `add_bids_customer_id.sql`, `split_bids_project_name_and_address.sql`, `add_bids_estimated_job_start_date.sql`, `add_bids_gc_contact.sql`, `add_bids_estimator_id.sql`, `add_bids_loss_reason.sql`, `add_bids_outcome_started_or_complete.sql`, `20260231000000_add_bids_submitted_to.sql`, `20260320120000_add_bid_number_to_bids.sql`, `20260320120002_bid_number_auto_generate.sql`, `20260320120004_prevent_estimator_primary_edit_bid_number.sql`, `20260327201115_bid_date_sent_attestation.sql`, `allow_assistants_access_bids.sql`, `allow_estimators_access_bids.sql`
 
 #### `public.bids_count_rows`
 - **Purpose**: Fixture and count rows per bid (Counts tab)
@@ -1604,7 +1606,7 @@ counts_fixture_groups (id)
 #### `master_technician`
 - **Access**: Dashboard, Customers, Projects, People, Calendar, Settings
 - **Master-Assistant Relationship**:
-  - Can adopt assistants via checkboxes in Settings
+  - Can adopt assistants via checkboxes in **Settings → People & accounts** (Sharing and Adoption)
   - Adopted assistants can access their customers and projects
   - Can see all assistants and manage adoptions
 - **Can**: 
@@ -1612,7 +1614,7 @@ counts_fixture_groups (id)
   - Automatically assigned as owner when creating customers
   - Projects automatically inherit customer owner (cannot be changed)
   - Update customer owner when editing
-  - Adopt/unadopt assistants in Settings
+  - Adopt/unadopt assistants in **Settings → People & accounts**
   - See which assistants they have adopted
 - **Cannot**: 
   - Change project owner (automatically matches customer owner)
@@ -1621,11 +1623,11 @@ counts_fixture_groups (id)
 #### `assistant`
 - **Access**: Dashboard, Customers, Projects, People, Calendar
 - **Master-Assistant Relationship**:
-  - Masters can "adopt" assistants via checkboxes in Settings
+  - Masters can "adopt" assistants via checkboxes in **Settings → People & accounts**
   - Assistants can work for multiple masters (many-to-many relationship)
   - Assistants can only see customers/projects from masters who adopted them
 - **Master-Sharing Relationship**:
-  - Masters can "share" with other masters via checkboxes in Settings
+  - Masters can "share" with other masters via checkboxes in **Settings → People & accounts**
   - Shared masters receive assistant-level access (can see but not modify, cannot see financial totals)
   - Shared masters can see customers/projects from masters who shared with them
 - **Can**: 
@@ -2080,7 +2082,7 @@ user_id = auth.uid()
     - Phone numbers are clickable (opens phone dialer)
   - Display shows "(account)" next to people who have user accounts; green dot indicates push notifications enabled (visible to devs, masters, assistants)
   - **Impersonate (dev-only)**: On Users tab, devs see an imitate icon per user; redirects to pipetooling.com/dashboard (production)
-  - **Pay Tab** (dev, approved masters, or shared by dev): **Review Hours** button opens modal with person/week navigation and breakdown; "Mark as reviewed" checkbox per person-week; **Hours reviewed** ledger (checkmarks per person, X of Y reviewed); Due by Trade, Due by Team, Cost matrix with date range and "← last week" / "next week →" buttons; Teams for combined cost by date range (view-only for shared users); People pay config (collapsible, dev/approved only) for hourly wage, Salary, Show in Hours, Show in Cost Matrix; Share Cost Matrix and Teams (dev-only, in Settings) to grant view-only access to selected masters/assistants; Tag colors. Cost matrix date headers display on two lines (e.g. Mon / 2/16) on mobile (≤640px). **Realtime sync**: When any user updates hours in Hours tab, the Cost matrix updates automatically for all users viewing Pay—no refresh needed.
+  - **Pay Tab** (dev, approved masters, or shared by dev): **Review Hours** button opens modal with person/week navigation and breakdown; "Mark as reviewed" checkbox per person-week; **Hours reviewed** ledger (checkmarks per person, X of Y reviewed); Due by Trade, Due by Team, Cost matrix with date range and "← last week" / "next week →" buttons; Teams for combined cost by date range (view-only for shared users); People pay config (collapsible, dev/approved only) for hourly wage, Salary, Show in Hours, Show in Cost Matrix; **Share Cost Matrix and Teams** (dev-only, **Settings → People & accounts** → Sharing and Adoption) to grant view-only access to selected masters/assistants; Tag colors. Cost matrix date headers display on two lines (e.g. Mon / 2/16) on mobile (≤640px). **Realtime sync**: When any user updates hours in Hours tab, the Cost matrix updates automatically for all users viewing Pay—no refresh needed.
   - **Hours Tab** (dev, approved masters, assistants): **Pending clock sessions** (collapsible) above the grid: sessions clocked out but not yet approved. Columns: Person; **Time & location** (line 1: duration and in/out times; line 2: work date + location text, or `In: — | Out: —` when GPS is missing); **Notes & job** (spanning two columns): notes with **job/bid label** below in the same cell; Location (map pins / links when present); **Action** (accountability: "Approved/Rejected/Revoked by … at" on one line, timestamp on the next; short locale date/time, no seconds); **Actions** (Force clock out, then **Approve**, **Reject**, **Edit**). Assignment controls for job/bid live in the Job column when shown. **Approved Sessions** (collapsible) with Revoke button. **Rejected Sessions** (collapsible) with Delete. Approve merges hours via `approve_clock_sessions` RPC (and syncs crew jobs when a job is linked); Revoke subtracts via `revoke_clock_sessions` RPC. Edit modal: clock in/out times and required notes. **Split session**: In Edit modal, "Split session" link opens split mode; pick split time (default midpoint), preview Part 1/Part 2 hours, Split creates two sessions and deletes original; each part can then be assigned a different job via Assign. Timesheet with day columns (editable HH:MM:SS for hourly; read-only for salary); per-person HH:MM:SS and Decimal total columns; two footer rows (Total HH:MM:SS, Total Decimal) with per-day sums and grand total. Subscribes to `people_hours` and `clock_sessions` Realtime; refetches when another user changes hours.
   - **Team Costs Tab** (dev, approved masters, assistants, or shared cost matrix): **Crew Jobs / Bids** table with date picker and prev/next day buttons; per-person crew lead dropdown and job/bid percentage assignments (crew members inherit lead's breakdown). **Team Job Labor** table: all-time aggregate of jobs with man hours and cost; searchable; clickable breakdown modals.
   - **Vehicles Tab** (dev, pay-approved masters, assistants): Fleet vehicle CRUD (year, make, model, VIN, weekly insurance/registration cost); odometer entries (date + value); possession assignments (user + start/end date). Vehicle info shown on Pay reports when user has possession during pay period (person_name must match users.name).
@@ -2152,7 +2154,7 @@ user_id = auth.uid()
     - Masters assign People to Project Stages
     - When People complete Stages, Masters are updated
   - **Sharing** (Masters/Devs only): Explains sharing features
-    - Masters can choose to adopt assistants in Settings
+    - Masters can choose to adopt assistants in **Settings → People & accounts**
       - → they can manage stages and see private notes but not financial totals
     - Masters can choose to share with other Masters
       - → they have the same permissions as assistants
@@ -2190,6 +2192,7 @@ user_id = auth.uid()
 - **Layout/Navigation**:
   - **Gear menu** (top-right in Layout): Settings link (all users); Global Reload (dev-only, broadcasts reload to all connected clients via Supabase Realtime)
   - **Top button row** (Settings page): Sign out, Hard Reload (clears caches, reloads current user only), Change password
+  - **In-page jump links**: **People & accounts** (`#settings-people`) appears for **dev** and **master_technician**. Adoption, master-to-master sharing, primaries/superintendents, **Share Cost Matrix and Teams**, and related UI all live in that single group (there is no separate **Sharing & access** section or anchor).
 - **Features (All Users)**:
   - **Sign out**: At top of Settings page
   - **Hard Reload**: At top of Settings page; clears caches and reloads current user only
@@ -2199,17 +2202,23 @@ user_id = auth.uid()
   - **Dashboard buttons**: Checkboxes to show/hide each quick-action button (Job, Job Labor, Bid, Project, Part, Assembly, New Prospect) on the Dashboard. Stored per-user in `user_dashboard_buttons`.
   - **My Roles Goals** (dev, master, assistant): Pick a user and manage that user’s **daily goal** lines (add, edit, delete, reorder). Stored in **`user_dashboard_goals`**. These drive the full-screen **“My Roles Goals”** gate on the target user’s Dashboard after their first clock-in of the day (see Dashboard **Clock In/Out**); acknowledgment per calendar day is **`user_daily_goals_ack`**.
   - **Dashboard Page Pins** (all roles): Collapsible section visible to all authenticated users. **Page pins** card: Clear all + per-pin Remove list. Shows merged pins from localStorage and `user_pinned_tabs`, filtered by role. Users can manage their own pins (add via Layout pin icon; remove individual pins or clear all in Settings). **Pin Billed, Cost matrix, Supply Houses AP, Sub Labor Due** remain dev-only (checkboxes to pin financial totals to masters/devs dashboards).
-- **Features (Masters and Devs)**:
+- **People & accounts** (`settings-people`):
+  - **Dev-only blocks** (in order before sharing): Active Accounts and user tools, **Role visibility**, **Task Dispatch** group for assistants, **Pay Approved Masters**, **Team feedback** (dev configuration, eligibility overview, raw submissions), **Additional People** (People Created by Me / Other Users), etc.
+  - **Sharing and Adoption** (dev and master_technician): Collapsible section for masters and devs (after the dev-only blocks above).
+  - **Team feedback aggregates** (pay-approved `master_technician`): Shown after Sharing in this same group.
   - **Adopt Assistants**: Checkbox list to adopt/unadopt assistants
     - Shows all assistants in the system
     - Checkbox indicates adoption status
     - Assistants can see which masters adopted them
     - Adopted assistants gain access to master's customers and projects
+  - **Adopt primaries / Adopt superintendents** (master/dev): Same group, within Sharing and Adoption
   - **Share with other Master**: Checkbox list to share/unshare with other masters
     - Shows all other masters in the system (excluding self)
     - Checkbox indicates sharing status
     - Shared masters receive assistant-level access (cannot see financial totals)
     - Viewing masters can see who has shared with them
+  - **Share Cost Matrix and Teams** (dev): Grant view-only Pay cost matrix and teams to selected masters or assistants—UI in this group (moved from People Pay; not under Dashboard Page Pins)
+- **Jobs & dispatch** (`settings-jobs`, dev): **Job creation overrides** (per user, “create jobs as” another master/assistant; bulk re-assign with confirmation). **Default Labor Rate** ($/hr) for new labor jobs in Jobs → + Labor.
 - **Features (Dev Only)**:
   - View all users with roles
   - Change user roles
@@ -2224,14 +2233,14 @@ user_id = auth.uid()
   - **Email Template Management**: Create and edit email templates for all notification types
   - **Prospect copy templates** (dev): Edit default body and subject for No Response Email, Phone call Follow up Email, and Just checking in Email. Stored in `app_settings`. New users inherit these defaults.
   - View all people entries (not just own entries)
-  - **Pin to Dashboard** (dev-only, within Dashboard Page Pins section): Pin Billed Awaiting Payment, Supply Houses AP, Sub Labor Due, and Cost matrix (Internal Team) to masters/devs dashboards. Checkbox list of masters/devs, "Pin To Dashboard" and "Unpin All" buttons. Pins appear as shortcut links on the target user's Dashboard with live totals (Billed Awaiting Payment (count) - $total, Supply Houses: $X, Sub Labor Due: $X, Internal Team: $X). Share Cost Matrix and Teams section moved from People Pay to Settings (below Billed pin).
+  - **Pin to Dashboard** (dev-only, within Dashboard Page Pins section): Pin Billed Awaiting Payment, Supply Houses AP, Sub Labor Due, and Cost matrix (Internal Team) to masters/devs dashboards. Checkbox list of masters/devs, "Pin To Dashboard" and "Unpin All" buttons. Pins appear as shortcut links on the target user's Dashboard with live totals (Billed Awaiting Payment (count) - $total, Supply Houses: $X, Sub Labor Due: $X, Internal Team: $X).
   - **Duplicate Materials** (`/duplicates`): Dev-only page for finding and removing duplicate material parts. Groups parts with 80%+ name similarity; shows Name, Manufacturer, Part Type, Service Type, Best Price, Supply House; filters by "Only show 100% name match" and service type (Plumbing, Electrical, HVAC); delete with type-to-confirm. Accessible via Settings → Duplicate Materials link.
   - **Data backup (dev)**: Export projects, materials, or bids as JSON for backup
     - "Export projects backup" downloads customers, projects, workflows, steps, step actions, subscriptions, line items, projections
     - "Export materials backup" downloads supply houses, material parts, part prices, material templates, template items
     - "Export bids backup" downloads bids, bids_gc_builders, bids_count_rows, bids_submission_entries, cost_estimates, cost_estimate_labor_rows, fixture_labor_defaults, bid_pricing_assignments, price_book_versions, price_book_entries, labor_book_versions, labor_book_entries, takeoff_book_versions, takeoff_book_entries, purchase_orders, purchase_order_items
     - Filenames include date (e.g. `projects-backup-2026-01-26.json`). Exports respect RLS.
-  - **Team feedback** (dev): Configure `team_feedback_settings` (flags, copy, cadence). **Eligibility overview (all users)** includes per-user **Reset** of snooze/cadence state (`team_feedback_user_state`). **Raw submissions** table and CSV (optional reviewer id column; names in export) for reporting. End-user flow: clock-out prompt and optional Dashboard **Quick feedback**; see **`RECENT_FEATURES.md`** v2.157 and v2.162.
+  - **Team feedback** (dev): Same tools as above under **People & accounts**; end-user flow: clock-out prompt and optional Dashboard **Quick feedback**; see **`RECENT_FEATURES.md`** v2.157, v2.162, and v2.167.
 
 ### 10. Notifications
 - **System**: `step_subscriptions` table + step-level flags + `send-workflow-notification` Edge Function

@@ -7,7 +7,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '../lib/supabase'
 import { loadJsPDF } from '../lib/loadJsPDF'
 import { upsertBidNotesReadWatermark } from '../lib/userBidNotesReadState'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { addExpandedPartsToPO, expandTemplate, getTemplatePartsPreview } from '../lib/materialPOUtils'
 import { decimalHoursToHhMm } from '../lib/format'
@@ -48,6 +48,57 @@ type TakeoffBookEntryItem = Database['public']['Tables']['takeoff_book_entry_ite
 type TakeoffBookEntryWithItems = TakeoffBookEntry & { items: TakeoffBookEntryItem[] }
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator' | 'primary' | 'superintendent'
 type OutcomeOption = 'won' | 'lost' | 'started_or_complete' | ''
+
+type BidDateSentAttestationPayload = {
+  bid_date_sent_attested_at: string
+  bid_date_sent_attested_by: string
+  bid_date_sent_ack_email_at: string
+  bid_date_sent_ack_email_by: string
+  bid_date_sent_ack_phone_at: string
+  bid_date_sent_ack_phone_by: string
+  bid_date_sent_ack_honesty_at: string
+  bid_date_sent_ack_honesty_by: string
+}
+
+const BID_DATE_SENT_ATTESTATION_NULLS: Record<
+  | 'bid_date_sent_attested_at'
+  | 'bid_date_sent_attested_by'
+  | 'bid_date_sent_ack_email_at'
+  | 'bid_date_sent_ack_email_by'
+  | 'bid_date_sent_ack_phone_at'
+  | 'bid_date_sent_ack_phone_by'
+  | 'bid_date_sent_ack_honesty_at'
+  | 'bid_date_sent_ack_honesty_by',
+  null
+> = {
+  bid_date_sent_attested_at: null,
+  bid_date_sent_attested_by: null,
+  bid_date_sent_ack_email_at: null,
+  bid_date_sent_ack_email_by: null,
+  bid_date_sent_ack_phone_at: null,
+  bid_date_sent_ack_phone_by: null,
+  bid_date_sent_ack_honesty_at: null,
+  bid_date_sent_ack_honesty_by: null,
+}
+
+function normalizeBidDateInput(value: string | null | undefined): string {
+  if (value == null || !String(value).trim()) return ''
+  return String(value).slice(0, 10)
+}
+
+function wholeCalendarDaysSinceSentDate(sentDateYyyyMmDd: string): number {
+  const s = normalizeBidDateInput(sentDateYyyyMmDd)
+  if (!s) return 0
+  const now = new Date()
+  const todayUtc = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()))
+  const parts = s.split('-').map(Number)
+  const y = parts[0]!
+  const mo = parts[1]!
+  const da = parts[2]!
+  const sentUtc = new Date(Date.UTC(y, mo - 1, da))
+  const ms = todayUtc.getTime() - sentUtc.getTime()
+  return Math.max(0, Math.floor(ms / 86400000))
+}
 
 type RfiFormData = {
   bidSubmittedDate: string
@@ -115,6 +166,12 @@ type CostEstimatePO = { id: string; name: string; stage: string | null }
 const STAGE_LABELS: Record<TakeoffStage, string> = { rough_in: 'Rough In', top_out: 'Top Out', trim_set: 'Trim Set' }
 
 type EstimatorUser = { id: string; name: string | null; email: string }
+
+function bidAttestationDisplayName(users: EstimatorUser[], userId: string | null | undefined): string {
+  if (!userId) return 'Unknown'
+  const u = users.find((x) => x.id === userId)
+  return (u?.name?.trim() || u?.email || userId).slice(0, 120)
+}
 
 interface ServiceType {
   id: string
@@ -325,6 +382,12 @@ function formatCurrency(n: number): string {
 
 function bidDisplayName(b: Bid): string {
   return b.project_name || ''
+}
+
+/** Matches Counts tab H2: `bidDisplayName(bid) || 'Bid'` — used for destructive confirm typing. */
+function countsConfirmLabel(bid: BidWithBuilder | null): string {
+  const t = bid?.project_name?.trim()
+  return t || 'Bid'
 }
 
 function marginFlag(marginPercent: number | null): 'red' | 'yellow' | 'green' | null {
@@ -989,6 +1052,18 @@ export default function Bids() {
   const [designDrawingPlanDate, setDesignDrawingPlanDate] = useState('')
   const [planPages, setPlanPages] = useState('')
   const [bidDateSent, setBidDateSent] = useState('')
+  const savedBidDateSentRef = useRef('')
+  const [bidSentAttestModalOpen, setBidSentAttestModalOpen] = useState(false)
+  const [pendingBidDateSentForModal, setPendingBidDateSentForModal] = useState('')
+  const [bidSentAckEmail, setBidSentAckEmail] = useState(false)
+  const [bidSentAckPhone, setBidSentAckPhone] = useState(false)
+  const [bidSentAckHonesty, setBidSentAckHonesty] = useState(false)
+  const [bidSentAckEmailAt, setBidSentAckEmailAt] = useState<string | null>(null)
+  const [bidSentAckPhoneAt, setBidSentAckPhoneAt] = useState<string | null>(null)
+  const [bidSentAckHonestyAt, setBidSentAckHonestyAt] = useState<string | null>(null)
+  const [pendingBidDateSentAttestation, setPendingBidDateSentAttestation] =
+    useState<BidDateSentAttestationPayload | null>(null)
+  const [pendingAttestationForDate, setPendingAttestationForDate] = useState<string | null>(null)
   const [submittedTo, setSubmittedTo] = useState('')
   const [outcome, setOutcome] = useState<OutcomeOption>('')
   const [lossReason, setLossReason] = useState('')
@@ -1013,6 +1088,9 @@ export default function Bids() {
   const [countsImportOpen, setCountsImportOpen] = useState(false)
   const [countsImportText, setCountsImportText] = useState('')
   const [countsImportError, setCountsImportError] = useState<string | null>(null)
+  const [clearAllCountsOpen, setClearAllCountsOpen] = useState(false)
+  const [clearAllCountsConfirm, setClearAllCountsConfirm] = useState('')
+  const [clearAllCountsBusy, setClearAllCountsBusy] = useState(false)
 
   // Submission & Followup tab
   const [submissionSearchQuery, setSubmissionSearchQuery] = useState('')
@@ -1043,6 +1121,7 @@ export default function Bids() {
 
   const submissionSummaryCardRef = useRef<HTMLDivElement>(null)
   const contactTableRef = useRef<HTMLDivElement | null>(null)
+  const clearAllCountsConfirmInputRef = useRef<HTMLInputElement | null>(null)
   const skipNextLoadCountRowsRef = useRef(false)
   const [scrollToContactFromBidBoard, setScrollToContactFromBidBoard] = useState(false)
   const [submissionSectionOpen, setSubmissionSectionOpen] = useState({ unsent: true, pending: true, won: true, startedOrComplete: true, lost: false })
@@ -1336,6 +1415,14 @@ export default function Bids() {
   }, [activeTab, selectedBidForSubmission?.id, authUser?.id])
 
   useEffect(() => {
+    if (!clearAllCountsOpen) return
+    const id = requestAnimationFrame(() => {
+      clearAllCountsConfirmInputRef.current?.focus()
+    })
+    return () => cancelAnimationFrame(id)
+  }, [clearAllCountsOpen])
+
+  useEffect(() => {
     if (coverLetterBidSubmissionQuickAddBidId != null && selectedBidForPricing?.id !== coverLetterBidSubmissionQuickAddBidId) {
       setCoverLetterBidSubmissionQuickAddBidId(null)
       setCoverLetterBidSubmissionQuickAddValue('')
@@ -1568,6 +1655,29 @@ export default function Bids() {
     if (!opts?.skipCountRows) loadCountRows(bidId)
     if (selectedBidForTakeoff?.id === bidId) loadTakeoffCountRows(bidId)
     if (selectedBidForCostEstimate?.id === bidId) loadCostEstimateData(bidId, selectedLaborBookVersionId)
+  }
+
+  async function handleClearAllCounts() {
+    const bid = selectedBidForCounts
+    if (!bid || clearAllCountsBusy || countRows.length === 0) return
+    const label = countsConfirmLabel(bid)
+    if (clearAllCountsConfirm.trim() !== label) return
+    const clearedCount = countRows.length
+    setClearAllCountsBusy(true)
+    try {
+      await withSupabaseRetry(
+        async () => supabase.from('bids_count_rows').delete().eq('bid_id', bid.id),
+        'clear all bid count rows'
+      )
+      setClearAllCountsOpen(false)
+      setClearAllCountsConfirm('')
+      refreshAfterCountsChange()
+      showToast(clearedCount === 1 ? 'Cleared 1 count row' : `Cleared ${clearedCount} count rows`, 'success')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Failed to clear counts'), 'error')
+    } finally {
+      setClearAllCountsBusy(false)
+    }
   }
 
   async function saveCountRowsOrder(orderedRows: BidCountRow[]) {
@@ -6343,6 +6453,8 @@ export default function Bids() {
   }, [selectedPricingVersionId])
 
   function openNewBid() {
+    clearBidDateSentAttestationFlow()
+    savedBidDateSentRef.current = ''
     setEditingBid(null)
     setDriveLink('')
     setPlansLink('')
@@ -6378,6 +6490,8 @@ export default function Bids() {
   }
 
   function openNewBidWithCustomer(customer: Customer) {
+    clearBidDateSentAttestationFlow()
+    savedBidDateSentRef.current = ''
     setEditingBid(null)
     setDriveLink('')
     setPlansLink('')
@@ -6413,6 +6527,7 @@ export default function Bids() {
   }
 
   function openEditBid(bid: BidWithBuilder) {
+    clearBidDateSentAttestationFlow()
     setEditingBid(bid)
     setDriveLink(bid.drive_link ?? '')
     setPlansLink(bid.plans_link ?? '')
@@ -6441,6 +6556,7 @@ export default function Bids() {
     setDesignDrawingPlanDate(bid.design_drawing_plan_date ?? '')
     setPlanPages(bid.plan_pages ?? '')
     setBidDateSent(bid.bid_date_sent ?? '')
+    savedBidDateSentRef.current = normalizeBidDateInput(bid.bid_date_sent)
     setSubmittedTo((bid as { submitted_to?: string | null }).submitted_to ?? '')
     setOutcome((bid.outcome ?? '') as OutcomeOption)
     setLossReason((bid as { loss_reason?: string | null }).loss_reason ?? '')
@@ -6457,12 +6573,124 @@ export default function Bids() {
     setError(null)
   }
 
+  function clearBidDateSentAttestationFlow() {
+    setBidSentAttestModalOpen(false)
+    setPendingBidDateSentForModal('')
+    setBidSentAckEmail(false)
+    setBidSentAckPhone(false)
+    setBidSentAckHonesty(false)
+    setBidSentAckEmailAt(null)
+    setBidSentAckPhoneAt(null)
+    setBidSentAckHonestyAt(null)
+    setPendingBidDateSentAttestation(null)
+    setPendingAttestationForDate(null)
+  }
+
   function closeBidForm() {
     setBidFormOpen(false)
     setEditingBid(null)
     setDeleteConfirmProjectName('')
     setDeletingBid(false)
     setDeleteBidModalOpen(false)
+    clearBidDateSentAttestationFlow()
+  }
+
+  function getBidDateSentAttestationPayloadMerge(): Record<string, string | null> {
+    const d = normalizeBidDateInput(bidDateSent)
+    if (!d) {
+      return { ...BID_DATE_SENT_ATTESTATION_NULLS }
+    }
+    const serverSent = editingBid ? normalizeBidDateInput(editingBid.bid_date_sent) : ''
+    if (d !== serverSent) {
+      if (pendingBidDateSentAttestation && pendingAttestationForDate === d) {
+        return { ...pendingBidDateSentAttestation }
+      }
+      return {}
+    }
+    return {}
+  }
+
+  function validateBidDateSentAttestationForSave(): string | null {
+    const d = normalizeBidDateInput(bidDateSent)
+    const serverSent = editingBid ? normalizeBidDateInput(editingBid.bid_date_sent) : ''
+    if (!d) return null
+    if (d !== serverSent) {
+      if (!pendingBidDateSentAttestation || pendingAttestationForDate !== d) {
+        return 'Choose a new Bid Date Sent and confirm the attestation checklist, or revert the date.'
+      }
+    }
+    return null
+  }
+
+  function handleBidDateSentFieldChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const v = e.target.value
+    const baseline = savedBidDateSentRef.current
+    if (!v) {
+      setBidDateSent('')
+      setPendingBidDateSentAttestation(null)
+      setPendingAttestationForDate(null)
+      return
+    }
+    if (v === baseline) {
+      setBidDateSent(v)
+      if (pendingAttestationForDate && pendingAttestationForDate !== v) {
+        setPendingBidDateSentAttestation(null)
+        setPendingAttestationForDate(null)
+      }
+      return
+    }
+    setPendingBidDateSentForModal(v)
+    setBidSentAckEmail(false)
+    setBidSentAckPhone(false)
+    setBidSentAckHonesty(false)
+    setBidSentAckEmailAt(null)
+    setBidSentAckPhoneAt(null)
+    setBidSentAckHonestyAt(null)
+    setBidSentAttestModalOpen(true)
+    setBidDateSent(baseline)
+  }
+
+  function cancelBidSentAttestationModal() {
+    setBidSentAttestModalOpen(false)
+    setPendingBidDateSentForModal('')
+    setBidSentAckEmail(false)
+    setBidSentAckPhone(false)
+    setBidSentAckHonesty(false)
+    setBidSentAckEmailAt(null)
+    setBidSentAckPhoneAt(null)
+    setBidSentAckHonestyAt(null)
+  }
+
+  function confirmBidSentAttestationModal() {
+    if (!authUser?.id) return
+    if (!bidSentAckEmail || !bidSentAckPhone || !bidSentAckHonesty) return
+    const uid = authUser.id
+    const confirmedAt = new Date().toISOString()
+    const emailAt = bidSentAckEmailAt ?? confirmedAt
+    const phoneAt = bidSentAckPhoneAt ?? confirmedAt
+    const honestyAt = bidSentAckHonestyAt ?? confirmedAt
+    const payload: BidDateSentAttestationPayload = {
+      bid_date_sent_attested_at: confirmedAt,
+      bid_date_sent_attested_by: uid,
+      bid_date_sent_ack_email_at: emailAt,
+      bid_date_sent_ack_email_by: uid,
+      bid_date_sent_ack_phone_at: phoneAt,
+      bid_date_sent_ack_phone_by: uid,
+      bid_date_sent_ack_honesty_at: honestyAt,
+      bid_date_sent_ack_honesty_by: uid,
+    }
+    const pendingDate = pendingBidDateSentForModal
+    setPendingBidDateSentAttestation(payload)
+    setPendingAttestationForDate(pendingDate)
+    setBidDateSent(pendingDate)
+    setBidSentAttestModalOpen(false)
+    setPendingBidDateSentForModal('')
+    setBidSentAckEmail(false)
+    setBidSentAckPhone(false)
+    setBidSentAckHonesty(false)
+    setBidSentAckEmailAt(null)
+    setBidSentAckPhoneAt(null)
+    setBidSentAckHonestyAt(null)
   }
 
   function handleLastContactClick(bid: BidWithBuilder) {
@@ -6476,6 +6704,11 @@ export default function Bids() {
     if (!authUser?.id) return
     if (!projectName.trim()) {
       setError('Project Name is required.')
+      return
+    }
+    const attestSaveErr = validateBidDateSentAttestationForSave()
+    if (attestSaveErr) {
+      setError(attestSaveErr)
       return
     }
     setSavingBid(true)
@@ -6511,21 +6744,25 @@ export default function Bids() {
       notes: notes.trim() || null,
       service_type_id: formServiceTypeId,
     }
+    const payloadWithAttest = { ...payload, ...getBidDateSentAttestationPayloadMerge() }
     if (editingBid) {
-      const { error: err } = await supabase.from('bids').update(payload).eq('id', editingBid.id)
+      const { error: err } = await supabase.from('bids').update(payloadWithAttest).eq('id', editingBid.id)
       if (err) {
         setError(err.message)
         setSavingBid(false)
         return
       }
     } else {
-      const { error: err } = await supabase.from('bids').insert({ ...payload, created_by: authUser.id })
+      const { error: err } = await supabase.from('bids').insert({ ...payloadWithAttest, created_by: authUser.id })
       if (err) {
         setError(err.message)
         setSavingBid(false)
         return
       }
     }
+    savedBidDateSentRef.current = normalizeBidDateInput(bidDateSent)
+    setPendingBidDateSentAttestation(null)
+    setPendingAttestationForDate(null)
     const rows = await loadBids()
     if (editingBid) {
       const fresh = rows.find((b) => b.id === editingBid.id)
@@ -6546,6 +6783,11 @@ export default function Bids() {
     if (!authUser?.id) return
     if (!projectName.trim()) {
       setError('Project Name is required.')
+      return
+    }
+    const attestSaveErrCounts = validateBidDateSentAttestationForSave()
+    if (attestSaveErrCounts) {
+      setError(attestSaveErrCounts)
       return
     }
     setSavingBid(true)
@@ -6580,9 +6822,10 @@ export default function Bids() {
       notes: notes.trim() || null,
       service_type_id: formServiceTypeId,
     }
+    const payloadWithAttestCounts = { ...payload, ...getBidDateSentAttestationPayloadMerge() }
     let bidId: string
     if (editingBid) {
-      const { error: err } = await supabase.from('bids').update(payload).eq('id', editingBid.id)
+      const { error: err } = await supabase.from('bids').update(payloadWithAttestCounts).eq('id', editingBid.id)
       if (err) {
         setError(err.message)
         setSavingBid(false)
@@ -6590,7 +6833,11 @@ export default function Bids() {
       }
       bidId = editingBid.id
     } else {
-      const { data: inserted, error: err } = await supabase.from('bids').insert({ ...payload, created_by: authUser.id }).select('id').single()
+      const { data: inserted, error: err } = await supabase
+        .from('bids')
+        .insert({ ...payloadWithAttestCounts, created_by: authUser.id })
+        .select('id')
+        .single()
       if (err) {
         setError(err.message)
         setSavingBid(false)
@@ -6598,6 +6845,9 @@ export default function Bids() {
       }
       bidId = (inserted as { id: string }).id
     }
+    savedBidDateSentRef.current = normalizeBidDateInput(bidDateSent)
+    setPendingBidDateSentAttestation(null)
+    setPendingAttestationForDate(null)
     if (!editingBid && formServiceTypeId && formServiceTypeId !== selectedServiceTypeId) {
       setSelectedServiceTypeId(formServiceTypeId)
     }
@@ -8244,7 +8494,16 @@ export default function Bids() {
                 </DndContext>
               </div>
               {!addingCountRow && (
-                <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem' }}>
+                <div
+                  style={{
+                    marginTop: '0.75rem',
+                    display: 'flex',
+                    gap: '0.5rem',
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                    width: '100%',
+                  }}
+                >
                   <button
                     type="button"
                     onClick={() => setAddingCountRow(true)}
@@ -8252,8 +8511,90 @@ export default function Bids() {
                   >
                     Add row
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => { setClearAllCountsOpen(true); setClearAllCountsConfirm('') }}
+                    disabled={countRows.length === 0 || clearAllCountsBusy}
+                    title={countRows.length === 0 ? 'No count rows to clear' : 'Remove all count rows for this bid'}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      background: 'white',
+                      color: '#b91c1c',
+                      border: '1px solid #fca5a5',
+                      borderRadius: 4,
+                      cursor: countRows.length === 0 || clearAllCountsBusy ? 'not-allowed' : 'pointer',
+                      opacity: countRows.length === 0 ? 0.5 : 1,
+                      marginLeft: 'auto',
+                    }}
+                  >
+                    Clear all counts
+                  </button>
                 </div>
               )}
+            </div>
+          )}
+          {clearAllCountsOpen && selectedBidForCounts && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+              <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 520, width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+                <h2 style={{ margin: '0 0 1rem 0', color: '#b91c1c' }}>Clear all counts</h2>
+                <p style={{ fontSize: '0.875rem', color: '#374151', marginBottom: '0.5rem' }}>
+                  This will permanently delete <strong>{countRows.length}</strong> count row{countRows.length === 1 ? '' : 's'} for this bid.
+                </p>
+                <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.75rem' }}>
+                  Related takeoff template mappings, pricing assignments, and custom fixture prices for those rows will also be removed.
+                </p>
+                <p style={{ fontSize: '0.875rem', color: '#374151', marginBottom: '0.35rem' }}>
+                  Type <strong style={{ color: '#b91c1c' }}>{countsConfirmLabel(selectedBidForCounts)}</strong> exactly to confirm.
+                </p>
+                <input
+                  ref={clearAllCountsConfirmInputRef}
+                  type="text"
+                  value={clearAllCountsConfirm}
+                  onChange={(e) => setClearAllCountsConfirm(e.target.value)}
+                  autoComplete="off"
+                  disabled={clearAllCountsBusy}
+                  style={{ width: '100%', padding: '0.5rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box', marginBottom: '1rem' }}
+                />
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => { if (!clearAllCountsBusy) { setClearAllCountsOpen(false); setClearAllCountsConfirm('') } }}
+                    style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: clearAllCountsBusy ? 'not-allowed' : 'pointer' }}
+                    disabled={clearAllCountsBusy}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { void handleClearAllCounts() }}
+                    disabled={
+                      clearAllCountsBusy ||
+                      clearAllCountsConfirm.trim() !== countsConfirmLabel(selectedBidForCounts) ||
+                      countRows.length === 0
+                    }
+                    style={{
+                      padding: '0.5rem 1rem',
+                      background:
+                        clearAllCountsBusy ||
+                        clearAllCountsConfirm.trim() !== countsConfirmLabel(selectedBidForCounts) ||
+                        countRows.length === 0
+                          ? '#d1d5db'
+                          : '#b91c1c',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 4,
+                      cursor:
+                        clearAllCountsBusy ||
+                        clearAllCountsConfirm.trim() !== countsConfirmLabel(selectedBidForCounts) ||
+                        countRows.length === 0
+                          ? 'not-allowed'
+                          : 'pointer',
+                    }}
+                  >
+                    {clearAllCountsBusy ? 'Clearing…' : 'Delete all count rows'}
+                  </button>
+                </div>
+              </div>
             </div>
           )}
           {countsImportOpen && selectedBidForCounts && (
@@ -13566,6 +13907,41 @@ export default function Bids() {
                     <option value="started_or_complete">Started or Complete</option>
                   </select>
                 </div>
+                <div style={{ flex: 1, minWidth: '10rem' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid Date Sent</label>
+                  <input
+                    type="date"
+                    value={bidDateSent}
+                    onChange={handleBidDateSentFieldChange}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  />
+                  {bidDateSent.trim() &&
+                    (() => {
+                      const dNorm = normalizeBidDateInput(bidDateSent)
+                      const days = wholeCalendarDaysSinceSentDate(dNorm)
+                      const serverSent = editingBid ? normalizeBidDateInput(editingBid.bid_date_sent) : ''
+                      const bidRow = editingBid as Bid | null
+                      const fromPending =
+                        pendingAttestationForDate === dNorm && pendingBidDateSentAttestation !== null
+                      const ackById = fromPending
+                        ? pendingBidDateSentAttestation!.bid_date_sent_attested_by
+                        : serverSent === dNorm
+                          ? bidRow?.bid_date_sent_attested_by ?? null
+                          : null
+                      return (
+                        <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.35rem', lineHeight: 1.45 }}>
+                          <div>
+                            Sent {days} day{days === 1 ? '' : 's'} ago (by calendar date).
+                          </div>
+                          {ackById ? (
+                            <div>Acknowledged by {bidAttestationDisplayName(estimatorUsers, ackById)}</div>
+                          ) : dNorm && serverSent === dNorm && !fromPending ? (
+                            <div style={{ color: '#b45309' }}>No attestation on file (saved before this feature).</div>
+                          ) : null}
+                        </div>
+                      )
+                    })()}
+                </div>
               </div>
               {outcome === 'lost' && (
                 <div style={{ marginBottom: '1rem' }}>
@@ -13948,15 +14324,9 @@ export default function Bids() {
                   </select>
                 </div>
               </div>
-              <div className="bid-form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid Date</label>
-                  <input type="date" value={bidDueDate} onChange={(e) => setBidDueDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid Date Sent</label>
-                  <input type="date" value={bidDateSent} onChange={(e) => setBidDateSent(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-                </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid Date</label>
+                <input type="date" value={bidDueDate} onChange={(e) => setBidDueDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
               </div>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Submitted to (name, phone, email):</label>
@@ -14016,6 +14386,119 @@ export default function Bids() {
                 )}
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {bidSentAttestModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1001,
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="bid-sent-attest-title"
+            style={{
+              background: 'white',
+              padding: '1.5rem 2rem',
+              borderRadius: 8,
+              maxWidth: '520px',
+              width: '90%',
+              maxHeight: '90vh',
+              overflow: 'auto',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
+            }}
+          >
+            <h2 id="bid-sent-attest-title" style={{ marginTop: 0, marginBottom: '0.75rem', fontSize: '1.125rem' }}>
+              Confirm bid sent
+            </h2>
+            <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+              Check each statement when it applies. You must confirm all three before the new sent date is applied.
+            </p>
+            {[
+              {
+                key: 'email' as const,
+                checked: bidSentAckEmail,
+                setChecked: setBidSentAckEmail,
+                checkedAt: bidSentAckEmailAt,
+                setAt: setBidSentAckEmailAt,
+                label: 'I sent the bid via email and the client knew it was coming',
+              },
+              {
+                key: 'phone' as const,
+                checked: bidSentAckPhone,
+                setChecked: setBidSentAckPhone,
+                checkedAt: bidSentAckPhoneAt,
+                setAt: setBidSentAckPhoneAt,
+                label: 'I followed up with a phone call',
+              },
+              {
+                key: 'honesty' as const,
+                checked: bidSentAckHonesty,
+                setChecked: setBidSentAckHonesty,
+                checkedAt: bidSentAckHonestyAt,
+                setAt: setBidSentAckHonestyAt,
+                label: 'I understand that lying about this will result in my suspension',
+              },
+            ].map((row) => (
+              <div key={row.key} style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #e5e7eb' }}>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={row.checked}
+                    onChange={(e) => {
+                      const on = e.target.checked
+                      row.setChecked(on)
+                      if (on) row.setAt(new Date().toISOString())
+                      else row.setAt(null)
+                    }}
+                    style={{ marginTop: '0.2rem' }}
+                  />
+                  <span>{row.label}</span>
+                </label>
+                {row.checked && row.checkedAt && authUser?.id ? (
+                  <div style={{ marginLeft: '1.5rem', marginTop: '0.35rem', fontSize: '0.8125rem', color: '#374151' }}>
+                    {bidAttestationDisplayName(estimatorUsers, authUser.id)} ·{' '}
+                    {new Date(row.checkedAt).toLocaleString(undefined, {
+                      dateStyle: 'short',
+                      timeStyle: 'short',
+                    })}
+                  </div>
+                ) : null}
+              </div>
+            ))}
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1.25rem' }}>
+              <button
+                type="button"
+                onClick={cancelBidSentAttestationModal}
+                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!bidSentAckEmail || !bidSentAckPhone || !bidSentAckHonesty || !authUser?.id}
+                onClick={confirmBidSentAttestationModal}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: !bidSentAckEmail || !bidSentAckPhone || !bidSentAckHonesty ? '#9ca3af' : '#2563eb',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: !bidSentAckEmail || !bidSentAckPhone || !bidSentAckHonesty ? 'not-allowed' : 'pointer',
+                }}
+              >
+                Confirm sent date
+              </button>
+            </div>
           </div>
         </div>
       )}
