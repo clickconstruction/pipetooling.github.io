@@ -161,6 +161,41 @@ function effectiveInvoiceEstBillDate(inv: JobsLedgerInvoice, job: JobWithDetails
   return inv.estimated_bill_date ?? job.estimated_completion_date ?? null
 }
 
+function stageRowBilledRemainingAmount(r: StageRow): number {
+  if (r.kind === 'job') {
+    return Number(r.job.revenue ?? 0) - Number(r.job.payments_made ?? 0)
+  }
+  return Number(r.inv.amount ?? 0)
+}
+
+function stageRowBilledAgeDays(r: StageRow, now = new Date()): number | null {
+  const iso =
+    r.kind === 'job'
+      ? r.job.estimated_completion_date ?? null
+      : effectiveInvoiceEstBillDate(r.inv, r.job)
+  if (!iso) return null
+  const days = calendarDaysSinceDateUtc(iso, now)
+  if (days < 0) return null
+  return days
+}
+
+function stageRowBilledLineLabel(r: StageRow): string {
+  const hcp = r.job.hcp_number || '—'
+  if (r.kind === 'job') return `${hcp} · Job balance`
+  return `${hcp} · Invoice #${r.inv.sequence_order}`
+}
+
+function sortStageRowsForTotalByNameDetail(rows: StageRow[]): StageRow[] {
+  return [...rows].sort((a, b) => {
+    const da = stageRowBilledAgeDays(a)
+    const db = stageRowBilledAgeDays(b)
+    if (da != null && db != null && da !== db) return db - da
+    if (da != null && db == null) return -1
+    if (da == null && db != null) return 1
+    return stageRowBilledRemainingAmount(b) - stageRowBilledRemainingAmount(a)
+  })
+}
+
 type MaterialRow = { id: string; description: string; amount: number }
 type PaymentRow = { id: string; amount: number }
 type FixtureRow = { id: string; name: string; count: number }
@@ -446,6 +481,7 @@ export default function Jobs() {
   const [templateDeletingId, setTemplateDeletingId] = useState<string | null>(null)
   const [stagesSectionOpen, setStagesSectionOpen] = useState({ working: true, readyToBill: true, billed: true, paid: true })
   const [billedTotalByNameModalOpen, setBilledTotalByNameModalOpen] = useState(false)
+  const [billedTotalByNameExpandedName, setBilledTotalByNameExpandedName] = useState<string | null>(null)
   const [capableToBillModalOpen, setCapableToBillModalOpen] = useState(false)
   const [whenBilledModalJob, setWhenBilledModalJob] = useState<JobWithDetails | null>(null)
   const [whenBilledModalDate, setWhenBilledModalDate] = useState('')
@@ -2538,6 +2574,10 @@ export default function Jobs() {
   }, [activeTab, searchParams, setSearchParams])
 
   useEffect(() => {
+    if (!billedTotalByNameModalOpen) setBilledTotalByNameExpandedName(null)
+  }, [billedTotalByNameModalOpen])
+
+  useEffect(() => {
     if ((activeTab === 'billing' || activeTab === 'sub_sheet_ledger' || activeTab === 'combined-labor' || activeTab === 'teams-summary' || activeTab === 'job-summary') && authUser?.id) {
       const t = setTimeout(() => loadLaborJobs(), 80)
       return () => clearTimeout(t)
@@ -4032,6 +4072,32 @@ export default function Jobs() {
                 </svg>
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => setBilledTotalByNameModalOpen(true)}
+              title="Total by Name"
+              aria-label="Total by Name"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 36,
+                height: 36,
+                padding: 0,
+                border: '1px solid #d1d5db',
+                borderRadius: 4,
+                background: 'white',
+                cursor: 'pointer',
+                color: '#6b7280',
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={20} height={20} aria-hidden>
+                <path
+                  fill="currentColor"
+                  d="M128 128C128 92.7 156.7 64 192 64L341.5 64C358.5 64 374.8 70.7 386.8 82.7L493.3 189.3C505.3 201.3 512 217.6 512 234.6L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 128zM336 122.5L336 216C336 229.3 346.7 240 360 240L453.5 240L336 122.5zM192 152C192 165.3 202.7 176 216 176L264 176C277.3 176 288 165.3 288 152C288 138.7 277.3 128 264 128L216 128C202.7 128 192 138.7 192 152zM192 248C192 261.3 202.7 272 216 272L264 272C277.3 272 288 261.3 288 248C288 234.7 277.3 224 264 224L216 224C202.7 224 192 234.7 192 248zM304 324L304 328C275.2 328.3 252 351.7 252 380.5C252 406.2 270.5 428.1 295.9 432.3L337.6 439.3C343.6 440.3 348 445.5 348 451.6C348 458.5 342.4 464.1 335.5 464.1L280 464C269 464 260 473 260 484C260 495 269 504 280 504L304 504L304 508C304 519 313 528 324 528C335 528 344 519 344 508L344 503.3C369 499.2 388 477.6 388 451.5C388 425.8 369.5 403.9 344.1 399.7L302.4 392.7C296.4 391.7 292 386.5 292 380.4C292 373.5 297.6 367.9 304.5 367.9L352 367.9C363 367.9 372 358.9 372 347.9C372 336.9 363 327.9 352 327.9L344 327.9L344 323.9C344 312.9 335 303.9 324 303.9C313 303.9 304 312.9 304 323.9z"
+                />
+              </svg>
+            </button>
           </div>
           {(() => {
             const q = stagesSearchQuery.trim().toLowerCase()
@@ -5335,7 +5401,7 @@ export default function Jobs() {
                   showCreatePartialInvoice: true,
                 })}
 
-                <div id="stages-billed" style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                <div id="stages-billed" style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
                     <button
                       type="button"
@@ -5350,13 +5416,6 @@ export default function Jobs() {
                       {`30+ days: ${billedAgingBuckets.count30_90} | $${formatCurrency(billedAgingBuckets.sum30_90)} — 90+ days: ${billedAgingBuckets.count90} | $${formatCurrency(billedAgingBuckets.sum90)} · est. bill date`}
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setBilledTotalByNameModalOpen(true)}
-                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
-                  >
-                    Total by Name
-                  </button>
                 </div>
                 {stagesSectionOpen.billed && renderUnifiedStagesTable(billedRows, {
                   actionLabel: 'Mark Paid',
@@ -5395,18 +5454,23 @@ export default function Jobs() {
                   : (j) => setSendBackConfirmJob({ id: j.id, toStatus: 'billed' }), false, true)}
 
                 {billedTotalByNameModalOpen && (() => {
-                  const byName = new Map<string, number>()
+                  const byNameRows = new Map<string, StageRow[]>()
                   for (const r of billedRows) {
                     const name = r.job.job_name || '—'
-                    const remaining = r.kind === 'job'
-                      ? Number(r.job.revenue ?? 0) - Number(r.job.payments_made ?? 0)
-                      : Number(r.inv.amount ?? 0)
-                    byName.set(name, (byName.get(name) ?? 0) + remaining)
+                    const list = byNameRows.get(name) ?? []
+                    list.push(r)
+                    byNameRows.set(name, list)
                   }
-                  const entries = [...byName.entries()].sort((a, b) => b[1] - a[1])
+                  const entries = [...byNameRows.entries()]
+                    .map(([name, rows]) => ({
+                      name,
+                      rows,
+                      total: rows.reduce((sum, row) => sum + stageRowBilledRemainingAmount(row), 0),
+                    }))
+                    .sort((a, b) => b.total - a.total)
                   return (
                     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-                      <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 480, maxHeight: '80vh', overflow: 'auto' }}>
+                      <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 560, maxHeight: '80vh', overflow: 'auto' }}>
                         <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Billed Awaiting Payment by Job Name</h2>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                           <thead>
@@ -5416,12 +5480,107 @@ export default function Jobs() {
                             </tr>
                           </thead>
                           <tbody>
-                            {entries.map(([name, total]) => (
-                              <tr key={name} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                                <td style={{ padding: '0.5rem 0.75rem' }}>{name}</td>
-                                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 500 }}>${formatCurrency(total)}</td>
-                              </tr>
-                            ))}
+                            {entries.map(({ name, total, rows }, idx) => {
+                              const expanded = billedTotalByNameExpandedName === name
+                              const panelId = `total-by-name-detail-${idx}`
+                              const detailRows = sortStageRowsForTotalByNameDetail(rows)
+                              return (
+                                <Fragment key={name}>
+                                  <tr style={{ borderBottom: expanded ? 'none' : '1px solid #e5e7eb' }}>
+                                    <td style={{ padding: '0.5rem 0.75rem' }}>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setBilledTotalByNameExpandedName((prev) => (prev === name ? null : name))
+                                        }
+                                        aria-expanded={expanded}
+                                        aria-controls={panelId}
+                                        id={`total-by-name-toggle-${idx}`}
+                                        style={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '0.35rem',
+                                          padding: 0,
+                                          border: 'none',
+                                          background: 'none',
+                                          cursor: 'pointer',
+                                          color: '#111827',
+                                          fontSize: 'inherit',
+                                          textAlign: 'left',
+                                          maxWidth: '100%',
+                                        }}
+                                      >
+                                        <span aria-hidden style={{ fontSize: '0.65rem', color: '#6b7280' }}>
+                                          {expanded ? '\u25BC' : '\u25B6'}
+                                        </span>
+                                        {name}
+                                      </button>
+                                    </td>
+                                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 500 }}>${formatCurrency(total)}</td>
+                                  </tr>
+                                  {expanded && (
+                                    <tr>
+                                      <td
+                                        colSpan={2}
+                                        style={{
+                                          padding: 0,
+                                          borderBottom:
+                                            idx === entries.length - 1 ? 'none' : '1px solid #e5e7eb',
+                                          background: '#f9fafb',
+                                        }}
+                                      >
+                                        <div id={panelId} role="region" aria-labelledby={`total-by-name-toggle-${idx}`} style={{ padding: '0.5rem 0.75rem 0.75rem' }}>
+                                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                                            <thead>
+                                              <tr>
+                                                <th style={{ padding: '0.25rem 0.5rem', textAlign: 'left', fontWeight: 600, color: '#6b7280' }}>Line</th>
+                                                <th style={{ padding: '0.25rem 0.5rem', textAlign: 'right', fontWeight: 600, color: '#6b7280' }}>Amount</th>
+                                                <th style={{ padding: '0.25rem 0.5rem', textAlign: 'right', fontWeight: 600, color: '#6b7280' }}>Age</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {detailRows.map((r, detailIdx) => {
+                                                const amt = stageRowBilledRemainingAmount(r)
+                                                const days = stageRowBilledAgeDays(r)
+                                                const ageLabel = days == null ? '—' : `${days} day${days !== 1 ? 's' : ''}`
+                                                const rowKey = r.kind === 'job' ? `job-${r.job.id}` : `inv-${r.inv.id}`
+                                                const addr = (r.job.job_address ?? '').trim() || '—'
+                                                const isLastBillInGroup = detailIdx === detailRows.length - 1
+                                                return (
+                                                  <Fragment key={rowKey}>
+                                                    <tr style={{ borderBottom: 'none' }}>
+                                                      <td style={{ padding: '0.35rem 0.5rem' }}>{stageRowBilledLineLabel(r)}</td>
+                                                      <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>${formatCurrency(amt)}</td>
+                                                      <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', color: '#6b7280' }}>{ageLabel}</td>
+                                                    </tr>
+                                                    <tr
+                                                      style={{
+                                                        borderBottom: isLastBillInGroup ? 'none' : '1px solid #e5e7eb',
+                                                      }}
+                                                    >
+                                                      <td
+                                                        colSpan={3}
+                                                        style={{
+                                                          padding: '0 0.5rem 0.35rem',
+                                                          fontSize: '0.75rem',
+                                                          color: '#6b7280',
+                                                        }}
+                                                      >
+                                                        {addr}
+                                                      </td>
+                                                    </tr>
+                                                  </Fragment>
+                                                )
+                                              })}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  )}
+                                </Fragment>
+                              )
+                            })}
                           </tbody>
                         </table>
                         <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>

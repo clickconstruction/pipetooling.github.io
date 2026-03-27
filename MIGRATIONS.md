@@ -273,9 +273,9 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 #### March 30, 2026
 
 **`20260330150000_team_leader_assignments.sql`**
-- **Purpose**: Team lead assignments (leader → member) and scoped access to member clock sessions / crew sync tables
+- **Purpose**: Team leader assignments (leader → member) and scoped access to member clock sessions / crew sync tables
 - **Changes**: Create `team_leader_assignments` (unique leader/member pair, no self-pair); helpers `is_team_lead_for_member`, `is_team_lead_for_person_name`, `can_manage_team_leader_assignments`; RLS on assignments; extend `clock_sessions`, `people_hours`, `people_crew_jobs`, `people_crew_bids` policies for team-lead paths; publish `team_leader_assignments` to `supabase_realtime` when missing
-- **Impact**: Settings → Team lead assignments; Dashboard → My Team pending sessions for leaders; team leads without pay access can approve/reject member sessions
+- **Impact**: Settings → Team Hours Sharing; Dashboard → My Team pending sessions for leaders; team leads without pay access can approve/reject member sessions
 - **Category**: Hours / Clock Sessions / RLS
 
 **`20260330160000_team_leader_approve_revoke_rpcs.sql`**

@@ -617,7 +617,7 @@ when_to_read:
 
 ### Dashboard — My Team: “People you lead” roster
 
-- Team leads see a **sorted list** of people assigned to them (**Team lead assignments**), with display names from **`users`** (name, then email, then a short id suffix if the row is not visible under RLS).
+- Team leads see a **sorted list** of people assigned to them (**Team Hours Sharing** in Settings), with display names from **`users`** (name, then email, then a short id suffix if the row is not visible under RLS).
 - The list appears **above** the pending clock sessions description so it stays visible when there are **no** pending sessions in the selected date range.
 
 **Files**: [`src/components/DashboardMyTeamSection.tsx`](src/components/DashboardMyTeamSection.tsx)

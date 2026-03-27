@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -118,6 +118,14 @@ interface AssemblyType {
 
 const ROLES: UserRole[] = ['dev', 'master_technician', 'assistant', 'subcontractor', 'estimator', 'primary', 'superintendent']
 
+type GoalPickerUserRow = { id: string; name: string | null; email: string | null }
+
+/** Display label for Team Hours Sharing table (matches prior inline leader/member lookup). */
+function displayLabelForGoalPickerUser(userId: string, users: GoalPickerUserRow[]): string {
+  const u = users.find((x) => x.id === userId)
+  return u?.name?.trim() || u?.email || userId
+}
+
 const PAGE_ACCESS: Array<{ page: string; dev: string; master: string; assistant: string; sub: string; estimator: string; primary: string; superintendent: string }> = [
   { page: 'Dashboard', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'yes', estimator: 'yes', primary: 'yes', superintendent: 'yes' },
   { page: 'Customers', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', estimator: 'no', primary: 'no', superintendent: 'no' },
@@ -177,6 +185,74 @@ function timeSinceAgo(iso: string | null): string {
   if (day < 30) return `${day} day${day === 1 ? '' : 's'} ago`
   const mo = Math.floor(day / 30)
   return `${mo} mo ago`
+}
+
+function SettingsGroup({
+  id,
+  title,
+  description,
+  children,
+}: {
+  id: string
+  title: string
+  description?: string
+  children: React.ReactNode
+}) {
+  const headingId = `${id}-heading`
+  return (
+    <section id={id} aria-labelledby={headingId} style={{ marginBottom: '2rem', scrollMarginTop: '0.75rem' }}>
+      <h2 id={headingId} style={{ fontSize: '1.125rem', marginTop: 0, marginBottom: description ? '0.5rem' : '0.75rem', fontWeight: 600, color: '#111827' }}>
+        {title}
+      </h2>
+      {description ? (
+        <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem', marginTop: 0 }}>{description}</p>
+      ) : null}
+      {children}
+    </section>
+  )
+}
+
+function SettingsJumpNav({ groups }: { groups: { id: string; label: string }[] }) {
+  if (groups.length === 0) return null
+  return (
+    <nav aria-label="Settings sections" style={{ marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid #e5e7eb' }}>
+      <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.5rem' }}>Jump to</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 0.75rem', alignItems: 'center' }}>
+        {groups.map((g) => (
+          <a
+            key={g.id}
+            href={`#${g.id}`}
+            onClick={(e) => {
+              e.preventDefault()
+              document.getElementById(g.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }}
+            style={{ fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}
+          >
+            {g.label}
+          </a>
+        ))}
+      </div>
+    </nav>
+  )
+}
+
+function getSettingsJumpGroups(myRole: UserRole | null): { id: string; label: string }[] {
+  if (myRole == null) return []
+  const r = myRole
+  const groups: { id: string; label: string }[] = []
+  groups.push({ id: 'settings-account', label: 'Your account' })
+  groups.push({ id: 'settings-dashboard', label: 'Dashboard & alerts' })
+  if (r === 'dev') groups.push({ id: 'settings-people', label: 'People & accounts' })
+  if (r === 'dev') {
+    groups.push({ id: 'settings-data', label: 'Data & migration' })
+    groups.push({ id: 'settings-jobs', label: 'Jobs & dispatch' })
+    groups.push({ id: 'settings-advanced', label: 'Role & access' })
+  }
+  if (r === 'dev' || r === 'master_technician') groups.push({ id: 'settings-sharing', label: 'Sharing & access' })
+  if (r === 'dev' || r === 'estimator') groups.push({ id: 'settings-catalogs', label: 'Catalogs & trades' })
+  if (r === 'dev') groups.push({ id: 'settings-templates', label: 'Templates & testing' })
+  if (r !== 'subcontractor') groups.push({ id: 'settings-advanced-tools', label: 'Advanced' })
+  return groups
 }
 
 export default function Settings() {
@@ -352,6 +428,9 @@ export default function Settings() {
   const [teamAssignLeaderId, setTeamAssignLeaderId] = useState('')
   const [teamAssignMemberId, setTeamAssignMemberId] = useState('')
   const [teamAssignSaving, setTeamAssignSaving] = useState(false)
+  const [teamLeaderSortColumn, setTeamLeaderSortColumn] = useState<'leader' | 'member'>('leader')
+  const [teamLeaderSortDir, setTeamLeaderSortDir] = useState<'asc' | 'desc'>('asc')
+  const [teamLeaderAssignmentsSearchQuery, setTeamLeaderAssignmentsSearchQuery] = useState('')
   const [taskDispatchSectionOpen, setTaskDispatchSectionOpen] = useState(false)
   const [dashboardButtonsSectionOpen, setDashboardButtonsSectionOpen] = useState(false)
   const [dailyGoalsSectionOpen, setDailyGoalsSectionOpen] = useState(false)
@@ -4458,6 +4537,35 @@ export default function Settings() {
     closeInvite()
   }
 
+  const sortedTeamLeaderAssignments = useMemo(() => {
+    const rows = [...teamLeaderAssignments]
+    rows.sort((a, b) => {
+      const aKey =
+        teamLeaderSortColumn === 'leader'
+          ? displayLabelForGoalPickerUser(a.leader_user_id, goalPickerUsers)
+          : displayLabelForGoalPickerUser(a.member_user_id, goalPickerUsers)
+      const bKey =
+        teamLeaderSortColumn === 'leader'
+          ? displayLabelForGoalPickerUser(b.leader_user_id, goalPickerUsers)
+          : displayLabelForGoalPickerUser(b.member_user_id, goalPickerUsers)
+      const base = aKey.localeCompare(bKey, undefined, { sensitivity: 'base' })
+      return teamLeaderSortDir === 'asc' ? base : -base
+    })
+    return rows
+  }, [teamLeaderAssignments, goalPickerUsers, teamLeaderSortColumn, teamLeaderSortDir])
+
+  const filteredTeamLeaderAssignments = useMemo(() => {
+    const q = teamLeaderAssignmentsSearchQuery.trim().toLowerCase()
+    if (!q) return sortedTeamLeaderAssignments
+    return sortedTeamLeaderAssignments.filter((row) => {
+      const leaderLabel = displayLabelForGoalPickerUser(row.leader_user_id, goalPickerUsers).toLowerCase()
+      const memberLabel = displayLabelForGoalPickerUser(row.member_user_id, goalPickerUsers).toLowerCase()
+      return leaderLabel.includes(q) || memberLabel.includes(q)
+    })
+  }, [sortedTeamLeaderAssignments, goalPickerUsers, teamLeaderAssignmentsSearchQuery])
+
+  const settingsJumpGroups = useMemo(() => getSettingsJumpGroups(myRole), [myRole])
+
   if (loading) return <p>Loading…</p>
   if (error && !myRole) return <p style={{ color: '#b91c1c' }}>{error}</p>
 
@@ -4519,86 +4627,11 @@ export default function Settings() {
         </div>
       </div>
 
-      {showMyReports && (
-        <div style={{ marginBottom: '2rem', marginTop: 0 }}>
-          <button
-            type="button"
-            onClick={() => setMyReportsExpanded((prev) => !prev)}
-            aria-expanded={myReportsExpanded}
-            style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '0.5rem', marginBottom: myReportsExpanded ? '0.5rem' : 0 }}
-          >
-            <h2 style={{ fontSize: '1.125rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span aria-hidden>{myReportsExpanded ? '\u25BC' : '\u25B6'}</span>
-              My Reports
-            </h2>
-            {myReportsExpanded && !myReportsLoading && myReports.length > 1 && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); setMyReportsModalOpen(true) }}
-                style={{ background: 'none', border: 'none', padding: 0, fontSize: '0.875rem', color: '#2563eb', cursor: 'pointer' }}
-              >
-                Show more →
-              </button>
-            )}
-          </button>
-          {myReportsExpanded && (
-            <>
-              {myReportsLoading ? (
-                <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading reports…</p>
-              ) : myReports.length > 0 ? (
-                (() => {
-                  const r = myReports[0]!
-                  const editWindowMs = myReportsReportEditWindowDays * 24 * 60 * 60 * 1000
-                  const isWithinEditWindow = new Date(r.created_at).getTime() >= Date.now() - editWindowMs
-                  return (
-                    <div
-                      style={{
-                        padding: '0.5rem 0.75rem',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: 8,
-                        background: '#fff',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                      }}
-                    >
-                      <div
-                        style={{ flex: 1, minWidth: 0 }}
-                        onClick={() => {
-                          setSelectedReport({ id: r.id, template_name: r.template_name, job_display_name: r.job_display_name, created_at: r.created_at, created_by_name: r.created_by_name, field_values: r.field_values, reported_at_lat: r.reported_at_lat ?? null, reported_at_lng: r.reported_at_lng ?? null })
-                          setViewReportModalOpen(true)
-                        }}
-                      >
-                        <span style={{ fontWeight: 500 }}>{r.job_display_name || 'Unknown job'}</span>
-                        <span style={{ color: '#6b7280', fontSize: '0.875rem', marginLeft: '0.5rem' }}>· {r.template_name}</span>
-                        <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                          {new Date(r.created_at).toLocaleString()}
-                        </div>
-                      </div>
-                      {isWithinEditWindow && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setReportForEdit({ id: r.id, template_id: r.template_id, template_name: r.template_name, job_display_name: r.job_display_name, created_at: r.created_at, field_values: r.field_values })
-                            setEditReportModalOpen(true)
-                          }}
-                          style={{ flexShrink: 0, padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                        >
-                          Edit
-                        </button>
-                      )}
-                    </div>
-                  )
-                })()
-              ) : (
-                <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No reports yet. Create one from a job.</p>
-              )}
-            </>
-          )}
-        </div>
-      )}
+      <SettingsJumpNav groups={settingsJumpGroups} />
+
+      <SettingsGroup id="settings-account" title="Your account">
+
+
 
       <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: '#f9fafb' }}>
         <h2 style={{ fontSize: '1rem', marginTop: 0, marginBottom: '0.75rem', fontWeight: 600 }}>My Profile</h2>
@@ -4661,34 +4694,296 @@ export default function Settings() {
         </form>
       </div>
 
+      <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+        <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Push Notifications</h2>
+        <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+          Get browser notifications when a workflow stage is completed and it&apos;s your turn to pick up the task.
+        </p>
+        {!pushNotifications.supported && (
+          <p style={{ color: '#92400e', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
+            Push notifications require HTTPS (or localhost) and a supporting browser. Try the deployed app or use Chrome/Firefox on localhost.
+          </p>
+        )}
+        {pushNotifications.supported && pushNotifications.error && (
+          <p style={{ color: '#b91c1c', marginBottom: '0.75rem', fontSize: '0.875rem' }}>{pushNotifications.error}</p>
+        )}
+        {pushNotifications.supported && !pushNotifications.vapidConfigured && (
+          <p style={{ color: '#92400e', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
+            Push notifications are not configured. Set VITE_VAPID_PUBLIC_KEY in your environment.
+          </p>
+        )}
+        {pushNotifications.supported && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              {pushNotifications.isSubscribed ? (
+                <>
+                  <span style={{ fontSize: '0.875rem', color: '#059669' }}>Enabled</span>
+                  <button
+                    type="button"
+                    onClick={() => pushNotifications.disable()}
+                    disabled={pushNotifications.loading}
+                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}
+                  >
+                    {pushNotifications.loading ? 'Disabling…' : 'Disable'}
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => pushNotifications.enable()}
+                  disabled={pushNotifications.loading || !pushNotifications.vapidConfigured}
+                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#1e40af', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                >
+                  {pushNotifications.loading ? 'Enabling…' : 'Enable push notifications'}
+                </button>
+              )}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={handleTestNotification}
+                disabled={!pushNotifications.isSubscribed || testNotificationSending || !pushNotifications.vapidConfigured}
+                style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', background: 'white' }}
+              >
+                {testNotificationSending ? 'Sending…' : 'Test notification'}
+              </button>
+              {!pushNotifications.isSubscribed && pushNotifications.vapidConfigured && (
+                <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>Enable push notifications first to test</span>
+              )}
+            </div>
+            <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+              Allow location for location-based reminders
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+              {locationPermission === 'granted' ? (
+                <span style={{ fontSize: '0.875rem', color: '#059669' }}>Location based reminders enabled</span>
+              ) : locationPermission === 'denied' ? (
+                <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                  Location based reminders disabled — enable in browser settings to allow location based reminders
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleEnableLocation}
+                  disabled={locationLoading}
+                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', background: 'white' }}
+                >
+                  {locationLoading ? 'Requesting…' : 'Enable Location based Reminders'}
+                </button>
+              )}
+            </div>
+            {testNotificationSuccess && (
+              <p style={{ color: '#059669', margin: 0, fontSize: '0.875rem' }}>{testNotificationSuccess}</p>
+            )}
+            {testNotificationError && (
+              <p style={{ color: '#b91c1c', margin: 0, fontSize: '0.875rem' }}>{testNotificationError}</p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Inline Change Password form - toggled from header button */}
+      {passwordChangeOpen && (
+        <form onSubmit={handlePasswordChange} style={{ marginBottom: '2rem', padding: '1rem 0' }}>
+            <div style={{ marginBottom: '1rem' }}>
+              <PasswordInput
+                id="current-password"
+                label="Current password *"
+                value={currentPassword}
+                onChange={(e) => {
+                  setCurrentPassword(e.target.value)
+                  setPasswordChangeError(null)
+                }}
+                required
+                autoComplete="current-password"
+                style={{ width: '100%', maxWidth: 400 }}
+              />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <PasswordInput
+                id="new-password"
+                label="New password *"
+                value={newPassword}
+                onChange={(e) => {
+                  setNewPassword(e.target.value)
+                  setPasswordChangeError(null)
+                }}
+                required
+                autoComplete="new-password"
+                minLength={6}
+                style={{ width: '100%', maxWidth: 400 }}
+              />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <PasswordInput
+                id="confirm-password"
+                label="Confirm new password *"
+                value={confirmPassword}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value)
+                  setPasswordChangeError(null)
+                }}
+                required
+                autoComplete="new-password"
+                minLength={6}
+                style={{ width: '100%', maxWidth: 400 }}
+              />
+            </div>
+            {passwordChangeError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{passwordChangeError}</p>}
+            {passwordChangeSuccess && <p style={{ color: '#059669', marginBottom: '1rem' }}>Password changed successfully!</p>}
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button type="submit" disabled={passwordChangeSubmitting} style={{ padding: '0.5rem 1rem' }}>
+                {passwordChangeSubmitting ? 'Changing…' : 'Change password'}
+              </button>
+              <button type="button" onClick={closePasswordChange} disabled={passwordChangeSubmitting} style={{ padding: '0.5rem 1rem' }}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+
+      </SettingsGroup>
+
+      <SettingsGroup id="settings-dashboard" title="Dashboard & alerts">
+
+      {showMyReports && (
+        <div
+          style={{
+            marginBottom: '2rem',
+            marginTop: 0,
+            border: '1px solid #e5e7eb',
+            borderRadius: 8,
+            background: '#f9fafb',
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setMyReportsExpanded((prev) => !prev)}
+            aria-expanded={myReportsExpanded}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '0.5rem',
+              flexWrap: 'wrap',
+              margin: 0,
+              padding: '1rem',
+              width: '100%',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '1rem',
+              fontWeight: 600,
+              textAlign: 'left',
+            }}
+          >
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+              <span style={{ fontSize: '0.75rem' }} aria-hidden>{myReportsExpanded ? '▼' : '▶'}</span>
+              My Reports
+            </span>
+            {myReportsExpanded && !myReportsLoading && myReports.length > 1 && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setMyReportsModalOpen(true) }}
+                style={{ background: 'none', border: 'none', padding: 0, fontSize: '0.875rem', color: '#2563eb', cursor: 'pointer' }}
+              >
+                Show more →
+              </button>
+            )}
+          </button>
+          {myReportsExpanded && (
+            <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+              {myReportsLoading ? (
+                <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>Loading reports…</p>
+              ) : myReports.length > 0 ? (
+                (() => {
+                  const r = myReports[0]!
+                  const editWindowMs = myReportsReportEditWindowDays * 24 * 60 * 60 * 1000
+                  const isWithinEditWindow = new Date(r.created_at).getTime() >= Date.now() - editWindowMs
+                  return (
+                    <div
+                      style={{
+                        padding: '0.5rem 0.75rem',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: 8,
+                        background: '#fff',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                      }}
+                    >
+                      <div
+                        style={{ flex: 1, minWidth: 0 }}
+                        onClick={() => {
+                          setSelectedReport({ id: r.id, template_name: r.template_name, job_display_name: r.job_display_name, created_at: r.created_at, created_by_name: r.created_by_name, field_values: r.field_values, reported_at_lat: r.reported_at_lat ?? null, reported_at_lng: r.reported_at_lng ?? null })
+                          setViewReportModalOpen(true)
+                        }}
+                      >
+                        <span style={{ fontWeight: 500 }}>{r.job_display_name || 'Unknown job'}</span>
+                        <span style={{ color: '#6b7280', fontSize: '0.875rem', marginLeft: '0.5rem' }}>· {r.template_name}</span>
+                        <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                          {new Date(r.created_at).toLocaleString()}
+                        </div>
+                      </div>
+                      {isWithinEditWindow && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setReportForEdit({ id: r.id, template_id: r.template_id, template_name: r.template_name, job_display_name: r.job_display_name, created_at: r.created_at, field_values: r.field_values })
+                            setEditReportModalOpen(true)
+                          }}
+                          style={{ flexShrink: 0, padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                        >
+                          Edit
+                        </button>
+                      )}
+                    </div>
+                  )
+                })()
+              ) : (
+                <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No reports yet. Create one from a job.</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {hasNotificationHistory === true && (
-      <div style={{ marginBottom: '2rem' }}>
+      <div
+        style={{
+          marginBottom: '2rem',
+          border: '1px solid #e5e7eb',
+          borderRadius: 8,
+          background: '#f9fafb',
+        }}
+      >
         <button
           type="button"
           style={{
-            fontSize: '1.125rem',
-            margin: 0,
-            marginBottom: notificationHistoryOpen ? '0.75rem' : 0,
-            padding: 0,
-            cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '0.5rem',
+            gap: '0.35rem',
+            margin: 0,
+            padding: '1rem',
+            width: '100%',
             background: 'none',
             border: 'none',
+            cursor: 'pointer',
+            fontSize: '1rem',
+            fontWeight: 600,
             textAlign: 'left',
-            width: '100%',
-            font: 'inherit',
-            color: 'inherit',
           }}
           onClick={() => setNotificationHistoryOpen((o) => !o)}
           aria-expanded={notificationHistoryOpen}
           aria-controls="notification-history-content"
         >
-          {notificationHistoryOpen ? '▼' : '▶'} My Notification History
+          <span style={{ fontSize: '0.75rem' }} aria-hidden>{notificationHistoryOpen ? '▼' : '▶'}</span>
+          My Notification History
         </button>
         {notificationHistoryOpen && (
-          <div id="notification-history-content" style={{ padding: '1rem 0 0 0' }}>
+          <div id="notification-history-content" style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
             {notificationHistoryLoading ? (
               <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
             ) : notificationHistoryError ? (
@@ -4750,33 +5045,39 @@ export default function Settings() {
       )}
 
       {authUser?.id && (
-        <div style={{ marginBottom: '2rem' }}>
+        <div
+          style={{
+            marginBottom: '2rem',
+            border: '1px solid #e5e7eb',
+            borderRadius: 8,
+            background: '#f9fafb',
+          }}
+        >
           <button
             type="button"
             style={{
-              fontSize: '1.125rem',
-              margin: 0,
-              marginBottom: mutedTasksOpen ? '0.75rem' : 0,
-              padding: 0,
-              cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem',
+              gap: '0.35rem',
+              margin: 0,
+              padding: '1rem',
+              width: '100%',
               background: 'none',
               border: 'none',
+              cursor: 'pointer',
+              fontSize: '1rem',
+              fontWeight: 600,
               textAlign: 'left',
-              width: '100%',
-              font: 'inherit',
-              color: 'inherit',
             }}
             onClick={() => setMutedTasksOpen((o) => !o)}
             aria-expanded={mutedTasksOpen}
             aria-controls="muted-tasks-content"
           >
-            {mutedTasksOpen ? '▼' : '▶'} Muted Tasks
+            <span style={{ fontSize: '0.75rem' }} aria-hidden>{mutedTasksOpen ? '▼' : '▶'}</span>
+            Muted Tasks
           </button>
           {mutedTasksOpen && (
-            <div id="muted-tasks-content" style={{ padding: '1rem 0 0 0' }}>
+            <div id="muted-tasks-content" style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
               {mutedTasksLoading ? (
                 <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
               ) : mutedTasks.length === 0 ? (
@@ -5078,12 +5379,12 @@ export default function Settings() {
             }}
           >
             <span style={{ fontSize: '0.75rem' }}>{teamLeadAssignmentsSectionOpen ? '▼' : '▶'}</span>
-            Team lead assignments
+            Team Hours Sharing
           </button>
           {teamLeadAssignmentsSectionOpen && (
             <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
           <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem', marginTop: 0 }}>
-            Link a leader to a member so the leader can approve that member&apos;s hours from Dashboard → My Team. Any account role can be leader or member. A member can have more than one leader.
+            Link a leader to a member for team hours sharing—the leader can approve that member&apos;s hours from Dashboard → My Team. Any account role can be leader or member. A member can have more than one leader.
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end', marginBottom: '1rem' }}>
             <div>
@@ -5171,25 +5472,131 @@ export default function Settings() {
           {teamLeaderAssignments.length === 0 ? (
             <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>No assignments yet.</p>
           ) : (
+            <React.Fragment>
+              <div style={{ marginBottom: '0.75rem' }}>
+                <input
+                  type="search"
+                  value={teamLeaderAssignmentsSearchQuery}
+                  onChange={(e) => setTeamLeaderAssignmentsSearchQuery(e.target.value)}
+                  placeholder="Search by leader or member…"
+                  aria-label="Search team hours assignments by leader or member"
+                  style={{
+                    width: '100%',
+                    maxWidth: 420,
+                    padding: '0.5rem 0.75rem',
+                    fontSize: '0.875rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: 4,
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+              {filteredTeamLeaderAssignments.length === 0 ? (
+                <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>No assignments match your search.</p>
+              ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                 <thead>
                   <tr style={{ background: '#f3f4f6', textAlign: 'left' }}>
-                    <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>Leader</th>
-                    <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>Member</th>
-                    <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb', width: 100 }} />
+                    <th
+                      scope="col"
+                      aria-sort={
+                        teamLeaderSortColumn === 'leader'
+                          ? teamLeaderSortDir === 'asc'
+                            ? 'ascending'
+                            : 'descending'
+                          : 'none'
+                      }
+                      style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (teamLeaderSortColumn === 'leader') {
+                            setTeamLeaderSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+                          } else {
+                            setTeamLeaderSortColumn('leader')
+                            setTeamLeaderSortDir('asc')
+                          }
+                        }}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          width: '100%',
+                          padding: 0,
+                          border: 'none',
+                          background: 'none',
+                          cursor: 'pointer',
+                          fontFamily: 'inherit',
+                          fontSize: 'inherit',
+                          fontStyle: 'inherit',
+                          lineHeight: 'inherit',
+                          fontWeight: 600,
+                          textAlign: 'left',
+                        }}
+                      >
+                        Leader
+                        {teamLeaderSortColumn === 'leader' && (
+                          <span aria-hidden style={{ fontSize: '0.7rem', color: '#6b7280' }}>
+                            {teamLeaderSortDir === 'asc' ? '\u25B2' : '\u25BC'}
+                          </span>
+                        )}
+                      </button>
+                    </th>
+                    <th
+                      scope="col"
+                      aria-sort={
+                        teamLeaderSortColumn === 'member'
+                          ? teamLeaderSortDir === 'asc'
+                            ? 'ascending'
+                            : 'descending'
+                          : 'none'
+                      }
+                      style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (teamLeaderSortColumn === 'member') {
+                            setTeamLeaderSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+                          } else {
+                            setTeamLeaderSortColumn('member')
+                            setTeamLeaderSortDir('asc')
+                          }
+                        }}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          width: '100%',
+                          padding: 0,
+                          border: 'none',
+                          background: 'none',
+                          cursor: 'pointer',
+                          fontFamily: 'inherit',
+                          fontSize: 'inherit',
+                          fontStyle: 'inherit',
+                          lineHeight: 'inherit',
+                          fontWeight: 600,
+                          textAlign: 'left',
+                        }}
+                      >
+                        Member
+                        {teamLeaderSortColumn === 'member' && (
+                          <span aria-hidden style={{ fontSize: '0.7rem', color: '#6b7280' }}>
+                            {teamLeaderSortDir === 'asc' ? '\u25B2' : '\u25BC'}
+                          </span>
+                        )}
+                      </button>
+                    </th>
+                    <th scope="col" style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb', width: 100 }} />
                   </tr>
                 </thead>
                 <tbody>
-                  {teamLeaderAssignments.map((row) => {
-                    const leaderLabel =
-                      goalPickerUsers.find((u) => u.id === row.leader_user_id)?.name?.trim() ||
-                      goalPickerUsers.find((u) => u.id === row.leader_user_id)?.email ||
-                      row.leader_user_id
-                    const memberLabel =
-                      goalPickerUsers.find((u) => u.id === row.member_user_id)?.name?.trim() ||
-                      goalPickerUsers.find((u) => u.id === row.member_user_id)?.email ||
-                      row.member_user_id
+                  {filteredTeamLeaderAssignments.map((row) => {
+                    const leaderLabel = displayLabelForGoalPickerUser(row.leader_user_id, goalPickerUsers)
+                    const memberLabel = displayLabelForGoalPickerUser(row.member_user_id, goalPickerUsers)
                     return (
                       <tr key={row.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                         <td style={{ padding: '0.5rem 0.75rem' }}>{leaderLabel}</td>
@@ -5232,145 +5639,13 @@ export default function Settings() {
                 </tbody>
               </table>
             </div>
+              )}
+            </React.Fragment>
           )}
             </div>
           )}
         </div>
       )}
-
-      {(myRole === 'master_technician' || myRole === 'dev') && (
-        <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: '#f9fafb' }}>
-          <div style={{ marginBottom: '0.75rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>
-            PipeTooling helps Masters better manage Projects with Subs.
-            <br />
-            Three types of People: Masters, Assistants, Subs
-          </div>
-          <h2 style={{ fontSize: '1rem', marginTop: 0, marginBottom: '0.75rem', fontWeight: 600 }}>How It Works</h2>
-          <ol style={{ margin: 0, paddingLeft: '1.5rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>
-            <li style={{ marginBottom: '0.5rem' }}>Master accounts have Customers</li>
-            <li style={{ marginBottom: '0.5rem' }}>Customers can have Projects</li>
-            <li style={{ marginBottom: '0.5rem' }}>Masters assign People to Project Stages</li>
-            <li>When People complete Stages, Masters are updated</li>
-          </ol>
-          <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: '#374151' }}>
-            <strong>Sharing</strong>:
-            <ul style={{ margin: '0.25rem 0 0 1.25rem', padding: 0, listStyle: 'disc' }}>
-              <li style={{ marginBottom: '0.5rem' }}>
-                Masters can choose to adopt assistants in Settings
-                <div style={{ marginLeft: '1.25rem', marginTop: '0.25rem' }}>
-                  → they can manage stages and see private notes but not financial totals
-                </div>
-              </li>
-              <li>
-                Masters can choose to share with other Masters
-                <div style={{ marginLeft: '1.25rem', marginTop: '0.25rem' }}>
-                  → they have the same permissions as assistants
-                </div>
-              </li>
-            </ul>
-          </div>
-          <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: '#374151' }}>
-            <strong>Subcontractors</strong>:
-            <ul style={{ margin: '0.25rem 0 0 1.25rem', padding: 0, listStyle: 'disc' }}>
-              <li>Only see a stage when it is assigned to them</li>
-              <li>Can only Start and Complete their stages</li>
-              <li>Cannot see private notes or financials</li>
-              <li>Cannot add, edit, delete, or assign stages</li>
-            </ul>
-            <div style={{ marginTop: '0.5rem' }}>
-              When a Master or Assistant selects to Notify when a stage updates, that stage will show up in their Subscribed Stages on the Dashboard.
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
-        <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Push Notifications</h2>
-        <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
-          Get browser notifications when a workflow stage is completed and it&apos;s your turn to pick up the task.
-        </p>
-        {!pushNotifications.supported && (
-          <p style={{ color: '#92400e', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
-            Push notifications require HTTPS (or localhost) and a supporting browser. Try the deployed app or use Chrome/Firefox on localhost.
-          </p>
-        )}
-        {pushNotifications.supported && pushNotifications.error && (
-          <p style={{ color: '#b91c1c', marginBottom: '0.75rem', fontSize: '0.875rem' }}>{pushNotifications.error}</p>
-        )}
-        {pushNotifications.supported && !pushNotifications.vapidConfigured && (
-          <p style={{ color: '#92400e', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
-            Push notifications are not configured. Set VITE_VAPID_PUBLIC_KEY in your environment.
-          </p>
-        )}
-        {pushNotifications.supported && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              {pushNotifications.isSubscribed ? (
-                <>
-                  <span style={{ fontSize: '0.875rem', color: '#059669' }}>Enabled</span>
-                  <button
-                    type="button"
-                    onClick={() => pushNotifications.disable()}
-                    disabled={pushNotifications.loading}
-                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}
-                  >
-                    {pushNotifications.loading ? 'Disabling…' : 'Disable'}
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => pushNotifications.enable()}
-                  disabled={pushNotifications.loading || !pushNotifications.vapidConfigured}
-                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#1e40af', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                >
-                  {pushNotifications.loading ? 'Enabling…' : 'Enable push notifications'}
-                </button>
-              )}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={handleTestNotification}
-                disabled={!pushNotifications.isSubscribed || testNotificationSending || !pushNotifications.vapidConfigured}
-                style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', background: 'white' }}
-              >
-                {testNotificationSending ? 'Sending…' : 'Test notification'}
-              </button>
-              {!pushNotifications.isSubscribed && pushNotifications.vapidConfigured && (
-                <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>Enable push notifications first to test</span>
-              )}
-            </div>
-            <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.8125rem', color: '#6b7280' }}>
-              Allow location for location-based reminders
-            </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-              {locationPermission === 'granted' ? (
-                <span style={{ fontSize: '0.875rem', color: '#059669' }}>Location based reminders enabled</span>
-              ) : locationPermission === 'denied' ? (
-                <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                  Location based reminders disabled — enable in browser settings to allow location based reminders
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleEnableLocation}
-                  disabled={locationLoading}
-                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', background: 'white' }}
-                >
-                  {locationLoading ? 'Requesting…' : 'Enable Location based Reminders'}
-                </button>
-              )}
-            </div>
-            {testNotificationSuccess && (
-              <p style={{ color: '#059669', margin: 0, fontSize: '0.875rem' }}>{testNotificationSuccess}</p>
-            )}
-            {testNotificationError && (
-              <p style={{ color: '#b91c1c', margin: 0, fontSize: '0.875rem' }}>{testNotificationError}</p>
-            )}
-          </div>
-        )}
-      </div>
 
       {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
         <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
@@ -5430,416 +5705,560 @@ export default function Settings() {
         </div>
       )}
 
-      {myRole === 'dev' && (
-        <>
-          <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Data backup (dev)</h2>
-          <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
-            Export projects, materials, bids, people & access, jobs, checklist, reports, prospects, or settings & reference as JSON for backup. Use &quot;Export all backup&quot; to download everything in one file. Files respect RLS. Export may take several minutes for large datasets and uses significant database resources.
-          </p>
-          {exportError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{exportError}</p>}
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
-            <button
-              type="button"
-              onClick={exportProjectsBackup}
-              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading || exportPeopleLoading || exportJobsLoading || exportChecklistLoading || exportReportsLoading || exportProspectsLoading || exportSettingsLoading || exportAllLoading}
-              style={{ padding: '0.5rem 1rem', background: '#1e40af', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-            >
-              {exportProjectsLoading ? 'Exporting…' : 'Export projects backup'}
-            </button>
-            <button
-              type="button"
-              onClick={exportMaterialsBackup}
-              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading || exportPeopleLoading || exportJobsLoading || exportChecklistLoading || exportReportsLoading || exportProspectsLoading || exportSettingsLoading || exportAllLoading}
-              style={{ padding: '0.5rem 1rem', background: '#065f46', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-            >
-              {exportMaterialsLoading ? 'Exporting…' : 'Export materials backup'}
-            </button>
-            <button
-              type="button"
-              onClick={exportBidsBackup}
-              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading || exportPeopleLoading || exportJobsLoading || exportChecklistLoading || exportReportsLoading || exportProspectsLoading || exportSettingsLoading || exportAllLoading}
-              style={{ padding: '0.5rem 1rem', background: '#7c2d12', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-            >
-              {exportBidsLoading ? 'Exporting…' : 'Export bids backup'}
-            </button>
-            <button
-              type="button"
-              onClick={exportPeopleBackup}
-              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading || exportPeopleLoading || exportJobsLoading || exportChecklistLoading || exportReportsLoading || exportProspectsLoading || exportSettingsLoading || exportAllLoading}
-              style={{ padding: '0.5rem 1rem', background: '#4c1d95', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-            >
-              {exportPeopleLoading ? 'Exporting…' : 'Export people backup'}
-            </button>
-            <button
-              type="button"
-              onClick={exportJobsBackup}
-              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading || exportPeopleLoading || exportJobsLoading || exportChecklistLoading || exportReportsLoading || exportProspectsLoading || exportSettingsLoading || exportAllLoading}
-              style={{ padding: '0.5rem 1rem', background: '#0e7490', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-            >
-              {exportJobsLoading ? 'Exporting…' : 'Export jobs backup'}
-            </button>
-            <button
-              type="button"
-              onClick={exportChecklistBackup}
-              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading || exportPeopleLoading || exportJobsLoading || exportChecklistLoading || exportReportsLoading || exportProspectsLoading || exportSettingsLoading || exportAllLoading}
-              style={{ padding: '0.5rem 1rem', background: '#b45309', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-            >
-              {exportChecklistLoading ? 'Exporting…' : 'Export checklist backup'}
-            </button>
-            <button
-              type="button"
-              onClick={exportReportsBackup}
-              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading || exportPeopleLoading || exportJobsLoading || exportChecklistLoading || exportReportsLoading || exportProspectsLoading || exportSettingsLoading || exportAllLoading}
-              style={{ padding: '0.5rem 1rem', background: '#1e3a8a', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-            >
-              {exportReportsLoading ? 'Exporting…' : 'Export reports backup'}
-            </button>
-            <button
-              type="button"
-              onClick={exportProspectsBackup}
-              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading || exportPeopleLoading || exportJobsLoading || exportChecklistLoading || exportReportsLoading || exportProspectsLoading || exportSettingsLoading || exportAllLoading}
-              style={{ padding: '0.5rem 1rem', background: '#6b21a8', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-            >
-              {exportProspectsLoading ? 'Exporting…' : 'Export prospects backup'}
-            </button>
-            <button
-              type="button"
-              onClick={exportSettingsBackup}
-              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading || exportPeopleLoading || exportJobsLoading || exportChecklistLoading || exportReportsLoading || exportProspectsLoading || exportSettingsLoading || exportAllLoading}
-              style={{ padding: '0.5rem 1rem', background: '#374151', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-            >
-              {exportSettingsLoading ? 'Exporting…' : 'Export settings backup'}
-            </button>
-            <button
-              type="button"
-              onClick={exportAllBackup}
-              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading || exportPeopleLoading || exportJobsLoading || exportChecklistLoading || exportReportsLoading || exportProspectsLoading || exportSettingsLoading || exportAllLoading}
-              style={{ padding: '0.5rem 1rem', background: '#111827', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}
-            >
-              {exportAllLoading ? 'Exporting…' : 'Export all backup'}
-            </button>
-          </div>
-
-          <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
-            <button
-              type="button"
-              aria-expanded={defaultLaborRateSectionOpen}
-              onClick={() => setDefaultLaborRateSectionOpen((prev) => !prev)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                margin: 0,
-                padding: '1rem',
-                width: '100%',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '1rem',
-                fontWeight: 600,
-                textAlign: 'left',
-              }}
-            >
-              <span style={{ fontSize: '0.75rem' }}>{defaultLaborRateSectionOpen ? '▼' : '▶'}</span>
-              Default Labor Rate (dev)
-            </button>
-            {defaultLaborRateSectionOpen && (
-              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-                <p style={{ marginBottom: '1rem', marginTop: 0, color: '#6b7280', fontSize: '0.875rem' }}>
-                  Set the default Labor rate ($/hr) used when adding a new labor job in Jobs → + Labor. Leave blank for no default.
+      {myRole != null && (
+        <div style={{ marginBottom: '2rem' }}>
+          <button
+            type="button"
+            onClick={() => setFinancialPinsSectionOpen((prev) => !prev)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              margin: 0,
+              padding: '1rem',
+              width: '100%',
+              background: 'none',
+              border: '1px solid #e5e7eb',
+              borderRadius: 8,
+              cursor: 'pointer',
+              fontSize: '1rem',
+              fontWeight: 600,
+              textAlign: 'left',
+            }}
+          >
+            <span style={{ fontSize: '0.75rem' }}>{financialPinsSectionOpen ? '▼' : '▶'}</span>
+            Dashboard Page Pins
+          </button>
+          {financialPinsSectionOpen && (
+            <div style={{ padding: '1rem 0 0 0', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+              <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+                <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Page pins</h2>
+                <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+                  Pinned pages appear as shortcut links at the top of your Dashboard.
                 </p>
-                <form onSubmit={saveDefaultLaborRate} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                  <label htmlFor="default-labor-rate" style={{ fontWeight: 500 }}>Labor rate ($/hr)</label>
-                  <input
-                    id="default-labor-rate"
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    value={defaultLaborRate}
-                    onChange={(e) => setDefaultLaborRate(e.target.value)}
-                    placeholder="e.g. 75"
-                    style={{ width: 120, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                  />
-                  <button
-                    type="submit"
-                    disabled={defaultLaborRateSaving}
-                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: defaultLaborRateSaving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
-                  >
-                    {defaultLaborRateSaving ? 'Saving…' : 'Save'}
-                  </button>
-                </form>
-              </div>
-            )}
-          </div>
-
-          <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
-            <button
-              type="button"
-              onClick={() => setProspectCopySectionOpen((prev) => !prev)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                margin: 0,
-                padding: '1rem',
-                width: '100%',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '1rem',
-                fontWeight: 600,
-                textAlign: 'left',
-              }}
-            >
-              <span style={{ fontSize: '0.75rem' }}>{prospectCopySectionOpen ? '▼' : '▶'}</span>
-              Prospect copy templates (dev)
-            </button>
-            {prospectCopySectionOpen && (
-              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-                <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
-                  Default text for the three copy buttons in Prospects → Follow Up. Users can override with their own text. Placeholders: [User name], [user email], [user phone number], [company name], [prospect phone number], [prospect contact name], [prospect last contact], [prospect last successful contact] (and _______ for Phone call / Just checking in).
-                </p>
-                <form onSubmit={saveProspectCopyDefaults}>
-                  <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>No Response Email</label>
-                    <input
-                      type="text"
-                      value={prospectCopyNoResponseSubject}
-                      onChange={(e) => setProspectCopyNoResponseSubject(e.target.value)}
-                      placeholder="Subject (e.g. Follow up - [company name])"
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '0.5rem' }}
-                    />
-                    <textarea
-                      value={prospectCopyNoResponse}
-                      onChange={(e) => setProspectCopyNoResponse(e.target.value)}
-                      rows={6}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box' }}
-                    />
-                  </div>
-                  <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Phone call Follow up Email</label>
-                    <input
-                      type="text"
-                      value={prospectCopyPhoneFollowupSubject}
-                      onChange={(e) => setProspectCopyPhoneFollowupSubject(e.target.value)}
-                      placeholder="Subject (e.g. Re: [company name])"
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '0.5rem' }}
-                    />
-                    <textarea
-                      value={prospectCopyPhoneFollowup}
-                      onChange={(e) => setProspectCopyPhoneFollowup(e.target.value)}
-                      rows={6}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box' }}
-                    />
-                  </div>
-                  <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Just checking in Email</label>
-                    <input
-                      type="text"
-                      value={prospectCopyJustCheckingInSubject}
-                      onChange={(e) => setProspectCopyJustCheckingInSubject(e.target.value)}
-                      placeholder="Subject (e.g. Re: [company name])"
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '0.5rem' }}
-                    />
-                    <textarea
-                      value={prospectCopyJustCheckingIn}
-                      onChange={(e) => setProspectCopyJustCheckingIn(e.target.value)}
-                      rows={6}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box' }}
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={prospectCopySaving}
-                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: prospectCopySaving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
-                  >
-                    {prospectCopySaving ? 'Saving…' : 'Save'}
-                  </button>
-                </form>
-              </div>
-            )}
-          </div>
-
-          <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
-            <button
-              type="button"
-              onClick={() => setRoleVisibilityExpanded((prev) => !prev)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                margin: 0,
-                padding: '1rem',
-                width: '100%',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '1rem',
-                fontWeight: 600,
-                textAlign: 'left',
-              }}
-            >
-              <span style={{ fontSize: '0.75rem' }}>{roleVisibilityExpanded ? '▼' : '▶'}</span>
-              Role visibility (what each role can see)
-            </button>
-            {roleVisibilityExpanded && (
-              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-                <p style={{ marginBottom: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
-                  Page access by role. See ACCESS_CONTROL.md for full feature-level permissions.
-                </p>
-                <div style={{ overflowX: 'auto', marginBottom: '0.75rem' }}>
-                  <table style={{ borderCollapse: 'collapse', fontSize: '0.875rem', minWidth: 520 }}>
-                    <thead>
-                      <tr>
-                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'left', background: '#f9fafb' }}>Page</th>
-                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Dev</th>
-                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Master</th>
-                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Assistant</th>
-                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Sub</th>
-                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Estimator</th>
-                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Primary</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {PAGE_ACCESS.map((row) => (
-                        <tr key={row.page}>
-                          <td style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', fontWeight: 500 }}>{row.page}</td>
-                          {(['dev', 'master', 'assistant', 'sub', 'estimator', 'primary', 'superintendent'] as const).map((role) => {
-                            const val = row[role]
-                            return (
-                              <td key={role} style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center' }}>
-                                {val === 'yes' ? '✓' : val === 'no' ? '✗' : val}
-                              </td>
-                            )
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <p style={{ margin: 0, color: '#6b7280', fontSize: '0.8125rem' }}>
-                  Redirection: Subcontractors → /dashboard; Estimators → /bids; Primary → /dashboard (Jobs: Reports tab only; Bids: Bid Board, RFI, Change Order, Lien Release; Projects hidden).
-                </p>
-                <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Pay Approved Masters</h2>
-                <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
-                  Masters selected here can access the Pay and Hours tabs on the People page. Their assistants can enter hours in the Hours tab.
-                </p>
-                {payApprovedError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{payApprovedError}</p>}
-                {payApprovedMasters.length === 0 ? (
-                  <p style={{ color: '#6b7280' }}>No masters or devs found.</p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: 640 }}>
-                    {payApprovedMasters.map((m) => {
-                      const isApproved = payApprovedMasterIds.has(m.id)
+                {pinsClearSuccess && (
+                  <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#059669', fontWeight: 500 }}>
+                    Page pins cleared.
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    clearPinned(authUser?.id)
+                    if (authUser?.id) await clearPinnedInSupabase(authUser.id)
+                    setPinsClearSuccess(true)
+                    setTimeout(() => setPinsClearSuccess(false), 3000)
+                  }}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    fontSize: '0.875rem',
+                    background: '#f3f4f6',
+                    color: '#374151',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Clear all page pins
+                </button>
+                {!pinsLoading && myPins.length > 0 && (
+                  <ul style={{ margin: '1rem 0 0 0', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {myPins.map((item) => {
+                      const pinKey = `${item.path}:${item.tab ?? ''}`
+                      const label = item.tab
+                        ? `${item.label} · ${item.tab.replace(/-/g, ' ').replace(/_/g, ' ')}`
+                        : item.label
+                      const removing = pinRemovingId === pinKey
                       return (
-                        <label
-                          key={m.id}
+                        <li
+                          key={pinKey}
                           style={{
                             display: 'flex',
                             alignItems: 'center',
+                            justifyContent: 'space-between',
                             gap: '0.5rem',
-                            padding: '0.5rem',
+                            padding: '0.5rem 0.75rem',
+                            background: '#f9fafb',
+                            borderRadius: 6,
                             border: '1px solid #e5e7eb',
-                            borderRadius: 4,
-                            cursor: payApprovedSaving ? 'not-allowed' : 'pointer',
-                            background: isApproved ? '#f0fdf4' : 'white',
                           }}
                         >
-                          <input
-                            type="checkbox"
-                            checked={isApproved}
-                            onChange={() => togglePayApproved(m.id, isApproved)}
-                            disabled={payApprovedSaving}
-                            style={{ cursor: payApprovedSaving ? 'not-allowed' : 'pointer' }}
-                          />
-                          <span style={{ flex: 1 }}>
-                            <span style={{ fontWeight: 500 }}>{m.name || m.email}</span>
-                            {m.email && m.name && (
-                              <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.5rem' }}>
-                                ({m.email})
-                              </span>
-                            )}
-                            {m.role === 'dev' && (
-                              <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.35rem' }}>dev</span>
-                            )}
-                          </span>
-                          {isApproved && (
-                            <span style={{ fontSize: '0.875rem', color: '#059669', fontWeight: 500 }}>
-                              Approved
-                            </span>
-                          )}
-                        </label>
+                          <span style={{ fontSize: '0.875rem' }}>{label}</span>
+                          <button
+                            type="button"
+                            disabled={removing}
+                            onClick={async () => {
+                              setPinRemovingId(pinKey)
+                              await removePin(authUser?.id, item)
+                              setPinRemovingId(null)
+                            }}
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              fontSize: '0.75rem',
+                              background: removing ? '#e5e7eb' : '#fef2f2',
+                              color: removing ? '#9ca3af' : '#b91c1c',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: 4,
+                              cursor: removing ? 'not-allowed' : 'pointer',
+                            }}
+                          >
+                            {removing ? 'Removing…' : 'Remove'}
+                          </button>
+                        </li>
                       )
                     })}
-                  </div>
+                  </ul>
                 )}
               </div>
-            )}
+
+              {myRole === 'dev' && (
+              <>
+              <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+                <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Pin Billed to Dashboard</h2>
+          <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+            Pin Billed count and total to a master or dev&apos;s dashboard so it appears on their Dashboard.
+          </p>
+          {pinBilledMasterIds.size > 0 && (
+            <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500 }}>
+              Pinned for:{' '}
+              {users
+                .filter((u) => u.role === 'master_technician' || u.role === 'dev')
+                .filter((u) => pinBilledMasterIds.has(u.id))
+                .map((u) => u.name || u.email || 'Unknown')
+                .join(', ')}
+            </p>
+          )}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', alignItems: 'center' }}>
+            {users.filter((u) => u.role === 'master_technician' || u.role === 'dev').map((u) => (
+              <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                <input
+                  type="checkbox"
+                  checked={pinBilledMasterIds.has(u.id)}
+                  onChange={(e) => {
+                    setPinBilledMasterIds((prev) => {
+                      const next = new Set(prev)
+                      if (e.target.checked) next.add(u.id)
+                      else next.delete(u.id)
+                      return next
+                    })
+                  }}
+                  disabled={pinBilledSaving}
+                />
+                {u.name || u.email || 'Unknown'} ({u.role === 'dev' ? 'Dev' : 'Master'})
+              </label>
+            ))}
+            <button
+              type="button"
+              disabled={pinBilledSaving || pinBilledMasterIds.size === 0}
+              onClick={async () => {
+                setPinBilledSaving(true)
+                setPinBilledMessage(null)
+                const count = billedCount ?? 0
+                const total = billedTotal ?? 0
+                const label = `Billed Awaiting Payment (${count}) - $${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                const item = { path: '/jobs', label, tab: 'billed' as const }
+                const ids = Array.from(pinBilledMasterIds)
+                let ok = 0
+                let errMsg: string | null = null
+                for (const userId of ids) {
+                  const { error } = await addPinForUser(userId, item)
+                  if (error) errMsg = error.message
+                  else ok++
+                }
+                setPinBilledSaving(false)
+                if (errMsg) setPinBilledMessage({ type: 'error', text: errMsg })
+                else {
+                  loadBilledTotalAndPinnedUsers()
+                  setPinBilledMessage({ type: 'success', text: `Pinned for ${ok} user${ok !== 1 ? 's' : ''}. Users may need to refresh their Dashboard to see it.` })
+                  setTimeout(() => setPinBilledMessage(null), 5000)
+                }
+              }}
+              style={{
+                padding: '0.35rem 0.75rem',
+                fontSize: '0.875rem',
+                background: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: 6,
+                cursor: pinBilledSaving || pinBilledMasterIds.size === 0 ? 'not-allowed' : 'pointer',
+                fontWeight: 500,
+              }}
+            >
+              Pin To Dashboard
+            </button>
+            <button
+              type="button"
+              disabled={pinBilledSaving || pinBilledUnpinSaving}
+              onClick={async () => {
+                setPinBilledUnpinSaving(true)
+                setPinBilledMessage(null)
+                const { count, error } = await deletePinForPathAndTab('/jobs', 'billed')
+                setPinBilledUnpinSaving(false)
+                if (error) setPinBilledMessage({ type: 'error', text: error.message })
+                else {
+                  loadBilledTotalAndPinnedUsers()
+                  setPinBilledMessage({ type: 'success', text: `Unpinned Billed for ${count} user${count !== 1 ? 's' : ''}.` })
+                  setTimeout(() => setPinBilledMessage(null), 5000)
+                }
+              }}
+              style={{
+                padding: '0.35rem 0.75rem',
+                fontSize: '0.875rem',
+                background: '#f3f4f6',
+                color: '#374151',
+                border: '1px solid #d1d5db',
+                borderRadius: 6,
+                cursor: pinBilledSaving || pinBilledUnpinSaving ? 'not-allowed' : 'pointer',
+                fontWeight: 500,
+              }}
+            >
+              Unpin All
+            </button>
           </div>
-        </>
+          {pinBilledMessage && (
+            <p style={{ color: pinBilledMessage.type === 'success' ? '#059669' : '#b91c1c', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+              {pinBilledMessage.text}
+            </p>
+          )}
+        </div>
+
+        <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+          <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Pin Cost matrix to Dashboard</h2>
+          <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+            Pin Cost matrix to a master or dev&apos;s dashboard so it appears on their Dashboard.
+          </p>
+          {pinCostMatrixMasterIds.size > 0 && (
+            <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500 }}>
+              Pinned for:{' '}
+              {users
+                .filter((u) => u.role === 'master_technician' || u.role === 'dev')
+                .filter((u) => pinCostMatrixMasterIds.has(u.id))
+                .map((u) => u.name || u.email || 'Unknown')
+                .join(', ')}
+            </p>
+          )}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', alignItems: 'center' }}>
+            {users.filter((u) => u.role === 'master_technician' || u.role === 'dev').map((u) => (
+              <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                <input
+                  type="checkbox"
+                  checked={pinCostMatrixMasterIds.has(u.id)}
+                  onChange={(e) => {
+                    setPinCostMatrixMasterIds((prev) => {
+                      const next = new Set(prev)
+                      if (e.target.checked) next.add(u.id)
+                      else next.delete(u.id)
+                      return next
+                    })
+                  }}
+                  disabled={pinCostMatrixSaving}
+                />
+                {u.name || u.email || 'Unknown'} ({u.role === 'dev' ? 'Dev' : 'Master'})
+              </label>
+            ))}
+            <button
+              type="button"
+              disabled={pinCostMatrixSaving || pinCostMatrixMasterIds.size === 0}
+              onClick={async () => {
+                setPinCostMatrixSaving(true)
+                setPinCostMatrixMessage(null)
+                const total = costMatrixTotal ?? 0
+                const item = { path: '/people', label: `Internal Team: $${Math.round(total).toLocaleString('en-US')}`, tab: 'pay' as const }
+                const ids = Array.from(pinCostMatrixMasterIds)
+                let ok = 0
+                let errMsg: string | null = null
+                for (const userId of ids) {
+                  const { error } = await addPinForUser(userId, item)
+                  if (error) errMsg = error.message
+                  else ok++
+                }
+                setPinCostMatrixSaving(false)
+                if (errMsg) setPinCostMatrixMessage({ type: 'error', text: errMsg })
+                else {
+                  loadCostMatrixPinnedUsers()
+                  setPinCostMatrixMessage({ type: 'success', text: `Pinned for ${ok} user${ok !== 1 ? 's' : ''}. Users may need to refresh their Dashboard to see it.` })
+                  setTimeout(() => setPinCostMatrixMessage(null), 5000)
+                }
+              }}
+              style={{
+                padding: '0.35rem 0.75rem',
+                fontSize: '0.875rem',
+                background: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: 6,
+                cursor: pinCostMatrixSaving || pinCostMatrixMasterIds.size === 0 ? 'not-allowed' : 'pointer',
+                fontWeight: 500,
+              }}
+            >
+              Pin To Dashboard
+            </button>
+            <button
+              type="button"
+              disabled={pinCostMatrixSaving || pinCostMatrixUnpinSaving}
+              onClick={async () => {
+                setPinCostMatrixUnpinSaving(true)
+                setPinCostMatrixMessage(null)
+                const { count, error } = await deletePinForPathAndTab('/people', 'pay')
+                setPinCostMatrixUnpinSaving(false)
+                if (error) setPinCostMatrixMessage({ type: 'error', text: error.message })
+                else {
+                  loadCostMatrixPinnedUsers()
+                  setPinCostMatrixMessage({ type: 'success', text: `Unpinned Cost matrix for ${count} user${count !== 1 ? 's' : ''}.` })
+                  setTimeout(() => setPinCostMatrixMessage(null), 5000)
+                }
+              }}
+              style={{
+                padding: '0.35rem 0.75rem',
+                fontSize: '0.875rem',
+                background: '#f3f4f6',
+                color: '#374151',
+                border: '1px solid #d1d5db',
+                borderRadius: 6,
+                cursor: pinCostMatrixSaving || pinCostMatrixUnpinSaving ? 'not-allowed' : 'pointer',
+                fontWeight: 500,
+              }}
+            >
+              Unpin All
+            </button>
+          </div>
+          {pinCostMatrixMessage && (
+            <p style={{ color: pinCostMatrixMessage.type === 'success' ? '#059669' : '#b91c1c', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+              {pinCostMatrixMessage.text}
+            </p>
+          )}
+        </div>
+
+        <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+          <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Pin Supply Houses AP to Dashboard</h2>
+          <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+            Pin Supply Houses AP total to a master or dev&apos;s dashboard so it appears on their Dashboard.
+          </p>
+          {pinAPMasterIds.size > 0 && (
+            <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500 }}>
+              Pinned for:{' '}
+              {users
+                .filter((u) => u.role === 'master_technician' || u.role === 'dev')
+                .filter((u) => pinAPMasterIds.has(u.id))
+                .map((u) => u.name || u.email || 'Unknown')
+                .join(', ')}
+            </p>
+          )}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', alignItems: 'center' }}>
+            {users.filter((u) => u.role === 'master_technician' || u.role === 'dev').map((u) => (
+              <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                <input
+                  type="checkbox"
+                  checked={pinAPMasterIds.has(u.id)}
+                  onChange={(e) => {
+                    setPinAPMasterIds((prev) => {
+                      const next = new Set(prev)
+                      if (e.target.checked) next.add(u.id)
+                      else next.delete(u.id)
+                      return next
+                    })
+                  }}
+                  disabled={pinAPSaving}
+                />
+                {u.name || u.email || 'Unknown'} ({u.role === 'dev' ? 'Dev' : 'Master'})
+              </label>
+            ))}
+            <button
+              type="button"
+              disabled={pinAPSaving || pinAPMasterIds.size === 0}
+              onClick={async () => {
+                setPinAPSaving(true)
+                setPinAPMessage(null)
+                const total = apTotal ?? 0
+                const item = { path: '/materials', label: `Supply Houses AP | $${Math.round(total).toLocaleString('en-US')}`, tab: 'supply-houses' as const }
+                const ids = Array.from(pinAPMasterIds)
+                let ok = 0
+                let errMsg: string | null = null
+                for (const userId of ids) {
+                  const { error } = await addPinForUser(userId, item)
+                  if (error) errMsg = error.message
+                  else ok++
+                }
+                setPinAPSaving(false)
+                if (errMsg) setPinAPMessage({ type: 'error', text: errMsg })
+                else {
+                  loadSupplyHousesAPTotalAndPinnedUsers()
+                  setPinAPMessage({ type: 'success', text: `Pinned for ${ok} user${ok !== 1 ? 's' : ''}. Users may need to refresh their Dashboard to see it.` })
+                  setTimeout(() => setPinAPMessage(null), 5000)
+                }
+              }}
+              style={{
+                padding: '0.35rem 0.75rem',
+                fontSize: '0.875rem',
+                background: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: 6,
+                cursor: pinAPSaving || pinAPMasterIds.size === 0 ? 'not-allowed' : 'pointer',
+                fontWeight: 500,
+              }}
+            >
+              Pin To Dashboard
+            </button>
+            <button
+              type="button"
+              disabled={pinAPSaving || pinAPUnpinSaving}
+              onClick={async () => {
+                setPinAPUnpinSaving(true)
+                setPinAPMessage(null)
+                const { count, error } = await deletePinForPathAndTab('/materials', 'supply-houses')
+                setPinAPUnpinSaving(false)
+                if (error) setPinAPMessage({ type: 'error', text: error.message })
+                else {
+                  loadSupplyHousesAPTotalAndPinnedUsers()
+                  setPinAPMessage({ type: 'success', text: `Unpinned Supply Houses AP for ${count} user${count !== 1 ? 's' : ''}.` })
+                  setTimeout(() => setPinAPMessage(null), 5000)
+                }
+              }}
+              style={{
+                padding: '0.35rem 0.75rem',
+                fontSize: '0.875rem',
+                background: '#f3f4f6',
+                color: '#374151',
+                border: '1px solid #d1d5db',
+                borderRadius: 6,
+                cursor: pinAPSaving || pinAPUnpinSaving ? 'not-allowed' : 'pointer',
+                fontWeight: 500,
+              }}
+            >
+              Unpin All
+            </button>
+          </div>
+          {pinAPMessage && (
+            <p style={{ color: pinAPMessage.type === 'success' ? '#059669' : '#b91c1c', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+              {pinAPMessage.text}
+            </p>
+          )}
+        </div>
+
+        <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+          <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Pin Sub Labor Due to Dashboard</h2>
+          <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+            Pin Sub Labor Due (unpaid sub labor balances) to a master or dev&apos;s dashboard so it appears on their Dashboard.
+          </p>
+          {pinExternalTeamMasterIds.size > 0 && (
+            <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500 }}>
+              Pinned for:{' '}
+              {users
+                .filter((u) => u.role === 'master_technician' || u.role === 'dev')
+                .filter((u) => pinExternalTeamMasterIds.has(u.id))
+                .map((u) => u.name || u.email || 'Unknown')
+                .join(', ')}
+            </p>
+          )}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', alignItems: 'center' }}>
+            {users.filter((u) => u.role === 'master_technician' || u.role === 'dev').map((u) => (
+              <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                <input
+                  type="checkbox"
+                  checked={pinExternalTeamMasterIds.has(u.id)}
+                  onChange={(e) => {
+                    setPinExternalTeamMasterIds((prev) => {
+                      const next = new Set(prev)
+                      if (e.target.checked) next.add(u.id)
+                      else next.delete(u.id)
+                      return next
+                    })
+                  }}
+                  disabled={pinExternalTeamSaving}
+                />
+                {u.name || u.email || 'Unknown'} ({u.role === 'dev' ? 'Dev' : 'Master'})
+              </label>
+            ))}
+            <button
+              type="button"
+              disabled={pinExternalTeamSaving || pinExternalTeamMasterIds.size === 0}
+              onClick={async () => {
+                setPinExternalTeamSaving(true)
+                setPinExternalTeamMessage(null)
+                const total = externalTeamTotal ?? 0
+                const formatTotal = total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                const item = { path: '/jobs', label: `Sub Labor Due: $${formatTotal}`, tab: 'sub_sheet_ledger' as const }
+                const ids = Array.from(pinExternalTeamMasterIds)
+                let ok = 0
+                let errMsg: string | null = null
+                for (const userId of ids) {
+                  const { error } = await addPinForUser(userId, item)
+                  if (error) errMsg = error.message
+                  else ok++
+                }
+                setPinExternalTeamSaving(false)
+                if (errMsg) setPinExternalTeamMessage({ type: 'error', text: errMsg })
+                else {
+                  loadExternalTeamTotalAndPinnedUsers()
+                  setPinExternalTeamMessage({ type: 'success', text: `Pinned for ${ok} user${ok !== 1 ? 's' : ''}. Users may need to refresh their Dashboard to see it.` })
+                  setTimeout(() => setPinExternalTeamMessage(null), 5000)
+                }
+              }}
+              style={{
+                padding: '0.35rem 0.75rem',
+                fontSize: '0.875rem',
+                background: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: 6,
+                cursor: pinExternalTeamSaving || pinExternalTeamMasterIds.size === 0 ? 'not-allowed' : 'pointer',
+                fontWeight: 500,
+              }}
+            >
+              Pin To Dashboard
+            </button>
+            <button
+              type="button"
+              disabled={pinExternalTeamSaving || pinExternalTeamUnpinSaving}
+              onClick={async () => {
+                setPinExternalTeamUnpinSaving(true)
+                setPinExternalTeamMessage(null)
+                const [subRes, extRes] = await Promise.all([
+                  deletePinForPathAndTab('/jobs', 'sub_sheet_ledger'),
+                  deletePinForPathAndTab('/materials', 'external-team'),
+                ])
+                const count = (subRes.count ?? 0) + (extRes.count ?? 0)
+                const error = subRes.error ?? extRes.error
+                setPinExternalTeamUnpinSaving(false)
+                if (error) setPinExternalTeamMessage({ type: 'error', text: error.message })
+                else {
+                  loadExternalTeamTotalAndPinnedUsers()
+                  setPinExternalTeamMessage({ type: 'success', text: `Unpinned Sub Labor Due for ${count} user${count !== 1 ? 's' : ''}.` })
+                  setTimeout(() => setPinExternalTeamMessage(null), 5000)
+                }
+              }}
+              style={{
+                padding: '0.35rem 0.75rem',
+                fontSize: '0.875rem',
+                background: '#f3f4f6',
+                color: '#374151',
+                border: '1px solid #d1d5db',
+                borderRadius: 6,
+                cursor: pinExternalTeamSaving || pinExternalTeamUnpinSaving ? 'not-allowed' : 'pointer',
+                fontWeight: 500,
+              }}
+            >
+              Unpin All
+            </button>
+          </div>
+          {pinExternalTeamMessage && (
+            <p style={{ color: pinExternalTeamMessage.type === 'success' ? '#059669' : '#b91c1c', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+              {pinExternalTeamMessage.text}
+            </p>
+          )}
+        </div>
+              </>
+              )}
+
+            </div>
+          )}
+        </div>
       )}
 
-      {/* Inline Change Password form - toggled from header button */}
-      {passwordChangeOpen && (
-        <form onSubmit={handlePasswordChange} style={{ marginBottom: '2rem', padding: '1rem 0' }}>
-            <div style={{ marginBottom: '1rem' }}>
-              <PasswordInput
-                id="current-password"
-                label="Current password *"
-                value={currentPassword}
-                onChange={(e) => {
-                  setCurrentPassword(e.target.value)
-                  setPasswordChangeError(null)
-                }}
-                required
-                autoComplete="current-password"
-                style={{ width: '100%', maxWidth: 400 }}
-              />
-            </div>
-            <div style={{ marginBottom: '1rem' }}>
-              <PasswordInput
-                id="new-password"
-                label="New password *"
-                value={newPassword}
-                onChange={(e) => {
-                  setNewPassword(e.target.value)
-                  setPasswordChangeError(null)
-                }}
-                required
-                autoComplete="new-password"
-                minLength={6}
-                style={{ width: '100%', maxWidth: 400 }}
-              />
-            </div>
-            <div style={{ marginBottom: '1rem' }}>
-              <PasswordInput
-                id="confirm-password"
-                label="Confirm new password *"
-                value={confirmPassword}
-                onChange={(e) => {
-                  setConfirmPassword(e.target.value)
-                  setPasswordChangeError(null)
-                }}
-                required
-                autoComplete="new-password"
-                minLength={6}
-                style={{ width: '100%', maxWidth: 400 }}
-              />
-            </div>
-            {passwordChangeError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{passwordChangeError}</p>}
-            {passwordChangeSuccess && <p style={{ color: '#059669', marginBottom: '1rem' }}>Password changed successfully!</p>}
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button type="submit" disabled={passwordChangeSubmitting} style={{ padding: '0.5rem 1rem' }}>
-                {passwordChangeSubmitting ? 'Changing…' : 'Change password'}
-              </button>
-              <button type="button" onClick={closePasswordChange} disabled={passwordChangeSubmitting} style={{ padding: '0.5rem 1rem' }}>
-                Cancel
-              </button>
-            </div>
-          </form>
-        )}
+      </SettingsGroup>
 
-
+      <SettingsGroup id="settings-people" title="People & accounts">
       {myRole === 'dev' && (
         <>
           <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
@@ -6611,6 +7030,375 @@ export default function Settings() {
         </>
       )}
 
+      </SettingsGroup>
+
+      <SettingsGroup id="settings-data" title="Data & migration">
+      {myRole === 'dev' && (
+        <>
+          <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Data backup (dev)</h2>
+          <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+            Export projects, materials, bids, people & access, jobs, checklist, reports, prospects, or settings & reference as JSON for backup. Use &quot;Export all backup&quot; to download everything in one file. Files respect RLS. Export may take several minutes for large datasets and uses significant database resources.
+          </p>
+          {exportError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{exportError}</p>}
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
+            <button
+              type="button"
+              onClick={exportProjectsBackup}
+              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading || exportPeopleLoading || exportJobsLoading || exportChecklistLoading || exportReportsLoading || exportProspectsLoading || exportSettingsLoading || exportAllLoading}
+              style={{ padding: '0.5rem 1rem', background: '#1e40af', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+            >
+              {exportProjectsLoading ? 'Exporting…' : 'Export projects backup'}
+            </button>
+            <button
+              type="button"
+              onClick={exportMaterialsBackup}
+              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading || exportPeopleLoading || exportJobsLoading || exportChecklistLoading || exportReportsLoading || exportProspectsLoading || exportSettingsLoading || exportAllLoading}
+              style={{ padding: '0.5rem 1rem', background: '#065f46', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+            >
+              {exportMaterialsLoading ? 'Exporting…' : 'Export materials backup'}
+            </button>
+            <button
+              type="button"
+              onClick={exportBidsBackup}
+              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading || exportPeopleLoading || exportJobsLoading || exportChecklistLoading || exportReportsLoading || exportProspectsLoading || exportSettingsLoading || exportAllLoading}
+              style={{ padding: '0.5rem 1rem', background: '#7c2d12', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+            >
+              {exportBidsLoading ? 'Exporting…' : 'Export bids backup'}
+            </button>
+            <button
+              type="button"
+              onClick={exportPeopleBackup}
+              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading || exportPeopleLoading || exportJobsLoading || exportChecklistLoading || exportReportsLoading || exportProspectsLoading || exportSettingsLoading || exportAllLoading}
+              style={{ padding: '0.5rem 1rem', background: '#4c1d95', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+            >
+              {exportPeopleLoading ? 'Exporting…' : 'Export people backup'}
+            </button>
+            <button
+              type="button"
+              onClick={exportJobsBackup}
+              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading || exportPeopleLoading || exportJobsLoading || exportChecklistLoading || exportReportsLoading || exportProspectsLoading || exportSettingsLoading || exportAllLoading}
+              style={{ padding: '0.5rem 1rem', background: '#0e7490', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+            >
+              {exportJobsLoading ? 'Exporting…' : 'Export jobs backup'}
+            </button>
+            <button
+              type="button"
+              onClick={exportChecklistBackup}
+              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading || exportPeopleLoading || exportJobsLoading || exportChecklistLoading || exportReportsLoading || exportProspectsLoading || exportSettingsLoading || exportAllLoading}
+              style={{ padding: '0.5rem 1rem', background: '#b45309', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+            >
+              {exportChecklistLoading ? 'Exporting…' : 'Export checklist backup'}
+            </button>
+            <button
+              type="button"
+              onClick={exportReportsBackup}
+              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading || exportPeopleLoading || exportJobsLoading || exportChecklistLoading || exportReportsLoading || exportProspectsLoading || exportSettingsLoading || exportAllLoading}
+              style={{ padding: '0.5rem 1rem', background: '#1e3a8a', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+            >
+              {exportReportsLoading ? 'Exporting…' : 'Export reports backup'}
+            </button>
+            <button
+              type="button"
+              onClick={exportProspectsBackup}
+              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading || exportPeopleLoading || exportJobsLoading || exportChecklistLoading || exportReportsLoading || exportProspectsLoading || exportSettingsLoading || exportAllLoading}
+              style={{ padding: '0.5rem 1rem', background: '#6b21a8', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+            >
+              {exportProspectsLoading ? 'Exporting…' : 'Export prospects backup'}
+            </button>
+            <button
+              type="button"
+              onClick={exportSettingsBackup}
+              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading || exportPeopleLoading || exportJobsLoading || exportChecklistLoading || exportReportsLoading || exportProspectsLoading || exportSettingsLoading || exportAllLoading}
+              style={{ padding: '0.5rem 1rem', background: '#374151', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+            >
+              {exportSettingsLoading ? 'Exporting…' : 'Export settings backup'}
+            </button>
+            <button
+              type="button"
+              onClick={exportAllBackup}
+              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading || exportPeopleLoading || exportJobsLoading || exportChecklistLoading || exportReportsLoading || exportProspectsLoading || exportSettingsLoading || exportAllLoading}
+              style={{ padding: '0.5rem 1rem', background: '#111827', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}
+            >
+              {exportAllLoading ? 'Exporting…' : 'Export all backup'}
+            </button>
+          </div>
+        </>
+      )}
+      </SettingsGroup>
+
+      <SettingsGroup id="settings-jobs" title="Jobs & dispatch">
+      {myRole === 'dev' && (
+        <>
+          <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+            <button
+              type="button"
+              aria-expanded={defaultLaborRateSectionOpen}
+              onClick={() => setDefaultLaborRateSectionOpen((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                padding: '1rem',
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                fontWeight: 600,
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: '0.75rem' }}>{defaultLaborRateSectionOpen ? '▼' : '▶'}</span>
+              Default Labor Rate (dev)
+            </button>
+            {defaultLaborRateSectionOpen && (
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+                <p style={{ marginBottom: '1rem', marginTop: 0, color: '#6b7280', fontSize: '0.875rem' }}>
+                  Set the default Labor rate ($/hr) used when adding a new labor job in Jobs → + Labor. Leave blank for no default.
+                </p>
+                <form onSubmit={saveDefaultLaborRate} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <label htmlFor="default-labor-rate" style={{ fontWeight: 500 }}>Labor rate ($/hr)</label>
+                  <input
+                    id="default-labor-rate"
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    value={defaultLaborRate}
+                    onChange={(e) => setDefaultLaborRate(e.target.value)}
+                    placeholder="e.g. 75"
+                    style={{ width: 120, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={defaultLaborRateSaving}
+                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: defaultLaborRateSaving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
+                  >
+                    {defaultLaborRateSaving ? 'Saving…' : 'Save'}
+                  </button>
+                </form>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+      </SettingsGroup>
+
+      {myRole === 'dev' && (
+        <>
+          <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+            <button
+              type="button"
+              onClick={() => setProspectCopySectionOpen((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                padding: '1rem',
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                fontWeight: 600,
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: '0.75rem' }}>{prospectCopySectionOpen ? '▼' : '▶'}</span>
+              Prospect copy templates (dev)
+            </button>
+            {prospectCopySectionOpen && (
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+                <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+                  Default text for the three copy buttons in Prospects → Follow Up. Users can override with their own text. Placeholders: [User name], [user email], [user phone number], [company name], [prospect phone number], [prospect contact name], [prospect last contact], [prospect last successful contact] (and _______ for Phone call / Just checking in).
+                </p>
+                <form onSubmit={saveProspectCopyDefaults}>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>No Response Email</label>
+                    <input
+                      type="text"
+                      value={prospectCopyNoResponseSubject}
+                      onChange={(e) => setProspectCopyNoResponseSubject(e.target.value)}
+                      placeholder="Subject (e.g. Follow up - [company name])"
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '0.5rem' }}
+                    />
+                    <textarea
+                      value={prospectCopyNoResponse}
+                      onChange={(e) => setProspectCopyNoResponse(e.target.value)}
+                      rows={6}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Phone call Follow up Email</label>
+                    <input
+                      type="text"
+                      value={prospectCopyPhoneFollowupSubject}
+                      onChange={(e) => setProspectCopyPhoneFollowupSubject(e.target.value)}
+                      placeholder="Subject (e.g. Re: [company name])"
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '0.5rem' }}
+                    />
+                    <textarea
+                      value={prospectCopyPhoneFollowup}
+                      onChange={(e) => setProspectCopyPhoneFollowup(e.target.value)}
+                      rows={6}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Just checking in Email</label>
+                    <input
+                      type="text"
+                      value={prospectCopyJustCheckingInSubject}
+                      onChange={(e) => setProspectCopyJustCheckingInSubject(e.target.value)}
+                      placeholder="Subject (e.g. Re: [company name])"
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '0.5rem' }}
+                    />
+                    <textarea
+                      value={prospectCopyJustCheckingIn}
+                      onChange={(e) => setProspectCopyJustCheckingIn(e.target.value)}
+                      rows={6}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={prospectCopySaving}
+                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: prospectCopySaving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
+                  >
+                    {prospectCopySaving ? 'Saving…' : 'Save'}
+                  </button>
+                </form>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      <SettingsGroup id="settings-advanced" title="Advanced">
+      {myRole === 'dev' && (
+        <>
+          <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+            <button
+              type="button"
+              onClick={() => setRoleVisibilityExpanded((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                padding: '1rem',
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                fontWeight: 600,
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: '0.75rem' }}>{roleVisibilityExpanded ? '▼' : '▶'}</span>
+              Role visibility (what each role can see)
+            </button>
+            {roleVisibilityExpanded && (
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+                <p style={{ marginBottom: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
+                  Page access by role. See ACCESS_CONTROL.md for full feature-level permissions.
+                </p>
+                <div style={{ overflowX: 'auto', marginBottom: '0.75rem' }}>
+                  <table style={{ borderCollapse: 'collapse', fontSize: '0.875rem', minWidth: 520 }}>
+                    <thead>
+                      <tr>
+                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'left', background: '#f9fafb' }}>Page</th>
+                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Dev</th>
+                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Master</th>
+                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Assistant</th>
+                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Sub</th>
+                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Estimator</th>
+                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Primary</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {PAGE_ACCESS.map((row) => (
+                        <tr key={row.page}>
+                          <td style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', fontWeight: 500 }}>{row.page}</td>
+                          {(['dev', 'master', 'assistant', 'sub', 'estimator', 'primary', 'superintendent'] as const).map((role) => {
+                            const val = row[role]
+                            return (
+                              <td key={role} style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                                {val === 'yes' ? '✓' : val === 'no' ? '✗' : val}
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p style={{ margin: 0, color: '#6b7280', fontSize: '0.8125rem' }}>
+                  Redirection: Subcontractors → /dashboard; Estimators → /bids; Primary → /dashboard (Jobs: Reports tab only; Bids: Bid Board, RFI, Change Order, Lien Release; Projects hidden).
+                </p>
+                <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Pay Approved Masters</h2>
+                <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
+                  Masters selected here can access the Pay and Hours tabs on the People page. Their assistants can enter hours in the Hours tab.
+                </p>
+                {payApprovedError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{payApprovedError}</p>}
+                {payApprovedMasters.length === 0 ? (
+                  <p style={{ color: '#6b7280' }}>No masters or devs found.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: 640 }}>
+                    {payApprovedMasters.map((m) => {
+                      const isApproved = payApprovedMasterIds.has(m.id)
+                      return (
+                        <label
+                          key={m.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            padding: '0.5rem',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: 4,
+                            cursor: payApprovedSaving ? 'not-allowed' : 'pointer',
+                            background: isApproved ? '#f0fdf4' : 'white',
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isApproved}
+                            onChange={() => togglePayApproved(m.id, isApproved)}
+                            disabled={payApprovedSaving}
+                            style={{ cursor: payApprovedSaving ? 'not-allowed' : 'pointer' }}
+                          />
+                          <span style={{ flex: 1 }}>
+                            <span style={{ fontWeight: 500 }}>{m.name || m.email}</span>
+                            {m.email && m.name && (
+                              <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.5rem' }}>
+                                ({m.email})
+                              </span>
+                            )}
+                            {m.role === 'dev' && (
+                              <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.35rem' }}>dev</span>
+                            )}
+                          </span>
+                          {isApproved && (
+                            <span style={{ fontSize: '0.875rem', color: '#059669', fontWeight: 500 }}>
+                              Approved
+                            </span>
+                          )}
+                        </label>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+      </SettingsGroup>
+
       {mergeDuplicatesModalOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480 }}>
@@ -6734,6 +7522,7 @@ export default function Settings() {
         </div>
       )}
 
+      <SettingsGroup id="settings-sharing" title="Sharing & access">
       {(myRole === 'master_technician' || myRole === 'dev') && (
         <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
           <button
@@ -7017,6 +7806,7 @@ export default function Settings() {
           )}
         </div>
       )}
+      </SettingsGroup>
 
       {myRole === 'dev' && <TeamFeedbackDevSettingsBlock />}
 
@@ -7597,6 +8387,7 @@ export default function Settings() {
         </div>
       )}
 
+      <SettingsGroup id="settings-catalogs" title="Catalogs & trades">
       {(myRole === 'dev' || myRole === 'estimator') && (
         <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
           <button
@@ -8537,7 +9328,9 @@ export default function Settings() {
           )}
         </div>
       )}
+      </SettingsGroup>
 
+      <SettingsGroup id="settings-templates" title="Templates & testing">
       {myRole === 'dev' && (
         <>
           {/* Notification Templates - collapsible, above Email Templates */}
@@ -9104,560 +9897,10 @@ export default function Settings() {
           </div>
         </>
       )}
-
-      {myRole != null && (
-        <div style={{ marginBottom: '2rem' }}>
-          <button
-            type="button"
-            onClick={() => setFinancialPinsSectionOpen((prev) => !prev)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-              margin: 0,
-              padding: '1rem',
-              width: '100%',
-              background: 'none',
-              border: '1px solid #e5e7eb',
-              borderRadius: 8,
-              cursor: 'pointer',
-              fontSize: '1rem',
-              fontWeight: 600,
-              textAlign: 'left',
-            }}
-          >
-            <span style={{ fontSize: '0.75rem' }}>{financialPinsSectionOpen ? '▼' : '▶'}</span>
-            Dashboard Page Pins
-          </button>
-          {financialPinsSectionOpen && (
-            <div style={{ padding: '1rem 0 0 0', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-              <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
-                <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Page pins</h2>
-                <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
-                  Pinned pages appear as shortcut links at the top of your Dashboard.
-                </p>
-                {pinsClearSuccess && (
-                  <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#059669', fontWeight: 500 }}>
-                    Page pins cleared.
-                  </p>
-                )}
-                <button
-                  type="button"
-                  onClick={async () => {
-                    clearPinned(authUser?.id)
-                    if (authUser?.id) await clearPinnedInSupabase(authUser.id)
-                    setPinsClearSuccess(true)
-                    setTimeout(() => setPinsClearSuccess(false), 3000)
-                  }}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    fontSize: '0.875rem',
-                    background: '#f3f4f6',
-                    color: '#374151',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: 6,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Clear all page pins
-                </button>
-                {!pinsLoading && myPins.length > 0 && (
-                  <ul style={{ margin: '1rem 0 0 0', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {myPins.map((item) => {
-                      const pinKey = `${item.path}:${item.tab ?? ''}`
-                      const label = item.tab
-                        ? `${item.label} · ${item.tab.replace(/-/g, ' ').replace(/_/g, ' ')}`
-                        : item.label
-                      const removing = pinRemovingId === pinKey
-                      return (
-                        <li
-                          key={pinKey}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            gap: '0.5rem',
-                            padding: '0.5rem 0.75rem',
-                            background: '#f9fafb',
-                            borderRadius: 6,
-                            border: '1px solid #e5e7eb',
-                          }}
-                        >
-                          <span style={{ fontSize: '0.875rem' }}>{label}</span>
-                          <button
-                            type="button"
-                            disabled={removing}
-                            onClick={async () => {
-                              setPinRemovingId(pinKey)
-                              await removePin(authUser?.id, item)
-                              setPinRemovingId(null)
-                            }}
-                            style={{
-                              padding: '0.25rem 0.5rem',
-                              fontSize: '0.75rem',
-                              background: removing ? '#e5e7eb' : '#fef2f2',
-                              color: removing ? '#9ca3af' : '#b91c1c',
-                              border: '1px solid #e5e7eb',
-                              borderRadius: 4,
-                              cursor: removing ? 'not-allowed' : 'pointer',
-                            }}
-                          >
-                            {removing ? 'Removing…' : 'Remove'}
-                          </button>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                )}
-              </div>
-
-              {myRole === 'dev' && (
-              <>
-              <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
-                <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Pin Billed to Dashboard</h2>
-          <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
-            Pin Billed count and total to a master or dev&apos;s dashboard so it appears on their Dashboard.
-          </p>
-          {pinBilledMasterIds.size > 0 && (
-            <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500 }}>
-              Pinned for:{' '}
-              {users
-                .filter((u) => u.role === 'master_technician' || u.role === 'dev')
-                .filter((u) => pinBilledMasterIds.has(u.id))
-                .map((u) => u.name || u.email || 'Unknown')
-                .join(', ')}
-            </p>
-          )}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', alignItems: 'center' }}>
-            {users.filter((u) => u.role === 'master_technician' || u.role === 'dev').map((u) => (
-              <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem' }}>
-                <input
-                  type="checkbox"
-                  checked={pinBilledMasterIds.has(u.id)}
-                  onChange={(e) => {
-                    setPinBilledMasterIds((prev) => {
-                      const next = new Set(prev)
-                      if (e.target.checked) next.add(u.id)
-                      else next.delete(u.id)
-                      return next
-                    })
-                  }}
-                  disabled={pinBilledSaving}
-                />
-                {u.name || u.email || 'Unknown'} ({u.role === 'dev' ? 'Dev' : 'Master'})
-              </label>
-            ))}
-            <button
-              type="button"
-              disabled={pinBilledSaving || pinBilledMasterIds.size === 0}
-              onClick={async () => {
-                setPinBilledSaving(true)
-                setPinBilledMessage(null)
-                const count = billedCount ?? 0
-                const total = billedTotal ?? 0
-                const label = `Billed Awaiting Payment (${count}) - $${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                const item = { path: '/jobs', label, tab: 'billed' as const }
-                const ids = Array.from(pinBilledMasterIds)
-                let ok = 0
-                let errMsg: string | null = null
-                for (const userId of ids) {
-                  const { error } = await addPinForUser(userId, item)
-                  if (error) errMsg = error.message
-                  else ok++
-                }
-                setPinBilledSaving(false)
-                if (errMsg) setPinBilledMessage({ type: 'error', text: errMsg })
-                else {
-                  loadBilledTotalAndPinnedUsers()
-                  setPinBilledMessage({ type: 'success', text: `Pinned for ${ok} user${ok !== 1 ? 's' : ''}. Users may need to refresh their Dashboard to see it.` })
-                  setTimeout(() => setPinBilledMessage(null), 5000)
-                }
-              }}
-              style={{
-                padding: '0.35rem 0.75rem',
-                fontSize: '0.875rem',
-                background: '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: 6,
-                cursor: pinBilledSaving || pinBilledMasterIds.size === 0 ? 'not-allowed' : 'pointer',
-                fontWeight: 500,
-              }}
-            >
-              Pin To Dashboard
-            </button>
-            <button
-              type="button"
-              disabled={pinBilledSaving || pinBilledUnpinSaving}
-              onClick={async () => {
-                setPinBilledUnpinSaving(true)
-                setPinBilledMessage(null)
-                const { count, error } = await deletePinForPathAndTab('/jobs', 'billed')
-                setPinBilledUnpinSaving(false)
-                if (error) setPinBilledMessage({ type: 'error', text: error.message })
-                else {
-                  loadBilledTotalAndPinnedUsers()
-                  setPinBilledMessage({ type: 'success', text: `Unpinned Billed for ${count} user${count !== 1 ? 's' : ''}.` })
-                  setTimeout(() => setPinBilledMessage(null), 5000)
-                }
-              }}
-              style={{
-                padding: '0.35rem 0.75rem',
-                fontSize: '0.875rem',
-                background: '#f3f4f6',
-                color: '#374151',
-                border: '1px solid #d1d5db',
-                borderRadius: 6,
-                cursor: pinBilledSaving || pinBilledUnpinSaving ? 'not-allowed' : 'pointer',
-                fontWeight: 500,
-              }}
-            >
-              Unpin All
-            </button>
-          </div>
-          {pinBilledMessage && (
-            <p style={{ color: pinBilledMessage.type === 'success' ? '#059669' : '#b91c1c', fontSize: '0.875rem', marginTop: '0.5rem' }}>
-              {pinBilledMessage.text}
-            </p>
-          )}
-        </div>
-
-        <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
-          <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Pin Cost matrix to Dashboard</h2>
-          <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
-            Pin Cost matrix to a master or dev&apos;s dashboard so it appears on their Dashboard.
-          </p>
-          {pinCostMatrixMasterIds.size > 0 && (
-            <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500 }}>
-              Pinned for:{' '}
-              {users
-                .filter((u) => u.role === 'master_technician' || u.role === 'dev')
-                .filter((u) => pinCostMatrixMasterIds.has(u.id))
-                .map((u) => u.name || u.email || 'Unknown')
-                .join(', ')}
-            </p>
-          )}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', alignItems: 'center' }}>
-            {users.filter((u) => u.role === 'master_technician' || u.role === 'dev').map((u) => (
-              <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem' }}>
-                <input
-                  type="checkbox"
-                  checked={pinCostMatrixMasterIds.has(u.id)}
-                  onChange={(e) => {
-                    setPinCostMatrixMasterIds((prev) => {
-                      const next = new Set(prev)
-                      if (e.target.checked) next.add(u.id)
-                      else next.delete(u.id)
-                      return next
-                    })
-                  }}
-                  disabled={pinCostMatrixSaving}
-                />
-                {u.name || u.email || 'Unknown'} ({u.role === 'dev' ? 'Dev' : 'Master'})
-              </label>
-            ))}
-            <button
-              type="button"
-              disabled={pinCostMatrixSaving || pinCostMatrixMasterIds.size === 0}
-              onClick={async () => {
-                setPinCostMatrixSaving(true)
-                setPinCostMatrixMessage(null)
-                const total = costMatrixTotal ?? 0
-                const item = { path: '/people', label: `Internal Team: $${Math.round(total).toLocaleString('en-US')}`, tab: 'pay' as const }
-                const ids = Array.from(pinCostMatrixMasterIds)
-                let ok = 0
-                let errMsg: string | null = null
-                for (const userId of ids) {
-                  const { error } = await addPinForUser(userId, item)
-                  if (error) errMsg = error.message
-                  else ok++
-                }
-                setPinCostMatrixSaving(false)
-                if (errMsg) setPinCostMatrixMessage({ type: 'error', text: errMsg })
-                else {
-                  loadCostMatrixPinnedUsers()
-                  setPinCostMatrixMessage({ type: 'success', text: `Pinned for ${ok} user${ok !== 1 ? 's' : ''}. Users may need to refresh their Dashboard to see it.` })
-                  setTimeout(() => setPinCostMatrixMessage(null), 5000)
-                }
-              }}
-              style={{
-                padding: '0.35rem 0.75rem',
-                fontSize: '0.875rem',
-                background: '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: 6,
-                cursor: pinCostMatrixSaving || pinCostMatrixMasterIds.size === 0 ? 'not-allowed' : 'pointer',
-                fontWeight: 500,
-              }}
-            >
-              Pin To Dashboard
-            </button>
-            <button
-              type="button"
-              disabled={pinCostMatrixSaving || pinCostMatrixUnpinSaving}
-              onClick={async () => {
-                setPinCostMatrixUnpinSaving(true)
-                setPinCostMatrixMessage(null)
-                const { count, error } = await deletePinForPathAndTab('/people', 'pay')
-                setPinCostMatrixUnpinSaving(false)
-                if (error) setPinCostMatrixMessage({ type: 'error', text: error.message })
-                else {
-                  loadCostMatrixPinnedUsers()
-                  setPinCostMatrixMessage({ type: 'success', text: `Unpinned Cost matrix for ${count} user${count !== 1 ? 's' : ''}.` })
-                  setTimeout(() => setPinCostMatrixMessage(null), 5000)
-                }
-              }}
-              style={{
-                padding: '0.35rem 0.75rem',
-                fontSize: '0.875rem',
-                background: '#f3f4f6',
-                color: '#374151',
-                border: '1px solid #d1d5db',
-                borderRadius: 6,
-                cursor: pinCostMatrixSaving || pinCostMatrixUnpinSaving ? 'not-allowed' : 'pointer',
-                fontWeight: 500,
-              }}
-            >
-              Unpin All
-            </button>
-          </div>
-          {pinCostMatrixMessage && (
-            <p style={{ color: pinCostMatrixMessage.type === 'success' ? '#059669' : '#b91c1c', fontSize: '0.875rem', marginTop: '0.5rem' }}>
-              {pinCostMatrixMessage.text}
-            </p>
-          )}
-        </div>
-
-        <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
-          <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Pin Supply Houses AP to Dashboard</h2>
-          <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
-            Pin Supply Houses AP total to a master or dev&apos;s dashboard so it appears on their Dashboard.
-          </p>
-          {pinAPMasterIds.size > 0 && (
-            <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500 }}>
-              Pinned for:{' '}
-              {users
-                .filter((u) => u.role === 'master_technician' || u.role === 'dev')
-                .filter((u) => pinAPMasterIds.has(u.id))
-                .map((u) => u.name || u.email || 'Unknown')
-                .join(', ')}
-            </p>
-          )}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', alignItems: 'center' }}>
-            {users.filter((u) => u.role === 'master_technician' || u.role === 'dev').map((u) => (
-              <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem' }}>
-                <input
-                  type="checkbox"
-                  checked={pinAPMasterIds.has(u.id)}
-                  onChange={(e) => {
-                    setPinAPMasterIds((prev) => {
-                      const next = new Set(prev)
-                      if (e.target.checked) next.add(u.id)
-                      else next.delete(u.id)
-                      return next
-                    })
-                  }}
-                  disabled={pinAPSaving}
-                />
-                {u.name || u.email || 'Unknown'} ({u.role === 'dev' ? 'Dev' : 'Master'})
-              </label>
-            ))}
-            <button
-              type="button"
-              disabled={pinAPSaving || pinAPMasterIds.size === 0}
-              onClick={async () => {
-                setPinAPSaving(true)
-                setPinAPMessage(null)
-                const total = apTotal ?? 0
-                const item = { path: '/materials', label: `Supply Houses AP | $${Math.round(total).toLocaleString('en-US')}`, tab: 'supply-houses' as const }
-                const ids = Array.from(pinAPMasterIds)
-                let ok = 0
-                let errMsg: string | null = null
-                for (const userId of ids) {
-                  const { error } = await addPinForUser(userId, item)
-                  if (error) errMsg = error.message
-                  else ok++
-                }
-                setPinAPSaving(false)
-                if (errMsg) setPinAPMessage({ type: 'error', text: errMsg })
-                else {
-                  loadSupplyHousesAPTotalAndPinnedUsers()
-                  setPinAPMessage({ type: 'success', text: `Pinned for ${ok} user${ok !== 1 ? 's' : ''}. Users may need to refresh their Dashboard to see it.` })
-                  setTimeout(() => setPinAPMessage(null), 5000)
-                }
-              }}
-              style={{
-                padding: '0.35rem 0.75rem',
-                fontSize: '0.875rem',
-                background: '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: 6,
-                cursor: pinAPSaving || pinAPMasterIds.size === 0 ? 'not-allowed' : 'pointer',
-                fontWeight: 500,
-              }}
-            >
-              Pin To Dashboard
-            </button>
-            <button
-              type="button"
-              disabled={pinAPSaving || pinAPUnpinSaving}
-              onClick={async () => {
-                setPinAPUnpinSaving(true)
-                setPinAPMessage(null)
-                const { count, error } = await deletePinForPathAndTab('/materials', 'supply-houses')
-                setPinAPUnpinSaving(false)
-                if (error) setPinAPMessage({ type: 'error', text: error.message })
-                else {
-                  loadSupplyHousesAPTotalAndPinnedUsers()
-                  setPinAPMessage({ type: 'success', text: `Unpinned Supply Houses AP for ${count} user${count !== 1 ? 's' : ''}.` })
-                  setTimeout(() => setPinAPMessage(null), 5000)
-                }
-              }}
-              style={{
-                padding: '0.35rem 0.75rem',
-                fontSize: '0.875rem',
-                background: '#f3f4f6',
-                color: '#374151',
-                border: '1px solid #d1d5db',
-                borderRadius: 6,
-                cursor: pinAPSaving || pinAPUnpinSaving ? 'not-allowed' : 'pointer',
-                fontWeight: 500,
-              }}
-            >
-              Unpin All
-            </button>
-          </div>
-          {pinAPMessage && (
-            <p style={{ color: pinAPMessage.type === 'success' ? '#059669' : '#b91c1c', fontSize: '0.875rem', marginTop: '0.5rem' }}>
-              {pinAPMessage.text}
-            </p>
-          )}
-        </div>
-
-        <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
-          <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Pin Sub Labor Due to Dashboard</h2>
-          <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
-            Pin Sub Labor Due (unpaid sub labor balances) to a master or dev&apos;s dashboard so it appears on their Dashboard.
-          </p>
-          {pinExternalTeamMasterIds.size > 0 && (
-            <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500 }}>
-              Pinned for:{' '}
-              {users
-                .filter((u) => u.role === 'master_technician' || u.role === 'dev')
-                .filter((u) => pinExternalTeamMasterIds.has(u.id))
-                .map((u) => u.name || u.email || 'Unknown')
-                .join(', ')}
-            </p>
-          )}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', alignItems: 'center' }}>
-            {users.filter((u) => u.role === 'master_technician' || u.role === 'dev').map((u) => (
-              <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem' }}>
-                <input
-                  type="checkbox"
-                  checked={pinExternalTeamMasterIds.has(u.id)}
-                  onChange={(e) => {
-                    setPinExternalTeamMasterIds((prev) => {
-                      const next = new Set(prev)
-                      if (e.target.checked) next.add(u.id)
-                      else next.delete(u.id)
-                      return next
-                    })
-                  }}
-                  disabled={pinExternalTeamSaving}
-                />
-                {u.name || u.email || 'Unknown'} ({u.role === 'dev' ? 'Dev' : 'Master'})
-              </label>
-            ))}
-            <button
-              type="button"
-              disabled={pinExternalTeamSaving || pinExternalTeamMasterIds.size === 0}
-              onClick={async () => {
-                setPinExternalTeamSaving(true)
-                setPinExternalTeamMessage(null)
-                const total = externalTeamTotal ?? 0
-                const formatTotal = total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                const item = { path: '/jobs', label: `Sub Labor Due: $${formatTotal}`, tab: 'sub_sheet_ledger' as const }
-                const ids = Array.from(pinExternalTeamMasterIds)
-                let ok = 0
-                let errMsg: string | null = null
-                for (const userId of ids) {
-                  const { error } = await addPinForUser(userId, item)
-                  if (error) errMsg = error.message
-                  else ok++
-                }
-                setPinExternalTeamSaving(false)
-                if (errMsg) setPinExternalTeamMessage({ type: 'error', text: errMsg })
-                else {
-                  loadExternalTeamTotalAndPinnedUsers()
-                  setPinExternalTeamMessage({ type: 'success', text: `Pinned for ${ok} user${ok !== 1 ? 's' : ''}. Users may need to refresh their Dashboard to see it.` })
-                  setTimeout(() => setPinExternalTeamMessage(null), 5000)
-                }
-              }}
-              style={{
-                padding: '0.35rem 0.75rem',
-                fontSize: '0.875rem',
-                background: '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: 6,
-                cursor: pinExternalTeamSaving || pinExternalTeamMasterIds.size === 0 ? 'not-allowed' : 'pointer',
-                fontWeight: 500,
-              }}
-            >
-              Pin To Dashboard
-            </button>
-            <button
-              type="button"
-              disabled={pinExternalTeamSaving || pinExternalTeamUnpinSaving}
-              onClick={async () => {
-                setPinExternalTeamUnpinSaving(true)
-                setPinExternalTeamMessage(null)
-                const [subRes, extRes] = await Promise.all([
-                  deletePinForPathAndTab('/jobs', 'sub_sheet_ledger'),
-                  deletePinForPathAndTab('/materials', 'external-team'),
-                ])
-                const count = (subRes.count ?? 0) + (extRes.count ?? 0)
-                const error = subRes.error ?? extRes.error
-                setPinExternalTeamUnpinSaving(false)
-                if (error) setPinExternalTeamMessage({ type: 'error', text: error.message })
-                else {
-                  loadExternalTeamTotalAndPinnedUsers()
-                  setPinExternalTeamMessage({ type: 'success', text: `Unpinned Sub Labor Due for ${count} user${count !== 1 ? 's' : ''}.` })
-                  setTimeout(() => setPinExternalTeamMessage(null), 5000)
-                }
-              }}
-              style={{
-                padding: '0.35rem 0.75rem',
-                fontSize: '0.875rem',
-                background: '#f3f4f6',
-                color: '#374151',
-                border: '1px solid #d1d5db',
-                borderRadius: 6,
-                cursor: pinExternalTeamSaving || pinExternalTeamUnpinSaving ? 'not-allowed' : 'pointer',
-                fontWeight: 500,
-              }}
-            >
-              Unpin All
-            </button>
-          </div>
-          {pinExternalTeamMessage && (
-            <p style={{ color: pinExternalTeamMessage.type === 'success' ? '#059669' : '#b91c1c', fontSize: '0.875rem', marginTop: '0.5rem' }}>
-              {pinExternalTeamMessage.text}
-            </p>
-          )}
-        </div>
-              </>
-              )}
-
-            </div>
-          )}
-        </div>
-      )}
+      </SettingsGroup>
 
       {myRole !== 'subcontractor' && (
-      <div style={{ marginTop: '2rem', marginBottom: '1.5rem' }}>
+      <div id="settings-advanced-tools" style={{ marginTop: '2rem', marginBottom: '1.5rem' }}>
         <button
           type="button"
           onClick={() => setAdvancedSectionOpen((prev) => !prev)}
@@ -9757,6 +10000,52 @@ export default function Settings() {
         onClose={() => setMuteModalItemId(null)}
         onSaved={() => loadMutedTasks()}
       />
+
+      {(myRole === 'master_technician' || myRole === 'dev') && (
+        <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: '#f9fafb' }}>
+          <div style={{ marginBottom: '0.75rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>
+            PipeTooling helps Masters better manage Projects with Subs.
+            <br />
+            Three types of People: Masters, Assistants, Subs
+          </div>
+          <h2 style={{ fontSize: '1rem', marginTop: 0, marginBottom: '0.75rem', fontWeight: 600 }}>How It Works</h2>
+          <ol style={{ margin: 0, paddingLeft: '1.5rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>
+            <li style={{ marginBottom: '0.5rem' }}>Master accounts have Customers</li>
+            <li style={{ marginBottom: '0.5rem' }}>Customers can have Projects</li>
+            <li style={{ marginBottom: '0.5rem' }}>Masters assign People to Project Stages</li>
+            <li>When People complete Stages, Masters are updated</li>
+          </ol>
+          <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: '#374151' }}>
+            <strong>Sharing</strong>:
+            <ul style={{ margin: '0.25rem 0 0 1.25rem', padding: 0, listStyle: 'disc' }}>
+              <li style={{ marginBottom: '0.5rem' }}>
+                Masters can choose to adopt assistants in Settings
+                <div style={{ marginLeft: '1.25rem', marginTop: '0.25rem' }}>
+                  → they can manage stages and see private notes but not financial totals
+                </div>
+              </li>
+              <li>
+                Masters can choose to share with other Masters
+                <div style={{ marginLeft: '1.25rem', marginTop: '0.25rem' }}>
+                  → they have the same permissions as assistants
+                </div>
+              </li>
+            </ul>
+          </div>
+          <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: '#374151' }}>
+            <strong>Subcontractors</strong>:
+            <ul style={{ margin: '0.25rem 0 0 1.25rem', padding: 0, listStyle: 'disc' }}>
+              <li>Only see a stage when it is assigned to them</li>
+              <li>Can only Start and Complete their stages</li>
+              <li>Cannot see private notes or financials</li>
+              <li>Cannot add, edit, delete, or assign stages</li>
+            </ul>
+            <div style={{ marginTop: '0.5rem' }}>
+              When a Master or Assistant selects to Notify when a stage updates, that stage will show up in their Subscribed Stages on the Dashboard.
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

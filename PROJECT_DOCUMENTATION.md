@@ -699,7 +699,7 @@ WHERE proname IN (
 - **Key Fields**: `id` (uuid, PK); `leader_user_id`, `member_user_id` (FK → `users.id`, ON DELETE CASCADE); `created_at` (timestamptz); `created_by_user_id` (uuid, nullable, FK → `users`).
 - **Constraints**: `UNIQUE (leader_user_id, member_user_id)`; `CHECK (leader_user_id <> member_user_id)`.
 - **RLS**: Leaders and members can read rows they appear on; dev, master_technician, and assistant can manage all rows (Settings UI). Helpers: `is_team_lead_for_member(leader, member)`, `can_manage_team_leader_assignments()`.
-- **Usage**: Settings → Team lead assignments; extends `clock_sessions` SELECT/UPDATE and `approve_clock_sessions` / `revoke_clock_sessions` for team-lead paths.
+- **Usage**: Settings → Team Hours Sharing; extends `clock_sessions` SELECT/UPDATE and `approve_clock_sessions` / `revoke_clock_sessions` for team-lead paths.
 
 #### `public.team_leader_clock_notify_prefs`
 - **Purpose**: Per **team leader assignment** (`team_leader_assignments.id`), whether that leader receives **Web Push** when the linked member clocks in or out (Edge Function `notify-team-lead-clock`, triggered by Database Webhook on `clock_sessions`).

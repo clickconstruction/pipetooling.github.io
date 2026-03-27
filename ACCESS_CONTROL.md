@@ -110,7 +110,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 - Claim dev role via Settings (enter promotion code from DEV_PROMOTION_CODE secret)
 - Manage Pay Approved Masters (Settings); only dev can change Show in Hours per person
 - Manage **Task Dispatch** group in Settings: choose which **assistants** receive dispatch pushes and see the Dispatch inbox on Dashboard
-- Manage **team lead assignments** (Settings): link leaders to members for My Team hours approval on Dashboard
+- Manage **Team Hours Sharing** (Settings): link leaders to members for My Team hours approval on Dashboard
 - **Dashboard → Rejected sessions (all users)**: org-wide rejected clock sessions for review (same delete as People → Hours)
 - Delete reports (Jobs Reports tab); masters, assistants, primaries cannot delete reports
 
@@ -195,7 +195,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 
 **Access**:
 - Dashboard, Customers, Projects, People, Jobs, Calendar, Bids, Materials, Prospects
-- **Settings** (via gear menu): Change password, push notifications, Dashboard buttons, **Dashboard Page Pins** (Page pins card only—manage own pins, Clear all, Remove per pin), **Team lead assignments** (leader → member links for My Team). Does NOT see dev-only sections (Pin Billed, Cost matrix, Supply Houses AP, Sub Labor Due, user management, email templates, etc.). The PAGE_ACCESS table in Settings is a reference display; assistants can navigate to Settings.
+- **Settings** (via gear menu): Change password, push notifications, Dashboard buttons, **Dashboard Page Pins** (Page pins card only—manage own pins, Clear all, Remove per pin), **Team Hours Sharing** (leader → member links for My Team). Does NOT see dev-only sections (Pin Billed, Cost matrix, Supply Houses AP, Sub Labor Due, user management, email templates, etc.). The PAGE_ACCESS table in Settings is a reference display; assistants can navigate to Settings.
 - **Blocked**: Templates
 
 **Permissions**:
@@ -519,7 +519,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 
 | Feature | dev | master | assistant | sub | estimator | primary | superintendent |
 |---------|-----|--------|-----------|-----|-----------|---------|----------------|
-| Team lead assignments (leader → member links for My Team) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Team Hours Sharing (leader → member links for My Team) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 ### Customer Management
 
