@@ -49,13 +49,30 @@ function formatHoursH(h: number): string {
   return `${h.toFixed(2)}h`
 }
 
+const scopeBtn = (active: boolean): CSSProperties => ({
+  padding: '0.2rem 0.45rem',
+  fontSize: '0.7rem',
+  border: '1px solid #d1d5db',
+  borderRadius: 4,
+  background: active ? '#e5e7eb' : 'white',
+  cursor: 'pointer',
+  color: '#374151',
+  fontWeight: active ? 600 : 500,
+})
+
 /** Compact read-only summary of open clock sessions (Dashboard My Team). Mount only when `sessions.length > 0` so the tick interval is not left running. */
 export function DashboardTeamActiveClockStrip({
   sessions,
   hoursTodayByUserId,
+  showScopeToggle = false,
+  clockStripScope = 'team',
+  onClockStripScopeChange,
 }: {
   sessions: ClockSessionRow[]
   hoursTodayByUserId: Readonly<Record<string, number>>
+  showScopeToggle?: boolean
+  clockStripScope?: 'team' | 'everyone'
+  onClockStripScopeChange?: (scope: 'team' | 'everyone') => void
 }) {
   const nowMs = useIntervalNowMs(45_000)
 
@@ -68,6 +85,39 @@ export function DashboardTeamActiveClockStrip({
         marginBottom: '1rem',
       }}
     >
+      {showScopeToggle && onClockStripScopeChange && (
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            gap: '0.35rem',
+            padding: '0.35rem 0.5rem',
+            background: '#f9fafb',
+            borderBottom: '1px solid #e5e7eb',
+          }}
+        >
+          <div role="group" aria-label="Clocked-in list scope">
+            <button
+              type="button"
+              aria-pressed={clockStripScope === 'team'}
+              onClick={() => onClockStripScopeChange('team')}
+              style={{ ...scopeBtn(clockStripScope === 'team'), borderTopRightRadius: 0, borderBottomRightRadius: 0, marginRight: -1 }}
+            >
+              My team
+            </button>
+            <button
+              type="button"
+              aria-pressed={clockStripScope === 'everyone'}
+              onClick={() => onClockStripScopeChange('everyone')}
+              style={{ ...scopeBtn(clockStripScope === 'everyone'), borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
+            >
+              Everyone
+            </button>
+          </div>
+        </div>
+      )}
       <div style={{ overflowX: 'auto' }} aria-live="polite">
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>

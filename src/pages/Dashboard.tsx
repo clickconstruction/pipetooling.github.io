@@ -36,6 +36,20 @@ import AssignedStageCard from '../components/AssignedStageCard'
 import { getNextDisplayOrders } from '../utils/checklistOrder'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import type { Database } from '../types/database'
+import type { ClockSessionRow } from '../types/clockSessions'
+
+const DASHBOARD_CLOCK_STRIP_SCOPE_KEY = 'dashboard_clock_strip_scope'
+
+function readClockStripScope(): 'team' | 'everyone' {
+  try {
+    if (typeof localStorage !== 'undefined' && localStorage.getItem(DASHBOARD_CLOCK_STRIP_SCOPE_KEY) === 'everyone') {
+      return 'everyone'
+    }
+  } catch {
+    /* ignore */
+  }
+  return 'team'
+}
 
 function toDatetimeLocal(iso: string | null): string {
   if (!iso) return ''
@@ -284,7 +298,19 @@ function SubscribedSkeleton() {
 export default function Dashboard() {
   const navigate = useNavigate()
   const { user: authUser, role, estimatorProspectsAccess } = useAuth()
-  const myTeam = useDashboardMyTeamSectionState(authUser?.id)
+  const showClockStripScopeToggle =
+    role === 'dev' || role === 'master_technician' || role === 'assistant'
+  const [clockStripScope, setClockStripScope] = useState<'team' | 'everyone'>(readClockStripScope)
+  const setClockStripScopePersist = useCallback((next: 'team' | 'everyone') => {
+    setClockStripScope(next)
+    try {
+      localStorage.setItem(DASHBOARD_CLOCK_STRIP_SCOPE_KEY, next)
+    } catch {
+      /* ignore */
+    }
+  }, [])
+  const orgWideStripEnabled = showClockStripScopeToggle && clockStripScope === 'everyone'
+  const myTeam = useDashboardMyTeamSectionState(authUser?.id, { orgWideStripEnabled })
   const goToPendingSessionsInMyTeam = useCallback(() => {
     myTeam.setMyTeamExpanded(true)
     requestAnimationFrame(() => {
@@ -296,10 +322,20 @@ export default function Dashboard() {
       })
     })
   }, [myTeam.setMyTeamExpanded])
-  const activeClockSessions = useMemo(
-    () => myTeam.pendingSessions.filter((s) => s.clocked_out_at == null),
-    [myTeam.pendingSessions],
-  )
+  const sessionsForStrip = useMemo(() => {
+    const isOpen = (s: ClockSessionRow) => s.clocked_out_at == null
+    if (showClockStripScopeToggle && clockStripScope === 'everyone') {
+      return myTeam.orgWidePendingSessions.filter(isOpen)
+    }
+    return myTeam.pendingSessions.filter(isOpen)
+  }, [showClockStripScopeToggle, clockStripScope, myTeam.orgWidePendingSessions, myTeam.pendingSessions])
+
+  const hoursTodayForStrip = useMemo(() => {
+    if (showClockStripScopeToggle && clockStripScope === 'everyone') {
+      return myTeam.hoursTodayByUserIdOrg
+    }
+    return myTeam.hoursTodayByUserId
+  }, [showClockStripScopeToggle, clockStripScope, myTeam.hoursTodayByUserIdOrg, myTeam.hoursTodayByUserId])
   const isMobile = useIsMobile()
   const [subscribedSteps, setSubscribedSteps] = useState<SubscribedStep[]>([])
   const [assignedSteps, setAssignedSteps] = useState<AssignedStep[]>([])
@@ -2722,8 +2758,14 @@ export default function Dashboard() {
         />
       )}
       {role === 'assistant' && tallyAndPinnedBlock}
-      {role === 'assistant' && authUser?.id && activeClockSessions.length > 0 && (
-        <DashboardTeamActiveClockStrip sessions={activeClockSessions} hoursTodayByUserId={myTeam.hoursTodayByUserId} />
+      {role === 'assistant' && authUser?.id && sessionsForStrip.length > 0 && (
+        <DashboardTeamActiveClockStrip
+          sessions={sessionsForStrip}
+          hoursTodayByUserId={hoursTodayForStrip}
+          showScopeToggle={showClockStripScopeToggle}
+          clockStripScope={clockStripScope}
+          onClockStripScopeChange={setClockStripScopePersist}
+        />
       )}
       {role === 'assistant' && authUser?.id && (
         <DashboardMyTeamPendingBanner
@@ -3162,8 +3204,14 @@ export default function Dashboard() {
         </div>
       )}
       {role !== 'assistant' && tallyAndPinnedBlock}
-      {role !== 'assistant' && authUser?.id && activeClockSessions.length > 0 && (
-        <DashboardTeamActiveClockStrip sessions={activeClockSessions} hoursTodayByUserId={myTeam.hoursTodayByUserId} />
+      {role !== 'assistant' && authUser?.id && sessionsForStrip.length > 0 && (
+        <DashboardTeamActiveClockStrip
+          sessions={sessionsForStrip}
+          hoursTodayByUserId={hoursTodayForStrip}
+          showScopeToggle={showClockStripScopeToggle}
+          clockStripScope={clockStripScope}
+          onClockStripScopeChange={setClockStripScopePersist}
+        />
       )}
       {role !== 'assistant' && authUser?.id && (
         <DashboardMyTeamPendingBanner

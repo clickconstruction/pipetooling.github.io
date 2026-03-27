@@ -42,6 +42,7 @@
 | Bid Board All notes (unified timeline), customer notes cards, `customer_contacts.contact_method` | `RECENT_FEATURES.md` → v2.148; `PROJECT_DOCUMENTATION.md` → Bids; `MIGRATIONS.md` → 20260324120000 |
 | Clock sessions table (time/location, merged notes+job, accountability lines), pending Approve/Reject/Edit order, My Roles Goals gate, `user_dashboard_goals` / `user_daily_goals_ack` | `RECENT_FEATURES.md` → v2.149; `PROJECT_DOCUMENTATION.md` → Dashboard, People Hours, Quickfill, Settings; `MIGRATIONS.md` → 20260329120000; `GLOSSARY.md` → Clock Sessions |
 | Dashboard My Team: Clock activity above Active/Pending, plain "Clock activity" label, pending banner full-bar jump + expand | `RECENT_FEATURES.md` → v2.153; `PROJECT_DOCUMENTATION.md` → Dashboard |
+| Dashboard Currently clocked in strip (below pins): Today hours, My team/Everyone toggle (dev/master/assistant); Materials supply house `website_url` + Open website | `RECENT_FEATURES.md` → v2.163; `PROJECT_DOCUMENTATION.md` → Dashboard, Materials Supply Houses, `supply_houses`; `src/hooks/useDashboardMyTeamSectionState.ts`; `src/components/DashboardTeamActiveClockStrip.tsx` |
 | Team feedback (dev): eligibility overview per-user Reset, submit `reviewer_user_id` from session, `team_feedback_submissions_select_own` migration, raw submissions names + CSV | `RECENT_FEATURES.md` → v2.162; `MIGRATIONS.md` → 20270329140000; `src/lib/teamFeedback.ts`; `src/components/team-feedback/` |
 
 ---

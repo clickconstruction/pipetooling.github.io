@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-03-29
+last_updated: 2026-03-30
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,8 +15,11 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.163)"
+    line: ~434
+    description: "Dashboard clock strip (Today, My team/Everyone); Materials supply house website in expanded row"
   - name: "Latest Version (v2.162)"
-    line: ~430
+    line: ~450
     description: "Team feedback: dev eligibility reset, submit uses auth user id, SELECT-own migration, raw submission names"
   - name: "Latest Version (v2.161)"
     line: ~450
@@ -322,17 +325,18 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.162)](#latest-updates-v2162) - Team feedback: dev eligibility reset, submissions RLS, raw submission names
-2. [Latest Updates (v2.153)](#latest-updates-v2153) - Dashboard My Team layout; pending banner jump UX
-3. [Latest Updates (v2.152)](#latest-updates-v2152) - My Team: People you lead hours table (Pending/Approved/Total)
-4. [Latest Updates (v2.151)](#latest-updates-v2151) - My Team clock notify + ledger; Edge Function
-5. [Latest Updates (v2.150)](#latest-updates-v2150) - Dashboard My Team: People you lead roster
-6. [Latest Updates (v2.149)](#latest-updates-v2149) - Clock sessions UX; daily goals gate; goals tables
-7. [Latest Updates (v2.148)](#latest-updates-v2148) - Bid Board All notes; customer notes UX; contact_method
-8. [Latest Updates (v2.145)](#latest-updates-v2145) - Master tech mobile nav Quickfill and Review in hamburger
-9. [Latest Updates (v2.144)](#latest-updates-v2144) - Assistant billing sections at top of Dashboard
-10. [Latest Updates (v2.143)](#latest-updates-v2143) - Assistant Dashboard section reorder
-11. [Latest Updates (v2.142)](#latest-updates-v2142) - Dashboard Assigned Jobs and Superintendent Jobs UX
+1. [Latest Updates (v2.163)](#latest-updates-v2163) - Dashboard clock strip; supply house website in expanded row
+2. [Latest Updates (v2.162)](#latest-updates-v2162) - Team feedback: dev eligibility reset, submissions RLS, raw submission names
+3. [Latest Updates (v2.153)](#latest-updates-v2153) - Dashboard My Team layout; pending banner jump UX
+4. [Latest Updates (v2.152)](#latest-updates-v2152) - My Team: People you lead hours table (Pending/Approved/Total)
+5. [Latest Updates (v2.151)](#latest-updates-v2151) - My Team clock notify + ledger; Edge Function
+6. [Latest Updates (v2.150)](#latest-updates-v2150) - Dashboard My Team: People you lead roster
+7. [Latest Updates (v2.149)](#latest-updates-v2149) - Clock sessions UX; daily goals gate; goals tables
+8. [Latest Updates (v2.148)](#latest-updates-v2148) - Bid Board All notes; customer notes UX; contact_method
+9. [Latest Updates (v2.145)](#latest-updates-v2145) - Master tech mobile nav Quickfill and Review in hamburger
+10. [Latest Updates (v2.144)](#latest-updates-v2144) - Assistant billing sections at top of Dashboard
+11. [Latest Updates (v2.143)](#latest-updates-v2143) - Assistant Dashboard section reorder
+12. [Latest Updates (v2.142)](#latest-updates-v2142) - Dashboard Assigned Jobs and Superintendent Jobs UX
 2. [Latest Updates (v2.139)](#latest-updates-v2139) - Fix cost_estimates RLS for assistants
 3. [Latest Updates (v2.138)](#latest-updates-v2138) - Revoke superintendent Jobs Billing access
 2. [Latest Updates (v2.135)](#latest-updates-v2135) - Workflow: Collapse old stages toggle, breadcrumb below buttons, no-wrap scroll
@@ -428,6 +432,20 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.163)
+
+**Date**: 2026-03-30
+
+### Dashboard — Currently clocked in strip; Materials — supply house website
+
+- **Currently clocked in** (team leads and roles that see pending clocks): Compact table **below pinned tabs** on the Dashboard (above the yellow pending banner when shown): **Currently clocked in (n)** as the first column header, then **Clocked in**, **Elapsed**, **Today** (total **clock session** hours for `work_date` = today per person; `people_hours` grid not included). Data from [`useDashboardMyTeamSectionState`](src/hooks/useDashboardMyTeamSectionState.ts) ([`Dashboard.tsx`](src/pages/Dashboard.tsx), [`DashboardTeamActiveClockStrip`](src/components/DashboardTeamActiveClockStrip.tsx)).
+
+- **My team / Everyone** (dev, **master_technician**, **assistant** only): Toggle persisted in **`localStorage`** key `dashboard_clock_strip_scope`. **My team** = open sessions for people you lead (same as My Team pending query). **Everyone** = same date/approval filters **without** `user_id` filter; rows are **RLS-bounded** (e.g. dev and pay-access paths see broadly; team leads still only members unless policy allows more). **Today** column uses org-wide today totals when **Everyone** is selected. Hook: `orgWidePendingSessions`, `hoursTodayByUserIdOrg`, `loadOrgWidePending`, `loadTodayClockSessionsOrg`.
+
+- **Materials → Supply Houses**: Expanded supply house row shows **Open website** beside phone when **`supply_houses.website_url`** is set ([`SupplyHousesTab`](src/components/SupplyHousesTab.tsx), [`SupplyHouseWebsiteLink`](src/components/SupplyHouseWebsiteLink.tsx)). Dropdowns elsewhere already offer **Open website** for selected houses.
 
 ---
 

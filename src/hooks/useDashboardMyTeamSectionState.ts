@@ -78,7 +78,16 @@ function personDisplayName(s: ClockSessionRow): string {
   return s.users?.name?.trim() ?? 'Unknown'
 }
 
-export function useDashboardMyTeamSectionState(authUserId: string | undefined) {
+export type DashboardMyTeamSectionOptions = {
+  /** When true, load org-wide pending sessions + today hours for the clock strip (RLS-bounded). */
+  orgWideStripEnabled?: boolean
+}
+
+export function useDashboardMyTeamSectionState(
+  authUserId: string | undefined,
+  options?: DashboardMyTeamSectionOptions,
+) {
+  const orgWideStripEnabled = options?.orgWideStripEnabled === true
   const [memberUserIds, setMemberUserIds] = useState<string[]>([])
   const [teamMemberRoster, setTeamMemberRoster] = useState<TeamMemberRosterRow[]>([])
   const [hoursSummaryByUserId, setHoursSummaryByUserId] = useState<Record<string, TeamHoursSummary>>({})
@@ -94,6 +103,8 @@ export function useDashboardMyTeamSectionState(authUserId: string | undefined) {
   const [loadingMeta, setLoadingMeta] = useState(true)
   const [pendingSessions, setPendingSessions] = useState<ClockSessionRow[]>([])
   const [todaySessionsRows, setTodaySessionsRows] = useState<TodaySessionRow[]>([])
+  const [orgWidePendingSessions, setOrgWidePendingSessions] = useState<ClockSessionRow[]>([])
+  const [todaySessionsRowsOrg, setTodaySessionsRowsOrg] = useState<TodaySessionRow[]>([])
   const [loadingSessions, setLoadingSessions] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [myTeamExpanded, setMyTeamExpanded] = useState(true)
@@ -106,6 +117,8 @@ export function useDashboardMyTeamSectionState(authUserId: string | undefined) {
       setNotifyByAssignment({})
       setHoursSummaryByUserId({})
       setTodaySessionsRows([])
+      setOrgWidePendingSessions([])
+      setTodaySessionsRowsOrg([])
       setLoadingMeta(false)
       return
     }
@@ -163,6 +176,8 @@ export function useDashboardMyTeamSectionState(authUserId: string | undefined) {
       setNotifyByAssignment({})
       setHoursSummaryByUserId({})
       setTodaySessionsRows([])
+      setOrgWidePendingSessions([])
+      setTodaySessionsRowsOrg([])
     } finally {
       setLoadingMeta(false)
     }
@@ -189,6 +204,55 @@ export function useDashboardMyTeamSectionState(authUserId: string | undefined) {
       setTodaySessionsRows([])
     }
   }, [authUserId, memberUserIds])
+
+  const loadTodayClockSessionsOrg = useCallback(async () => {
+    if (!authUserId) {
+      setTodaySessionsRowsOrg([])
+      return
+    }
+    const today = new Date().toLocaleDateString('en-CA')
+    try {
+      const data = await withSupabaseRetry(
+        async () =>
+          supabase
+            .from('clock_sessions')
+            .select('user_id, clocked_in_at, clocked_out_at, rejected_at, revoked_at')
+            .eq('work_date', today),
+        'load org today clock sessions',
+      )
+      setTodaySessionsRowsOrg((data ?? []) as TodaySessionRow[])
+    } catch {
+      setTodaySessionsRowsOrg([])
+    }
+  }, [authUserId])
+
+  const loadOrgWidePending = useCallback(async () => {
+    if (!authUserId) {
+      setOrgWidePendingSessions([])
+      setTodaySessionsRowsOrg([])
+      return
+    }
+    try {
+      const data = await withSupabaseRetry(
+        async () =>
+          supabase
+            .from('clock_sessions')
+            .select(CLOCK_SESSION_LIST_SELECT)
+            .is('approved_at', null)
+            .is('rejected_at', null)
+            .gte('work_date', dateStart)
+            .lte('work_date', dateEnd)
+            .order('work_date', { ascending: false })
+            .order('clocked_in_at', { ascending: false }),
+        'load org-wide pending clock sessions',
+      )
+      setOrgWidePendingSessions((data ?? []) as unknown as ClockSessionRow[])
+      await loadTodayClockSessionsOrg()
+    } catch {
+      setOrgWidePendingSessions([])
+      setTodaySessionsRowsOrg([])
+    }
+  }, [authUserId, dateStart, dateEnd, loadTodayClockSessionsOrg])
 
   const loadTeamHoursSummary = useCallback(async () => {
     if (!authUserId || memberUserIds.length === 0) {
@@ -325,6 +389,9 @@ export function useDashboardMyTeamSectionState(authUserId: string | undefined) {
       setPendingSessions((data ?? []) as unknown as ClockSessionRow[])
       await loadTeamHoursSummary()
       await loadTodayClockSessions()
+      if (orgWideStripEnabled) {
+        await loadOrgWidePending()
+      }
     } catch (e) {
       setError(formatErrorMessage(e))
       if (!silent) {
@@ -335,7 +402,16 @@ export function useDashboardMyTeamSectionState(authUserId: string | undefined) {
         setLoadingSessions(false)
       }
     }
-  }, [authUserId, memberUserIds, dateStart, dateEnd, loadTeamHoursSummary, loadTodayClockSessions])
+  }, [
+    authUserId,
+    memberUserIds,
+    dateStart,
+    dateEnd,
+    loadTeamHoursSummary,
+    loadTodayClockSessions,
+    orgWideStripEnabled,
+    loadOrgWidePending,
+  ])
 
   const removePendingSessionFromState = useCallback((sessionId: string) => {
     setPendingSessions((prev) => prev.filter((s) => s.id !== sessionId))
@@ -348,6 +424,15 @@ export function useDashboardMyTeamSectionState(authUserId: string | undefined) {
   useEffect(() => {
     void loadPending()
   }, [loadPending])
+
+  useEffect(() => {
+    if (!orgWideStripEnabled || !authUserId) {
+      setOrgWidePendingSessions([])
+      setTodaySessionsRowsOrg([])
+      return
+    }
+    void loadOrgWidePending()
+  }, [orgWideStripEnabled, authUserId, dateStart, dateEnd, loadOrgWidePending])
 
   const loadLedger = useCallback(async () => {
     if (!authUserId || memberUserIds.length === 0) {
@@ -516,6 +601,16 @@ export function useDashboardMyTeamSectionState(authUserId: string | undefined) {
     return out
   }, [memberUserIds, todaySessionsRows, todayHoursNowMs])
 
+  const hoursTodayByUserIdOrg = useMemo(() => {
+    const out: Record<string, number> = {}
+    for (const row of todaySessionsRowsOrg) {
+      if (row.rejected_at || row.revoked_at) continue
+      const sec = sessionDurationSeconds(row.clocked_in_at, row.clocked_out_at, todayHoursNowMs)
+      out[row.user_id] = (out[row.user_id] ?? 0) + sec / 3600
+    }
+    return out
+  }, [todaySessionsRowsOrg, todayHoursNowMs])
+
   const pendingApprovalCount = useMemo(
     () => pendingSessions.filter((s) => s.clocked_out_at != null).length,
     [pendingSessions],
@@ -541,7 +636,9 @@ export function useDashboardMyTeamSectionState(authUserId: string | undefined) {
     loadingLedger,
     loadingMeta,
     pendingSessions,
+    orgWidePendingSessions,
     hoursTodayByUserId,
+    hoursTodayByUserIdOrg,
     pendingApprovalCount,
     loadingSessions,
     error,
