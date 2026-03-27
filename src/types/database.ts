@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       app_settings: {
@@ -2199,6 +2224,38 @@ export type Database = {
           },
         ]
       }
+      labels: {
+        Row: {
+          created_at: string
+          id: string
+          master_user_id: string
+          name: string
+          slug: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          master_user_id: string
+          name: string
+          slug: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          master_user_id?: string
+          name?: string
+          slug?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "labels_master_user_id_fkey"
+            columns: ["master_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       labor_book_entries: {
         Row: {
           alias_names: string[] | null
@@ -3078,6 +3135,36 @@ export type Database = {
           sequence_order?: number
         }
         Relationships: []
+      }
+      people_labels: {
+        Row: {
+          label_id: string
+          person_id: string
+        }
+        Insert: {
+          label_id: string
+          person_id: string
+        }
+        Update: {
+          label_id?: string
+          person_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "people_labels_label_id_fkey"
+            columns: ["label_id"]
+            isOneToOne: false
+            referencedRelation: "labels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_labels_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       people_labor_job_items: {
         Row: {
@@ -4786,6 +4873,243 @@ export type Database = {
           },
         ]
       }
+      team_feedback_peer_ratings: {
+        Row: {
+          created_at: string
+          id: string
+          peer_likert_1: number | null
+          peer_likert_2: number | null
+          peer_likert_3: number | null
+          peer_likert_4: number | null
+          peer_likert_5: number | null
+          peer_person_id: string | null
+          peer_trust: number | null
+          peer_user_id: string | null
+          submission_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          peer_likert_1?: number | null
+          peer_likert_2?: number | null
+          peer_likert_3?: number | null
+          peer_likert_4?: number | null
+          peer_likert_5?: number | null
+          peer_person_id?: string | null
+          peer_trust?: number | null
+          peer_user_id?: string | null
+          submission_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          peer_likert_1?: number | null
+          peer_likert_2?: number | null
+          peer_likert_3?: number | null
+          peer_likert_4?: number | null
+          peer_likert_5?: number | null
+          peer_person_id?: string | null
+          peer_trust?: number | null
+          peer_user_id?: string | null
+          submission_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_feedback_peer_ratings_peer_person_id_fkey"
+            columns: ["peer_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_feedback_peer_ratings_peer_user_id_fkey"
+            columns: ["peer_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_feedback_peer_ratings_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "team_feedback_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_feedback_settings: {
+        Row: {
+          cadence_days: number
+          comment_only_enabled: boolean
+          enabled: boolean
+          home_entry_enabled: boolean
+          id: number
+          inclusion_label_manager: string | null
+          inclusion_label_open: string | null
+          inclusion_label_peer: string | null
+          inclusion_subtitle: string | null
+          inclusion_title: string | null
+          intro_copy: string | null
+          manager_likert_prompts: Json | null
+          manager_overall_prompt: string | null
+          manager_section_enabled: boolean
+          manager_step_heading: string | null
+          peer_likert_prompts: Json | null
+          peer_section_enabled: boolean
+          peer_step_heading: string | null
+          thank_you_copy: string | null
+          updated_at: string
+        }
+        Insert: {
+          cadence_days?: number
+          comment_only_enabled?: boolean
+          enabled?: boolean
+          home_entry_enabled?: boolean
+          id?: number
+          inclusion_label_manager?: string | null
+          inclusion_label_open?: string | null
+          inclusion_label_peer?: string | null
+          inclusion_subtitle?: string | null
+          inclusion_title?: string | null
+          intro_copy?: string | null
+          manager_likert_prompts?: Json | null
+          manager_overall_prompt?: string | null
+          manager_section_enabled?: boolean
+          manager_step_heading?: string | null
+          peer_likert_prompts?: Json | null
+          peer_section_enabled?: boolean
+          peer_step_heading?: string | null
+          thank_you_copy?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cadence_days?: number
+          comment_only_enabled?: boolean
+          enabled?: boolean
+          home_entry_enabled?: boolean
+          id?: number
+          inclusion_label_manager?: string | null
+          inclusion_label_open?: string | null
+          inclusion_label_peer?: string | null
+          inclusion_subtitle?: string | null
+          inclusion_title?: string | null
+          intro_copy?: string | null
+          manager_likert_prompts?: Json | null
+          manager_overall_prompt?: string | null
+          manager_section_enabled?: boolean
+          manager_step_heading?: string | null
+          peer_likert_prompts?: Json | null
+          peer_section_enabled?: boolean
+          peer_step_heading?: string | null
+          thank_you_copy?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      team_feedback_submissions: {
+        Row: {
+          created_at: string
+          cycle_period_start: string | null
+          id: string
+          manager_likert_1: number | null
+          manager_likert_2: number | null
+          manager_likert_3: number | null
+          manager_likert_4: number | null
+          manager_likert_5: number | null
+          manager_overall_1_10: number | null
+          manager_user_id: string | null
+          open_fix_improve: string | null
+          open_safety_tools: string | null
+          open_training: string | null
+          reviewer_user_id: string
+          source: string
+        }
+        Insert: {
+          created_at?: string
+          cycle_period_start?: string | null
+          id?: string
+          manager_likert_1?: number | null
+          manager_likert_2?: number | null
+          manager_likert_3?: number | null
+          manager_likert_4?: number | null
+          manager_likert_5?: number | null
+          manager_overall_1_10?: number | null
+          manager_user_id?: string | null
+          open_fix_improve?: string | null
+          open_safety_tools?: string | null
+          open_training?: string | null
+          reviewer_user_id: string
+          source: string
+        }
+        Update: {
+          created_at?: string
+          cycle_period_start?: string | null
+          id?: string
+          manager_likert_1?: number | null
+          manager_likert_2?: number | null
+          manager_likert_3?: number | null
+          manager_likert_4?: number | null
+          manager_likert_5?: number | null
+          manager_overall_1_10?: number | null
+          manager_user_id?: string | null
+          open_fix_improve?: string | null
+          open_safety_tools?: string | null
+          open_training?: string | null
+          reviewer_user_id?: string
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_feedback_submissions_manager_user_id_fkey"
+            columns: ["manager_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_feedback_submissions_reviewer_user_id_fkey"
+            columns: ["reviewer_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_feedback_user_state: {
+        Row: {
+          last_completed_at: string | null
+          last_prompt_at: string | null
+          last_skipped_at: string | null
+          snooze_until: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          last_completed_at?: string | null
+          last_prompt_at?: string | null
+          last_skipped_at?: string | null
+          snooze_until?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          last_completed_at?: string | null
+          last_prompt_at?: string | null
+          last_skipped_at?: string | null
+          snooze_until?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_feedback_user_state_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_leader_assignments: {
         Row: {
           created_at: string
@@ -5098,6 +5422,36 @@ export type Database = {
           },
         ]
       }
+      user_labels: {
+        Row: {
+          label_id: string
+          user_id: string
+        }
+        Insert: {
+          label_id: string
+          user_id: string
+        }
+        Update: {
+          label_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_labels_label_id_fkey"
+            columns: ["label_id"]
+            isOneToOne: false
+            referencedRelation: "labels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_labels_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_pinned_tabs: {
         Row: {
           id: string
@@ -5222,6 +5576,49 @@ export type Database = {
             foreignKeyName: "user_report_notification_preferences_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_tag_org: {
+        Row: {
+          master_user_id: string
+          set_by: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          master_user_id: string
+          set_by?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          master_user_id?: string
+          set_by?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_tag_org_master_user_id_fkey"
+            columns: ["master_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_tag_org_set_by_fkey"
+            columns: ["set_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_tag_org_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -5983,6 +6380,15 @@ export type Database = {
           revenue: number
         }[]
       }
+      list_feedback_peer_candidates: {
+        Args: never
+        Returns: {
+          peer_name: string
+          peer_user_id: string
+          person_id: string
+          shared_tag_count: number
+        }[]
+      }
       list_jobs_for_tally: {
         Args: never
         Returns: {
@@ -6144,6 +6550,20 @@ export type Database = {
         Args: { p_person_name: string; p_work_date: string }
         Returns: undefined
       }
+      team_feedback_aggregates_by_manager: {
+        Args: never
+        Returns: {
+          avg_likert_1: number
+          avg_likert_2: number
+          avg_likert_3: number
+          avg_likert_4: number
+          avg_likert_5: number
+          avg_overall_1_10: number
+          cycle_period_start: string
+          manager_user_id: string
+          submission_count: number
+        }[]
+      }
       touch_last_sign_in: { Args: never; Returns: undefined }
       update_bids_count_rows_order:
         | {
@@ -6172,6 +6592,14 @@ export type Database = {
       }
       user_assigned_to_project_as_superintendent: {
         Args: { project_id_param: string }
+        Returns: boolean
+      }
+      user_can_read_labels_for_master: {
+        Args: { p_master_user_id: string }
+        Returns: boolean
+      }
+      user_can_write_labels_for_master: {
+        Args: { p_master_user_id: string }
         Returns: boolean
       }
       user_has_assigned_step_in_project: {
@@ -6326,6 +6754,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       project_status: ["active", "completed", "on_hold", "awaiting_start"],

@@ -23,6 +23,8 @@ import { useSupplyHousesAPTotal } from '../hooks/useSupplyHousesAPTotal'
 import { useSubLaborDueTotal } from '../hooks/useSubLaborDueTotal'
 import { useIsMobile } from '../hooks/useIsMobile'
 import ClockInOutButton from '../components/ClockInOutButton'
+import TeamFeedbackWizard from '../components/team-feedback/TeamFeedbackWizard'
+import { fetchTeamFeedbackSettings } from '../lib/teamFeedback'
 import DashboardMyTimeSection from '../components/DashboardMyTimeSection'
 import DashboardDevRejectedNotification from '../components/DashboardDevRejectedNotification'
 import DashboardMyTeamPendingBanner from '../components/DashboardMyTeamPendingBanner'
@@ -389,6 +391,8 @@ export default function Dashboard() {
   const [upcomingInspections, setUpcomingInspections] = useState<Array<{ id: string; address: string; inspection_type: string; scheduled_date: string }>>([])
   const [upcomingInspectionsLoading, setUpcomingInspectionsLoading] = useState(false)
   const [userName, setUserName] = useState<string | null>(null)
+  const [teamFeedbackHomeEnabled, setTeamFeedbackHomeEnabled] = useState(false)
+  const [teamFeedbackWizardOpen, setTeamFeedbackWizardOpen] = useState(false)
   const [dispatchInboxEligible, setDispatchInboxEligible] = useState(false)
   const [dispatchRequestsOpen, setDispatchRequestsOpen] = useState(true)
   type DispatchInboxRow = {
@@ -488,6 +492,24 @@ export default function Dashboard() {
     supabase.from('users').select('id, name, email').order('name').then(({ data }) => {
       setSendTaskUsers((data ?? []) as Array<{ id: string; name: string; email: string }>)
     })
+  }, [authUser?.id])
+
+  useEffect(() => {
+    if (!authUser?.id) {
+      setTeamFeedbackHomeEnabled(false)
+      return
+    }
+    let cancelled = false
+    void fetchTeamFeedbackSettings()
+      .then((s) => {
+        if (!cancelled) setTeamFeedbackHomeEnabled(!!s?.enabled && !!s?.home_entry_enabled)
+      })
+      .catch(() => {
+        if (!cancelled) setTeamFeedbackHomeEnabled(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [authUser?.id])
 
   useEffect(() => {
@@ -2664,6 +2686,35 @@ export default function Dashboard() {
         <div style={{ marginBottom: '1rem' }}>
           <ClockInOutButton userId={authUser.id} userName={userName} />
         </div>
+      )}
+      {authUser?.id && teamFeedbackHomeEnabled && (
+        <div style={{ marginBottom: '1rem' }}>
+          <button
+            type="button"
+            onClick={() => setTeamFeedbackWizardOpen(true)}
+            style={{
+              padding: '0.5rem 1rem',
+              fontSize: '1rem',
+              fontWeight: 600,
+              border: '2px solid #ea580c',
+              borderRadius: 8,
+              background: '#fff7ed',
+              color: '#c2410c',
+              cursor: 'pointer',
+            }}
+          >
+            Quick feedback
+          </button>
+        </div>
+      )}
+      {authUser?.id && teamFeedbackWizardOpen && (
+        <TeamFeedbackWizard
+          open
+          onClose={() => setTeamFeedbackWizardOpen(false)}
+          userId={authUser.id}
+          source="home_button"
+          skipIntro
+        />
       )}
       {role === 'assistant' && tallyAndPinnedBlock}
       {role === 'assistant' && authUser?.id && (

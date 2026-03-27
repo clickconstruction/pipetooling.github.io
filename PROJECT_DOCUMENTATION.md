@@ -720,6 +720,11 @@ WHERE proname IN (
   - `archived_at` (timestamptz, nullable) – when set, person is archived (hidden from roster); can be restored
 - **RLS**: Users can only see/manage their own roster entries; devs can see all entries and can update/delete any people (via `20260211210000_allow_devs_update_delete_people.sql`); shared access via `master_shares` (viewing master and their assistants can see shared people)
 
+#### `public.labels` / `public.people_labels` / `public.user_labels`
+- **Purpose**: Master-scoped label catalog (`labels.master_user_id` → `users.id`) and many-to-many links from roster rows (`people_labels.person_id`, `people_labels.label_id` → `labels.id`) or from accounts (`user_labels.user_id`, `user_labels.label_id` → `labels.id`) when no roster row exists. Stable `slug` per master (`UNIQUE (master_user_id, slug)`) for filters (e.g. peer cohorts).
+- **Integrity**: `BEFORE INSERT OR UPDATE` trigger on `people_labels` requires `people.master_user_id` = `labels.master_user_id`. `user_labels` uses `enforce_user_labels_scope_master`: tagged user must be in scope for the label’s master (self master/dev, assistant/superintendent adoption, or `people` email match under that master).
+- **RLS**: Helpers `user_can_read_labels_for_master` / `user_can_write_labels_for_master`; read scope aligns with roster visibility (incl. `master_shares`, superintendent adoption); writes for dev, owning master, or assistant on that master. Junction rows use join + write helper.
+
 #### `public.clock_sessions`
 - **Purpose**: User clock-in/clock-out sessions. Approved sessions merge into `people_hours`. Used by Dashboard Clock In/Out button and People Hours tab pending section.
 - **Key Fields**:
@@ -2224,6 +2229,7 @@ user_id = auth.uid()
     - "Export materials backup" downloads supply houses, material parts, part prices, material templates, template items
     - "Export bids backup" downloads bids, bids_gc_builders, bids_count_rows, bids_submission_entries, cost_estimates, cost_estimate_labor_rows, fixture_labor_defaults, bid_pricing_assignments, price_book_versions, price_book_entries, labor_book_versions, labor_book_entries, takeoff_book_versions, takeoff_book_entries, purchase_orders, purchase_order_items
     - Filenames include date (e.g. `projects-backup-2026-01-26.json`). Exports respect RLS.
+  - **Team feedback** (dev): Configure `team_feedback_settings` (flags, copy, cadence). **Eligibility overview (all users)** includes per-user **Reset** of snooze/cadence state (`team_feedback_user_state`). **Raw submissions** table and CSV (optional reviewer id column; names in export) for reporting. End-user flow: clock-out prompt and optional Dashboard **Quick feedback**; see **`RECENT_FEATURES.md`** v2.157 and v2.162.
 
 ### 10. Notifications
 - **System**: `step_subscriptions` table + step-level flags + `send-workflow-notification` Edge Function

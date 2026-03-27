@@ -10,6 +10,8 @@ import {
   type BidSearchResult,
   type UnifiedSearchResult,
 } from '../utils/unifiedJobBidSearch'
+import { getTeamFeedbackEligibility } from '../lib/teamFeedback'
+import TeamFeedbackWizard from './team-feedback/TeamFeedbackWizard'
 
 function toLocalDateString(d: Date): string {
   const y = d.getFullYear()
@@ -83,6 +85,7 @@ export default function ClockInOutButton({ userId, userName }: Props) {
   const [subcontractorServiceTypeIds, setSubcontractorServiceTypeIds] = useState<string[] | null>(null)
   const [lastSelectedJobBid, setLastSelectedJobBid] = useState<UnifiedSearchResult | null>(null)
   const assignedJobsShownRef = useRef(false)
+  const [teamFeedbackOpen, setTeamFeedbackOpen] = useState(false)
 
   function parseLastJobBidFromStorage(raw: string | null): UnifiedSearchResult | null {
     if (!raw?.trim()) return null
@@ -436,6 +439,9 @@ export default function ClockInOutButton({ userId, userName }: Props) {
         .eq('id', openSession.id)
       if (err) throw err
       setOpenSession(null)
+      await fetchSessions()
+      const elig = await getTeamFeedbackEligibility(userId)
+      if (elig.eligible) setTeamFeedbackOpen(true)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to clock out')
     } finally {
@@ -524,6 +530,7 @@ export default function ClockInOutButton({ userId, userName }: Props) {
   const hasOpenSession = !!openSession
 
   return (
+    <>
     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', width: '100%' }}>
       {hasOpenSession ? (
         <>
@@ -903,5 +910,12 @@ export default function ClockInOutButton({ userId, userName }: Props) {
         </div>
       )}
     </div>
+    <TeamFeedbackWizard
+      open={teamFeedbackOpen}
+      onClose={() => setTeamFeedbackOpen(false)}
+      userId={userId}
+      source="clock_out_prompt"
+    />
+    </>
   )
 }

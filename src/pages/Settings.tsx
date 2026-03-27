@@ -16,6 +16,8 @@ import ReportEditModal, { type ReportForEdit } from '../components/ReportEditMod
 import MyReportsModal, { type ReportForMyReports } from '../components/MyReportsModal'
 import ChecklistItemMuteModal from '../components/ChecklistItemMuteModal'
 import PasswordInput from '../components/PasswordInput'
+import TeamFeedbackDevSettingsBlock from '../components/team-feedback/TeamFeedbackDevSettingsBlock'
+import TeamFeedbackMasterAggregates from '../components/team-feedback/TeamFeedbackMasterAggregates'
 import type { Database } from '../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { formatNotificationDatetime } from '../utils/formatNotificationDatetime'
@@ -350,7 +352,12 @@ export default function Settings() {
   const [teamAssignLeaderId, setTeamAssignLeaderId] = useState('')
   const [teamAssignMemberId, setTeamAssignMemberId] = useState('')
   const [teamAssignSaving, setTeamAssignSaving] = useState(false)
-  const [taskDispatchSectionOpen, setTaskDispatchSectionOpen] = useState(true)
+  const [taskDispatchSectionOpen, setTaskDispatchSectionOpen] = useState(false)
+  const [dashboardButtonsSectionOpen, setDashboardButtonsSectionOpen] = useState(false)
+  const [dailyGoalsSectionOpen, setDailyGoalsSectionOpen] = useState(false)
+  const [teamLeadAssignmentsSectionOpen, setTeamLeadAssignmentsSectionOpen] = useState(false)
+  const [reportNotificationsSectionOpen, setReportNotificationsSectionOpen] = useState(false)
+  const [defaultLaborRateSectionOpen, setDefaultLaborRateSectionOpen] = useState(false)
   const [dispatchMemberIds, setDispatchMemberIds] = useState<Set<string>>(new Set())
   const [dispatchGroupError, setDispatchGroupError] = useState<string | null>(null)
   const [dispatchGroupSavingUserId, setDispatchGroupSavingUserId] = useState<string | null>(null)
@@ -4835,174 +4842,247 @@ export default function Settings() {
       )}
 
       {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
-        <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: '#f9fafb' }}>
-          <h2 style={{ fontSize: '1rem', marginTop: 0, marginBottom: '0.75rem', fontWeight: 600 }}>Dashboard buttons</h2>
-          <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem' }}>
-            Choose which quick-action buttons appear on your Dashboard.
-          </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1.5rem' }}>
-            {(['job', 'job_labor', 'bid', 'project', 'part', 'assembly', 'prospect', 'inspections', 'builder_review'] as const)
-              .filter((key) => key !== 'builder_review' || myRole === 'master_technician')
-              .map((key) => {
-              const label = key === 'job_labor' ? 'Job Labor' : key === 'prospect' ? 'Prospect' : key === 'inspections' ? 'Inspections' : key === 'builder_review' ? 'Builder Review' : key.charAt(0).toUpperCase() + key.slice(1)
-              return (
-                <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={dashboardButtons[key] !== false}
-                    onChange={async (e) => {
-                      const visible = e.target.checked
-                      setDashboardButtons((prev) => ({ ...prev, [key]: visible }))
-                      setDashboardButtonsSaving(true)
-                      await supabase.from('user_dashboard_buttons').upsert(
-                        { user_id: authUser!.id, button_key: key, visible },
-                        { onConflict: 'user_id,button_key' }
-                      )
-                      setDashboardButtonsSaving(false)
-                    }}
-                    disabled={dashboardButtonsSaving}
-                  />
-                  {label}
-                </label>
-              )
-            })}
-          </div>
-          <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
-            <p style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', color: '#374151' }}>Placement</p>
-            <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: '0.75rem', marginTop: 0 }}>
-              Show quick-action buttons at the top of the Dashboard (above Clock In/Out), or in the same row as your pinned page tabs.
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                <input
-                  type="radio"
-                  name="dashboard-quick-buttons-placement"
-                  checked={dashboardQuickButtonsPlacement === 'top'}
-                  onChange={async () => {
-                    if (!authUser?.id) return
-                    setDashboardQuickButtonsPlacement('top')
-                    setDashboardQuickButtonsPlacementSaving(true)
-                    const { error } = await supabase.from('user_dashboard_preferences').upsert(
-                      { user_id: authUser.id, quick_buttons_placement: 'top' },
-                      { onConflict: 'user_id' },
-                    )
-                    setDashboardQuickButtonsPlacementSaving(false)
-                    if (error) setError(error.message)
-                  }}
-                  disabled={dashboardQuickButtonsPlacementSaving}
-                />
-                At the top (above Clock In/Out)
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                <input
-                  type="radio"
-                  name="dashboard-quick-buttons-placement"
-                  checked={dashboardQuickButtonsPlacement === 'with_pins'}
-                  onChange={async () => {
-                    if (!authUser?.id) return
-                    setDashboardQuickButtonsPlacement('with_pins')
-                    setDashboardQuickButtonsPlacementSaving(true)
-                    const { error } = await supabase.from('user_dashboard_preferences').upsert(
-                      { user_id: authUser.id, quick_buttons_placement: 'with_pins' },
-                      { onConflict: 'user_id' },
-                    )
-                    setDashboardQuickButtonsPlacementSaving(false)
-                    if (error) setError(error.message)
-                  }}
-                  disabled={dashboardQuickButtonsPlacementSaving}
-                />
-                With pinned tabs
-              </label>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
-        <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: '#f9fafb' }}>
-          <h2 style={{ fontSize: '1rem', marginTop: 0, marginBottom: '0.75rem', fontWeight: 600 }}>Daily goals (clock-in gate)</h2>
-          <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem' }}>
-            After a user&apos;s first clock-in each calendar day, they must check off these goals before using the app. Leave empty to disable the gate for that user.
-          </p>
-          <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>User</label>
-          <select
-            value={dailyGoalsTargetUserId}
-            onChange={(e) => setDailyGoalsTargetUserId(e.target.value)}
-            style={{ padding: '0.35rem 0.5rem', marginBottom: '1rem', maxWidth: 420, width: '100%' }}
+        <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb' }}>
+          <button
+            type="button"
+            aria-expanded={dashboardButtonsSectionOpen}
+            onClick={() => setDashboardButtonsSectionOpen((prev) => !prev)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              margin: 0,
+              padding: '1rem',
+              width: '100%',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '1rem',
+              fontWeight: 600,
+              textAlign: 'left',
+            }}
           >
-            <option value="">Select user…</option>
-            {goalPickerUsers.map((u) => (
-              <option key={u.id} value={u.id}>
-                {(u.name?.trim() || u.email || u.id).slice(0, 80)}
-              </option>
-            ))}
-          </select>
-          {dailyGoalsTargetUserId &&
-            (dailyGoalsLoading ? (
-              <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
-            ) : (
-              <>
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                  {dailyGoalsRows.map((row) => (
-                    <li key={row.id} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'flex-start' }}>
-                      <textarea
-                        value={row.body}
-                        onChange={(e) => {
-                          const v = e.target.value
-                          setDailyGoalsRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, body: v } : r)))
+            <span style={{ fontSize: '0.75rem' }}>{dashboardButtonsSectionOpen ? '▼' : '▶'}</span>
+            Dashboard buttons
+          </button>
+          {dashboardButtonsSectionOpen && (
+            <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+              <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem', marginTop: 0 }}>
+                Choose which quick-action buttons appear on your Dashboard.
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1.5rem' }}>
+                {(['job', 'job_labor', 'bid', 'project', 'part', 'assembly', 'prospect', 'inspections', 'builder_review'] as const)
+                  .filter((key) => key !== 'builder_review' || myRole === 'master_technician')
+                  .map((key) => {
+                  const label = key === 'job_labor' ? 'Job Labor' : key === 'prospect' ? 'Prospect' : key === 'inspections' ? 'Inspections' : key === 'builder_review' ? 'Builder Review' : key.charAt(0).toUpperCase() + key.slice(1)
+                  return (
+                    <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={dashboardButtons[key] !== false}
+                        onChange={async (e) => {
+                          const visible = e.target.checked
+                          setDashboardButtons((prev) => ({ ...prev, [key]: visible }))
+                          setDashboardButtonsSaving(true)
+                          await supabase.from('user_dashboard_buttons').upsert(
+                            { user_id: authUser!.id, button_key: key, visible },
+                            { onConflict: 'user_id,button_key' }
+                          )
+                          setDashboardButtonsSaving(false)
                         }}
-                        onBlur={async (e) => {
-                          const body = e.currentTarget.value.trim()
-                          if (!body) return
-                          const { error: err } = await supabase.from('user_dashboard_goals').update({ body }).eq('id', row.id)
-                          if (err) setError(err.message)
-                        }}
-                        rows={2}
-                        style={{ flex: 1, padding: '0.5rem', fontSize: '0.875rem' }}
+                        disabled={dashboardButtonsSaving}
                       />
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          if (!confirm('Delete this goal?')) return
-                          const { error: err } = await supabase.from('user_dashboard_goals').delete().eq('id', row.id)
-                          if (err) setError(err.message)
-                          else setDailyGoalsRows((prev) => prev.filter((r) => r.id !== row.id))
-                        }}
-                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', color: '#b91c1c' }}
-                      >
-                        Delete
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (!dailyGoalsTargetUserId) return
-                    const nextOrder =
-                      dailyGoalsRows.length === 0 ? 0 : Math.max(...dailyGoalsRows.map((r) => r.sort_order), 0) + 1
-                    const { data, error: err } = await supabase
-                      .from('user_dashboard_goals')
-                      .insert({ user_id: dailyGoalsTargetUserId, body: 'New goal', sort_order: nextOrder })
-                      .select('id, body, sort_order')
-                      .single()
-                    if (err) setError(err.message)
-                    else if (data)
-                      setDailyGoalsRows((prev) => [...prev, data as { id: string; body: string; sort_order: number }])
-                  }}
-                  style={{ marginTop: '0.5rem', padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}
-                >
-                  Add goal
-                </button>
-              </>
-            ))}
+                      {label}
+                    </label>
+                  )
+                })}
+              </div>
+              <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+                <p style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', color: '#374151' }}>Placement</p>
+                <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: '0.75rem', marginTop: 0 }}>
+                  Show quick-action buttons at the top of the Dashboard (above Clock In/Out), or in the same row as your pinned page tabs.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="dashboard-quick-buttons-placement"
+                      checked={dashboardQuickButtonsPlacement === 'top'}
+                      onChange={async () => {
+                        if (!authUser?.id) return
+                        setDashboardQuickButtonsPlacement('top')
+                        setDashboardQuickButtonsPlacementSaving(true)
+                        const { error } = await supabase.from('user_dashboard_preferences').upsert(
+                          { user_id: authUser.id, quick_buttons_placement: 'top' },
+                          { onConflict: 'user_id' },
+                        )
+                        setDashboardQuickButtonsPlacementSaving(false)
+                        if (error) setError(error.message)
+                      }}
+                      disabled={dashboardQuickButtonsPlacementSaving}
+                    />
+                    At the top (above Clock In/Out)
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="dashboard-quick-buttons-placement"
+                      checked={dashboardQuickButtonsPlacement === 'with_pins'}
+                      onChange={async () => {
+                        if (!authUser?.id) return
+                        setDashboardQuickButtonsPlacement('with_pins')
+                        setDashboardQuickButtonsPlacementSaving(true)
+                        const { error } = await supabase.from('user_dashboard_preferences').upsert(
+                          { user_id: authUser.id, quick_buttons_placement: 'with_pins' },
+                          { onConflict: 'user_id' },
+                        )
+                        setDashboardQuickButtonsPlacementSaving(false)
+                        if (error) setError(error.message)
+                      }}
+                      disabled={dashboardQuickButtonsPlacementSaving}
+                    />
+                    With pinned tabs
+                  </label>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
-        <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: '#f9fafb' }}>
-          <h2 style={{ fontSize: '1rem', marginTop: 0, marginBottom: '0.75rem', fontWeight: 600 }}>Team lead assignments</h2>
-          <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem' }}>
+        <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb' }}>
+          <button
+            type="button"
+            aria-expanded={dailyGoalsSectionOpen}
+            onClick={() => setDailyGoalsSectionOpen((prev) => !prev)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              margin: 0,
+              padding: '1rem',
+              width: '100%',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '1rem',
+              fontWeight: 600,
+              textAlign: 'left',
+            }}
+          >
+            <span style={{ fontSize: '0.75rem' }}>{dailyGoalsSectionOpen ? '▼' : '▶'}</span>
+            Daily goals (clock-in gate)
+          </button>
+          {dailyGoalsSectionOpen && (
+            <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+              <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem', marginTop: 0 }}>
+                After a user&apos;s first clock-in each calendar day, they must check off these goals before using the app. Leave empty to disable the gate for that user.
+              </p>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>User</label>
+              <select
+                value={dailyGoalsTargetUserId}
+                onChange={(e) => setDailyGoalsTargetUserId(e.target.value)}
+                style={{ padding: '0.35rem 0.5rem', marginBottom: '1rem', maxWidth: 420, width: '100%' }}
+              >
+                <option value="">Select user…</option>
+                {goalPickerUsers.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {(u.name?.trim() || u.email || u.id).slice(0, 80)}
+                  </option>
+                ))}
+              </select>
+              {dailyGoalsTargetUserId &&
+                (dailyGoalsLoading ? (
+                  <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
+                ) : (
+                  <>
+                    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                      {dailyGoalsRows.map((row) => (
+                        <li key={row.id} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'flex-start' }}>
+                          <textarea
+                            value={row.body}
+                            onChange={(e) => {
+                              const v = e.target.value
+                              setDailyGoalsRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, body: v } : r)))
+                            }}
+                            onBlur={async (e) => {
+                              const body = e.currentTarget.value.trim()
+                              if (!body) return
+                              const { error: err } = await supabase.from('user_dashboard_goals').update({ body }).eq('id', row.id)
+                              if (err) setError(err.message)
+                            }}
+                            rows={2}
+                            style={{ flex: 1, padding: '0.5rem', fontSize: '0.875rem' }}
+                          />
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!confirm('Delete this goal?')) return
+                              const { error: err } = await supabase.from('user_dashboard_goals').delete().eq('id', row.id)
+                              if (err) setError(err.message)
+                              else setDailyGoalsRows((prev) => prev.filter((r) => r.id !== row.id))
+                            }}
+                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', color: '#b91c1c' }}
+                          >
+                            Delete
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!dailyGoalsTargetUserId) return
+                        const nextOrder =
+                          dailyGoalsRows.length === 0 ? 0 : Math.max(...dailyGoalsRows.map((r) => r.sort_order), 0) + 1
+                        const { data, error: err } = await supabase
+                          .from('user_dashboard_goals')
+                          .insert({ user_id: dailyGoalsTargetUserId, body: 'New goal', sort_order: nextOrder })
+                          .select('id, body, sort_order')
+                          .single()
+                        if (err) setError(err.message)
+                        else if (data)
+                          setDailyGoalsRows((prev) => [...prev, data as { id: string; body: string; sort_order: number }])
+                      }}
+                      style={{ marginTop: '0.5rem', padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}
+                    >
+                      Add goal
+                    </button>
+                  </>
+                ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
+        <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb' }}>
+          <button
+            type="button"
+            aria-expanded={teamLeadAssignmentsSectionOpen}
+            onClick={() => setTeamLeadAssignmentsSectionOpen((prev) => !prev)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              margin: 0,
+              padding: '1rem',
+              width: '100%',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '1rem',
+              fontWeight: 600,
+              textAlign: 'left',
+            }}
+          >
+            <span style={{ fontSize: '0.75rem' }}>{teamLeadAssignmentsSectionOpen ? '▼' : '▶'}</span>
+            Team lead assignments
+          </button>
+          {teamLeadAssignmentsSectionOpen && (
+            <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+          <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem', marginTop: 0 }}>
             Link a leader to a member so the leader can approve that member&apos;s hours from Dashboard → My Team. Any account role can be leader or member. A member can have more than one leader.
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end', marginBottom: '1rem' }}>
@@ -5153,6 +5233,8 @@ export default function Settings() {
               </table>
             </div>
           )}
+            </div>
+          )}
         </div>
       )}
 
@@ -5291,35 +5373,60 @@ export default function Settings() {
       </div>
 
       {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
-        <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
-          <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Report notifications</h2>
-          <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
-            Get a push notification when someone submits these report types. Enable push notifications above first.
-          </p>
-          <form onSubmit={saveReportNotificationPreferences}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
-              {reportTemplates.map((t) => (
-                <label key={t.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
-                  <input
-                    type="checkbox"
-                    checked={reportNotificationTemplateIds.has(t.id)}
-                    onChange={() => toggleReportNotificationTemplate(t.id)}
-                  />
-                  Notify me when someone submits: {t.name}
-                </label>
-              ))}
-              {reportTemplates.length === 0 && (
-                <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>No report templates.</p>
-              )}
+        <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <button
+            type="button"
+            aria-expanded={reportNotificationsSectionOpen}
+            onClick={() => setReportNotificationsSectionOpen((prev) => !prev)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              margin: 0,
+              padding: '1rem',
+              width: '100%',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '1rem',
+              fontWeight: 600,
+              textAlign: 'left',
+            }}
+          >
+            <span style={{ fontSize: '0.75rem' }}>{reportNotificationsSectionOpen ? '▼' : '▶'}</span>
+            Report notifications
+          </button>
+          {reportNotificationsSectionOpen && (
+            <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+              <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+                Get a push notification when someone submits these report types. Enable push notifications above first.
+              </p>
+              <form onSubmit={saveReportNotificationPreferences}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+                  {reportTemplates.map((t) => (
+                    <label key={t.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                      <input
+                        type="checkbox"
+                        checked={reportNotificationTemplateIds.has(t.id)}
+                        onChange={() => toggleReportNotificationTemplate(t.id)}
+                      />
+                      Notify me when someone submits: {t.name}
+                    </label>
+                  ))}
+                  {reportTemplates.length === 0 && (
+                    <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>No report templates.</p>
+                  )}
+                </div>
+                <button
+                  type="submit"
+                  disabled={reportNotificationSaving}
+                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: reportNotificationSaving ? 'not-allowed' : 'pointer' }}
+                >
+                  {reportNotificationSaving ? 'Saving…' : 'Save report notification preferences'}
+                </button>
+              </form>
             </div>
-            <button
-              type="submit"
-              disabled={reportNotificationSaving}
-              style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: reportNotificationSaving ? 'not-allowed' : 'pointer' }}
-            >
-              {reportNotificationSaving ? 'Saving…' : 'Save report notification preferences'}
-            </button>
-          </form>
+          )}
         </div>
       )}
 
@@ -5413,30 +5520,57 @@ export default function Settings() {
             </button>
           </div>
 
-          <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Default Labor Rate (dev)</h2>
-          <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
-            Set the default Labor rate ($/hr) used when adding a new labor job in Jobs → + Labor. Leave blank for no default.
-          </p>
-          <form onSubmit={saveDefaultLaborRate} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
-            <label htmlFor="default-labor-rate" style={{ fontWeight: 500 }}>Labor rate ($/hr)</label>
-            <input
-              id="default-labor-rate"
-              type="number"
-              min={0}
-              step={0.01}
-              value={defaultLaborRate}
-              onChange={(e) => setDefaultLaborRate(e.target.value)}
-              placeholder="e.g. 75"
-              style={{ width: 120, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-            />
+          <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
             <button
-              type="submit"
-              disabled={defaultLaborRateSaving}
-              style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: defaultLaborRateSaving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
+              type="button"
+              aria-expanded={defaultLaborRateSectionOpen}
+              onClick={() => setDefaultLaborRateSectionOpen((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                padding: '1rem',
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                fontWeight: 600,
+                textAlign: 'left',
+              }}
             >
-              {defaultLaborRateSaving ? 'Saving…' : 'Save'}
+              <span style={{ fontSize: '0.75rem' }}>{defaultLaborRateSectionOpen ? '▼' : '▶'}</span>
+              Default Labor Rate (dev)
             </button>
-          </form>
+            {defaultLaborRateSectionOpen && (
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+                <p style={{ marginBottom: '1rem', marginTop: 0, color: '#6b7280', fontSize: '0.875rem' }}>
+                  Set the default Labor rate ($/hr) used when adding a new labor job in Jobs → + Labor. Leave blank for no default.
+                </p>
+                <form onSubmit={saveDefaultLaborRate} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <label htmlFor="default-labor-rate" style={{ fontWeight: 500 }}>Labor rate ($/hr)</label>
+                  <input
+                    id="default-labor-rate"
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    value={defaultLaborRate}
+                    onChange={(e) => setDefaultLaborRate(e.target.value)}
+                    placeholder="e.g. 75"
+                    style={{ width: 120, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={defaultLaborRateSaving}
+                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: defaultLaborRateSaving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
+                  >
+                    {defaultLaborRateSaving ? 'Saving…' : 'Save'}
+                  </button>
+                </form>
+              </div>
+            )}
+          </div>
 
           <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
             <button
@@ -6882,6 +7016,12 @@ export default function Settings() {
           </div>
           )}
         </div>
+      )}
+
+      {myRole === 'dev' && <TeamFeedbackDevSettingsBlock />}
+
+      {myRole === 'master_technician' && authUser?.id && payApprovedMasterIds.has(authUser.id) && (
+        <TeamFeedbackMasterAggregates />
       )}
 
       {myRole === 'dev' && (

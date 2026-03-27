@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-03-25
+last_updated: 2026-03-29
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,6 +15,18 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.162)"
+    line: ~430
+    description: "Team feedback: dev eligibility reset, submit uses auth user id, SELECT-own migration, raw submission names"
+  - name: "Latest Version (v2.161)"
+    line: ~450
+    description: "Migration 20270329120000: list_feedback_peer_candidates label-only RPC final (supersedes June 2026 roster variants)"
+  - name: "Latest Version (v2.160)"
+    line: ~460
+    description: "Team feedback list_feedback_peer_candidates: peers by shared label_id only (users + people), no roster union"
+  - name: "Latest Version (v2.159)"
+    line: ~472
+    description: "Team feedback peer picker: list_feedback_peer_candidates shared_tag_count, sort by shared labels"
   - name: "Latest Version (v2.156)"
     line: ~418
     description: "People Activity tab, user_app_activity_viewers allowlist, RLS for granted assistant/master/primary"
@@ -310,16 +322,17 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.153)](#latest-updates-v2153) - Dashboard My Team layout; pending banner jump UX
-2. [Latest Updates (v2.152)](#latest-updates-v2152) - My Team: People you lead hours table (Pending/Approved/Total)
-3. [Latest Updates (v2.151)](#latest-updates-v2151) - My Team clock notify + ledger; Edge Function
-4. [Latest Updates (v2.150)](#latest-updates-v2150) - Dashboard My Team: People you lead roster
-5. [Latest Updates (v2.149)](#latest-updates-v2149) - Clock sessions UX; daily goals gate; goals tables
-6. [Latest Updates (v2.148)](#latest-updates-v2148) - Bid Board All notes; customer notes UX; contact_method
-7. [Latest Updates (v2.145)](#latest-updates-v2145) - Master tech mobile nav Quickfill and Review in hamburger
-8. [Latest Updates (v2.144)](#latest-updates-v2144) - Assistant billing sections at top of Dashboard
-9. [Latest Updates (v2.143)](#latest-updates-v2143) - Assistant Dashboard section reorder
-10. [Latest Updates (v2.142)](#latest-updates-v2142) - Dashboard Assigned Jobs and Superintendent Jobs UX
+1. [Latest Updates (v2.162)](#latest-updates-v2162) - Team feedback: dev eligibility reset, submissions RLS, raw submission names
+2. [Latest Updates (v2.153)](#latest-updates-v2153) - Dashboard My Team layout; pending banner jump UX
+3. [Latest Updates (v2.152)](#latest-updates-v2152) - My Team: People you lead hours table (Pending/Approved/Total)
+4. [Latest Updates (v2.151)](#latest-updates-v2151) - My Team clock notify + ledger; Edge Function
+5. [Latest Updates (v2.150)](#latest-updates-v2150) - Dashboard My Team: People you lead roster
+6. [Latest Updates (v2.149)](#latest-updates-v2149) - Clock sessions UX; daily goals gate; goals tables
+7. [Latest Updates (v2.148)](#latest-updates-v2148) - Bid Board All notes; customer notes UX; contact_method
+8. [Latest Updates (v2.145)](#latest-updates-v2145) - Master tech mobile nav Quickfill and Review in hamburger
+9. [Latest Updates (v2.144)](#latest-updates-v2144) - Assistant billing sections at top of Dashboard
+10. [Latest Updates (v2.143)](#latest-updates-v2143) - Assistant Dashboard section reorder
+11. [Latest Updates (v2.142)](#latest-updates-v2142) - Dashboard Assigned Jobs and Superintendent Jobs UX
 2. [Latest Updates (v2.139)](#latest-updates-v2139) - Fix cost_estimates RLS for assistants
 3. [Latest Updates (v2.138)](#latest-updates-v2138) - Revoke superintendent Jobs Billing access
 2. [Latest Updates (v2.135)](#latest-updates-v2135) - Workflow: Collapse old stages toggle, breadcrumb below buttons, no-wrap scroll
@@ -415,6 +428,85 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.162)
+
+**Date**: 2026-03-29
+
+### Team feedback — dev eligibility reset, submission RLS, raw submission names
+
+- **Eligibility overview (dev)**: Per-user **Reset** on [`TeamFeedbackEligibilityOverview`](src/components/team-feedback/TeamFeedbackEligibilityOverview.tsx) clears `snooze_until`, `last_completed_at`, `last_skipped_at`, and `last_prompt_at` on `team_feedback_user_state` via **`resetTeamFeedbackUserStateEligibilityForDev`** in [`teamFeedback.ts`](src/lib/teamFeedback.ts) using **UPDATE only** (no upsert for another user’s row; RLS allows dev UPDATE). **Reset** is disabled when no row exists; success and info toasts; reload after update.
+
+- **Submit feedback**: [`submitTeamFeedback`](src/lib/teamFeedback.ts) sets **`reviewer_user_id`** from **`supabase.auth.getUser()`** so inserts satisfy **`team_feedback_submissions_insert_own`** (`reviewer_user_id = auth.uid()`). **`upsertTeamFeedbackUserState`** after submit uses the same id for completion state.
+
+- **Migration** [`20270329140000_team_feedback_submissions_select_own.sql`](supabase/migrations/20270329140000_team_feedback_submissions_select_own.sql): Policy **`team_feedback_submissions_select_own`** — authenticated users may **SELECT** rows where **`reviewer_user_id = auth.uid()`**. Fixes PostgREST **`insert().select('id')`** returning **403** for non-dev users (raw SELECT was previously dev-only).
+
+- **Raw submissions (dev)**: [`TeamFeedbackDevReports`](src/components/team-feedback/TeamFeedbackDevReports.tsx) loads nested **`users`** (`name`, `email`) for reviewer and manager FKs; table shows display names; CSV export includes **`reviewer_name`** and **`manager_name`** (copy notes dev-only audit).
+
+---
+
+## Latest Updates (v2.161)
+
+**Date**: 2026-03-27
+
+### Team feedback — `list_feedback_peer_candidates` final migration
+
+- **Migration** [`20270329120000_list_feedback_peer_candidates_shared_labels_final.sql`](supabase/migrations/20270329120000_list_feedback_peer_candidates_shared_labels_final.sql): Re-applies the shared-label **`list_feedback_peer_candidates`** body so it **wins** over later June 2026 migrations that had replaced it with roster/dev-resolution logic. Behavior matches v2.160 (label intersection, `shared_tag_count`, cap 5000).
+
+---
+
+## Latest Updates (v2.160)
+
+**Date**: 2026-03-27
+
+### Team feedback — peer list by shared labels only
+
+- **`list_feedback_peer_candidates`** (replaces master/roster union): Peers are **`users`** and **`people`** with at least one **`label_id`** in common with the reviewer. Reviewer labels come only from **`user_labels`** (`auth.uid()`). Peer match uses **`user_labels`** (other accounts) or **`people_labels`** (roster rows). **`shared_tag_count`** is the intersection size. **Empty** when the reviewer has no **`user_labels`**. Ordered **`shared_tag_count` DESC**, **`peer_name` ASC**, cap **5000**. Same human may appear twice in edge cases (`person_id` and `peer_user_id` rows).
+
+**Files**: [`supabase/migrations/20260327150000_team_feedback_peer_candidates_by_shared_labels.sql`](supabase/migrations/20260327150000_team_feedback_peer_candidates_by_shared_labels.sql)
+
+---
+
+## Latest Updates (v2.159)
+
+**Date**: 2026-03-26
+
+### Team feedback — peer picker ordered by shared tags
+
+- **`list_feedback_peer_candidates`**: Returns **`shared_tag_count`** (count of label IDs shared between the reviewer’s `user_labels` and each peer’s `people_labels` when `person_id` is set, else peer’s `user_labels`). Result set ordered by **`shared_tag_count` DESC**, then **`peer_name` ASC** (within the 5000 cap).
+- **`PeerTeammatePicker`**: After filtering by name, re-sorts options by shared count, then name; muted line **N shared tag(s)** when count is greater than zero.
+
+**Files**: [`supabase/migrations/20260326120200_list_feedback_peer_candidates_shared_tag_count.sql`](supabase/migrations/20260326120200_list_feedback_peer_candidates_shared_tag_count.sql), [`src/types/database.ts`](src/types/database.ts), [`src/lib/teamFeedback.ts`](src/lib/teamFeedback.ts), [`src/components/team-feedback/PeerTeammatePicker.tsx`](src/components/team-feedback/PeerTeammatePicker.tsx)
+
+---
+
+## Latest Updates (v2.158)
+
+**Date**: 2026-03-28
+
+### People — Tag org override and signals (dev)
+
+- **`user_tag_org`**: Optional `user_id` → `master_user_id` for which master’s `labels` catalog applies to that login user; dev **INSERT**/**UPDATE**/**DELETE**/**SELECT** all; others **SELECT** own row only. **`enforce_user_labels_scope_master`** extended so `user_labels` inserts succeed when override matches label master.
+- **People → Users** (tags enabled): **Tag org (saved)** dropdown + **Clear override**; read-only **Signals** from `master_assistants`, `master_superintendents`, `master_primaries`, job team (`jobs_ledger` masters), and people-email roster match; warning when saved org matches no signal.
+- **`src/lib/tagOrg.ts`**: Batch overrides, signals, `upsertUserTagOrg` / `deleteUserTagOrg`; resolution = override first, else `resolveManagerUserIdForFeedback`.
+
+**Files**: [`supabase/migrations/20270328120000_user_tag_org.sql`](supabase/migrations/20270328120000_user_tag_org.sql), [`src/lib/tagOrg.ts`](src/lib/tagOrg.ts), [`src/pages/People.tsx`](src/pages/People.tsx)
+
+---
+
+## Latest Updates (v2.157)
+
+**Date**: 2026-03-26
+
+### Team feedback / peer survey
+
+- **Tables**: `team_feedback_settings` (singleton), `team_feedback_submissions`, `team_feedback_user_state`, `team_feedback_peer_ratings`; RPCs `list_feedback_peer_candidates`, `team_feedback_aggregates_by_manager` (dev: all managers; pay-approved masters: own aggregates only).
+- **UX**: Post clock-out intro (cadence/snooze via `team_feedback_user_state`); optional Dashboard **Quick feedback** when `home_entry_enabled`; Section A (Likert + overall + open texts), optional Section B peers, comments-only path.
+- **Settings (dev)**: Feature flags and copy; raw list + CSV export (optional `reviewer_user_id` column). Pay-approved masters: trend block without reviewer identity.
+
+**Files**: [`supabase/migrations/20260628140000_team_feedback_foundation.sql`](supabase/migrations/20260628140000_team_feedback_foundation.sql), [`supabase/migrations/20260628141000_team_feedback_peers_and_aggregates.sql`](supabase/migrations/20260628141000_team_feedback_peers_and_aggregates.sql), [`src/lib/teamFeedback.ts`](src/lib/teamFeedback.ts), [`src/components/team-feedback/`](src/components/team-feedback/), [`src/components/ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx), [`src/pages/Dashboard.tsx`](src/pages/Dashboard.tsx), [`src/pages/Settings.tsx`](src/pages/Settings.tsx)
 
 ---
 
@@ -714,7 +806,7 @@ when_to_read:
 - **Fix**: (1) Replace inline subqueries with `can_access_bid_for_pricing(bid_id)`. (2) Drop the users subquery; use only `can_access_bid_for_pricing` (it validates role via SECURITY DEFINER internally).
 - **Tables**: cost_estimates (4 policies), cost_estimate_labor_rows (4 policies).
 
-**Files**: `supabase/migrations/20260624000000_fix_cost_estimates_rls_use_helper.sql`, `supabase/migrations/20260624120000_cost_estimates_rls_drop_users_subquery.sql`
+**Files**: `supabase/migrations/20260624000100_fix_cost_estimates_rls_use_helper.sql`, `supabase/migrations/20260624120000_cost_estimates_rls_drop_users_subquery.sql`
 
 ---
 

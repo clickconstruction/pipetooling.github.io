@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
@@ -9,6 +9,26 @@ import { CLOCK_SESSION_LIST_SELECT } from '../lib/clockSessionSelect'
 import { approveClockSessions } from '../lib/approveClockSessions'
 import { cascadePersonNameInPayTables } from '../lib/cascadePersonName'
 import { findPersonUserDuplicates, mergePersonIntoUser } from '../lib/mergePersonUserDuplicates'
+import {
+  deleteLabel,
+  fetchLabelUsageCounts,
+  fetchLabelsForMasterIds,
+  fetchPeopleLabelsForPersonIds,
+  fetchUserLabelsForUserIds,
+  insertLabel,
+  setPersonLabels,
+  setUserLabels,
+  slugifyLabelName,
+  type LabelRow,
+} from '../lib/labels'
+import {
+  deleteUserTagOrg,
+  fetchTagOrgOverridesForUserIds,
+  fetchUserTagOrgSignals,
+  upsertUserTagOrg,
+  type UserTagOrgSignals,
+} from '../lib/tagOrg'
+import { resolveManagerUserIdForFeedback } from '../lib/teamFeedback'
 import { loginAsUser } from '../lib/loginAsUser'
 import { useAuth } from '../hooks/useAuth'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
@@ -35,6 +55,9 @@ const KINDS: PersonKind[] = ['assistant', 'master_technician', 'sub', 'estimator
 const KIND_LABELS: Record<PersonKind, string> = { assistant: 'Assistants', master_technician: 'Master Technicians', sub: 'Subcontractors', estimator: 'Estimators' }
 
 const KIND_TO_USER_ROLE: Record<PersonKind, string> = { assistant: 'assistant', master_technician: 'master_technician', sub: 'subcontractor', estimator: 'estimator' }
+
+const SHOW_USERS_TAB_TAGS_KEY = 'people.usersTab.showTags'
+const SHOW_USERS_TAB_TAG_ORG_SIGNALS_KEY = 'people.usersTab.showTagOrgSignals'
 
 /** Display order for People → Users tab sections (master roster + user-only roles + devs last). */
 type UsersTabSection =
@@ -138,6 +161,33 @@ export default function People() {
   const [canAccessContracts, setCanAccessContracts] = useState(false)
   const [canViewCostMatrixShared, setCanViewCostMatrixShared] = useState(false)
   const [isDev, setIsDev] = useState(false)
+  const [showUsersTabTags, setShowUsersTabTags] = useState(() =>
+    typeof localStorage !== 'undefined' && localStorage.getItem(SHOW_USERS_TAB_TAGS_KEY) === '1',
+  )
+  /** When Tags is on: show Tag org, Signals, and New tag / Add tag for user rows (dev). Default on if unset. */
+  const [showUsersTabTagOrgSignals, setShowUsersTabTagOrgSignals] = useState(() =>
+    typeof localStorage !== 'undefined' && localStorage.getItem(SHOW_USERS_TAB_TAG_ORG_SIGNALS_KEY) !== '0',
+  )
+  const [usersTabLabels, setUsersTabLabels] = useState<LabelRow[]>([])
+  const [usersTabLabelsByPersonId, setUsersTabLabelsByPersonId] = useState<Record<string, string[]>>({})
+  const [usersTabLabelsByUserId, setUsersTabLabelsByUserId] = useState<Record<string, string[]>>({})
+  const [usersTabMasterByUserId, setUsersTabMasterByUserId] = useState<Record<string, string | null>>({})
+  /** Explicit DB row for tag org (null = no row); used for user-only rows. */
+  const [usersTabTagOrgSavedMasterId, setUsersTabTagOrgSavedMasterId] = useState<Record<string, string | null>>({})
+  const [usersTabTagSignalsByUserId, setUsersTabTagSignalsByUserId] = useState<Record<string, UserTagOrgSignals>>({})
+  const [tagOrgMasterSelectOptions, setTagOrgMasterSelectOptions] = useState<
+    Array<{ id: string; name: string | null; email: string | null }>
+  >([])
+  const [usersTabTagOrgSavingUserId, setUsersTabTagOrgSavingUserId] = useState<string | null>(null)
+  const [usersTabLabelUsageById, setUsersTabLabelUsageById] = useState<
+    Record<string, { people: number; users: number }>
+  >({})
+  const [usersTabLabelUsageLoading, setUsersTabLabelUsageLoading] = useState(false)
+  const [usersTabLabelCatalogDeletingId, setUsersTabLabelCatalogDeletingId] = useState<string | null>(null)
+  const [usersTabTagsLoading, setUsersTabTagsLoading] = useState(false)
+  /** Saving key: `p:${personId}` or `u:${userId}` */
+  const [usersTabSavingTagKey, setUsersTabSavingTagKey] = useState<string | null>(null)
+  const [usersTabTagDraftByKey, setUsersTabTagDraftByKey] = useState<Record<string, string>>({})
   const [activityAccessResolved, setActivityAccessResolved] = useState(false)
   const [isActivityViewer, setIsActivityViewer] = useState(false)
   const [activityViewerGrantSet, setActivityViewerGrantSet] = useState<Set<string>>(() => new Set())
@@ -781,6 +831,82 @@ export default function People() {
   }, [isDev])
 
   useEffect(() => {
+    if (!isDev || activeTab !== 'users' || !showUsersTabTags) return
+    let cancelled = false
+    setUsersTabTagsLoading(true)
+    void (async () => {
+      try {
+        const userIds = users.map((u) => u.id)
+        const [overrides, signals, mastersRes] = await Promise.all([
+          fetchTagOrgOverridesForUserIds(userIds),
+          fetchUserTagOrgSignals(userIds),
+          withSupabaseRetry(
+            async () =>
+              supabase
+                .from('users')
+                .select('id, name, email')
+                .eq('role', 'master_technician')
+                .is('archived_at', null)
+                .order('name', { ascending: true }),
+            'tag org master dropdown'
+          ),
+        ])
+        if (cancelled) return
+        setUsersTabTagSignalsByUserId(signals)
+        setTagOrgMasterSelectOptions(
+          (mastersRes ?? []) as Array<{ id: string; name: string | null; email: string | null }>,
+        )
+        const saved: Record<string, string | null> = {}
+        for (const id of userIds) {
+          saved[id] = overrides[id] ?? null
+        }
+        setUsersTabTagOrgSavedMasterId(saved)
+
+        const masterByUser: Record<string, string | null> = {}
+        for (const id of userIds) {
+          if (overrides[id]) masterByUser[id] = overrides[id]
+        }
+        const needHeuristic = userIds.filter((id) => !overrides[id])
+        const heuristicPairs = await Promise.all(
+          needHeuristic.map(async (id) => ({ id, master: await resolveManagerUserIdForFeedback(id) })),
+        )
+        if (cancelled) return
+        for (const { id, master } of heuristicPairs) {
+          masterByUser[id] = master
+        }
+        setUsersTabMasterByUserId(masterByUser)
+
+        const masterIdsFromPeople = [...new Set(people.map((p) => p.master_user_id))]
+        const masterIdsFromUsers = [
+          ...new Set(
+            [...Object.values(masterByUser), ...Object.values(overrides)].filter((m): m is string => m != null),
+          ),
+        ]
+        const allMasterIds = [...new Set([...masterIdsFromPeople, ...masterIdsFromUsers])]
+        const personIds = people.map((p) => p.id)
+        const [labelsRows, plMap, ulMap] = await Promise.all([
+          fetchLabelsForMasterIds(allMasterIds),
+          fetchPeopleLabelsForPersonIds(personIds),
+          fetchUserLabelsForUserIds(userIds),
+        ])
+        if (cancelled) return
+        setUsersTabLabels(labelsRows)
+        setUsersTabLabelsByPersonId(plMap)
+        setUsersTabLabelsByUserId(ulMap)
+      } catch (e) {
+        if (!cancelled) {
+          showToast(e instanceof Error ? e.message : 'Failed to load tags', 'error')
+        }
+      } finally {
+        if (!cancelled) setUsersTabTagsLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [isDev, activeTab, showUsersTabTags, people, users])
+
+  useEffect(() => {
     if (!canAccessContracts) return
     supabase
       .from('person_contract_documents')
@@ -1050,6 +1176,464 @@ export default function People() {
       .filter((p) => p.kind === k && !isAlreadyUser(p.email))
       .map((p) => ({ source: 'people' as const, ...p }))
     return [...fromUsers, ...fromPeople].sort((a, b) => a.name.localeCompare(b.name))
+  }
+
+  const resolvePersonIdForUsersRow = useCallback(
+    (
+      item: { source: 'people' | 'user'; id: string; email: string | null },
+      sectionKind: PersonKind | null,
+    ): string | null => {
+      if (item.source === 'people') return item.id
+      const e = item.email?.trim().toLowerCase()
+      if (!e) return null
+      if (sectionKind) {
+        const p = people.find((x) => x.kind === sectionKind && x.email?.toLowerCase() === e)
+        return p?.id ?? null
+      }
+      const p = people.find((x) => x.email?.toLowerCase() === e)
+      return p?.id ?? null
+    },
+    [people],
+  )
+
+  type UsersTabTagAnchor =
+    | { kind: 'person'; personId: string }
+    | { kind: 'user'; userId: string }
+
+  function resolveUsersTabTagAnchor(
+    item: { source: 'user' | 'people'; id: string; email: string | null },
+    sectionKind: PersonKind | null,
+  ): UsersTabTagAnchor {
+    const personId = resolvePersonIdForUsersRow(item, sectionKind)
+    if (personId) return { kind: 'person', personId }
+    return { kind: 'user', userId: item.id }
+  }
+
+  const usersTabLabelById = useMemo(() => {
+    const m = new Map<string, LabelRow>()
+    for (const l of usersTabLabels) m.set(l.id, l)
+    return m
+  }, [usersTabLabels])
+
+  const usersTabLabelIdsCatalogKey = useMemo(
+    () => [...new Set(usersTabLabels.map((l) => l.id))].filter(Boolean).sort().join(','),
+    [usersTabLabels],
+  )
+
+  useEffect(() => {
+    if (!isDev || activeTab !== 'users' || !showUsersTabTags || !showUsersTabTagOrgSignals) {
+      setUsersTabLabelUsageById({})
+      setUsersTabLabelUsageLoading(false)
+      return
+    }
+    const ids = usersTabLabelIdsCatalogKey ? usersTabLabelIdsCatalogKey.split(',') : []
+    if (ids.length === 0) {
+      setUsersTabLabelUsageById({})
+      setUsersTabLabelUsageLoading(false)
+      return
+    }
+    let cancelled = false
+    setUsersTabLabelUsageLoading(true)
+    void fetchLabelUsageCounts(ids)
+      .then((m) => {
+        if (!cancelled) setUsersTabLabelUsageById(m)
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          showToast(e instanceof Error ? e.message : 'Failed to load label usage', 'error')
+          setUsersTabLabelUsageById({})
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setUsersTabLabelUsageLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [isDev, activeTab, showUsersTabTags, showUsersTabTagOrgSignals, usersTabLabelIdsCatalogKey, showToast])
+
+  const tagOrgMasterLabel = useCallback(
+    (masterId: string) => {
+      const m = tagOrgMasterSelectOptions.find((x) => x.id === masterId)
+      return m ? m.name?.trim() || m.email?.trim() || masterId : masterId
+    },
+    [tagOrgMasterSelectOptions],
+  )
+
+  const applyUserTagOrgChange = useCallback(
+    async (userId: string, nextMasterId: string) => {
+      if (!authUser?.id) return
+      setUsersTabTagOrgSavingUserId(userId)
+      try {
+        let resolvedMaster: string | null
+        if (!nextMasterId) {
+          await deleteUserTagOrg(userId)
+          setUsersTabTagOrgSavedMasterId((prev) => ({ ...prev, [userId]: null }))
+          resolvedMaster = await resolveManagerUserIdForFeedback(userId)
+        } else {
+          await upsertUserTagOrg(userId, nextMasterId, authUser.id)
+          setUsersTabTagOrgSavedMasterId((prev) => ({ ...prev, [userId]: nextMasterId }))
+          resolvedMaster = nextMasterId
+        }
+        setUsersTabMasterByUserId((prev) => {
+          const next = { ...prev, [userId]: resolvedMaster }
+          const allMasterIds = [
+            ...new Set([
+              ...people.map((p) => p.master_user_id),
+              ...Object.values(next).filter((m): m is string => m != null),
+            ]),
+          ]
+          void fetchLabelsForMasterIds(allMasterIds).then((rows) => setUsersTabLabels(rows))
+          return next
+        })
+      } catch (e) {
+        showToast(e instanceof Error ? e.message : 'Failed to save tag org', 'error')
+      } finally {
+        setUsersTabTagOrgSavingUserId(null)
+      }
+    },
+    [authUser?.id, people, showToast],
+  )
+
+  function renderUsersTabTagsSection(anchor: UsersTabTagAnchor) {
+    if (!showUsersTabTags) return null
+    if (usersTabTagsLoading) {
+      return <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>Loading tags…</div>
+    }
+
+    const usersTabTagsPanelStyle: React.CSSProperties = {
+      width: '100%',
+      marginTop: '0.25rem',
+      padding: '0.35rem 0 0',
+      borderTop: '1px solid #e5e7eb',
+      boxSizing: 'border-box',
+    }
+
+    const masterUserId =
+      anchor.kind === 'person'
+        ? people.find((p) => p.id === anchor.personId)?.master_user_id
+        : usersTabMasterByUserId[anchor.userId] ?? null
+
+    const tagUserId = anchor.kind === 'user' ? anchor.userId : null
+    const signals = tagUserId ? usersTabTagSignalsByUserId[tagUserId] : undefined
+    const savedTagOrg = tagUserId ? usersTabTagOrgSavedMasterId[tagUserId] : null
+    const signalMasterUnion: string[] =
+      tagUserId && signals
+        ? [
+            ...signals.assistantMasters,
+            ...signals.superintendentMasters,
+            ...signals.primaryMasters,
+            ...signals.jobMasters.map((j) => j.masterId),
+            ...(signals.peopleEmailMaster ? [signals.peopleEmailMaster] : []),
+          ].filter((id, i, a) => a.indexOf(id) === i)
+        : []
+    const tagOrgConflict =
+      !!savedTagOrg && signalMasterUnion.length > 0 && !signalMasterUnion.includes(savedTagOrg)
+
+    const tagOrgControls =
+      tagUserId != null ? (
+        <div style={{ width: '100%', marginBottom: '0.5rem', fontSize: '0.75rem', color: '#374151' }}>
+          <div
+            style={{
+              fontSize: '0.65rem',
+              fontWeight: 600,
+              color: '#6b7280',
+              letterSpacing: '0.02em',
+              marginBottom: '0.25rem',
+              textAlign: 'left',
+            }}
+          >
+            Tag org (saved)
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '0.5rem',
+              alignItems: 'center',
+              justifyContent: 'flex-start',
+              marginBottom: '0.35rem',
+            }}
+          >
+            <select
+              value={savedTagOrg ?? ''}
+              disabled={usersTabTagOrgSavingUserId === tagUserId}
+              onChange={(ev) => void applyUserTagOrgChange(tagUserId, ev.target.value)}
+              style={{ fontSize: '0.8125rem', padding: '0.25rem 0.5rem', borderRadius: 4, border: '1px solid #d1d5db', minWidth: 200 }}
+            >
+              <option value="">Heuristic (no override)</option>
+              {tagOrgMasterSelectOptions.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name?.trim() || m.email?.trim() || m.id}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              disabled={usersTabTagOrgSavingUserId === tagUserId || savedTagOrg == null}
+              onClick={() => void applyUserTagOrgChange(tagUserId, '')}
+              style={{ fontSize: '0.75rem', padding: '0.2rem 0.45rem' }}
+            >
+              Clear override
+            </button>
+          </div>
+          {signals && (
+            <div
+              style={{
+                width: '100%',
+                textAlign: 'left',
+                color: '#6b7280',
+                lineHeight: 1.45,
+                marginBottom: tagOrgConflict ? '0.25rem' : 0,
+              }}
+            >
+              <span style={{ fontWeight: 600, color: '#9ca3af' }}>Signals </span>
+              {signals.assistantMasters.length > 0 && (
+                <span>
+                  Assistant: {signals.assistantMasters.map(tagOrgMasterLabel).join(', ')}.{' '}
+                </span>
+              )}
+              {signals.superintendentMasters.length > 0 && (
+                <span>
+                  Superintendent: {signals.superintendentMasters.map(tagOrgMasterLabel).join(', ')}.{' '}
+                </span>
+              )}
+              {signals.primaryMasters.length > 0 && (
+                <span>
+                  Primary: {signals.primaryMasters.map(tagOrgMasterLabel).join(', ')}.{' '}
+                </span>
+              )}
+              {signals.jobMasters.length > 0 && (
+                <span>
+                  Jobs:{' '}
+                  {signals.jobMasters
+                    .map((j) => `${tagOrgMasterLabel(j.masterId)} (${j.jobCount})`)
+                    .join(', ')}
+                  .{' '}
+                </span>
+              )}
+              {signals.peopleEmailMaster != null && (
+                <span>People email: {tagOrgMasterLabel(signals.peopleEmailMaster)}.</span>
+              )}
+              {signalMasterUnion.length === 0 && (
+                <span>No adoption or job team links detected for this user.</span>
+              )}
+            </div>
+          )}
+          {tagOrgConflict && (
+            <div
+              style={{
+                width: '100%',
+                textAlign: 'left',
+                fontSize: '0.75rem',
+                color: '#b45309',
+                marginTop: '0.2rem',
+              }}
+            >
+              Saved org does not match any detected signal — review adoption or roster email.
+            </div>
+          )}
+        </div>
+      ) : null
+
+    if (!masterUserId) {
+      return (
+        <div style={usersTabTagsPanelStyle}>
+          {showUsersTabTagOrgSignals ? tagOrgControls : null}
+          <div style={{ fontSize: '0.8125rem', color: '#9ca3af', textAlign: 'left' }}>
+            {anchor.kind === 'person'
+              ? 'No roster row'
+              : showUsersTabTagOrgSignals
+                ? 'Cannot determine org for tags — set Tag org above or fix roster/adoption.'
+                : 'Cannot determine org for tags — turn on “Tag org, signals & new tag” below to set override, or fix roster/adoption.'}
+          </div>
+        </div>
+      )
+    }
+    const catalog = usersTabLabels
+      .filter((l) => l.master_user_id === masterUserId)
+      .sort((a, b) => a.name.localeCompare(b.name))
+    const selectedIds =
+      anchor.kind === 'person'
+        ? usersTabLabelsByPersonId[anchor.personId] ?? []
+        : usersTabLabelsByUserId[anchor.userId] ?? []
+    const catalogUnselected = catalog.filter((l) => !selectedIds.includes(l.id))
+    const draftKey = anchor.kind === 'person' ? `p:${anchor.personId}` : `u:${anchor.userId}`
+    const busy = usersTabSavingTagKey === draftKey
+    const draft = usersTabTagDraftByKey[draftKey] ?? ''
+
+    const applyIds = async (next: string[]) => {
+      setUsersTabSavingTagKey(draftKey)
+      try {
+        if (anchor.kind === 'person') {
+          await setPersonLabels(anchor.personId, next)
+          setUsersTabLabelsByPersonId((prev) => ({ ...prev, [anchor.personId]: next }))
+        } else {
+          await setUserLabels(anchor.userId, next)
+          setUsersTabLabelsByUserId((prev) => ({ ...prev, [anchor.userId]: next }))
+        }
+      } catch (e) {
+        showToast(e instanceof Error ? e.message : 'Failed to update tags', 'error')
+      } finally {
+        setUsersTabSavingTagKey(null)
+      }
+    }
+
+    const toggleLabel = (labelId: string, checked: boolean) => {
+      const next = checked ? [...selectedIds, labelId] : selectedIds.filter((id) => id !== labelId)
+      void applyIds(next)
+    }
+
+    const addNewTag = async () => {
+      const name = draft.trim()
+      if (!name) return
+      const slug = slugifyLabelName(name)
+      try {
+        const row = await insertLabel({ master_user_id: masterUserId, name, slug })
+        setUsersTabLabels((prev) => [...prev, row].sort((a, b) => a.name.localeCompare(b.name)))
+        await applyIds([...selectedIds, row.id])
+        setUsersTabTagDraftByKey((prev) => ({ ...prev, [draftKey]: '' }))
+      } catch (e) {
+        const raw = e instanceof Error ? e.message : String(e)
+        const dup =
+          /duplicate|unique/i.test(raw) ||
+          raw.toLowerCase().includes('labels_slug') ||
+          raw.toLowerCase().includes('labels_master')
+        showToast(dup ? 'A tag with that name or slug already exists for this master.' : raw, 'error')
+      }
+    }
+
+    return (
+      <div style={usersTabTagsPanelStyle}>
+        {showUsersTabTagOrgSignals ? tagOrgControls : null}
+        <div
+          style={{
+            fontSize: '0.8125rem',
+            fontWeight: 500,
+            color: '#6b7280',
+            marginBottom: '0.2rem',
+            textAlign: 'left',
+          }}
+        >
+          Tags
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '0.35rem',
+            alignItems: 'center',
+            justifyContent: 'flex-start',
+            marginBottom: '0.35rem',
+          }}
+        >
+          {selectedIds.map((id) => {
+            const label = usersTabLabelById.get(id)
+            if (!label) return null
+            return (
+              <span
+                key={id}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.2rem',
+                  padding: '0.06rem 0.4rem',
+                  background: '#e0e7ff',
+                  color: '#3730a3',
+                  borderRadius: 999,
+                  fontSize: '0.75rem',
+                }}
+              >
+                {label.name}
+                <button
+                  type="button"
+                  aria-label={`Remove ${label.name}`}
+                  onClick={() => void applyIds(selectedIds.filter((x) => x !== id))}
+                  disabled={busy}
+                  style={{
+                    padding: 0,
+                    margin: 0,
+                    border: 'none',
+                    background: 'none',
+                    cursor: busy ? 'not-allowed' : 'pointer',
+                    fontSize: '0.85rem',
+                    lineHeight: 1,
+                    color: '#4f46e5',
+                  }}
+                >
+                  ×
+                </button>
+              </span>
+            )
+          })}
+        </div>
+        {catalog.length > 0 && catalogUnselected.length === 0 ? (
+          <p
+            style={{
+              fontSize: '0.8125rem',
+              color: '#9ca3af',
+              margin: '0 0 0.35rem 0',
+            }}
+          >
+            All catalog tags applied.
+          </p>
+        ) : (
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '0.5rem',
+              alignItems: 'center',
+              justifyContent: 'flex-start',
+              marginBottom: '0.35rem',
+            }}
+          >
+            {catalogUnselected.map((l) => (
+              <label
+                key={l.id}
+                style={{
+                  fontSize: '0.8125rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  cursor: busy ? 'not-allowed' : 'pointer',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={false}
+                  disabled={busy}
+                  onChange={(ev) => toggleLabel(l.id, ev.target.checked)}
+                />
+                {l.name}
+              </label>
+            ))}
+          </div>
+        )}
+        {showUsersTabTagOrgSignals ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center', justifyContent: 'flex-start' }}>
+            <input
+              type="text"
+              value={draft}
+              onChange={(ev) =>
+                setUsersTabTagDraftByKey((prev) => ({ ...prev, [draftKey]: ev.target.value }))
+              }
+              placeholder="New tag name"
+              disabled={busy}
+              style={{ fontSize: '0.8125rem', padding: '0.2rem 0.4rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: 120 }}
+            />
+            <button
+              type="button"
+              onClick={() => void addNewTag()}
+              disabled={busy || !draft.trim()}
+              style={{ fontSize: '0.8125rem', padding: '0.2rem 0.5rem' }}
+            >
+              Add tag
+            </button>
+          </div>
+        ) : null}
+      </div>
+    )
   }
 
   function allRosterNames(): string[] {
@@ -4117,6 +4701,11 @@ export default function People() {
                               <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.35rem' }}>— {u.notes}</span>
                             )}
                           </div>
+                          {isDev &&
+                            showUsersTabTags &&
+                            renderUsersTabTagsSection(
+                              resolveUsersTabTagAnchor({ source: 'user', id: u.id, email: u.email }, null),
+                            )}
                         </div>
                         {canEditUserNotes && (
                           <button
@@ -4251,6 +4840,11 @@ export default function People() {
                           <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.35rem' }}>— {u.notes}</span>
                         )}
                         </div>
+                        {isDev &&
+                          showUsersTabTags &&
+                          renderUsersTabTagsSection(
+                            resolveUsersTabTagAnchor({ source: 'user', id: u.id, email: u.email }, null),
+                          )}
                       </div>
                       {canEditUserNotes && (
                         <button
@@ -4385,6 +4979,11 @@ export default function People() {
                             <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.35rem' }}>— {u.notes}</span>
                           )}
                         </div>
+                        {isDev &&
+                          showUsersTabTags &&
+                          renderUsersTabTagsSection(
+                            resolveUsersTabTagAnchor({ source: 'user', id: u.id, email: u.email }, null),
+                          )}
                       </div>
                     </li>
                   ))}
@@ -4567,6 +5166,14 @@ export default function People() {
                                         </div>
                                       ) : null
                                     })()}
+                                    {isDev &&
+                                      showUsersTabTags &&
+                                      renderUsersTabTagsSection(
+                                        resolveUsersTabTagAnchor(
+                                          { source: item.source, id: item.id, email: item.email },
+                                          k,
+                                        ),
+                                      )}
                                   </div>
                                   {item.source === 'people' && (
                                     <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
@@ -4688,6 +5295,178 @@ export default function People() {
               </div>
             )}
           </div>
+          {isDev && (
+            <>
+              <div
+                style={{
+                  marginTop: '1.5rem',
+                  width: '100%',
+                  alignSelf: 'stretch',
+                  display: 'flex',
+                  flexDirection: 'row',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  justifyContent: 'flex-start',
+                  gap: '0.75rem 1rem',
+                }}
+              >
+                <label
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    fontSize: '0.875rem',
+                    color: '#374151',
+                    fontWeight: 500,
+                  }}
+                >
+                  <span>Tags</span>
+                  <input
+                    type="checkbox"
+                    checked={showUsersTabTags}
+                    onChange={(e) => {
+                      const v = e.target.checked
+                      setShowUsersTabTags(v)
+                      try {
+                        localStorage.setItem(SHOW_USERS_TAB_TAGS_KEY, v ? '1' : '0')
+                      } catch {
+                        /* ignore quota / private mode */
+                      }
+                    }}
+                  />
+                </label>
+                {showUsersTabTags && (
+                  <label
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      fontSize: '0.875rem',
+                      color: '#374151',
+                      fontWeight: 500,
+                    }}
+                  >
+                    <span>{'·'}</span>
+                    <span>{'Tag org, signals & new tag'}</span>
+                    <input
+                      type="checkbox"
+                      checked={showUsersTabTagOrgSignals}
+                      onChange={(e) => {
+                        const v = e.target.checked
+                        setShowUsersTabTagOrgSignals(v)
+                        try {
+                          localStorage.setItem(SHOW_USERS_TAB_TAG_ORG_SIGNALS_KEY, v ? '1' : '0')
+                        } catch {
+                          /* ignore quota / private mode */
+                        }
+                      }}
+                    />
+                  </label>
+                )}
+              </div>
+              {showUsersTabTags && showUsersTabTagOrgSignals && (
+                <div
+                  style={{
+                    marginTop: '1.25rem',
+                    width: '100%',
+                    maxWidth: '56rem',
+                  }}
+                >
+                  <h3 style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#111827', marginBottom: '0.5rem' }}>
+                    Label catalog
+                  </h3>
+                  {usersTabLabelUsageLoading ? (
+                    <p style={{ fontSize: '0.8125rem', color: '#6b7280' }}>Loading label usage…</p>
+                  ) : usersTabLabels.length === 0 ? (
+                    <p style={{ fontSize: '0.8125rem', color: '#6b7280' }}>No labels loaded yet.</p>
+                  ) : (
+                    <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                        <thead>
+                          <tr style={{ backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb', textAlign: 'left' }}>
+                            <th style={{ padding: '0.5rem 0.75rem' }}>Tag</th>
+                            <th style={{ padding: '0.5rem 0.75rem' }}>Master</th>
+                            <th style={{ padding: '0.5rem 0.75rem' }}>People</th>
+                            <th style={{ padding: '0.5rem 0.75rem' }}>Users</th>
+                            <th style={{ padding: '0.5rem 0.75rem' }}>Total</th>
+                            <th style={{ padding: '0.5rem 0.75rem' }}></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[...usersTabLabels]
+                            .sort((a, b) => a.name.localeCompare(b.name))
+                            .map((row) => {
+                              const usage = usersTabLabelUsageById[row.id] ?? { people: 0, users: 0 }
+                              const total = usage.people + usage.users
+                              const masterDisp = tagOrgMasterLabel(row.master_user_id)
+                              return (
+                                <tr key={row.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                                  <td style={{ padding: '0.45rem 0.75rem' }}>{row.name}</td>
+                                  <td style={{ padding: '0.45rem 0.75rem', color: '#4b5563' }}>{masterDisp}</td>
+                                  <td style={{ padding: '0.45rem 0.75rem' }}>{usage.people}</td>
+                                  <td style={{ padding: '0.45rem 0.75rem' }}>{usage.users}</td>
+                                  <td style={{ padding: '0.45rem 0.75rem' }}>{total}</td>
+                                  <td style={{ padding: '0.45rem 0.75rem' }}>
+                                    <button
+                                      type="button"
+                                      disabled={total !== 0 || usersTabLabelCatalogDeletingId === row.id}
+                                      title={
+                                        total !== 0
+                                          ? 'Remove all assignments before deleting this tag'
+                                          : 'Delete unused tag from catalog'
+                                      }
+                                      onClick={async () => {
+                                        if (total !== 0) return
+                                        setUsersTabLabelCatalogDeletingId(row.id)
+                                        try {
+                                          await deleteLabel(row.id)
+                                          setUsersTabLabels((prev) => prev.filter((l) => l.id !== row.id))
+                                          setUsersTabLabelUsageById((prev) => {
+                                            const next = { ...prev }
+                                            delete next[row.id]
+                                            return next
+                                          })
+                                          setUsersTabLabelsByPersonId((prev) => {
+                                            const next: Record<string, string[]> = {}
+                                            for (const [pid, arr] of Object.entries(prev)) {
+                                              next[pid] = arr.filter((lid) => lid !== row.id)
+                                            }
+                                            return next
+                                          })
+                                          setUsersTabLabelsByUserId((prev) => {
+                                            const next: Record<string, string[]> = {}
+                                            for (const [uid, arr] of Object.entries(prev)) {
+                                              next[uid] = arr.filter((lid) => lid !== row.id)
+                                            }
+                                            return next
+                                          })
+                                          showToast('Tag removed from catalog', 'success')
+                                        } catch (e) {
+                                          showToast(e instanceof Error ? e.message : 'Failed to delete tag', 'error')
+                                        } finally {
+                                          setUsersTabLabelCatalogDeletingId(null)
+                                        }
+                                      }}
+                                      style={{
+                                        padding: '0.2rem 0.5rem',
+                                        fontSize: '0.75rem',
+                                        opacity: total !== 0 ? 0.45 : 1,
+                                      }}
+                                    >
+                                      {usersTabLabelCatalogDeletingId === row.id ? 'Deleting…' : 'Delete'}
+                                    </button>
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
         </>
       )}
 

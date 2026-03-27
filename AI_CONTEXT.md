@@ -140,7 +140,7 @@ pipetooling.github.io/
 - **`src/utils/errorHandling.ts`** - Retry wrappers and error utilities
 
 ### Documentation (Start Here)
-- **`AGENTS.md`** - AI agent entry point (points here)
+- **`AGENTS.md`** - AI agent entry point (points here); includes **Supabase MCP** note for applying migrations / SQL when the linked project is available in Cursor
 - **`README.md`** - Quick start and documentation index
 - **`AI_CONTEXT.md`** - This file (quick overview)
 - **`PROJECT_DOCUMENTATION.md`** - Complete technical reference (3000+ lines)
@@ -149,6 +149,7 @@ pipetooling.github.io/
 - **`ADDING_A_NEW_ROLE.md`** - Step-by-step guide for adding new roles
 - **`EDGE_FUNCTIONS.md`** - Edge Functions API reference
 - **`RECENT_FEATURES.md`** - Chronological feature log
+- **Team feedback** (clock-out / Dashboard prompts, Settings dev tools, RLS details): **`RECENT_FEATURES.md`** v2.157 (foundation) and **v2.162** (eligibility reset, submission SELECT policy, raw submission names)
 
 ---
 

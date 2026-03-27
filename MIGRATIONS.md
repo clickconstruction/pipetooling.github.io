@@ -118,6 +118,38 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: People → Activity tab; dev grant/revoke UI
 - **Category**: People / RLS
 
+**`20270327130000_people_labels.sql`**
+- **Purpose**: Normalized per-master roster labels and `people_labels` junction (e.g. peer review cohorts); FK integrity trigger
+- **Changes**: Create `labels` (`master_user_id`, `name`, `slug`, UNIQUE `(master_user_id, slug)`); `people_labels` (`person_id`, `label_id`); `enforce_people_labels_same_master` BEFORE INSERT/UPDATE trigger; helper functions `user_can_read_labels_for_master`, `user_can_write_labels_for_master`; RLS for `authenticated` (read scope mirrors roster + superintendent adoption; write: dev, owning master, assistant); indexes on `label_id` / `person_id`
+- **Impact**: `src/lib/labels.ts` helpers; optional UI to assign labels / filter peers later
+- **Category**: People / RLS
+
+**`20270327140000_user_labels.sql`**
+- **Purpose**: Assign the same master-scoped `labels` catalog to login users without a `people` row (account-only users)
+- **Changes**: Create `user_labels` (`user_id`, `label_id`); `enforce_user_labels_scope_master` BEFORE INSERT/UPDATE trigger (tagged user must be in scope for `labels.master_user_id`: self master/dev, `master_assistants`, `master_superintendents`, or `people` email match); RLS aligned with `people_labels` (join + `user_can_write_labels_for_master`)
+- **Impact**: People → Users dev tag UI uses `people_labels` when a roster row exists, else `user_labels`; `setUserLabels` / `fetchUserLabelsForUserIds` in `src/lib/labels.ts`
+- **Category**: People / RLS
+
+**`20270328120000_user_tag_org.sql`**
+- **Purpose**: Explicit per-login-user tag catalog org (`user_id` → `master_user_id`) for People → Users tags; read-only hints (adoption, jobs) stay in app code
+- **Changes**: Create `user_tag_org` (`set_by`, `updated_at`, trigger); RLS dev read/write all, authenticated **SELECT** own row; **REPLACE** `enforce_user_labels_scope_master` to allow inserts when `user_tag_org` matches label master
+- **Impact**: `src/lib/tagOrg.ts`; People → Users (dev) Tag org dropdown, signals, Clear override
+- **Category**: People / RLS
+
+#### March 29, 2027
+
+**`20270329120000_list_feedback_peer_candidates_shared_labels_final.sql`**
+- **Purpose**: Authoritative **`list_feedback_peer_candidates`** implementation: peers sharing at least one **`label_id`** with the reviewer (`user_labels` for reviewer; peers via `user_labels` or `people_labels`). Supersedes roster-based definitions from **`20260628141000`**–**`20260628141700`** on databases that applied those migrations.
+- **Changes**: `DROP FUNCTION IF EXISTS` + `CREATE OR REPLACE` with `shared_tag_count`, `UNION ALL`, order and cap 5000; `COMMENT`; `GRANT EXECUTE` to `authenticated`
+- **Impact**: Team Feedback peer picker (Settings preview and in-app wizard) uses label intersection only, not master roster union
+- **Category**: Team Feedback / RPC
+
+**`20270329140000_team_feedback_submissions_select_own.sql`**
+- **Purpose**: Allow submitters to **read their own** `team_feedback_submissions` row after INSERT (PostgREST `insert().select('id')` requires SELECT on returned rows).
+- **Changes**: `CREATE POLICY "team_feedback_submissions_select_own"` on `public.team_feedback_submissions` FOR SELECT TO `authenticated` USING (`reviewer_user_id = auth.uid()`). Complements existing dev-only SELECT-all policy.
+- **Impact**: Non-dev users can complete team feedback submit flow without **403** on the returning read; dev reporting unchanged
+- **Category**: Team Feedback / RLS
+
 ### March 2026
 
 #### March 20, 2026
@@ -200,7 +232,25 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### March 26, 2026
 
-**`20260326120000_restrict_people_insert_dev_master_assistant.sql`**
+**`20260326120000_estimator_prospects_access.sql`**
+- **Purpose**: Estimator Prospects CRM access flag, helper, and RLS alignment with dev/master/assistant
+- **Changes**: `users.estimator_prospects_access`; `user_has_prospects_staff_access()`; prospects-related policy updates
+- **Impact**: Estimators with flag can use Prospects stack per ACCESS_CONTROL
+- **Category**: People / RLS / Access Control
+
+**`20260326120100_jobs_ledger_invoices_billed_at.sql`**
+- **Purpose**: Track when jobs ledger invoices become billed (`billed_at`) for aging UI
+- **Changes**: Column + trigger `jobs_ledger_invoices_billed_at_fn` / `jobs_ledger_invoices_billed_at_tr`
+- **Impact**: Invoice rows record/clear `billed_at` with status transitions
+- **Category**: Jobs / Schema
+
+**`20260326120200_list_feedback_peer_candidates_shared_tag_count.sql`**
+- **Purpose**: Team Feedback peer RPC — `shared_tag_count` and ordering by shared labels
+- **Changes**: `CREATE OR REPLACE` `list_feedback_peer_candidates()` (label intersection / cap)
+- **Impact**: Peer picker sorts by shared tags
+- **Category**: Team Feedback / RPC
+
+**`20260326120300_restrict_people_insert_dev_master_assistant.sql`**
 - **Purpose**: Enforce ACCESS_CONTROL — only dev, master_technician, and assistant can INSERT into `people` (not estimator, primary, etc.)
 - **Changes**: Replace `Users can insert own people` WITH CHECK: `master_user_id = auth.uid()` AND (`is_dev()` OR role in master_technician, assistant)
 - **Impact**: RLS blocks roster inserts for estimators; People page hides Add + client guard for same roles
@@ -282,7 +332,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Dashboard Superintendent Jobs "Send to Billing" button works for superintendents; job moves to Ready to Bill
 - **Category**: Jobs / Access Control
 
-**`20260624000000_fix_cost_estimates_rls_use_helper.sql`**
+**`20260624000100_fix_cost_estimates_rls_use_helper.sql`**
 - **Purpose**: Fix assistants failing to create cost estimates (RLS policy violation)
 - **Changes**: Replace inline bid/users subqueries with `can_access_bid_for_pricing(bid_id)` on cost_estimates and cost_estimate_labor_rows (4 policies each)
 - **Impact**: Assistants, primaries, superintendents can create and manage cost estimates without RLS recursion; aligns with bid_pricing_assignments pattern

@@ -22,6 +22,7 @@
 | Bids system | `BIDS_SYSTEM.md` → Complete workflow documentation |
 | Edge Functions API | `EDGE_FUNCTIONS.md` → All 10 functions with examples |
 | Migration history | `MIGRATIONS.md` → All migrations by date and category |
+| Apply migrations / run SQL on linked Supabase (when Docker local unavailable) | Cursor **Supabase MCP** — read tool descriptors in `.cursor/.../mcps/` first; `apply_migration` for new files, `execute_sql` for ad-hoc queries; see [Supabase MCP](#supabase-mcp-cursor) below |
 | Workflow features | `WORKFLOW_FEATURES.md` → Stage management, financials |
 | Clock In/Out, pending sessions, Revoke, accountability, Quickfill Hours, Crew Jobs / Bids, unified job/bid search, Pay Report Jobs/Bids | `RECENT_FEATURES.md` → v2.100, v2.105, v2.114, v2.120; `PROJECT_DOCUMENTATION.md` → Dashboard, Hours, Quickfill, People; `GLOSSARY.md` → Clock Sessions |
 | Testing without credentials (dev login) | `EDGE_FUNCTIONS.md` → dev-login; `/dev-login?as=<existing-email>` when `import.meta.env.DEV`; email must exist in auth.users (e.g. robert@douglasmining.com); set `VITE_DEV_LOGIN_SECRET` and `DEV_LOGIN_SECRET` |
@@ -41,17 +42,25 @@
 | Bid Board All notes (unified timeline), customer notes cards, `customer_contacts.contact_method` | `RECENT_FEATURES.md` → v2.148; `PROJECT_DOCUMENTATION.md` → Bids; `MIGRATIONS.md` → 20260324120000 |
 | Clock sessions table (time/location, merged notes+job, accountability lines), pending Approve/Reject/Edit order, My Roles Goals gate, `user_dashboard_goals` / `user_daily_goals_ack` | `RECENT_FEATURES.md` → v2.149; `PROJECT_DOCUMENTATION.md` → Dashboard, People Hours, Quickfill, Settings; `MIGRATIONS.md` → 20260329120000; `GLOSSARY.md` → Clock Sessions |
 | Dashboard My Team: Clock activity above Active/Pending, plain "Clock activity" label, pending banner full-bar jump + expand | `RECENT_FEATURES.md` → v2.153; `PROJECT_DOCUMENTATION.md` → Dashboard |
+| Team feedback (dev): eligibility overview per-user Reset, submit `reviewer_user_id` from session, `team_feedback_submissions_select_own` migration, raw submissions names + CSV | `RECENT_FEATURES.md` → v2.162; `MIGRATIONS.md` → 20270329140000; `src/lib/teamFeedback.ts`; `src/components/team-feedback/` |
 
 ---
 
 ## Critical Constraints (Non-Negotiable)
 
 1. **Never edit existing migrations** — Append-only. Create new migration to change schema.
+   - **Always create new migration files with the CLI** — Run `supabase migration new short_description_of_change` (snake_case description). Never invent timestamps, copy an existing migration file and tweak the name, or add a second file that shares the same `YYYYMMDDHHMMSS` prefix as another file in `supabase/migrations/` (one version number → one SQL file). Edit the generated file, then apply via `supabase db push` (or MCP `apply_migration` on that file).
 2. **Always add RLS policies** — Every new table needs SELECT/INSERT/UPDATE/DELETE for all 6 roles.
 3. **Update types after schema changes** — `supabase gen types typescript --local > src/types/database.ts`
 4. **No `any` types** — TypeScript strict mode. Use proper types or `unknown`.
 5. **Wrap Supabase calls** — Use `withSupabaseRetry()` from `@/utils/errorHandling`
 6. **Test all 7 roles** — dev, master, assistant, subcontractor, estimator, primary, superintendent
+
+---
+
+## Supabase MCP (Cursor)
+
+When this workspace has the **Supabase MCP** server enabled, agents can apply new migration files and run SQL against the **linked** project via MCP (useful when local Docker / `supabase db reset` is not available). **Create the migration file first** with `supabase migration new …`, then edit it; use MCP `apply_migration` only for that generated path. **Always read each tool’s JSON descriptor** under the project’s `mcps` folder before calling — e.g. `execute_sql` for validation or reads, `apply_migration` to apply a file under `supabase/migrations/`. This does not replace **Critical Constraints** item 3: after schema changes, still run `supabase gen types typescript --local > src/types/database.ts` (or update `src/types/database.ts` equivalently).
 
 ---
 

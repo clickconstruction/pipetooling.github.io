@@ -1,0 +1,12 @@
+---
+description: Create and apply Supabase migrations only via CLI; unique version per file (matches AGENTS.md).
+alwaysApply: true
+---
+
+# Supabase migrations
+
+- **Create new migration files with the CLI only:** `supabase migration new short_description_of_change` (snake_case). Then edit the generated file under `supabase/migrations/`.
+- **Do not** hand-write timestamps, copy an existing migration and rename it, or add two files that share the same `YYYYMMDDHHMMSS` prefix. One version number → one SQL file.
+- **Never edit existing migrations** — append-only; add a new migration to change schema.
+- **Apply:** `supabase db push` (linked project), or Cursor Supabase MCP `apply_migration` on the file **after** it was created with `supabase migration new` (not instead of it).
+- Full project constraints: `AGENTS.md` at the repo root (RLS, types, etc.).
