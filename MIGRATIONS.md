@@ -914,6 +914,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: People > Pay History > Ledger shows Paid column with "Mark as paid" / "Paid [date]" + Unmark; users can record when they physically pay each person
 - **Category**: People / Pay Stubs
 
+**`20260328202458_pay_stub_payments.sql`**
+- **Purpose**: Multiple partial physical payments per pay stub (amount + paid date + memo)
+- **Changes**: Create `pay_stub_payments` (FK `pay_stubs` ON DELETE CASCADE, `amount` > 0, `paid_at`, memo, created_by); BEFORE INSERT/UPDATE trigger caps sum(amount) per stub to `gross_pay` + 0.01; RLS SELECT/INSERT/UPDATE/DELETE for pay access (same helpers as `pay_stub_days`); backfill one row per stub where `pay_stubs.paid_at` IS NOT NULL
+- **Impact**: People > Pay History ledger and Run Payroll use **Record payment** / **Clear payments**; fully paid = sum of installments ≥ gross; print/HTML pay report includes **Physical payments** block
+- **Category**: People / Pay Stubs
+
 #### March 27, 2026
 
 **`20260327000000_devs_delete_pay_stubs.sql`**

@@ -2991,6 +2991,51 @@ export type Database = {
           },
         ]
       }
+      pay_stub_payments: {
+        Row: {
+          amount: number
+          created_at: string | null
+          created_by: string | null
+          id: string
+          memo: string | null
+          paid_at: string
+          pay_stub_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          memo?: string | null
+          paid_at: string
+          pay_stub_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          memo?: string | null
+          paid_at?: string
+          pay_stub_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pay_stub_payments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pay_stub_payments_pay_stub_id_fkey"
+            columns: ["pay_stub_id"]
+            isOneToOne: false
+            referencedRelation: "pay_stubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pay_stubs: {
         Row: {
           created_at: string | null

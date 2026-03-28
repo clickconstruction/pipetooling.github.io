@@ -46,6 +46,7 @@
 | Team feedback (dev): eligibility overview per-user Reset, submit `reviewer_user_id` from session, `team_feedback_submissions_select_own` migration, raw submissions names + CSV | `RECENT_FEATURES.md` → v2.162; `MIGRATIONS.md` → 20270329140000; `src/lib/teamFeedback.ts`; `src/components/team-feedback/` |
 | Settings: Sharing and Adoption merged into **People & accounts** (`settings-people`); no `settings-sharing` jump | `RECENT_FEATURES.md` → v2.165; `PROJECT_DOCUMENTATION.md` → Settings §9; `ACCESS_CONTROL.md` → Settings matrix |
 | Pay History: Ledger name search; **Print** in ledger (no row **View**; bulk **Generate Pay Reports** modal still has **View**); dev delete as red trash icon | `RECENT_FEATURES.md` → v2.170; `PROJECT_DOCUMENTATION.md` → People; `src/components/pay/PayStubDeleteIcon.tsx` |
+| People Hours: Correct-day audit **Edit** (crew + clock + add session); **ClockSessionEditSplitModal**; **Highlight by job** on grid | `RECENT_FEATURES.md` → v2.171; `PROJECT_DOCUMENTATION.md` → People, Quickfill; `src/components/PeopleHoursDayAuditModal.tsx`; `src/pages/People.tsx` |
 
 ---
 

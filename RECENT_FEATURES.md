@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-03-27
+last_updated: 2026-03-28
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,11 +15,17 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.172)"
+    line: ~465
+    description: "People Pay History: pay_stub_payments partial installments; ledger Paid to date / Balance; Record payment / Clear; Run Payroll Partial; HTML footer"
+  - name: "Latest Version (v2.171)"
+    line: ~480
+    description: "People Hours: Correct-day audit modal edit mode (crew + clock + add session); clock edit extracted; Highlight by job on grid"
   - name: "Latest Version (v2.170)"
-    line: ~457
+    line: ~495
     description: "People Pay History: Ledger search by name; View removed from ledger (Print + dev trash icon); Generate Pay Reports modal/header UX"
   - name: "Latest Version (v2.169)"
-    line: ~471
+    line: ~494
     description: "Dashboard Dispatch inbox thread notes (expand row, presets, CST + days ago, closed as final block); dispatch_request_notes migration"
   - name: "Latest Version (v2.168)"
     line: ~451
@@ -346,20 +352,22 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.170)](#latest-updates-v2170) - People Pay History: ledger search, actions UX, bulk modal layout
-2. [Latest Updates (v2.164)](#latest-updates-v2164) - Settings (dev): Ignored task types list under Dashboard & alerts
-3. [Latest Updates (v2.163)](#latest-updates-v2163) - Dashboard clock strip; supply house website in expanded row
-4. [Latest Updates (v2.162)](#latest-updates-v2162) - Team feedback: dev eligibility reset, submissions RLS, raw submission names
-5. [Latest Updates (v2.153)](#latest-updates-v2153) - Dashboard My Team layout; pending banner jump UX
-6. [Latest Updates (v2.152)](#latest-updates-v2152) - My Team: People you lead hours table (Pending/Approved/Total)
-7. [Latest Updates (v2.151)](#latest-updates-v2151) - My Team clock notify + ledger; Edge Function
-8. [Latest Updates (v2.150)](#latest-updates-v2150) - Dashboard My Team: People you lead roster
-9. [Latest Updates (v2.149)](#latest-updates-v2149) - Clock sessions UX; daily goals gate; goals tables
-10. [Latest Updates (v2.148)](#latest-updates-v2148) - Bid Board All notes; customer notes UX; contact_method
-11. [Latest Updates (v2.145)](#latest-updates-v2145) - Master tech mobile nav Quickfill and Review in hamburger
-12. [Latest Updates (v2.144)](#latest-updates-v2144) - Assistant billing sections at top of Dashboard
-13. [Latest Updates (v2.143)](#latest-updates-v2143) - Assistant Dashboard section reorder
-14. [Latest Updates (v2.142)](#latest-updates-v2142) - Dashboard Assigned Jobs and Superintendent Jobs UX
+1. [Latest Updates (v2.172)](#latest-updates-v2172) - Pay History: partial payments (`pay_stub_payments`), ledger balance, Run Payroll Partial
+2. [Latest Updates (v2.171)](#latest-updates-v2171) - People Hours: audit modal edit, job highlight on grid, shared clock edit modal
+3. [Latest Updates (v2.170)](#latest-updates-v2170) - People Pay History: ledger search, actions UX, bulk modal layout
+4. [Latest Updates (v2.164)](#latest-updates-v2164) - Settings (dev): Ignored task types list under Dashboard & alerts
+5. [Latest Updates (v2.163)](#latest-updates-v2163) - Dashboard clock strip; supply house website in expanded row
+6. [Latest Updates (v2.162)](#latest-updates-v2162) - Team feedback: dev eligibility reset, submissions RLS, raw submission names
+7. [Latest Updates (v2.153)](#latest-updates-v2153) - Dashboard My Team layout; pending banner jump UX
+8. [Latest Updates (v2.152)](#latest-updates-v2152) - My Team: People you lead hours table (Pending/Approved/Total)
+9. [Latest Updates (v2.151)](#latest-updates-v2151) - My Team clock notify + ledger; Edge Function
+10. [Latest Updates (v2.150)](#latest-updates-v2150) - Dashboard My Team: People you lead roster
+11. [Latest Updates (v2.149)](#latest-updates-v2149) - Clock sessions UX; daily goals gate; goals tables
+12. [Latest Updates (v2.148)](#latest-updates-v2148) - Bid Board All notes; customer notes UX; contact_method
+13. [Latest Updates (v2.145)](#latest-updates-v2145) - Master tech mobile nav Quickfill and Review in hamburger
+14. [Latest Updates (v2.144)](#latest-updates-v2144) - Assistant billing sections at top of Dashboard
+15. [Latest Updates (v2.143)](#latest-updates-v2143) - Assistant Dashboard section reorder
+16. [Latest Updates (v2.142)](#latest-updates-v2142) - Dashboard Assigned Jobs and Superintendent Jobs UX
 2. [Latest Updates (v2.139)](#latest-updates-v2139) - Fix cost_estimates RLS for assistants
 3. [Latest Updates (v2.138)](#latest-updates-v2138) - Revoke superintendent Jobs Billing access
 2. [Latest Updates (v2.135)](#latest-updates-v2135) - Workflow: Collapse old stages toggle, breadcrumb below buttons, no-wrap scroll
@@ -455,6 +463,37 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.172)
+
+**Date**: 2026-03-28
+
+### People — Pay History (partial payments per stub)
+
+- **`pay_stub_payments`**: Multiple installments per pay stub (`amount`, `paid_at`, `memo`, `created_by`); trigger prevents total paid from exceeding **`gross_pay`** (within one cent). RLS matches **`pay_stub_days`**. Migration backfills one row per stub that already had **`paid_at`** set.
+- **Ledger**: Columns **Paid to date**, **Balance**, **Payment** status (Unpaid / Partial / Paid); **Record payment** modal (amount + sent date + optional note); **Clear payments** (confirm) deletes all installments and clears legacy paid columns on **`pay_stubs`**. Detail icon lists installments with optional **Delete** per row.
+- **Run Payroll** modal: **Partial** status; paid checkbox summary counts only **fully** paid stubs; **Record payment** / **Clear payments** aligned with ledger.
+- **Pay report HTML / print**: **Physical payments** block with lines and total.
+- **Helpers**: [`src/lib/payStubPayments.ts`](src/lib/payStubPayments.ts).
+
+**Files**: [`supabase/migrations/20260328202458_pay_stub_payments.sql`](supabase/migrations/20260328202458_pay_stub_payments.sql), [`src/pages/People.tsx`](src/pages/People.tsx), [`src/types/database.ts`](src/types/database.ts), [`src/lib/payStubPayments.ts`](src/lib/payStubPayments.ts)
+
+---
+
+## Latest Updates (v2.171)
+
+**Date**: 2026-03-27
+
+### People — Hours (correct-day audit, shared clock modal, highlight by job)
+
+- **Correct-day audit** (`PeopleHoursDayAuditModal`): From weekly grid cells in the “correct day” flow. **Read-only** by default; users who can edit crew jobs see **Edit** / **Done**. In edit mode: crew draft + **Save** uses the same upserts as the unassigned-hours path; each clock row **Edit** opens **`ClockSessionEditSplitModal`**; **Add session** when the day has no sessions (inserts a closed session for the audited person and work date, with resolved clock user id for inserts).
+- **Clock edit / split / create** (`ClockSessionEditSplitModal`): Shared between People and Quickfill—edit and split existing sessions; **create** path via `createFor: { userId, workDate }`. Local datetime fields use **`src/utils/datetimeLocal.ts`** (`toDatetimeLocal` / `fromDatetimeLocal`).
+- **Highlight by job**: Bar above the weekly grid—debounced **`search_jobs_ledger`**, selected job chip with clear. Highlights people and day cells when crew assignments for that week include the selected job (from raw **`unifiedAssignments`** job ids). Existing highlights (**missing job**, merge-order **flash**, hours **flash**) still take precedence so auditing cues are not lost.
+- **Quickfill Hours** (`HoursSection`): Passes the same audit modal props (including `onCrewSaved`) so correct-day refresh stays aligned with People.
+
+**Files**: [`src/components/PeopleHoursDayAuditModal.tsx`](src/components/PeopleHoursDayAuditModal.tsx), [`src/components/ClockSessionEditSplitModal.tsx`](src/components/ClockSessionEditSplitModal.tsx), [`src/utils/datetimeLocal.ts`](src/utils/datetimeLocal.ts), [`src/pages/People.tsx`](src/pages/People.tsx), [`src/components/quickfill/HoursSection.tsx`](src/components/quickfill/HoursSection.tsx)
 
 ---
 
