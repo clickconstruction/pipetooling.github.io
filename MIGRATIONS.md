@@ -304,13 +304,19 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: New/Edit Bid: changing **Bid Date Sent** opens attestation; save writes columns; clearing sent date clears attestations; UI shows days since sent and acknowledger
 - **Category**: Bids / Schema
 
-**`20260327220518_dispatch_request_notes.sql`**
+**`20260327220610_dispatch_request_notes.sql`**
 - **Purpose**: Thread notes on Task Dispatch inbox items (Dashboard expand row)
 - **Changes**: Create `dispatch_request_notes` (`request_id` FK → `dispatch_requests` ON DELETE CASCADE, `author_user_id` FK → `users`, `body`, `created_at`); index `(request_id, created_at)`; RLS SELECT same visibility as parent `dispatch_requests`; INSERT only when `author_user_id = auth.uid()` and user is dev or dispatch group member
 - **Impact**: Dashboard Dispatch inbox: expand task for activity thread (preset notes, Central Time + days ago); **Marked closed** block last from `dispatch_requests` close fields; realtime refresh when notes insert (if replication enabled)
 - **Category**: Task Dispatch / Schema
 
-**`20260327230514_team_leader_assignment_dashboard_visibility.sql`**
+**`20260327225624_dispatch_inbox_note_stats_rpc.sql`**
+- **Purpose**: RPC for dispatch inbox cards (note count / last activity per request)
+- **Changes**: `dispatch_inbox_note_stats(p_request_ids uuid[])` — aggregates `dispatch_request_notes`; `GRANT EXECUTE` to `authenticated`
+- **Impact**: Dashboard dispatch inbox can show thread stats on cards without N+1
+- **Category**: Task Dispatch / RPC
+
+**`20260327230557_team_leader_assignment_dashboard_visibility.sql`**
 - **Purpose**: Per leader→member link, control whether the leader sees full **My Team** on Dashboard or **Currently clocked in** strip only
 - **Changes**: Add `team_leader_assignments.dashboard_hours_visibility` (`'full'` | `'strip_only'`, default `'full'`); trigger `team_leader_assignments_dashboard_visibility_dev_only_trg` + function `team_leader_assignments_dashboard_visibility_dev_only()` — only `is_dev()` may change the column
 - **Impact**: Settings → Team Hours Sharing → **Leader dashboard** (dev edits); hook/UI omit strip-only members from detailed My Team and pending banner counts; strip unchanged
@@ -914,7 +920,13 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: People > Pay History > Ledger shows Paid column with "Mark as paid" / "Paid [date]" + Unmark; users can record when they physically pay each person
 - **Category**: People / Pay Stubs
 
-**`20260328202458_pay_stub_payments.sql`**
+**`20260328052640_pay_stub_paid_note.sql`**
+- **Purpose**: Optional memo when marking a pay stub physically paid
+- **Changes**: Add `paid_note TEXT` to `pay_stubs`
+- **Impact**: Pay History mark-paid flow can store a short note
+- **Category**: People / Pay Stubs
+
+**`20260328215252_pay_stub_payments.sql`**
 - **Purpose**: Multiple partial physical payments per pay stub (amount + paid date + memo)
 - **Changes**: Create `pay_stub_payments` (FK `pay_stubs` ON DELETE CASCADE, `amount` > 0, `paid_at`, memo, created_by); BEFORE INSERT/UPDATE trigger caps sum(amount) per stub to `gross_pay` + 0.01; RLS SELECT/INSERT/UPDATE/DELETE for pay access (same helpers as `pay_stub_days`); backfill one row per stub where `pay_stubs.paid_at` IS NOT NULL
 - **Impact**: People > Pay History ledger and Run Payroll use **Record payment** / **Clear payments**; fully paid = sum of installments ≥ gross; print/HTML pay report includes **Physical payments** block

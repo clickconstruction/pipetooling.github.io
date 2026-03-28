@@ -478,7 +478,7 @@ when_to_read:
 - **Pay report HTML / print**: **Physical payments** block with lines and total.
 - **Helpers**: [`src/lib/payStubPayments.ts`](src/lib/payStubPayments.ts).
 
-**Files**: [`supabase/migrations/20260328202458_pay_stub_payments.sql`](supabase/migrations/20260328202458_pay_stub_payments.sql), [`src/pages/People.tsx`](src/pages/People.tsx), [`src/types/database.ts`](src/types/database.ts), [`src/lib/payStubPayments.ts`](src/lib/payStubPayments.ts)
+**Files**: [`supabase/migrations/20260328215252_pay_stub_payments.sql`](supabase/migrations/20260328215252_pay_stub_payments.sql), [`src/pages/People.tsx`](src/pages/People.tsx), [`src/types/database.ts`](src/types/database.ts), [`src/lib/payStubPayments.ts`](src/lib/payStubPayments.ts)
 
 ---
 
@@ -521,7 +521,7 @@ when_to_read:
 - Dev and dispatch group members add notes via a **single combobox** ([`src/components/DispatchNoteCombobox.tsx`](src/components/DispatchNoteCombobox.tsx)): type freely or filter/pick from `DISPATCH_NOTE_PRESETS` (arrows + Enter on a highlighted row, or click). Submit rejects empty notes and text over 2000 characters. Inserts use `withSupabaseRetry`. Closed requests show **Marked closed (final)** after notes, using existing `closed_by`, `closed_at`, and `closed_note`.
 - Shared UI: [`src/components/DispatchInboxSection.tsx`](src/components/DispatchInboxSection.tsx); helpers [`src/utils/dispatchNoteDisplay.ts`](src/utils/dispatchNoteDisplay.ts), [`src/lib/dispatchNotePresets.ts`](src/lib/dispatchNotePresets.ts). Realtime channel on `dispatch_request_notes` refreshes the expanded thread on `INSERT` when replication is available.
 
-**Files**: [`supabase/migrations/20260327220518_dispatch_request_notes.sql`](supabase/migrations/20260327220518_dispatch_request_notes.sql), [`src/pages/Dashboard.tsx`](src/pages/Dashboard.tsx), [`src/types/database.ts`](src/types/database.ts), [`src/components/DispatchNoteCombobox.tsx`](src/components/DispatchNoteCombobox.tsx)
+**Files**: [`supabase/migrations/20260327220610_dispatch_request_notes.sql`](supabase/migrations/20260327220610_dispatch_request_notes.sql), [`src/pages/Dashboard.tsx`](src/pages/Dashboard.tsx), [`src/types/database.ts`](src/types/database.ts), [`src/components/DispatchNoteCombobox.tsx`](src/components/DispatchNoteCombobox.tsx)
 
 ---
 
