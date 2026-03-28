@@ -911,7 +911,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260328000000_pay_stubs_physical_payment.sql`**
 - **Purpose**: Track physical payment separately from stub creation; record when a pay stub was actually paid (cash, check, direct deposit)
 - **Changes**: Add `paid_at TIMESTAMPTZ` and `paid_by UUID REFERENCES users(id)` to `pay_stubs`; create UPDATE policy for pay access users (same predicate as SELECT/INSERT)
-- **Impact**: People > Pay Stubs > Ledger shows Paid column with "Mark as paid" / "Paid [date]" + Unmark; users can record when they physically pay each person
+- **Impact**: People > Pay History > Ledger shows Paid column with "Mark as paid" / "Paid [date]" + Unmark; users can record when they physically pay each person
 - **Category**: People / Pay Stubs
 
 #### March 27, 2026
@@ -919,7 +919,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260327000000_devs_delete_pay_stubs.sql`**
 - **Purpose**: Allow devs to delete pay stubs (e.g. to correct mistakes)
 - **Changes**: Create RLS policy "Devs can delete pay stubs" on `pay_stubs` using `public.is_dev()`; `pay_stub_days` cascade automatically via FK ON DELETE CASCADE
-- **Impact**: People > Pay Stubs > Ledger shows Delete button for devs; devs can remove erroneous pay stubs
+- **Impact**: People > Pay History > Ledger shows a dev-only delete control (red trash icon); devs can remove erroneous pay stubs
 - **Category**: People / Pay Stubs / RLS
 
 #### March 26, 2026
@@ -1003,15 +1003,15 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260315000000_create_pay_stub_days.sql`**
 - **Purpose**: Per-day allocation when pay stubs are generated; enables mismatch detection when hours change after payment
 - **Changes**: Create `pay_stub_days` table (pay_stub_id, person_name, work_date, hours_at_time, rate_at_time, paid_amount); RLS same as pay_stubs; backfill existing pay_stubs with daily allocations from current people_hours and pay_config
-- **Impact**: Generate flow now inserts pay_stub_days; clicking person name in Pay Stubs ledger opens annual calendar modal (7×52 grid) with green/yellow/orange/gray day status; YTD earned, paid, unpaid totals
+- **Impact**: Generate flow now inserts pay_stub_days; clicking person name in Pay History ledger opens annual calendar modal (7×52 grid) with green/yellow/orange/gray day status; YTD earned, paid, unpaid totals
 - **Category**: People / Pay
 
 #### March 14, 2026
 
 **`20260314000000_create_pay_stubs.sql`**
-- **Purpose**: Ledger of generated pay stubs for employees; supports People → Pay Stubs tab
+- **Purpose**: Ledger of generated pay stubs for employees; supports People → Pay History tab
 - **Changes**: Create `pay_stubs` table (id, person_name, period_start, period_end, hours_total, gross_pay, created_at, created_by); RLS same as people_hours (is_pay_approved_master OR is_assistant_of_pay_approved_master) for SELECT/INSERT
-- **Impact**: People page Pay Stubs tab shows ledger and generator; users can create pay stubs by person and date range, view in HTML, and print to PDF
+- **Impact**: People page Pay History tab shows ledger and generator; users can create pay stubs by person and date range; print to PDF; HTML preview from bulk Generate Pay Reports (**View**) and related flows
 - **Category**: People / Pay
 
 #### March 13, 2026
@@ -1493,7 +1493,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260314000000_create_pay_stubs.sql`**
 - **Purpose**: Ledger of generated pay stubs for employees
 - **Changes**: Created `pay_stubs` (person_name, period_start, period_end, hours_total, gross_pay, created_at, created_by); RLS same as people_hours
-- **Impact**: People → Pay Stubs tab; ledger, generator, view/print to PDF
+- **Impact**: People → Pay History tab; ledger, generators, print; HTML **View** in bulk modal
 - **Category**: People / Pay
 
 **`20260315000000_create_pay_stub_days.sql`**

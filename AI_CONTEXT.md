@@ -223,6 +223,7 @@ AI agents or automated tests can sign in without a password using the dev-login 
 | Dashboard "Currently clocked in" strip (Today column, My team/Everyone); supply house website in Materials | `RECENT_FEATURES.md` → v2.163; `PROJECT_DOCUMENTATION.md` → Dashboard, Materials; `src/hooks/useDashboardMyTeamSectionState.ts` |
 | Clock sessions table UX, My Roles Goals gate, `user_dashboard_goals` / `user_daily_goals_ack` | `RECENT_FEATURES.md` → v2.149; `PROJECT_DOCUMENTATION.md` → Dashboard, People, Quickfill, Settings; `MIGRATIONS.md` → 20260329120000; `GLOSSARY.md` → Clock Sessions, My Roles Goals |
 | Settings: Sharing and Adoption under **People & accounts** (`settings-people`); no `settings-sharing` jump | `RECENT_FEATURES.md` → v2.165; `PROJECT_DOCUMENTATION.md` → Settings §9; `ACCESS_CONTROL.md` → Settings matrix |
+| Pay History: Ledger name search; **Print** in row; **View** in bulk **Generate Pay Reports**; dev trash delete; modal layout | `RECENT_FEATURES.md` → v2.170; `PROJECT_DOCUMENTATION.md` → People; `src/pages/People.tsx`; `src/components/pay/PayStubDeleteIcon.tsx` |
 | Checklist (multi-assignee, links, Today/History/Manage) | `RECENT_FEATURES.md` → v2.107, v2.109; `PROJECT_DOCUMENTATION.md` → Key Features; `GLOSSARY.md` → Checklist Items |
 | Testing without credentials (dev login) | `EDGE_FUNCTIONS.md` → dev-login; `/dev-login?as=<existing-email>` when running dev server; email must exist in auth.users (e.g. robert@douglasmining.com); set `VITE_DEV_LOGIN_SECRET` in `.env.local` and `DEV_LOGIN_SECRET` for Edge Function |
 

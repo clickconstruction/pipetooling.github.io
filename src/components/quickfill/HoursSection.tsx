@@ -669,7 +669,7 @@ export function HoursSection() {
                     return (
                       <>
                         <tr>
-                          <td style={{ padding: '0.5rem 0.75rem', borderTop: '1px solid #e5e7eb', position: 'sticky', left: 0, background: '#f9fafb' }}>Total (HH:MM:SS):</td>
+                          <td style={{ padding: '0.5rem 0.75rem', borderTop: '1px solid #e5e7eb', background: '#f9fafb' }}>Total (HH:MM:SS):</td>
                           {hoursDays.map((d) => {
                             const daySum = showPeopleForHours.reduce((s, p) => s + getDisplayHours(p, d), 0)
                             return (
@@ -682,7 +682,7 @@ export function HoursSection() {
                           <td style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderTop: '1px solid #e5e7eb' }}>-</td>
                         </tr>
                         <tr>
-                          <td style={{ padding: '0.5rem 0.75rem', borderTop: '1px solid #e5e7eb', position: 'sticky', left: 0, background: '#f9fafb' }}>Total (Decimal):</td>
+                          <td style={{ padding: '0.5rem 0.75rem', borderTop: '1px solid #e5e7eb', background: '#f9fafb' }}>Total (Decimal):</td>
                           {hoursDays.map((d) => {
                             const daySum = showPeopleForHours.reduce((s, p) => s + getDisplayHours(p, d), 0)
                             return (
@@ -695,7 +695,7 @@ export function HoursSection() {
                           <td style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderTop: '1px solid #e5e7eb' }}>{grandTotal.toFixed(2)}</td>
                         </tr>
                         <tr>
-                          <td style={{ padding: '0.5rem 0.75rem', borderTop: '1px solid #e5e7eb', position: 'sticky', left: 0, background: '#f9fafb', fontWeight: 500, fontSize: '0.8125rem' }} title="Mark day as verified to lock from edits">Correct:</td>
+                          <td style={{ padding: '0.5rem 0.75rem', borderTop: '1px solid #e5e7eb', background: '#f9fafb', fontWeight: 500, fontSize: '0.8125rem' }} title="Mark day as verified to lock from edits">Correct:</td>
                           {hoursDays.map((d) => {
                             const checked = hoursDaysCorrect.has(d)
                             return (

@@ -3000,6 +3000,7 @@ export type Database = {
           id: string
           paid_at: string | null
           paid_by: string | null
+          paid_note: string | null
           period_end: string
           period_start: string
           person_name: string
@@ -3012,6 +3013,7 @@ export type Database = {
           id?: string
           paid_at?: string | null
           paid_by?: string | null
+          paid_note?: string | null
           period_end: string
           period_start: string
           person_name: string
@@ -3024,6 +3026,7 @@ export type Database = {
           id?: string
           paid_at?: string | null
           paid_by?: string | null
+          paid_note?: string | null
           period_end?: string
           period_start?: string
           person_name?: string

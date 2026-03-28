@@ -47,6 +47,37 @@ input.no-spinner[type="number"] {
   -moz-appearance: textfield;
 }
 
+/* Generate Pay Reports: shrink gap between date text and calendar icon (Chrome, Safari, Edge) */
+.generate-pay-reports-date-input {
+  width: auto;
+  max-width: 9.5rem;
+  min-width: 0;
+}
+
+.generate-pay-reports-date-input::-webkit-datetime-edit {
+  padding: 0;
+}
+
+.generate-pay-reports-date-input::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
+  max-width: max-content;
+}
+
+.generate-pay-reports-date-input::-webkit-datetime-edit-text,
+.generate-pay-reports-date-input::-webkit-datetime-edit-month-field,
+.generate-pay-reports-date-input::-webkit-datetime-edit-day-field,
+.generate-pay-reports-date-input::-webkit-datetime-edit-year-field {
+  padding: 0;
+}
+
+.generate-pay-reports-date-input::-webkit-calendar-picker-indicator {
+  margin: 0;
+  /* Pull icon toward the date; Chromium leaves a wide default track */
+  margin-inline-start: -0.85em;
+  padding: 0;
+  cursor: pointer;
+}
+
 button {
   cursor: pointer;
 }

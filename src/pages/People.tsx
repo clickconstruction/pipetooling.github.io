@@ -2,7 +2,13 @@ import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, use
 import { Link, useSearchParams } from 'react-router-dom'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import {
+  PAY_REPORT_ADDRESS,
+  PAY_REPORT_EIN,
+  PAY_REPORT_EMPLOYER_NAME,
+} from '../constants/payReportEmployerHeader'
 import { formatCurrency } from '../lib/format'
+import { buildPayReportDocumentTitle } from '../lib/payReportDocumentTitle'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { formatDateRangeLabel } from '../utils/dateRangeLabel'
 import { CLOCK_SESSION_LIST_SELECT } from '../lib/clockSessionSelect'
@@ -45,6 +51,8 @@ import {
   RejectedClockSessionsSection,
 } from '../components/clock-sessions'
 import PeopleAppActivityPanel from '../components/people/PeopleAppActivityPanel'
+import { PayStubDeleteIcon } from '../components/pay/PayStubDeleteIcon'
+import { PayStubPaidNoteIcon } from '../components/pay/PayStubPaidNoteIcon'
 import type { ClockSessionRow } from '../types/clockSessions'
 
 type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
@@ -55,6 +63,23 @@ const KINDS: PersonKind[] = ['assistant', 'master_technician', 'sub', 'estimator
 const KIND_LABELS: Record<PersonKind, string> = { assistant: 'Assistants', master_technician: 'Master Technicians', sub: 'Subcontractors', estimator: 'Estimators' }
 
 const KIND_TO_USER_ROLE: Record<PersonKind, string> = { assistant: 'assistant', master_technician: 'master_technician', sub: 'subcontractor', estimator: 'estimator' }
+
+function todayYyyyMmDdLocal(): string {
+  return new Date().toLocaleDateString('en-CA')
+}
+
+function paidAtIsoFromYyyyMmDd(ymd: string): string {
+  return new Date(`${ymd}T12:00:00`).toISOString()
+}
+
+/** Pay History Ledger: M/D without year (e.g. 3/1–3/7). */
+function ledgerPayPeriodShortLabel(periodStartYmd: string, periodEndYmd: string): string {
+  const md = (iso: string) => {
+    const d = new Date(iso + 'T12:00:00')
+    return `${d.getMonth() + 1}/${d.getDate()}`
+  }
+  return `${md(periodStartYmd)}–${md(periodEndYmd)}`
+}
 
 const SHOW_USERS_TAB_TAGS_KEY = 'people.usersTab.showTags'
 const SHOW_USERS_TAB_TAG_ORG_SIGNALS_KEY = 'people.usersTab.showTagOrgSignals'
@@ -286,7 +311,7 @@ export default function People() {
     return start.toLocaleDateString('en-CA')
   })
   // Pay History tab state
-  type PayStubRow = { id: string; person_name: string; period_start: string; period_end: string; hours_total: number; gross_pay: number; created_at: string | null; paid_at: string | null; paid_by: string | null }
+  type PayStubRow = { id: string; person_name: string; period_start: string; period_end: string; hours_total: number; gross_pay: number; created_at: string | null; paid_at: string | null; paid_by: string | null; paid_note: string | null }
   const [payStubs, setPayStubs] = useState<PayStubRow[]>([])
   const [payStubsLoading, setPayStubsLoading] = useState(false)
   const [payStubGeneratorPerson, setPayStubGeneratorPerson] = useState('')
@@ -313,6 +338,11 @@ export default function People() {
   const [generatingPayStubPerson, setGeneratingPayStubPerson] = useState<string | null>(null)
   const [runPayrollModalOpen, setRunPayrollModalOpen] = useState(false)
   const [payStubDeleteConfirm, setPayStubDeleteConfirm] = useState<PayStubRow | null>(null)
+  const [payStubMarkPaidTarget, setPayStubMarkPaidTarget] = useState<PayStubRow | null>(null)
+  const [payStubMarkPaidDate, setPayStubMarkPaidDate] = useState('')
+  const [payStubMarkPaidNote, setPayStubMarkPaidNote] = useState('')
+  const [payStubNoteDetail, setPayStubNoteDetail] = useState<PayStubRow | null>(null)
+  const [ledgerPersonSearch, setLedgerPersonSearch] = useState('')
   const [hoursDateEnd, setHoursDateEnd] = useState(() => {
     const d = new Date()
     const day = d.getDay()
@@ -1790,7 +1820,7 @@ export default function People() {
     if (!canAccessPay) return
     const { data, error } = await supabase
       .from('pay_stubs')
-      .select('id, person_name, period_start, period_end, hours_total, gross_pay, created_at, paid_at, paid_by')
+      .select('id, person_name, period_start, period_end, hours_total, gross_pay, created_at, paid_at, paid_by, paid_note')
       .order('created_at', { ascending: false })
     if (error) {
       setError(error.message)
@@ -1997,14 +2027,23 @@ export default function People() {
     const tableFooter = hasJobs
       ? `<tfoot><tr><td style="font-weight:600">Total</td><td style="text-align:right; font-weight:600">${hoursTotal.toFixed(2)}</td><td></td></tr></tfoot>`
       : `<tfoot><tr><td style="font-weight:600">Total</td><td style="text-align:right; font-weight:600">${hoursTotal.toFixed(2)}</td></tr></tfoot>`
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Pay Report - ${escapeHtml(personName)}</title><style>
+    const payReportDocumentTitle = buildPayReportDocumentTitle(personName, periodStart, periodEnd)
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(payReportDocumentTitle)}</title><style>
       body { font-family: sans-serif; margin: 1in; }
+      .pay-report-employer-header { text-align: center; margin-bottom: 1.25rem; }
+      .pay-report-employer-name { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.35rem; letter-spacing: 0.02em; }
+      .pay-report-employer-meta { color: #666; font-size: 0.9rem; line-height: 1.4; }
       table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
       th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
       th { background: #f5f5f5; }
       .meta { margin-bottom: 0.5rem; color: #666; }
       @media print { body { margin: 0.5in; } }
     </style></head><body>
+      <div class="pay-report-employer-header">
+        <div class="pay-report-employer-name">${PAY_REPORT_EMPLOYER_NAME}</div>
+        <div class="pay-report-employer-meta">EIN: ${PAY_REPORT_EIN}</div>
+        <div class="pay-report-employer-meta">${PAY_REPORT_ADDRESS}</div>
+      </div>
       <h1>Pay Report</h1>
       <div style="margin-bottom: 0.5rem;"><strong>${escapeHtml(personName)}</strong></div>
       ${email ? `<div class="meta">${escapeHtml(email)}</div>` : ''}
@@ -2320,15 +2359,43 @@ export default function People() {
     setDeletingPayStubId(null)
   }
 
-  async function markPayStubPaid(stub: PayStubRow) {
-    if (!authUser?.id) return
+  function openPayStubMarkPaidModal(stub: PayStubRow) {
+    setPayStubMarkPaidTarget(stub)
+    setPayStubMarkPaidDate(todayYyyyMmDdLocal())
+    setPayStubMarkPaidNote('')
+  }
+
+  function closePayStubMarkPaidModal() {
+    setPayStubMarkPaidTarget(null)
+    setPayStubMarkPaidDate('')
+    setPayStubMarkPaidNote('')
+  }
+
+  function openPayStubNoteDetail(stub: PayStubRow) {
+    setPayStubNoteDetail(stub)
+  }
+
+  function closePayStubNoteDetail() {
+    setPayStubNoteDetail(null)
+  }
+
+  async function confirmPayStubMarkPaid() {
+    if (!authUser?.id || !payStubMarkPaidTarget) return
+    const stub = payStubMarkPaidTarget
+    const noteTrim = payStubMarkPaidNote.trim()
+    const paidAt = paidAtIsoFromYyyyMmDd(payStubMarkPaidDate.trim() || todayYyyyMmDdLocal())
     setMarkingPayStubId(stub.id)
     setError(null)
     try {
       await withSupabaseRetry(
-        async () => await supabase.from('pay_stubs').update({ paid_at: new Date().toISOString(), paid_by: authUser.id }).eq('id', stub.id),
+        async () =>
+          await supabase
+            .from('pay_stubs')
+            .update({ paid_at: paidAt, paid_by: authUser.id, paid_note: noteTrim || null })
+            .eq('id', stub.id),
         'mark pay stub paid'
       )
+      closePayStubMarkPaidModal()
       await loadPayStubs()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to mark as paid')
@@ -2341,7 +2408,7 @@ export default function People() {
     setError(null)
     try {
       await withSupabaseRetry(
-        async () => await supabase.from('pay_stubs').update({ paid_at: null, paid_by: null }).eq('id', stub.id),
+        async () => await supabase.from('pay_stubs').update({ paid_at: null, paid_by: null, paid_note: null }).eq('id', stub.id),
         'unmark pay stub paid'
       )
       await loadPayStubs()
@@ -3605,6 +3672,12 @@ export default function People() {
         .sort((a, b) => a.localeCompare(b)),
     [payConfig, archivedUserNames]
   )
+
+  const ledgerFilteredPayStubs = useMemo(() => {
+    const q = ledgerPersonSearch.trim().toLowerCase()
+    if (!q) return payStubs
+    return payStubs.filter((s) => s.person_name.toLowerCase().includes(q))
+  }, [payStubs, ledgerPersonSearch])
 
   const teamsFiltered = useMemo(
     () =>
@@ -5484,28 +5557,37 @@ export default function People() {
           ) : (
             <>
               {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
-              <section style={{ marginBottom: '1rem' }}>
-                <button
-                  type="button"
-                  onClick={() => setRunPayrollModalOpen(true)}
-                  disabled={showPeopleForHours.length === 0}
-                  title={showPeopleForHours.length === 0 ? 'Go to Pay tab and check Show in Hours for people to track' : undefined}
+              <section style={{ marginBottom: '2rem' }}>
+                <div
                   style={{
-                    padding: '0.5rem 1rem',
-                    fontSize: '0.9375rem',
-                    background: showPeopleForHours.length === 0 ? '#9ca3af' : '#3b82f6',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: 6,
-                    cursor: showPeopleForHours.length === 0 ? 'not-allowed' : 'pointer',
-                    fontWeight: 500,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '0.75rem',
+                    marginBottom: '0.75rem',
                   }}
                 >
-                  Generate Pay Reports
-                </button>
-              </section>
-              <section style={{ marginBottom: '2rem' }}>
-                <h2 style={{ margin: '0 0 0.75rem 0', fontSize: '1.125rem' }}>Generate Pay Reports</h2>
+                  <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Generate Pay Reports</h2>
+                  <button
+                    type="button"
+                    onClick={() => setRunPayrollModalOpen(true)}
+                    disabled={showPeopleForHours.length === 0}
+                    title={showPeopleForHours.length === 0 ? 'Go to Pay tab and check Show in Hours for people to track' : undefined}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      fontSize: '0.9375rem',
+                      background: showPeopleForHours.length === 0 ? '#9ca3af' : '#3b82f6',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 6,
+                      cursor: showPeopleForHours.length === 0 ? 'not-allowed' : 'pointer',
+                      fontWeight: 500,
+                    }}
+                  >
+                    Generate Pay Reports
+                  </button>
+                </div>
                 {showPeopleForHours.length === 0 && (
                   <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: '0 0 0.75rem 0' }}>
                     No people with Show in Hours selected. Go to Pay tab and check Show in Hours for people to track.
@@ -5634,9 +5716,25 @@ export default function People() {
                 })()}
               </section>
               <section>
-                <h2 style={{ margin: '0 0 0.75rem 0', fontSize: '1.125rem' }}>Ledger</h2>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem', justifyContent: 'space-between' }}>
+                  <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Ledger</h2>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', margin: 0, flex: '1 1 12rem', maxWidth: 280, minWidth: 0 }}>
+                    <span style={{ color: '#6b7280', whiteSpace: 'nowrap' }}>Search</span>
+                    <input
+                      type="search"
+                      value={ledgerPersonSearch}
+                      onChange={(e) => setLedgerPersonSearch(e.target.value)}
+                      placeholder="Name…"
+                      autoComplete="off"
+                      aria-label="Filter ledger by person name"
+                      style={{ flex: 1, minWidth: 0, padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                    />
+                  </label>
+                </div>
                 {payStubs.length === 0 ? (
                   <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No pay reports yet. Generate one above.</p>
+                ) : ledgerFilteredPayStubs.length === 0 ? (
+                  <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No pay reports match this search.</p>
                 ) : (
                   <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
@@ -5652,7 +5750,7 @@ export default function People() {
                         </tr>
                       </thead>
                       <tbody>
-                        {payStubs.map((stub) => (
+                        {ledgerFilteredPayStubs.map((stub) => (
                           <tr key={stub.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                             <td style={{ padding: '0.5rem 0.75rem' }}>
                               <button
@@ -5673,7 +5771,7 @@ export default function People() {
                               </button>
                             </td>
                             <td style={{ padding: '0.5rem 0.75rem' }}>
-                              {new Date(stub.period_start + 'T12:00:00').toLocaleDateString()} – {new Date(stub.period_end + 'T12:00:00').toLocaleDateString()}
+                              {ledgerPayPeriodShortLabel(stub.period_start, stub.period_end)}
                             </td>
                             <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{stub.hours_total.toFixed(2)}</td>
                             <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(stub.gross_pay)}</td>
@@ -5682,8 +5780,30 @@ export default function People() {
                             </td>
                             <td style={{ padding: '0.5rem 0.75rem' }}>
                               {stub.paid_at ? (
-                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                                  <span style={{ fontSize: '0.8125rem', color: '#059669' }}>Paid {new Date(stub.paid_at).toLocaleDateString()}</span>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.8125rem', color: '#059669' }}>
+                                    <span>Paid {new Date(stub.paid_at).toLocaleDateString()}</span>
+                                    {stub.paid_note?.trim() ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => openPayStubNoteDetail(stub)}
+                                        aria-label="View payment memo"
+                                        style={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          padding: 0,
+                                          border: 'none',
+                                          background: 'none',
+                                          cursor: 'pointer',
+                                          borderRadius: 4,
+                                          verticalAlign: 'middle',
+                                          color: 'inherit',
+                                        }}
+                                      >
+                                        <PayStubPaidNoteIcon />
+                                      </button>
+                                    ) : null}
+                                  </span>
                                   <button
                                     type="button"
                                     onClick={() => unmarkPayStubPaid(stub)}
@@ -5696,7 +5816,7 @@ export default function People() {
                               ) : (
                                 <button
                                   type="button"
-                                  onClick={() => markPayStubPaid(stub)}
+                                  onClick={() => openPayStubMarkPaidModal(stub)}
                                   disabled={markingPayStubId === stub.id}
                                   style={{ padding: '2px 6px', fontSize: '0.8125rem', background: markingPayStubId === stub.id ? '#9ca3af' : '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: markingPayStubId === stub.id ? 'not-allowed' : 'pointer' }}
                                 >
@@ -5707,15 +5827,8 @@ export default function People() {
                             <td style={{ padding: '0.5rem 0.75rem' }}>
                               <button
                                 type="button"
-                                onClick={() => viewPayStub(stub)}
-                                style={{ padding: '2px 6px', fontSize: '0.8125rem', marginRight: '0.35rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                              >
-                                View
-                              </button>
-                              <button
-                                type="button"
                                 onClick={() => printPayStub(stub)}
-                                style={{ padding: '2px 6px', fontSize: '0.8125rem', background: '#6b7280', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                                style={{ padding: '2px 6px', fontSize: '0.8125rem', marginRight: isDev ? '0.35rem' : 0, background: '#6b7280', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                               >
                                 Print
                               </button>
@@ -5724,9 +5837,27 @@ export default function People() {
                                   type="button"
                                   onClick={() => setPayStubDeleteConfirm(stub)}
                                   disabled={deletingPayStubId === stub.id}
-                                  style={{ padding: '2px 6px', fontSize: '0.8125rem', marginLeft: '0.35rem', background: deletingPayStubId === stub.id ? '#9ca3af' : '#dc2626', color: 'white', border: 'none', borderRadius: 4, cursor: deletingPayStubId === stub.id ? 'not-allowed' : 'pointer' }}
+                                  title="Delete pay report"
+                                  aria-label="Delete pay report"
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    padding: 2,
+                                    marginLeft: '0.35rem',
+                                    background: 'none',
+                                    border: 'none',
+                                    borderRadius: 4,
+                                    color: deletingPayStubId === stub.id ? '#9ca3af' : '#dc2626',
+                                    cursor: deletingPayStubId === stub.id ? 'not-allowed' : 'pointer',
+                                    verticalAlign: 'middle',
+                                  }}
                                 >
-                                  {deletingPayStubId === stub.id ? '...' : 'Delete'}
+                                  {deletingPayStubId === stub.id ? (
+                                    <span style={{ fontSize: '0.75rem', lineHeight: 1, color: '#9ca3af' }}>…</span>
+                                  ) : (
+                                    <PayStubDeleteIcon color="currentColor" size={16} />
+                                  )}
                                 </button>
                               )}
                             </td>
@@ -5777,6 +5908,106 @@ export default function People() {
         </div>
       )}
 
+      {payStubNoteDetail && payStubNoteDetail.paid_at && payStubNoteDetail.paid_note?.trim() ? (
+        <div
+          role="presentation"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closePayStubNoteDetail()
+          }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}
+        >
+          <div
+            role="dialog"
+            aria-labelledby="pay-stub-note-detail-title"
+            style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480, width: '100%', maxHeight: '85vh', overflow: 'auto' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="pay-stub-note-detail-title" style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>
+              Payment memo
+            </h2>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+              {payStubNoteDetail.person_name} · Pay period{' '}
+              {new Date(payStubNoteDetail.period_start + 'T12:00:00').toLocaleDateString()} –{' '}
+              {new Date(payStubNoteDetail.period_end + 'T12:00:00').toLocaleDateString()}
+            </p>
+            <div style={{ marginBottom: '0.75rem', fontSize: '0.875rem' }}>
+              <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>Paid date</div>
+              <div>{new Date(payStubNoteDetail.paid_at).toLocaleDateString()}</div>
+            </div>
+            <div style={{ marginBottom: '1rem', fontSize: '0.875rem' }}>
+              <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>Memo</div>
+              <p style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{payStubNoteDetail.paid_note.trim()}</p>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={closePayStubNoteDetail}
+                style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {payStubMarkPaidTarget && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 440, width: '100%' }}>
+            <h2 style={{ margin: '0 0 0.75rem', fontSize: '1.25rem' }}>Mark as paid</h2>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+              {payStubMarkPaidTarget.person_name} ·{' '}
+              {new Date(payStubMarkPaidTarget.period_start + 'T12:00:00').toLocaleDateString()} –{' '}
+              {new Date(payStubMarkPaidTarget.period_end + 'T12:00:00').toLocaleDateString()}
+            </p>
+            <label style={{ display: 'block', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
+              <span style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 500 }}>Paid date</span>
+              <input
+                type="date"
+                value={payStubMarkPaidDate}
+                onChange={(e) => setPayStubMarkPaidDate(e.target.value)}
+                style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4, width: '100%', maxWidth: 200 }}
+              />
+            </label>
+            <label style={{ display: 'block', marginBottom: '1rem', fontSize: '0.875rem' }}>
+              <span style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 500 }}>Note (optional)</span>
+              <textarea
+                value={payStubMarkPaidNote}
+                onChange={(e) => setPayStubMarkPaidNote(e.target.value)}
+                rows={3}
+                placeholder="e.g. check #, Venmo, GL code…"
+                style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, width: '100%', fontFamily: 'inherit', fontSize: '0.875rem', resize: 'vertical' }}
+              />
+            </label>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={closePayStubMarkPaidModal}
+                disabled={markingPayStubId === payStubMarkPaidTarget.id}
+                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: markingPayStubId === payStubMarkPaidTarget.id ? 'not-allowed' : 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={markingPayStubId === payStubMarkPaidTarget.id}
+                onClick={() => void confirmPayStubMarkPaid()}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: markingPayStubId !== payStubMarkPaidTarget.id ? '#059669' : '#9ca3af',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: markingPayStubId !== payStubMarkPaidTarget.id ? 'pointer' : 'not-allowed',
+                }}
+              >
+                {markingPayStubId === payStubMarkPaidTarget.id ? 'Saving…' : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {runPayrollModalOpen && activeTab === 'pay_stubs' && canAccessPay && (() => {
         const start = payStubPeriodStart
         const end = payStubPeriodEnd
@@ -5793,38 +6024,57 @@ export default function People() {
         return (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
             <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 600, maxHeight: '85vh', overflow: 'auto' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                <div>
-                  <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>Generate Pay Reports</h2>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
-                    <label>
-                      <span style={{ marginRight: '0.35rem', fontSize: '0.875rem' }}>Start</span>
-                      <input
-                        type="date"
-                        value={start}
-                        onChange={(e) => setPayStubPeriodStart(e.target.value)}
-                        style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                      />
-                    </label>
-                    <label>
-                      <span style={{ marginRight: '0.35rem', fontSize: '0.875rem' }}>End</span>
-                      <input
-                        type="date"
-                        value={end}
-                        onChange={(e) => setPayStubPeriodEnd(e.target.value)}
-                        style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                      />
-                    </label>
-                    <button type="button" onClick={() => shiftPayStubWeek(0)} style={{ padding: '0.35rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>This week</button>
-                    <button type="button" onClick={() => shiftPayStubWeek(-1)} style={{ padding: '0.35rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Last week</button>
-                  </div>
+              <div style={{ marginBottom: '0.35rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                  <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Generate Pay Reports</h2>
+                  <button type="button" onClick={() => setRunPayrollModalOpen(false)} style={{ padding: '0.25rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, color: '#6b7280' }} aria-label="Close">×</button>
                 </div>
-                <button type="button" onClick={() => setRunPayrollModalOpen(false)} style={{ padding: '0.25rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, color: '#6b7280' }} aria-label="Close">×</button>
+                <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', fontSize: '0.8125rem', margin: 0 }}>
+                    <span>Start</span>
+                    <input
+                      type="date"
+                      className="generate-pay-reports-date-input"
+                      value={start}
+                      onChange={(e) => setPayStubPeriodStart(e.target.value)}
+                      style={{
+                        padding: '2px 2px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: 4,
+                        fontSize: '0.8125rem',
+                        lineHeight: 1.3,
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  </label>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', fontSize: '0.8125rem', margin: 0 }}>
+                    <span>End</span>
+                    <input
+                      type="date"
+                      className="generate-pay-reports-date-input"
+                      value={end}
+                      onChange={(e) => setPayStubPeriodEnd(e.target.value)}
+                      style={{
+                        padding: '2px 2px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: 4,
+                        fontSize: '0.8125rem',
+                        lineHeight: 1.3,
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  </label>
+                  <button type="button" onClick={() => shiftPayStubWeek(-1)} style={{ padding: '2px 8px', fontSize: '0.8125rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer', lineHeight: 1.3 }}>Last week</button>
+                  <button type="button" onClick={() => shiftPayStubWeek(1)} style={{ padding: '2px 8px', fontSize: '0.8125rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer', lineHeight: 1.3 }}>Next week</button>
+                </div>
               </div>
               {showPeopleForHours.length === 0 ? (
                 <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No people with Show in Hours selected. Go to Pay tab and check Show in Hours for people to track.</p>
               ) : (
                 <>
+                  <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem', textAlign: 'center' }}>
+                    {paidCount} of {showPeopleForHours.length} paid · Total: ${formatCurrency(totalAmount)}
+                  </div>
                   <div style={{ overflowX: 'auto', marginBottom: '1rem' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                       <thead>
@@ -5860,7 +6110,7 @@ export default function People() {
                                   <input
                                     type="checkbox"
                                     checked={false}
-                                    onChange={() => markPayStubPaid(stub)}
+                                    onChange={() => openPayStubMarkPaidModal(stub)}
                                     disabled={markingPayStubId === stub.id}
                                     title="Mark as paid"
                                   />
@@ -5890,7 +6140,7 @@ export default function People() {
                                     {stub.paid_at ? (
                                       <button type="button" onClick={() => unmarkPayStubPaid(stub)} disabled={markingPayStubId === stub.id} style={{ padding: '2px 6px', fontSize: '0.75rem', background: 'none', border: '1px solid #d1d5db', borderRadius: 4, cursor: markingPayStubId === stub.id ? 'not-allowed' : 'pointer', color: '#6b7280' }}>{markingPayStubId === stub.id ? '...' : 'Unmark'}</button>
                                     ) : (
-                                      <button type="button" onClick={() => markPayStubPaid(stub)} disabled={markingPayStubId === stub.id} style={{ padding: '2px 6px', fontSize: '0.8125rem', background: markingPayStubId === stub.id ? '#9ca3af' : '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: markingPayStubId === stub.id ? 'not-allowed' : 'pointer' }}>{markingPayStubId === stub.id ? '...' : 'Mark as paid'}</button>
+                                      <button type="button" onClick={() => openPayStubMarkPaidModal(stub)} disabled={markingPayStubId === stub.id} style={{ padding: '2px 6px', fontSize: '0.8125rem', background: markingPayStubId === stub.id ? '#9ca3af' : '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: markingPayStubId === stub.id ? 'not-allowed' : 'pointer' }}>{markingPayStubId === stub.id ? '...' : 'Mark as paid'}</button>
                                     )}
                                   </span>
                                 ) : (
@@ -5914,9 +6164,6 @@ export default function People() {
                         })}
                       </tbody>
                     </table>
-                  </div>
-                  <div style={{ fontSize: '0.875rem', color: '#6b7280', borderTop: '1px solid #e5e7eb', paddingTop: '0.75rem' }}>
-                    {paidCount} of {showPeopleForHours.length} paid · Total: ${formatCurrency(totalAmount)}
                   </div>
                 </>
               )}
@@ -7330,7 +7577,7 @@ export default function People() {
                     return (
                       <>
                         <tr>
-                          <td style={{ padding: '0.5rem 0.75rem', borderTop: '1px solid #e5e7eb', position: 'sticky', left: 0, background: '#f9fafb' }}>Total (HH:MM:SS):</td>
+                          <td style={{ padding: '0.5rem 0.75rem', borderTop: '1px solid #e5e7eb', background: '#f9fafb' }}>Total (HH:MM:SS):</td>
                           {hoursDays.map((d) => {
                             const daySum = showPeopleForHours.reduce((s, p) => s + getDisplayHours(p, d), 0)
                             return (
@@ -7345,7 +7592,7 @@ export default function People() {
                           <td style={{ padding: '0.5rem 0.5rem', textAlign: 'center', borderTop: '1px solid #e5e7eb' }}>-</td>
                         </tr>
                         <tr>
-                          <td style={{ padding: '0.5rem 0.75rem', borderTop: '1px solid #e5e7eb', position: 'sticky', left: 0, background: '#f9fafb' }}>Total (Decimal):</td>
+                          <td style={{ padding: '0.5rem 0.75rem', borderTop: '1px solid #e5e7eb', background: '#f9fafb' }}>Total (Decimal):</td>
                           {hoursDays.map((d) => {
                             const daySum = showPeopleForHours.reduce((s, p) => s + getDisplayHours(p, d), 0)
                             return (
@@ -7360,7 +7607,7 @@ export default function People() {
                           </td>
                         </tr>
                         <tr>
-                          <td style={{ padding: '0.5rem 0.75rem', borderTop: '1px solid #e5e7eb', position: 'sticky', left: 0, background: '#f9fafb', fontWeight: 500, fontSize: '0.8125rem' }} title="Mark day as verified to lock from edits">Correct:</td>
+                          <td style={{ padding: '0.5rem 0.75rem', borderTop: '1px solid #e5e7eb', background: '#f9fafb', fontWeight: 500, fontSize: '0.8125rem' }} title="Mark day as verified to lock from edits">Correct:</td>
                           {hoursDays.map((d) => {
                             const checked = hoursDaysCorrect.has(d)
                             return (
