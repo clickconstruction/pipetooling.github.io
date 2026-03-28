@@ -3,8 +3,11 @@ import { Link } from 'react-router-dom'
 import { CLOCK_SESSION_LIST_SELECT } from '../../lib/clockSessionSelect'
 import { approveClockSessions } from '../../lib/approveClockSessions'
 import { supabase } from '../../lib/supabase'
+import { HOURS_GRID_FIRST_COL_LABEL } from '../../constants/hoursGridFirstCol'
 import { useAuth } from '../../hooks/useAuth'
+import { useHoursGridFirstColWidthPx } from '../../hooks/useHoursGridFirstColWidthPx'
 import { HoursUnassignedModal } from '../HoursUnassignedModal'
+import { PeopleHoursDayAuditModal } from '../PeopleHoursDayAuditModal'
 import {
   AssignSessionJobPopover,
   ClockSessionsTable,
@@ -81,8 +84,12 @@ export function HoursSection() {
   const [hoursDaysCorrect, setHoursDaysCorrect] = useState<Set<string>>(new Set())
   const [crewJobsByDatePerson, setCrewJobsByDatePerson] = useState<Record<string, CrewRow>>({})
   const [hoursUnassignedModal, setHoursUnassignedModal] = useState<{ personName: string } | null>(null)
+  const [hoursDayAuditModal, setHoursDayAuditModal] = useState<{ personName: string; workDate: string } | null>(null)
   const [pendingClockSessions, setPendingClockSessions] = useState<ClockSessionRow[]>([])
   const [approvedClockSessions, setApprovedClockSessions] = useState<ClockSessionRow[]>([])
+
+  const { widthPx: hoursGridFirstColWidthPx, measurer: hoursGridFirstColMeasurer } = useHoursGridFirstColWidthPx()
+  const hoursGridFirstColW = hoursGridFirstColWidthPx ?? 200
 
   const canEditCrewJobs = canAccessHours
 
@@ -406,13 +413,15 @@ export function HoursSection() {
     return !!(row.crew_lead_person_name || (row.unifiedAssignments?.length ?? 0) > 0)
   }
 
+  function isCorrectDayMissingJob(personName: string, workDate: string): boolean {
+    if (!hoursDaysCorrect.has(workDate)) return false
+    const hours = getDisplayHours(personName, workDate)
+    if (hours <= 0) return false
+    return !hasAssignmentsForDate(personName, workDate)
+  }
+
   function hasUnassignedCorrectDays(personName: string): boolean {
-    return hoursDays.some((d) => {
-      if (!hoursDaysCorrect.has(d)) return false
-      const hours = getDisplayHours(personName, d)
-      if (hours <= 0) return false
-      return !hasAssignmentsForDate(personName, d)
-    })
+    return hoursDays.some((d) => isCorrectDayMissingJob(personName, d))
   }
 
   if (!canAccessHours) {
@@ -426,6 +435,7 @@ export function HoursSection() {
 
   return (
     <section style={{ marginBottom: '2rem' }}>
+      {hoursGridFirstColMeasurer}
       <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.75rem', textAlign: 'center' }}>People Hours</h2>
       {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
       {loading ? (
@@ -568,7 +578,7 @@ export function HoursSection() {
             <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>
                 <colgroup>
-                  <col style={{ width: 200 }} />
+                  <col style={{ width: hoursGridFirstColW }} />
                   {hoursDays.map((d) => (
                     <col key={d} style={{ width: 72 }} />
                   ))}
@@ -577,7 +587,24 @@ export function HoursSection() {
                 </colgroup>
                 <thead style={{ background: '#f9fafb' }}>
                   <tr>
-                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Person</th>
+                    <th
+                      style={{
+                        padding: '0.5rem 0.75rem',
+                        textAlign: 'left',
+                        borderBottom: '1px solid #e5e7eb',
+                        position: 'sticky',
+                        left: 0,
+                        zIndex: 3,
+                        background: '#f9fafb',
+                        boxShadow: '4px 0 8px -4px rgba(0, 0, 0, 0.08)',
+                        maxWidth: hoursGridFirstColW,
+                        minWidth: 0,
+                        whiteSpace: 'normal',
+                        wordBreak: 'break-word',
+                      }}
+                    >
+                      Person
+                    </th>
                     {hoursDays.map((d) => (
                       <th key={d} style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>
                         {new Date(d + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'numeric', day: 'numeric' })}
@@ -595,11 +622,6 @@ export function HoursSection() {
                         key={personName}
                         style={{
                           borderBottom: '1px solid #e5e7eb',
-                          ...(isUnassigned && {
-                            outline: '2px solid #dc2626',
-                            outlineOffset: -1,
-                            background: 'rgba(220, 38, 38, 0.05)',
-                          }),
                           ...(isUnassigned && canEditCrewJobs && { cursor: 'pointer' }),
                         }}
                         title={isUnassigned ? (canEditCrewJobs ? 'Click to assign jobs or bids' : 'Assign jobs or bids in Crew Jobs / Bids section above') : undefined}
@@ -618,22 +640,76 @@ export function HoursSection() {
                           },
                         })}
                       >
-                        <td style={{ padding: '0.5rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                          <span style={{ display: 'flex', flexDirection: 'row', gap: 0, marginRight: '0.25rem' }}>
-                            <button type="button" onClick={() => moveHoursRow(personName, 'up')} disabled={idx === 0} title="Move up" style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === 0 ? 'not-allowed' : 'pointer', color: idx === 0 ? '#d1d5db' : '#6b7280', lineHeight: 1 }}>▲</button>
-                            <button type="button" onClick={() => moveHoursRow(personName, 'down')} disabled={idx === showPeopleForHours.length - 1} title="Move down" style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === showPeopleForHours.length - 1 ? 'not-allowed' : 'pointer', color: idx === showPeopleForHours.length - 1 ? '#d1d5db' : '#6b7280', lineHeight: 1 }}>▼</button>
-                          </span>
-                          {personName}
+                        <td
+                          style={{
+                            padding: '0.5rem 0.75rem',
+                            position: 'sticky',
+                            left: 0,
+                            zIndex: 2,
+                            background: 'white',
+                            boxShadow: '4px 0 8px -4px rgba(0, 0, 0, 0.08)',
+                            maxWidth: hoursGridFirstColW,
+                            minWidth: 0,
+                            whiteSpace: 'normal',
+                            wordBreak: 'break-word',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0 }}>
+                            <span style={{ display: 'flex', flexDirection: 'row', gap: 0, marginRight: '0.25rem', flexShrink: 0 }}>
+                              <button type="button" onClick={() => moveHoursRow(personName, 'up')} disabled={idx === 0} title="Move up" style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === 0 ? 'not-allowed' : 'pointer', color: idx === 0 ? '#d1d5db' : '#6b7280', lineHeight: 1 }}>▲</button>
+                              <button type="button" onClick={() => moveHoursRow(personName, 'down')} disabled={idx === showPeopleForHours.length - 1} title="Move down" style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === showPeopleForHours.length - 1 ? 'not-allowed' : 'pointer', color: idx === showPeopleForHours.length - 1 ? '#d1d5db' : '#6b7280', lineHeight: 1 }}>▼</button>
+                            </span>
+                            <span style={{ minWidth: 0 }}>{personName}</span>
+                          </div>
                         </td>
                         {hoursDays.map((d) => {
                           const dayLocked = hoursDaysCorrect.has(d)
                           const canEdit = canEditHours(personName)
+                          const missingJob = isCorrectDayMissingJob(personName, d)
+                          const missingJobTitle = 'Correct day with hours but no job assignment — assign in Crew Jobs / Bids'
                           return (
-                            <td key={d} style={{ padding: '0.35rem 0.5rem', textAlign: canEdit ? 'right' : 'center' }}>
+                            <td
+                              key={d}
+                              title={missingJob ? missingJobTitle : undefined}
+                              style={{
+                                padding: '0.35rem 0.5rem',
+                                textAlign: canEdit ? 'right' : 'center',
+                                ...(missingJob && {
+                                  background: 'rgba(254, 242, 242, 0.9)',
+                                  boxShadow: 'inset 0 0 0 1px rgba(252, 165, 165, 0.45)',
+                                  borderRadius: 8,
+                                }),
+                              }}
+                            >
                               {!canEdit ? (
                                 <span style={{ color: '#6b7280' }}>{decimalToHms(getDisplayHours(personName, d)) || '-'}</span>
                               ) : dayLocked ? (
-                                <span style={{ color: '#6b7280' }} title="Day marked Correct — locked">{decimalToHms(getDisplayHours(personName, d)) || '-'}</span>
+                                canEdit ? (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setHoursDayAuditModal({ personName, workDate: d })
+                                    }}
+                                    title="Day marked Correct — click to view clock sessions and job assignments"
+                                    style={{
+                                      color: '#6b7280',
+                                      cursor: 'pointer',
+                                      width: '100%',
+                                      textAlign: 'right',
+                                      padding: '0.15rem 0',
+                                      border: 'none',
+                                      background: 'none',
+                                      font: 'inherit',
+                                    }}
+                                  >
+                                    {decimalToHms(getDisplayHours(personName, d)) || '-'}
+                                  </button>
+                                ) : (
+                                  <span style={{ color: '#6b7280' }} title="Day marked Correct — locked">
+                                    {decimalToHms(getDisplayHours(personName, d)) || '-'}
+                                  </span>
+                                )
                               ) : (
                                 <input
                                   type="text"
@@ -669,7 +745,19 @@ export function HoursSection() {
                     return (
                       <>
                         <tr>
-                          <td style={{ padding: '0.5rem 0.75rem', borderTop: '1px solid #e5e7eb', background: '#f9fafb' }}>Total (HH:MM:SS):</td>
+                          <td
+                            style={{
+                              padding: '0.5rem 0.75rem',
+                              borderTop: '1px solid #e5e7eb',
+                              position: 'sticky',
+                              left: 0,
+                              zIndex: 2,
+                              background: '#f9fafb',
+                              boxShadow: '4px 0 8px -4px rgba(0, 0, 0, 0.08)',
+                            }}
+                          >
+                            {HOURS_GRID_FIRST_COL_LABEL}
+                          </td>
                           {hoursDays.map((d) => {
                             const daySum = showPeopleForHours.reduce((s, p) => s + getDisplayHours(p, d), 0)
                             return (
@@ -682,7 +770,19 @@ export function HoursSection() {
                           <td style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderTop: '1px solid #e5e7eb' }}>-</td>
                         </tr>
                         <tr>
-                          <td style={{ padding: '0.5rem 0.75rem', borderTop: '1px solid #e5e7eb', background: '#f9fafb' }}>Total (Decimal):</td>
+                          <td
+                            style={{
+                              padding: '0.5rem 0.75rem',
+                              borderTop: '1px solid #e5e7eb',
+                              position: 'sticky',
+                              left: 0,
+                              zIndex: 2,
+                              background: '#f9fafb',
+                              boxShadow: '4px 0 8px -4px rgba(0, 0, 0, 0.08)',
+                            }}
+                          >
+                            Total (Decimal):
+                          </td>
                           {hoursDays.map((d) => {
                             const daySum = showPeopleForHours.reduce((s, p) => s + getDisplayHours(p, d), 0)
                             return (
@@ -695,7 +795,22 @@ export function HoursSection() {
                           <td style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderTop: '1px solid #e5e7eb' }}>{grandTotal.toFixed(2)}</td>
                         </tr>
                         <tr>
-                          <td style={{ padding: '0.5rem 0.75rem', borderTop: '1px solid #e5e7eb', background: '#f9fafb', fontWeight: 500, fontSize: '0.8125rem' }} title="Mark day as verified to lock from edits">Correct:</td>
+                          <td
+                            style={{
+                              padding: '0.5rem 0.75rem',
+                              borderTop: '1px solid #e5e7eb',
+                              position: 'sticky',
+                              left: 0,
+                              zIndex: 2,
+                              background: '#f9fafb',
+                              fontWeight: 500,
+                              fontSize: '0.8125rem',
+                              boxShadow: '4px 0 8px -4px rgba(0, 0, 0, 0.08)',
+                            }}
+                            title="Mark day as verified to lock from edits"
+                          >
+                            Correct:
+                          </td>
                           {hoursDays.map((d) => {
                             const checked = hoursDaysCorrect.has(d)
                             return (
@@ -729,6 +844,24 @@ export function HoursSection() {
             loadHoursDaysCorrectRef.current?.()
           }}
           canEditCrewJobs={canEditCrewJobs}
+        />
+      )}
+
+      {hoursDayAuditModal && (
+        <PeopleHoursDayAuditModal
+          personName={hoursDayAuditModal.personName}
+          workDate={hoursDayAuditModal.workDate}
+          onClose={() => setHoursDayAuditModal(null)}
+          initialCrewRow={crewJobsByDatePerson[`${hoursDayAuditModal.workDate}:${hoursDayAuditModal.personName}`] ?? null}
+          canEditCrewJobs={canEditCrewJobs}
+          showPeople={showPeopleForHours}
+          crewJobsByDatePerson={crewJobsByDatePerson}
+          hoursDateStart={hoursDateStart}
+          hoursDateEnd={hoursDateEnd}
+          onCrewSaved={() => {
+            loadCrewJobsRef.current?.()
+            loadHoursDaysCorrectRef.current?.()
+          }}
         />
       )}
     </section>

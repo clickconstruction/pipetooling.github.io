@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import {
@@ -15,6 +15,29 @@ type CrewRow = { crew_lead_person_name: string | null; unifiedAssignments: Unifi
 type HoursRow = { person_name: string; work_date: string; hours: number }
 type PayConfigRow = { person_name: string; is_salary: boolean; show_in_cost_matrix: boolean; record_hours_but_salary: boolean }
 
+type ClockSessionRow = {
+  id: string
+  clocked_in_at: string
+  clocked_out_at: string | null
+  work_date: string
+  notes: string | null
+  job_ledger_id: string | null
+  bid_id: string | null
+}
+
+function clockSessionDurationSeconds(s: { clocked_in_at: string; clocked_out_at: string | null }, nowMs: number): number {
+  const inMs = new Date(s.clocked_in_at).getTime()
+  const outMs = s.clocked_out_at ? new Date(s.clocked_out_at).getTime() : nowMs
+  return Math.max(0, Math.floor((outMs - inMs) / 1000))
+}
+
+function formatHmsTotal(seconds: number): string {
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const sec = Math.floor(seconds % 60)
+  return [h, m, sec].map((n) => String(n).padStart(2, '0')).join(':')
+}
+
 function getDaysInRange(start: string, end: string): string[] {
   const days: string[] = []
   const d = new Date(start + 'T12:00:00')
@@ -25,6 +48,65 @@ function getDaysInRange(start: string, end: string): string[] {
   }
   return days
 }
+
+const RECENT_QUICK_PICKS_MAX_UNIQUE = 14
+
+function getEffectiveAssignmentsFromCrewMap(
+  crewMap: Record<string, CrewRow>,
+  pName: string,
+  workDate: string
+): UnifiedAssignment[] {
+  const key = `${workDate}:${pName}`
+  const row = crewMap[key]
+  if (!row) return []
+  if (row.crew_lead_person_name) {
+    const leadKey = `${workDate}:${row.crew_lead_person_name}`
+    const leadRow = crewMap[leadKey]
+    return leadRow?.unifiedAssignments ?? []
+  }
+  return row.unifiedAssignments ?? []
+}
+
+/** Newest work_date first; dedupes job/bid ids across days; order within a day matches unifiedAssignments. */
+function collectAssignmentQuickPickIds(
+  crewMap: Record<string, CrewRow>,
+  personName: string,
+  hoursDateStart: string,
+  hoursDateEnd: string
+): Array<{ kind: 'job' | 'bid'; id: string }> {
+  const suffix = `:${personName}`
+  const workDates: string[] = []
+  for (const k of Object.keys(crewMap)) {
+    if (!k.endsWith(suffix)) continue
+    const workDate = k.slice(0, k.length - suffix.length)
+    if (workDate < hoursDateStart || workDate > hoursDateEnd) continue
+    workDates.push(workDate)
+  }
+  workDates.sort((a, b) => (a < b ? 1 : a > b ? -1 : 0))
+
+  const seenJob = new Set<string>()
+  const seenBid = new Set<string>()
+  const out: Array<{ kind: 'job' | 'bid'; id: string }> = []
+  for (const d of workDates) {
+    const eff = getEffectiveAssignmentsFromCrewMap(crewMap, personName, d)
+    for (const a of eff) {
+      if (a.type === 'job') {
+        if (!seenJob.has(a.id)) {
+          seenJob.add(a.id)
+          out.push({ kind: 'job', id: a.id })
+        }
+      } else if (!seenBid.has(a.id)) {
+        seenBid.add(a.id)
+        out.push({ kind: 'bid', id: a.id })
+      }
+    }
+  }
+  return out
+}
+
+type RecentQuickPick =
+  | { type: 'job'; id: string; hcp_number: string; job_name: string; job_address: string }
+  | { type: 'bid'; id: string; bid_number: string; project_name: string; address: string; service_type_name?: string }
 
 type Props = {
   personName: string
@@ -60,7 +142,6 @@ export function HoursUnassignedModal({
   const [commonJobsSearchOpen, setCommonJobsSearchOpen] = useState(false)
   const [commonJobsSearchText, setCommonJobsSearchText] = useState('')
   const [commonJobsSearchResults, setCommonJobsSearchResults] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>>([])
-  const [officeJob, setOfficeJob] = useState<{ id: string; hcp_number: string; job_name: string; job_address: string } | null>(null)
   const [crewJobDetailsMap, setCrewJobDetailsMap] = useState<Record<string, JobDetails>>({})
   const [crewBidDetailsMap, setCrewBidDetailsMap] = useState<Record<string, BidDetails>>({})
   const [crewJobsByDatePerson, setCrewJobsByDatePerson] = useState<Record<string, CrewRow>>({})
@@ -68,6 +149,20 @@ export function HoursUnassignedModal({
   const [showPeople, setShowPeople] = useState<string[]>([])
   const [peopleHours, setPeopleHours] = useState<HoursRow[]>([])
   const [payConfig, setPayConfig] = useState<Record<string, PayConfigRow>>({})
+  const [daySessions, setDaySessions] = useState<ClockSessionRow[]>([])
+  const [sessionsLoading, setSessionsLoading] = useState(false)
+  const [sessionsFetchError, setSessionsFetchError] = useState<string | null>(null)
+  const [sessionsUserMissing, setSessionsUserMissing] = useState(false)
+  const [recentQuickPicks, setRecentQuickPicks] = useState<RecentQuickPick[]>([])
+  const [recentQuickPicksLoading, setRecentQuickPicksLoading] = useState(false)
+  const [recentQuickPicksError, setRecentQuickPicksError] = useState<string | null>(null)
+
+  const sessionsFetchGenRef = useRef(0)
+  const recentQuickPicksFetchGenRef = useRef(0)
+  const crewJobDetailsMapRef = useRef(crewJobDetailsMap)
+  const crewBidDetailsMapRef = useRef(crewBidDetailsMap)
+  crewJobDetailsMapRef.current = crewJobDetailsMap
+  crewBidDetailsMapRef.current = crewBidDetailsMap
 
   const hoursDays = useMemo(() => getDaysInRange(hoursDateStart, hoursDateEnd), [hoursDateStart, hoursDateEnd])
 
@@ -84,18 +179,6 @@ export function HoursUnassignedModal({
     }
     const row = peopleHours.find((h) => h.person_name === pName && h.work_date === workDate)
     return row?.hours ?? 0
-  }
-
-  function getEffectiveAssignmentsForDate(pName: string, workDate: string): UnifiedAssignment[] {
-    const key = `${workDate}:${pName}`
-    const row = crewJobsByDatePerson[key]
-    if (!row) return []
-    if (row.crew_lead_person_name) {
-      const leadKey = `${workDate}:${row.crew_lead_person_name}`
-      const leadRow = crewJobsByDatePerson[leadKey]
-      return leadRow?.unifiedAssignments ?? []
-    }
-    return row.unifiedAssignments ?? []
   }
 
   function hasAssignmentsForDate(pName: string, workDate: string): boolean {
@@ -124,12 +207,7 @@ export function HoursUnassignedModal({
   const row = crewJobsByDatePerson[key] ?? { crew_lead_person_name: null, unifiedAssignments: [] }
   const draftRow = draft ?? row
   const hasCrewLead = !!draftRow.crew_lead_person_name
-  const availableCrewLeads = showPeople.filter((p) => {
-    if (p === personName) return false
-    const assignments = getEffectiveAssignmentsForDate(p, effectiveSelectedDay)
-    if (officeJob && assignments.some((a) => a.type === 'job' && a.id === officeJob.id)) return false
-    return true
-  })
+  const availableCrewLeads = showPeople.filter((p) => p !== personName)
   const jobsEditable = !hasCrewLead
   const crewEditable = !showPeople.some((p) => {
     const r = crewJobsByDatePerson[`${effectiveSelectedDay}:${p}`]
@@ -139,13 +217,12 @@ export function HoursUnassignedModal({
   useEffect(() => {
     async function load() {
       setLoading(true)
-      const [correctRes, hoursRes, configRes, jobsRes, bidsRes, officeRes] = await Promise.all([
+      const [correctRes, hoursRes, configRes, jobsRes, bidsRes] = await Promise.all([
         supabase.from('hours_days_correct').select('work_date').gte('work_date', hoursDateStart).lte('work_date', hoursDateEnd),
         supabase.from('people_hours').select('person_name, work_date, hours').eq('person_name', personName).gte('work_date', hoursDateStart).lte('work_date', hoursDateEnd),
         supabase.from('people_pay_config').select('person_name, is_salary, show_in_cost_matrix, record_hours_but_salary'),
         supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').gte('work_date', hoursDateStart).lte('work_date', hoursDateEnd),
         supabase.from('people_crew_bids').select('work_date, person_name, crew_lead_person_name, bid_assignments').gte('work_date', hoursDateStart).lte('work_date', hoursDateEnd),
-        supabase.rpc('get_jobs_ledger_office'),
       ])
       const correctDays = new Set((correctRes.data ?? []).map((r: { work_date: string }) => r.work_date))
       setHoursDaysCorrect(correctDays)
@@ -221,8 +298,6 @@ export function HoursUnassignedModal({
         }
         setCrewBidDetailsMap((prev) => ({ ...prev, ...bidMap }))
       }
-      const office = (officeRes.data as { id: string; hcp_number: string; job_name: string; job_address: string }[] | null)?.[0] ?? null
-      setOfficeJob(office)
       const commonRows = (await withSupabaseRetry(
         async () => {
           const r = await supabase.from('common_jobs').select('id, job_id, sequence_order').order('sequence_order')
@@ -268,6 +343,298 @@ export function HoursUnassignedModal({
     if (!effectiveSelectedDay) return
     setSelectedDay(effectiveSelectedDay)
   }, [effectiveSelectedDay])
+
+  useEffect(() => {
+    if (loading || !effectiveSelectedDay) {
+      if (!loading && !effectiveSelectedDay) {
+        setDaySessions([])
+        setSessionsUserMissing(false)
+        setSessionsFetchError(null)
+        setSessionsLoading(false)
+      }
+      return
+    }
+
+    const gen = ++sessionsFetchGenRef.current
+    setSessionsLoading(true)
+    setSessionsFetchError(null)
+    setSessionsUserMissing(false)
+
+    void (async () => {
+      try {
+        const userRes = await supabase.from('users').select('id').eq('name', personName).maybeSingle()
+        if (gen !== sessionsFetchGenRef.current) return
+        const userId = (userRes.data as { id: string } | null)?.id ?? null
+        if (!userId) {
+          setDaySessions([])
+          setSessionsUserMissing(true)
+          setSessionsLoading(false)
+          return
+        }
+
+        let rows: ClockSessionRow[] = []
+        try {
+          const data = await withSupabaseRetry(
+            async () =>
+              supabase
+                .from('clock_sessions')
+                .select('id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, bid_id')
+                .eq('user_id', userId)
+                .eq('work_date', effectiveSelectedDay)
+                .is('rejected_at', null)
+                .is('revoked_at', null)
+                .order('clocked_in_at', { ascending: true }),
+            'HoursUnassignedModal clock_sessions'
+          )
+          if (gen !== sessionsFetchGenRef.current) return
+          rows = (data ?? []) as ClockSessionRow[]
+        } catch (e: unknown) {
+          if (gen !== sessionsFetchGenRef.current) return
+          setSessionsFetchError(formatErrorMessage(e))
+          setDaySessions([])
+          setSessionsLoading(false)
+          return
+        }
+        const jobIdsUnique = [...new Set(rows.map((r) => r.job_ledger_id).filter(Boolean))] as string[]
+        const bidIdsUnique = [...new Set(rows.map((r) => r.bid_id).filter(Boolean))] as string[]
+        const jobIdsToFetch = jobIdsUnique.filter((id) => !crewJobDetailsMapRef.current[id])
+        const bidIdsToFetch = bidIdsUnique.filter((id) => !crewBidDetailsMapRef.current[id])
+
+        if (jobIdsToFetch.length > 0) {
+          try {
+            const jobsData = await withSupabaseRetry(
+              async () => {
+                const r = await supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: jobIdsToFetch })
+                return r as {
+                  data: Array<{ id: string; hcp_number: string; job_name: string; job_address: string }> | null
+                  error: { message: string } | null
+                }
+              },
+              'HoursUnassignedModal session job labels'
+            )
+            if (gen !== sessionsFetchGenRef.current) return
+            const list = jobsData ?? []
+            if (list.length > 0) {
+              setCrewJobDetailsMap((prev) => {
+                const next = { ...prev }
+                for (const j of list) {
+                  next[j.id] = { hcp_number: j.hcp_number ?? '', job_name: j.job_name ?? '', job_address: j.job_address ?? '' }
+                }
+                return next
+              })
+            }
+          } catch {
+            if (gen !== sessionsFetchGenRef.current) return
+          }
+        }
+
+        if (bidIdsToFetch.length > 0) {
+          try {
+            const bidsData = await withSupabaseRetry(
+              async () => {
+                const r = await supabase.rpc('get_bids_by_ids', { p_bid_ids: bidIdsToFetch })
+                return r as {
+                  data: Array<{ id: string; bid_number: string; project_name: string; address: string }> | null
+                  error: { message: string } | null
+                }
+              },
+              'HoursUnassignedModal session bid labels'
+            )
+            if (gen !== sessionsFetchGenRef.current) return
+            const list = bidsData ?? []
+            if (list.length > 0) {
+              setCrewBidDetailsMap((prev) => {
+                const next = { ...prev }
+                for (const b of list) {
+                  next[b.id] = { bid_number: b.bid_number ?? '', project_name: b.project_name ?? '', address: b.address ?? '' }
+                }
+                return next
+              })
+            }
+          } catch {
+            if (gen !== sessionsFetchGenRef.current) return
+          }
+        }
+
+        if (gen !== sessionsFetchGenRef.current) return
+        setDaySessions(rows)
+        setSessionsLoading(false)
+      } catch (e: unknown) {
+        if (gen !== sessionsFetchGenRef.current) return
+        setSessionsFetchError(formatErrorMessage(e))
+        setDaySessions([])
+        setSessionsLoading(false)
+      }
+    })()
+  }, [loading, effectiveSelectedDay, personName])
+
+  useEffect(() => {
+    // Wait for load() so crewJobsByDatePerson is populated; avoid toggling loading while skipping.
+    if (loading) return
+
+    const gen = ++recentQuickPicksFetchGenRef.current
+    setRecentQuickPicksLoading(true)
+    setRecentQuickPicksError(null)
+
+    void (async () => {
+      type QuickOrd = { kind: 'job' | 'bid'; id: string }
+      let clockOrdered: QuickOrd[] = []
+      let clockFetchError: string | null = null
+
+      try {
+        const userRes = await supabase.from('users').select('id').eq('name', personName).maybeSingle()
+        if (gen !== recentQuickPicksFetchGenRef.current) return
+        const userId = (userRes.data as { id: string } | null)?.id ?? null
+
+        if (userId) {
+          try {
+            const data = await withSupabaseRetry(
+              async () =>
+                supabase
+                  .from('clock_sessions')
+                  .select('id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, bid_id')
+                  .eq('user_id', userId)
+                  .or('job_ledger_id.not.is.null,bid_id.not.is.null')
+                  .is('rejected_at', null)
+                  .is('revoked_at', null)
+                  .order('clocked_in_at', { ascending: false })
+                  .limit(65),
+              'HoursUnassignedModal recent clock_sessions'
+            )
+            if (gen !== recentQuickPicksFetchGenRef.current) return
+            const rows = (data ?? []) as ClockSessionRow[]
+            const cj = new Set<string>()
+            const cb = new Set<string>()
+            for (const r of rows) {
+              if (r.job_ledger_id && !cj.has(r.job_ledger_id)) {
+                cj.add(r.job_ledger_id)
+                clockOrdered.push({ kind: 'job', id: r.job_ledger_id })
+              }
+              if (r.bid_id && !cb.has(r.bid_id)) {
+                cb.add(r.bid_id)
+                clockOrdered.push({ kind: 'bid', id: r.bid_id })
+              }
+            }
+          } catch (e: unknown) {
+            if (gen !== recentQuickPicksFetchGenRef.current) return
+            clockFetchError = formatErrorMessage(e)
+          }
+        }
+
+        const assignmentOrdered = collectAssignmentQuickPickIds(crewJobsByDatePerson, personName, hoursDateStart, hoursDateEnd)
+
+        const mj = new Set<string>()
+        const mb = new Set<string>()
+        const finalOrdered: QuickOrd[] = []
+        const pushIfNew = (o: QuickOrd) => {
+          if (o.kind === 'job') {
+            if (mj.has(o.id)) return
+            mj.add(o.id)
+          } else {
+            if (mb.has(o.id)) return
+            mb.add(o.id)
+          }
+          finalOrdered.push(o)
+        }
+        for (const o of clockOrdered) pushIfNew(o)
+        for (const o of assignmentOrdered) pushIfNew(o)
+        const ordered = finalOrdered.slice(0, RECENT_QUICK_PICKS_MAX_UNIQUE)
+
+        if (ordered.length === 0 && clockFetchError) {
+          if (gen !== recentQuickPicksFetchGenRef.current) return
+          setRecentQuickPicksError(clockFetchError)
+          setRecentQuickPicks([])
+          setRecentQuickPicksLoading(false)
+          return
+        }
+
+        const jobIds = ordered.filter((o) => o.kind === 'job').map((o) => o.id)
+        const bidIds = ordered.filter((o) => o.kind === 'bid').map((o) => o.id)
+
+        const jobMap = new Map<string, { id: string; hcp_number: string; job_name: string; job_address: string }>()
+        const bidMap = new Map<string, { id: string; bid_number: string; project_name: string; address: string }>()
+
+        if (jobIds.length > 0) {
+          try {
+            const list = await withSupabaseRetry(
+              async () => {
+                const r = await supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: jobIds })
+                return r as {
+                  data: Array<{ id: string; hcp_number: string; job_name: string; job_address: string }> | null
+                  error: { message: string } | null
+                }
+              },
+              'HoursUnassignedModal recent jobs hydrate'
+            )
+            if (gen !== recentQuickPicksFetchGenRef.current) return
+            for (const j of list ?? []) {
+              jobMap.set(j.id, j)
+            }
+          } catch {
+            if (gen !== recentQuickPicksFetchGenRef.current) return
+          }
+        }
+
+        if (bidIds.length > 0) {
+          try {
+            const list = await withSupabaseRetry(
+              async () => {
+                const r = await supabase.rpc('get_bids_by_ids', { p_bid_ids: bidIds })
+                return r as {
+                  data: Array<{ id: string; bid_number: string; project_name: string; address: string }> | null
+                  error: { message: string } | null
+                }
+              },
+              'HoursUnassignedModal recent bids hydrate'
+            )
+            if (gen !== recentQuickPicksFetchGenRef.current) return
+            for (const b of list ?? []) {
+              bidMap.set(b.id, b)
+            }
+          } catch {
+            if (gen !== recentQuickPicksFetchGenRef.current) return
+          }
+        }
+
+        const picks: RecentQuickPick[] = []
+        for (const o of ordered) {
+          if (o.kind === 'job') {
+            const j = jobMap.get(o.id)
+            if (j) {
+              picks.push({
+                type: 'job',
+                id: j.id,
+                hcp_number: j.hcp_number ?? '',
+                job_name: j.job_name ?? '',
+                job_address: j.job_address ?? '',
+              })
+            }
+          } else {
+            const b = bidMap.get(o.id)
+            if (b) {
+              picks.push({
+                type: 'bid',
+                id: b.id,
+                bid_number: b.bid_number ?? '',
+                project_name: b.project_name ?? '',
+                address: b.address ?? '',
+              })
+            }
+          }
+        }
+
+        if (gen !== recentQuickPicksFetchGenRef.current) return
+        setRecentQuickPicksError(null)
+        setRecentQuickPicks(picks)
+        setRecentQuickPicksLoading(false)
+      } catch (e: unknown) {
+        if (gen !== recentQuickPicksFetchGenRef.current) return
+        setRecentQuickPicksError(formatErrorMessage(e))
+        setRecentQuickPicks([])
+        setRecentQuickPicksLoading(false)
+      }
+    })()
+  }, [personName, crewJobsByDatePerson, loading, hoursDateStart, hoursDateEnd])
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -414,6 +781,104 @@ export function HoursUnassignedModal({
                 ))}
               </select>
             </div>
+            {effectiveSelectedDay ? (
+              <div
+                style={{
+                  marginBottom: '1rem',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 8,
+                  padding: '0.75rem',
+                  background: '#f9fafb',
+                }}
+              >
+                <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem', color: '#111827' }}>
+                  Clock sessions this day
+                </div>
+                {sessionsUserMissing && (
+                  <p style={{ fontSize: '0.8125rem', color: '#6b7280', margin: 0 }}>
+                    No login account linked to this name in Users — clock sessions cannot be shown.
+                  </p>
+                )}
+                {sessionsFetchError && (
+                  <p style={{ fontSize: '0.8125rem', color: '#b91c1c', margin: 0 }}>{sessionsFetchError}</p>
+                )}
+                {sessionsLoading && (
+                  <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>Loading sessions…</p>
+                )}
+                {!sessionsLoading &&
+                  !sessionsUserMissing &&
+                  !sessionsFetchError &&
+                  daySessions.length === 0 && (
+                    <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>No clock sessions for this day.</p>
+                  )}
+                {!sessionsLoading && daySessions.length > 0 && (
+                  <div
+                    style={{
+                      maxHeight: 220,
+                      overflowY: 'auto',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.5rem',
+                    }}
+                  >
+                    {daySessions.map((s) => {
+                      const tIn = new Date(s.clocked_in_at)
+                      const tOut = s.clocked_out_at ? new Date(s.clocked_out_at) : null
+                      const nowMs = Date.now()
+                      const durSec = clockSessionDurationSeconds(s, nowMs)
+                      const notesRaw = (s.notes ?? '').trim()
+                      const notesDisplay = notesRaw.length > 80 ? `${notesRaw.slice(0, 77)}…` : notesRaw
+                      const job = s.job_ledger_id ? crewJobDetailsMap[s.job_ledger_id] : undefined
+                      const bid = s.bid_id ? crewBidDetailsMap[s.bid_id] : undefined
+                      let linkLabel: string | null = null
+                      if (s.job_ledger_id) {
+                        linkLabel = job
+                          ? `J${(job.hcp_number || '').trim() || '—'} · ${job.job_name || '—'}`
+                          : 'Job'
+                      } else if (s.bid_id) {
+                        linkLabel = bid
+                          ? `B${(bid.bid_number || '').trim() || '—'} · ${bid.project_name || '—'}`
+                          : 'Bid'
+                      }
+                      return (
+                        <div
+                          key={s.id}
+                          style={{
+                            fontSize: '0.8125rem',
+                            padding: '0.45rem 0.5rem',
+                            background: 'white',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: 6,
+                            fontVariantNumeric: 'tabular-nums',
+                          }}
+                        >
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'baseline', marginBottom: notesRaw ? '0.25rem' : 0 }}>
+                            <span style={{ color: '#374151' }}>
+                              {tIn.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+                              {' → '}
+                              {tOut
+                                ? tOut.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+                                : 'Open'}
+                            </span>
+                            <span style={{ color: '#6b7280' }}>({formatHmsTotal(durSec)})</span>
+                            {linkLabel && (
+                              <span style={{ color: '#1d4ed8', fontWeight: 500 }} title={linkLabel}>
+                                {linkLabel}
+                              </span>
+                            )}
+                          </div>
+                          {notesRaw ? (
+                            <div style={{ color: '#4b5563' }} title={notesRaw}>
+                              {notesDisplay || '—'}
+                            </div>
+                          ) : null}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            ) : null}
             {effectiveSelectedDay && (
               <>
                 {crewEditable && (
@@ -562,17 +1027,52 @@ export function HoursUnassignedModal({
                       )}
                     </div>
                     <div style={{ marginBottom: '1rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                      <label style={{ fontSize: '0.875rem', display: 'block', marginBottom: '0.35rem' }}>Recent jobs & bids</label>
+                      <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '0 0 0.35rem 0' }}>From past clock sessions and crew assignments for this person (dates in this Hours range).</p>
+                      {recentQuickPicksLoading ? (
+                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Loading…</span>
+                      ) : recentQuickPicksError ? (
+                        <span style={{ fontSize: '0.8125rem', color: '#dc2626' }}>{recentQuickPicksError}</span>
+                      ) : recentQuickPicks.length === 0 ? (
+                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>No recent linked jobs or bids</span>
+                      ) : (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                          {recentQuickPicks.map((item) => {
+                            const disabled = draftRow.unifiedAssignments.some((a) => a.type === item.type && a.id === item.id)
+                            const serviceTag = item.type === 'bid' ? getBidServiceTypeTag(item.service_type_name) : null
+                            return (
+                              <button
+                                key={`${item.type}:${item.id}`}
+                                type="button"
+                                disabled={disabled}
+                                onClick={() =>
+                                  addAssignmentToDraft(
+                                    item.type === 'job'
+                                      ? { type: 'job', id: item.id, hcp_number: item.hcp_number, job_name: item.job_name, job_address: item.job_address }
+                                      : { type: 'bid', id: item.id, bid_number: item.bid_number, project_name: item.project_name, address: item.address }
+                                  )
+                                }
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.25rem 0.5rem', fontSize: '0.8125rem', background: disabled ? '#f9fafb' : '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1 }}
+                              >
+                                {serviceTag ? (
+                                  <span style={{ padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: serviceTag.color, color: '#fff', borderRadius: 4 }}>
+                                    [{serviceTag.tag}]
+                                  </span>
+                                ) : null}
+                                <span>
+                                  {item.type === 'job'
+                                    ? `J${(item.hcp_number || '').trim() || '—'} · ${item.job_name || '—'}`
+                                    : `B${(item.bid_number || '').trim() || '—'} · ${item.project_name || '—'}`}
+                                </span>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ marginBottom: '1rem' }}>
+                      <div style={{ marginBottom: '0.35rem' }}>
                         <label style={{ fontSize: '0.875rem' }}>Assignments</label>
-                        {officeJob && !draftRow.unifiedAssignments.some((a) => a.type === 'job' && a.id === officeJob.id) && (
-                          <button
-                            type="button"
-                            onClick={() => addAssignmentToDraft({ type: 'job', id: officeJob.id, hcp_number: officeJob.hcp_number, job_name: officeJob.job_name, job_address: officeJob.job_address })}
-                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
-                          >
-                            J000 · Office
-                          </button>
-                        )}
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem', marginBottom: '0.5rem' }}>
                         {draftRow.unifiedAssignments.map((a, idx) => {

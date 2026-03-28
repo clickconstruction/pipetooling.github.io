@@ -4409,6 +4409,10 @@ export default function Settings() {
   async function handleArchive(e: React.FormEvent) {
     e.preventDefault()
     setDeleteError(null)
+    if (!deleteEmail.trim() && !deleteName.trim()) {
+      setDeleteError('Enter an email or name.')
+      return
+    }
     setDeleteSubmitting(true)
     const { data, error: eFn } = await supabase.functions.invoke('archive-user', {
       body: { email: deleteEmail.trim(), name: deleteName.trim() },
@@ -8653,29 +8657,28 @@ export default function Settings() {
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h2 style={{ marginTop: 0 }}>Archive user</h2>
             <p style={{ color: '#6b7280', marginBottom: '1rem', fontSize: '0.875rem' }}>
-              Type the user&apos;s email and name exactly. Both must match to archive.
+              Enter the user&apos;s email and/or name as shown in Active accounts. At least one field must match;
+              the server finds the user by email first, then by name.
             </p>
             <form onSubmit={handleArchive}>
               <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="delete-email" style={{ display: 'block', marginBottom: 4 }}>Email *</label>
+                <label htmlFor="delete-email" style={{ display: 'block', marginBottom: 4 }}>Email</label>
                 <input
                   id="delete-email"
-                  type="email"
+                  type="text"
                   value={deleteEmail}
                   onChange={(e) => { setDeleteEmail(e.target.value); setDeleteError(null) }}
-                  required
                   disabled={deleteSubmitting}
                   style={{ width: '100%', padding: '0.5rem' }}
                 />
               </div>
               <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="delete-name" style={{ display: 'block', marginBottom: 4 }}>Name *</label>
+                <label htmlFor="delete-name" style={{ display: 'block', marginBottom: 4 }}>Name</label>
                 <input
                   id="delete-name"
                   type="text"
                   value={deleteName}
                   onChange={(e) => { setDeleteName(e.target.value); setDeleteError(null) }}
-                  required
                   disabled={deleteSubmitting}
                   style={{ width: '100%', padding: '0.5rem' }}
                 />

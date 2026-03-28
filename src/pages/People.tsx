@@ -7,12 +7,15 @@ import {
   PAY_REPORT_EIN,
   PAY_REPORT_EMPLOYER_NAME,
 } from '../constants/payReportEmployerHeader'
+import { HOURS_GRID_FIRST_COL_LABEL } from '../constants/hoursGridFirstCol'
 import { formatCurrency } from '../lib/format'
 import { buildPayReportDocumentTitle } from '../lib/payReportDocumentTitle'
 import { withSupabaseRetry } from '../utils/errorHandling'
+import { buildCrewMapFromJobsAndBidRows, type MergedCrewMapRow } from '../utils/crewAssignments'
 import { formatDateRangeLabel } from '../utils/dateRangeLabel'
 import { CLOCK_SESSION_LIST_SELECT } from '../lib/clockSessionSelect'
 import { approveClockSessions } from '../lib/approveClockSessions'
+import { clockSessionMatchesSearch } from '../lib/clockSessionSearch'
 import { cascadePersonNameInPayTables } from '../lib/cascadePersonName'
 import { findPersonUserDuplicates, mergePersonIntoUser } from '../lib/mergePersonUserDuplicates'
 import {
@@ -37,9 +40,12 @@ import {
 import { resolveManagerUserIdForFeedback } from '../lib/teamFeedback'
 import { loginAsUser } from '../lib/loginAsUser'
 import { useAuth } from '../hooks/useAuth'
+import { useHoursGridFirstColWidthPx } from '../hooks/useHoursGridFirstColWidthPx'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useToastContext } from '../contexts/ToastContext'
 import { HoursUnassignedModal } from '../components/HoursUnassignedModal'
+import { PeopleHoursDayAuditModal } from '../components/PeopleHoursDayAuditModal'
+import { ClockSessionEditSplitModal } from '../components/ClockSessionEditSplitModal'
 import { PersonTimeDetailModal } from '../components/PersonTimeDetailModal'
 import { ReviewHoursModal } from '../components/ReviewHoursModal'
 import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
@@ -100,18 +106,6 @@ const USERS_TAB_SECTIONS: UsersTabSection[] = [
   { type: 'dev' },
 ]
 
-function toDatetimeLocal(iso: string | null): string {
-  if (!iso) return ''
-  const d = new Date(iso)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
-function fromDatetimeLocal(value: string): string | null {
-  const v = value.trim()
-  if (!v) return null
-  return new Date(v).toISOString()
-}
-
 const tabStyle = (active: boolean) => ({
   padding: '0.75rem 1.5rem',
   border: 'none',
@@ -152,6 +146,8 @@ export default function People() {
   const { user: authUser } = useAuth()
   const { showToast } = useToastContext()
   const narrowViewport = useNarrowViewport640()
+  const { widthPx: hoursGridFirstColWidthPx, measurer: hoursGridFirstColMeasurer } = useHoursGridFirstColWidthPx()
+  const hoursGridFirstColW = hoursGridFirstColWidthPx ?? 200
   const [users, setUsers] = useState<UserRow[]>([])
   const [people, setPeople] = useState<Person[]>([])
   const [loading, setLoading] = useState(true)
@@ -180,6 +176,8 @@ export default function People() {
   const [hoursTabLoading, setHoursTabLoading] = useState(false)
   /** True once the Hours tab load effect has entered its first loading cycle (past the 80ms delay). Used so deep-link scroll runs after content is stable, not during the pre-load gap that is followed by a loading spinner that unmounts the anchor. */
   const hoursTabFirstLoadCycleStartedRef = useRef(false)
+  const hoursTableScrollRef = useRef<HTMLDivElement>(null)
+  const hoursFocusClearTimeoutRef = useRef<number | null>(null)
   const [canAccessPay, setCanAccessPay] = useState(false)
   const [canAccessHours, setCanAccessHours] = useState(false)
   const [canAccessLicenses, setCanAccessLicenses] = useState(false)
@@ -263,14 +261,41 @@ export default function People() {
   )
   const [approvedClockSessions, setApprovedClockSessions] = useState<ClockSessionRow[]>([])
   const [rejectedClockSessions, setRejectedClockSessions] = useState<ClockSessionRow[]>([])
+  const [hoursClockSessionsSearch, setHoursClockSessionsSearch] = useState('')
+  const activeClockSessionsFiltered = useMemo(
+    () => activeClockSessions.filter((s) => clockSessionMatchesSearch(s, hoursClockSessionsSearch)),
+    [activeClockSessions, hoursClockSessionsSearch],
+  )
+  const pendingApprovalClockSessionsFiltered = useMemo(
+    () =>
+      pendingApprovalClockSessions.filter((s) => clockSessionMatchesSearch(s, hoursClockSessionsSearch)),
+    [pendingApprovalClockSessions, hoursClockSessionsSearch],
+  )
+  const approvedClockSessionsFiltered = useMemo(
+    () => approvedClockSessions.filter((s) => clockSessionMatchesSearch(s, hoursClockSessionsSearch)),
+    [approvedClockSessions, hoursClockSessionsSearch],
+  )
+  const rejectedClockSessionsFiltered = useMemo(
+    () => rejectedClockSessions.filter((s) => clockSessionMatchesSearch(s, hoursClockSessionsSearch)),
+    [rejectedClockSessions, hoursClockSessionsSearch],
+  )
+  const hoursClockSessionsSearching = hoursClockSessionsSearch.trim().length > 0
+  const noClockSessionsMatchSearch =
+    hoursClockSessionsSearching &&
+    activeClockSessionsFiltered.length === 0 &&
+    pendingApprovalClockSessionsFiltered.length === 0 &&
+    approvedClockSessionsFiltered.length === 0 &&
+    rejectedClockSessionsFiltered.length === 0
   const [rejectedSectionOpen, setRejectedSectionOpen] = useState(false)
+  type HoursGridJobHighlightPick = { id: string; hcp_number: string; job_name: string }
+  const [hoursGridJobHighlightSearch, setHoursGridJobHighlightSearch] = useState('')
+  const [hoursGridJobHighlightResults, setHoursGridJobHighlightResults] = useState<
+    Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>
+  >([])
+  const [hoursGridJobHighlightListOpen, setHoursGridJobHighlightListOpen] = useState(false)
+  const [selectedJobHighlight, setSelectedJobHighlight] = useState<HoursGridJobHighlightPick | null>(null)
+  const hoursGridJobHighlightBlurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [editClockSession, setEditClockSession] = useState<ClockSessionRow | null>(null)
-  const [editClockSessionIn, setEditClockSessionIn] = useState('')
-  const [editClockSessionOut, setEditClockSessionOut] = useState('')
-  const [editClockSessionNotes, setEditClockSessionNotes] = useState('')
-  const [editClockSessionSaving, setEditClockSessionSaving] = useState(false)
-  const [editClockSessionSplitMode, setEditClockSessionSplitMode] = useState(false)
-  const [editClockSessionSplitAt, setEditClockSessionSplitAt] = useState('')
   const [hoursDaysCorrect, setHoursDaysCorrect] = useState<Set<string>>(new Set())
   const [matrixStartDate, setMatrixStartDate] = useState(() => {
     const d = new Date()
@@ -336,7 +361,15 @@ export default function People() {
   const [deletingPayStubId, setDeletingPayStubId] = useState<string | null>(null)
   const [markingPayStubId, setMarkingPayStubId] = useState<string | null>(null)
   const [generatingPayStubPerson, setGeneratingPayStubPerson] = useState<string | null>(null)
+  const [bulkGeneratingPayStubs, setBulkGeneratingPayStubs] = useState(false)
   const [runPayrollModalOpen, setRunPayrollModalOpen] = useState(false)
+  const [runPayrollReviewDaysDetail, setRunPayrollReviewDaysDetail] = useState<{
+    personName: string
+    items: Array<{ workDate: string; issue: 'not_correct' | 'missing_job' }>
+  } | null>(null)
+  const [hoursFocusRequest, setHoursFocusRequest] = useState<{ workDate: string; personName: string } | null>(null)
+  const [hoursFlashWorkDate, setHoursFlashWorkDate] = useState<string | null>(null)
+  const [hoursFlashPersonName, setHoursFlashPersonName] = useState<string | null>(null)
   const [payStubDeleteConfirm, setPayStubDeleteConfirm] = useState<PayStubRow | null>(null)
   const [payStubMarkPaidTarget, setPayStubMarkPaidTarget] = useState<PayStubRow | null>(null)
   const [payStubMarkPaidDate, setPayStubMarkPaidDate] = useState('')
@@ -361,8 +394,9 @@ export default function People() {
   type CrewJobRow = { crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }
   type CrewBidAssignment = { bid_id: string; pct: number }
   type CrewBidRow = { crew_lead_person_name: string | null; bid_assignments: CrewBidAssignment[] }
-  const [crewJobsByDatePerson, setCrewJobsByDatePerson] = useState<Record<string, CrewJobRow>>({})
+  const [crewJobsByDatePerson, setCrewJobsByDatePerson] = useState<Record<string, MergedCrewMapRow>>({})
   const [hoursUnassignedModal, setHoursUnassignedModal] = useState<{ personName: string } | null>(null)
+  const [hoursDayAuditModal, setHoursDayAuditModal] = useState<{ personName: string; workDate: string } | null>(null)
 
   // Vehicles tab state
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
@@ -658,6 +692,15 @@ export default function People() {
   }, [authUser?.id])
 
   useEffect(() => {
+    if (!runPayrollReviewDaysDetail) return
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setRunPayrollReviewDaysDetail(null)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [runPayrollReviewDaysDetail])
+
+  useEffect(() => {
     const tab = searchParams.get('tab')
     if (tab === 'team_costs') {
       setSearchParams((p) => {
@@ -732,6 +775,60 @@ export default function People() {
       return next
     }, { replace: true })
   }, [searchParams, activeTab, canAccessHours, hoursTabLoading, setSearchParams])
+
+  useEffect(() => {
+    if (activeTab === 'hours') return
+    if (hoursFocusClearTimeoutRef.current !== null) {
+      window.clearTimeout(hoursFocusClearTimeoutRef.current)
+      hoursFocusClearTimeoutRef.current = null
+    }
+    setHoursFocusRequest(null)
+    setHoursFlashWorkDate(null)
+    setHoursFlashPersonName(null)
+  }, [activeTab])
+
+  useLayoutEffect(() => {
+    if (activeTab !== 'hours' || !canAccessHours || hoursTabLoading || !hoursFocusRequest) return
+    const wd = hoursFocusRequest.workDate
+    if (!getDaysInRange(hoursDateStart, hoursDateEnd).includes(wd)) return
+
+    setHoursFlashWorkDate(wd)
+    setHoursFlashPersonName(hoursFocusRequest.personName)
+
+    const pn = hoursFocusRequest.personName
+    const scroll = () => {
+      const el = document.getElementById(`people-hours-col-${wd}`)
+      const wrap = hoursTableScrollRef.current
+      if (el && wrap) {
+        const center =
+          el.offsetLeft - wrap.clientWidth / 2 + el.offsetWidth / 2
+        wrap.scrollTo({ left: Math.max(0, center), behavior: 'smooth' })
+      }
+      el?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+      const row = document.querySelector(`[data-hours-person="${CSS.escape(pn)}"]`)
+      row?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
+    }
+    requestAnimationFrame(() => {
+      requestAnimationFrame(scroll)
+    })
+
+    if (hoursFocusClearTimeoutRef.current !== null) {
+      window.clearTimeout(hoursFocusClearTimeoutRef.current)
+    }
+    hoursFocusClearTimeoutRef.current = window.setTimeout(() => {
+      setHoursFlashWorkDate(null)
+      setHoursFlashPersonName(null)
+      setHoursFocusRequest(null)
+      hoursFocusClearTimeoutRef.current = null
+    }, 2500)
+
+    return () => {
+      if (hoursFocusClearTimeoutRef.current !== null) {
+        window.clearTimeout(hoursFocusClearTimeoutRef.current)
+        hoursFocusClearTimeoutRef.current = null
+      }
+    }
+  }, [activeTab, canAccessHours, hoursTabLoading, hoursFocusRequest, hoursDateStart, hoursDateEnd])
 
   useEffect(() => {
     async function loadPayAccess() {
@@ -2096,9 +2193,13 @@ export default function People() {
     }
   }
 
-  async function generatePayStub(personOverride?: string) {
+  async function generatePayStub(
+    personOverride?: string,
+    options?: { openPreview?: boolean },
+  ): Promise<boolean> {
+    const openPreview = options?.openPreview !== false
     const personName = (personOverride ?? payStubGeneratorPerson)?.trim()
-    if (!authUser?.id || !personName) return
+    if (!authUser?.id || !personName) return false
     const start = payStubPeriodStart
     const end = payStubPeriodEnd
     const { data: hoursData } = await supabase
@@ -2141,7 +2242,7 @@ export default function People() {
       .single()
     if (stubErr || !stubData) {
       setError(stubErr?.message ?? 'Failed to create pay report')
-      return
+      return false
     }
     const payStubId = stubData.id as string
     const { error: daysErr } = await supabase.from('pay_stub_days').insert(
@@ -2156,7 +2257,7 @@ export default function People() {
     )
     if (daysErr) {
       setError(daysErr.message)
-      return
+      return false
     }
     await loadPayStubs()
     const [{ data: crewData }, { data: crewBidsData }] = await Promise.all([
@@ -2209,7 +2310,49 @@ export default function People() {
       getOffsetsForPayStub(personName, payStubId, start, end),
     ])
     const html = buildPayStubHtml(personName, start, end, wage, dayRows.map((r) => ({ date: r.work_date, hours: r.hours })), hoursTotal, grossPay, rowsWithJobs, vehicles, appliedOffsets, pendingOffsets)
-    openPayStubWindow(html, false)
+    if (openPreview) openPayStubWindow(html, false)
+    return true
+  }
+
+  async function bulkGenerateMissingPayStubsInModal() {
+    const start = payStubPeriodStart
+    const end = payStubPeriodEnd
+    if (start > end) {
+      showToast('Invalid date range.', 'warning')
+      return
+    }
+    const days = getDaysInRange(start, end)
+    const candidates = showPeopleForHours.filter((person) => {
+      const stub = payStubs.find((s) => s.person_name === person && s.period_start <= end && s.period_end >= start)
+      const estGross = days.reduce((s, d) => s + getCostForPersonDate(person, d), 0)
+      return estGross > 0 && !stub
+    })
+    if (candidates.length === 0) {
+      showToast('No missing pay reports with hours for this period.', 'info')
+      return
+    }
+    if (
+      !window.confirm(
+        `Generate ${candidates.length} pay report(s) for ${start} through ${end}?\n\nPeople who already have a report for this period are skipped.`,
+      )
+    )
+      return
+    setBulkGeneratingPayStubs(true)
+    setError(null)
+    let ok = 0
+    try {
+      for (const person of candidates) {
+        const success = await generatePayStub(person, { openPreview: false })
+        if (success) ok += 1
+      }
+    } finally {
+      setBulkGeneratingPayStubs(false)
+    }
+    if (ok === candidates.length) {
+      showToast(`Generated ${ok} pay report(s).`, 'success')
+    } else {
+      showToast(`Generated ${ok} of ${candidates.length} pay report(s). Some failed; check the error message above.`, 'warning')
+    }
   }
 
   async function viewPayStub(stub: PayStubRow) {
@@ -3404,21 +3547,24 @@ export default function People() {
   function loadCrewJobsForHoursRange() {
     const days = getDaysInRange(hoursDateStart, hoursDateEnd)
     if (days.length === 0) return
-    supabase
-      .from('people_crew_jobs')
-      .select('work_date, person_name, crew_lead_person_name, job_assignments')
-      .in('work_date', days)
-      .then(({ data }) => {
-        const map: Record<string, CrewJobRow> = {}
-        for (const r of (data ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }>) {
-          const key = `${r.work_date}:${r.person_name}`
-          map[key] = {
-            crew_lead_person_name: r.crew_lead_person_name ?? null,
-            job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [],
-          }
-        }
-        setCrewJobsByDatePerson(map)
-      })
+    void Promise.all([
+      supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').in('work_date', days),
+      supabase.from('people_crew_bids').select('work_date, person_name, crew_lead_person_name, bid_assignments').in('work_date', days),
+    ]).then(([jobsRes, bidsRes]) => {
+      const jobsRows = (jobsRes.data ?? []) as Array<{
+        work_date: string
+        person_name: string
+        crew_lead_person_name: string | null
+        job_assignments: CrewJobAssignment[]
+      }>
+      const bidsRows = (bidsRes.data ?? []) as Array<{
+        work_date: string
+        person_name: string
+        crew_lead_person_name: string | null
+        bid_assignments: CrewBidAssignment[]
+      }>
+      setCrewJobsByDatePerson(buildCrewMapFromJobsAndBidRows(jobsRows, bidsRows))
+    })
   }
   loadCrewJobsRef.current = loadCrewJobsForHoursRange
 
@@ -3427,6 +3573,22 @@ export default function People() {
     const t = setTimeout(() => loadCrewJobsForHoursRange(), 80)
     return () => clearTimeout(t)
   }, [activeTab, hoursDateStart, hoursDateEnd, canAccessHours])
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const q = hoursGridJobHighlightSearch.trim()
+      if (!q) {
+        setHoursGridJobHighlightResults([])
+        return
+      }
+      void supabase.rpc('search_jobs_ledger', { search_text: q }).then(({ data }) => {
+        setHoursGridJobHighlightResults(
+          (data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>
+        )
+      })
+    }, 300)
+    return () => clearTimeout(t)
+  }, [hoursGridJobHighlightSearch])
 
   const loadAllClockSessionsRef = useRef<() => void>()
   loadAllClockSessionsRef.current = () => {
@@ -3605,6 +3767,12 @@ export default function People() {
       d.setDate(d.getDate() + 1)
     }
     return days
+  }
+
+  /** Widens Hours tab range if needed so a payroll-modal date can appear as a column (en-CA strings sort chronologically). */
+  function ensureHoursRangeIncludesDate(workDate: string) {
+    if (workDate < hoursDateStart) setHoursDateStart(workDate)
+    if (workDate > hoursDateEnd) setHoursDateEnd(workDate)
   }
 
   function decimalToHms(decimal: number): string {
@@ -4490,20 +4658,59 @@ export default function People() {
   const matrixDays = getDaysInRange(matrixStartDate, matrixEndDate)
   const hoursDays = getDaysInRange(hoursDateStart, hoursDateEnd)
 
+  const { jobHighlightPeople, jobHighlightCells } = useMemo(() => {
+    const people = new Set<string>()
+    const cells = new Set<string>()
+    const jobId = selectedJobHighlight?.id
+    if (!jobId) {
+      return { jobHighlightPeople: people, jobHighlightCells: cells }
+    }
+    for (const personName of showPeopleForHours) {
+      for (const d of hoursDays) {
+        const key = `${d}:${personName}`
+        const row = crewJobsByDatePerson[key]
+        const unified = row?.unifiedAssignments ?? []
+        if (unified.some((a) => a.type === 'job' && a.id === jobId)) {
+          people.add(personName)
+          cells.add(`${personName}:${d}`)
+        }
+      }
+    }
+    return { jobHighlightPeople: people, jobHighlightCells: cells }
+  }, [selectedJobHighlight?.id, hoursDays, showPeopleForHours, crewJobsByDatePerson])
+
   function hasAssignmentsForDate(personName: string, workDate: string): boolean {
     const key = `${workDate}:${personName}`
     const row = crewJobsByDatePerson[key]
     if (!row) return false
-    return !!(row.crew_lead_person_name || (row.job_assignments?.length ?? 0) > 0)
+    return !!(row.crew_lead_person_name || (row.unifiedAssignments?.length ?? 0) > 0)
+  }
+
+  function isCorrectDayMissingJob(personName: string, workDate: string): boolean {
+    if (!hoursDaysCorrect.has(workDate)) return false
+    const hours = getDisplayHours(personName, workDate)
+    if (hours <= 0) return false
+    return !hasAssignmentsForDate(personName, workDate)
+  }
+
+  function getRunPayrollReviewDayItems(
+    personName: string,
+    periodDays: string[]
+  ): Array<{ workDate: string; issue: 'not_correct' | 'missing_job' }> {
+    const items: Array<{ workDate: string; issue: 'not_correct' | 'missing_job' }> = []
+    for (const d of periodDays) {
+      if (!hoursDaysCorrect.has(d)) {
+        items.push({ workDate: d, issue: 'not_correct' })
+      } else if (isCorrectDayMissingJob(personName, d)) {
+        items.push({ workDate: d, issue: 'missing_job' })
+      }
+    }
+    items.sort((a, b) => a.workDate.localeCompare(b.workDate))
+    return items
   }
 
   function hasUnassignedCorrectDays(personName: string): boolean {
-    return hoursDays.some((d) => {
-      if (!hoursDaysCorrect.has(d)) return false
-      const hours = getDisplayHours(personName, d)
-      if (hours <= 0) return false
-      return !hasAssignmentsForDate(personName, d)
-    })
+    return hoursDays.some((d) => isCorrectDayMissingJob(personName, d))
   }
 
   const canEditUserNotes = authUserRole !== null && ['dev', 'master_technician', 'assistant'].includes(authUserRole)
@@ -4513,6 +4720,7 @@ export default function People() {
 
   return (
     <div>
+      {hoursGridFirstColMeasurer}
       <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #e5e7eb', marginBottom: '1.5rem', overflow: 'hidden' }}>
         <div style={{ flex: 1, minWidth: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 0, width: 'max-content' }}>
@@ -4530,6 +4738,22 @@ export default function People() {
         >
           Users
         </button>
+        {(canAccessPay || canAccessHours) && (
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('hours')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'hours')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'hours')}
+          >
+            Hours
+          </button>
+        )}
         {canAccessPay && (
           <button
             type="button"
@@ -4560,22 +4784,6 @@ export default function People() {
             style={tabStyle(activeTab === 'pay')}
           >
             Pay
-          </button>
-        )}
-        {(canAccessPay || canAccessHours) && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('hours')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'hours')
-                return next
-              })
-            }}
-            style={tabStyle(activeTab === 'hours')}
-          >
-            Hours
           </button>
         )}
         {canAccessPay && (
@@ -5585,7 +5793,7 @@ export default function People() {
                       fontWeight: 500,
                     }}
                   >
-                    Generate Pay Reports
+                    Run Payroll
                   </button>
                 </div>
                 {showPeopleForHours.length === 0 && (
@@ -6021,12 +6229,17 @@ export default function People() {
           if (stub) return sum + stub.gross_pay
           return sum + days.reduce((s, d) => s + getCostForPersonDate(person, d), 0)
         }, 0)
+        const bulkMissingCount = showPeopleForHours.filter((person) => {
+          const stub = payStubs.find((s) => s.person_name === person && s.period_start <= end && s.period_end >= start)
+          const estGross = days.reduce((s, d) => s + getCostForPersonDate(person, d), 0)
+          return estGross > 0 && !stub
+        }).length
         return (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
             <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 600, maxHeight: '85vh', overflow: 'auto' }}>
               <div style={{ marginBottom: '0.35rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                  <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Generate Pay Reports</h2>
+                  <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Run Payroll</h2>
                   <button type="button" onClick={() => setRunPayrollModalOpen(false)} style={{ padding: '0.25rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, color: '#6b7280' }} aria-label="Close">×</button>
                 </div>
                 <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -6037,6 +6250,7 @@ export default function People() {
                       className="generate-pay-reports-date-input"
                       value={start}
                       onChange={(e) => setPayStubPeriodStart(e.target.value)}
+                      disabled={bulkGeneratingPayStubs}
                       style={{
                         padding: '2px 2px',
                         border: '1px solid #d1d5db',
@@ -6044,6 +6258,7 @@ export default function People() {
                         fontSize: '0.8125rem',
                         lineHeight: 1.3,
                         boxSizing: 'border-box',
+                        opacity: bulkGeneratingPayStubs ? 0.6 : 1,
                       }}
                     />
                   </label>
@@ -6054,6 +6269,7 @@ export default function People() {
                       className="generate-pay-reports-date-input"
                       value={end}
                       onChange={(e) => setPayStubPeriodEnd(e.target.value)}
+                      disabled={bulkGeneratingPayStubs}
                       style={{
                         padding: '2px 2px',
                         border: '1px solid #d1d5db',
@@ -6061,11 +6277,12 @@ export default function People() {
                         fontSize: '0.8125rem',
                         lineHeight: 1.3,
                         boxSizing: 'border-box',
+                        opacity: bulkGeneratingPayStubs ? 0.6 : 1,
                       }}
                     />
                   </label>
-                  <button type="button" onClick={() => shiftPayStubWeek(-1)} style={{ padding: '2px 8px', fontSize: '0.8125rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer', lineHeight: 1.3 }}>Last week</button>
-                  <button type="button" onClick={() => shiftPayStubWeek(1)} style={{ padding: '2px 8px', fontSize: '0.8125rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer', lineHeight: 1.3 }}>Next week</button>
+                  <button type="button" onClick={() => shiftPayStubWeek(-1)} disabled={bulkGeneratingPayStubs} style={{ padding: '2px 8px', fontSize: '0.8125rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: bulkGeneratingPayStubs ? 'not-allowed' : 'pointer', lineHeight: 1.3, opacity: bulkGeneratingPayStubs ? 0.5 : 1 }}>Last week</button>
+                  <button type="button" onClick={() => shiftPayStubWeek(1)} disabled={bulkGeneratingPayStubs} style={{ padding: '2px 8px', fontSize: '0.8125rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: bulkGeneratingPayStubs ? 'not-allowed' : 'pointer', lineHeight: 1.3, opacity: bulkGeneratingPayStubs ? 0.5 : 1 }}>Next week</button>
                 </div>
               </div>
               {showPeopleForHours.length === 0 ? (
@@ -6074,6 +6291,30 @@ export default function People() {
                 <>
                   <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem', textAlign: 'center' }}>
                     {paidCount} of {showPeopleForHours.length} paid · Total: ${formatCurrency(totalAmount)}
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => void bulkGenerateMissingPayStubsInModal()}
+                      disabled={bulkGeneratingPayStubs || bulkMissingCount === 0 || start > end}
+                      style={{
+                        padding: '0.35rem 0.75rem',
+                        fontSize: '0.8125rem',
+                        fontWeight: 500,
+                        background: bulkGeneratingPayStubs || bulkMissingCount === 0 || start > end ? '#9ca3af' : '#3b82f6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 6,
+                        cursor: bulkGeneratingPayStubs || bulkMissingCount === 0 || start > end ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      {bulkGeneratingPayStubs ? 'Generating…' : 'Generate Remaining'}
+                    </button>
+                    <span style={{ fontSize: '0.8125rem', color: '#6b7280', textAlign: 'center' }}>
+                      {bulkMissingCount === 0
+                        ? 'No one needs a report for this period.'
+                        : `${bulkMissingCount} with hours and no report yet`}
+                    </span>
                   </div>
                   <div style={{ overflowX: 'auto', marginBottom: '1rem' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
@@ -6092,15 +6333,15 @@ export default function People() {
                           const stub = payStubs.find((s) => s.person_name === person && s.period_start <= end && s.period_end >= start)
                           const hours = days.reduce((s, d) => s + getEffectiveHours(person, d), 0)
                           const estGross = days.reduce((s, d) => s + getCostForPersonDate(person, d), 0)
-                          const allDaysCorrect = days.every((d) => hoursDaysCorrect.has(d))
+                          const reviewItems = getRunPayrollReviewDayItems(person, days)
                           const status = stub
                             ? stub.paid_at
                               ? 'Paid'
                               : 'Report only'
                             : estGross > 0
-                              ? allDaysCorrect
-                                ? 'Ready'
-                                : 'Review'
+                              ? reviewItems.length > 0
+                                ? 'Review'
+                                : 'Ready'
                               : 'No hours'
                           const isGenerating = generatingPayStubPerson === person
                           return (
@@ -6122,14 +6363,36 @@ export default function People() {
                               </td>
                               <td style={{ padding: '0.5rem 0.75rem' }}>{person}</td>
                               <td style={{ padding: '0.5rem 0.75rem' }}>
-                                <span
-                                  style={{
-                                    fontSize: '0.8125rem',
-                                    color: status === 'Paid' ? '#059669' : status === 'Review' ? '#ea580c' : status === 'No hours' || status === 'Report only' ? '#6b7280' : undefined,
-                                  }}
-                                >
-                                  {status}
-                                </span>
+                                {!stub && estGross > 0 && reviewItems.length > 0 ? (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setRunPayrollReviewDaysDetail({ personName: person, items: reviewItems })
+                                    }}
+                                    title="Show dates needing attention for this period (Correct checkbox or job assignment)"
+                                    style={{
+                                      padding: 0,
+                                      border: 'none',
+                                      background: 'none',
+                                      cursor: 'pointer',
+                                      fontSize: '0.8125rem',
+                                      color: '#ea580c',
+                                      textDecoration: 'underline',
+                                    }}
+                                  >
+                                    Review
+                                  </button>
+                                ) : (
+                                  <span
+                                    style={{
+                                      fontSize: '0.8125rem',
+                                      color: status === 'Paid' ? '#059669' : status === 'Review' ? '#ea580c' : status === 'No hours' || status === 'Report only' ? '#6b7280' : undefined,
+                                    }}
+                                  >
+                                    {status}
+                                  </span>
+                                )}
                               </td>
                               <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{hours.toFixed(2)}</td>
                               <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(estGross)}</td>
@@ -6152,10 +6415,10 @@ export default function People() {
                                       await generatePayStub(person)
                                       setGeneratingPayStubPerson(null)
                                     }}
-                                    disabled={isGenerating || estGross <= 0}
-                                    style={{ padding: '2px 6px', fontSize: '0.8125rem', background: isGenerating || estGross <= 0 ? '#9ca3af' : '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: isGenerating || estGross <= 0 ? 'not-allowed' : 'pointer' }}
+                                    disabled={isGenerating || estGross <= 0 || bulkGeneratingPayStubs}
+                                    style={{ padding: '2px 6px', fontSize: '0.8125rem', background: isGenerating || estGross <= 0 || bulkGeneratingPayStubs ? '#9ca3af' : '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: isGenerating || estGross <= 0 || bulkGeneratingPayStubs ? 'not-allowed' : 'pointer' }}
                                   >
-                                    {isGenerating ? '...' : 'Generate Pay Report'}
+                                    {isGenerating ? '...' : 'Report'}
                                   </button>
                                 )}
                               </td>
@@ -6171,6 +6434,78 @@ export default function People() {
           </div>
         )
       })()}
+
+      {runPayrollReviewDaysDetail && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="run-payroll-review-days-title"
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1101 }}
+          onClick={() => setRunPayrollReviewDaysDetail(null)}
+        >
+          <div
+            style={{ background: 'white', padding: '1.25rem', borderRadius: 8, maxWidth: 420, maxHeight: '80vh', overflow: 'auto', margin: '1rem', boxShadow: '0 10px 40px rgba(0,0,0,0.15)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 id="run-payroll-review-days-title" style={{ margin: '0 0 0.5rem 0', fontSize: '1.05rem' }}>
+              Days needing attention
+            </h3>
+            <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#4b5563' }}>
+              <strong>{runPayrollReviewDaysDetail.personName}</strong>: on the <strong>Hours</strong> tab, mark or clear the <strong>Correct</strong> row for dates below, or assign work in <strong>Crew Jobs / Bids</strong> when hours have no job. Then return here.
+            </p>
+            <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.875rem', color: '#111827', listStyle: 'disc' }}>
+              {runPayrollReviewDaysDetail.items.map((item) => (
+                <li key={`${item.workDate}-${item.issue}`} style={{ marginBottom: '0.35rem' }}>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (!canAccessHours) {
+                        showToast('You do not have access to the Hours tab.', 'warning')
+                        return
+                      }
+                      ensureHoursRangeIncludesDate(item.workDate)
+                      setRunPayrollReviewDaysDetail(null)
+                      setHoursFocusRequest({ workDate: item.workDate, personName: runPayrollReviewDaysDetail.personName })
+                      setActiveTab('hours')
+                      setSearchParams((p) => {
+                        const next = new URLSearchParams(p)
+                        next.set('tab', 'hours')
+                        return next
+                      })
+                    }}
+                    style={{
+                      padding: 0,
+                      border: 'none',
+                      background: 'none',
+                      cursor: 'pointer',
+                      color: '#2563eb',
+                      textDecoration: 'underline',
+                      font: 'inherit',
+                      fontSize: 'inherit',
+                      textAlign: 'left',
+                    }}
+                  >
+                    {new Date(item.workDate + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                  </button>
+                  <span style={{ marginLeft: '0.35rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+                    {item.issue === 'not_correct' ? '— Not marked Correct' : '— No job assigned'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setRunPayrollReviewDaysDetail(null)}
+                style={{ padding: '0.4rem 0.9rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {activeTab === 'pay' && (canAccessPay || canViewCostMatrixShared) && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -7295,15 +7630,53 @@ export default function People() {
               </button>
             </div>
           )}
+          <div style={{ marginBottom: '0.75rem', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
+            <input
+              type="search"
+              value={hoursClockSessionsSearch}
+              onChange={(e) => setHoursClockSessionsSearch(e.target.value)}
+              placeholder="Search name, notes, job/bid, date…"
+              aria-label="Search clock sessions"
+              style={{
+                flex: '1 1 220px',
+                minWidth: 160,
+                padding: '0.35rem 0.5rem',
+                border: '1px solid #d1d5db',
+                borderRadius: 4,
+                fontSize: '0.875rem',
+              }}
+            />
+            {hoursClockSessionsSearching ? (
+              <button
+                type="button"
+                onClick={() => setHoursClockSessionsSearch('')}
+                style={{
+                  padding: '0.35rem 0.5rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  background: 'white',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                }}
+              >
+                Clear
+              </button>
+            ) : null}
+          </div>
+          {noClockSessionsMatchSearch ? (
+            <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>No sessions match this search.</p>
+          ) : null}
           <div style={{ marginBottom: '0.75rem', border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
             <div style={{ padding: '0.5rem 0.75rem', background: '#f9fafb', fontWeight: 600, fontSize: '0.875rem' }}>
-              Active clock sessions ({activeClockSessions.length})
+              {hoursClockSessionsSearching
+                ? `Active clock sessions (${activeClockSessionsFiltered.length} of ${activeClockSessions.length} matching)`
+                : `Active clock sessions (${activeClockSessions.length})`}
             </div>
             <ClockSessionsTable
-              sessions={activeClockSessions}
+              sessions={activeClockSessionsFiltered}
               showActionsColumn
               locationVariant="full"
-              emptyMessage="No active sessions"
+              emptyMessage={hoursClockSessionsSearching ? 'No matching sessions' : 'No active sessions'}
               renderNotesSecondary={(s) => {
                 const label = formatClockSessionJobOrBidLabel(s)
                 return label ? <span title={label}>{label}</span> : null
@@ -7315,6 +7688,16 @@ export default function People() {
                 const personName = s.users?.name?.trim() ?? 'Unknown'
                 return (
                   <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditClockSession(s)
+                        setError(null)
+                      }}
+                      style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer' }}
+                    >
+                      Edit
+                    </button>
                     <button
                       type="button"
                       onClick={async () => {
@@ -7338,13 +7721,15 @@ export default function People() {
           </div>
           <div style={{ marginBottom: '0.75rem', border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
             <div style={{ padding: '0.5rem 0.75rem', background: '#f9fafb', fontWeight: 600, fontSize: '0.875rem' }}>
-              Pending sessions ({pendingApprovalClockSessions.length})
+              {hoursClockSessionsSearching
+                ? `Pending sessions (${pendingApprovalClockSessionsFiltered.length} of ${pendingApprovalClockSessions.length} matching)`
+                : `Pending sessions (${pendingApprovalClockSessions.length})`}
             </div>
             <ClockSessionsTable
-              sessions={pendingApprovalClockSessions}
+              sessions={pendingApprovalClockSessionsFiltered}
               showActionsColumn
               locationVariant="full"
-              emptyMessage="No sessions awaiting approval"
+              emptyMessage={hoursClockSessionsSearching ? 'No matching sessions' : 'No sessions awaiting approval'}
               renderNotesSecondary={(s) => {
                 const label = formatClockSessionJobOrBidLabel(s)
                 return label ? <span title={label}>{label}</span> : null
@@ -7397,11 +7782,6 @@ export default function People() {
                     type="button"
                     onClick={() => {
                       setEditClockSession(s)
-                      setEditClockSessionIn(toDatetimeLocal(s.clocked_in_at))
-                      setEditClockSessionOut(s.clocked_out_at ? toDatetimeLocal(s.clocked_out_at) : '')
-                      setEditClockSessionNotes(s.notes ?? '')
-                      setEditClockSessionSplitMode(false)
-                      setEditClockSessionSplitAt('')
                     }}
                     style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer' }}
                   >
@@ -7413,7 +7793,14 @@ export default function People() {
           </div>
           <ClockSessionsSection
             title="Approved Sessions"
-            sessions={approvedClockSessions}
+            sessions={approvedClockSessionsFiltered}
+            headerCountLabel={
+              hoursClockSessionsSearching
+                ? `${approvedClockSessionsFiltered.length} of ${approvedClockSessions.length} matching`
+                : undefined
+            }
+            headerCount={hoursClockSessionsSearching ? undefined : approvedClockSessions.length}
+            emptyMessage={hoursClockSessionsSearching ? 'No matching sessions' : 'No sessions'}
             collapsedByDefault
             showActionsColumn
             renderActions={(s) => (
@@ -7438,7 +7825,14 @@ export default function People() {
           />
           <div id="people-hours-rejected">
             <RejectedClockSessionsSection
-              sessions={rejectedClockSessions}
+              sessions={rejectedClockSessionsFiltered}
+              headerCountLabel={
+                hoursClockSessionsSearching
+                  ? `${rejectedClockSessionsFiltered.length} of ${rejectedClockSessions.length} matching`
+                  : undefined
+              }
+              headerCount={hoursClockSessionsSearching ? undefined : rejectedClockSessions.length}
+              emptyMessage={hoursClockSessionsSearching ? 'No matching sessions' : undefined}
               onDeleted={() => loadAllClockSessionsRef.current?.()}
               onError={(message) => setError(message)}
               canDeleteRejectedSessions={canAccessPay}
@@ -7446,21 +7840,138 @@ export default function People() {
               onToggle={() => setRejectedSectionOpen((o) => !o)}
               onEdit={(s) => {
                 setEditClockSession(s)
-                setEditClockSessionIn(toDatetimeLocal(s.clocked_in_at))
-                setEditClockSessionOut(s.clocked_out_at ? toDatetimeLocal(s.clocked_out_at) : '')
-                setEditClockSessionNotes(s.notes ?? '')
-                setEditClockSessionSplitMode(false)
-                setEditClockSessionSplitAt('')
               }}
             />
           </div>
           {showPeopleForHours.length === 0 ? (
             <p style={{ color: '#6b7280' }}>No people with Show in Hours selected. Go to Pay tab and check Show in Hours for people to track.</p>
           ) : (
-            <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+            <>
+              <div
+                style={{ marginBottom: '0.5rem', display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: '0.5rem' }}
+                title="Highlights people whose crew row lists this job (assignments on that person’s row only, not crew-lead inheritance)."
+              >
+                <span style={{ fontSize: '0.875rem', color: '#374151', fontWeight: 500, paddingTop: '0.35rem', flexShrink: 0 }}>Highlight by job</span>
+                <div style={{ position: 'relative', flex: '1 1 220px', minWidth: 180, maxWidth: 400 }}>
+                  <input
+                    type="search"
+                    value={hoursGridJobHighlightSearch}
+                    onChange={(e) => setHoursGridJobHighlightSearch(e.target.value)}
+                    onFocus={() => {
+                      if (hoursGridJobHighlightBlurTimeoutRef.current) clearTimeout(hoursGridJobHighlightBlurTimeoutRef.current)
+                      setHoursGridJobHighlightListOpen(true)
+                    }}
+                    onBlur={() => {
+                      hoursGridJobHighlightBlurTimeoutRef.current = setTimeout(() => setHoursGridJobHighlightListOpen(false), 175)
+                    }}
+                    placeholder="Search HCP, job name, address…"
+                    aria-label="Search job to highlight on hours grid"
+                    autoComplete="off"
+                    style={{
+                      width: '100%',
+                      padding: '0.35rem 0.5rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: 4,
+                      fontSize: '0.875rem',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                  {hoursGridJobHighlightListOpen && hoursGridJobHighlightResults.length > 0 ? (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        right: 0,
+                        zIndex: 25,
+                        marginTop: 2,
+                        maxHeight: 220,
+                        overflowY: 'auto',
+                        background: 'white',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: 6,
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                      }}
+                    >
+                      {hoursGridJobHighlightResults.map((j) => (
+                        <button
+                          key={j.id}
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            setSelectedJobHighlight({ id: j.id, hcp_number: j.hcp_number ?? '', job_name: j.job_name ?? '' })
+                            setHoursGridJobHighlightSearch('')
+                            setHoursGridJobHighlightResults([])
+                            setHoursGridJobHighlightListOpen(false)
+                          }}
+                          style={{
+                            display: 'block',
+                            width: '100%',
+                            padding: '0.5rem 0.65rem',
+                            textAlign: 'left',
+                            border: 'none',
+                            borderBottom: '1px solid #f3f4f6',
+                            background: 'none',
+                            cursor: 'pointer',
+                            fontSize: '0.875rem',
+                          }}
+                        >
+                          <div style={{ fontWeight: 500 }}>
+                            J{(j.hcp_number || '').trim() || '—'} · {j.job_name || '—'}
+                          </div>
+                          {j.job_address ? (
+                            <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>{j.job_address}</div>
+                          ) : null}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+                {selectedJobHighlight ? (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      padding: '0.3rem 0.55rem',
+                      background: '#eff6ff',
+                      border: '1px solid #93c5fd',
+                      borderRadius: 6,
+                      fontSize: '0.8125rem',
+                      maxWidth: '100%',
+                    }}
+                  >
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      J{(selectedJobHighlight.hcp_number || '').trim() || '—'} · {selectedJobHighlight.job_name || '—'}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label="Clear job highlight"
+                      onClick={() => setSelectedJobHighlight(null)}
+                      style={{
+                        padding: '0 0.25rem',
+                        border: 'none',
+                        background: 'none',
+                        cursor: 'pointer',
+                        color: '#64748b',
+                        fontSize: '1.125rem',
+                        lineHeight: 1,
+                      }}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ) : null}
+              </div>
+              {selectedJobHighlight && jobHighlightPeople.size === 0 ? (
+                <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: '0 0 0.5rem 0' }}>
+                  No one in this list has that job on crew assignments this week.
+                </p>
+              ) : null}
+              <div ref={hoursTableScrollRef} style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>
                 <colgroup>
-                  <col style={{ width: 200 }} />
+                  <col style={{ width: hoursGridFirstColW }} />
                   {hoursDays.map((d) => (
                     <col key={d} style={{ width: 72 }} />
                   ))}
@@ -7469,9 +7980,37 @@ export default function People() {
                 </colgroup>
                 <thead style={{ background: '#f9fafb' }}>
                   <tr>
-                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Person</th>
+                    <th
+                      style={{
+                        padding: '0.5rem 0.75rem',
+                        textAlign: 'left',
+                        borderBottom: '1px solid #e5e7eb',
+                        position: 'sticky',
+                        left: 0,
+                        zIndex: 3,
+                        background: '#f9fafb',
+                        boxShadow: '4px 0 8px -4px rgba(0, 0, 0, 0.08)',
+                        maxWidth: hoursGridFirstColW,
+                        minWidth: 0,
+                        whiteSpace: 'normal',
+                        wordBreak: 'break-word',
+                      }}
+                    >
+                      Person
+                    </th>
                     {hoursDays.map((d) => (
-                      <th key={d} style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>
+                      <th
+                        key={d}
+                        id={`people-hours-col-${d}`}
+                        style={{
+                          padding: '0.5rem 0.5rem',
+                          textAlign: 'right',
+                          borderBottom: '1px solid #e5e7eb',
+                          ...(hoursFlashWorkDate === d
+                            ? { backgroundColor: 'rgba(254, 243, 199, 0.9)', boxShadow: 'inset 0 0 0 2px rgba(245, 158, 11, 0.65)' }
+                            : {}),
+                        }}
+                      >
                         {new Date(d + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'numeric', day: 'numeric' })}
                       </th>
                     ))}
@@ -7486,14 +8025,19 @@ export default function People() {
                     return (
                       <tr
                         key={personName}
+                        data-hours-person={personName}
                         style={{
                           borderBottom: '1px solid #e5e7eb',
-                          ...(isUnassigned && {
-                            outline: '2px solid #dc2626',
-                            outlineOffset: -1,
-                            background: 'rgba(220, 38, 38, 0.05)',
-                          }),
                           ...(isClickable && { cursor: 'pointer' }),
+                          ...(jobHighlightPeople.has(personName)
+                            ? { backgroundColor: 'rgba(219, 234, 254, 0.45)' }
+                            : {}),
+                          ...(hoursFlashPersonName === personName
+                            ? {
+                                backgroundColor: 'rgba(254, 243, 199, 0.25)',
+                                boxShadow: 'inset 0 0 0 1px rgba(245, 158, 11, 0.45)',
+                              }
+                            : {}),
                         }}
                         onClick={isClickable ? () => setHoursUnassignedModal({ personName }) : undefined}
                         role={isClickable ? 'button' : undefined}
@@ -7505,38 +8049,106 @@ export default function People() {
                           }
                         } : undefined}
                       >
-                        <td style={{ padding: '0.5rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                          <span style={{ display: 'flex', flexDirection: 'row', gap: 0, marginRight: '0.25rem' }}>
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); moveHoursRow(personName, 'up') }}
-                              disabled={idx === 0}
-                              title="Move up"
-                              style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === 0 ? 'not-allowed' : 'pointer', color: idx === 0 ? '#d1d5db' : '#6b7280', lineHeight: 1 }}
-                            >
-                              ▲
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); moveHoursRow(personName, 'down') }}
-                              disabled={idx === showPeopleForHours.length - 1}
-                              title="Move down"
-                              style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === showPeopleForHours.length - 1 ? 'not-allowed' : 'pointer', color: idx === showPeopleForHours.length - 1 ? '#d1d5db' : '#6b7280', lineHeight: 1 }}
-                            >
-                              ▼
-                            </button>
-                          </span>
-                          {personName}
+                        <td
+                          style={{
+                            padding: '0.5rem 0.75rem',
+                            position: 'sticky',
+                            left: 0,
+                            zIndex: 2,
+                            background:
+                              hoursFlashPersonName === personName
+                                ? 'rgba(254, 243, 199, 0.35)'
+                                : jobHighlightPeople.has(personName)
+                                  ? 'rgba(219, 234, 254, 0.75)'
+                                  : 'white',
+                            boxShadow: '4px 0 8px -4px rgba(0, 0, 0, 0.08)',
+                            maxWidth: hoursGridFirstColW,
+                            minWidth: 0,
+                            whiteSpace: 'normal',
+                            wordBreak: 'break-word',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0 }}>
+                            <span style={{ display: 'flex', flexDirection: 'row', gap: 0, marginRight: '0.25rem', flexShrink: 0 }}>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); moveHoursRow(personName, 'up') }}
+                                disabled={idx === 0}
+                                title="Move up"
+                                style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === 0 ? 'not-allowed' : 'pointer', color: idx === 0 ? '#d1d5db' : '#6b7280', lineHeight: 1 }}
+                              >
+                                ▲
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); moveHoursRow(personName, 'down') }}
+                                disabled={idx === showPeopleForHours.length - 1}
+                                title="Move down"
+                                style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === showPeopleForHours.length - 1 ? 'not-allowed' : 'pointer', color: idx === showPeopleForHours.length - 1 ? '#d1d5db' : '#6b7280', lineHeight: 1 }}
+                              >
+                                ▼
+                              </button>
+                            </span>
+                            <span style={{ minWidth: 0 }}>{personName}</span>
+                          </div>
                         </td>
                         {hoursDays.map((d) => {
                           const dayLocked = hoursDaysCorrect.has(d)
                           const canEdit = canEditHours(personName)
+                          const missingJob = isCorrectDayMissingJob(personName, d)
+                          const missingJobTitle = 'Correct day with hours but no job assignment — assign in Crew Jobs / Bids'
                           return (
-                            <td key={d} style={{ padding: '0.35rem 0.5rem', textAlign: canEdit ? 'right' : 'center' }}>
+                            <td
+                              key={d}
+                              title={missingJob ? missingJobTitle : undefined}
+                              style={{
+                                padding: '0.35rem 0.5rem',
+                                textAlign: canEdit ? 'right' : 'center',
+                                ...(missingJob && {
+                                  background: 'rgba(254, 242, 242, 0.9)',
+                                  boxShadow: 'inset 0 0 0 1px rgba(252, 165, 165, 0.45)',
+                                  borderRadius: 8,
+                                }),
+                                ...(jobHighlightCells.has(`${personName}:${d}`) && !missingJob
+                                  ? {
+                                      backgroundColor: 'rgba(219, 234, 254, 0.35)',
+                                      boxShadow: 'inset 0 0 0 2px rgba(59, 130, 246, 0.25)',
+                                    }
+                                  : {}),
+                                ...(hoursFlashWorkDate === d
+                                  ? { backgroundColor: 'rgba(254, 243, 199, 0.9)', boxShadow: 'inset 0 0 0 2px rgba(245, 158, 11, 0.65)' }
+                                  : {}),
+                              }}
+                            >
                               {!canEdit ? (
                                 <span style={{ color: '#6b7280' }}>{decimalToHms(getDisplayHours(personName, d)) || '-'}</span>
                               ) : dayLocked ? (
-                                <span style={{ color: '#6b7280' }} title="Day marked Correct — locked">{decimalToHms(getDisplayHours(personName, d)) || '-'}</span>
+                                canEdit ? (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setHoursDayAuditModal({ personName, workDate: d })
+                                    }}
+                                    title="Day marked Correct — click to view clock sessions and job assignments"
+                                    style={{
+                                      color: '#6b7280',
+                                      cursor: 'pointer',
+                                      width: '100%',
+                                      textAlign: 'right',
+                                      padding: '0.15rem 0',
+                                      border: 'none',
+                                      background: 'none',
+                                      font: 'inherit',
+                                    }}
+                                  >
+                                    {decimalToHms(getDisplayHours(personName, d)) || '-'}
+                                  </button>
+                                ) : (
+                                  <span style={{ color: '#6b7280' }} title="Day marked Correct — locked">
+                                    {decimalToHms(getDisplayHours(personName, d)) || '-'}
+                                  </span>
+                                )
                               ) : (
                                 <input
                                   type="text"
@@ -7577,11 +8189,33 @@ export default function People() {
                     return (
                       <>
                         <tr>
-                          <td style={{ padding: '0.5rem 0.75rem', borderTop: '1px solid #e5e7eb', background: '#f9fafb' }}>Total (HH:MM:SS):</td>
+                          <td
+                            style={{
+                              padding: '0.5rem 0.75rem',
+                              borderTop: '1px solid #e5e7eb',
+                              position: 'sticky',
+                              left: 0,
+                              zIndex: 2,
+                              background: '#f9fafb',
+                              boxShadow: '4px 0 8px -4px rgba(0, 0, 0, 0.08)',
+                            }}
+                          >
+                            {HOURS_GRID_FIRST_COL_LABEL}
+                          </td>
                           {hoursDays.map((d) => {
                             const daySum = showPeopleForHours.reduce((s, p) => s + getDisplayHours(p, d), 0)
                             return (
-                              <td key={d} style={{ padding: '0.5rem 0.5rem', textAlign: 'center', borderTop: '1px solid #e5e7eb' }}>
+                              <td
+                                key={d}
+                                style={{
+                                  padding: '0.5rem 0.5rem',
+                                  textAlign: 'center',
+                                  borderTop: '1px solid #e5e7eb',
+                                  ...(hoursFlashWorkDate === d
+                                    ? { backgroundColor: 'rgba(254, 243, 199, 0.9)', boxShadow: 'inset 0 0 0 2px rgba(245, 158, 11, 0.65)' }
+                                    : {}),
+                                }}
+                              >
                                 {decimalToHms(daySum) || '-'}
                               </td>
                             )
@@ -7592,11 +8226,33 @@ export default function People() {
                           <td style={{ padding: '0.5rem 0.5rem', textAlign: 'center', borderTop: '1px solid #e5e7eb' }}>-</td>
                         </tr>
                         <tr>
-                          <td style={{ padding: '0.5rem 0.75rem', borderTop: '1px solid #e5e7eb', background: '#f9fafb' }}>Total (Decimal):</td>
+                          <td
+                            style={{
+                              padding: '0.5rem 0.75rem',
+                              borderTop: '1px solid #e5e7eb',
+                              position: 'sticky',
+                              left: 0,
+                              zIndex: 2,
+                              background: '#f9fafb',
+                              boxShadow: '4px 0 8px -4px rgba(0, 0, 0, 0.08)',
+                            }}
+                          >
+                            Total (Decimal):
+                          </td>
                           {hoursDays.map((d) => {
                             const daySum = showPeopleForHours.reduce((s, p) => s + getDisplayHours(p, d), 0)
                             return (
-                              <td key={d} style={{ padding: '0.5rem 0.5rem', textAlign: 'center', borderTop: '1px solid #e5e7eb' }}>
+                              <td
+                                key={d}
+                                style={{
+                                  padding: '0.5rem 0.5rem',
+                                  textAlign: 'center',
+                                  borderTop: '1px solid #e5e7eb',
+                                  ...(hoursFlashWorkDate === d
+                                    ? { backgroundColor: 'rgba(254, 243, 199, 0.9)', boxShadow: 'inset 0 0 0 2px rgba(245, 158, 11, 0.65)' }
+                                    : {}),
+                                }}
+                              >
                                 {daySum.toFixed(2)}
                               </td>
                             )
@@ -7607,11 +8263,36 @@ export default function People() {
                           </td>
                         </tr>
                         <tr>
-                          <td style={{ padding: '0.5rem 0.75rem', borderTop: '1px solid #e5e7eb', background: '#f9fafb', fontWeight: 500, fontSize: '0.8125rem' }} title="Mark day as verified to lock from edits">Correct:</td>
+                          <td
+                            style={{
+                              padding: '0.5rem 0.75rem',
+                              borderTop: '1px solid #e5e7eb',
+                              position: 'sticky',
+                              left: 0,
+                              zIndex: 2,
+                              background: '#f9fafb',
+                              fontWeight: 500,
+                              fontSize: '0.8125rem',
+                              boxShadow: '4px 0 8px -4px rgba(0, 0, 0, 0.08)',
+                            }}
+                            title="Mark day as verified to lock from edits"
+                          >
+                            Correct:
+                          </td>
                           {hoursDays.map((d) => {
                             const checked = hoursDaysCorrect.has(d)
                             return (
-                              <td key={d} style={{ padding: '0.35rem 0.5rem', textAlign: 'center', borderTop: '1px solid #e5e7eb' }}>
+                              <td
+                                key={d}
+                                style={{
+                                  padding: '0.35rem 0.5rem',
+                                  textAlign: 'center',
+                                  borderTop: '1px solid #e5e7eb',
+                                  ...(hoursFlashWorkDate === d
+                                    ? { backgroundColor: 'rgba(254, 243, 199, 0.9)', boxShadow: 'inset 0 0 0 2px rgba(245, 158, 11, 0.65)' }
+                                    : {}),
+                                }}
+                              >
                                 <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} title={checked ? 'Uncheck to allow edits' : 'Check to lock this day'}>
                                   <input
                                     type="checkbox"
@@ -7630,6 +8311,7 @@ export default function People() {
                 </tfoot>
               </table>
             </div>
+            </>
           )}
           </>
           )}
@@ -9813,264 +10495,38 @@ export default function People() {
         />
       )}
 
+      {hoursDayAuditModal && (
+        <PeopleHoursDayAuditModal
+          personName={hoursDayAuditModal.personName}
+          workDate={hoursDayAuditModal.workDate}
+          onClose={() => setHoursDayAuditModal(null)}
+          initialCrewRow={crewJobsByDatePerson[`${hoursDayAuditModal.workDate}:${hoursDayAuditModal.personName}`] ?? null}
+          canEditCrewJobs={canEditCrewJobs}
+          showPeople={showPeopleForHours}
+          crewJobsByDatePerson={crewJobsByDatePerson}
+          hoursDateStart={hoursDateStart}
+          hoursDateEnd={hoursDateEnd}
+          onCrewSaved={() => loadCrewJobsRef.current?.()}
+          showToast={showToast}
+        />
+      )}
+
       {editClockSession && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1100,
+        <ClockSessionEditSplitModal
+          session={{
+            id: editClockSession.id,
+            user_id: editClockSession.user_id,
+            clocked_in_at: editClockSession.clocked_in_at,
+            clocked_out_at: editClockSession.clocked_out_at,
+            work_date: editClockSession.work_date,
+            notes: editClockSession.notes,
+            job_ledger_id: editClockSession.job_ledger_id,
+            bid_id: editClockSession.bid_id,
           }}
-          onClick={() => !editClockSessionSaving && setEditClockSession(null)}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => { if (e.key === 'Escape') setEditClockSession(null) }}
-        >
-          <div
-            style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem' }}>{editClockSessionSplitMode ? 'Split clock session' : 'Edit clock session'}</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>Clocked in</label>
-                <input
-                  type="datetime-local"
-                  value={editClockSessionIn}
-                  onChange={(e) => setEditClockSessionIn(e.target.value)}
-                  disabled={editClockSessionSplitMode}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                />
-              </div>
-              {editClockSessionSplitMode && (
-                <div>
-                  <label style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>Split at</label>
-                  <input
-                    type="datetime-local"
-                    value={editClockSessionSplitAt}
-                    onChange={(e) => setEditClockSessionSplitAt(e.target.value)}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                  />
-                  {(() => {
-                    const inVal = fromDatetimeLocal(editClockSessionIn)
-                    const outVal = fromDatetimeLocal(editClockSessionOut)
-                    const splitVal = fromDatetimeLocal(editClockSessionSplitAt)
-                    if (!inVal || !outVal || !splitVal) return null
-                    const inMs = new Date(inVal).getTime()
-                    const outMs = new Date(outVal).getTime()
-                    const splitMs = new Date(splitVal).getTime()
-                    const hrs1 = (splitMs - inMs) / (1000 * 3600)
-                    const hrs2 = (outMs - splitMs) / (1000 * 3600)
-                    const valid = splitMs > inMs && splitMs < outMs && hrs1 >= 0.01 && hrs2 >= 0.01
-                    return (
-                      <p style={{ marginTop: 4, fontSize: '0.8125rem', color: valid ? '#6b7280' : '#dc2626' }}>
-                        Part 1: {hrs1.toFixed(2)}h | Part 2: {hrs2.toFixed(2)}h
-                        {!valid && splitVal && ' — Split time must be strictly between in and out, with at least 0.01h per part'}
-                      </p>
-                    )
-                  })()}
-                </div>
-              )}
-              <div>
-                <label style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>Clocked out</label>
-                <input
-                  type="datetime-local"
-                  value={editClockSessionOut}
-                  onChange={(e) => setEditClockSessionOut(e.target.value)}
-                  disabled={editClockSessionSplitMode}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>What are you working on?</label>
-                <textarea
-                  value={editClockSessionNotes}
-                  onChange={(e) => setEditClockSessionNotes(e.target.value)}
-                  rows={3}
-                  disabled={editClockSessionSaving}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                />
-              </div>
-              {!editClockSessionSplitMode && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditClockSessionSplitMode(true)
-                    const inVal = fromDatetimeLocal(editClockSessionIn)
-                    const outVal = fromDatetimeLocal(editClockSessionOut)
-                    if (inVal && outVal) {
-                      const inMs = new Date(inVal).getTime()
-                      const outMs = new Date(outVal).getTime()
-                      const midMs = (inMs + outMs) / 2
-                      setEditClockSessionSplitAt(toDatetimeLocal(new Date(midMs).toISOString()))
-                    }
-                  }}
-                  style={{ alignSelf: 'flex-start', padding: '0.25rem 0', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.875rem', color: '#3b82f6', textDecoration: 'underline' }}
-                >
-                  Split session
-                </button>
-              )}
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-              {editClockSessionSplitMode ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setEditClockSessionSplitMode(false)}
-                    disabled={editClockSessionSaving}
-                    style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: editClockSessionSaving ? 'not-allowed' : 'pointer' }}
-                  >
-                    Cancel split
-                  </button>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const inVal = fromDatetimeLocal(editClockSessionIn)
-                      const outVal = fromDatetimeLocal(editClockSessionOut)
-                      const splitVal = fromDatetimeLocal(editClockSessionSplitAt)
-                      if (!inVal || !outVal || !splitVal) {
-                        setError('Invalid date/time')
-                        return
-                      }
-                      const inMs = new Date(inVal).getTime()
-                      const outMs = new Date(outVal).getTime()
-                      const splitMs = new Date(splitVal).getTime()
-                      const hrs1 = (splitMs - inMs) / (1000 * 3600)
-                      const hrs2 = (outMs - splitMs) / (1000 * 3600)
-                      if (splitMs <= inMs || splitMs >= outMs) {
-                        setError('Split time must be strictly between clock in and clock out')
-                        return
-                      }
-                      if (hrs1 < 0.01 || hrs2 < 0.01) {
-                        setError('Each part must be at least 0.01 hours (~36 seconds)')
-                        return
-                      }
-                      if (!editClockSessionNotes.trim()) {
-                        setError('Notes are required')
-                        return
-                      }
-                      setEditClockSessionSaving(true)
-                      try {
-                        const workDateA = editClockSessionIn.slice(0, 10)
-                        const workDateB = editClockSessionSplitAt.slice(0, 10)
-                        await withSupabaseRetry(
-                          async () => {
-                            const { error: err1 } = await supabase.from('clock_sessions').insert({
-                              user_id: editClockSession.user_id,
-                              clocked_in_at: inVal,
-                              clocked_out_at: splitVal,
-                              work_date: workDateA,
-                              notes: editClockSessionNotes.trim(),
-                              job_ledger_id: null,
-                              bid_id: null,
-                            })
-                            if (err1) return { data: null, error: err1 }
-                            const { error: err2 } = await supabase.from('clock_sessions').insert({
-                              user_id: editClockSession.user_id,
-                              clocked_in_at: splitVal,
-                              clocked_out_at: outVal,
-                              work_date: workDateB,
-                              notes: editClockSessionNotes.trim(),
-                              job_ledger_id: null,
-                              bid_id: null,
-                            })
-                            if (err2) return { data: null, error: err2 }
-                            const { error: err3 } = await supabase.from('clock_sessions').delete().eq('id', editClockSession.id)
-                            return { data: null, error: err3 }
-                          },
-                          'split clock session'
-                        )
-                        setEditClockSession(null)
-                        setEditClockSessionSplitMode(false)
-                        setEditClockSessionSplitAt('')
-                        showToast?.('Session split into 2 parts', 'success')
-                        loadAllClockSessionsRef.current?.()
-                      } catch (e) {
-                        setError(e instanceof Error ? e.message : 'Failed to split session')
-                      } finally {
-                        setEditClockSessionSaving(false)
-                      }
-                    }}
-                    disabled={
-                      !editClockSessionNotes.trim() ||
-                      editClockSessionSaving ||
-                      (() => {
-                        const inVal = fromDatetimeLocal(editClockSessionIn)
-                        const outVal = fromDatetimeLocal(editClockSessionOut)
-                        const splitVal = fromDatetimeLocal(editClockSessionSplitAt)
-                        if (!inVal || !outVal || !splitVal) return true
-                        const inMs = new Date(inVal).getTime()
-                        const outMs = new Date(outVal).getTime()
-                        const splitMs = new Date(splitVal).getTime()
-                        const hrs1 = (splitMs - inMs) / (1000 * 3600)
-                        const hrs2 = (outMs - splitMs) / (1000 * 3600)
-                        return splitMs <= inMs || splitMs >= outMs || hrs1 < 0.01 || hrs2 < 0.01
-                      })()
-                    }
-                    style={{ padding: '0.5rem 1rem', border: '1px solid #3b82f6', borderRadius: 4, background: '#3b82f6', color: 'white', cursor: 'pointer' }}
-                  >
-                    {editClockSessionSaving ? 'Splitting…' : 'Split'}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setEditClockSession(null)}
-                    disabled={editClockSessionSaving}
-                    style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: editClockSessionSaving ? 'not-allowed' : 'pointer' }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const inVal = fromDatetimeLocal(editClockSessionIn)
-                      const outVal = fromDatetimeLocal(editClockSessionOut)
-                      if (!inVal || !outVal) {
-                        setError('Invalid date/time')
-                        return
-                      }
-                      if (new Date(outVal) <= new Date(inVal)) {
-                        setError('Clocked out must be after clocked in')
-                        return
-                      }
-                      if (!editClockSessionNotes.trim()) {
-                        setError('Notes are required')
-                        return
-                      }
-                      setEditClockSessionSaving(true)
-                      const workDate = editClockSessionIn.slice(0, 10)
-                      const { error } = await supabase
-                        .from('clock_sessions')
-                        .update({
-                          clocked_in_at: inVal,
-                          clocked_out_at: outVal,
-                          work_date: workDate,
-                          notes: editClockSessionNotes.trim(),
-                        })
-                        .eq('id', editClockSession.id)
-                      setEditClockSessionSaving(false)
-                      if (error) {
-                        setError(error.message)
-                        return
-                      }
-                      setEditClockSession(null)
-                      loadAllClockSessionsRef.current?.()
-                    }}
-                    disabled={!editClockSessionNotes.trim() || editClockSessionSaving}
-                    style={{ padding: '0.5rem 1rem', border: '1px solid #3b82f6', borderRadius: 4, background: '#3b82f6', color: 'white', cursor: editClockSessionNotes.trim() && !editClockSessionSaving ? 'pointer' : 'not-allowed' }}
-                  >
-                    {editClockSessionSaving ? 'Saving…' : 'Save'}
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
+          onClose={() => setEditClockSession(null)}
+          onSaved={() => loadAllClockSessionsRef.current?.()}
+          showToast={showToast}
+        />
       )}
 
 

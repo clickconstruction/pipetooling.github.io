@@ -15,6 +15,9 @@ const btnSm = {
 type Props = {
   sessions: ClockSessionRow[]
   title?: string
+  headerCountLabel?: string
+  headerCount?: number
+  emptyMessage?: string
   onDeleted: () => void
   onError?: (message: string) => void
   /** When both set, section open state is controlled (e.g. People deep link). */
@@ -29,6 +32,9 @@ type Props = {
 export function RejectedClockSessionsSection({
   sessions,
   title = 'Rejected Sessions',
+  headerCountLabel,
+  headerCount,
+  emptyMessage,
   onDeleted,
   onError,
   open,
@@ -42,6 +48,9 @@ export function RejectedClockSessionsSection({
     <ClockSessionsSection
       title={title}
       sessions={sessions}
+      headerCountLabel={headerCountLabel}
+      headerCount={headerCount}
+      emptyMessage={emptyMessage}
       collapsedByDefault={open === undefined && onToggle === undefined}
       open={open}
       onToggle={onToggle}
