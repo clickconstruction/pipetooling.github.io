@@ -11,10 +11,19 @@ import {
 } from '../../utils/unifiedJobBidSearch'
 import type { ClockSessionRow } from '../../types/clockSessions'
 
+export type AssignSessionJobPopoverSession = Pick<ClockSessionRow, 'id' | 'job_ledger_id' | 'bid_id'>
+
 type Props = {
-  session: ClockSessionRow
+  session: AssignSessionJobPopoverSession
   onSaved: () => void
   onError?: (msg: string) => void
+  /** Default 100; use higher value when opened inside another modal (e.g. 1250). */
+  popoverZIndex?: number
+  /**
+   * When unassigned: 'default' is the blue Assign button; 'combined' is one chip (No Job or Bid | Add).
+   * Ignored when session already has a job or bid.
+   */
+  unassignedTrigger?: 'default' | 'combined'
 }
 
 const assignButtonStyle = {
@@ -37,7 +46,13 @@ const changeButtonStyle = {
   cursor: 'pointer' as const,
 }
 
-export function AssignSessionJobPopover({ session, onSaved, onError }: Props) {
+export function AssignSessionJobPopover({
+  session,
+  onSaved,
+  onError,
+  popoverZIndex = 100,
+  unassignedTrigger = 'default',
+}: Props) {
   const [open, setOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
   const [searchResults, setSearchResults] = useState<UnifiedSearchResult[]>([])
@@ -156,17 +171,72 @@ export function AssignSessionJobPopover({ session, onSaved, onError }: Props) {
     }
   }
 
-  return (
-    <>
+  const triggerButton =
+    hasJobOrBid ? (
       <button
         ref={buttonRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
         disabled={loading}
-        style={{ ...(hasJobOrBid ? changeButtonStyle : assignButtonStyle), opacity: loading ? 0.7 : 1 }}
+        style={{ ...changeButtonStyle, opacity: loading ? 0.7 : 1 }}
       >
-        {hasJobOrBid ? 'Change' : 'Assign'}
+        Change
       </button>
+    ) : unassignedTrigger === 'combined' ? (
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        disabled={loading}
+        aria-label="No Job or Bid linked. Add job or bid."
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '2px 8px',
+          margin: 0,
+          fontSize: '0.68rem',
+          lineHeight: 1.2,
+          border: '1px solid #e5e7eb',
+          borderRadius: 4,
+          background: '#f9fafb',
+          color: '#374151',
+          cursor: loading ? 'not-allowed' : 'pointer',
+          opacity: loading ? 0.7 : 1,
+          maxWidth: '100%',
+        }}
+      >
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} aria-hidden>
+          No Job or Bid
+        </span>
+        <span
+          style={{
+            width: 1,
+            height: '0.9em',
+            flexShrink: 0,
+            background: '#e5e7eb',
+          }}
+          aria-hidden
+        />
+        <span style={{ color: '#2563eb', fontWeight: 600, flexShrink: 0 }} aria-hidden>
+          Add
+        </span>
+      </button>
+    ) : (
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        disabled={loading}
+        style={{ ...assignButtonStyle, opacity: loading ? 0.7 : 1 }}
+      >
+        Assign
+      </button>
+    )
+
+  return (
+    <>
+      {triggerButton}
       {open &&
         popoverRect &&
         createPortal(
@@ -178,7 +248,7 @@ export function AssignSessionJobPopover({ session, onSaved, onError }: Props) {
               position: 'fixed',
               left: popoverRect.left,
               top: popoverRect.top,
-              zIndex: 100,
+              zIndex: popoverZIndex,
               minWidth: 280,
               maxWidth: 360,
               padding: '0.75rem',

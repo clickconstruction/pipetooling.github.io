@@ -23,6 +23,7 @@ type ClockSessionRow = {
   notes: string | null
   job_ledger_id: string | null
   bid_id: string | null
+  approved_at: string | null
 }
 
 function clockSessionDurationSeconds(s: { clocked_in_at: string; clocked_out_at: string | null }, nowMs: number): number {
@@ -140,7 +141,7 @@ export function PeopleHoursDayAuditModal({
               async () =>
                 supabase
                   .from('clock_sessions')
-                  .select('id, user_id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, bid_id')
+                  .select('id, user_id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, bid_id, approved_at')
                   .eq('user_id', userId)
                   .eq('work_date', workDate)
                   .is('rejected_at', null)
@@ -385,6 +386,7 @@ export function PeopleHoursDayAuditModal({
             notes: clockEditSession.notes,
             job_ledger_id: clockEditSession.job_ledger_id,
             bid_id: clockEditSession.bid_id,
+            approved_at: clockEditSession.approved_at,
           }}
           onClose={() => setClockEditSession(null)}
           onSaved={() => {

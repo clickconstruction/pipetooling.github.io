@@ -65,8 +65,21 @@ type JobsTab = 'reports' | 'stages' | 'billing' | 'sub_sheet_ledger' | 'combined
 
 // Roster (for Labor / Sub Sheet Ledger)
 type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
-type PersonKind = 'assistant' | 'master_technician' | 'sub' | 'estimator'
-const KIND_TO_USER_ROLE: Record<PersonKind, string> = { assistant: 'assistant', master_technician: 'master_technician', sub: 'subcontractor', estimator: 'estimator' }
+type PersonKind =
+  | 'assistant'
+  | 'master_technician'
+  | 'sub'
+  | 'estimator'
+  | 'primary'
+  | 'superintendent'
+const KIND_TO_USER_ROLE: Record<PersonKind, string> = {
+  assistant: 'assistant',
+  master_technician: 'master_technician',
+  sub: 'subcontractor',
+  estimator: 'estimator',
+  primary: 'primary',
+  superintendent: 'superintendent',
+}
 
 // Labor / Sub Sheet Ledger types
 type ServiceType = { id: string; name: string; description: string | null; color: string | null; sequence_order: number; created_at: string; updated_at: string }
@@ -813,7 +826,7 @@ export default function Jobs() {
   async function loadUsers() {
     if (!authUser?.id) return
     const [usersRes, meRes] = await Promise.all([
-      supabase.from('users').select('id, name, email, role').in('role', ['assistant', 'master_technician', 'subcontractor', 'estimator', 'primary']).order('name'),
+      supabase.from('users').select('id, name, email, role').in('role', ['assistant', 'master_technician', 'subcontractor', 'estimator', 'primary', 'superintendent']).order('name'),
       supabase.from('users').select('role').eq('id', authUser.id).single(),
     ])
     let usersList = (usersRes.data as UserRow[]) ?? []
@@ -1232,9 +1245,8 @@ export default function Jobs() {
     const fromSubs = byKind('sub')
       .map((item) => item.name?.trim())
       .filter((n): n is string => !!n)
-    const fromPrimaries = users
-      .filter((u) => u.role === 'primary')
-      .map((u) => u.name?.trim())
+    const fromPrimaries = byKind('primary')
+      .map((item) => item.name?.trim())
       .filter((n): n is string => !!n)
     return [...new Set([...fromSubs, ...fromPrimaries])].sort((a, b) => a.localeCompare(b))
   }
@@ -1244,9 +1256,9 @@ export default function Jobs() {
       .filter((item) => item.source === 'user')
       .map((item) => item.name?.trim())
       .filter((n): n is string => !!n)
-    const fromPrimaries = users
-      .filter((u) => u.role === 'primary')
-      .map((u) => u.name?.trim())
+    const fromPrimaries = byKind('primary')
+      .filter((item) => item.source === 'user')
+      .map((item) => item.name?.trim())
       .filter((n): n is string => !!n)
     return [...new Set([...fromSubs, ...fromPrimaries])].sort((a, b) => a.localeCompare(b))
   }
@@ -1262,7 +1274,13 @@ export default function Jobs() {
   function rosterNamesEveryoneElse(): string[] {
     const result: string[] = []
     const seen = new Set<string>()
-    const kindsExceptSub: PersonKind[] = ['master_technician', 'assistant', 'estimator']
+    const kindsExceptSub: PersonKind[] = [
+      'master_technician',
+      'assistant',
+      'estimator',
+      'primary',
+      'superintendent',
+    ]
     for (const k of kindsExceptSub) {
       const names = byKind(k)
         .map((item) => item.name?.trim())

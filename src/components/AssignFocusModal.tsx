@@ -14,9 +14,11 @@ type Props = {
   label: string
   onSaved: () => void
   onClose: () => void
+  /** Default 1100; raise when stacking above another modal (e.g. 1300). */
+  overlayZIndex?: number
 }
 
-export function AssignFocusModal({ sessionIds, label, onSaved, onClose }: Props) {
+export function AssignFocusModal({ sessionIds, label, onSaved, onClose, overlayZIndex = 1100 }: Props) {
   const [searchText, setSearchText] = useState('')
   const [searchResults, setSearchResults] = useState<UnifiedSearchResult[]>([])
   const [loading, setLoading] = useState(false)
@@ -86,7 +88,7 @@ export function AssignFocusModal({ sessionIds, label, onSaved, onClose }: Props)
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 1100,
+        zIndex: overlayZIndex,
       }}
       onClick={onClose}
     >

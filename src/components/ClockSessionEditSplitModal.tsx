@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { splitOwnClockSessionSegments } from '../lib/splitOwnClockSessionSegments'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { fromDatetimeLocal, toDatetimeLocal } from '../utils/datetimeLocal'
 
@@ -12,6 +13,7 @@ export type ClockSessionEditSplitSession = {
   notes: string | null
   job_ledger_id: string | null
   bid_id: string | null
+  approved_at?: string | null
 }
 
 export type ClockSessionEditSplitModalEditProps = {
@@ -455,38 +457,65 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
                     }
                     setSaving(true)
                     try {
-                      const workDateA = clockIn.slice(0, 10)
-                      const workDateB = splitAt.slice(0, 10)
-                      await withSupabaseRetry(
-                        async () => {
-                          const { error: errU } = await supabase
-                            .from('clock_sessions')
-                            .update({
-                              clocked_in_at: inVal,
-                              clocked_out_at: splitVal,
-                              work_date: workDateA,
-                              notes: notes.trim(),
-                            })
-                            .eq('id', session.id)
-                          if (errU) return { data: null, error: errU }
-                          const { error: errI } = await supabase.from('clock_sessions').insert({
-                            user_id: session.user_id,
-                            clocked_in_at: splitVal,
-                            clocked_out_at: null,
-                            work_date: workDateB,
-                            notes: splitNotesSecond.trim(),
-                            job_ledger_id: session.job_ledger_id,
-                            bid_id: session.bid_id,
-                          })
-                          return { data: null, error: errI }
+                      if (session.approved_at) {
+                        const ok = window.confirm(
+                          'This session was already approved. Saving will remove those hours from payroll until it is approved again. Continue?'
+                        )
+                        if (!ok) {
+                          setSaving(false)
+                          return
+                        }
+                      }
+                      const { data: authData } = await supabase.auth.getSession()
+                      const authUid = authData.session?.user?.id
+                      const splitPayloads = [
+                        {
+                          clocked_in_at: inVal,
+                          clocked_out_at: splitVal,
+                          notes: notes.trim(),
                         },
-                        'split open clock session'
-                      )
+                        {
+                          clocked_in_at: splitVal,
+                          clocked_out_at: null as string | null,
+                          notes: splitNotesSecond.trim(),
+                        },
+                      ]
+                      if (authUid === session.user_id) {
+                        await splitOwnClockSessionSegments(session.id, splitPayloads)
+                      } else {
+                        const workDateA = clockIn.slice(0, 10)
+                        const workDateB = splitAt.slice(0, 10)
+                        await withSupabaseRetry(
+                          async () => {
+                            const { error: errU } = await supabase
+                              .from('clock_sessions')
+                              .update({
+                                clocked_in_at: inVal,
+                                clocked_out_at: splitVal,
+                                work_date: workDateA,
+                                notes: notes.trim(),
+                              })
+                              .eq('id', session.id)
+                            if (errU) return { data: null, error: errU }
+                            const { error: errI } = await supabase.from('clock_sessions').insert({
+                              user_id: session.user_id,
+                              clocked_in_at: splitVal,
+                              clocked_out_at: null,
+                              work_date: workDateB,
+                              notes: splitNotesSecond.trim(),
+                              job_ledger_id: session.job_ledger_id,
+                              bid_id: session.bid_id,
+                            })
+                            return { data: null, error: errI }
+                          },
+                          'split open clock session'
+                        )
+                      }
                       showToast?.('Session split into closed segment and open continuation', 'success')
                       onSaved?.()
                       onClose()
                     } catch (e) {
-                      setError(e instanceof Error ? e.message : 'Failed to split session')
+                      setError(formatErrorMessage(e, 'Failed to split session'))
                     } finally {
                       setSaving(false)
                     }
@@ -510,40 +539,67 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
                   }
                   setSaving(true)
                   try {
-                    const workDateA = clockIn.slice(0, 10)
-                    const workDateB = splitAt.slice(0, 10)
-                    await withSupabaseRetry(
-                      async () => {
-                        const { error: err1 } = await supabase.from('clock_sessions').insert({
-                          user_id: session.user_id,
-                          clocked_in_at: inVal,
-                          clocked_out_at: splitVal,
-                          work_date: workDateA,
-                          notes: notes.trim(),
-                          job_ledger_id: null,
-                          bid_id: null,
-                        })
-                        if (err1) return { data: null, error: err1 }
-                        const { error: err2 } = await supabase.from('clock_sessions').insert({
-                          user_id: session.user_id,
-                          clocked_in_at: splitVal,
-                          clocked_out_at: outVal,
-                          work_date: workDateB,
-                          notes: splitNotesSecond.trim(),
-                          job_ledger_id: null,
-                          bid_id: null,
-                        })
-                        if (err2) return { data: null, error: err2 }
-                        const { error: err3 } = await supabase.from('clock_sessions').delete().eq('id', session.id)
-                        return { data: null, error: err3 }
+                    if (session.approved_at) {
+                      const ok = window.confirm(
+                        'This session was already approved. Saving will remove those hours from payroll until the new segments are approved again. Continue?'
+                      )
+                      if (!ok) {
+                        setSaving(false)
+                        return
+                      }
+                    }
+                    const { data: authData } = await supabase.auth.getSession()
+                    const authUid = authData.session?.user?.id
+                    const splitPayloads = [
+                      {
+                        clocked_in_at: inVal,
+                        clocked_out_at: splitVal,
+                        notes: notes.trim(),
                       },
-                      'split clock session'
-                    )
+                      {
+                        clocked_in_at: splitVal,
+                        clocked_out_at: outVal,
+                        notes: splitNotesSecond.trim(),
+                      },
+                    ]
+                    if (authUid === session.user_id) {
+                      await splitOwnClockSessionSegments(session.id, splitPayloads)
+                    } else {
+                      const workDateA = clockIn.slice(0, 10)
+                      const workDateB = splitAt.slice(0, 10)
+                      await withSupabaseRetry(
+                        async () => {
+                          const { error: err1 } = await supabase.from('clock_sessions').insert({
+                            user_id: session.user_id,
+                            clocked_in_at: inVal,
+                            clocked_out_at: splitVal,
+                            work_date: workDateA,
+                            notes: notes.trim(),
+                            job_ledger_id: session.job_ledger_id,
+                            bid_id: session.bid_id,
+                          })
+                          if (err1) return { data: null, error: err1 }
+                          const { error: err2 } = await supabase.from('clock_sessions').insert({
+                            user_id: session.user_id,
+                            clocked_in_at: splitVal,
+                            clocked_out_at: outVal,
+                            work_date: workDateB,
+                            notes: splitNotesSecond.trim(),
+                            job_ledger_id: session.job_ledger_id,
+                            bid_id: session.bid_id,
+                          })
+                          if (err2) return { data: null, error: err2 }
+                          const { error: err3 } = await supabase.from('clock_sessions').delete().eq('id', session.id)
+                          return { data: null, error: err3 }
+                        },
+                        'split clock session'
+                      )
+                    }
                     showToast?.('Session split into 2 parts', 'success')
                     onSaved?.()
                     onClose()
                   } catch (e) {
-                    setError(e instanceof Error ? e.message : 'Failed to split session')
+                    setError(formatErrorMessage(e, 'Failed to split session'))
                   } finally {
                     setSaving(false)
                   }

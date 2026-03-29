@@ -1007,12 +1007,49 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
+button.hoursByDayCell.hoursByDayCell--interactive {
+  margin: 0;
+  padding: 0.15rem 0.25rem;
+  width: 100%;
+  max-width: 100%;
+  font: inherit;
+  font-size: inherit;
+  color: inherit;
+  text-align: inherit;
+  line-height: inherit;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+button.hoursByDayCell.hoursByDayCell--interactive:hover {
+  background: #f3f4f6;
+  border-color: #e5e7eb;
+}
+
+button.hoursByDayCell.hoursByDayCell--interactive:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.hoursByDayGoalsLine {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  line-height: 1.2;
+}
+
 @media (min-width: 641px) {
   .hoursByDayCell {
     display: flex;
     flex-direction: column;
     gap: 0.2rem;
     align-items: center;
+    text-align: center;
+  }
+
+  button.hoursByDayCell.hoursByDayCell--interactive {
     text-align: center;
   }
 }
@@ -1030,6 +1067,14 @@ button {
     column-gap: 0.25rem;
   }
 
+  button.hoursByDayCell.hoursByDayCell--interactive {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: flex-start;
+    text-align: left;
+  }
+
   /* My Time: last week total + day rows align with right-aligned "Last week detail" toggle */
   .myTimeLastWeekSummary {
     text-align: right;
@@ -1042,5 +1087,56 @@ button {
 
   .myTimeLastWeekSummary .hoursByDayCell {
     align-items: flex-end;
+  }
+}
+
+/* Dashboard My Time day editor — vertical timeline (scroll + touch-friendly strip) */
+.myTimeDayTimelineScroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+.myTimeDayGapStrip {
+  flex-shrink: 0;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* My Time day editor — Form layout: times left, jobs/notes right */
+.myTimeDayClusterFormGrid {
+  display: grid;
+  grid-template-columns: minmax(12rem, 0.45fr) minmax(0, 1fr);
+  column-gap: 12px;
+  row-gap: 8px;
+  align-items: start;
+}
+
+.myTimeDayClusterFormSegmentDivider {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 0;
+  height: 1px;
+  margin: 12px 0 8px;
+  border: 0;
+  padding: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    #e8eaee 14%,
+    #e8eaee 86%,
+    transparent 100%
+  );
+}
+
+@media (max-width: 560px) {
+  .myTimeDayClusterFormGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .myTimeDayVerticalStrip {
+    width: 52px !important;
+    min-width: 52px;
   }
 }

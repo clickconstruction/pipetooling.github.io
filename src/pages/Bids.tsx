@@ -20,6 +20,7 @@ import { PartFormModal } from '../components/PartFormModal'
 import { BidNotesTable, type BidSubmissionEntry } from '../components/bidNotes/BidNotesTable'
 import { CustomerNotesTable } from '../components/customerNotes/CustomerNotesTable'
 import { UnifiedBidCustomerNotes } from '../components/bidBoard/UnifiedBidCustomerNotes'
+import { SearchableSelect } from '../components/SearchableSelect'
 import { SupplyHouseWebsiteLink } from '../components/SupplyHouseWebsiteLink'
 import { Database } from '../types/database'
 import type { Json } from '../types/database'
@@ -1035,9 +1036,6 @@ export default function Bids() {
   const [bidSubmissionLink, setBidSubmissionLink] = useState('')
   const [projectName, setProjectName] = useState('')
   const [bidNumber, setBidNumber] = useState('')
-  const bidFormMissingFields: string[] = []
-  if (!projectName.trim()) bidFormMissingFields.push('Project Name')
-  const bidFormCanSubmit = bidFormMissingFields.length === 0
   const [address, setAddress] = useState('')
   const [gcContactName, setGcContactName] = useState('')
   const [gcContactPhone, setGcContactPhone] = useState('')
@@ -1066,6 +1064,13 @@ export default function Bids() {
   const [pendingAttestationForDate, setPendingAttestationForDate] = useState<string | null>(null)
   const [submittedTo, setSubmittedTo] = useState('')
   const [outcome, setOutcome] = useState<OutcomeOption>('')
+  const bidFormMissingFields = useMemo(() => {
+    const missing: string[] = []
+    if (!projectName.trim()) missing.push('Project Name')
+    if (!formServiceTypeId.trim()) missing.push('Service Type')
+    return missing
+  }, [projectName, formServiceTypeId])
+  const bidFormCanSubmit = bidFormMissingFields.length === 0
   const [lossReason, setLossReason] = useState('')
   const [bidValue, setBidValue] = useState('')
   const [agreedValue, setAgreedValue] = useState('')
@@ -13841,6 +13846,19 @@ export default function Bids() {
               }
               .bid-form-grid-2 { grid-template-columns: 1fr !important; }
               .bid-form-grid-3 { grid-template-columns: 1fr !important; }
+              .bid-form-address-distance-plan-row.bid-form-grid-3 {
+                grid-template-columns: 1fr 1fr !important;
+                grid-template-areas:
+                  "addr addr"
+                  "dist plan" !important;
+              }
+              .bid-form-top-fields {
+                grid-template-columns: 1fr 1fr !important;
+                grid-template-areas:
+                  "est am"
+                  "bidnum bd"
+                  "proj proj" !important;
+              }
               .bid-form-modal {
                 padding: 1rem !important;
                 width: 100% !important;
@@ -13851,7 +13869,7 @@ export default function Bids() {
               }
             }
           `}</style>
-          <div className="bid-form-modal" style={{ background: 'white', padding: '1rem 2rem 2rem', borderRadius: 8, maxWidth: '600px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+          <div className="bid-form-modal" style={{ background: 'white', padding: '1rem 2rem 2rem', borderRadius: 8, maxWidth: '720px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
               <h2 style={{ margin: 0 }}>{editingBid ? 'Edit Bid' : 'New Bid'}</h2>
               <button type="button" onClick={closeBidForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>
@@ -13859,8 +13877,48 @@ export default function Bids() {
               </button>
             </div>
             <form onSubmit={saveBid}>
-              <div style={{ marginBottom: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                <div style={{ flex: 1, minWidth: 120 }}>
+              <div
+                className="bid-form-top-fields"
+                style={{
+                  display: 'grid',
+                  gap: '1rem',
+                  marginBottom: '1rem',
+                  gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)',
+                  gridTemplateAreas: `
+                    "est am bd"
+                    "bidnum proj proj"
+                  `,
+                }}
+              >
+                <div style={{ gridArea: 'est' }}>
+                  <label htmlFor="bid-form-estimator" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Estimator</label>
+                  <SearchableSelect
+                    id="bid-form-estimator"
+                    value={estimatorId}
+                    onChange={setEstimatorId}
+                    options={estimatorUsers.map((u) => ({ value: u.id, label: u.name || u.email }))}
+                    emptyOption={{ value: '', label: '—' }}
+                    placeholder="—"
+                    listAriaLabel="Estimator"
+                  />
+                </div>
+                <div style={{ gridArea: 'am' }}>
+                  <label htmlFor="bid-form-account-man" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Account Man</label>
+                  <SearchableSelect
+                    id="bid-form-account-man"
+                    value={accountManagerId}
+                    onChange={setAccountManagerId}
+                    options={estimatorUsers.map((u) => ({ value: u.id, label: u.name || u.email }))}
+                    emptyOption={{ value: '', label: '—' }}
+                    placeholder="—"
+                    listAriaLabel="Account manager"
+                  />
+                </div>
+                <div style={{ gridArea: 'bd' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid Date</label>
+                  <input type="date" value={bidDueDate} onChange={(e) => setBidDueDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                </div>
+                <div style={{ gridArea: 'bidnum' }}>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid #</label>
                   <input
                     type="text"
@@ -13878,34 +13936,41 @@ export default function Bids() {
                     }}
                   />
                 </div>
-                <div style={{ flex: 2, minWidth: 200 }}>
+                <div style={{ gridArea: 'proj' }}>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Project Name *</label>
                   <input type="text" value={projectName} onChange={(e) => { setProjectName(e.target.value); setError(null) }} required style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
                 </div>
               </div>
-              <div style={{ marginBottom: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+              <div className="bid-form-service-outcome-sent-row" style={{ marginBottom: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Service Type *</label>
-                  <select
+                  <label htmlFor="bid-form-service-type" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Service Type *</label>
+                  <SearchableSelect
+                    id="bid-form-service-type"
                     value={formServiceTypeId}
-                    onChange={(e) => setFormServiceTypeId(e.target.value)}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    onChange={setFormServiceTypeId}
+                    options={visibleServiceTypes.map((st) => ({ value: st.id, label: st.name }))}
+                    emptyOption={{ value: '', label: 'Select service type…' }}
+                    placeholder="Select service type…"
                     required
-                  >
-                    <option value="">Select service type...</option>
-                    {visibleServiceTypes.map(st => (
-                      <option key={st.id} value={st.id}>{st.name}</option>
-                    ))}
-                  </select>
+                    listAriaLabel="Service type"
+                  />
                 </div>
-                <div style={{ flex: 1, minWidth: 140 }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Win/Loss</label>
-                  <select value={outcome} onChange={(e) => setOutcome(e.target.value as OutcomeOption)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}>
-                    <option value="">—</option>
-                    <option value="won">Won</option>
-                    <option value="lost">Lost</option>
-                    <option value="started_or_complete">Started or Complete</option>
-                  </select>
+                <div style={{ flex: '0 0 auto', minWidth: 0, maxWidth: '100%' }}>
+                  <label htmlFor="bid-form-win-loss" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Win/Loss</label>
+                  <SearchableSelect
+                    id="bid-form-win-loss"
+                    value={outcome}
+                    onChange={(v) => setOutcome(v as OutcomeOption)}
+                    options={[
+                      { value: 'won', label: 'Won' },
+                      { value: 'lost', label: 'Lost' },
+                      { value: 'started_or_complete', label: 'Started or Complete' },
+                    ]}
+                    emptyOption={{ value: '', label: '—' }}
+                    placeholder="—"
+                    searchable={false}
+                    listAriaLabel="Win or loss"
+                  />
                 </div>
                 <div style={{ flex: 1, minWidth: '10rem' }}>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid Date Sent</label>
@@ -13961,12 +14026,22 @@ export default function Bids() {
                   <input type="date" value={estimatedJobStartDate} onChange={(e) => setEstimatedJobStartDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
                 </div>
               )}
-              <div className="bid-form-grid-2 bid-form-grid-3" style={{ display: 'grid', gridTemplateColumns: '3fr minmax(7rem, 1fr) 1fr', gap: '1rem', marginBottom: '1rem', width: '100%' }}>
-                <div>
+              <div
+                className="bid-form-grid-2 bid-form-grid-3 bid-form-address-distance-plan-row"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '3fr minmax(7rem, 1fr) 1fr',
+                  gridTemplateAreas: '"addr dist plan"',
+                  gap: '1rem',
+                  marginBottom: '1rem',
+                  width: '100%',
+                }}
+              >
+                <div style={{ gridArea: 'addr' }}>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Project Address<br />[street, town, state zip]</label>
                   <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="e.g. 12925 FM 20, Kingsbury, Texas 78638" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
                 </div>
-                <div>
+                <div style={{ gridArea: 'dist' }}>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Distance to<br />Office (miles)</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <input type="number" min={0} step={0.1} value={distanceFromOffice} onChange={(e) => setDistanceFromOffice(e.target.value)} onWheel={(e) => e.currentTarget.blur()} style={{ width: '8ch', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
@@ -13995,7 +14070,7 @@ export default function Bids() {
                     )}
                   </div>
                 </div>
-                <div>
+                <div style={{ gridArea: 'plan' }}>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Plan<br />Pages</label>
                   <input
                     type="number"
@@ -14303,30 +14378,6 @@ export default function Bids() {
                     </div>
                   </div>
                 )}
-              </div>
-              <div className="bid-form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Estimator</label>
-                  <select value={estimatorId} onChange={(e) => setEstimatorId(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}>
-                    <option value="">—</option>
-                    {estimatorUsers.map((u) => (
-                      <option key={u.id} value={u.id}>{u.name || u.email}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Account Man</label>
-                  <select value={accountManagerId} onChange={(e) => setAccountManagerId(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}>
-                    <option value="">—</option>
-                    {estimatorUsers.map((u) => (
-                      <option key={u.id} value={u.id}>{u.name || u.email}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid Date</label>
-                <input type="date" value={bidDueDate} onChange={(e) => setBidDueDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
               </div>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Submitted to (name, phone, email):</label>

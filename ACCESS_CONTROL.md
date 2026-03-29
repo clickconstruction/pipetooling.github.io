@@ -152,7 +152,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 - See financial totals
 
 **People**:
-- Create people in roster
+- Create people in roster (including **Primary** and **Superintendent** `people` rows for pay/hours parity; adoption tables still control role access)
 - Adopt assistants (grants them access to customers/projects)
 - Share with other masters (grants assistant-level access)
 - View people they created and people shared with them (via master_shares)
@@ -555,6 +555,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 | Pay History tab (ledger, generators, print; view in bulk modal) | ✅ | ✅ If Pay Approved | ✅ If master Pay Approved | ❌ | ❌ | ❌ | ❌ |
 | Hours tab (timesheet) | ✅ | ✅ If Pay Approved | ✅ If master Pay Approved | ❌ | ❌ | ❌ | ❌ |
 | Vehicles tab (fleet CRUD, odometer, possessions) | ✅ | ✅ If Pay Approved | ✅ If master Pay Approved | ❌ | ❌ | ❌ | ❌ |
+| Housing tab (units CRUD, weekly rent/utilities/insurance, possessions) | ✅ | ✅ If Pay Approved | ✅ If master Pay Approved | ❌ | ❌ | ❌ | ❌ |
 | Offsets tab (backcharges, damages, apply to pay stub) | ✅ | ✅ If Pay Approved | ✅ If master Pay Approved | ❌ | ❌ | ❌ | ❌ |
 | Licenses tab (license type, note, date of expiry per person) | ✅ | ✅ If Pay Approved | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Contracts tab (templates, assignments, document status per person) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |

@@ -7,8 +7,21 @@ import type { Database } from '../../types/database'
 type JobsReceivableRow = Database['public']['Tables']['jobs_receivables']['Row']
 type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
 type UserRow = { id: string; name: string; email: string | null; role: string }
-type PersonKind = 'assistant' | 'master_technician' | 'sub' | 'estimator'
-const KIND_TO_USER_ROLE: Record<PersonKind, string> = { assistant: 'assistant', master_technician: 'master_technician', sub: 'subcontractor', estimator: 'estimator' }
+type PersonKind =
+  | 'assistant'
+  | 'master_technician'
+  | 'sub'
+  | 'estimator'
+  | 'primary'
+  | 'superintendent'
+const KIND_TO_USER_ROLE: Record<PersonKind, string> = {
+  assistant: 'assistant',
+  master_technician: 'master_technician',
+  sub: 'subcontractor',
+  estimator: 'estimator',
+  primary: 'primary',
+  superintendent: 'superintendent',
+}
 
 export function ReceivablesSection() {
   const { user: authUser } = useAuth()
@@ -29,7 +42,7 @@ export function ReceivablesSection() {
   async function loadUsers() {
     if (!authUser?.id) return
     const [usersRes, meRes] = await Promise.all([
-      supabase.from('users').select('id, name, email, role').in('role', ['assistant', 'master_technician', 'subcontractor', 'estimator', 'primary']).order('name'),
+      supabase.from('users').select('id, name, email, role').in('role', ['assistant', 'master_technician', 'subcontractor', 'estimator', 'primary', 'superintendent']).order('name'),
       supabase.from('users').select('role').eq('id', authUser.id).single(),
     ])
     let usersList = (usersRes.data as UserRow[]) ?? []
@@ -94,10 +107,11 @@ export function ReceivablesSection() {
   function accountRepOptions(): string[] {
     const masters = byKind('master_technician').map((item) => item.name?.trim()).filter((n): n is string => !!n)
     const subs = byKind('sub').map((item) => item.name?.trim()).filter((n): n is string => !!n)
-    const primaries = users.filter((u) => u.role === 'primary').map((u) => u.name?.trim()).filter((n): n is string => !!n)
+    const primaries = byKind('primary').map((item) => item.name?.trim()).filter((n): n is string => !!n)
+    const superintendents = byKind('superintendent').map((item) => item.name?.trim()).filter((n): n is string => !!n)
     const seen = new Set<string>()
     const result: string[] = []
-    for (const n of [...masters, ...subs, ...primaries].sort((a, b) => a.localeCompare(b))) {
+    for (const n of [...masters, ...subs, ...primaries, ...superintendents].sort((a, b) => a.localeCompare(b))) {
       if (!seen.has(n)) {
         seen.add(n)
         result.push(n)

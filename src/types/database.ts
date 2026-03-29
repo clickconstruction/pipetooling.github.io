@@ -354,6 +354,34 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "bids_bid_date_sent_ack_email_by_fkey"
+            columns: ["bid_date_sent_ack_email_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_bid_date_sent_ack_honesty_by_fkey"
+            columns: ["bid_date_sent_ack_honesty_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_bid_date_sent_ack_phone_by_fkey"
+            columns: ["bid_date_sent_ack_phone_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_bid_date_sent_attested_by_fkey"
+            columns: ["bid_date_sent_attested_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "bids_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
@@ -1753,6 +1781,78 @@ export type Database = {
         }
         Relationships: []
       }
+      housing_possessions: {
+        Row: {
+          created_at: string | null
+          end_date: string | null
+          housing_id: string
+          id: string
+          start_date: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          end_date?: string | null
+          housing_id: string
+          id?: string
+          start_date: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          end_date?: string | null
+          housing_id?: string
+          id?: string
+          start_date?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "housing_possessions_housing_id_fkey"
+            columns: ["housing_id"]
+            isOneToOne: false
+            referencedRelation: "housing_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "housing_possessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      housing_units: {
+        Row: {
+          address: string
+          created_at: string | null
+          id: string
+          insurance_per_week: number
+          rent_per_week: number
+          updated_at: string | null
+          utilities_per_week: number
+        }
+        Insert: {
+          address?: string
+          created_at?: string | null
+          id?: string
+          insurance_per_week?: number
+          rent_per_week?: number
+          updated_at?: string | null
+          utilities_per_week?: number
+        }
+        Update: {
+          address?: string
+          created_at?: string | null
+          id?: string
+          insurance_per_week?: number
+          rent_per_week?: number
+          updated_at?: string | null
+          utilities_per_week?: number
+        }
+        Relationships: []
+      }
       inspection_quick_links: {
         Row: {
           created_at: string | null
@@ -2950,6 +3050,54 @@ export type Database = {
           },
         ]
       }
+      pay_stub_additional_lines: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string
+          id: string
+          line_total: number | null
+          pay_stub_id: string
+          quantity: number
+          rate: number
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string
+          id?: string
+          line_total?: number | null
+          pay_stub_id: string
+          quantity: number
+          rate: number
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string
+          id?: string
+          line_total?: number | null
+          pay_stub_id?: string
+          quantity?: number
+          rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pay_stub_additional_lines_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pay_stub_additional_lines_pay_stub_id_fkey"
+            columns: ["pay_stub_id"]
+            isOneToOne: false
+            referencedRelation: "pay_stubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pay_stub_days: {
         Row: {
           created_at: string | null
@@ -2984,51 +3132,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "pay_stub_days_pay_stub_id_fkey"
-            columns: ["pay_stub_id"]
-            isOneToOne: false
-            referencedRelation: "pay_stubs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      pay_stub_payments: {
-        Row: {
-          amount: number
-          created_at: string | null
-          created_by: string | null
-          id: string
-          memo: string | null
-          paid_at: string
-          pay_stub_id: string
-        }
-        Insert: {
-          amount: number
-          created_at?: string | null
-          created_by?: string | null
-          id?: string
-          memo?: string | null
-          paid_at: string
-          pay_stub_id: string
-        }
-        Update: {
-          amount?: number
-          created_at?: string | null
-          created_by?: string | null
-          id?: string
-          memo?: string | null
-          paid_at?: string
-          pay_stub_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pay_stub_payments_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pay_stub_payments_pay_stub_id_fkey"
             columns: ["pay_stub_id"]
             isOneToOne: false
             referencedRelation: "pay_stubs"
@@ -3091,45 +3194,44 @@ export type Database = {
           },
         ]
       }
-      pay_stub_additional_lines: {
+      pay_stub_payments: {
         Row: {
+          amount: number
           created_at: string | null
           created_by: string | null
-          description: string
           id: string
-          line_total: number
+          memo: string | null
+          paid_at: string
           pay_stub_id: string
-          quantity: number
-          rate: number
         }
         Insert: {
+          amount: number
           created_at?: string | null
           created_by?: string | null
-          description?: string
           id?: string
+          memo?: string | null
+          paid_at: string
           pay_stub_id: string
-          quantity: number
-          rate: number
         }
         Update: {
+          amount?: number
           created_at?: string | null
           created_by?: string | null
-          description?: string
           id?: string
+          memo?: string | null
+          paid_at?: string
           pay_stub_id?: string
-          quantity?: number
-          rate?: number
         }
         Relationships: [
           {
-            foreignKeyName: "pay_stub_additional_lines_created_by_fkey"
+            foreignKeyName: "pay_stub_payments_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "pay_stub_additional_lines_pay_stub_id_fkey"
+            foreignKeyName: "pay_stub_payments_pay_stub_id_fkey"
             columns: ["pay_stub_id"]
             isOneToOne: false
             referencedRelation: "pay_stubs"
@@ -6348,14 +6450,6 @@ export type Database = {
         Args: { p_expires_at?: string; p_name?: string; p_project_id: string }
         Returns: Json
       }
-      dispatch_inbox_note_stats: {
-        Args: { p_request_ids: string[] }
-        Returns: {
-          request_id: string
-          note_count: number
-          last_note_at: string
-        }[]
-      }
       debug_cost_estimate_check: { Args: { p_bid_id: string }; Returns: Json }
       debug_cost_estimate_policies: {
         Args: never
@@ -6364,6 +6458,14 @@ export type Database = {
           policyname: string
           qual: string
           with_check: string
+        }[]
+      }
+      dispatch_inbox_note_stats: {
+        Args: { p_request_ids: string[] }
+        Returns: {
+          last_note_at: string
+          note_count: number
+          request_id: string
         }[]
       }
       duplicate_purchase_order: {
@@ -6764,6 +6866,27 @@ export type Database = {
           job_name: string
         }[]
       }
+      split_own_clock_session_segments: {
+        Args: { p_segments: Json; p_session_id: string }
+        Returns: {
+          error_message: string | null
+          inserted_ids: string[]
+        }[]
+      }
+      split_own_clock_session_cluster: {
+        Args: { p_segments: Json; p_session_ids: string[] }
+        Returns: {
+          error_message: string | null
+          inserted_ids: string[]
+        }[]
+      }
+      replace_own_clock_session_cluster_mixed: {
+        Args: { p_segments: Json; p_session_ids: string[] }
+        Returns: {
+          error_message: string | null
+          inserted_ids: string[]
+        }[]
+      }
       superintendent_can_access_bid: {
         Args: { b: Database["public"]["Tables"]["bids"]["Row"] }
         Returns: boolean
@@ -6833,6 +6956,10 @@ export type Database = {
         Returns: boolean
       }
       user_has_prospects_staff_access: { Args: never; Returns: boolean }
+      validate_pay_stub_payments_vs_net: {
+        Args: { p_stub: string }
+        Returns: undefined
+      }
     }
     Enums: {
       project_status: "active" | "completed" | "on_hold" | "awaiting_start"

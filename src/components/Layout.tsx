@@ -455,14 +455,21 @@ export default function Layout() {
             <button
               type="button"
               onClick={() => navigate('/bids?new=true')}
+              title="New Bid"
+              aria-label="New Bid"
               style={{
                 padding: '0.5rem 1rem',
+                minHeight: 'calc(1rem + 1.25em)',
+                boxSizing: 'border-box',
                 background: '#3b82f6',
                 color: 'white',
                 border: 'none',
                 borderRadius: 4,
                 cursor: 'pointer',
                 fontWeight: 500,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
             >
               Bid

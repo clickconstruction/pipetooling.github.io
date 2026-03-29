@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { getDefaultWeekRange, getLastWeekRange } from '../utils/dateUtils'
+import { DashboardMyTimeDayEditorModal } from './DashboardMyTimeDayEditorModal'
 
 function toLocalDateString(d: Date): string {
   const y = d.getFullYear()
@@ -130,13 +131,21 @@ function renderBreakdownList(
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
-function renderHoursByDay(weekStart: string, secondsByDay: Map<string, number>) {
+type HoursByDayOptions = {
+  sessionCountByDay?: Map<string, number>
+  onDayClick?: (dateStr: string) => void
+  editableRange?: { start: string; end: string }
+}
+
+function renderHoursByDay(weekStart: string, secondsByDay: Map<string, number>, options?: HoursByDayOptions) {
   const dates: string[] = []
   const d = new Date(weekStart + 'T00:00:00')
   for (let i = 0; i < 7; i++) {
     dates.push(d.toLocaleDateString('en-CA'))
     d.setDate(d.getDate() + 1)
   }
+  const { sessionCountByDay, onDayClick, editableRange } = options ?? {}
+
   return (
     <div className="hoursByDayGrid">
       {dates.map((dateStr, i) => {
@@ -144,8 +153,16 @@ function renderHoursByDay(weekStart: string, secondsByDay: Map<string, number>) 
         const d2 = new Date(dateStr + 'T00:00:00')
         const label = `${DAY_NAMES[i]} ${d2.getMonth() + 1}/${d2.getDate()}`
         const parts = sec > 0 ? formatHoursBoldParts(sec) : null
-        return (
-          <span key={dateStr} className="hoursByDayCell">
+        const count = sessionCountByDay?.get(dateStr) ?? 0
+        const inRange =
+          editableRange != null && dateStr >= editableRange.start && dateStr <= editableRange.end
+        const isInteractive =
+          Boolean(onDayClick && sessionCountByDay && inRange && sec > 0 && count > 0)
+
+        const hoursLabel = parts ? `${parts.value}${parts.suffix}` : '—'
+
+        const inner = (
+          <>
             <span className="hoursByDayDateLine">{label}:</span>
             <span className="hoursByDayHoursLine">
               {parts ? (
@@ -157,6 +174,29 @@ function renderHoursByDay(weekStart: string, secondsByDay: Map<string, number>) 
                 '—'
               )}
             </span>
+            {isInteractive ? (
+              <span className="hoursByDayGoalsLine">{count === 1 ? '1 Goal' : `${count} Goals`}</span>
+            ) : null}
+          </>
+        )
+
+        if (isInteractive && onDayClick) {
+          return (
+            <button
+              key={dateStr}
+              type="button"
+              className="hoursByDayCell hoursByDayCell--interactive"
+              aria-label={`Edit time for ${label.replace(':', '')}, ${hoursLabel}, ${count} sessions`}
+              onClick={() => onDayClick(dateStr)}
+            >
+              {inner}
+            </button>
+          )
+        }
+
+        return (
+          <span key={dateStr} className="hoursByDayCell">
+            {inner}
           </span>
         )
       })}
@@ -172,6 +212,7 @@ type SessionRow = {
   notes: string
   job_ledger_id: string | null
   bid_id: string | null
+  approved_at: string | null
 }
 
 type SubItem = { notes: string; seconds: number }
@@ -203,6 +244,40 @@ export default function DashboardMyTimeSection({ userId }: Props) {
   const [expandedKeysLastWeek, setExpandedKeysLastWeek] = useState<Set<string>>(new Set())
   const [secondsByDayThisWeek, setSecondsByDayThisWeek] = useState<Map<string, number>>(new Map())
   const [secondsByDayLastWeek, setSecondsByDayLastWeek] = useState<Map<string, number>>(new Map())
+  const [rawSessionsThisWeek, setRawSessionsThisWeek] = useState<SessionRow[]>([])
+  const [rawSessionsLastWeek, setRawSessionsLastWeek] = useState<SessionRow[]>([])
+  const [editorDate, setEditorDate] = useState<string | null>(null)
+  const [myTimeJobLabels, setMyTimeJobLabels] = useState<Record<string, string>>({})
+  const [myTimeBidLabels, setMyTimeBidLabels] = useState<Record<string, string>>({})
+
+  const sessionCountByDay = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const s of rawSessionsThisWeek) {
+      m.set(s.work_date, (m.get(s.work_date) ?? 0) + 1)
+    }
+    return m
+  }, [rawSessionsThisWeek])
+
+  const sessionCountByDayLastWeek = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const s of rawSessionsLastWeek) {
+      m.set(s.work_date, (m.get(s.work_date) ?? 0) + 1)
+    }
+    return m
+  }, [rawSessionsLastWeek])
+
+  const myTimeModalSessions = useMemo(() => {
+    if (!editorDate) return []
+    const { start, end } = getDefaultWeekRange()
+    if (editorDate >= start && editorDate <= end) {
+      return rawSessionsThisWeek.filter((s) => s.work_date === editorDate)
+    }
+    const { start: ls, end: le } = getLastWeekRange()
+    if (editorDate >= ls && editorDate <= le) {
+      return rawSessionsLastWeek.filter((s) => s.work_date === editorDate)
+    }
+    return []
+  }, [editorDate, rawSessionsThisWeek, rawSessionsLastWeek])
 
   const loadData = useCallback(async () => {
     if (!userId) return
@@ -215,7 +290,7 @@ export default function DashboardMyTimeSection({ userId }: Props) {
     const [{ data, error }, { data: lastWeekData }] = await Promise.all([
       supabase
         .from('clock_sessions')
-        .select('id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, bid_id')
+        .select('id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, bid_id, approved_at')
         .eq('user_id', userId)
         .is('rejected_at', null)
         .is('revoked_at', null)
@@ -223,7 +298,7 @@ export default function DashboardMyTimeSection({ userId }: Props) {
         .lte('work_date', end),
       supabase
         .from('clock_sessions')
-        .select('id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, bid_id')
+        .select('id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, bid_id, approved_at')
         .eq('user_id', userId)
         .is('rejected_at', null)
         .is('revoked_at', null)
@@ -237,7 +312,9 @@ export default function DashboardMyTimeSection({ userId }: Props) {
     }
 
     const sessions = (data ?? []) as SessionRow[]
+    setRawSessionsThisWeek(sessions)
     const lastWeekSessions = (lastWeekData ?? []) as SessionRow[]
+    setRawSessionsLastWeek(lastWeekSessions)
 
     function sessionSeconds(s: SessionRow): number {
       const inMs = new Date(s.clocked_in_at).getTime()
@@ -353,6 +430,17 @@ export default function DashboardMyTimeSection({ userId }: Props) {
     for (const b of (bidsRes.data ?? []) as { id: string; bid_number: string; project_name: string; address: string }[]) {
       bidsMap.set(b.id, { bid_number: b.bid_number, project_name: b.project_name, address: b.address })
     }
+
+    const jobLabelRec: Record<string, string> = {}
+    for (const [jid, j] of jobsMap) {
+      jobLabelRec[jid] = `J${(j.hcp_number || '').trim() || '—'} · ${j.job_name || '—'} - ${j.job_address || '—'}`
+    }
+    const bidLabelRec: Record<string, string> = {}
+    for (const [bid, b] of bidsMap) {
+      bidLabelRec[bid] = `B${(b.bid_number || '').trim() || '—'} · ${b.project_name || '—'} - ${b.address || '—'}`
+    }
+    setMyTimeJobLabels(jobLabelRec)
+    setMyTimeBidLabels(bidLabelRec)
 
     const parentItems: BreakdownItem[] = []
     for (const [key, group] of parentGroups) {
@@ -528,7 +616,11 @@ export default function DashboardMyTimeSection({ userId }: Props) {
           </button>
           {breakdownOpen && (
             <>
-              {renderHoursByDay(getDefaultWeekRange().start, secondsByDayThisWeek)}
+              {renderHoursByDay(getDefaultWeekRange().start, secondsByDayThisWeek, {
+                sessionCountByDay,
+                onDayClick: setEditorDate,
+                editableRange: getDefaultWeekRange(),
+              })}
               {renderBreakdownList(breakdown, expandedKeys, (key) => {
                 setExpandedKeys((prev) => {
                   const next = new Set(prev)
@@ -570,7 +662,9 @@ export default function DashboardMyTimeSection({ userId }: Props) {
               <div style={{ marginTop: '0.5rem', fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>
                 Last week: {formatElapsed(totalSecondsLastWeek)}
               </div>
-              {renderHoursByDay(getLastWeekRange().start, secondsByDayLastWeek)}
+              {renderHoursByDay(getLastWeekRange().start, secondsByDayLastWeek, {
+                sessionCountByDay: sessionCountByDayLastWeek,
+              })}
             </div>
             {breakdownLastWeek.length > 0 &&
               renderBreakdownList(breakdownLastWeek, expandedKeysLastWeek, (key) => {
@@ -586,6 +680,17 @@ export default function DashboardMyTimeSection({ userId }: Props) {
       </div>
       {!loading && breakdown.length === 0 && totalSecondsWeek === 0 && (
         <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No time logged this week.</p>
+      )}
+      {editorDate && (
+        <DashboardMyTimeDayEditorModal
+          dateStr={editorDate}
+          sessions={myTimeModalSessions}
+          editableRange={getDefaultWeekRange()}
+          jobLabels={myTimeJobLabels}
+          bidLabels={myTimeBidLabels}
+          onClose={() => setEditorDate(null)}
+          onSaved={() => void loadData()}
+        />
       )}
     </div>
   )

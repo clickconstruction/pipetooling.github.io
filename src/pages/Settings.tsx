@@ -7509,7 +7509,19 @@ export default function Settings() {
                         )}
                       </td>
                       <td style={{ padding: '0.5rem 0.75rem' }}>
-                        {p.kind === 'assistant' ? 'Assistant' : p.kind === 'master_technician' ? 'Master Technician' : 'Subcontractor'}
+                        {p.kind === 'assistant'
+                          ? 'Assistant'
+                          : p.kind === 'master_technician'
+                            ? 'Master Technician'
+                            : p.kind === 'estimator'
+                              ? 'Estimator'
+                              : p.kind === 'primary'
+                                ? 'Primary'
+                                : p.kind === 'superintendent'
+                                  ? 'Superintendent'
+                                  : p.kind === 'dev'
+                                    ? 'Dev'
+                                    : 'Subcontractor'}
                       </td>
                       <td style={{ padding: '0.5rem 0.75rem' }}>
                         {p.is_user ? (
@@ -7571,7 +7583,19 @@ export default function Settings() {
                         )}
                       </td>
                       <td style={{ padding: '0.5rem 0.75rem' }}>
-                        {p.kind === 'assistant' ? 'Assistant' : p.kind === 'master_technician' ? 'Master Technician' : 'Subcontractor'}
+                        {p.kind === 'assistant'
+                          ? 'Assistant'
+                          : p.kind === 'master_technician'
+                            ? 'Master Technician'
+                            : p.kind === 'estimator'
+                              ? 'Estimator'
+                              : p.kind === 'primary'
+                                ? 'Primary'
+                                : p.kind === 'superintendent'
+                                  ? 'Superintendent'
+                                  : p.kind === 'dev'
+                                    ? 'Dev'
+                                    : 'Subcontractor'}
                       </td>
                       <td style={{ padding: '0.5rem 0.75rem' }}>
                         {p.is_user ? (

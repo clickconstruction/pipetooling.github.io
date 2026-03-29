@@ -7,16 +7,25 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-03-29
+last_updated: 2026-03-28
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.80 → v2.4"
+version_range: "v2.179 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.179)"
+    line: ~491
+    description: "Dashboard My Time / Edit time: this-week-only save (Denver `getDefaultWeekRange()`); Form vs Visual defaults; form grid, splits, Ends at, datetime inputs; Assign popover chip"
+  - name: "Latest Version (v2.178)"
+    line: ~504
+    description: "People: primary/superintendent on `people` roster (`20260329042321`); Pay/Hours via `allRosterNames`; Jobs/Quickfill roster"
+  - name: "Latest Version (v2.177)"
+    line: ~517
+    description: "People: Housing tab (units + possessions); pay stub HTML Housing after vehicles (`housing_units`, `housing_possessions`)"
   - name: "Latest Version (v2.176)"
-    line: ~469
+    line: ~512
     description: "People Pay History: Ledger header — open stub count + total remaining balance (search-filtered)"
   - name: "Latest Version (v2.175)"
     line: ~469
@@ -364,24 +373,27 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.176)](#latest-updates-v2176) - People Pay History: Ledger **open count** + **total remaining** (filtered rows)
-2. [Latest Updates (v2.175)](#latest-updates-v2175) - People Pay History: **Draft Payroll** (renamed from Run Payroll); bulk modal copy only
-3. [Latest Updates (v2.172)](#latest-updates-v2172) - Pay History: partial payments (`pay_stub_payments`), ledger balance, Run Payroll Partial
-4. [Latest Updates (v2.171)](#latest-updates-v2171) - People Hours: audit modal edit, job highlight on grid, shared clock edit modal
-5. [Latest Updates (v2.170)](#latest-updates-v2170) - People Pay History: ledger search, actions UX, bulk modal layout
-6. [Latest Updates (v2.164)](#latest-updates-v2164) - Settings (dev): Ignored task types list under Dashboard & alerts
-7. [Latest Updates (v2.163)](#latest-updates-v2163) - Dashboard clock strip; supply house website in expanded row
-8. [Latest Updates (v2.162)](#latest-updates-v2162) - Team feedback: dev eligibility reset, submissions RLS, raw submission names
-9. [Latest Updates (v2.153)](#latest-updates-v2153) - Dashboard My Team layout; pending banner jump UX
-10. [Latest Updates (v2.152)](#latest-updates-v2152) - My Team: People you lead hours table (Pending/Approved/Total)
-11. [Latest Updates (v2.151)](#latest-updates-v2151) - My Team clock notify + ledger; Edge Function
-12. [Latest Updates (v2.150)](#latest-updates-v2150) - Dashboard My Team: People you lead roster
-13. [Latest Updates (v2.149)](#latest-updates-v2149) - Clock sessions UX; daily goals gate; goals tables
-14. [Latest Updates (v2.148)](#latest-updates-v2148) - Bid Board All notes; customer notes UX; contact_method
-15. [Latest Updates (v2.145)](#latest-updates-v2145) - Master tech mobile nav Quickfill and Review in hamburger
-16. [Latest Updates (v2.144)](#latest-updates-v2144) - Assistant billing sections at top of Dashboard
-17. [Latest Updates (v2.143)](#latest-updates-v2143) - Assistant Dashboard section reorder
-18. [Latest Updates (v2.142)](#latest-updates-v2142) - Dashboard Assigned Jobs and Superintendent Jobs UX
+1. [Latest Updates (v2.179)](#latest-updates-v2179) - Dashboard **My Time** / **Edit time** (this-week-only editor, Form/Visual defaults, timeline UX)
+2. [Latest Updates (v2.178)](#latest-updates-v2178) - People **Primary** / **Superintendent** on `people` roster + Pay/Hours (`20260329042321`)
+3. [Latest Updates (v2.177)](#latest-updates-v2177) - People **Housing** tab + pay report **Housing** block (`20270329180000`)
+4. [Latest Updates (v2.176)](#latest-updates-v2176) - People Pay History: Ledger **open count** + **total remaining** (filtered rows)
+5. [Latest Updates (v2.175)](#latest-updates-v2175) - People Pay History: **Draft Payroll** (renamed from Run Payroll); bulk modal copy only
+6. [Latest Updates (v2.172)](#latest-updates-v2172) - Pay History: partial payments (`pay_stub_payments`), ledger balance, Run Payroll Partial
+7. [Latest Updates (v2.171)](#latest-updates-v2171) - People Hours: audit modal edit, job highlight on grid, shared clock edit modal
+8. [Latest Updates (v2.170)](#latest-updates-v2170) - People Pay History: ledger search, actions UX, bulk modal layout
+9. [Latest Updates (v2.164)](#latest-updates-v2164) - Settings (dev): Ignored task types list under Dashboard & alerts
+10. [Latest Updates (v2.163)](#latest-updates-v2163) - Dashboard clock strip; supply house website in expanded row
+11. [Latest Updates (v2.162)](#latest-updates-v2162) - Team feedback: dev eligibility reset, submissions RLS, raw submission names
+12. [Latest Updates (v2.153)](#latest-updates-v2153) - Dashboard My Team layout; pending banner jump UX
+13. [Latest Updates (v2.152)](#latest-updates-v2152) - My Team: People you lead hours table (Pending/Approved/Total)
+14. [Latest Updates (v2.151)](#latest-updates-v2151) - My Team clock notify + ledger; Edge Function
+15. [Latest Updates (v2.150)](#latest-updates-v2150) - Dashboard My Team: People you lead roster
+16. [Latest Updates (v2.149)](#latest-updates-v2149) - Clock sessions UX; daily goals gate; goals tables
+17. [Latest Updates (v2.148)](#latest-updates-v2148) - Bid Board All notes; customer notes UX; contact_method
+18. [Latest Updates (v2.145)](#latest-updates-v2145) - Master tech mobile nav Quickfill and Review in hamburger
+19. [Latest Updates (v2.144)](#latest-updates-v2144) - Assistant billing sections at top of Dashboard
+20. [Latest Updates (v2.143)](#latest-updates-v2143) - Assistant Dashboard section reorder
+21. [Latest Updates (v2.142)](#latest-updates-v2142) - Dashboard Assigned Jobs and Superintendent Jobs UX
 2. [Latest Updates (v2.139)](#latest-updates-v2139) - Fix cost_estimates RLS for assistants
 3. [Latest Updates (v2.138)](#latest-updates-v2138) - Revoke superintendent Jobs Billing access
 2. [Latest Updates (v2.135)](#latest-updates-v2135) - Workflow: Collapse old stages toggle, breadcrumb below buttons, no-wrap scroll
@@ -477,6 +489,44 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.179)
+
+**Date**: 2026-03-28
+
+### Dashboard — My Time / Edit time
+
+- **Edit scope**: The day editor’s `editableRange` matches the Dashboard **this week** (Denver Sunday–Saturday from [`getDefaultWeekRange()`](src/utils/dateUtils.ts), passed from [`DashboardMyTimeSection.tsx`](src/components/DashboardMyTimeSection.tsx)). **Only this week** can open **Edit time** and save; **last week** shows a read-only hours grid (copy: “Only this week can be edited…” in [`DashboardMyTimeDayEditorModal.tsx`](src/components/DashboardMyTimeDayEditorModal.tsx)). For sessions outside that window, use **People → Hours** (and related audit/edit flows).
+- **Visual vs Form**: On mount, **Form** when `matchMedia('(max-width: 560px)')`, otherwise **Visual** — aligned with [`.myTimeDayClusterFormGrid`](src/index.css). Toggle remains available. Modal width uses `min(920px, 96vw)`.
+- **Form layout**: Two-column grid — **times** (**Span**, **Split**, **Ends at**) on the **left**; **duration**, job/bid, and **notes** on the **right**; **block header** (weekday / date / range) at the **top-left** of the grid; soft segment divider ([`.myTimeDayClusterFormSegmentDivider`](src/index.css)). **Duration** styling matches **Span**.
+- **Boundaries & splits**: Inner boundaries adjust via **Ends at** on the **earlier** segment only; **Split** is per segment ([`addSplitMidInSegment`](src/lib/myTimeDayTimeline.ts)). Cluster-level “Add split at” time picker removed; reducer keeps ends deduped.
+- **Time inputs**: Same calendar-day segments use `type="time"`; cross-day clusters use `datetime-local` — [`myTimeDayEditorDatetime.ts`](src/components/my-time-day-editor/myTimeDayEditorDatetime.ts), [`MyTimeDayClusterForm.tsx`](src/components/my-time-day-editor/MyTimeDayClusterForm.tsx).
+- **Assign UI**: Combined unassigned chip label **No Job or Bid | Add** in [`AssignSessionJobPopover.tsx`](src/components/clock-sessions/AssignSessionJobPopover.tsx).
+
+---
+
+## Latest Updates (v2.178)
+
+**Date**: 2026-03-29
+
+### People — Primary and Superintendent on roster
+
+- `people.kind` allows **`primary`** and **`superintendent`**; idempotent backfill from **`master_primaries`** / **`master_superintendents`**. Migration [`20260329042321_add_primary_superintendent_to_people_kind.sql`](supabase/migrations/20260329042321_add_primary_superintendent_to_people_kind.sql).
+- **Users** tab: Primaries and Superintendents use the same **`byKind`** sections as other roster kinds (Add, merge with accounts, invite); **Active projects** line hidden for those two kinds.
+- **`allRosterNames`** includes them (removed user-only primary shortcut). **Jobs** / **Quickfill Receivables** roster helpers extended; Settings dev people tables show kind labels.
+
+---
+
+## Latest Updates (v2.177)
+
+**Date**: 2026-03-29
+
+### People — Housing tab and pay reports
+
+- **Housing** tab after **Vehicles** (same pay gate: dev, pay-approved master, assistant-of): CRUD on `housing_units` (address; rent, utilities, insurance per week) and `housing_possessions` (user, start/end dates). [`src/pages/People.tsx`](src/pages/People.tsx); migration [`20270329180000_housing_units_and_possessions.sql`](supabase/migrations/20270329180000_housing_units_and_possessions.sql).
+- Pay stub HTML: **Housing** section after **Vehicles** when the person has an overlapping possession in the stub period (`getHousingForPersonInPeriod`, `buildPayStubHtml`).
 
 ---
 

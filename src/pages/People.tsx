@@ -78,12 +78,39 @@ import type { ClockSessionRow } from '../types/clockSessions'
 
 type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
 type UserRow = { id: string; email: string | null; name: string; role: string; notes: string | null; phone: string | null }
-type PersonKind = 'assistant' | 'master_technician' | 'sub' | 'estimator'
+type PersonKind =
+  | 'assistant'
+  | 'master_technician'
+  | 'sub'
+  | 'estimator'
+  | 'primary'
+  | 'superintendent'
 
-const KINDS: PersonKind[] = ['assistant', 'master_technician', 'sub', 'estimator']
-const KIND_LABELS: Record<PersonKind, string> = { assistant: 'Assistants', master_technician: 'Master Technicians', sub: 'Subcontractors', estimator: 'Estimators' }
+const KINDS: PersonKind[] = [
+  'master_technician',
+  'assistant',
+  'primary',
+  'estimator',
+  'superintendent',
+  'sub',
+]
+const KIND_LABELS: Record<PersonKind, string> = {
+  assistant: 'Assistants',
+  master_technician: 'Master Technicians',
+  sub: 'Subcontractors',
+  estimator: 'Estimators',
+  primary: 'Primaries',
+  superintendent: 'Superintendents',
+}
 
-const KIND_TO_USER_ROLE: Record<PersonKind, string> = { assistant: 'assistant', master_technician: 'master_technician', sub: 'subcontractor', estimator: 'estimator' }
+const KIND_TO_USER_ROLE: Record<PersonKind, string> = {
+  assistant: 'assistant',
+  master_technician: 'master_technician',
+  sub: 'subcontractor',
+  estimator: 'estimator',
+  primary: 'primary',
+  superintendent: 'superintendent',
+}
 
 function todayYyyyMmDdLocal(): string {
   return new Date().toLocaleDateString('en-CA')
@@ -106,17 +133,14 @@ const SHOW_USERS_TAB_TAGS_KEY = 'people.usersTab.showTags'
 const SHOW_USERS_TAB_TAG_ORG_SIGNALS_KEY = 'people.usersTab.showTagOrgSignals'
 
 /** Display order for People → Users tab sections (master roster + user-only roles + devs last). */
-type UsersTabSection =
-  | { type: 'personKind'; kind: PersonKind }
-  | { type: 'userRole'; role: 'primary' | 'superintendent' }
-  | { type: 'dev' }
+type UsersTabSection = { type: 'personKind'; kind: PersonKind } | { type: 'dev' }
 
 const USERS_TAB_SECTIONS: UsersTabSection[] = [
   { type: 'personKind', kind: 'master_technician' },
   { type: 'personKind', kind: 'assistant' },
-  { type: 'userRole', role: 'primary' },
+  { type: 'personKind', kind: 'primary' },
   { type: 'personKind', kind: 'estimator' },
-  { type: 'userRole', role: 'superintendent' },
+  { type: 'personKind', kind: 'superintendent' },
   { type: 'personKind', kind: 'sub' },
   { type: 'dev' },
 ]
@@ -131,12 +155,23 @@ const tabStyle = (active: boolean) => ({
   cursor: 'pointer' as const,
 })
 
-type PeopleTab = 'users' | 'pay_stubs' | 'pay' | 'hours' | 'vehicles' | 'offsets' | 'licenses' | 'contracts' | 'review' | 'activity'
+type PeopleTab = 'users' | 'pay_stubs' | 'pay' | 'hours' | 'vehicles' | 'housing' | 'offsets' | 'licenses' | 'contracts' | 'review' | 'activity'
 
 type Vehicle = { id: string; year: number | null; make: string; model: string; vin: string | null; weekly_insurance_cost: number; weekly_registration_cost: number; created_at: string | null; updated_at: string | null }
 type VehicleOdometerEntry = { id: string; vehicle_id: string; odometer_value: number; read_date: string; created_at: string | null }
 type VehicleReplacementValueEntry = { id: string; vehicle_id: string; replacement_value: number; read_date: string; created_at: string | null }
 type VehiclePossession = { id: string; vehicle_id: string; user_id: string; start_date: string; end_date: string | null; created_at: string | null }
+
+type HousingUnit = {
+  id: string
+  address: string
+  rent_per_week: number
+  utilities_per_week: number
+  insurance_per_week: number
+  created_at: string | null
+  updated_at: string | null
+}
+type HousingPossession = { id: string; housing_id: string; user_id: string; start_date: string; end_date: string | null; created_at: string | null }
 
 type PersonOffset = { id: string; person_name: string; type: string; amount: number; description: string | null; occurred_date: string; pay_stub_id: string | null; created_at: string | null }
 
@@ -462,6 +497,24 @@ export default function People() {
   const [possessionStartDate, setPossessionStartDate] = useState(() => new Date().toLocaleDateString('en-CA'))
   const [possessionEndDate, setPossessionEndDate] = useState('')
 
+  // Housing tab state
+  const [housingUnits, setHousingUnits] = useState<HousingUnit[]>([])
+  const [housingLoading, setHousingLoading] = useState(false)
+  const [housingError, setHousingError] = useState<string | null>(null)
+  const [housingFormOpen, setHousingFormOpen] = useState(false)
+  const [editingHousingUnit, setEditingHousingUnit] = useState<HousingUnit | null>(null)
+  const [selectedHousingId, setSelectedHousingId] = useState<string | null>(null)
+  const [housingPossessions, setHousingPossessions] = useState<HousingPossession[]>([])
+  const [housingAssignees, setHousingAssignees] = useState<Record<string, string>>({})
+  const [housingAddress, setHousingAddress] = useState('')
+  const [housingRentWeek, setHousingRentWeek] = useState('')
+  const [housingUtilitiesWeek, setHousingUtilitiesWeek] = useState('')
+  const [housingInsuranceWeek, setHousingInsuranceWeek] = useState('')
+  const [housingPossessionFormOpen, setHousingPossessionFormOpen] = useState(false)
+  const [housingPossessionUserId, setHousingPossessionUserId] = useState('')
+  const [housingPossessionStartDate, setHousingPossessionStartDate] = useState(() => new Date().toLocaleDateString('en-CA'))
+  const [housingPossessionEndDate, setHousingPossessionEndDate] = useState('')
+
   // Licenses tab state
   const [licenses, setLicenses] = useState<PersonLicense[]>([])
   const [licensesLoading, setLicensesLoading] = useState(false)
@@ -737,6 +790,7 @@ export default function People() {
       tab === 'pay' ||
       tab === 'hours' ||
       tab === 'vehicles' ||
+      tab === 'housing' ||
       tab === 'offsets' ||
       tab === 'licenses' ||
       tab === 'contracts' ||
@@ -1792,9 +1846,6 @@ export default function People() {
         if (item.name?.trim()) names.add(item.name.trim())
       }
     }
-    for (const u of users.filter((u) => u.role === 'primary')) {
-      if (u.name?.trim()) names.add(u.name.trim())
-    }
     return Array.from(names).sort()
   }
 
@@ -2150,6 +2201,54 @@ export default function People() {
     return result
   }
 
+  async function getHousingForPersonInPeriod(
+    personName: string,
+    periodStart: string,
+    periodEnd: string,
+  ): Promise<
+    Array<{ address: string; rent_per_week: number; utilities_per_week: number; insurance_per_week: number }>
+  > {
+    const n = personName.trim()
+    const user = users.find((u) => (u.name ?? '').trim().toLowerCase() === n.toLowerCase())
+    if (!user) return []
+    const { data: possData } = await supabase
+      .from('housing_possessions')
+      .select('housing_id, start_date')
+      .eq('user_id', user.id)
+      .lte('start_date', periodEnd)
+      .or(`end_date.is.null,end_date.gte.${periodStart}`)
+      .order('start_date', { ascending: false })
+    const poss = (possData ?? []) as { housing_id: string; start_date: string }[]
+    const housingIds = [...new Set(poss.filter((p) => p.start_date <= periodEnd).map((p) => p.housing_id))]
+    const result: Array<{
+      address: string
+      rent_per_week: number
+      utilities_per_week: number
+      insurance_per_week: number
+    }> = []
+    for (const hid of housingIds) {
+      const { data: row } = await supabase
+        .from('housing_units')
+        .select('address, rent_per_week, utilities_per_week, insurance_per_week')
+        .eq('id', hid)
+        .single()
+      if (!row) continue
+      const h = row as {
+        address: string
+        rent_per_week: number
+        utilities_per_week: number
+        insurance_per_week: number
+      }
+      result.push({
+        address: h.address ?? '',
+        rent_per_week: Number(h.rent_per_week) || 0,
+        utilities_per_week: Number(h.utilities_per_week) || 0,
+        insurance_per_week: Number(h.insurance_per_week) || 0,
+      })
+    }
+    return result
+  }
+
   async function getPendingOffsetsForPayReport(personName: string): Promise<
     Array<{ type: string; amount: number; description: string | null }>
   > {
@@ -2187,7 +2286,8 @@ export default function People() {
     additionalLines?: Array<{ description: string; quantity: number; rate: number; line_total: number }>,
     lessDeductionLines?: Array<{ amount: number; description: string; source: string }>,
     pendingOffsets?: Array<{ type: string; amount: number; description: string | null }>,
-    physicalPayments?: Array<{ paid_at: string; amount: number; memo: string | null }>
+    physicalPayments?: Array<{ paid_at: string; amount: number; memo: string | null }>,
+    housingRows?: Array<{ address: string; rent_per_week: number; utilities_per_week: number; insurance_per_week: number }>,
   ): string {
     const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
     const dateWithDay = (dateStr: string) => {
@@ -2283,6 +2383,16 @@ export default function People() {
           })()
         : ''}
       ${vehicles && vehicles.length > 0 ? `<div style="margin-top: 1rem;">${vehicles.map((v) => `<div class="meta">Vehicle: ${escapeHtml(String(v.year))} ${escapeHtml(v.make)} ${escapeHtml(v.model)}${v.vin ? ` (VIN: ${escapeHtml(v.vin)})` : ''}</div><div class="meta">Weekly insurance: $${formatCurrency(v.weekly_insurance_cost)} | Weekly registration: $${formatCurrency(v.weekly_registration_cost)}</div>`).join('')}</div>` : ''}
+      ${
+        housingRows && housingRows.length > 0
+          ? `<div style="margin-top: 1rem;"><strong>Housing</strong>${housingRows
+              .map(
+                (h) =>
+                  `<div class="meta">Address: ${escapeHtml(h.address)}</div><div class="meta">Rent/week: $${formatCurrency(h.rent_per_week)} | Utilities/week: $${formatCurrency(h.utilities_per_week)} | Insurance/week: $${formatCurrency(h.insurance_per_week)}</div>`,
+              )
+              .join('')}</div>`
+          : ''
+      }
     </body></html>`
     return html
   }
@@ -2411,8 +2521,9 @@ export default function People() {
       }
     }
     const rowsWithJobs = computePayReportAssignmentsBreakdown(personName, dayRows, crewByDatePerson, crewBidsByDatePerson, jobsMap, bidsMap)
-    const [vehicles, pendingOffsets, dedRes, addRes] = await Promise.all([
+    const [vehicles, housingRowsGen, pendingOffsets, dedRes, addRes] = await Promise.all([
       getVehiclesForPersonInPeriod(personName, start, end),
+      getHousingForPersonInPeriod(personName, start, end),
       getPendingOffsetsForPayReport(personName),
       supabase
         .from('pay_stub_deductions')
@@ -2452,6 +2563,7 @@ export default function People() {
       lessLines,
       pendingOffsets,
       [],
+      housingRowsGen,
     )
     if (openPreview) openPayStubWindow(html, false)
     return true
@@ -2557,8 +2669,9 @@ export default function People() {
     }
     const rowsWithJobs = computePayReportAssignmentsBreakdown(stub.person_name, dayRows, crewByDatePerson, crewBidsByDatePerson, jobsMap, bidsMap)
     const hoursRows = dayRows.map((r) => ({ date: r.work_date, hours: r.hours }))
-    const [vehicles, pendingOffsets, payData, dedRes, addResView] = await Promise.all([
+    const [vehicles, housingRowsView, pendingOffsets, payData, dedRes, addResView] = await Promise.all([
       getVehiclesForPersonInPeriod(stub.person_name, start, end),
+      getHousingForPersonInPeriod(stub.person_name, start, end),
       getPendingOffsetsForPayReport(stub.person_name),
       supabase.from('pay_stub_payments').select('paid_at, amount, memo').eq('pay_stub_id', stub.id).order('paid_at', { ascending: true }),
       supabase
@@ -2604,6 +2717,7 @@ export default function People() {
       lessLines,
       pendingOffsets,
       physicalPayments,
+      housingRowsView,
     )
     openPayStubWindow(html, false)
   }
@@ -2667,8 +2781,9 @@ export default function People() {
     }
     const rowsWithJobs = computePayReportAssignmentsBreakdown(stub.person_name, dayRows, crewByDatePerson, crewBidsByDatePerson, jobsMap, bidsMap)
     const hoursRows = dayRows.map((r) => ({ date: r.work_date, hours: r.hours }))
-    const [vehicles, pendingOffsets, payData, dedResPrint, addResPrint] = await Promise.all([
+    const [vehicles, housingRowsPrint, pendingOffsets, payData, dedResPrint, addResPrint] = await Promise.all([
       getVehiclesForPersonInPeriod(stub.person_name, start, end),
+      getHousingForPersonInPeriod(stub.person_name, start, end),
       getPendingOffsetsForPayReport(stub.person_name),
       supabase.from('pay_stub_payments').select('paid_at, amount, memo').eq('pay_stub_id', stub.id).order('paid_at', { ascending: true }),
       supabase
@@ -2714,6 +2829,7 @@ export default function People() {
       lessLinesPrint,
       pendingOffsets,
       physicalPayments,
+      housingRowsPrint,
     )
     openPayStubWindow(html, true)
   }
@@ -3255,6 +3371,162 @@ export default function People() {
     }
   }
 
+  async function loadHousingUnits() {
+    setHousingLoading(true)
+    setHousingError(null)
+    const today = new Date().toLocaleDateString('en-CA')
+    const { data: unitsData, error: unitsErr } = await supabase.from('housing_units').select('*').order('address', { ascending: true })
+    setHousingLoading(false)
+    if (unitsErr) {
+      setHousingError(unitsErr.message)
+      return
+    }
+    setHousingUnits((unitsData ?? []) as HousingUnit[])
+    const ids = (unitsData ?? []).map((u: { id: string }) => u.id)
+    if (ids.length === 0) {
+      setHousingAssignees({})
+      return
+    }
+    const { data: possData } = await supabase
+      .from('housing_possessions')
+      .select('housing_id, user_id')
+      .in('housing_id', ids)
+      .lte('start_date', today)
+      .or(`end_date.is.null,end_date.gte.${today}`)
+    const possByHousing: Record<string, string[]> = {}
+    for (const p of (possData ?? []) as { housing_id: string; user_id: string }[]) {
+      const arr = (possByHousing[p.housing_id] ??= [])
+      arr.push(p.user_id)
+    }
+    const userIds = [...new Set((possData ?? []).map((p: { user_id: string }) => p.user_id))]
+    const { data: usersData } =
+      userIds.length > 0
+        ? await supabase.from('users').select('id, name').is('archived_at', null).in('id', userIds)
+        : { data: [] }
+    const userNames: Record<string, string> = {}
+    for (const u of (usersData ?? []) as { id: string; name: string }[]) {
+      userNames[u.id] = u.name ?? ''
+    }
+    const assignees: Record<string, string> = {}
+    for (const [hid, uids] of Object.entries(possByHousing)) {
+      assignees[hid] = uids.map((uid) => userNames[uid] || uid.slice(0, 8)).join(', ')
+    }
+    setHousingAssignees(assignees)
+  }
+
+  async function loadHousingPossessions(housingId: string) {
+    const { data, error } = await supabase
+      .from('housing_possessions')
+      .select('*')
+      .eq('housing_id', housingId)
+      .order('start_date', { ascending: false })
+    if (error) return
+    setHousingPossessions((data ?? []) as HousingPossession[])
+  }
+
+  function openHousingForm(u?: HousingUnit) {
+    setEditingHousingUnit(u ?? null)
+    setHousingAddress(u?.address ?? '')
+    setHousingRentWeek(u?.rent_per_week != null ? String(u.rent_per_week) : '')
+    setHousingUtilitiesWeek(u?.utilities_per_week != null ? String(u.utilities_per_week) : '')
+    setHousingInsuranceWeek(u?.insurance_per_week != null ? String(u.insurance_per_week) : '')
+    setHousingFormOpen(true)
+  }
+
+  function closeHousingForm() {
+    setHousingFormOpen(false)
+    setEditingHousingUnit(null)
+    setHousingAddress('')
+    setHousingRentWeek('')
+    setHousingUtilitiesWeek('')
+    setHousingInsuranceWeek('')
+  }
+
+  async function upsertHousingUnit() {
+    const rent = parseFloat(housingRentWeek) || 0
+    const util = parseFloat(housingUtilitiesWeek) || 0
+    const ins = parseFloat(housingInsuranceWeek) || 0
+    if (rent < 0 || util < 0 || ins < 0) {
+      setHousingError('Weekly amounts must be zero or positive')
+      return
+    }
+    const addr = housingAddress.trim()
+    if (!addr) {
+      setHousingError('Address is required')
+      return
+    }
+    if (editingHousingUnit) {
+      const { error: err } = await supabase
+        .from('housing_units')
+        .update({
+          address: addr,
+          rent_per_week: rent,
+          utilities_per_week: util,
+          insurance_per_week: ins,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', editingHousingUnit.id)
+      if (err) setHousingError(err.message)
+      else {
+        closeHousingForm()
+        void loadHousingUnits()
+      }
+    } else {
+      const { error: err } = await supabase.from('housing_units').insert({
+        address: addr,
+        rent_per_week: rent,
+        utilities_per_week: util,
+        insurance_per_week: ins,
+      })
+      if (err) setHousingError(err.message)
+      else {
+        closeHousingForm()
+        void loadHousingUnits()
+      }
+    }
+  }
+
+  async function deleteHousingUnit(u: HousingUnit) {
+    if (!window.confirm(`Delete housing at "${u.address}"? Assignments will be removed.`)) return
+    const { error: err } = await supabase.from('housing_units').delete().eq('id', u.id)
+    if (err) setHousingError(err.message)
+    else {
+      setSelectedHousingId((prev) => (prev === u.id ? null : prev))
+      loadHousingUnits()
+    }
+  }
+
+  async function upsertHousingPossession() {
+    if (!selectedHousingId || !housingPossessionUserId) {
+      setHousingError('Select a user')
+      return
+    }
+    const { error: err } = await supabase.from('housing_possessions').insert({
+      housing_id: selectedHousingId,
+      user_id: housingPossessionUserId,
+      start_date: housingPossessionStartDate,
+      end_date: housingPossessionEndDate.trim() || null,
+    })
+    if (err) setHousingError(err.message)
+    else {
+      setHousingPossessionFormOpen(false)
+      setHousingPossessionUserId('')
+      setHousingPossessionStartDate(new Date().toLocaleDateString('en-CA'))
+      setHousingPossessionEndDate('')
+      loadHousingPossessions(selectedHousingId)
+      loadHousingUnits()
+    }
+  }
+
+  async function deleteHousingPossession(p: HousingPossession) {
+    const { error: err } = await supabase.from('housing_possessions').delete().eq('id', p.id)
+    if (err) setHousingError(err.message)
+    else {
+      if (selectedHousingId) loadHousingPossessions(selectedHousingId)
+      loadHousingUnits()
+    }
+  }
+
   async function loadOffsets() {
     setOffsetsLoading(true)
     setOffsetsError(null)
@@ -3767,6 +4039,13 @@ export default function People() {
   }, [activeTab, canAccessPay])
 
   useEffect(() => {
+    if (activeTab === 'housing' && canAccessPay) {
+      const t = setTimeout(() => void loadHousingUnits(), 80)
+      return () => clearTimeout(t)
+    }
+  }, [activeTab, canAccessPay])
+
+  useEffect(() => {
     if (activeTab === 'offsets' && canAccessPay) {
       const t = setTimeout(() => {
         loadOffsets()
@@ -3812,6 +4091,14 @@ export default function People() {
       setPossessions([])
     }
   }, [selectedVehicleId])
+
+  useEffect(() => {
+    if (selectedHousingId) {
+      void loadHousingPossessions(selectedHousingId)
+    } else {
+      setHousingPossessions([])
+    }
+  }, [selectedHousingId])
 
   function loadCrewJobsForHoursRange() {
     const days = getDaysInRange(hoursDateStart, hoursDateEnd)
@@ -5100,6 +5387,22 @@ export default function People() {
           <button
             type="button"
             onClick={() => {
+              setActiveTab('housing')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'housing')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'housing')}
+          >
+            Housing
+          </button>
+        )}
+        {canAccessPay && (
+          <button
+            type="button"
+            onClick={() => {
               setActiveTab('offsets')
               setSearchParams((p) => {
                 const next = new URLSearchParams(p)
@@ -5301,272 +5604,6 @@ export default function People() {
             </section>
               )
             }
-            if (sec.type === 'userRole' && sec.role === 'primary') {
-              return (
-          <section key="users-tab-primary" style={{ marginBottom: '2rem' }}>
-            <h2 style={{ margin: '0 0 0.5rem 0', fontSize: '1.125rem' }}>Primaries</h2>
-            {users.filter((u) => u.role === 'primary').length === 0 ? (
-              <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>None yet.</p>
-            ) : (
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {users
-                  .filter((u) => u.role === 'primary')
-                  .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-                  .map((u) => (
-                    <li
-                      key={u.id}
-                      style={{
-                        padding: '0.5rem 0',
-                        borderBottom: '1px solid #e5e7eb',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                      }}
-                    >
-                      <div style={{ flex: 1 }}>
-                        <div>
-                          {isDev && u.email && (
-                            <>
-                              {window.location.hostname === 'pipetooling.com' && (
-                                <button
-                                  type="button"
-                                  title="imitate (pipetooling.com)"
-                                  onClick={async () => {
-                                    setLoggingInAsId(u.id)
-                                    setError(null)
-                                    try {
-                                      await loginAsUser(u, 'https://pipetooling.com/dashboard')
-                                    } catch (e) {
-                                      setError(e instanceof Error ? e.message : 'Failed to imitate')
-                                    } finally {
-                                      setLoggingInAsId(null)
-                                    }
-                                  }}
-                                  disabled={loggingInAsId === u.id}
-                                  style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    padding: 0,
-                                    marginRight: '0.35rem',
-                                    background: 'none',
-                                    border: 'none',
-                                    cursor: loggingInAsId === u.id ? 'not-allowed' : 'pointer',
-                                    verticalAlign: 'middle',
-                                  }}
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
-                                    <path d="M96 64C60.7 64 32 92.7 32 128L32 200C32 213.3 42.7 224 56 224C69.3 224 80 213.3 80 200L80 128C80 119.2 87.2 112 96 112L168 112C181.3 112 192 101.3 192 88C192 74.7 181.3 64 168 64L96 64zM472 64C458.7 64 448 74.7 448 88C448 101.3 458.7 112 472 112L544 112C552.8 112 560 119.2 560 128L560 200C560 213.3 570.7 224 584 224C597.3 224 608 213.3 608 200L608 128C608 92.7 579.3 64 544 64L472 64zM80 440C80 426.7 69.3 416 56 416C42.7 416 32 426.7 32 440L32 512C32 547.3 60.7 576 96 576L168 576C181.3 576 192 565.3 192 552C192 538.7 181.3 528 168 528L96 528C87.2 528 80 520.8 80 512L80 440zM608 440C608 426.7 597.3 416 584 416C570.7 416 560 426.7 560 440L560 512C560 520.8 552.8 528 544 528L472 528C458.7 528 448 538.7 448 552C448 565.3 458.7 576 472 576L544 576C579.3 576 608 547.3 608 512L608 440zM320 280C350.9 280 376 254.9 376 224C376 193.1 350.9 168 320 168C289.1 168 264 193.1 264 224C264 254.9 289.1 280 320 280zM320 320C267 320 224 363 224 416L224 440C224 453.3 234.7 464 248 464L392 464C405.3 464 416 453.3 416 440L416 416C416 363 373 320 320 320zM512 256C512 229.5 490.5 208 464 208C437.5 208 416 229.5 416 256C416 282.5 437.5 304 464 304C490.5 304 512 282.5 512 256zM200 336.3C150.7 340.4 112 381.6 112 432L112 442.7C112 454.5 121.6 464 133.3 464L180.1 464C177.4 456.5 176 448.4 176 440L176 416C176 386.5 184.8 359.1 200 336.3zM459.9 464L506.7 464C518.5 464 528 454.4 528 442.7L528 432C528 381.7 489.3 340.4 440 336.3C455.2 359.1 464 386.5 464 416L464 440C464 448.4 462.6 456.5 459.9 464zM224 256C224 229.5 202.5 208 176 208C149.5 208 128 229.5 128 256C128 282.5 149.5 304 176 304C202.5 304 224 282.5 224 256z" />
-                                  </svg>
-                                </button>
-                              )}
-                              {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
-                                <button
-                                  type="button"
-                                  title="imitate (localhost)"
-                                  onClick={async () => {
-                                    setLoggingInAsId(u.id)
-                                    setError(null)
-                                    try {
-                                      await loginAsUser(u, 'http://localhost:5173/dashboard')
-                                    } catch (e) {
-                                      setError(e instanceof Error ? e.message : 'Failed to imitate')
-                                    } finally {
-                                      setLoggingInAsId(null)
-                                    }
-                                  }}
-                                  disabled={loggingInAsId === u.id}
-                                  style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    padding: 0,
-                                    marginRight: '0.35rem',
-                                    background: 'none',
-                                    border: 'none',
-                                    cursor: loggingInAsId === u.id ? 'not-allowed' : 'pointer',
-                                    verticalAlign: 'middle',
-                                  }}
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
-                                    <path d="M31 31C21.7 40.4 21.7 55.6 31 65L87 121C96.4 130.4 111.6 130.4 120.9 121C130.2 111.6 130.3 96.4 120.9 87.1L65 31C55.6 21.6 40.4 21.6 31.1 31zM609 31C599.6 21.6 584.4 21.6 575.1 31L519 87C509.6 96.4 509.6 111.6 519 120.9C528.4 130.2 543.6 130.3 552.9 120.9L609 65C618.4 55.6 618.4 40.4 609 31.1zM65 609L121 553C130.4 543.6 130.4 528.4 121 519.1C111.6 509.8 96.4 509.7 87.1 519.1L31 575C21.6 584.4 21.6 599.6 31 608.9C40.4 618.2 55.6 618.3 64.9 608.9zM609 609C618.4 599.6 618.4 584.4 609 575.1L553 519.1C543.6 509.7 528.4 509.7 519.1 519.1C509.8 528.5 509.7 543.7 519.1 553L575.1 609C584.5 618.4 599.7 618.4 609 609zM320 272C355.3 272 384 243.3 384 208C384 172.7 355.3 144 320 144C284.7 144 256 172.7 256 208C256 243.3 284.7 272 320 272zM320 304C258.1 304 208 354.1 208 416L208 424C208 437.3 218.7 448 232 448L408 448C421.3 448 432 437.3 432 424L432 416C432 354.1 381.9 304 320 304zM536 224C536 193.1 510.9 168 480 168C449.1 168 424 193.1 424 224C424 254.9 449.1 280 480 280C510.9 280 536 254.9 536 224zM451.2 324.4C469.4 350.3 480 381.9 480 416L480 424C480 432.4 478.6 440.5 475.9 448L554.7 448C566.5 448 576 438.4 576 426.7L576 416C576 363 533 320 480 320C470 320 460.3 321.5 451.2 324.4zM188.8 324.4C179.7 321.5 170 320 160 320C107 320 64 363 64 416L64 426.7C64 438.5 73.6 448 85.3 448L164.1 448C161.4 440.5 160 432.4 160 424L160 416C160 381.9 170.6 350.3 188.8 324.4zM216 224C216 193.1 190.9 168 160 168C129.1 168 104 193.1 104 224C104 254.9 129.1 280 160 280C190.9 280 216 254.9 216 224z" />
-                                  </svg>
-                                </button>
-                              )}
-                            </>
-                          )}
-                        <span style={{ fontWeight: 500 }}>{u.name || u.email || 'Unknown'}</span>
-                        <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.35rem' }}>(account)</span>
-                        {(u.email || u.phone) && (
-                          <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.5rem' }}>
-                            {u.email && (
-                              <a href={`mailto:${u.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
-                                {u.email}
-                              </a>
-                            )}
-                            {u.email && u.phone && ' \u00B7 '}
-                            {u.phone && (
-                              <a href={`tel:${u.phone}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
-                                {u.phone}
-                              </a>
-                            )}
-                          </span>
-                        )}
-                        {u.notes && (
-                          <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.35rem' }}>— {u.notes}</span>
-                        )}
-                        </div>
-                        {isDev &&
-                          showUsersTabTags &&
-                          renderUsersTabTagsSection(
-                            resolveUsersTabTagAnchor({ source: 'user', id: u.id, email: u.email }, null),
-                          )}
-                      </div>
-                      {canEditUserNotes && (
-                        <button
-                          type="button"
-                          title="Update notes and phone"
-                          onClick={() => setEditingUserNote({ id: u.id, name: u.name || '', notes: u.notes ?? '', phone: u.phone ?? '' })}
-                          style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 6px', background: 'none', border: 'none', cursor: 'pointer', verticalAlign: 'middle' }}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
-                            <path d="M32 160C32 124.7 60.7 96 96 96L544 96C579.3 96 608 124.7 608 160L32 160zM32 208L608 208L608 480C608 515.3 579.3 544 544 544L96 544C60.7 544 32 515.3 32 480L32 208zM279.3 480C299.5 480 314.6 460.6 301.7 445C287 427.3 264.8 416 240 416L176 416C151.2 416 129 427.3 114.3 445C101.4 460.6 116.5 480 136.7 480L279.2 480zM208 376C238.9 376 264 350.9 264 320C264 289.1 238.9 264 208 264C177.1 264 152 289.1 152 320C152 350.9 177.1 376 208 376zM392 272C378.7 272 368 282.7 368 296C368 309.3 378.7 320 392 320L504 320C517.3 320 528 309.3 528 296C528 282.7 517.3 272 504 272L392 272zM392 368C378.7 368 368 378.7 368 392C368 405.3 378.7 416 392 416L504 416C517.3 416 528 405.3 528 392C528 378.7 517.3 368 504 368L392 368z" />
-                          </svg>
-                        </button>
-                      )}
-                    </li>
-                  ))}
-              </ul>
-            )}
-          </section>
-              )
-            }
-            if (sec.type === 'userRole' && sec.role === 'superintendent') {
-              return (
-          <section key="users-tab-superintendent" style={{ marginBottom: '2rem' }}>
-            <h2 style={{ margin: '0 0 0.5rem 0', fontSize: '1.125rem' }}>Superintendents</h2>
-            {users.filter((u) => u.role === 'superintendent').length === 0 ? (
-              <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>None yet.</p>
-            ) : (
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {users
-                  .filter((u) => u.role === 'superintendent')
-                  .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-                  .map((u) => (
-                    <li
-                      key={u.id}
-                      style={{
-                        padding: '0.5rem 0',
-                        borderBottom: '1px solid #e5e7eb',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                      }}
-                    >
-                      <div style={{ flex: 1 }}>
-                        <div>
-                          {isDev && u.email && (
-                            <>
-                              {window.location.hostname === 'pipetooling.com' && (
-                                <button
-                                  type="button"
-                                  title="imitate (pipetooling.com)"
-                                  onClick={async () => {
-                                    setLoggingInAsId(u.id)
-                                    setError(null)
-                                    try {
-                                      await loginAsUser(u, 'https://pipetooling.com/dashboard')
-                                    } catch (e) {
-                                      setError(e instanceof Error ? e.message : 'Failed to imitate')
-                                    } finally {
-                                      setLoggingInAsId(null)
-                                    }
-                                  }}
-                                  disabled={loggingInAsId === u.id}
-                                  style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    padding: 0,
-                                    marginRight: '0.35rem',
-                                    background: 'none',
-                                    border: 'none',
-                                    cursor: loggingInAsId === u.id ? 'not-allowed' : 'pointer',
-                                    verticalAlign: 'middle',
-                                  }}
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
-                                    <path d="M96 64C60.7 64 32 92.7 32 128L32 200C32 213.3 42.7 224 56 224C69.3 224 80 213.3 80 200L80 128C80 119.2 87.2 112 96 112L168 112C181.3 112 192 101.3 192 88C192 74.7 181.3 64 168 64L96 64zM472 64C458.7 64 448 74.7 448 88C448 101.3 458.7 112 472 112L544 112C552.8 112 560 119.2 560 128L560 200C560 213.3 570.7 224 584 224C597.3 224 608 213.3 608 200L608 128C608 92.7 579.3 64 544 64L472 64zM80 440C80 426.7 69.3 416 56 416C42.7 416 32 426.7 32 440L32 512C32 547.3 60.7 576 96 576L168 576C181.3 576 192 565.3 192 552C192 538.7 181.3 528 168 528L96 528C87.2 528 80 520.8 80 512L80 440zM608 440C608 426.7 597.3 416 584 416C570.7 416 560 426.7 560 440L560 512C560 520.8 552.8 528 544 528L472 528C458.7 528 448 538.7 448 552C448 565.3 458.7 576 472 576L544 576C579.3 576 608 547.3 608 512L608 440zM320 280C350.9 280 376 254.9 376 224C376 193.1 350.9 168 320 168C289.1 168 264 193.1 264 224C264 254.9 289.1 280 320 280zM320 320C267 320 224 363 224 416L224 440C224 453.3 234.7 464 248 464L392 464C405.3 464 416 453.3 416 440L416 416C416 363 373 320 320 320zM512 256C512 229.5 490.5 208 464 208C437.5 208 416 229.5 416 256C416 282.5 437.5 304 464 304C490.5 304 512 282.5 512 256zM200 336.3C150.7 340.4 112 381.6 112 432L112 442.7C112 454.5 121.6 464 133.3 464L180.1 464C177.4 456.5 176 448.4 176 440L176 416C176 386.5 184.8 359.1 200 336.3zM459.9 464L506.7 464C518.5 464 528 454.4 528 442.7L528 432C528 381.7 489.3 340.4 440 336.3C455.2 359.1 464 386.5 464 416L464 440C464 448.4 462.6 456.5 459.9 464zM224 256C224 229.5 202.5 208 176 208C149.5 208 128 229.5 128 256C128 282.5 149.5 304 176 304C202.5 304 224 282.5 224 256z" />
-                                  </svg>
-                                </button>
-                              )}
-                              {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
-                                <button
-                                  type="button"
-                                  title="imitate (localhost)"
-                                  onClick={async () => {
-                                    setLoggingInAsId(u.id)
-                                    setError(null)
-                                    try {
-                                      await loginAsUser(u, 'http://localhost:5173/dashboard')
-                                    } catch (e) {
-                                      setError(e instanceof Error ? e.message : 'Failed to imitate')
-                                    } finally {
-                                      setLoggingInAsId(null)
-                                    }
-                                  }}
-                                  disabled={loggingInAsId === u.id}
-                                  style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    padding: 0,
-                                    marginRight: '0.35rem',
-                                    background: 'none',
-                                    border: 'none',
-                                    cursor: loggingInAsId === u.id ? 'not-allowed' : 'pointer',
-                                    verticalAlign: 'middle',
-                                  }}
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
-                                    <path d="M31 31C21.7 40.4 21.7 55.6 31 65L87 121C96.4 130.4 111.6 130.4 120.9 121C130.2 111.6 130.3 96.4 120.9 87.1L65 31C55.6 21.6 40.4 21.6 31.1 31zM609 31C599.6 21.6 584.4 21.6 575.1 31L519 87C509.6 96.4 509.6 111.6 519 120.9C528.4 130.2 543.6 130.3 552.9 120.9L609 65C618.4 55.6 618.4 40.4 609 31.1zM65 609L121 553C130.4 543.6 130.4 528.4 121 519.1C111.6 509.8 96.4 509.7 87.1 519.1L31 575C21.6 584.4 21.6 599.6 31 608.9C40.4 618.2 55.6 618.3 64.9 608.9zM609 609C618.4 599.6 618.4 584.4 609 575.1L553 519.1C543.6 509.7 528.4 509.7 519.1 519.1C509.8 528.5 509.7 543.7 519.1 553L575.1 609C584.5 618.4 599.7 618.4 609 609zM320 272C355.3 272 384 243.3 384 208C384 172.7 355.3 144 320 144C284.7 144 256 172.7 256 208C256 243.3 284.7 272 320 272zM320 304C258.1 304 208 354.1 208 416L208 424C208 437.3 218.7 448 232 448L408 448C421.3 448 432 437.3 432 424L432 416C432 354.1 381.9 304 320 304zM536 224C536 193.1 510.9 168 480 168C449.1 168 424 193.1 424 224C424 254.9 449.1 280 480 280C510.9 280 536 254.9 536 224zM451.2 324.4C469.4 350.3 480 381.9 480 416L480 424C480 432.4 478.6 440.5 475.9 448L554.7 448C566.5 448 576 438.4 576 426.7L576 416C576 363 533 320 480 320C470 320 460.3 321.5 451.2 324.4zM188.8 324.4C179.7 321.5 170 320 160 320C107 320 64 363 64 416L64 426.7C64 438.5 73.6 448 85.3 448L164.1 448C161.4 440.5 160 432.4 160 424L160 416C160 381.9 170.6 350.3 188.8 324.4zM216 224C216 193.1 190.9 168 160 168C129.1 168 104 193.1 104 224C104 254.9 129.1 280 160 280C190.9 280 216 254.9 216 224z" />
-                                  </svg>
-                                </button>
-                              )}
-                            </>
-                          )}
-                          <span style={{ fontWeight: 500 }}>{u.name || u.email || 'Unknown'}</span>
-                          <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.35rem' }}>(account)</span>
-                          {(u.email || u.phone) && (
-                            <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.5rem' }}>
-                              {u.email && (
-                                <a href={`mailto:${u.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
-                                  {u.email}
-                                </a>
-                              )}
-                              {u.email && u.phone && ' \u00B7 '}
-                              {u.phone && (
-                                <a href={`tel:${u.phone}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
-                                  {u.phone}
-                                </a>
-                              )}
-                            </span>
-                          )}
-                          {u.notes && (
-                            <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.35rem' }}>— {u.notes}</span>
-                          )}
-                        </div>
-                        {isDev &&
-                          showUsersTabTags &&
-                          renderUsersTabTagsSection(
-                            resolveUsersTabTagAnchor({ source: 'user', id: u.id, email: u.email }, null),
-                          )}
-                      </div>
-                    </li>
-                  ))}
-              </ul>
-            )}
-          </section>
-              )
-            }
             if (sec.type === 'personKind') {
               const k = sec.kind
               return (
@@ -5734,6 +5771,7 @@ export default function People() {
                                       )}
                                     </div>
                                     {(() => {
+                                      if (k === 'primary' || k === 'superintendent') return null
                                       const projects = personProjects[item.name.trim()]
                                       return projects && projects.length > 0 ? (
                                         <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.25rem' }}>
@@ -9001,6 +9039,140 @@ export default function People() {
         </div>
       )}
 
+      {activeTab === 'housing' && canAccessPay && (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>Housing</h2>
+            <button
+              type="button"
+              onClick={() => openHousingForm()}
+              style={{ padding: '0.5rem 1rem', border: '1px solid #3b82f6', borderRadius: 6, background: '#3b82f6', color: '#fff', fontWeight: 500, cursor: 'pointer' }}
+            >
+              + Add housing
+            </button>
+          </div>
+          {housingError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{housingError}</p>}
+          {housingLoading ? (
+            <p style={{ color: '#6b7280' }}>Loading…</p>
+          ) : (
+            <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                <thead style={{ background: '#f9fafb' }}>
+                  <tr>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Address</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Rent/wk</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Utilities/wk</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Insurance/wk</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Assigned to</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {housingUnits.map((hu) => (
+                    <Fragment key={hu.id}>
+                      <tr
+                        style={{
+                          borderBottom: '1px solid #e5e7eb',
+                          cursor: 'pointer',
+                          background: selectedHousingId === hu.id ? '#f0fdf4' : undefined,
+                        }}
+                        onClick={() => setSelectedHousingId((prev) => (prev === hu.id ? null : hu.id))}
+                      >
+                        <td style={{ padding: '0.75rem' }}>{hu.address || '—'}</td>
+                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(hu.rent_per_week)}</td>
+                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(hu.utilities_per_week)}</td>
+                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(hu.insurance_per_week)}</td>
+                        <td style={{ padding: '0.75rem' }}>{housingAssignees[hu.id] || '—'}</td>
+                        <td style={{ padding: '0.75rem' }} onClick={(e) => e.stopPropagation()}>
+                          <button type="button" onClick={() => openHousingForm(hu)} style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}>
+                            Edit
+                          </button>
+                          <button type="button" onClick={() => void deleteHousingUnit(hu)} style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', color: '#b91c1c' }}>
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                      {selectedHousingId === hu.id && (
+                        <tr key={`${hu.id}-detail`}>
+                          <td colSpan={6} style={{ padding: '1rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                            <div>
+                              <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9375rem' }}>Assignments</h4>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setHousingPossessionFormOpen(true)
+                                  setHousingPossessionUserId('')
+                                  setHousingPossessionStartDate(new Date().toLocaleDateString('en-CA'))
+                                  setHousingPossessionEndDate('')
+                                }}
+                                style={{ marginBottom: '0.5rem', padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}
+                              >
+                                + Assign to user
+                              </button>
+                              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                                <thead>
+                                  <tr>
+                                    <th style={{ padding: '0.5rem', textAlign: 'left' }}>User</th>
+                                    <th style={{ padding: '0.5rem', textAlign: 'left' }}>Start</th>
+                                    <th style={{ padding: '0.5rem', textAlign: 'left' }}>End</th>
+                                    <th />
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {housingPossessions.map((p) => {
+                                    const u = users.find((x) => x.id === p.user_id)
+                                    return (
+                                      <tr key={p.id} style={{ borderTop: '1px solid #e5e7eb' }}>
+                                        <td style={{ padding: '0.5rem' }}>{u?.name ?? p.user_id.slice(0, 8)}</td>
+                                        <td style={{ padding: '0.5rem' }}>{p.start_date}</td>
+                                        <td style={{ padding: '0.5rem' }}>{p.end_date ?? '—'}</td>
+                                        <td style={{ padding: '0.5rem' }}>
+                                          <button
+                                            type="button"
+                                            onClick={() => void deleteHousingPossession(p)}
+                                            style={{ padding: 0, background: 'none', border: 'none', color: '#b91c1c', cursor: 'pointer', fontSize: '0.75rem' }}
+                                          >
+                                            ×
+                                          </button>
+                                        </td>
+                                      </tr>
+                                    )
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  ))}
+                </tbody>
+                {housingUnits.length > 0 && (
+                  <tfoot style={{ background: '#f9fafb', fontWeight: 600 }}>
+                    <tr>
+                      <td style={{ padding: '0.75rem', borderTop: '1px solid #e5e7eb' }}>Total</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right', borderTop: '1px solid #e5e7eb' }}>
+                        ${formatCurrency(housingUnits.reduce((s, u) => s + (u.rent_per_week ?? 0), 0))}
+                      </td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right', borderTop: '1px solid #e5e7eb' }}>
+                        ${formatCurrency(housingUnits.reduce((s, u) => s + (u.utilities_per_week ?? 0), 0))}
+                      </td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right', borderTop: '1px solid #e5e7eb' }}>
+                        ${formatCurrency(housingUnits.reduce((s, u) => s + (u.insurance_per_week ?? 0), 0))}
+                      </td>
+                      <td colSpan={2} style={{ padding: '0.75rem', borderTop: '1px solid #e5e7eb' }} />
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+              {housingUnits.length === 0 && (
+                <p style={{ padding: '1rem', color: '#6b7280', margin: 0 }}>No housing yet. Add a unit to assign people and show costs on pay reports.</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {activeTab === 'offsets' && canAccessPay && (
         <div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
@@ -10928,6 +11100,73 @@ export default function People() {
         </div>
       )}
 
+      {housingFormOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480 }}>
+            <h3 style={{ marginTop: 0 }}>{editingHousingUnit ? 'Edit housing' : 'Add housing'}</h3>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Address *</label>
+              <input type="text" value={housingAddress} onChange={(e) => setHousingAddress(e.target.value)} style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box' }} />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Rent/week ($)</label>
+              <input type="number" min={0} step={0.01} value={housingRentWeek} onChange={(e) => setHousingRentWeek(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Utilities/week ($)</label>
+              <input type="number" min={0} step={0.01} value={housingUtilitiesWeek} onChange={(e) => setHousingUtilitiesWeek(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Insurance/week ($)</label>
+              <input type="number" min={0} step={0.01} value={housingInsuranceWeek} onChange={(e) => setHousingInsuranceWeek(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" onClick={() => void upsertHousingUnit()} style={{ padding: '0.5rem 1rem' }}>
+                {editingHousingUnit ? 'Save' : 'Add'}
+              </button>
+              <button type="button" onClick={() => closeHousingForm()} style={{ padding: '0.5rem 1rem' }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {housingPossessionFormOpen && selectedHousingId && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 280 }}>
+            <h3 style={{ marginTop: 0 }}>Assign housing to user</h3>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>User *</label>
+              <select value={housingPossessionUserId} onChange={(e) => setHousingPossessionUserId(e.target.value)} style={{ width: '100%', padding: '0.5rem' }}>
+                <option value="">— Select —</option>
+                {users.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')).map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name ?? u.email ?? u.id.slice(0, 8)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Start date</label>
+              <input type="date" value={housingPossessionStartDate} onChange={(e) => setHousingPossessionStartDate(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>End date (optional)</label>
+              <input type="date" value={housingPossessionEndDate} onChange={(e) => setHousingPossessionEndDate(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" onClick={() => void upsertHousingPossession()} style={{ padding: '0.5rem 1rem' }}>
+                Assign
+              </button>
+              <button type="button" onClick={() => setHousingPossessionFormOpen(false)} style={{ padding: '0.5rem 1rem' }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {formOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
@@ -11075,6 +11314,7 @@ export default function People() {
             notes: editClockSession.notes,
             job_ledger_id: editClockSession.job_ledger_id,
             bid_id: editClockSession.bid_id,
+            approved_at: editClockSession.approved_at,
           }}
           onClose={() => setEditClockSession(null)}
           onSaved={() => loadAllClockSessionsRef.current?.()}

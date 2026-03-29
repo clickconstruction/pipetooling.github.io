@@ -156,6 +156,18 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Pay History **Additional** column + modal; Less modal receives **additionalSum** for net; print order Additional → Less → Net Pay
 - **Category**: People / Pay Stubs
 
+**`20270329180000_housing_units_and_possessions.sql`**
+- **Purpose**: Company housing units and dated user assignments (mirror **vehicles** / **vehicle_possessions**)
+- **Changes**: Create `housing_units` (address, rent/utilities/insurance per week); `housing_possessions` (`housing_id`, `user_id`, `start_date`, `end_date` nullable); RLS aligned with vehicles (dev, pay-approved master, assistant-of, assistant)
+- **Impact**: People → **Housing** tab; pay report HTML **Housing** block after vehicles when possession overlaps stub period
+- **Category**: People / RLS
+
+**`20270329190000_replace_own_clock_session_cluster_mixed.sql`**
+- **Purpose**: Dashboard **My Time** editor: replace **N** time-contiguous sessions (mixed **job_ledger_id** / **bid_id**) with **M** segments in one transaction; optional **`job_ledger_id`** / **`bid_id`** per JSON segment (omit or null = no link)
+- **Changes**: `CREATE OR REPLACE FUNCTION public.replace_own_clock_session_cluster_mixed(p_session_ids uuid[], p_segments jsonb)`; same auth/week/reject/revoke/approved rollback/DELETE/INSERT/lat-lng pattern as `split_own_clock_session_cluster`, but **no** same-job requirement between rows; **≥ 1** segment (supports merge-to-one-row); **GRANT EXECUTE** to `authenticated`
+- **Impact**: `replaceOwnClockSessionClusterMixed` in `src/lib/splitOwnClockSessionSegments.ts`; heterogeneous strips and uncut multi-row time reshapes
+- **Category**: Clock / RPC / Dashboard
+
 ### March 2026
 
 #### March 20, 2026
@@ -268,6 +280,21 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Settings → Dashboard buttons placement; Dashboard layout
 - **Category**: Dashboard / Schema
 
+#### March 28, 2026
+
+**`20260328220000_split_own_allow_previous_week.sql`**
+- **Purpose**: Dashboard My Time day editor — allow splitting own clock sessions for **last week** as well as the current week
+- **Changes**: `CREATE OR REPLACE` `split_own_clock_session_segments`; week gate allows `work_date` in current **or** previous America/Denver Sunday–Saturday week; updated error message and function `COMMENT`
+- **Impact**: `splitOwnClockSessionSegments` RPC succeeds for sessions whose `work_date` is in the prior calendar week (Denver)
+- **Note (product)**: Historical migrations and RPC week gates still apply wherever those code paths are used; the **Dashboard My Time** UI now only opens **Edit time** for the **current** Denver week (`getDefaultWeekRange()`). Last week on the dashboard is display-only there.
+- **Category**: Hours / Clock Sessions / RPC
+
+**`20260328230000_split_own_clock_session_cluster.sql`**
+- **Purpose**: My Time editor — replace **several** contiguous same-job/bid sessions with N segment rows in one transaction (one vertical bar UX)
+- **Changes**: Create `split_own_clock_session_cluster(p_session_ids uuid[], p_segments jsonb)`; validates order, contiguity, ownership, week gate; approved rollback per removed row; delete all ids; insert segments
+- **Impact**: `splitOwnClockSessionCluster` client helper; merged clock clusters can save without orphan overlapping rows
+- **Category**: Hours / Clock Sessions / RPC
+
 #### March 29, 2026
 
 **`20260329120000_user_dashboard_goals_and_ack.sql`**
@@ -275,6 +302,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Changes**: Create `user_dashboard_goals` (`user_id`, `body`, `sort_order`, …); create `user_daily_goals_ack` (`user_id`, `local_date` PK, `completed_at`); RLS — goals SELECT own; dev/master/assistant ALL on goals; ack ALL own rows only
 - **Impact**: Settings → per-user goals editor; full-screen overlay after first clock-in of the day when goals exist; Continue writes ack for that calendar day
 - **Category**: Dashboard / Schema
+
+**`20260329042321_add_primary_superintendent_to_people_kind.sql`**
+- **Purpose**: First-class **Primary** and **Superintendent** rows on `public.people` (same roster/pay pattern as other kinds)
+- **Changes**: Extend `people_kind_check` with `primary`, `superintendent`; index `(master_user_id, kind)`; idempotent backfill from `master_primaries` / `master_superintendents` joined to `users` (role match; skip duplicates by master + email/name)
+- **Impact**: People → Users: Primaries/Superintendents use `byKind` + Add/Edit/Archive; `allRosterNames` / Pay config / Hours; Jobs and Quickfill roster helpers; Settings dev people table kind labels
+- **Category**: People / Schema
 
 #### March 30, 2026
 

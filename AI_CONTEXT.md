@@ -132,6 +132,7 @@ pipetooling.github.io/
 - **`src/pages/Prospects.tsx`** - Lead management (Convert tab, callbacks, Team tab for dev/assistant)
 - **`src/pages/Quickfill.tsx`** - Billing workflow (Crew Jobs / Bids, Receivables, Billed sections)
 - **`src/pages/Dashboard.tsx`** - Reports, pins, Estimator Dashboard
+- **`src/components/my-time-day-editor/`** - Dashboard **My Time** **Edit time** modal: **Form** vs **Visual** cluster editor (`MyTimeDayClusterForm.tsx`, `MyTimeDayClusterVisual.tsx`, datetime helpers)
 - **`src/hooks/useAuth.ts`** - Authentication state and user role; used throughout app
 - **`src/hooks/usePushNotifications.ts`** - Push notification subscriptions for Checklist
 - **`src/contexts/ToastContext.tsx`** - Shared toast notifications (success, info, warning, error); use `useToastContext()` to show toasts from any component
@@ -221,6 +222,7 @@ AI agents or automated tests can sign in without a password using the dev-login 
 | Supabase disk IO / Materials performance | `RECENT_FEATURES.md` → v2.46; `PROJECT_DOCUMENTATION.md` → Materials Disk IO Optimizations |
 | Clock In/Out, pending sessions, pay roster | `RECENT_FEATURES.md` → v2.100; `PROJECT_DOCUMENTATION.md` → Dashboard, Hours tab; `GLOSSARY.md` → Clock Sessions |
 | Dashboard "Currently clocked in" strip (Today column, My team/Everyone); supply house website in Materials | `RECENT_FEATURES.md` → v2.163; `PROJECT_DOCUMENTATION.md` → Dashboard, Materials; `src/hooks/useDashboardMyTeamSectionState.ts` |
+| Dashboard **My Time** / **Edit time** (this-week-only, Form/Visual, `myTimeDayTimeline`) | `RECENT_FEATURES.md` → v2.179; `PROJECT_DOCUMENTATION.md` → Dashboard **My Time**; `src/components/DashboardMyTimeSection.tsx`; `src/components/DashboardMyTimeDayEditorModal.tsx`; `src/components/my-time-day-editor/`; `src/lib/myTimeDayTimeline.ts` |
 | Clock sessions table UX, My Roles Goals gate, `user_dashboard_goals` / `user_daily_goals_ack` | `RECENT_FEATURES.md` → v2.149; `PROJECT_DOCUMENTATION.md` → Dashboard, People, Quickfill, Settings; `MIGRATIONS.md` → 20260329120000; `GLOSSARY.md` → Clock Sessions, My Roles Goals |
 | Settings: Sharing and Adoption under **People & accounts** (`settings-people`); no `settings-sharing` jump | `RECENT_FEATURES.md` → v2.165; `PROJECT_DOCUMENTATION.md` → Settings §9; `ACCESS_CONTROL.md` → Settings matrix |
 | Pay History: **Less** + **Additional** (`pay_stub_additional_lines`, qty×rate) + **Net Pay** (gross − Less + Additional); ledger name search; **Partial** installments (`pay_stub_payments`) vs net; Paid to date / Balance; Record payment; per-row delete in payment detail; **Print** in row; **View** in bulk **Generate Pay Reports**; dev trash delete | `RECENT_FEATURES.md` → v2.170, v2.172, v2.173, v2.174; `PROJECT_DOCUMENTATION.md` → People; `GLOSSARY.md` → pay_stub_payments, pay_stub_deductions, pay_stub_additional_lines; `src/pages/People.tsx`; `src/lib/payStubPayments.ts`; `src/lib/payStubDeductions.ts`; `src/components/pay/PayStubLessModal.tsx`; `src/components/pay/PayStubAdditionalModal.tsx`; `src/components/pay/PayStubDeleteIcon.tsx` |
