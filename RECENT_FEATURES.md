@@ -7,19 +7,22 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-03-28
+last_updated: 2026-03-29
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.179 → v2.4"
+version_range: "v2.180 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.180)"
+    line: ~495
+    description: "Bids New/Edit modal: SearchableSelect pickers; top field grid + mobile layout; Address / Distance+Plan Pages; wider modal; estimator header Bid button height"
   - name: "Latest Version (v2.179)"
-    line: ~491
+    line: ~508
     description: "Dashboard My Time / Edit time: this-week-only save (Denver `getDefaultWeekRange()`); Form vs Visual defaults; form grid, splits, Ends at, datetime inputs; Assign popover chip"
   - name: "Latest Version (v2.178)"
-    line: ~504
+    line: ~521
     description: "People: primary/superintendent on `people` roster (`20260329042321`); Pay/Hours via `allRosterNames`; Jobs/Quickfill roster"
   - name: "Latest Version (v2.177)"
     line: ~517
@@ -373,27 +376,28 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.179)](#latest-updates-v2179) - Dashboard **My Time** / **Edit time** (this-week-only editor, Form/Visual defaults, timeline UX)
-2. [Latest Updates (v2.178)](#latest-updates-v2178) - People **Primary** / **Superintendent** on `people` roster + Pay/Hours (`20260329042321`)
-3. [Latest Updates (v2.177)](#latest-updates-v2177) - People **Housing** tab + pay report **Housing** block (`20270329180000`)
-4. [Latest Updates (v2.176)](#latest-updates-v2176) - People Pay History: Ledger **open count** + **total remaining** (filtered rows)
-5. [Latest Updates (v2.175)](#latest-updates-v2175) - People Pay History: **Draft Payroll** (renamed from Run Payroll); bulk modal copy only
-6. [Latest Updates (v2.172)](#latest-updates-v2172) - Pay History: partial payments (`pay_stub_payments`), ledger balance, Run Payroll Partial
-7. [Latest Updates (v2.171)](#latest-updates-v2171) - People Hours: audit modal edit, job highlight on grid, shared clock edit modal
-8. [Latest Updates (v2.170)](#latest-updates-v2170) - People Pay History: ledger search, actions UX, bulk modal layout
-9. [Latest Updates (v2.164)](#latest-updates-v2164) - Settings (dev): Ignored task types list under Dashboard & alerts
-10. [Latest Updates (v2.163)](#latest-updates-v2163) - Dashboard clock strip; supply house website in expanded row
-11. [Latest Updates (v2.162)](#latest-updates-v2162) - Team feedback: dev eligibility reset, submissions RLS, raw submission names
-12. [Latest Updates (v2.153)](#latest-updates-v2153) - Dashboard My Team layout; pending banner jump UX
-13. [Latest Updates (v2.152)](#latest-updates-v2152) - My Team: People you lead hours table (Pending/Approved/Total)
-14. [Latest Updates (v2.151)](#latest-updates-v2151) - My Team clock notify + ledger; Edge Function
-15. [Latest Updates (v2.150)](#latest-updates-v2150) - Dashboard My Team: People you lead roster
-16. [Latest Updates (v2.149)](#latest-updates-v2149) - Clock sessions UX; daily goals gate; goals tables
-17. [Latest Updates (v2.148)](#latest-updates-v2148) - Bid Board All notes; customer notes UX; contact_method
-18. [Latest Updates (v2.145)](#latest-updates-v2145) - Master tech mobile nav Quickfill and Review in hamburger
-19. [Latest Updates (v2.144)](#latest-updates-v2144) - Assistant billing sections at top of Dashboard
-20. [Latest Updates (v2.143)](#latest-updates-v2143) - Assistant Dashboard section reorder
-21. [Latest Updates (v2.142)](#latest-updates-v2142) - Dashboard Assigned Jobs and Superintendent Jobs UX
+1. [Latest Updates (v2.180)](#latest-updates-v2180) - Bids **New/Edit** modal: **SearchableSelect**, layout + mobile grid, Distance + Plan Pages row; estimator **Bid** header
+2. [Latest Updates (v2.179)](#latest-updates-v2179) - Dashboard **My Time** / **Edit time** (this-week-only editor, Form/Visual defaults, timeline UX)
+3. [Latest Updates (v2.178)](#latest-updates-v2178) - People **Primary** / **Superintendent** on `people` roster + Pay/Hours (`20260329042321`)
+4. [Latest Updates (v2.177)](#latest-updates-v2177) - People **Housing** tab + pay report **Housing** block (`20270329180000`)
+5. [Latest Updates (v2.176)](#latest-updates-v2176) - People Pay History: Ledger **open count** + **total remaining** (filtered rows)
+6. [Latest Updates (v2.175)](#latest-updates-v2175) - People Pay History: **Draft Payroll** (renamed from Run Payroll); bulk modal copy only
+7. [Latest Updates (v2.172)](#latest-updates-v2172) - Pay History: partial payments (`pay_stub_payments`), ledger balance, Run Payroll Partial
+8. [Latest Updates (v2.171)](#latest-updates-v2171) - People Hours: audit modal edit, job highlight on grid, shared clock edit modal
+9. [Latest Updates (v2.170)](#latest-updates-v2170) - People Pay History: ledger search, actions UX, bulk modal layout
+10. [Latest Updates (v2.164)](#latest-updates-v2164) - Settings (dev): Ignored task types list under Dashboard & alerts
+11. [Latest Updates (v2.163)](#latest-updates-v2163) - Dashboard clock strip; supply house website in expanded row
+12. [Latest Updates (v2.162)](#latest-updates-v2162) - Team feedback: dev eligibility reset, submissions RLS, raw submission names
+13. [Latest Updates (v2.153)](#latest-updates-v2153) - Dashboard My Team layout; pending banner jump UX
+14. [Latest Updates (v2.152)](#latest-updates-v2152) - My Team: People you lead hours table (Pending/Approved/Total)
+15. [Latest Updates (v2.151)](#latest-updates-v2151) - My Team clock notify + ledger; Edge Function
+16. [Latest Updates (v2.150)](#latest-updates-v2150) - Dashboard My Team: People you lead roster
+17. [Latest Updates (v2.149)](#latest-updates-v2149) - Clock sessions UX; daily goals gate; goals tables
+18. [Latest Updates (v2.148)](#latest-updates-v2148) - Bid Board All notes; customer notes UX; contact_method
+19. [Latest Updates (v2.145)](#latest-updates-v2145) - Master tech mobile nav Quickfill and Review in hamburger
+20. [Latest Updates (v2.144)](#latest-updates-v2144) - Assistant billing sections at top of Dashboard
+21. [Latest Updates (v2.143)](#latest-updates-v2143) - Assistant Dashboard section reorder
+22. [Latest Updates (v2.142)](#latest-updates-v2142) - Dashboard Assigned Jobs and Superintendent Jobs UX
 2. [Latest Updates (v2.139)](#latest-updates-v2139) - Fix cost_estimates RLS for assistants
 3. [Latest Updates (v2.138)](#latest-updates-v2138) - Revoke superintendent Jobs Billing access
 2. [Latest Updates (v2.135)](#latest-updates-v2135) - Workflow: Collapse old stages toggle, breadcrumb below buttons, no-wrap scroll
@@ -489,6 +493,21 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.180)
+
+**Date**: 2026-03-29
+
+### Bids — New/Edit Bid modal and header
+
+- **[`SearchableSelect`](src/components/SearchableSelect.tsx)**: Custom single-select with optional search, client-side label filter, **`createPortal`** list (`z-index` 1100 above bid overlay 1000), positioning aligned with [`PeerTeammatePicker`](src/components/team-feedback/PeerTeammatePicker.tsx). Used in the modal for **Estimator**, **Account Man**, **Service Type** (search on), and **Win/Loss** (`searchable={false}`). Trigger uses ~44px min height; search field uses **16px** font to reduce iOS zoom.
+- **Submit validation**: [`bidFormMissingFields`](src/pages/Bids.tsx) / `bidFormCanSubmit` now include **Service Type** when empty (replacing native `<select required>` on Service Type).
+- **Top field layout** (CSS grid `bid-form-top-fields`): **Desktop** — row 1: Estimator, Account Man, Bid Date; row 2: Bid #, Project Name (name spans two columns). **Mobile** (`@media (max-width: 640px)`) — row 1: Estimator | Account Man; row 2: Bid # | Bid Date; row 3: Project Name full width.
+- **Modal**: `maxWidth` **720px** on `.bid-form-modal`.
+- **Project Address / Distance / Plan Pages**: **Project Address** on its own full-width block; **Distance to Office (miles)** and **Plan Pages** on a **shared two-column row** below (map link still beside distance input).
+- **Header**: Estimator **Bid** shortcut in [`Layout.tsx`](src/components/Layout.tsx) uses **`inline-flex`**, **`minHeight: calc(1rem + 1.25em)`** to match **Task** / **Task Dispatch** icon buttons.
 
 ---
 

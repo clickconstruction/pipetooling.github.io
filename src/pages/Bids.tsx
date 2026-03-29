@@ -13846,12 +13846,6 @@ export default function Bids() {
               }
               .bid-form-grid-2 { grid-template-columns: 1fr !important; }
               .bid-form-grid-3 { grid-template-columns: 1fr !important; }
-              .bid-form-address-distance-plan-row.bid-form-grid-3 {
-                grid-template-columns: 1fr 1fr !important;
-                grid-template-areas:
-                  "addr addr"
-                  "dist plan" !important;
-              }
               .bid-form-top-fields {
                 grid-template-columns: 1fr 1fr !important;
                 grid-template-areas:
@@ -13915,8 +13909,8 @@ export default function Bids() {
                   />
                 </div>
                 <div style={{ gridArea: 'bd' }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid Date</label>
-                  <input type="date" value={bidDueDate} onChange={(e) => setBidDueDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  <label htmlFor="bid-form-bid-due-date" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid Due Date</label>
+                  <input id="bid-form-bid-due-date" type="date" value={bidDueDate} onChange={(e) => setBidDueDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
                 </div>
                 <div style={{ gridArea: 'bidnum' }}>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid #</label>
@@ -14026,62 +14020,61 @@ export default function Bids() {
                   <input type="date" value={estimatedJobStartDate} onChange={(e) => setEstimatedJobStartDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
                 </div>
               )}
-              <div
-                className="bid-form-grid-2 bid-form-grid-3 bid-form-address-distance-plan-row"
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '3fr minmax(7rem, 1fr) 1fr',
-                  gridTemplateAreas: '"addr dist plan"',
-                  gap: '1rem',
-                  marginBottom: '1rem',
-                  width: '100%',
-                }}
-              >
-                <div style={{ gridArea: 'addr' }}>
+              <div style={{ marginBottom: '1rem', width: '100%' }}>
+                <div style={{ marginBottom: '1rem' }}>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Project Address<br />[street, town, state zip]</label>
                   <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="e.g. 12925 FM 20, Kingsbury, Texas 78638" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
                 </div>
-                <div style={{ gridArea: 'dist' }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Distance to<br />Office (miles)</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <input type="number" min={0} step={0.1} value={distanceFromOffice} onChange={(e) => setDistanceFromOffice(e.target.value)} onWheel={(e) => e.currentTarget.blur()} style={{ width: '8ch', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-                    {address && (
-                      <a
-                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          color: '#2563eb',
-                          textDecoration: 'none',
-                          cursor: 'pointer',
-                        }}
-                        title={`View ${address} on map`}
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 640 640"
-                          style={{ width: '16px', height: '16px', fill: 'currentColor' }}
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
+                    gap: '1rem',
+                    alignItems: 'start',
+                  }}
+                >
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Distance to Office (miles)</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <input type="number" min={0} step={0.1} value={distanceFromOffice} onChange={(e) => setDistanceFromOffice(e.target.value)} onWheel={(e) => e.currentTarget.blur()} style={{ width: '8ch', maxWidth: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                      {address && (
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            color: '#2563eb',
+                            textDecoration: 'none',
+                            cursor: 'pointer',
+                          }}
+                          title={`View ${address} on map`}
                         >
-                          <path d="M576 112C576 103.7 571.7 96 564.7 91.6C557.7 87.2 548.8 86.8 541.4 90.5L416.5 152.1L244 93.4C230.3 88.7 215.3 89.6 202.1 95.7L77.8 154.3C69.4 158.2 64 166.7 64 176L64 528C64 536.2 68.2 543.9 75.1 548.3C82 552.7 90.7 553.2 98.2 549.7L225.5 489.8L396.2 546.7C409.9 551.3 424.7 550.4 437.8 544.2L562.2 485.7C570.6 481.7 576 473.3 576 464L576 112zM208 146.1L208 445.1L112 490.3L112 191.3L208 146.1zM256 449.4L256 148.3L384 191.8L384 492.1L256 449.4zM432 198L528 150.6L528 448.8L432 494L432 198z" />
-                        </svg>
-                      </a>
-                    )}
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 640 640"
+                            style={{ width: '16px', height: '16px', fill: 'currentColor' }}
+                          >
+                            <path d="M576 112C576 103.7 571.7 96 564.7 91.6C557.7 87.2 548.8 86.8 541.4 90.5L416.5 152.1L244 93.4C230.3 88.7 215.3 89.6 202.1 95.7L77.8 154.3C69.4 158.2 64 166.7 64 176L64 528C64 536.2 68.2 543.9 75.1 548.3C82 552.7 90.7 553.2 98.2 549.7L225.5 489.8L396.2 546.7C409.9 551.3 424.7 550.4 437.8 544.2L562.2 485.7C570.6 481.7 576 473.3 576 464L576 112zM208 146.1L208 445.1L112 490.3L112 191.3L208 146.1zM256 449.4L256 148.3L384 191.8L384 492.1L256 449.4zM432 198L528 150.6L528 448.8L432 494L432 198z" />
+                          </svg>
+                        </a>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <div style={{ gridArea: 'plan' }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Plan<br />Pages</label>
-                  <input
-                    type="number"
-                    min={0}
-                    step={1}
-                    value={planPages}
-                    onChange={(e) => setPlanPages(e.target.value)}
-                    onWheel={(e) => e.currentTarget.blur()}
-                    placeholder="e.g. 5"
-                    style={{ width: '8ch', maxWidth: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                  />
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Plan Pages</label>
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={planPages}
+                      onChange={(e) => setPlanPages(e.target.value)}
+                      onWheel={(e) => e.currentTarget.blur()}
+                      placeholder="e.g. 5"
+                      style={{ width: '8ch', maxWidth: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    />
+                  </div>
                 </div>
               </div>
               <div style={{ marginBottom: '1rem' }}>

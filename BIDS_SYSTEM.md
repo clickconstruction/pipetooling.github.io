@@ -191,24 +191,13 @@ Column order (left to right):
 **Edit Bid Modal**:
 - Opened by clicking gear icon in Edit column
 - **Cancel button** in top-right next to modal title
-- **Field order**:
-  1. Project Name* (required, first field)
-  2. Bid # (auto-generated for new bids; editable only by dev/master/assistant when editing)
-  3. Project Address (renamed from "Address")
-  4. Project Folder
-  5. Job Plans
-  6. GC/Builder (customer selector)
-  7. Project Contact Name
-  8. Project Contact Phone
-  9. Project Contact Email
-  10. Estimator
-  11. Bid Due Date
-  12. Bid Date Sent
-  13. Submitted to (name, phone, email)
-  14. Distance to Office
-  15. Outcome (Won, Lost, Started or Complete, etc.)
-  16. Loss Reason (when outcome is "Lost")
-  17. Estimated Job Start Date (when outcome is "Won")
+- **Pickers**: **Estimator**, **Account Man**, **Service Type**, and **Win/Loss** use **`SearchableSelect`** ([`src/components/SearchableSelect.tsx`](src/components/SearchableSelect.tsx)): button trigger, optional search, list in a **portal** above the modal. **Service Type** and **Project Name** are required for save (client-side `bidFormMissingFields`).
+- **Field order** (see `bidFormOpen` in [`src/pages/Bids.tsx`](src/pages/Bids.tsx)):
+  1. **Top grid (desktop)**: Row 1 — Estimator, Account Man, Bid Date; Row 2 — Bid #, Project Name* (Project Name spans two columns). **Mobile**: Row 1 — Estimator | Account Man; Row 2 — Bid # | Bid Date; Row 3 — Project Name* full width.
+  2. **Service Type***, Win/Loss, Bid Date Sent (one flex row)
+  3. Loss reason (when Lost); Start Date (when Won)
+  4. Project Address (full width), then **Distance to Office (miles)** | **Plan Pages** (two-column row; map link by distance)
+  5. Project Folder, Job Plans / Design Drawing Plan Date, Count Tooling / Bid Submission, GC/Builder (customer), Project Contact fields, Submitted to, financial fields, Last Contact, Notes, actions
 
 **Delete Bid Confirmation**:
 - **"Delete bid" button** in Edit Bid modal opens separate confirmation modal
