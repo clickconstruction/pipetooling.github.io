@@ -3036,6 +3036,107 @@ export type Database = {
           },
         ]
       }
+      pay_stub_deductions: {
+        Row: {
+          amount: number
+          created_at: string | null
+          created_by: string | null
+          description: string
+          id: string
+          pay_stub_id: string
+          person_offset_id: string | null
+          source: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          created_by?: string | null
+          description?: string
+          id?: string
+          pay_stub_id: string
+          person_offset_id?: string | null
+          source: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          created_by?: string | null
+          description?: string
+          id?: string
+          pay_stub_id?: string
+          person_offset_id?: string | null
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pay_stub_deductions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pay_stub_deductions_pay_stub_id_fkey"
+            columns: ["pay_stub_id"]
+            isOneToOne: false
+            referencedRelation: "pay_stubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pay_stub_deductions_person_offset_id_fkey"
+            columns: ["person_offset_id"]
+            isOneToOne: false
+            referencedRelation: "person_offsets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pay_stub_additional_lines: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string
+          id: string
+          line_total: number
+          pay_stub_id: string
+          quantity: number
+          rate: number
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string
+          id?: string
+          pay_stub_id: string
+          quantity: number
+          rate: number
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string
+          id?: string
+          pay_stub_id?: string
+          quantity?: number
+          rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pay_stub_additional_lines_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pay_stub_additional_lines_pay_stub_id_fkey"
+            columns: ["pay_stub_id"]
+            isOneToOne: false
+            referencedRelation: "pay_stubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pay_stubs: {
         Row: {
           created_at: string | null

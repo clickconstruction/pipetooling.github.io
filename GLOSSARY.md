@@ -7,11 +7,11 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-03-22
+last_updated: 2026-03-28
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
-total_terms: ~123
+total_terms: ~124
 categories: 9
 
 key_sections:
@@ -42,7 +42,7 @@ key_sections:
   - name: "Database Concepts"
     line: ~495
     anchor: "#database-concepts"
-    terms: 10
+    terms: 11
   - name: "Technical Terms"
     line: ~561
     anchor: "#technical-terms"
@@ -639,6 +639,27 @@ SQL file defining schema changes (CREATE TABLE, ALTER TABLE, etc.). Migrations a
 **Naming**: `YYYYMMDDHHMMSS_descriptive_name.sql`
 
 **Rule**: Never edit existing migrations; create new ones
+
+### pay_stub_payments
+Physical installment rows against a generated pay stub: amount sent, optional sent-on date, optional memo. A database trigger prevents the sum of installment amounts from exceeding **Net Pay** (stub **gross_pay** minus **`pay_stub_deductions`** plus **`pay_stub_additional_lines`** `line_total`, within a small rounding tolerance).
+
+**Contrast with `pay_stub_days`**: Day rows allocate gross by **work date** (used in Annual Pay to Date: earned vs allocated). **`pay_stub_payments`** tracks **cash actually sent** and drives Pay History **Paid to date**, **Balance**, and Unpaid / Partial / Paid status (against **Net Pay**).
+
+**Client helpers**: `src/lib/payStubPayments.ts` (e.g. sum, remaining, fully paid).
+
+**See also**: `RECENT_FEATURES.md` → v2.172, v2.173, v2.174; `PROJECT_DOCUMENTATION.md` → People (Pay History).
+
+### pay_stub_deductions
+**Less** lines on a pay stub: amounts subtracted from **gross_pay** as part of **Net Pay**. Each row is either **manual** (description + amount) or **offset** (linked to **`person_offsets`**). Sum of deductions cannot exceed gross; changing deductions is blocked if existing installments would exceed the new Net Pay (which also includes **Additional**).
+
+**See also**: `RECENT_FEATURES.md` → v2.173, v2.174; `src/components/pay/PayStubLessModal.tsx`.
+
+### pay_stub_additional_lines
+**Additional** lines on a pay stub: **quantity** × **rate**, with **`line_total`** generated in the database as `round(quantity * rate, 2)`. **Net Pay** = **gross_pay** − sum(Less) + sum(Additional line totals). Edits are blocked when installments already fully cover Net Pay, same pattern as **Less**.
+
+**Client helpers**: `src/lib/payStubDeductions.ts`.
+
+**See also**: `RECENT_FEATURES.md` → v2.174; `PROJECT_DOCUMENTATION.md` → People (Pay History); `src/components/pay/PayStubAdditionalModal.tsx`.
 
 ### Trigger
 Automatic database function that fires on INSERT, UPDATE, or DELETE operations.

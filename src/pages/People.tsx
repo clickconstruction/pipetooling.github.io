@@ -23,6 +23,15 @@ import {
   sumPayStubPaymentAmounts,
   type PayStubPaymentRow,
 } from '../lib/payStubPayments'
+import { PayStubAdditionalModal } from '../components/pay/PayStubAdditionalModal'
+import { PayStubLessModal } from '../components/pay/PayStubLessModal'
+import {
+  type PayStubAdditionalLineRow,
+  type PayStubDeductionRow,
+  stubNetPay,
+  sumPayStubAdditionalAmounts,
+  sumPayStubDeductionAmounts,
+} from '../lib/payStubDeductions'
 import { findPersonUserDuplicates, mergePersonIntoUser } from '../lib/mergePersonUserDuplicates'
 import {
   deleteLabel,
@@ -345,6 +354,10 @@ export default function People() {
   type PayStubRow = { id: string; person_name: string; period_start: string; period_end: string; hours_total: number; gross_pay: number; created_at: string | null; paid_at: string | null; paid_by: string | null; paid_note: string | null }
   const [payStubs, setPayStubs] = useState<PayStubRow[]>([])
   const [payStubPaymentsByStubId, setPayStubPaymentsByStubId] = useState<Record<string, PayStubPaymentRow[]>>({})
+  const [payStubDeductionsByStubId, setPayStubDeductionsByStubId] = useState<Record<string, PayStubDeductionRow[]>>({})
+  const [payStubAdditionalByStubId, setPayStubAdditionalByStubId] = useState<Record<string, PayStubAdditionalLineRow[]>>({})
+  const [payStubLessModalStub, setPayStubLessModalStub] = useState<PayStubRow | null>(null)
+  const [payStubAdditionalModalStub, setPayStubAdditionalModalStub] = useState<PayStubRow | null>(null)
   const [payStubsLoading, setPayStubsLoading] = useState(false)
   const [payStubGeneratorPerson, setPayStubGeneratorPerson] = useState('')
   const [payStubPeriodStart, setPayStubPeriodStart] = useState(() => {
@@ -369,7 +382,7 @@ export default function People() {
   const [markingPayStubId, setMarkingPayStubId] = useState<string | null>(null)
   const [generatingPayStubPerson, setGeneratingPayStubPerson] = useState<string | null>(null)
   const [bulkGeneratingPayStubs, setBulkGeneratingPayStubs] = useState(false)
-  const [runPayrollModalOpen, setRunPayrollModalOpen] = useState(false)
+  const [draftPayrollModalOpen, setDraftPayrollModalOpen] = useState(false)
   const [runPayrollReviewDaysDetail, setRunPayrollReviewDaysDetail] = useState<{
     personName: string
     items: Array<{ workDate: string; issue: 'not_correct' | 'missing_job' }>
@@ -1938,28 +1951,64 @@ export default function People() {
       const ids = stubs.map((s) => s.id)
       if (ids.length === 0) {
         setPayStubPaymentsByStubId({})
+        setPayStubDeductionsByStubId({})
+        setPayStubAdditionalByStubId({})
         return
       }
       const byStub: Record<string, PayStubPaymentRow[]> = {}
+      const dedByStub: Record<string, PayStubDeductionRow[]> = {}
+      const addByStub: Record<string, PayStubAdditionalLineRow[]> = {}
       const chunkSize = 200
       for (let i = 0; i < ids.length; i += chunkSize) {
         const chunk = ids.slice(i, i + chunkSize)
-        const payments = await withSupabaseRetry(
-          async () =>
-            await supabase
-              .from('pay_stub_payments')
-              .select('id, pay_stub_id, amount, paid_at, memo, created_at, created_by')
-              .in('pay_stub_id', chunk)
-              .order('paid_at', { ascending: true }),
-          'load pay stub payments'
-        )
+        const [payments, deductions, additional] = await Promise.all([
+          withSupabaseRetry(
+            async () =>
+              await supabase
+                .from('pay_stub_payments')
+                .select('id, pay_stub_id, amount, paid_at, memo, created_at, created_by')
+                .in('pay_stub_id', chunk)
+                .order('paid_at', { ascending: true }),
+            'load pay stub payments',
+          ),
+          withSupabaseRetry(
+            async () =>
+              await supabase
+                .from('pay_stub_deductions')
+                .select('id, pay_stub_id, amount, source, person_offset_id, description, created_at, created_by')
+                .in('pay_stub_id', chunk)
+                .order('created_at', { ascending: true }),
+            'load pay stub deductions',
+          ),
+          withSupabaseRetry(
+            async () =>
+              await supabase
+                .from('pay_stub_additional_lines')
+                .select('id, pay_stub_id, description, quantity, rate, line_total, created_at, created_by')
+                .in('pay_stub_id', chunk)
+                .order('created_at', { ascending: true }),
+            'load pay stub additional lines',
+          ),
+        ])
         for (const p of (payments ?? []) as PayStubPaymentRow[]) {
           const list = byStub[p.pay_stub_id] ?? []
           list.push(p)
           byStub[p.pay_stub_id] = list
         }
+        for (const d of (deductions ?? []) as PayStubDeductionRow[]) {
+          const list = dedByStub[d.pay_stub_id] ?? []
+          list.push(d)
+          dedByStub[d.pay_stub_id] = list
+        }
+        for (const a of (additional ?? []) as PayStubAdditionalLineRow[]) {
+          const list = addByStub[a.pay_stub_id] ?? []
+          list.push(a)
+          addByStub[a.pay_stub_id] = list
+        }
       }
       setPayStubPaymentsByStubId(byStub)
+      setPayStubDeductionsByStubId(dedByStub)
+      setPayStubAdditionalByStubId(addByStub)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load pay reports')
     }
@@ -2101,25 +2150,19 @@ export default function People() {
     return result
   }
 
-  async function getOffsetsForPayStub(
-    personName: string,
-    payStubId: string | null,
-    _periodStart: string,
-    _periodEnd: string
-  ): Promise<{ appliedOffsets: Array<{ type: string; amount: number; description: string | null }>; pendingOffsets: Array<{ type: string; amount: number; description: string | null }> }> {
-    const applied: Array<{ type: string; amount: number; description: string | null }> = []
+  async function getPendingOffsetsForPayReport(personName: string): Promise<
+    Array<{ type: string; amount: number; description: string | null }>
+  > {
     const pending: Array<{ type: string; amount: number; description: string | null }> = []
-    if (payStubId) {
-      const { data: appliedData } = await supabase.from('person_offsets').select('type, amount, description').eq('pay_stub_id', payStubId)
-      for (const r of (appliedData ?? []) as { type: string; amount: number; description: string | null }[]) {
-        applied.push({ type: r.type, amount: r.amount, description: r.description })
-      }
-    }
-    const { data: pendingData } = await supabase.from('person_offsets').select('type, amount, description').eq('person_name', personName.trim()).is('pay_stub_id', null)
+    const { data: pendingData } = await supabase
+      .from('person_offsets')
+      .select('type, amount, description')
+      .eq('person_name', personName.trim())
+      .is('pay_stub_id', null)
     for (const r of (pendingData ?? []) as { type: string; amount: number; description: string | null }[]) {
       pending.push({ type: r.type, amount: r.amount, description: r.description })
     }
-    return { appliedOffsets: applied, pendingOffsets: pending }
+    return pending
   }
 
   function getPersonContact(personName: string): { email: string | null; phone: string | null } {
@@ -2141,7 +2184,8 @@ export default function People() {
     grossPay: number,
     rowsWithJobs?: Array<{ date: string; hours: number; jobsText: string }>,
     vehicles?: Array<{ year: number; make: string; model: string; vin: string | null; weekly_insurance_cost: number; weekly_registration_cost: number }>,
-    appliedOffsets?: Array<{ type: string; amount: number; description: string | null }>,
+    additionalLines?: Array<{ description: string; quantity: number; rate: number; line_total: number }>,
+    lessDeductionLines?: Array<{ amount: number; description: string; source: string }>,
     pendingOffsets?: Array<{ type: string; amount: number; description: string | null }>,
     physicalPayments?: Array<{ paid_at: string; amount: number; memo: string | null }>
   ): string {
@@ -2193,29 +2237,38 @@ export default function People() {
         ${tableFooter}
       </table>
       <div style="margin-top: 1rem; font-weight: 600;">Gross Pay: $${formatCurrency(grossPay)}</div>
-      ${(appliedOffsets && appliedOffsets.length > 0) || (pendingOffsets && pendingOffsets.length > 0) ? (() => {
-        const applied = appliedOffsets ?? []
+      ${(() => {
+        const addLines = additionalLines ?? []
+        const addTotal = Math.round(addLines.reduce((s, x) => s + x.line_total, 0) * 100) / 100
+        const lessLines = lessDeductionLines ?? []
+        const lessTotal = Math.round(lessLines.reduce((s, x) => s + x.amount, 0) * 100) / 100
+        const netPay = stubNetPay(grossPay, lessTotal, addTotal)
+        let block = ''
+        if (addLines.length > 0) {
+          block += '<div style="margin-top: 0.75rem;"><strong>Additional</strong></div>'
+          for (const A of addLines) {
+            block += `<div class="meta">- ${escapeHtml(A.description)}: ${A.quantity} × $${formatCurrency(A.rate)} = $${formatCurrency(A.line_total)}</div>`
+          }
+          block += `<div class="meta"><strong>Total Additional: $${formatCurrency(addTotal)}</strong></div>`
+        }
+        if (lessLines.length > 0) {
+          block += '<div style="margin-top: 0.75rem;"><strong>Less</strong></div>'
+          for (const L of lessLines) {
+            const tag = L.source === 'offset' ? 'Offset' : 'Manual'
+            block += `<div class="meta">- ${escapeHtml(tag)}: ${escapeHtml(L.description)} — $${formatCurrency(L.amount)}</div>`
+          }
+          block += `<div class="meta"><strong>Total Less: $${formatCurrency(lessTotal)}</strong></div>`
+        }
+        block += `<div class="meta" style="margin-top: 0.75rem; font-weight: 600;">Net Pay: $${formatCurrency(netPay)}</div>`
         const pending = pendingOffsets ?? []
-        const appliedTotal = applied.reduce((s, o) => s + o.amount, 0)
-        const netPay = grossPay - appliedTotal
-        let html = '<div style="margin-top: 1rem;">'
-        if (applied.length > 0) {
-          html += '<div style="margin-top: 0.5rem;"><strong>Applied Offsets:</strong></div>'
-          for (const o of applied) {
-            html += `<div class="meta">- ${escapeHtml(o.type === 'backcharge' ? 'Backcharge' : 'Damage')}${o.description ? ` (${escapeHtml(o.description)})` : ''}: $${formatCurrency(o.amount)}</div>`
-          }
-          html += `<div class="meta"><strong>Total Applied: $${formatCurrency(appliedTotal)}</strong></div>`
-          html += `<div class="meta" style="font-weight: 600;">Net Pay: $${formatCurrency(netPay)}</div>`
-        }
         if (pending.length > 0) {
-          html += '<div style="margin-top: 0.75rem;"><strong>Pending Offsets (not yet applied):</strong></div>'
+          block += '<div style="margin-top: 0.75rem;"><strong>Pending Offsets (not yet on a pay report):</strong></div>'
           for (const o of pending) {
-            html += `<div class="meta">- ${escapeHtml(o.type === 'backcharge' ? 'Backcharge' : 'Damage')}${o.description ? ` (${escapeHtml(o.description)})` : ''}: $${formatCurrency(o.amount)}</div>`
+            block += `<div class="meta">- ${escapeHtml(o.type === 'backcharge' ? 'Backcharge' : 'Damage')}${o.description ? ` (${escapeHtml(o.description)})` : ''}: $${formatCurrency(o.amount)}</div>`
           }
         }
-        html += '</div>'
-        return html
-      })() : ''}
+        return block
+      })()}
       ${physicalPayments && physicalPayments.length > 0
         ? (() => {
             const total = physicalPayments.reduce((s, p) => s + p.amount, 0)
@@ -2358,10 +2411,33 @@ export default function People() {
       }
     }
     const rowsWithJobs = computePayReportAssignmentsBreakdown(personName, dayRows, crewByDatePerson, crewBidsByDatePerson, jobsMap, bidsMap)
-    const [vehicles, { appliedOffsets, pendingOffsets }] = await Promise.all([
+    const [vehicles, pendingOffsets, dedRes, addRes] = await Promise.all([
       getVehiclesForPersonInPeriod(personName, start, end),
-      getOffsetsForPayStub(personName, payStubId, start, end),
+      getPendingOffsetsForPayReport(personName),
+      supabase
+        .from('pay_stub_deductions')
+        .select('amount, description, source')
+        .eq('pay_stub_id', payStubId)
+        .order('created_at', { ascending: true }),
+      supabase
+        .from('pay_stub_additional_lines')
+        .select('description, quantity, rate, line_total')
+        .eq('pay_stub_id', payStubId)
+        .order('created_at', { ascending: true }),
     ])
+    const additionalLinesGen = ((addRes.data ?? []) as { description: string; quantity: number; rate: number; line_total: number }[]).map(
+      (r) => ({
+        description: r.description,
+        quantity: r.quantity,
+        rate: r.rate,
+        line_total: r.line_total,
+      }),
+    )
+    const lessLines = ((dedRes.data ?? []) as { amount: number; description: string; source: string }[]).map((r) => ({
+      amount: r.amount,
+      description: r.description,
+      source: r.source,
+    }))
     const html = buildPayStubHtml(
       personName,
       start,
@@ -2372,7 +2448,8 @@ export default function People() {
       grossPay,
       rowsWithJobs,
       vehicles,
-      appliedOffsets,
+      additionalLinesGen,
+      lessLines,
       pendingOffsets,
       [],
     )
@@ -2480,11 +2557,34 @@ export default function People() {
     }
     const rowsWithJobs = computePayReportAssignmentsBreakdown(stub.person_name, dayRows, crewByDatePerson, crewBidsByDatePerson, jobsMap, bidsMap)
     const hoursRows = dayRows.map((r) => ({ date: r.work_date, hours: r.hours }))
-    const [vehicles, { appliedOffsets, pendingOffsets }, payData] = await Promise.all([
+    const [vehicles, pendingOffsets, payData, dedRes, addResView] = await Promise.all([
       getVehiclesForPersonInPeriod(stub.person_name, start, end),
-      getOffsetsForPayStub(stub.person_name, stub.id, start, end),
+      getPendingOffsetsForPayReport(stub.person_name),
       supabase.from('pay_stub_payments').select('paid_at, amount, memo').eq('pay_stub_id', stub.id).order('paid_at', { ascending: true }),
+      supabase
+        .from('pay_stub_deductions')
+        .select('amount, description, source')
+        .eq('pay_stub_id', stub.id)
+        .order('created_at', { ascending: true }),
+      supabase
+        .from('pay_stub_additional_lines')
+        .select('description, quantity, rate, line_total')
+        .eq('pay_stub_id', stub.id)
+        .order('created_at', { ascending: true }),
     ])
+    const additionalLinesView = ((addResView.data ?? []) as { description: string; quantity: number; rate: number; line_total: number }[]).map(
+      (r) => ({
+        description: r.description,
+        quantity: r.quantity,
+        rate: r.rate,
+        line_total: r.line_total,
+      }),
+    )
+    const lessLines = ((dedRes.data ?? []) as { amount: number; description: string; source: string }[]).map((r) => ({
+      amount: r.amount,
+      description: r.description,
+      source: r.source,
+    }))
     const physicalPayments = ((payData.data ?? []) as { paid_at: string; amount: number; memo: string | null }[]).map((r) => ({
       paid_at: r.paid_at,
       amount: r.amount,
@@ -2500,7 +2600,8 @@ export default function People() {
       stub.gross_pay,
       rowsWithJobs,
       vehicles,
-      appliedOffsets,
+      additionalLinesView,
+      lessLines,
       pendingOffsets,
       physicalPayments,
     )
@@ -2566,11 +2667,34 @@ export default function People() {
     }
     const rowsWithJobs = computePayReportAssignmentsBreakdown(stub.person_name, dayRows, crewByDatePerson, crewBidsByDatePerson, jobsMap, bidsMap)
     const hoursRows = dayRows.map((r) => ({ date: r.work_date, hours: r.hours }))
-    const [vehicles, { appliedOffsets, pendingOffsets }, payData] = await Promise.all([
+    const [vehicles, pendingOffsets, payData, dedResPrint, addResPrint] = await Promise.all([
       getVehiclesForPersonInPeriod(stub.person_name, start, end),
-      getOffsetsForPayStub(stub.person_name, stub.id, start, end),
+      getPendingOffsetsForPayReport(stub.person_name),
       supabase.from('pay_stub_payments').select('paid_at, amount, memo').eq('pay_stub_id', stub.id).order('paid_at', { ascending: true }),
+      supabase
+        .from('pay_stub_deductions')
+        .select('amount, description, source')
+        .eq('pay_stub_id', stub.id)
+        .order('created_at', { ascending: true }),
+      supabase
+        .from('pay_stub_additional_lines')
+        .select('description, quantity, rate, line_total')
+        .eq('pay_stub_id', stub.id)
+        .order('created_at', { ascending: true }),
     ])
+    const additionalLinesPrint = ((addResPrint.data ?? []) as { description: string; quantity: number; rate: number; line_total: number }[]).map(
+      (r) => ({
+        description: r.description,
+        quantity: r.quantity,
+        rate: r.rate,
+        line_total: r.line_total,
+      }),
+    )
+    const lessLinesPrint = ((dedResPrint.data ?? []) as { amount: number; description: string; source: string }[]).map((r) => ({
+      amount: r.amount,
+      description: r.description,
+      source: r.source,
+    }))
     const physicalPayments = ((payData.data ?? []) as { paid_at: string; amount: number; memo: string | null }[]).map((r) => ({
       paid_at: r.paid_at,
       amount: r.amount,
@@ -2586,7 +2710,8 @@ export default function People() {
       stub.gross_pay,
       rowsWithJobs,
       vehicles,
-      appliedOffsets,
+      additionalLinesPrint,
+      lessLinesPrint,
       pendingOffsets,
       physicalPayments,
     )
@@ -2606,6 +2731,16 @@ export default function People() {
         delete next[stub.id]
         return next
       })
+      setPayStubDeductionsByStubId((prev) => {
+        const next = { ...prev }
+        delete next[stub.id]
+        return next
+      })
+      setPayStubAdditionalByStubId((prev) => {
+        const next = { ...prev }
+        delete next[stub.id]
+        return next
+      })
       setPayStubDeleteConfirm(null)
     }
     setDeletingPayStubId(null)
@@ -2613,7 +2748,10 @@ export default function People() {
 
   function openPayStubMarkPaidModal(stub: PayStubRow) {
     const paidSoFar = sumPayStubPaymentAmounts(payStubPaymentsByStubId[stub.id])
-    const remaining = remainingPayStubBalance(stub.gross_pay, paidSoFar)
+    const dedSum = sumPayStubDeductionAmounts(payStubDeductionsByStubId[stub.id])
+    const addSum = sumPayStubAdditionalAmounts(payStubAdditionalByStubId[stub.id])
+    const netPay = stubNetPay(stub.gross_pay, dedSum, addSum)
+    const remaining = remainingPayStubBalance(netPay, paidSoFar)
     setPayStubMarkPaidTarget(stub)
     setPayStubMarkPaidDate(todayYyyyMmDdLocal())
     setPayStubMarkPaidAmount(remaining > 0 ? remaining.toFixed(2) : '')
@@ -2643,13 +2781,16 @@ export default function People() {
     const amtRaw = payStubMarkPaidAmount.trim().replace(/,/g, '')
     const amount = parseFloat(amtRaw)
     const paidSoFar = sumPayStubPaymentAmounts(payStubPaymentsByStubId[stub.id])
-    const remaining = remainingPayStubBalance(stub.gross_pay, paidSoFar)
+    const dedSumMark = sumPayStubDeductionAmounts(payStubDeductionsByStubId[stub.id])
+    const addSumMark = sumPayStubAdditionalAmounts(payStubAdditionalByStubId[stub.id])
+    const netPayMark = stubNetPay(stub.gross_pay, dedSumMark, addSumMark)
+    const remaining = remainingPayStubBalance(netPayMark, paidSoFar)
     if (!Number.isFinite(amount) || amount <= 0) {
       setError('Enter a valid payment amount greater than zero.')
       return
     }
     if (amount > remaining + 0.011) {
-      setError(`Amount cannot exceed remaining balance ($${formatCurrency(remaining)}).`)
+      setError(`Amount cannot exceed remaining balance after Net Pay ($${formatCurrency(remaining)}).`)
       return
     }
     setMarkingPayStubId(stub.id)
@@ -2670,32 +2811,6 @@ export default function People() {
       await loadPayStubs()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to record payment')
-    }
-    setMarkingPayStubId(null)
-  }
-
-  async function unmarkPayStubPaid(stub: PayStubRow) {
-    if (
-      !window.confirm(
-        'Remove all payment records for this pay report and clear legacy paid flags? This cannot be undone.',
-      )
-    )
-      return
-    setMarkingPayStubId(stub.id)
-    setError(null)
-    try {
-      await withSupabaseRetry(
-        async () => await supabase.from('pay_stub_payments').delete().eq('pay_stub_id', stub.id),
-        'delete pay stub payments',
-      )
-      await withSupabaseRetry(
-        async () =>
-          await supabase.from('pay_stubs').update({ paid_at: null, paid_by: null, paid_note: null }).eq('id', stub.id),
-        'clear pay stub paid fields',
-      )
-      await loadPayStubs()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to clear payments')
     }
     setMarkingPayStubId(null)
   }
@@ -4000,6 +4115,31 @@ export default function People() {
     if (!q) return payStubs
     return payStubs.filter((s) => s.person_name.toLowerCase().includes(q))
   }, [payStubs, ledgerPersonSearch])
+
+  const ledgerOpenBalanceSummary = useMemo(() => {
+    let openCount = 0
+    let totalRemaining = 0
+    for (const stub of ledgerFilteredPayStubs) {
+      const payRows = payStubPaymentsByStubId[stub.id] ?? []
+      const paidSum = sumPayStubPaymentAmounts(payRows)
+      const lessSum = sumPayStubDeductionAmounts(payStubDeductionsByStubId[stub.id] ?? [])
+      const addSumLedger = sumPayStubAdditionalAmounts(payStubAdditionalByStubId[stub.id] ?? [])
+      const netPayLedger = stubNetPay(stub.gross_pay, lessSum, addSumLedger)
+      const rem = remainingPayStubBalance(netPayLedger, paidSum)
+      const fully = isPayStubFullyPaid(netPayLedger, paidSum)
+      if (!fully) openCount += 1
+      totalRemaining += rem
+    }
+    return {
+      openCount,
+      totalRemaining: Math.round(totalRemaining * 100) / 100,
+    }
+  }, [
+    ledgerFilteredPayStubs,
+    payStubPaymentsByStubId,
+    payStubDeductionsByStubId,
+    payStubAdditionalByStubId,
+  ])
 
   const teamsFiltered = useMemo(
     () =>
@@ -5933,7 +6073,7 @@ export default function People() {
                   <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Generate Pay Reports</h2>
                   <button
                     type="button"
-                    onClick={() => setRunPayrollModalOpen(true)}
+                    onClick={() => setDraftPayrollModalOpen(true)}
                     disabled={showPeopleForHours.length === 0}
                     title={showPeopleForHours.length === 0 ? 'Go to Pay tab and check Show in Hours for people to track' : undefined}
                     style={{
@@ -5947,7 +6087,7 @@ export default function People() {
                       fontWeight: 500,
                     }}
                   >
-                    Run Payroll
+                    Draft Payroll
                   </button>
                 </div>
                 {showPeopleForHours.length === 0 && (
@@ -6078,8 +6218,17 @@ export default function People() {
                 })()}
               </section>
               <section>
-                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem', justifyContent: 'space-between' }}>
-                  <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Ledger</h2>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '0.75rem', justifyContent: 'space-between' }}>
+                  <div style={{ flex: '1 1 auto', minWidth: 0 }}>
+                    <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Ledger</h2>
+                    {payStubs.length > 0 && ledgerFilteredPayStubs.length > 0 ? (
+                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }} aria-live="polite">
+                        {ledgerOpenBalanceSummary.openCount > 0
+                          ? `${ledgerOpenBalanceSummary.openCount} open · $${formatCurrency(ledgerOpenBalanceSummary.totalRemaining)} remaining`
+                          : 'All paid'}
+                      </p>
+                    ) : null}
+                  </div>
                   <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', margin: 0, flex: '1 1 12rem', maxWidth: 280, minWidth: 0 }}>
                     <span style={{ color: '#6b7280', whiteSpace: 'nowrap' }}>Search</span>
                     <input
@@ -6106,6 +6255,19 @@ export default function People() {
                           <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Period</th>
                           <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Hours</th>
                           <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Gross Pay</th>
+                          <th
+                            style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}
+                            title="Deductions and applied offsets. Click the amount to edit."
+                          >
+                            Less
+                          </th>
+                          <th
+                            style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}
+                            title="Additional pay (quantity × rate). Click the amount to edit."
+                          >
+                            Additional
+                          </th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Net Pay</th>
                           <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Paid to date</th>
                           <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Balance</th>
                           <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Payment</th>
@@ -6117,14 +6279,16 @@ export default function People() {
                         {ledgerFilteredPayStubs.map((stub) => {
                           const payRows = payStubPaymentsByStubId[stub.id] ?? []
                           const paidSum = sumPayStubPaymentAmounts(payRows)
-                          const rem = remainingPayStubBalance(stub.gross_pay, paidSum)
-                          const fully = isPayStubFullyPaid(stub.gross_pay, paidSum)
+                          const lessSum = sumPayStubDeductionAmounts(payStubDeductionsByStubId[stub.id] ?? [])
+                          const addSumLedger = sumPayStubAdditionalAmounts(payStubAdditionalByStubId[stub.id] ?? [])
+                          const netPayLedger = stubNetPay(stub.gross_pay, lessSum, addSumLedger)
+                          const rem = remainingPayStubBalance(netPayLedger, paidSum)
+                          const fully = isPayStubFullyPaid(netPayLedger, paidSum)
                           const partial = paidSum > 0 && !fully
                           const paymentLabel = fully ? 'Paid' : partial ? 'Partial' : 'Unpaid'
                           const paymentColor = fully ? '#059669' : partial ? '#ca8a04' : '#6b7280'
                           const showPayDetail =
                             payRows.length > 0 || Boolean(stub.paid_note?.trim()) || Boolean(stub.paid_at)
-                          const canClearPayments = payRows.length > 0 || Boolean(stub.paid_at) || Boolean(stub.paid_by)
                           return (
                           <tr key={stub.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                             <td style={{ padding: '0.5rem 0.75rem' }}>
@@ -6150,8 +6314,114 @@ export default function People() {
                             </td>
                             <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{stub.hours_total.toFixed(2)}</td>
                             <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(stub.gross_pay)}</td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>
+                              <button
+                                type="button"
+                                onClick={() => setPayStubLessModalStub(stub)}
+                                title="Edit Less (deductions)"
+                                aria-label={`Less for ${stub.person_name}, ${ledgerPayPeriodShortLabel(stub.period_start, stub.period_end)}: $${formatCurrency(lessSum)}`}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  padding: 0,
+                                  cursor: 'pointer',
+                                  color: '#2563eb',
+                                  textDecoration: 'underline',
+                                  fontSize: 'inherit',
+                                  fontFamily: 'inherit',
+                                }}
+                              >
+                                ${formatCurrency(lessSum)}
+                              </button>
+                            </td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>
+                              <button
+                                type="button"
+                                onClick={() => setPayStubAdditionalModalStub(stub)}
+                                title="Edit Additional pay lines"
+                                aria-label={`Additional for ${stub.person_name}, ${ledgerPayPeriodShortLabel(stub.period_start, stub.period_end)}: $${formatCurrency(addSumLedger)}`}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  padding: 0,
+                                  cursor: 'pointer',
+                                  color: '#2563eb',
+                                  textDecoration: 'underline',
+                                  fontSize: 'inherit',
+                                  fontFamily: 'inherit',
+                                }}
+                              >
+                                ${formatCurrency(addSumLedger)}
+                              </button>
+                            </td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(netPayLedger)}</td>
                             <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(paidSum)}</td>
-                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(rem)}</td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>
+                              <span
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'flex-end',
+                                  gap: '0.35rem',
+                                  width: '100%',
+                                }}
+                              >
+                                <span>
+                                  ${formatCurrency(rem)}
+                                </span>
+                                <button
+                                  type="button"
+                                  title="Copy balance"
+                                  aria-label={`Copy balance ${formatCurrency(rem)} for ${stub.person_name}, ${ledgerPayPeriodShortLabel(stub.period_start, stub.period_end)}`}
+                                  onClick={() => {
+                                    void (async () => {
+                                      const text = formatCurrency(rem)
+                                      try {
+                                        if (!navigator.clipboard?.writeText) {
+                                          showToast('Clipboard not available.', 'warning')
+                                          return
+                                        }
+                                        await navigator.clipboard.writeText(text)
+                                        showToast('Balance copied.', 'success')
+                                      } catch {
+                                        showToast('Could not copy balance.', 'error')
+                                      }
+                                    })()
+                                  }}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    padding: 2,
+                                    border: 'none',
+                                    background: 'none',
+                                    cursor: 'pointer',
+                                    borderRadius: 4,
+                                    color: '#6b7280',
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.color = '#2563eb'
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.color = '#6b7280'
+                                  }}
+                                >
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 640 640"
+                                    width={16}
+                                    height={16}
+                                    aria-hidden
+                                    style={{ display: 'block' }}
+                                  >
+                                    <path
+                                      fill="currentColor"
+                                      d="M480 400L288 400C279.2 400 272 392.8 272 384L272 128C272 119.2 279.2 112 288 112L421.5 112C425.7 112 429.8 113.7 432.8 116.7L491.3 175.2C494.3 178.2 496 182.3 496 186.5L496 384C496 392.8 488.8 400 480 400zM288 448L480 448C515.3 448 544 419.3 544 384L544 186.5C544 169.5 537.3 153.2 525.3 141.2L466.7 82.7C454.7 70.7 438.5 64 421.5 64L288 64C252.7 64 224 92.7 224 128L224 384C224 419.3 252.7 448 288 448zM160 192C124.7 192 96 220.7 96 256L96 512C96 547.3 124.7 576 160 576L352 576C387.3 576 416 547.3 416 512L416 496L368 496L368 512C368 520.8 360.8 528 352 528L160 528C151.2 528 144 520.8 144 512L144 256C144 247.2 151.2 240 160 240L176 240L176 192L160 192z"
+                                    />
+                                  </svg>
+                                </button>
+                              </span>
+                            </td>
                             <td style={{ padding: '0.5rem 0.75rem' }}>
                               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
                                 <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: paymentColor }}>{paymentLabel}</span>
@@ -6184,16 +6454,6 @@ export default function People() {
                                 >
                                   {markingPayStubId === stub.id ? '...' : 'Record payment'}
                                 </button>
-                                {canClearPayments ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => unmarkPayStubPaid(stub)}
-                                    disabled={markingPayStubId === stub.id}
-                                    style={{ padding: '2px 6px', fontSize: '0.75rem', background: 'none', border: '1px solid #d1d5db', borderRadius: 4, cursor: markingPayStubId === stub.id ? 'not-allowed' : 'pointer', color: '#6b7280' }}
-                                  >
-                                    {markingPayStubId === stub.id ? '...' : 'Clear payments'}
-                                  </button>
-                                ) : null}
                               </span>
                             </td>
                             <td style={{ padding: '0.5rem 0.75rem' }}>
@@ -6248,6 +6508,36 @@ export default function People() {
           )}
         </div>
       )}
+
+      {payStubLessModalStub ? (
+        <PayStubLessModal
+          stub={payStubLessModalStub}
+          deductions={payStubDeductionsByStubId[payStubLessModalStub.id] ?? []}
+          additionalSum={sumPayStubAdditionalAmounts(payStubAdditionalByStubId[payStubLessModalStub.id] ?? [])}
+          payments={payStubPaymentsByStubId[payStubLessModalStub.id] ?? []}
+          authUserId={authUser?.id ?? null}
+          onClose={() => setPayStubLessModalStub(null)}
+          onSaved={async () => {
+            await loadPayStubs()
+          }}
+          showToast={showToast}
+        />
+      ) : null}
+
+      {payStubAdditionalModalStub ? (
+        <PayStubAdditionalModal
+          stub={payStubAdditionalModalStub}
+          lines={payStubAdditionalByStubId[payStubAdditionalModalStub.id] ?? []}
+          deductions={payStubDeductionsByStubId[payStubAdditionalModalStub.id] ?? []}
+          payments={payStubPaymentsByStubId[payStubAdditionalModalStub.id] ?? []}
+          authUserId={authUser?.id ?? null}
+          onClose={() => setPayStubAdditionalModalStub(null)}
+          onSaved={async () => {
+            await loadPayStubs()
+          }}
+          showToast={showToast}
+        />
+      ) : null}
 
       {payStubDeleteConfirm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
@@ -6329,7 +6619,16 @@ export default function People() {
                 </ul>
                 <div style={{ marginTop: '0.5rem', fontWeight: 600 }}>
                   Total paid: ${formatCurrency(sumPayStubPaymentAmounts(payStubPaymentsByStubId[payStubNoteDetail.id]))} · Balance: $
-                  {formatCurrency(remainingPayStubBalance(payStubNoteDetail.gross_pay, sumPayStubPaymentAmounts(payStubPaymentsByStubId[payStubNoteDetail.id])))}
+                  {formatCurrency(
+                    remainingPayStubBalance(
+                      stubNetPay(
+                        payStubNoteDetail.gross_pay,
+                        sumPayStubDeductionAmounts(payStubDeductionsByStubId[payStubNoteDetail.id] ?? []),
+                        sumPayStubAdditionalAmounts(payStubAdditionalByStubId[payStubNoteDetail.id] ?? []),
+                      ),
+                      sumPayStubPaymentAmounts(payStubPaymentsByStubId[payStubNoteDetail.id]),
+                    ),
+                  )}
                 </div>
               </div>
             ) : payStubNoteDetail.paid_note?.trim() ? (
@@ -6365,10 +6664,22 @@ export default function People() {
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 440, width: '100%' }}>
             <h2 style={{ margin: '0 0 0.75rem', fontSize: '1.25rem' }}>Record payment</h2>
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
-              {payStubMarkPaidTarget.person_name} · Gross ${formatCurrency(payStubMarkPaidTarget.gross_pay)} · Remaining $
+              {payStubMarkPaidTarget.person_name} · Gross ${formatCurrency(payStubMarkPaidTarget.gross_pay)}
+              {` · Net Pay $${formatCurrency(
+                stubNetPay(
+                  payStubMarkPaidTarget.gross_pay,
+                  sumPayStubDeductionAmounts(payStubDeductionsByStubId[payStubMarkPaidTarget.id] ?? []),
+                  sumPayStubAdditionalAmounts(payStubAdditionalByStubId[payStubMarkPaidTarget.id] ?? []),
+                ),
+              )}`}{' '}
+              · Remaining $
               {formatCurrency(
                 remainingPayStubBalance(
-                  payStubMarkPaidTarget.gross_pay,
+                  stubNetPay(
+                    payStubMarkPaidTarget.gross_pay,
+                    sumPayStubDeductionAmounts(payStubDeductionsByStubId[payStubMarkPaidTarget.id] ?? []),
+                    sumPayStubAdditionalAmounts(payStubAdditionalByStubId[payStubMarkPaidTarget.id] ?? []),
+                  ),
                   sumPayStubPaymentAmounts(payStubPaymentsByStubId[payStubMarkPaidTarget.id]),
                 ),
               )}
@@ -6432,7 +6743,7 @@ export default function People() {
         </div>
       )}
 
-      {runPayrollModalOpen && activeTab === 'pay_stubs' && canAccessPay && (() => {
+      {draftPayrollModalOpen && activeTab === 'pay_stubs' && canAccessPay && (() => {
         const start = payStubPeriodStart
         const end = payStubPeriodEnd
         const days = getDaysInRange(start, end)
@@ -6440,7 +6751,12 @@ export default function People() {
           const stub = payStubs.find((s) => s.person_name === person && s.period_start <= end && s.period_end >= start)
           if (!stub) return false
           const paidSum = sumPayStubPaymentAmounts(payStubPaymentsByStubId[stub.id])
-          return isPayStubFullyPaid(stub.gross_pay, paidSum)
+          const net = stubNetPay(
+            stub.gross_pay,
+            sumPayStubDeductionAmounts(payStubDeductionsByStubId[stub.id] ?? []),
+            sumPayStubAdditionalAmounts(payStubAdditionalByStubId[stub.id] ?? []),
+          )
+          return isPayStubFullyPaid(net, paidSum)
         }).length
         const totalAmount = showPeopleForHours.reduce((sum, person) => {
           const stub = payStubs.find((s) => s.person_name === person && s.period_start <= end && s.period_end >= start)
@@ -6457,8 +6773,8 @@ export default function People() {
             <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 600, maxHeight: '85vh', overflow: 'auto' }}>
               <div style={{ marginBottom: '0.35rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                  <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Run Payroll</h2>
-                  <button type="button" onClick={() => setRunPayrollModalOpen(false)} style={{ padding: '0.25rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, color: '#6b7280' }} aria-label="Close">×</button>
+                  <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Draft Payroll</h2>
+                  <button type="button" onClick={() => setDraftPayrollModalOpen(false)} style={{ padding: '0.25rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, color: '#6b7280' }} aria-label="Close">×</button>
                 </div>
                 <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
                   <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', fontSize: '0.8125rem', margin: 0 }}>
@@ -6553,9 +6869,15 @@ export default function People() {
                           const estGross = days.reduce((s, d) => s + getCostForPersonDate(person, d), 0)
                           const reviewItems = getRunPayrollReviewDayItems(person, days)
                           const paidSum = stub ? sumPayStubPaymentAmounts(payStubPaymentsByStubId[stub.id]) : 0
-                          const stubFullyPaid = stub ? isPayStubFullyPaid(stub.gross_pay, paidSum) : false
+                          const stubNet = stub
+                            ? stubNetPay(
+                                stub.gross_pay,
+                                sumPayStubDeductionAmounts(payStubDeductionsByStubId[stub.id] ?? []),
+                                sumPayStubAdditionalAmounts(payStubAdditionalByStubId[stub.id] ?? []),
+                              )
+                            : 0
+                          const stubFullyPaid = stub ? isPayStubFullyPaid(stubNet, paidSum) : false
                           const stubPartial = stub ? paidSum > 0 && !stubFullyPaid : false
-                          const canClearStub = stub ? paidSum > 0 || Boolean(stub.paid_at) || Boolean(stub.paid_by) : false
                           const status = stub
                             ? stubFullyPaid
                               ? 'Paid'
@@ -6635,9 +6957,6 @@ export default function People() {
                                     <button type="button" onClick={() => viewPayStub(stub)} style={{ padding: '2px 6px', fontSize: '0.8125rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>View</button>
                                     {!stubFullyPaid ? (
                                       <button type="button" onClick={() => openPayStubMarkPaidModal(stub)} disabled={markingPayStubId === stub.id} style={{ padding: '2px 6px', fontSize: '0.8125rem', background: markingPayStubId === stub.id ? '#9ca3af' : '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: markingPayStubId === stub.id ? 'not-allowed' : 'pointer' }}>{markingPayStubId === stub.id ? '...' : 'Record payment'}</button>
-                                    ) : null}
-                                    {canClearStub ? (
-                                      <button type="button" onClick={() => unmarkPayStubPaid(stub)} disabled={markingPayStubId === stub.id} style={{ padding: '2px 6px', fontSize: '0.75rem', background: 'none', border: '1px solid #d1d5db', borderRadius: 4, cursor: markingPayStubId === stub.id ? 'not-allowed' : 'pointer', color: '#6b7280' }}>{markingPayStubId === stub.id ? '...' : 'Clear payments'}</button>
                                     ) : null}
                                   </span>
                                 ) : (

@@ -183,6 +183,24 @@ button {
   }
 }
 
+/* Pay stub Additional modal — Ideal + Target tool cards */
+.payStubAdditionalModal__toolsRow {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+@media (min-width: 640px) {
+  .payStubAdditionalModal__toolsRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.payStubAdditionalModal__toolPanel {
+  min-width: 0;
+}
+
 .prospectsConvert .convertCard {
   padding: 1rem 1.25rem;
   border: 1px solid #e5e7eb;

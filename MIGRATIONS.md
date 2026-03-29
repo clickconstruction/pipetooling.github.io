@@ -150,6 +150,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Non-dev users can complete team feedback submit flow without **403** on the returning read; dev reporting unchanged
 - **Category**: Team Feedback / RLS
 
+**`20270329150000_pay_stub_additional_lines.sql`**
+- **Purpose**: **Additional** pay on a stub (quantity × rate per line); **Net Pay** = `gross_pay` − sum(`pay_stub_deductions`) + sum(generated `line_total`); installments stay capped at Net Pay.
+- **Changes**: Create `pay_stub_additional_lines` (`line_total` generated as `round(quantity * rate, 2)` STORED); RLS same pattern as `pay_stub_deductions`; replace `validate_pay_stub_payments_vs_net` and `pay_stub_payments_enforce_total_fn` to add additional sum; AFTER trigger on additional lines mirroring deductions validation; update `pay_stub_payments` table comment.
+- **Impact**: Pay History **Additional** column + modal; Less modal receives **additionalSum** for net; print order Additional → Less → Net Pay
+- **Category**: People / Pay Stubs
+
 ### March 2026
 
 #### March 20, 2026
@@ -929,7 +935,15 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260328215252_pay_stub_payments.sql`**
 - **Purpose**: Multiple partial physical payments per pay stub (amount + paid date + memo)
 - **Changes**: Create `pay_stub_payments` (FK `pay_stubs` ON DELETE CASCADE, `amount` > 0, `paid_at`, memo, created_by); BEFORE INSERT/UPDATE trigger caps sum(amount) per stub to `gross_pay` + 0.01; RLS SELECT/INSERT/UPDATE/DELETE for pay access (same helpers as `pay_stub_days`); backfill one row per stub where `pay_stubs.paid_at` IS NOT NULL
-- **Impact**: People > Pay History ledger and Run Payroll use **Record payment** / **Clear payments**; fully paid = sum of installments ≥ gross; print/HTML pay report includes **Physical payments** block
+- **Impact**: People > Pay History ledger and Run Payroll use **Record payment**; installments can be removed one row at a time from the payment detail modal; fully paid = sum of installments ≥ gross; print/HTML pay report includes **Physical payments** block
+- **Category**: People / Pay Stubs
+
+#### March 29, 2026
+
+**`20260329002111_pay_stub_deductions.sql`**
+- **Purpose**: **Less** (deductions) per pay stub—manual lines or offset-linked; **Net Pay** = `gross_pay` − sum(deductions); cap installments at Net Pay
+- **Changes**: Create `pay_stub_deductions` (FK `pay_stubs` ON DELETE CASCADE, amount > 0, `source` manual|offset, optional FK `person_offsets`, description, created_by); partial UNIQUE on `person_offset_id`; BEFORE trigger: sum(deductions) ≤ gross; AFTER trigger: sum(`pay_stub_payments`) ≤ Net Pay; backfill one row per `person_offsets` where `pay_stub_id` IS NOT NULL; replace `pay_stub_payments_enforce_total_fn` to use Net Pay; RLS same as `pay_stub_payments`
+- **Impact**: Pay History ledger **Less** (click **$0.00** or amount → modal) and **Net Pay**; **Record payment** / trigger vs Net Pay; Run Payroll fully-paid uses Net Pay; print shows **Less** lines + **Net Pay**
 - **Category**: People / Pay Stubs
 
 #### March 27, 2026

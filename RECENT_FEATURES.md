@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-03-28
+last_updated: 2026-03-29
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,8 +15,20 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.176)"
+    line: ~469
+    description: "People Pay History: Ledger header — open stub count + total remaining balance (search-filtered)"
+  - name: "Latest Version (v2.175)"
+    line: ~469
+    description: "People Pay History: bulk modal button and title Run Payroll → Draft Payroll (state draftPayrollModalOpen)"
+  - name: "Latest Version (v2.174)"
+    line: ~469
+    description: "People Pay History: pay_stub_additional_lines Additional (qty×rate), Net Pay gross−Less+Additional; Additional modal + solver; print"
+  - name: "Latest Version (v2.173)"
+    line: ~469
+    description: "People Pay History: pay_stub_deductions Less + Net Pay; installment cap vs net; Less modal; print Less/Net Pay"
   - name: "Latest Version (v2.172)"
-    line: ~465
+    line: ~485
     description: "People Pay History: pay_stub_payments partial installments; ledger Paid to date / Balance; Record payment / Clear; Run Payroll Partial; HTML footer"
   - name: "Latest Version (v2.171)"
     line: ~480
@@ -352,22 +364,24 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.172)](#latest-updates-v2172) - Pay History: partial payments (`pay_stub_payments`), ledger balance, Run Payroll Partial
-2. [Latest Updates (v2.171)](#latest-updates-v2171) - People Hours: audit modal edit, job highlight on grid, shared clock edit modal
-3. [Latest Updates (v2.170)](#latest-updates-v2170) - People Pay History: ledger search, actions UX, bulk modal layout
-4. [Latest Updates (v2.164)](#latest-updates-v2164) - Settings (dev): Ignored task types list under Dashboard & alerts
-5. [Latest Updates (v2.163)](#latest-updates-v2163) - Dashboard clock strip; supply house website in expanded row
-6. [Latest Updates (v2.162)](#latest-updates-v2162) - Team feedback: dev eligibility reset, submissions RLS, raw submission names
-7. [Latest Updates (v2.153)](#latest-updates-v2153) - Dashboard My Team layout; pending banner jump UX
-8. [Latest Updates (v2.152)](#latest-updates-v2152) - My Team: People you lead hours table (Pending/Approved/Total)
-9. [Latest Updates (v2.151)](#latest-updates-v2151) - My Team clock notify + ledger; Edge Function
-10. [Latest Updates (v2.150)](#latest-updates-v2150) - Dashboard My Team: People you lead roster
-11. [Latest Updates (v2.149)](#latest-updates-v2149) - Clock sessions UX; daily goals gate; goals tables
-12. [Latest Updates (v2.148)](#latest-updates-v2148) - Bid Board All notes; customer notes UX; contact_method
-13. [Latest Updates (v2.145)](#latest-updates-v2145) - Master tech mobile nav Quickfill and Review in hamburger
-14. [Latest Updates (v2.144)](#latest-updates-v2144) - Assistant billing sections at top of Dashboard
-15. [Latest Updates (v2.143)](#latest-updates-v2143) - Assistant Dashboard section reorder
-16. [Latest Updates (v2.142)](#latest-updates-v2142) - Dashboard Assigned Jobs and Superintendent Jobs UX
+1. [Latest Updates (v2.176)](#latest-updates-v2176) - People Pay History: Ledger **open count** + **total remaining** (filtered rows)
+2. [Latest Updates (v2.175)](#latest-updates-v2175) - People Pay History: **Draft Payroll** (renamed from Run Payroll); bulk modal copy only
+3. [Latest Updates (v2.172)](#latest-updates-v2172) - Pay History: partial payments (`pay_stub_payments`), ledger balance, Run Payroll Partial
+4. [Latest Updates (v2.171)](#latest-updates-v2171) - People Hours: audit modal edit, job highlight on grid, shared clock edit modal
+5. [Latest Updates (v2.170)](#latest-updates-v2170) - People Pay History: ledger search, actions UX, bulk modal layout
+6. [Latest Updates (v2.164)](#latest-updates-v2164) - Settings (dev): Ignored task types list under Dashboard & alerts
+7. [Latest Updates (v2.163)](#latest-updates-v2163) - Dashboard clock strip; supply house website in expanded row
+8. [Latest Updates (v2.162)](#latest-updates-v2162) - Team feedback: dev eligibility reset, submissions RLS, raw submission names
+9. [Latest Updates (v2.153)](#latest-updates-v2153) - Dashboard My Team layout; pending banner jump UX
+10. [Latest Updates (v2.152)](#latest-updates-v2152) - My Team: People you lead hours table (Pending/Approved/Total)
+11. [Latest Updates (v2.151)](#latest-updates-v2151) - My Team clock notify + ledger; Edge Function
+12. [Latest Updates (v2.150)](#latest-updates-v2150) - Dashboard My Team: People you lead roster
+13. [Latest Updates (v2.149)](#latest-updates-v2149) - Clock sessions UX; daily goals gate; goals tables
+14. [Latest Updates (v2.148)](#latest-updates-v2148) - Bid Board All notes; customer notes UX; contact_method
+15. [Latest Updates (v2.145)](#latest-updates-v2145) - Master tech mobile nav Quickfill and Review in hamburger
+16. [Latest Updates (v2.144)](#latest-updates-v2144) - Assistant billing sections at top of Dashboard
+17. [Latest Updates (v2.143)](#latest-updates-v2143) - Assistant Dashboard section reorder
+18. [Latest Updates (v2.142)](#latest-updates-v2142) - Dashboard Assigned Jobs and Superintendent Jobs UX
 2. [Latest Updates (v2.139)](#latest-updates-v2139) - Fix cost_estimates RLS for assistants
 3. [Latest Updates (v2.138)](#latest-updates-v2138) - Revoke superintendent Jobs Billing access
 2. [Latest Updates (v2.135)](#latest-updates-v2135) - Workflow: Collapse old stages toggle, breadcrumb below buttons, no-wrap scroll
@@ -466,6 +480,58 @@ when_to_read:
 
 ---
 
+## Latest Updates (v2.176)
+
+**Date**: 2026-03-29
+
+### People — Pay History (Ledger balance summary)
+
+- Under **Ledger**, a line shows **N open** (stubs not fully paid vs Net Pay) and **total remaining** (sum of **Balance** for visible rows). **Search** filters both the table and the summary. [`src/pages/People.tsx`](src/pages/People.tsx) (`ledgerOpenBalanceSummary`).
+
+---
+
+## Latest Updates (v2.175)
+
+**Date**: 2026-03-29
+
+### People — Pay History (copy: Draft Payroll)
+
+- Pay History → **Generate Pay Reports**: the bulk-period button and modal title are labeled **Draft Payroll** instead of **Run Payroll**. Internal state renamed `draftPayrollModalOpen` / `setDraftPayrollModalOpen` in [`src/pages/People.tsx`](src/pages/People.tsx). Behavior unchanged.
+
+---
+
+## Latest Updates (v2.174)
+
+**Date**: 2026-03-29
+
+### People — Pay History (Additional lines, Net Pay)
+
+- **`pay_stub_additional_lines`**: Per-stub lines with `quantity`, `rate`, and generated `line_total` (nearest cent). **Net Pay** = gross − sum(**Less**) + sum(**Additional**). Triggers keep installment totals ≤ Net Pay when Additional changes (`validate_pay_stub_payments_vs_net` / `pay_stub_payments_enforce_total_fn` updated).
+- **Ledger**: Column **Additional** (clickable, including **$0.00**) opens **Additional** modal ([`src/components/pay/PayStubAdditionalModal.tsx`](src/components/pay/PayStubAdditionalModal.tsx)): add/remove lines, quick flat amount (qty 1), **target total Additional** with solve for **rate** or **quantity** on a chosen line. Locked when installments fully cover Net Pay.
+- **Less modal** takes **`additionalSum`** so Net Pay and locks stay aligned ([`PayStubLessModal.tsx`](src/components/pay/PayStubLessModal.tsx)).
+- **Pay report HTML**: **Additional** (if any), then **Less** (if any), then **Net Pay** always; pending offsets unchanged after that block.
+- **Helpers**: [`stubNetPay(gross, less, additional?)`](src/lib/payStubDeductions.ts), [`sumPayStubAdditionalAmounts`](src/lib/payStubDeductions.ts).
+
+**Files**: [`supabase/migrations/20270329150000_pay_stub_additional_lines.sql`](supabase/migrations/20270329150000_pay_stub_additional_lines.sql), [`src/pages/People.tsx`](src/pages/People.tsx), [`src/components/pay/PayStubAdditionalModal.tsx`](src/components/pay/PayStubAdditionalModal.tsx), [`src/components/pay/PayStubLessModal.tsx`](src/components/pay/PayStubLessModal.tsx), [`src/lib/payStubDeductions.ts`](src/lib/payStubDeductions.ts), [`src/types/database.ts`](src/types/database.ts)
+
+---
+
+## Latest Updates (v2.173)
+
+**Date**: 2026-03-29
+
+### People — Pay History (Less, Net Pay, installments vs net)
+
+- **`pay_stub_deductions`**: Manual or offset-linked lines; **Net Pay** = gross − sum(deductions). Triggers: deductions total ≤ gross; installments total ≤ Net Pay; backfill from **`person_offsets`** already tied to a stub.
+- **Ledger**: Columns **Less** (always show dollar amount, including **$0.00**; click opens **Less** modal) and **Net Pay**; **Balance** and **Record payment** use Net Pay; Run Payroll “fully paid” uses Net Pay.
+- **Less modal** ([`src/components/pay/PayStubLessModal.tsx`](src/components/pay/PayStubLessModal.tsx)): add manual charge; apply pending **person_offsets** (inserts deduction + sets `pay_stub_id`); remove line (clears offset link when applicable). Locked when installments fully cover Net Pay.
+- **Pay report HTML**: Itemized **Less**, **Net Pay**, then **Physical payments**.
+- **Helpers**: [`src/lib/payStubDeductions.ts`](src/lib/payStubDeductions.ts).
+
+**Files**: [`supabase/migrations/20260329002111_pay_stub_deductions.sql`](supabase/migrations/20260329002111_pay_stub_deductions.sql), [`src/pages/People.tsx`](src/pages/People.tsx), [`src/components/pay/PayStubLessModal.tsx`](src/components/pay/PayStubLessModal.tsx), [`src/types/database.ts`](src/types/database.ts), [`src/lib/payStubDeductions.ts`](src/lib/payStubDeductions.ts)
+
+---
+
 ## Latest Updates (v2.172)
 
 **Date**: 2026-03-28
@@ -473,8 +539,8 @@ when_to_read:
 ### People — Pay History (partial payments per stub)
 
 - **`pay_stub_payments`**: Multiple installments per pay stub (`amount`, `paid_at`, `memo`, `created_by`); trigger prevents total paid from exceeding **`gross_pay`** (within one cent). RLS matches **`pay_stub_days`**. Migration backfills one row per stub that already had **`paid_at`** set.
-- **Ledger**: Columns **Paid to date**, **Balance**, **Payment** status (Unpaid / Partial / Paid); **Record payment** modal (amount + sent date + optional note); **Clear payments** (confirm) deletes all installments and clears legacy paid columns on **`pay_stubs`**. Detail icon lists installments with optional **Delete** per row.
-- **Run Payroll** modal: **Partial** status; paid checkbox summary counts only **fully** paid stubs; **Record payment** / **Clear payments** aligned with ledger.
+- **Ledger**: Columns **Paid to date**, **Balance**, **Payment** status (Unpaid / Partial / Paid); **Record payment** modal (amount + sent date + optional note). Detail icon lists installments with optional **Delete** per row.
+- **Run Payroll** modal: **Partial** status; paid checkbox summary counts only **fully** paid stubs; **Record payment** aligned with ledger.
 - **Pay report HTML / print**: **Physical payments** block with lines and total.
 - **Helpers**: [`src/lib/payStubPayments.ts`](src/lib/payStubPayments.ts).
 
