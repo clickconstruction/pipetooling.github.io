@@ -12,11 +12,14 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.180 → v2.4"
+version_range: "v2.181 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.181)"
+    line: ~499
+    description: "Jobs Edit billing: comma formatting for Job Total/Bid and payment amounts; Workflow line items optional item_date + clipboard bulk import (tab-separated)"
   - name: "Latest Version (v2.180)"
-    line: ~495
+    line: ~520
     description: "Bids New/Edit modal: SearchableSelect pickers; top field grid + mobile layout; Address / Distance+Plan Pages; wider modal; estimator header Bid button height"
   - name: "Latest Version (v2.179)"
     line: ~508
@@ -376,28 +379,29 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.180)](#latest-updates-v2180) - Bids **New/Edit** modal: **SearchableSelect**, layout + mobile grid, Distance + Plan Pages row; estimator **Bid** header
-2. [Latest Updates (v2.179)](#latest-updates-v2179) - Dashboard **My Time** / **Edit time** (this-week-only editor, Form/Visual defaults, timeline UX)
-3. [Latest Updates (v2.178)](#latest-updates-v2178) - People **Primary** / **Superintendent** on `people` roster + Pay/Hours (`20260329042321`)
-4. [Latest Updates (v2.177)](#latest-updates-v2177) - People **Housing** tab + pay report **Housing** block (`20270329180000`)
-5. [Latest Updates (v2.176)](#latest-updates-v2176) - People Pay History: Ledger **open count** + **total remaining** (filtered rows)
-6. [Latest Updates (v2.175)](#latest-updates-v2175) - People Pay History: **Draft Payroll** (renamed from Run Payroll); bulk modal copy only
-7. [Latest Updates (v2.172)](#latest-updates-v2172) - Pay History: partial payments (`pay_stub_payments`), ledger balance, Run Payroll Partial
-8. [Latest Updates (v2.171)](#latest-updates-v2171) - People Hours: audit modal edit, job highlight on grid, shared clock edit modal
-9. [Latest Updates (v2.170)](#latest-updates-v2170) - People Pay History: ledger search, actions UX, bulk modal layout
-10. [Latest Updates (v2.164)](#latest-updates-v2164) - Settings (dev): Ignored task types list under Dashboard & alerts
-11. [Latest Updates (v2.163)](#latest-updates-v2163) - Dashboard clock strip; supply house website in expanded row
-12. [Latest Updates (v2.162)](#latest-updates-v2162) - Team feedback: dev eligibility reset, submissions RLS, raw submission names
-13. [Latest Updates (v2.153)](#latest-updates-v2153) - Dashboard My Team layout; pending banner jump UX
-14. [Latest Updates (v2.152)](#latest-updates-v2152) - My Team: People you lead hours table (Pending/Approved/Total)
-15. [Latest Updates (v2.151)](#latest-updates-v2151) - My Team clock notify + ledger; Edge Function
-16. [Latest Updates (v2.150)](#latest-updates-v2150) - Dashboard My Team: People you lead roster
-17. [Latest Updates (v2.149)](#latest-updates-v2149) - Clock sessions UX; daily goals gate; goals tables
-18. [Latest Updates (v2.148)](#latest-updates-v2148) - Bid Board All notes; customer notes UX; contact_method
-19. [Latest Updates (v2.145)](#latest-updates-v2145) - Master tech mobile nav Quickfill and Review in hamburger
-20. [Latest Updates (v2.144)](#latest-updates-v2144) - Assistant billing sections at top of Dashboard
-21. [Latest Updates (v2.143)](#latest-updates-v2143) - Assistant Dashboard section reorder
-22. [Latest Updates (v2.142)](#latest-updates-v2142) - Dashboard Assigned Jobs and Superintendent Jobs UX
+1. [Latest Updates (v2.181)](#latest-updates-v2181) - Jobs **Edit Job** billing: **comma** thousands on Job Total/Bid and payment amounts; Workflow **line items** optional **item_date** + **clipboard** bulk import (Add mode)
+2. [Latest Updates (v2.180)](#latest-updates-v2180) - Bids **New/Edit** modal: **SearchableSelect**, layout + mobile grid, Distance + Plan Pages row; estimator **Bid** header
+3. [Latest Updates (v2.179)](#latest-updates-v2179) - Dashboard **My Time** / **Edit time** (this-week-only editor, Form/Visual defaults, timeline UX)
+4. [Latest Updates (v2.178)](#latest-updates-v2178) - People **Primary** / **Superintendent** on `people` roster + Pay/Hours (`20260329042321`)
+5. [Latest Updates (v2.177)](#latest-updates-v2177) - People **Housing** tab + pay report **Housing** block (`20270329180000`)
+6. [Latest Updates (v2.176)](#latest-updates-v2176) - People Pay History: Ledger **open count** + **total remaining** (filtered rows)
+7. [Latest Updates (v2.175)](#latest-updates-v2175) - People Pay History: **Draft Payroll** (renamed from Run Payroll); bulk modal copy only
+8. [Latest Updates (v2.172)](#latest-updates-v2172) - Pay History: partial payments (`pay_stub_payments`), ledger balance, Run Payroll Partial
+9. [Latest Updates (v2.171)](#latest-updates-v2171) - People Hours: audit modal edit, job highlight on grid, shared clock edit modal
+10. [Latest Updates (v2.170)](#latest-updates-v2170) - People Pay History: ledger search, actions UX, bulk modal layout
+11. [Latest Updates (v2.164)](#latest-updates-v2164) - Settings (dev): Ignored task types list under Dashboard & alerts
+12. [Latest Updates (v2.163)](#latest-updates-v2163) - Dashboard clock strip; supply house website in expanded row
+13. [Latest Updates (v2.162)](#latest-updates-v2162) - Team feedback: dev eligibility reset, submissions RLS, raw submission names
+14. [Latest Updates (v2.153)](#latest-updates-v2153) - Dashboard My Team layout; pending banner jump UX
+15. [Latest Updates (v2.152)](#latest-updates-v2152) - My Team: People you lead hours table (Pending/Approved/Total)
+16. [Latest Updates (v2.151)](#latest-updates-v2151) - My Team clock notify + ledger; Edge Function
+17. [Latest Updates (v2.150)](#latest-updates-v2150) - Dashboard My Team: People you lead roster
+18. [Latest Updates (v2.149)](#latest-updates-v2149) - Clock sessions UX; daily goals gate; goals tables
+19. [Latest Updates (v2.148)](#latest-updates-v2148) - Bid Board All notes; customer notes UX; contact_method
+20. [Latest Updates (v2.145)](#latest-updates-v2145) - Master tech mobile nav Quickfill and Review in hamburger
+21. [Latest Updates (v2.144)](#latest-updates-v2144) - Assistant billing sections at top of Dashboard
+22. [Latest Updates (v2.143)](#latest-updates-v2143) - Assistant Dashboard section reorder
+23. [Latest Updates (v2.142)](#latest-updates-v2142) - Dashboard Assigned Jobs and Superintendent Jobs UX
 2. [Latest Updates (v2.139)](#latest-updates-v2139) - Fix cost_estimates RLS for assistants
 3. [Latest Updates (v2.138)](#latest-updates-v2138) - Revoke superintendent Jobs Billing access
 2. [Latest Updates (v2.135)](#latest-updates-v2135) - Workflow: Collapse old stages toggle, breadcrumb below buttons, no-wrap scroll
@@ -493,6 +497,23 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.181)
+
+**Date**: 2026-03-29
+
+### Jobs — Edit Job billing comma formatting
+
+- **Job Total / Bid ($)** and **Payments received** → **Amount ($)** use text inputs with **thousands separators** on blur (`toLocaleString('en-US')` via existing [`formatCurrency`](src/pages/Jobs.tsx)).
+- Helpers: [`sanitizeMoneyTyping`](src/pages/Jobs.tsx), [`parseMoneyInputToNumber`](src/pages/Jobs.tsx), [`parseMoneyInputToNumberOrNull`](src/pages/Jobs.tsx) for save, **Remaining ($)**, and invoice remaining checks.
+- Payment amounts: [`MoneyDecimalAmountInput`](src/components/MoneyDecimalAmountInput.tsx) (focus = raw decimal, blur = formatted; zero stays blank).
+
+### Workflow — Line item date and clipboard bulk import
+
+- **`item_date`** on [`workflow_step_line_items`](src/types/database.ts): optional **Date** on Add/Edit Line Item; **Date** column in **Line Items For Office**; delete confirm shows date when set. Migration [`20270329210000_workflow_step_line_items_item_date.sql`](supabase/migrations/20270329210000_workflow_step_line_items_item_date.sql).
+- **Bulk import (Add mode only)**: Header **clipboard** icon reads [`navigator.clipboard.readText()`](https://developer.mozilla.org/en-US/docs/Web/API/Clipboard_API), parses **tab-separated** lines (`M/D/YYYY`, memo, `$` amount) via [`parseWorkflowLineItemPaste`](src/lib/parseWorkflowLineItemPaste.ts), **bulk insert** + refresh. Superintendents included in line-item reload after save/delete/bulk import (parity with [`loadLineItemsForSteps`](src/pages/Workflow.tsx)).
 
 ---
 

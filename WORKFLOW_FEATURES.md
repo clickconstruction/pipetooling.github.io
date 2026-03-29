@@ -128,6 +128,8 @@ Each stage card has collapsible sections for Notify, Notes, Private Notes, and L
 **Location**: Separate collapsible section in each stage card (visible to devs, masters, and assistants)
 
 **Fields**:
+- **Date (optional)**: User-entered calendar date (`item_date`); shown in the **Line Items For Office** table and in delete confirmation when set.
+- **Link (optional)**: URL for external references
 - **Memo**: Description (required)
 - **Amount**: Monetary value (required, supports negative numbers)
 
@@ -136,6 +138,7 @@ Each stage card has collapsible sections for Notify, Notes, Private Notes, and L
 - Negative amounts for credits/refunds
 - Amounts formatted with commas: `$1,234.56`
 - Aggregated in Ledger at top of workflow
+- **Clipboard bulk import (Add Line Item only)**: Header icon reads the system clipboard; expects **tab-separated** lines: `M/D/YYYY`, memo, amount (with optional `$` and spaces). All-or-nothing parse; one bulk `insert`. Requires a secure context (HTTPS or localhost) for the Clipboard API. Hidden when editing an existing line item.
 - **Supply House Invoice Integration**: Line items can link to `supply_house_invoices` via `supply_house_invoice_id`. "Add Supply House Invoice" button when invoices exist; modal with search by invoice #, supply house name, amount, date, PO #, paid/unpaid. "View Invoice" button on linked line items opens details modal.
 
 **Access / Visibility**:

@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { NO_CUSTOMER_TYPE_LABEL } from '../constants/customerTypeLabels'
 import { supabase } from '../lib/supabase'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { useAuth } from '../hooks/useAuth'
@@ -12,6 +13,7 @@ import JobReportsModal from '../components/JobReportsModal'
 import AddInspectionModal from '../components/AddInspectionModal'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { CrewJobsBlock } from '../components/CrewJobsBlock'
+import { MoneyDecimalAmountInput } from '../components/MoneyDecimalAmountInput'
 import type { Database } from '../types/database'
 
 type JobsLedgerRow = Database['public']['Tables']['jobs_ledger']['Row']
@@ -112,6 +114,34 @@ function formatCurrencyNoCents(n: number): string {
   return Math.round(n).toLocaleString('en-US', { maximumFractionDigits: 0 })
 }
 
+function sanitizeMoneyTyping(raw: string): string {
+  const noComma = raw.replace(/,/g, '')
+  let out = ''
+  let dotSeen = false
+  for (const c of noComma) {
+    if (c >= '0' && c <= '9') out += c
+    else if (c === '.' && !dotSeen) {
+      dotSeen = true
+      out += '.'
+    }
+  }
+  return out
+}
+
+function parseMoneyInputToNumber(s: string): number {
+  const t = s.replace(/,/g, '').trim()
+  if (t === '' || t === '.') return 0
+  const n = parseFloat(t)
+  return Number.isFinite(n) ? n : 0
+}
+
+function parseMoneyInputToNumberOrNull(s: string): number | null {
+  const t = s.replace(/,/g, '').trim()
+  if (t === '' || t === '.') return null
+  const n = parseFloat(t)
+  return Number.isFinite(n) ? n : null
+}
+
 /** Calendar whole days from an ISO date/timestamp to now in UTC (avoids DST edge cases). */
 function calendarDaysSinceDateUtc(dateIso: string, now = new Date()): number {
   const d = new Date(dateIso)
@@ -209,8 +239,59 @@ function sortStageRowsForTotalByNameDetail(rows: StageRow[]): StageRow[] {
   })
 }
 
+function formatYmdOrIsoDateForPrintDisplay(ymdOrIso: string): string {
+  const trimmed = ymdOrIso.trim()
+  const datePart = trimmed.length >= 10 ? trimmed.slice(0, 10) : trimmed
+  const d = new Date(`${datePart}T12:00:00`)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
+/** Reference date and whole calendar days since, for Billed Awaiting Payment printout. */
+function printBilledRowReferenceDate(r: StageRow, now = new Date()): { display: string; ageDays: number | null } {
+  if (r.kind === 'job') {
+    const iso = r.job.estimated_completion_date?.trim() ?? null
+    if (!iso) return { display: '—', ageDays: null }
+    const days = calendarDaysSinceDateUtc(iso, now)
+    if (days < 0) return { display: formatYmdOrIsoDateForPrintDisplay(iso), ageDays: null }
+    return { display: formatYmdOrIsoDateForPrintDisplay(iso), ageDays: days }
+  }
+  const billedAt = r.inv.billed_at?.trim()
+  if (billedAt) {
+    const datePart = billedAt.length >= 10 ? billedAt.slice(0, 10) : billedAt
+    const days = calendarDaysSinceDateUtc(datePart, now)
+    const display = formatYmdOrIsoDateForPrintDisplay(datePart)
+    if (days < 0) return { display, ageDays: null }
+    return { display, ageDays: days }
+  }
+  const est = effectiveInvoiceEstBillDate(r.inv, r.job)
+  if (!est) return { display: '—', ageDays: null }
+  const days = calendarDaysSinceDateUtc(est, now)
+  const display = `${formatYmdOrIsoDateForPrintDisplay(est)} (est.)`
+  if (days < 0) return { display, ageDays: null }
+  return { display, ageDays: days }
+}
+
+function formatPrintDaysSince(ageDays: number | null): string {
+  if (ageDays == null) return '—'
+  if (ageDays === 1) return '1 day'
+  return `${ageDays} days`
+}
+
 type MaterialRow = { id: string; description: string; amount: number }
-type PaymentRow = { id: string; amount: number }
+type PaymentRow = { id: string; amount: number; paid_on: string | null; note: string | null }
+
+function localDateYYYYMMDD(): string {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+function newEmptyPaymentRow(): PaymentRow {
+  return { id: crypto.randomUUID(), amount: 0, paid_on: localDateYYYYMMDD(), note: null }
+}
 type FixtureRow = { id: string; name: string; count: number }
 
 const JOBS_TABS: JobsTab[] = ['reports', 'stages', 'billing', 'sub_sheet_ledger', 'combined-labor', 'teams-summary', 'parts', 'job-summary', 'inspections', 'billed']
@@ -323,7 +404,8 @@ export default function Jobs() {
   const [googleDriveLink, setGoogleDriveLink] = useState('')
   const [jobPlansLink, setJobPlansLink] = useState('')
   const [revenue, setRevenue] = useState('')
-  const [payments, setPayments] = useState<PaymentRow[]>([{ id: crypto.randomUUID(), amount: 0 }])
+  const [revenueInputFocused, setRevenueInputFocused] = useState(false)
+  const [payments, setPayments] = useState<PaymentRow[]>(() => [newEmptyPaymentRow()])
   const [materials, setMaterials] = useState<MaterialRow[]>([{ id: crypto.randomUUID(), description: '', amount: 0 }])
   const [fixtures, setFixtures] = useState<FixtureRow[]>([{ id: crypto.randomUUID(), name: '', count: 1 }])
   const [teamMemberIds, setTeamMemberIds] = useState<string[]>([])
@@ -609,6 +691,36 @@ export default function Jobs() {
       phone: typeof obj.phone === 'string' ? obj.phone : '',
       email: typeof obj.email === 'string' ? obj.email : '',
     }
+  }
+
+  /** True when loaded customers include exactly one row matching name (prefer same master_user_id as the job). */
+  function customerListImpliesLinkedRow(customersList: CustomerRow[], jobMasterUserId: string, customerNameTrimmed: string): boolean {
+    const nameKey = customerNameTrimmed.trim().toLowerCase()
+    if (!nameKey) return false
+    const byName = customersList.filter((c) => (c.name ?? '').trim().toLowerCase() === nameKey)
+    const byMaster = byName.filter((c) => c.master_user_id === jobMasterUserId)
+    if (byMaster.length === 1) return true
+    if (byMaster.length === 0 && byName.length === 1) return true
+    return false
+  }
+
+  function customerTypeShortLabel(c: CustomerRow): string | null {
+    const t = c.customer_type
+    if (t === 'residential' || t === 'commercial') return t.charAt(0).toUpperCase() + t.slice(1)
+    if (t == null || t === '') return NO_CUSTOMER_TYPE_LABEL
+    return t
+  }
+
+  /** When saving, link job to the single customer row for this master with the same name (case-insensitive). */
+  function resolveCustomerIdForPayload(explicitId: string | null, jobMasterUserId: string, nameTrimmed: string): string | null {
+    if (explicitId) return explicitId
+    const nameKey = nameTrimmed.trim().toLowerCase()
+    if (!nameKey) return null
+    const matches = customers.filter(
+      (c) => c.master_user_id === jobMasterUserId && (c.name ?? '').trim().toLowerCase() === nameKey,
+    )
+    const only = matches.length === 1 ? matches[0] : null
+    return only?.id ?? null
   }
 
   async function loadJobs() {
@@ -2209,6 +2321,111 @@ export default function Jobs() {
     win.onafterprint = () => win.close()
   }
 
+  function printBilledAwaitingPaymentReport(rows: StageRow[], opts?: { searchFilter?: string }) {
+    if (rows.length === 0) {
+      showToast('Nothing to print in Billed Awaiting Payment.', 'warning')
+      return
+    }
+    const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    const dateStr = new Date().toLocaleDateString()
+    const title = escapeHtml(`Billed awaiting payment — ${dateStr}`)
+    const filterNote = opts?.searchFilter?.trim()
+      ? `<p style="margin:0.35rem 0 0; font-size:0.9rem; color:#4b5563;">Filtered (stages search): ${escapeHtml(opts.searchFilter.trim())}</p>`
+      : ''
+    const grandTotal = rows.reduce((s, r) => s + stageRowBilledRemainingAmount(r), 0)
+
+    const groups = new Map<string, { displayName: string; rows: StageRow[] }>()
+    for (const r of rows) {
+      const job = r.job
+      const nameNorm = (job.customer_name ?? '').trim().toLowerCase()
+      const key = job.customer_id ?? (nameNorm.length > 0 ? `name:${nameNorm}` : '—')
+      let g = groups.get(key)
+      if (!g) {
+        g = { displayName: (job.customer_name ?? '').trim() || '—', rows: [] }
+        groups.set(key, g)
+      }
+      g.rows.push(r)
+    }
+    for (const g of groups.values()) {
+      const named = g.rows.map((row) => (row.job.customer_name ?? '').trim()).find((n) => n.length > 0)
+      if (named) g.displayName = named
+    }
+
+    const sortedGroups = [...groups.values()].sort((a, b) =>
+      a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' })
+    )
+
+    const sectionsHtml = sortedGroups
+      .map((g) => {
+        const sortedRows = sortStageRowsForTotalByNameDetail(g.rows)
+        const contactJob = sortedRows[0]!.job
+        const phoneRaw = (contactJob.customer_phone ?? '').trim()
+        const emailRaw = (contactJob.customer_email ?? '').trim()
+        const sectionHeading =
+          (g.displayName ?? '').trim() && g.displayName !== '—' ? g.displayName : 'Jobs with no customer linked'
+        const contactBlock =
+          phoneRaw || emailRaw
+            ? `<p style="margin:0 0 0.5rem; font-size:0.875rem; color:#374151">Phone: ${escapeHtml(phoneRaw || '—')} · Email: ${escapeHtml(emailRaw || '—')}</p>`
+            : ''
+        const subtotal = sortedRows.reduce((s, r) => s + stageRowBilledRemainingAmount(r), 0)
+        const linesHtml = sortedRows
+          .map((r) => {
+            const j = r.job
+            const detail = r.kind === 'job' ? 'Job balance' : `Invoice #${r.inv.sequence_order}`
+            const amt = stageRowBilledRemainingAmount(r)
+            const { display: dateDisplay, ageDays } = printBilledRowReferenceDate(r)
+            return `<tr>
+              <td>${escapeHtml(j.hcp_number ?? '—')}</td>
+              <td style="line-height:1.2">${escapeHtml(j.job_name ?? '—')}<br />${escapeHtml(j.job_address ?? '—')}</td>
+              <td>${escapeHtml(detail)}</td>
+              <td style="text-align:center;line-height:1.2">${escapeHtml(dateDisplay)}<br />${escapeHtml(formatPrintDaysSince(ageDays))}</td>
+              <td style="text-align:right">$${formatCurrency(amt)}</td>
+            </tr>`
+          })
+          .join('')
+        return `<section style="margin-bottom:1.25rem; page-break-inside:avoid">
+  <h2 style="font-size:1.05rem; margin:0 0 0.35rem">${escapeHtml(sectionHeading)}</h2>
+  ${contactBlock}
+  <table>
+    <thead><tr>
+      <th>HCP</th><th style="text-align:left;line-height:1.15">Job<br />Address</th><th>Detail</th><th style="text-align:center;line-height:1.15">Billed<br />Days past</th><th style="text-align:right">Amount due</th>
+    </tr></thead>
+    <tbody>${linesHtml}
+      <tr style="background:#f9fafb; font-weight:600">
+        <td colspan="4" style="text-align:right">Subtotal:</td>
+        <td style="text-align:right">$${formatCurrency(subtotal)}</td>
+      </tr>
+    </tbody>
+  </table>
+</section>`
+      })
+      .join('')
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
+  body { font-family: sans-serif; margin: 1in; }
+  h1 { font-size: 1.25rem; margin-bottom: 0.25rem; }
+  table { width: 100%; border-collapse: collapse; margin-top: 0.35rem; font-size: 0.8125rem; }
+  th, td { border: 1px solid #ccc; padding: 0.4rem 0.5rem; text-align: left; vertical-align: top; }
+  th { background: #f5f5f5; }
+  section h2 + p { word-break: break-word; }
+  @media print { body { margin: 0.5in; } }
+</style></head><body>
+  <h1>${title}</h1>${filterNote}
+  ${sectionsHtml}
+  <p style="margin-top:1rem; font-size:1rem; font-weight:600; text-align:right">Grand total: $${formatCurrency(grandTotal)}</p>
+</body></html>`
+    const win = window.open('', '_blank')
+    if (!win) {
+      showToast('Allow pop-ups to print the report.', 'error')
+      return
+    }
+    win.document.write(html)
+    win.document.close()
+    win.focus()
+    win.print()
+    win.onafterprint = () => win.close()
+  }
+
   useEffect(() => {
     if (authLoading || !authUser?.id) return
     if (activeTab === 'stages' || activeTab === 'billing') loadJobs()
@@ -2216,18 +2433,19 @@ export default function Jobs() {
   }, [authUser?.id, authLoading, searchParams, activeTab])
 
   useEffect(() => {
-    if (!formOpen || !authUser?.id) return
+    if (authLoading || !authUser?.id) return
+    const needCustomers = formOpen || activeTab === 'stages' || activeTab === 'billing'
+    if (!needCustomers) return
     setCustomersLoading(true)
     ;(async () => {
       const { data } = await supabase
         .from('customers')
-        .select('id, name, address, contact_info, date_met')
-        .or('customer_type.is.null,customer_type.eq.residential')
+        .select('id, name, address, contact_info, date_met, master_user_id, customer_type')
         .order('name')
       setCustomers((data as CustomerRow[]) ?? [])
       setCustomersLoading(false)
     })()
-  }, [formOpen, authUser?.id])
+  }, [formOpen, authUser?.id, authLoading, activeTab])
 
   useEffect(() => {
     if (!formOpen || !authUser?.id) return
@@ -2256,7 +2474,7 @@ export default function Jobs() {
     ;(async () => {
       const { data } = await supabase
         .from('customers')
-        .select('id, name, address, contact_info, date_met')
+        .select('id, name, address, contact_info, date_met, master_user_id, customer_type')
         .order('name')
       const all = (data as CustomerRow[]) ?? []
       const name = customerName.trim()
@@ -2950,7 +3168,7 @@ export default function Jobs() {
     setGoogleDriveLink('')
     setJobPlansLink('')
     setRevenue('')
-    setPayments([{ id: crypto.randomUUID(), amount: 0 }])
+    setPayments([newEmptyPaymentRow()])
     setMaterials([{ id: crypto.randomUUID(), description: '', amount: 0 }])
     setFixtures([{ id: crypto.randomUUID(), name: '', count: 1 }])
     setTeamMemberIds([])
@@ -2977,8 +3195,13 @@ export default function Jobs() {
     setRevenue(job.revenue != null ? String(job.revenue) : '')
     setPayments(
       job.payments?.length
-        ? job.payments.map((p) => ({ id: p.id, amount: Number(p.amount) }))
-        : [{ id: crypto.randomUUID(), amount: 0 }]
+        ? job.payments.map((p) => ({
+            id: p.id,
+            amount: Number(p.amount),
+            paid_on: p.paid_on ? String(p.paid_on).slice(0, 10) : null,
+            note: p.note ?? null,
+          }))
+        : [newEmptyPaymentRow()]
     )
     setMaterials(
       job.materials.length > 0
@@ -3109,7 +3332,7 @@ export default function Jobs() {
       setError('Enter a valid amount greater than 0')
       return
     }
-    const remaining = Math.max(0, (parseFloat(revenue) || 0) - payments.reduce((s, p) => s + (Number(p.amount) || 0), 0))
+    const remaining = Math.max(0, parseMoneyInputToNumber(revenue) - payments.reduce((s, p) => s + (Number(p.amount) || 0), 0))
     if (amount > remaining) {
       setError(`Amount cannot exceed Remaining ($${formatCurrency(remaining)})`)
       return
@@ -3186,7 +3409,7 @@ export default function Jobs() {
   }
 
   function addPaymentRow() {
-    setPayments((prev) => [...prev, { id: crypto.randomUUID(), amount: 0 }])
+    setPayments((prev) => [...prev, newEmptyPaymentRow()])
   }
 
   function updatePaymentRow(id: string, updates: Partial<PaymentRow>) {
@@ -3252,18 +3475,20 @@ export default function Jobs() {
     if (!authUser?.id) return
     setSaving(true)
     setError(null)
-    const revNum = revenue.trim() === '' ? null : parseFloat(revenue)
+    const revNum = parseMoneyInputToNumberOrNull(revenue)
     const paymentsMadeNum = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
     const validPayments = payments.filter((p) => (Number(p.amount) || 0) > 0)
     const validMaterials = materials.filter((m) => (m.description ?? '').trim() !== '' || Number(m.amount) !== 0)
     try {
       if (editing) {
         const proj = projectId ? projects.find((p) => p.id === projectId) : null
+        const jobMasterForCustomer = projectId && proj ? proj.master_user_id : editing.master_user_id
+        const resolvedCustomerId = resolveCustomerIdForPayload(customerId, jobMasterForCustomer, customerName.trim())
         const updatePayload = {
           hcp_number: hcpNumber.trim(),
           job_name: jobName.trim(),
           job_address: jobAddress.trim(),
-          customer_id: customerId || null,
+          customer_id: resolvedCustomerId,
           customer_name: customerName.trim() || null,
           customer_email: customerEmail.trim() || null,
           customer_phone: customerPhone.trim() || null,
@@ -3286,6 +3511,8 @@ export default function Jobs() {
             job_id: editing.id,
             amount: Number(p.amount) || 0,
             sequence_order: i,
+            paid_on: p.paid_on?.trim() ? p.paid_on.trim() : null,
+            note: p.note?.trim() ? p.note.trim() : null,
           })
         }
         await supabase.from('jobs_ledger_materials').delete().eq('job_id', editing.id)
@@ -3341,6 +3568,7 @@ export default function Jobs() {
           }
         }
 
+        const resolvedCustomerIdNew = resolveCustomerIdForPayload(customerId, effectiveMasterId, customerName.trim())
         const { data: inserted, error: insertErr } = await supabase
           .from('jobs_ledger')
           .insert({
@@ -3348,7 +3576,7 @@ export default function Jobs() {
             hcp_number: hcpNumber.trim(),
             job_name: jobName.trim(),
             job_address: jobAddress.trim(),
-            customer_id: customerId || null,
+            customer_id: resolvedCustomerIdNew,
             customer_name: customerName.trim() || null,
             customer_email: customerEmail.trim() || null,
             customer_phone: customerPhone.trim() || null,
@@ -3369,6 +3597,8 @@ export default function Jobs() {
               job_id: jobId,
               amount: Number(p.amount) || 0,
               sequence_order: i,
+              paid_on: p.paid_on?.trim() ? p.paid_on.trim() : null,
+              note: p.note?.trim() ? p.note.trim() : null,
             })
           }
           for (const [i, m] of validMaterials.entries()) {
@@ -4227,10 +4457,13 @@ export default function Jobs() {
             function renderJobCustomerLine(job: JobWithDetails) {
               const hasCustomerInfo = ((job.customer_name ?? '').trim() || (job.customer_email ?? '').trim() || (job.customer_phone ?? '').trim())
               if (!hasCustomerInfo) return null
+              const cn = (job.customer_name ?? '').trim()
+              const impliedCustomerLink = !job.customer_id && customerListImpliesLinkedRow(customers, job.master_user_id, cn)
+              const showNotInCustomersBadge = !job.customer_id && !impliedCustomerLink
               return (
                 <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem', display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
                   <span>Customer: {(job.customer_name ?? '').trim() || '—'}</span>
-                  {!job.customer_id ? (
+                  {showNotInCustomersBadge ? (
                     <span style={{ padding: '0.1rem 0.3rem', fontSize: '0.6875rem', fontWeight: 500, background: '#fef3c7', color: '#92400e', borderRadius: 4 }}>
                       Not in Customers
                     </span>
@@ -5434,6 +5667,37 @@ export default function Jobs() {
                       {`30+ days: ${billedAgingBuckets.count30_90} | $${formatCurrency(billedAgingBuckets.sum30_90)} — 90+ days: ${billedAgingBuckets.count90} | $${formatCurrency(billedAgingBuckets.sum90)} · est. bill date`}
                     </span>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => printBilledAwaitingPaymentReport(billedRows, { searchFilter: stagesSearchQuery })}
+                    disabled={billedRows.length === 0}
+                    title="Print customers, contacts, and amounts due"
+                    aria-label="Print billed awaiting payment report"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      flexShrink: 0,
+                      height: 36,
+                      padding: '0 0.75rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: 4,
+                      background: billedRows.length === 0 ? '#f3f4f6' : 'white',
+                      cursor: billedRows.length === 0 ? 'not-allowed' : 'pointer',
+                      color: '#374151',
+                      fontSize: '0.8125rem',
+                      fontWeight: 500,
+                    }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} aria-hidden>
+                      <path
+                        fill="currentColor"
+                        d="M128 192L128 96C128 78.3 142.3 64 160 64L480 64C497.7 64 512 78.3 512 96L512 192L552 192C569.7 192 584 206.3 584 224L584 384C584 401.7 569.7 416 552 416L512 416L512 520C512 537.7 497.7 552 480 552L160 552C142.3 552 128 537.7 128 520L128 416L88 416C70.3 416 56 401.7 56 384L56 224C56 206.3 70.3 192 88 192L128 192zM176 416L176 496L464 496L464 416L176 416zM512 352L512 256L88 256L88 352L128 352L128 192L512 192L512 352zM464 144L464 120C464 111.2 456.8 104 448 104L192 104C183.2 104 176 111.2 176 120L176 144L464 144z"
+                      />
+                    </svg>
+                    Print
+                  </button>
                 </div>
                 {stagesSectionOpen.billed && renderUnifiedStagesTable(billedRows, {
                   actionLabel: 'Mark Paid',
@@ -5489,7 +5753,40 @@ export default function Jobs() {
                   return (
                     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
                       <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 560, maxHeight: '80vh', overflow: 'auto' }}>
-                        <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Billed Awaiting Payment by Job Name</h2>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '1rem' }}>
+                          <h2 style={{ margin: 0, fontSize: '1.25rem', flex: 1, minWidth: 0 }}>Billed Awaiting Payment by Job Name</h2>
+                          <button
+                            type="button"
+                            onClick={() => printBilledAwaitingPaymentReport(billedRows, { searchFilter: stagesSearchQuery })}
+                            disabled={billedRows.length === 0}
+                            title="Print customers, contacts, and amounts due"
+                            aria-label="Print billed awaiting payment report"
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: 6,
+                              flexShrink: 0,
+                              height: 36,
+                              padding: '0 0.75rem',
+                              border: '1px solid #d1d5db',
+                              borderRadius: 4,
+                              background: billedRows.length === 0 ? '#f3f4f6' : 'white',
+                              cursor: billedRows.length === 0 ? 'not-allowed' : 'pointer',
+                              color: '#374151',
+                              fontSize: '0.8125rem',
+                              fontWeight: 500,
+                            }}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} aria-hidden>
+                              <path
+                                fill="currentColor"
+                                d="M128 192L128 96C128 78.3 142.3 64 160 64L480 64C497.7 64 512 78.3 512 96L512 192L552 192C569.7 192 584 206.3 584 224L584 384C584 401.7 569.7 416 552 416L512 416L512 520C512 537.7 497.7 552 480 552L160 552C142.3 552 128 537.7 128 520L128 416L88 416C70.3 416 56 401.7 56 384L56 224C56 206.3 70.3 192 88 192L128 192zM176 416L176 496L464 496L464 416L176 416zM512 352L512 256L88 256L88 352L128 352L128 192L512 192L512 352zM464 144L464 120C464 111.2 456.8 104 448 104L192 104C183.2 104 176 111.2 176 120L176 144L464 144z"
+                              />
+                            </svg>
+                            Print
+                          </button>
+                        </div>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                           <thead>
                             <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
@@ -6092,10 +6389,10 @@ export default function Jobs() {
                                       <tbody>
                                         {(job.payments ?? []).map((p) => (
                                           <tr key={p.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                                            <td style={{ padding: '0.5rem 0.75rem' }}>{new Date(p.created_at).toLocaleDateString()}</td>
+                                            <td style={{ padding: '0.5rem 0.75rem' }}>{p.created_at ? new Date(p.created_at).toLocaleDateString() : '—'}</td>
                                             <td style={{ padding: '0.5rem 0.75rem', color: Number(p.amount) < 0 ? '#dc2626' : undefined }}>{Number(p.amount) < 0 ? 'Backcharge' : 'Payment'}</td>
                                             <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: Number(p.amount) < 0 ? '#dc2626' : undefined }}>${formatCurrency(Number(p.amount))}</td>
-                                            <td style={{ padding: '0.5rem 0.75rem' }}>{p.memo || '—'}</td>
+                                            <td style={{ padding: '0.5rem 0.75rem' }}>{p.memo?.trim() ? p.memo : '—'}</td>
                                           </tr>
                                         ))}
                                         {(job.payments ?? []).length === 0 && (
@@ -7948,7 +8245,7 @@ export default function Jobs() {
                   const projectPrefillParams = new URLSearchParams()
                   if (customerId) projectPrefillParams.set('customer', customerId)
                   if (jobName.trim()) projectPrefillParams.set('name', jobName.trim())
-                  if (jobAddress.trim()) projectPrefillParams.set('address', jobAddress.trim())
+                  projectPrefillParams.set('address', jobAddress.trim())
                   if (jobPlansLink.trim()) projectPrefillParams.set('plans', jobPlansLink.trim())
                   if (hcpNumber.trim()) projectPrefillParams.set('hcp', hcpNumber.trim())
                   if (editing?.id) projectPrefillParams.set('job', editing.id)
@@ -8079,11 +8376,30 @@ export default function Jobs() {
                   >
                     <span aria-hidden>{customerExpanded ? '\u25BC' : '\u25B6'}</span>
                     Customer: {customerName.trim() || customerEmail.trim() || customerPhone.trim() ? (customerName.trim() || '—') : '—'}
-                    {(customerName.trim() || customerEmail.trim() || customerPhone.trim()) && !customerId ? (
-                      <span style={{ marginLeft: '0.5rem', padding: '0.15rem 0.4rem', fontSize: '0.75rem', fontWeight: 500, background: '#fef3c7', color: '#92400e', borderRadius: 4 }}>
-                        Not in Customers
-                      </span>
-                    ) : null}
+                    {(() => {
+                      const projRow = projectId ? projects.find((p) => p.id === projectId) : undefined
+                      const masterForFormCustomer =
+                        projRow?.master_user_id ?? editing?.master_user_id ?? authUser?.id ?? ''
+                      const showFormNotInCustomers =
+                        !!(customerName.trim() || customerEmail.trim() || customerPhone.trim()) &&
+                        !customerId &&
+                        !customerListImpliesLinkedRow(customers, masterForFormCustomer, customerName)
+                      return showFormNotInCustomers ? (
+                        <span
+                          style={{
+                            marginLeft: '0.5rem',
+                            padding: '0.15rem 0.4rem',
+                            fontSize: '0.75rem',
+                            fontWeight: 500,
+                            background: '#fef3c7',
+                            color: '#92400e',
+                            borderRadius: 4,
+                          }}
+                        >
+                          Not in Customers
+                        </span>
+                      ) : null
+                    })()}
                   </button>
                   {customerExpanded && (
                     <button
@@ -8122,7 +8438,8 @@ export default function Jobs() {
                         }}
                         onFocus={() => setCustomerDropdownOpen(true)}
                         onBlur={() => setTimeout(() => setCustomerDropdownOpen(false), 200)}
-                        placeholder="Search residential customers..."
+                        placeholder="Search customers (residential & commercial)…"
+                        aria-label="Search customers to link, residential and commercial"
                         style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
                       />
                       {customerDropdownOpen && (
@@ -8169,7 +8486,12 @@ export default function Jobs() {
                                   onMouseEnter={(e) => { e.currentTarget.style.background = '#f3f4f6' }}
                                   onMouseLeave={(e) => { e.currentTarget.style.background = 'white' }}
                                 >
-                                  <div style={{ fontWeight: 500 }}>{c.name}</div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                                    <span style={{ fontWeight: 500 }}>{c.name}</span>
+                                    <span style={{ fontSize: '0.6875rem', color: '#6b7280', fontWeight: 500 }}>
+                                      {customerTypeShortLabel(c)}
+                                    </span>
+                                  </div>
                                   {c.address && <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>{c.address}</div>}
                                 </div>
                                   ))}
@@ -8560,11 +8882,22 @@ export default function Jobs() {
                   <div style={{ flex: '1 1 140px', minWidth: 0 }}>
                     <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Total / Bid ($)</label>
                     <input
-                      type="number"
-                      min={0}
-                      step={0.01}
-                      value={revenue}
-                      onChange={(e) => setRevenue(e.target.value)}
+                      type="text"
+                      inputMode="decimal"
+                      value={
+                        revenueInputFocused
+                          ? revenue
+                          : revenue.trim() === ''
+                            ? ''
+                            : formatCurrency(parseMoneyInputToNumber(revenue))
+                      }
+                      onFocus={() => setRevenueInputFocused(true)}
+                      onBlur={() => {
+                        setRevenueInputFocused(false)
+                        const n = parseMoneyInputToNumberOrNull(revenue)
+                        setRevenue(n == null ? '' : String(n))
+                      }}
+                      onChange={(e) => setRevenue(sanitizeMoneyTyping(e.target.value))}
                       placeholder="Optional"
                       style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem' }}
                     />
@@ -8572,7 +8905,7 @@ export default function Jobs() {
                   <div style={{ flex: '1 1 140px', minWidth: 0 }}>
                     <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Remaining ($)</label>
                     <div style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', fontWeight: 600, color: '#374151', background: '#f9fafb', borderRadius: 6 }}>
-                      ${formatCurrency(Math.max(0, (parseFloat(revenue) || 0) - payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)))}
+                      ${formatCurrency(Math.max(0, parseMoneyInputToNumber(revenue) - payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)))}
                     </div>
                   </div>
                 </div>
@@ -8581,6 +8914,8 @@ export default function Jobs() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                     <thead style={{ background: '#f9fafb' }}>
                       <tr>
+                        <th style={{ padding: '0.625rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Date</th>
+                        <th style={{ padding: '0.625rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Note</th>
                         <th style={{ padding: '0.625rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Amount ($)</th>
                         <th style={{ padding: '0.625rem 0.5rem', width: 48, borderBottom: '1px solid #e5e7eb' }} />
                       </tr>
@@ -8588,18 +8923,37 @@ export default function Jobs() {
                     <tbody>
                       {payments.map((row, idx) => (
                         <tr key={row.id} style={{ borderBottom: idx < payments.length - 1 ? '1px solid #e5e7eb' : 'none' }}>
-                          <td style={{ padding: '0.625rem 0.75rem', textAlign: 'right' }}>
+                          <td style={{ padding: '0.625rem 0.75rem', verticalAlign: 'middle' }}>
                             <input
-                              type="number"
-                              min={0}
-                              step={0.01}
-                              value={row.amount || ''}
-                              onChange={(e) => updatePaymentRow(row.id, { amount: parseFloat(e.target.value) || 0 })}
+                              id={`edit-job-payment-date-${row.id}`}
+                              type="date"
+                              value={row.paid_on ?? ''}
+                              onChange={(e) => updatePaymentRow(row.id, { paid_on: e.target.value ? e.target.value : null })}
+                              aria-label="Payment date"
+                              style={{ width: '100%', maxWidth: '11rem', padding: '0.375rem 0.625rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem' }}
+                            />
+                          </td>
+                          <td style={{ padding: '0.625rem 0.75rem', verticalAlign: 'middle', minWidth: 120 }}>
+                            <input
+                              id={`edit-job-payment-note-${row.id}`}
+                              type="text"
+                              value={row.note ?? ''}
+                              onChange={(e) => updatePaymentRow(row.id, { note: e.target.value === '' ? null : e.target.value })}
+                              placeholder="Optional"
+                              aria-label="Payment note"
+                              style={{ width: '100%', minWidth: '8rem', padding: '0.375rem 0.625rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem' }}
+                            />
+                          </td>
+                          <td style={{ padding: '0.625rem 0.75rem', textAlign: 'right', verticalAlign: 'middle' }}>
+                            <MoneyDecimalAmountInput
+                              value={row.amount}
+                              onChange={(amount) => updatePaymentRow(row.id, { amount })}
                               placeholder="0"
+                              aria-label="Payment amount"
                               style={{ width: '6rem', padding: '0.375rem 0.625rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem', textAlign: 'right' }}
                             />
                           </td>
-                          <td style={{ padding: '0.625rem 0.5rem' }}>
+                          <td style={{ padding: '0.625rem 0.5rem', verticalAlign: 'middle' }}>
                             <button
                               type="button"
                               onClick={() => removePaymentRow(row.id)}
@@ -8624,16 +8978,40 @@ export default function Jobs() {
                       ))}
                     </tbody>
                   </table>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #f3f4f6' }}>
-                    <button type="button" onClick={addPaymentRow} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', fontWeight: 500, background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
-                      Add Payment
-                    </button>
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.75rem',
+                      marginTop: '0.75rem',
+                      paddingTop: '0.75rem',
+                      borderTop: '1px solid #f3f4f6',
+                    }}
+                  >
+                    <div>
+                      <button type="button" onClick={addPaymentRow} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', fontWeight: 500, background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
+                        Add Payment
+                      </button>
+                    </div>
                     {editing && (
-                      <>
-                        <span style={{ fontSize: '0.8125rem', color: '#6b7280', marginLeft: '0.25rem' }}>or</span>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
-                          Create invoice: $
+                      <div
+                        style={{
+                          padding: '0.75rem',
+                          borderRadius: 8,
+                          border: '1px solid #e5e7eb',
+                          background: '#f9fafb',
+                        }}
+                      >
+                        <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>Partial invoice</h4>
+                        <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+                          Break off an amount to send through Ready to Bill. The job stays in Working.
+                        </p>
+                        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                          <label htmlFor="edit-job-partial-invoice-amount" style={{ fontSize: '0.875rem', fontWeight: 500, color: '#374151' }}>
+                            Amount ($)
+                          </label>
                           <input
+                            id="edit-job-partial-invoice-amount"
                             type="number"
                             min={0}
                             step={0.01}
@@ -8641,27 +9019,27 @@ export default function Jobs() {
                             onChange={(e) => setNewInvoiceAmount(e.target.value)}
                             placeholder="0"
                             title="Break off an amount to send through Ready to Bill. Job stays in Working."
-                            style={{ width: '6rem', padding: '0.375rem 0.625rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem' }}
+                            style={{ width: '6rem', padding: '0.375rem 0.625rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem', background: 'white' }}
                           />
-                        </label>
-                        <button
-                          type="button"
-                          onClick={createInvoice}
-                          disabled={creatingInvoice || !(parseFloat(newInvoiceAmount) > 0)}
-                          style={{
-                            padding: '0.5rem 1rem',
-                            fontSize: '0.875rem',
-                            fontWeight: 500,
-                            background: creatingInvoice || !(parseFloat(newInvoiceAmount) > 0) ? '#9ca3af' : '#3b82f6',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: 6,
-                            cursor: creatingInvoice || !(parseFloat(newInvoiceAmount) > 0) ? 'not-allowed' : 'pointer',
-                          }}
-                        >
-                          {creatingInvoice ? '…' : 'Create invoice'}
-                        </button>
-                      </>
+                          <button
+                            type="button"
+                            onClick={createInvoice}
+                            disabled={creatingInvoice || !(parseFloat(newInvoiceAmount) > 0)}
+                            style={{
+                              padding: '0.5rem 1rem',
+                              fontSize: '0.875rem',
+                              fontWeight: 500,
+                              background: creatingInvoice || !(parseFloat(newInvoiceAmount) > 0) ? '#9ca3af' : '#3b82f6',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: 6,
+                              cursor: creatingInvoice || !(parseFloat(newInvoiceAmount) > 0) ? 'not-allowed' : 'pointer',
+                            }}
+                          >
+                            {creatingInvoice ? '…' : 'Create invoice'}
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { NO_CUSTOMER_TYPE_LABEL } from '../constants/customerTypeLabels'
 import { supabase } from '../lib/supabase'
 import { useNewCustomerModal } from '../contexts/NewCustomerModalContext'
 import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
@@ -24,7 +25,27 @@ function extractContactInfo(ci: Json | null): { phone: string; email: string } {
   return { phone: '', email: '' }
 }
 
-type CustomerTypeFilter = 'all' | 'commercial' | 'residential'
+type CustomerTypeFilter = 'all' | 'commercial' | 'residential' | 'commercial_default'
+
+function parseCustomerTypeFilter(raw: string | null): CustomerTypeFilter {
+  if (raw === 'commercial' || raw === 'residential' || raw === 'commercial_default') return raw
+  return 'all'
+}
+
+function isCustomerCommercialDefaultType(c: Customer): boolean {
+  const t = c.customer_type
+  if (t == null) return true
+  return typeof t === 'string' && t.trim() === ''
+}
+
+function customerTypeTagLabel(c: Customer): string {
+  if (isCustomerCommercialDefaultType(c)) return NO_CUSTOMER_TYPE_LABEL
+  const t = c.customer_type
+  if (t === 'residential') return 'Residential'
+  if (t === 'commercial') return 'Commercial'
+  if (typeof t === 'string' && t.length > 0) return t.charAt(0).toUpperCase() + t.slice(1).toLowerCase()
+  return 'Other'
+}
 
 export default function Customers() {
   const location = useLocation()
@@ -40,7 +61,6 @@ export default function Customers() {
   const [loadingBids, setLoadingBids] = useState(false)
   const [countsByCustomerId, setCountsByCustomerId] = useState<Record<string, { projects: number; jobs: number; bids: number }>>({})
   const [searchQuery, setSearchQuery] = useState('')
-  const typeFilter = (searchParams.get('type') as CustomerTypeFilter) || 'all'
 
   async function fetchCustomers() {
     const { data, error: err } = await supabase
@@ -128,10 +148,16 @@ export default function Customers() {
   if (loading) return <p>Loading customers…</p>
   if (error) return <p style={{ color: '#b91c1c' }}>{error}</p>
 
+  const defaultTypeCount = customers.filter(isCustomerCommercialDefaultType).length
+  const typeFromUrl = parseCustomerTypeFilter(searchParams.get('type'))
+  const typeFilter: CustomerTypeFilter =
+    typeFromUrl === 'commercial_default' && defaultTypeCount === 0 ? 'all' : typeFromUrl
+
   const q = searchQuery.trim().toLowerCase()
   const byType = customers.filter((c) => {
     if (typeFilter === 'all') return true
-    if (typeFilter === 'commercial') return c.customer_type === 'commercial' || c.customer_type == null
+    if (typeFilter === 'commercial') return c.customer_type === 'commercial'
+    if (typeFilter === 'commercial_default') return isCustomerCommercialDefaultType(c)
     return c.customer_type === 'residential'
   })
   const filteredCustomers = q
@@ -173,7 +199,14 @@ export default function Customers() {
             <button
               key={t}
               type="button"
-              onClick={() => setSearchParams((p) => { const n = new URLSearchParams(p); if (t === 'all') n.delete('type'); else n.set('type', t); return n })}
+              onClick={() =>
+                setSearchParams((p) => {
+                  const n = new URLSearchParams(p)
+                  if (t === 'all') n.delete('type')
+                  else n.set('type', t)
+                  return n
+                })
+              }
               style={{
                 padding: '0.35rem 0.75rem',
                 border: '1px solid #d1d5db',
@@ -187,6 +220,29 @@ export default function Customers() {
               {t === 'all' ? 'All' : t === 'commercial' ? 'Commercial' : 'Residential'}
             </button>
           ))}
+          {defaultTypeCount > 0 ? (
+            <button
+              type="button"
+              onClick={() =>
+                setSearchParams((p) => {
+                  const n = new URLSearchParams(p)
+                  n.set('type', 'commercial_default')
+                  return n
+                })
+              }
+              style={{
+                padding: '0.35rem 0.75rem',
+                border: '1px solid #d1d5db',
+                borderRadius: 4,
+                background: typeFilter === 'commercial_default' ? '#2563eb' : 'white',
+                color: typeFilter === 'commercial_default' ? 'white' : '#374151',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+              }}
+            >
+              {NO_CUSTOMER_TYPE_LABEL} ({defaultTypeCount})
+            </button>
+          ) : null}
         </div>
         <div style={{ width: '100%', marginBottom: '0.25rem' }}>
           <input
@@ -229,13 +285,49 @@ export default function Customers() {
               }}
             >
               <div>
-                <button
-                type="button"
-                onClick={() => editCustomerModal?.openEditCustomerModal(c.id, { onSaved: fetchCustomers, onDeleted: (id) => setCustomers((prev) => prev.filter((x) => x.id !== id)) })}
-                style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontWeight: 500, cursor: 'pointer', color: 'inherit', textAlign: 'left' }}
-              >
-                {c.name}
-              </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    aria-label={
+                      typeFilter === 'all'
+                        ? `${(c.name ?? 'Customer').trim() || 'Customer'}, ${customerTypeTagLabel(c)}`
+                        : undefined
+                    }
+                    onClick={() =>
+                      editCustomerModal?.openEditCustomerModal(c.id, {
+                        onSaved: fetchCustomers,
+                        onDeleted: (id) => setCustomers((prev) => prev.filter((x) => x.id !== id)),
+                      })
+                    }
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      font: 'inherit',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      color: 'inherit',
+                      textAlign: 'left',
+                    }}
+                  >
+                    {c.name}
+                  </button>
+                  {typeFilter === 'all' ? (
+                    <span
+                      style={{
+                        fontSize: '0.6875rem',
+                        fontWeight: 500,
+                        padding: '0.1rem 0.4rem',
+                        borderRadius: 4,
+                        background: '#f3f4f6',
+                        color: '#4b5563',
+                        border: '1px solid #e5e7eb',
+                      }}
+                    >
+                      {customerTypeTagLabel(c)}
+                    </span>
+                  ) : null}
+                </div>
                 <div style={{ fontSize: '0.875rem', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   {c.address && <span>{c.address}</span>}
                   {c.address && (

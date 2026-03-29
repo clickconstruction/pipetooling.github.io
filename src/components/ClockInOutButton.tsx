@@ -11,6 +11,7 @@ import {
   type UnifiedSearchResult,
 } from '../utils/unifiedJobBidSearch'
 import { getTeamFeedbackEligibility } from '../lib/teamFeedback'
+import { withSupabaseRetry } from '../utils/errorHandling'
 import TeamFeedbackWizard from './team-feedback/TeamFeedbackWizard'
 
 function toLocalDateString(d: Date): string {
@@ -85,6 +86,10 @@ export default function ClockInOutButton({ userId, userName }: Props) {
   const [subcontractorServiceTypeIds, setSubcontractorServiceTypeIds] = useState<string[] | null>(null)
   const [lastSelectedJobBid, setLastSelectedJobBid] = useState<UnifiedSearchResult | null>(null)
   const assignedJobsShownRef = useRef(false)
+  const assignedJobsFetchGenRef = useRef(0)
+  const unifiedSearchTextRef = useRef(unifiedSearchText)
+  unifiedSearchTextRef.current = unifiedSearchText
+  const [assignedJobsListLoading, setAssignedJobsListLoading] = useState(false)
   const [teamFeedbackOpen, setTeamFeedbackOpen] = useState(false)
 
   function parseLastJobBidFromStorage(raw: string | null): UnifiedSearchResult | null {
@@ -222,6 +227,51 @@ export default function ClockInOutButton({ userId, userName }: Props) {
       setSelectedAssociation(null)
     }
   }, [updateFocusModalOpen])
+
+  useEffect(() => {
+    if (!clockInModalOpen && !updateFocusModalOpen) {
+      setAssignedJobsListLoading(false)
+      return
+    }
+    const requestId = ++assignedJobsFetchGenRef.current
+    assignedJobsShownRef.current = true
+    setAssignedJobsListLoading(true)
+    void (async () => {
+      try {
+        const data = await withSupabaseRetry(
+          async () => await supabase.rpc('list_assigned_jobs_for_dashboard'),
+          'ClockInOutButton list_assigned_jobs_for_dashboard'
+        )
+        if (requestId !== assignedJobsFetchGenRef.current) return
+        if (unifiedSearchTextRef.current.trim() !== '') return
+        const jobs = (data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>
+        const mapped: UnifiedSearchResult[] = jobs.map((j) => ({
+          source: 'job' as const,
+          id: j.id,
+          hcp_number: j.hcp_number ?? '',
+          job_name: j.job_name ?? '',
+          job_address: j.job_address ?? '',
+        }))
+        setUnifiedSearchResults(mapped)
+        assignedJobsShownRef.current = mapped.length > 0
+        if (mapped.length === 0) {
+          showToast('You have no assigned jobs', 'info')
+        }
+      } catch {
+        if (requestId !== assignedJobsFetchGenRef.current) return
+        assignedJobsShownRef.current = false
+        setUnifiedSearchResults([])
+        showToast('Could not load your jobs', 'error')
+      } finally {
+        if (requestId === assignedJobsFetchGenRef.current) {
+          setAssignedJobsListLoading(false)
+        }
+      }
+    })()
+    return () => {
+      assignedJobsFetchGenRef.current++
+    }
+  }, [clockInModalOpen, updateFocusModalOpen, showToast])
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -381,29 +431,6 @@ export default function ClockInOutButton({ userId, userName }: Props) {
       setClockInError(e instanceof Error ? e.message : 'Failed to clock in')
     } finally {
       setActionLoading(false)
-    }
-  }
-
-  async function handleChooseFromMyJobs() {
-    setUnifiedSearchText('')
-    setUnifiedSearchResults([])
-    const { data, error } = await supabase.rpc('list_assigned_jobs_for_dashboard')
-    if (error) {
-      showToast('Could not load your jobs', 'error')
-      return
-    }
-    const jobs = (data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>
-    const mapped: UnifiedSearchResult[] = jobs.map((j) => ({
-      source: 'job' as const,
-      id: j.id,
-      hcp_number: j.hcp_number ?? '',
-      job_name: j.job_name ?? '',
-      job_address: j.job_address ?? '',
-    }))
-    setUnifiedSearchResults(mapped)
-    if (mapped.length > 0) assignedJobsShownRef.current = true
-    if (mapped.length === 0) {
-      showToast('You have no assigned jobs', 'info')
     }
   }
 
@@ -614,7 +641,7 @@ export default function ClockInOutButton({ userId, userName }: Props) {
             style={{ background: '#fefcfb', padding: '1.5rem', borderRadius: 12, maxWidth: 480, width: '90%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', borderTop: '4px solid #ff6600' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <style>{`#clock-in-modal textarea:focus,#clock-in-modal input:focus,#clock-in-modal button:focus-visible{outline:2px solid #ff6600;outline-offset:2px}`}</style>
+            <style>{`#clock-in-modal textarea:focus,#clock-in-modal textarea:focus-visible,#clock-in-modal input[type=text]:focus,#clock-in-modal input[type=text]:focus-visible,#clock-in-modal button:focus-visible{outline:2px solid #ff6600;outline-offset:2px}`}</style>
             <h3 id="clock-in-modal-title" style={{ marginTop: 0, marginBottom: '1rem', textAlign: 'center' }}>Ready to clock in?</h3>
             <label style={{ display: 'block', marginBottom: '0.5rem' }}>
               <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>What do you plan to accomplish?</span>
@@ -625,7 +652,7 @@ export default function ClockInOutButton({ userId, userName }: Props) {
                 placeholder="e.g. Rough-in at 123 Main St, or finishing trim in Unit 4"
                 rows={3}
                 disabled={actionLoading}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 6 }}
+                style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box', border: '2px solid #64748b', borderRadius: 6, background: '#fff' }}
               />
             </label>
             <div style={{ marginBottom: '0.5rem' }}>
@@ -671,76 +698,45 @@ export default function ClockInOutButton({ userId, userName }: Props) {
                 onChange={(e) => { setUnifiedSearchText(e.target.value); setSelectedAssociation(null); assignedJobsShownRef.current = false }}
                 placeholder="Search by HCP #, bid #, project name, or address"
                 disabled={actionLoading}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 6 }}
+                style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box', border: '2px solid #64748b', borderRadius: 6, background: '#fff' }}
               />
-              {serviceTypes.length === 1 ? (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
-                    Filtering by: {serviceTypes[0]!.name}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => void handleChooseFromMyJobs()}
-                    disabled={actionLoading}
-                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #2563eb', borderRadius: 6, background: '#eff6ff', color: '#2563eb', cursor: actionLoading ? 'not-allowed' : 'pointer' }}
-                  >
-                    Choose from my jobs?
-                  </button>
-                </div>
-              ) : serviceTypes.length > 1 ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-                  <select
-                    value={selectedBidServiceTypeId}
-                    onChange={(e) => { setSelectedBidServiceTypeId(e.target.value); setUnifiedSearchResults([]) }}
-                    disabled={actionLoading}
-                    style={{ flex: 1, minWidth: 0, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 6 }}
-                  >
-                    <option value="">Show all types ({serviceTypes.map((st) => st.name).join(', ')})</option>
-                    {serviceTypes.map((st) => (
-                      <option key={st.id} value={st.id}>{st.name}</option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => void handleChooseFromMyJobs()}
-                    disabled={actionLoading}
-                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #2563eb', borderRadius: 6, background: '#eff6ff', color: '#2563eb', cursor: actionLoading ? 'not-allowed' : 'pointer', flexShrink: 0 }}
-                  >
-                    Choose from my jobs?
-                  </button>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-                  <button
-                    type="button"
-                    onClick={() => void handleChooseFromMyJobs()}
-                    disabled={actionLoading}
-                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #2563eb', borderRadius: 6, background: '#eff6ff', color: '#2563eb', cursor: actionLoading ? 'not-allowed' : 'pointer' }}
-                  >
-                    Choose from my jobs?
-                  </button>
-                </div>
-              )}
-              {unifiedSearchResults.length > 0 && (
-                <div style={{ maxHeight: 160, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4, marginTop: '0.25rem' }}>
-                  {unifiedSearchResults.map((r) => (
-                    <button
-                      key={`${r.source}-${r.id}`}
-                      type="button"
-                      onClick={() => { setSelectedAssociation(r); setUnifiedSearchResults([]); setUnifiedSearchText('') }}
-                      style={{ display: 'block', width: '100%', padding: '0.5rem 0.75rem', textAlign: 'left', border: 'none', background: selectedAssociation && selectedAssociation.source === r.source && selectedAssociation.id === r.id ? '#eff6ff' : 'white', cursor: 'pointer', borderBottom: '1px solid #e5e7eb', fontSize: '0.875rem' }}
-                    >
-                      {r.source === 'bid' && (() => {
-                        const t = getBidServiceTypeTag(r.service_type_name)
-                        return t ? (
-                          <span style={{ marginRight: '0.35rem', padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: t.color, color: '#fff', borderRadius: 4 }}>
-                            [{t.tag}]
-                          </span>
-                        ) : null
-                      })()}
-                      {formatUnifiedResult(r)}
-                    </button>
+              {serviceTypes.length === 1 ? null : serviceTypes.length > 1 ? (
+                <select
+                  value={selectedBidServiceTypeId}
+                  onChange={(e) => { setSelectedBidServiceTypeId(e.target.value); setUnifiedSearchResults([]) }}
+                  disabled={actionLoading}
+                  style={{ width: '100%', padding: '0.5rem', marginTop: '0.5rem', border: '1px solid #d1d5db', borderRadius: 6 }}
+                >
+                  <option value="">Show all types ({serviceTypes.map((st) => st.name).join(', ')})</option>
+                  {serviceTypes.map((st) => (
+                    <option key={st.id} value={st.id}>{st.name}</option>
                   ))}
+                </select>
+              ) : null}
+              {(unifiedSearchResults.length > 0 || (assignedJobsListLoading && !unifiedSearchText.trim())) && (
+                <div style={{ maxHeight: 160, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4, marginTop: '0.25rem' }}>
+                  {assignedJobsListLoading && unifiedSearchResults.length === 0 && !unifiedSearchText.trim() ? (
+                    <div style={{ padding: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>Loading…</div>
+                  ) : (
+                    unifiedSearchResults.map((r) => (
+                      <button
+                        key={`${r.source}-${r.id}`}
+                        type="button"
+                        onClick={() => { setSelectedAssociation(r); setUnifiedSearchResults([]); setUnifiedSearchText('') }}
+                        style={{ display: 'block', width: '100%', padding: '0.5rem 0.75rem', textAlign: 'left', border: 'none', background: selectedAssociation && selectedAssociation.source === r.source && selectedAssociation.id === r.id ? '#eff6ff' : 'white', cursor: 'pointer', borderBottom: '1px solid #e5e7eb', fontSize: '0.875rem' }}
+                      >
+                        {r.source === 'bid' && (() => {
+                          const t = getBidServiceTypeTag(r.service_type_name)
+                          return t ? (
+                            <span style={{ marginRight: '0.35rem', padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: t.color, color: '#fff', borderRadius: 4 }}>
+                              [{t.tag}]
+                            </span>
+                          ) : null
+                        })()}
+                        {formatUnifiedResult(r)}
+                      </button>
+                    ))
+                  )}
                 </div>
               )}
             </div>
@@ -781,9 +777,11 @@ export default function ClockInOutButton({ userId, userName }: Props) {
           onClick={() => !updateFocusLoading && setUpdateFocusModalOpen(false)}
         >
           <div
+            id="update-focus-modal"
             style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 480, width: '90%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
             onClick={(e) => e.stopPropagation()}
           >
+            <style>{`#update-focus-modal textarea:focus,#update-focus-modal input[type=text]:focus,#update-focus-modal input[type=text]:focus-visible{outline:2px solid #3b82f6;outline-offset:2px}`}</style>
             <h3 id="update-focus-modal-title" style={{ marginTop: 0, marginBottom: '0.5rem', textAlign: 'center' }}>Update Focus</h3>
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
               This will clock out your current session and start a new one with the focus below.
@@ -797,7 +795,7 @@ export default function ClockInOutButton({ userId, userName }: Props) {
                 placeholder="e.g. Trim set at 456 Oak Ave"
                 rows={3}
                 disabled={updateFocusLoading}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box', border: '2px solid #64748b', borderRadius: 6, background: '#fff' }}
               />
             </label>
             <div style={{ marginBottom: '0.5rem' }}>
@@ -843,13 +841,9 @@ export default function ClockInOutButton({ userId, userName }: Props) {
                 onChange={(e) => { setUnifiedSearchText(e.target.value); setSelectedAssociation(null); assignedJobsShownRef.current = false }}
                 placeholder="Search by HCP #, bid #, project name, or address"
                 disabled={updateFocusLoading}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box', border: '2px solid #64748b', borderRadius: 6, background: '#fff' }}
               />
-              {serviceTypes.length === 1 ? (
-                <p style={{ marginBottom: '0.5rem', marginTop: '0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
-                  Filtering by: {serviceTypes[0]!.name}
-                </p>
-              ) : serviceTypes.length > 1 ? (
+              {serviceTypes.length === 1 ? null : serviceTypes.length > 1 ? (
                 <select
                   value={selectedBidServiceTypeId}
                   onChange={(e) => { setSelectedBidServiceTypeId(e.target.value); setUnifiedSearchResults([]) }}
@@ -862,26 +856,30 @@ export default function ClockInOutButton({ userId, userName }: Props) {
                   ))}
                 </select>
               ) : null}
-              {unifiedSearchResults.length > 0 && (
+              {(unifiedSearchResults.length > 0 || (assignedJobsListLoading && !unifiedSearchText.trim())) && (
                 <div style={{ maxHeight: 160, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4, marginTop: '0.25rem' }}>
-                  {unifiedSearchResults.map((r) => (
-                    <button
-                      key={`${r.source}-${r.id}`}
-                      type="button"
-                      onClick={() => { setSelectedAssociation(r); setUnifiedSearchResults([]); setUnifiedSearchText('') }}
-                      style={{ display: 'block', width: '100%', padding: '0.5rem 0.75rem', textAlign: 'left', border: 'none', background: selectedAssociation && selectedAssociation.source === r.source && selectedAssociation.id === r.id ? '#eff6ff' : 'white', cursor: 'pointer', borderBottom: '1px solid #e5e7eb', fontSize: '0.875rem' }}
-                    >
-                      {r.source === 'bid' && (() => {
-                        const t = getBidServiceTypeTag(r.service_type_name)
-                        return t ? (
-                          <span style={{ marginRight: '0.35rem', padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: t.color, color: '#fff', borderRadius: 4 }}>
-                            [{t.tag}]
-                          </span>
-                        ) : null
-                      })()}
-                      {formatUnifiedResult(r)}
-                    </button>
-                  ))}
+                  {assignedJobsListLoading && unifiedSearchResults.length === 0 && !unifiedSearchText.trim() ? (
+                    <div style={{ padding: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>Loading…</div>
+                  ) : (
+                    unifiedSearchResults.map((r) => (
+                      <button
+                        key={`${r.source}-${r.id}`}
+                        type="button"
+                        onClick={() => { setSelectedAssociation(r); setUnifiedSearchResults([]); setUnifiedSearchText('') }}
+                        style={{ display: 'block', width: '100%', padding: '0.5rem 0.75rem', textAlign: 'left', border: 'none', background: selectedAssociation && selectedAssociation.source === r.source && selectedAssociation.id === r.id ? '#eff6ff' : 'white', cursor: 'pointer', borderBottom: '1px solid #e5e7eb', fontSize: '0.875rem' }}
+                      >
+                        {r.source === 'bid' && (() => {
+                          const t = getBidServiceTypeTag(r.service_type_name)
+                          return t ? (
+                            <span style={{ marginRight: '0.35rem', padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: t.color, color: '#fff', borderRadius: 4 }}>
+                              [{t.tag}]
+                            </span>
+                          ) : null
+                        })()}
+                        {formatUnifiedResult(r)}
+                      </button>
+                    ))
+                  )}
                 </div>
               )}
             </div>

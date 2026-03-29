@@ -35,6 +35,7 @@
 | Collapse old stages toggle, stage breadcrumb below buttons, no-wrap scroll | `RECENT_FEATURES.md` → v2.135; `WORKFLOW_FEATURES.md` → Collapse Old Stages Toggle, Stage Breadcrumb Layout |
 | Workflow Approve/Previous work incomplete, private notes (dev/master/assistant/superintendent) | `RECENT_FEATURES.md` → v2.133, v2.134, v2.137; `ACCESS_CONTROL.md` → Workflow; `WORKFLOW_FEATURES.md` |
 | Line Items For Office, supply house invoice linking | `RECENT_FEATURES.md` → v2.136; `WORKFLOW_FEATURES.md` → Line Items For Office; `PROJECT_DOCUMENTATION.md` → workflow_step_line_items |
+| Jobs Edit billing comma fields; Workflow line `item_date` + clipboard bulk import | `RECENT_FEATURES.md` → v2.181; `WORKFLOW_FEATURES.md` → Line Items For Office; `PROJECT_DOCUMENTATION.md` → Jobs §6, workflow_step_line_items; `MIGRATIONS.md` → 20270329210000; `src/lib/parseWorkflowLineItemPaste.ts`; `src/components/MoneyDecimalAmountInput.tsx` |
 | Dispatch dismissals, closed note, inbox thread notes | `RECENT_FEATURES.md` → v2.169, v2.136; `MIGRATIONS.md`; `GLOSSARY.md` → Task Dispatch |
 | Superintendent Jobs: Reports + Sub Ledger only (no Stages, Billing) | `RECENT_FEATURES.md` → v2.138; `ACCESS_CONTROL.md` → superintendent; `MIGRATIONS.md` → 20260623190000 |
 | Dashboard Assigned Jobs, Superintendent Jobs, in-progress stage banner, Choose from my jobs | `RECENT_FEATURES.md` → v2.142; `PROJECT_DOCUMENTATION.md` → Dashboard; `MIGRATIONS.md` → 20260624000000_allow_superintendent_send_to_billing |

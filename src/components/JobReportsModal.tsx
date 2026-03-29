@@ -1,19 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type CSSProperties } from 'react'
 import { supabase } from '../lib/supabase'
-import ReportViewModal from './ReportViewModal'
+import ReportViewModal, { ReportDetailBody, type ReportForView } from './ReportViewModal'
 import AdditionalReportModal from './AdditionalReportModal'
 import type { UserRole } from '../hooks/useAuth'
-
-type ReportForView = {
-  id: string
-  template_name: string
-  job_display_name: string
-  created_at: string
-  created_by_name: string
-  field_values?: Record<string, string>
-  reported_at_lat?: number | null
-  reported_at_lng?: number | null
-}
 
 type ReportWithJobInfo = ReportForView & {
   job_ledger_id: string | null
@@ -37,6 +26,7 @@ type Props = {
 export default function JobReportsModal({ open, onClose, jobId, hcpNumber, jobName, jobAddress, authUserId, userRole, filterCreatedByUserId, zIndex = 55 }: Props) {
   const [reports, setReports] = useState<ReportForView[]>([])
   const [loading, setLoading] = useState(false)
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const [viewingReport, setViewingReport] = useState<ReportForView | null>(null)
   const [newReportOpen, setNewReportOpen] = useState(false)
 
@@ -58,12 +48,23 @@ export default function JobReportsModal({ open, onClose, jobId, hcpNumber, jobNa
   }, [open, jobId, filterCreatedByUserId])
 
   useEffect(() => {
+    setExpandedIds(new Set(reports.map((r) => r.id)))
+  }, [reports])
+
+  useEffect(() => {
     if (!open) return
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key !== 'Escape' && e.key !== ' ') return
       if (e.key === ' ') {
         const target = e.target as HTMLElement
-        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return
+        if (
+          target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'BUTTON' ||
+          target.isContentEditable
+        ) {
+          return
+        }
         e.preventDefault()
       }
       if (viewingReport) {
@@ -91,9 +92,30 @@ export default function JobReportsModal({ open, onClose, jobId, hcpNumber, jobNa
     })
   }
 
+  function toggleExpanded(id: string) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
   if (!open) return null
 
   const jobDisplayName = `${hcpNumber} · ${jobName}`
+  const allExpanded = reports.length > 0 && expandedIds.size === reports.length
+  const allCollapsed = expandedIds.size === 0
+
+  const toolbarBtnStyle: CSSProperties = {
+    padding: '0.5rem 0.75rem',
+    fontSize: '0.875rem',
+    background: 'none',
+    border: '1px solid #d1d5db',
+    borderRadius: 4,
+    cursor: 'pointer',
+    color: '#374151',
+  }
 
   return (
     <>
@@ -116,10 +138,32 @@ export default function JobReportsModal({ open, onClose, jobId, hcpNumber, jobNa
             padding: '1rem 1.5rem',
             borderBottom: '1px solid #e5e7eb',
             flexShrink: 0,
+            flexWrap: 'wrap',
+            gap: '0.5rem',
           }}
         >
           <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>{filterCreatedByUserId ? 'My reports for this job' : 'Reports'}</h1>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            {!loading && reports.length > 0 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setExpandedIds(new Set(reports.map((r) => r.id)))}
+                  disabled={allExpanded}
+                  style={{ ...toolbarBtnStyle, opacity: allExpanded ? 0.5 : 1, cursor: allExpanded ? 'not-allowed' : 'pointer' }}
+                >
+                  Expand all
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setExpandedIds(new Set())}
+                  disabled={allCollapsed}
+                  style={{ ...toolbarBtnStyle, opacity: allCollapsed ? 0.5 : 1, cursor: allCollapsed ? 'not-allowed' : 'pointer' }}
+                >
+                  Collapse all
+                </button>
+              </>
+            )}
             <button
               type="button"
               onClick={() => setNewReportOpen(true)}
@@ -165,28 +209,83 @@ export default function JobReportsModal({ open, onClose, jobId, hcpNumber, jobNa
             <p style={{ color: '#6b7280', marginBottom: '1rem' }}>No reports yet. Add one below.</p>
           ) : (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {reports.map((r) => (
-                <li
-                  key={r.id}
-                  style={{
-                    padding: '1rem',
-                    marginBottom: '0.5rem',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: 8,
-                    cursor: 'pointer',
-                    background: '#fff',
-                  }}
-                  onClick={() => setViewingReport(r)}
-                  onKeyDown={(e) => e.key === 'Enter' && setViewingReport(r)}
-                  role="button"
-                  tabIndex={0}
-                >
-                  <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{r.template_name}</div>
-                  <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                    {r.created_by_name} · {new Date(r.created_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
-                  </div>
-                </li>
-              ))}
+              {reports.map((r) => {
+                const isExpanded = expandedIds.has(r.id)
+                return (
+                  <li
+                    key={r.id}
+                    style={{
+                      marginBottom: '0.5rem',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: 8,
+                      background: '#fff',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '0.5rem',
+                        padding: '1rem',
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => toggleExpanded(r.id)}
+                        aria-expanded={isExpanded}
+                        aria-label={isExpanded ? 'Collapse report' : 'Expand report'}
+                        style={{
+                          flexShrink: 0,
+                          width: 28,
+                          height: 28,
+                          padding: 0,
+                          border: '1px solid #e5e7eb',
+                          borderRadius: 4,
+                          background: '#f9fafb',
+                          cursor: 'pointer',
+                          fontSize: '0.75rem',
+                          lineHeight: 1,
+                          color: '#374151',
+                        }}
+                      >
+                        {isExpanded ? '▾' : '▸'}
+                      </button>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{r.template_name}</div>
+                        <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                          {r.created_by_name} · {new Date(r.created_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setViewingReport(r)}
+                        style={{
+                          ...toolbarBtnStyle,
+                          flexShrink: 0,
+                          fontSize: '0.8125rem',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        Open in popup
+                      </button>
+                    </div>
+                    {isExpanded && (
+                      <div
+                        style={{
+                          padding: '0 1rem 1rem 1rem',
+                          paddingLeft: 'calc(1rem + 28px + 0.5rem)',
+                          borderTop: '1px solid #f3f4f6',
+                          paddingTop: '0.75rem',
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <ReportDetailBody report={r} />
+                      </div>
+                    )}
+                  </li>
+                )
+              })}
             </ul>
           )}
         </div>

@@ -812,7 +812,7 @@ export function DashboardMyTimeDayEditorModal({
             position: 'relative',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
+            justifyContent: 'flex-end',
             minHeight: '1.75rem',
             marginBottom: '0.35rem',
           }}
@@ -841,7 +841,7 @@ export function DashboardMyTimeDayEditorModal({
                 display: 'flex',
                 flexWrap: 'wrap',
                 alignItems: 'center',
-                justifyContent: 'center',
+                justifyContent: 'flex-end',
                 gap: 8,
               }}
             >

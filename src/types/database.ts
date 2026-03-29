@@ -2216,6 +2216,8 @@ export type Database = {
           created_at: string | null
           id: string
           job_id: string
+          note: string | null
+          paid_on: string | null
           sequence_order: number
         }
         Insert: {
@@ -2223,6 +2225,8 @@ export type Database = {
           created_at?: string | null
           id?: string
           job_id: string
+          note?: string | null
+          paid_on?: string | null
           sequence_order?: number
         }
         Update: {
@@ -2230,6 +2234,8 @@ export type Database = {
           created_at?: string | null
           id?: string
           job_id?: string
+          note?: string | null
+          paid_on?: string | null
           sequence_order?: number
         }
         Relationships: [
@@ -6225,6 +6231,7 @@ export type Database = {
           amount: number
           created_at: string | null
           id: string
+          item_date: string | null
           link: string | null
           memo: string
           purchase_order_id: string | null
@@ -6237,6 +6244,7 @@ export type Database = {
           amount: number
           created_at?: string | null
           id?: string
+          item_date?: string | null
           link?: string | null
           memo: string
           purchase_order_id?: string | null
@@ -6249,6 +6257,7 @@ export type Database = {
           amount?: number
           created_at?: string | null
           id?: string
+          item_date?: string | null
           link?: string | null
           memo?: string
           purchase_order_id?: string | null
@@ -6817,6 +6826,13 @@ export type Database = {
         Args: { p_license_id: string; p_link: string }
         Returns: string
       }
+      replace_own_clock_session_cluster_mixed: {
+        Args: { p_segments: Json; p_session_ids: string[] }
+        Returns: {
+          error_message: string
+          inserted_ids: string[]
+        }[]
+      }
       report_edit_window_days: { Args: never; Returns: number }
       report_sub_visibility_months: { Args: never; Returns: number }
       restore_rejected_clock_sessions: {
@@ -6866,24 +6882,17 @@ export type Database = {
           job_name: string
         }[]
       }
-      split_own_clock_session_segments: {
-        Args: { p_segments: Json; p_session_id: string }
-        Returns: {
-          error_message: string | null
-          inserted_ids: string[]
-        }[]
-      }
       split_own_clock_session_cluster: {
         Args: { p_segments: Json; p_session_ids: string[] }
         Returns: {
-          error_message: string | null
+          error_message: string
           inserted_ids: string[]
         }[]
       }
-      replace_own_clock_session_cluster_mixed: {
-        Args: { p_segments: Json; p_session_ids: string[] }
+      split_own_clock_session_segments: {
+        Args: { p_segments: Json; p_session_id: string }
         Returns: {
-          error_message: string | null
+          error_message: string
           inserted_ids: string[]
         }[]
       }

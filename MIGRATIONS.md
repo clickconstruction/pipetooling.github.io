@@ -168,6 +168,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: `replaceOwnClockSessionClusterMixed` in `src/lib/splitOwnClockSessionSegments.ts`; heterogeneous strips and uncut multi-row time reshapes
 - **Category**: Clock / RPC / Dashboard
 
+**`20270329210000_workflow_step_line_items_item_date.sql`**
+- **Purpose**: Optional user-entered date on workflow step line items
+- **Changes**: `ALTER TABLE public.workflow_step_line_items ADD COLUMN item_date date NULL`; column comment
+- **Impact**: Workflow Add/Edit Line Item date field; Line Items For Office Date column; clipboard bulk import sets `item_date` per row
+- **Category**: Workflow
+
 ### March 2026
 
 #### March 20, 2026
@@ -2062,6 +2068,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - `create_workflow_step_line_items.sql` - Line items per stage
 - `create_workflow_projections.sql` - Workflow-level projections
 - `add_link_to_line_items.sql` - URL field for external references
+- `20270329210000_workflow_step_line_items_item_date.sql` - Optional `item_date` on line items
 
 **Action Tracking**:
 - `create_project_workflow_step_actions.sql` - Action history ledger

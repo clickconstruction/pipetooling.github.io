@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { parseWorkflowLineItemPaste } from '../lib/parseWorkflowLineItemPaste'
 import { useAuth } from '../hooks/useAuth'
 import type { Database } from '../types/database'
 
@@ -67,6 +68,14 @@ function formatAmount(amount: number | null | undefined): string {
     return `($${formatted})`
   }
   return `$${formatted}`
+}
+
+function formatLineItemDate(isoDate: string | null | undefined): string {
+  if (isoDate == null || isoDate === '') return '\u2014'
+  const ymd = isoDate.slice(0, 10)
+  const d = new Date(`${ymd}T12:00:00`)
+  if (Number.isNaN(d.getTime())) return '\u2014'
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
 function getStepStatusStyle(status: StepStatus | null): { color: string; fontWeight: 'normal' | 'bold' } {
@@ -145,7 +154,15 @@ export default function Workflow() {
   const [creatingFromTemplate, setCreatingFromTemplate] = useState(false)
   const [userRole, setUserRole] = useState<'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'superintendent' | null>(null)
   const [lineItems, setLineItems] = useState<Record<string, LineItem[]>>({})
-  const [editingLineItem, setEditingLineItem] = useState<{ stepId: string; item: LineItem | null; link: string; memo: string; amount: string } | null>(null)
+  const [editingLineItem, setEditingLineItem] = useState<{
+    stepId: string
+    item: LineItem | null
+    link: string
+    memo: string
+    amount: string
+    itemDate: string
+  } | null>(null)
+  const [lineItemPasteImporting, setLineItemPasteImporting] = useState(false)
   const [confirmDeleteLineItem, setConfirmDeleteLineItem] = useState<{ item: LineItem; stepName: string } | null>(null)
   const [confirmDeleteStep, setConfirmDeleteStep] = useState<Step | null>(null)
   const [deleteStepConfirmText, setDeleteStepConfirmText] = useState('')
@@ -1836,13 +1853,14 @@ export default function Workflow() {
   }
 
 
-  async function saveLineItem(stepId: string, item: LineItem | null, link: string, memo: string, amount: string) {
+  async function saveLineItem(stepId: string, item: LineItem | null, link: string, memo: string, amount: string, itemDate: string) {
     const amountNum = parseFloat(amount) || 0
     if (!memo.trim()) {
       setError('Memo is required')
       return
     }
-    
+    const itemDateVal = itemDate.trim() ? itemDate.trim().slice(0, 10) : null
+
     // Validate link format if provided
     const trimmedLink = link.trim()
     let finalLink: string | null = null
@@ -1861,7 +1879,7 @@ export default function Workflow() {
       // Update existing
       const { error } = await supabase
         .from('workflow_step_line_items')
-        .update({ link: finalLink, memo: memo.trim(), amount: amountNum })
+        .update({ link: finalLink, memo: memo.trim(), amount: amountNum, item_date: itemDateVal })
         .eq('id', item.id)
       if (error) {
         setError(`Failed to update line item: ${error.message}`)
@@ -1872,7 +1890,14 @@ export default function Workflow() {
       const maxOrder = Math.max(0, ...(lineItems[stepId] || []).map(li => li.sequence_order))
       const { error } = await supabase
         .from('workflow_step_line_items')
-        .insert({ step_id: stepId, link: finalLink, memo: memo.trim(), amount: amountNum, sequence_order: maxOrder + 1 })
+        .insert({
+          step_id: stepId,
+          link: finalLink,
+          memo: memo.trim(),
+          amount: amountNum,
+          sequence_order: maxOrder + 1,
+          item_date: itemDateVal,
+        })
       if (error) {
         setError(`Failed to insert line item: ${error.message}`)
         return
@@ -1881,9 +1906,60 @@ export default function Workflow() {
     setEditingLineItem(null)
     await refreshSteps()
     // Reload line items to ensure UI updates for assistants
-    if (steps.length > 0 && (userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant')) {
+    if (
+      steps.length > 0 &&
+      (userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant' || userRole === 'superintendent')
+    ) {
       const stepIds = steps.map(s => s.id)
       await loadLineItemsForSteps(stepIds)
+    }
+  }
+
+  async function importLineItemsFromPaste(stepId: string, text: string) {
+    const parsed = parseWorkflowLineItemPaste(text)
+    if (!parsed.ok) {
+      setError(parsed.message)
+      return
+    }
+    const baseOrder = Math.max(0, ...(lineItems[stepId] || []).map((li) => li.sequence_order))
+    const payload = parsed.rows.map((r, i) => ({
+      step_id: stepId,
+      memo: r.memo,
+      amount: r.amount,
+      item_date: r.itemDate,
+      sequence_order: baseOrder + 1 + i,
+    }))
+    const { error } = await supabase.from('workflow_step_line_items').insert(payload)
+    if (error) {
+      setError(`Failed to import line items: ${error.message}`)
+      return
+    }
+    setEditingLineItem(null)
+    setError(null)
+    await refreshSteps()
+    if (
+      steps.length > 0 &&
+      (userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant' || userRole === 'superintendent')
+    ) {
+      await loadLineItemsForSteps(steps.map((s) => s.id))
+    }
+  }
+
+  async function importLineItemsFromClipboard() {
+    if (!editingLineItem || editingLineItem.item !== null) return
+    setError(null)
+    setLineItemPasteImporting(true)
+    try {
+      const text = await navigator.clipboard.readText()
+      await importLineItemsFromPaste(editingLineItem.stepId, text)
+    } catch (e) {
+      setError(
+        e instanceof Error
+          ? e.message
+          : 'Could not read clipboard. Use HTTPS (or localhost) and allow clipboard access when prompted.'
+      )
+    } finally {
+      setLineItemPasteImporting(false)
     }
   }
 
@@ -1894,7 +1970,10 @@ export default function Workflow() {
     } else {
       await refreshSteps()
       // Reload line items to ensure UI updates for assistants
-      if (steps.length > 0 && (userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant')) {
+      if (
+        steps.length > 0 &&
+        (userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant' || userRole === 'superintendent')
+      ) {
         const stepIds = steps.map(s => s.id)
         await loadLineItemsForSteps(stepIds)
       }
@@ -1908,6 +1987,7 @@ export default function Workflow() {
       link: item?.link || '',
       memo: item?.memo || '',
       amount: item?.amount?.toString() || '',
+      itemDate: item?.item_date ? String(item.item_date).slice(0, 10) : '',
     })
   }
 
@@ -2888,6 +2968,7 @@ export default function Workflow() {
                           <thead>
                             <tr>
                               <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem', fontWeight: 600, borderBottom: '1px solid #bae6fd' }}>Memo</th>
+                              <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem', fontWeight: 600, borderBottom: '1px solid #bae6fd', whiteSpace: 'nowrap' }}>Date</th>
                               <th style={{ textAlign: 'right', padding: '0.35rem 0.5rem', fontWeight: 600, borderBottom: '1px solid #bae6fd' }}>Amount</th>
                               <th style={{ width: 1, padding: '0.35rem 0.5rem', borderBottom: '1px solid #bae6fd' }}></th>
                             </tr>
@@ -2913,6 +2994,9 @@ export default function Workflow() {
                                   ) : (
                                     <span>{item.memo}</span>
                                   )}
+                                </td>
+                                <td style={{ padding: '0.35rem 0.5rem', borderBottom: rowBorder, verticalAlign: 'middle', fontSize: '0.8125rem', color: '#4b5563', whiteSpace: 'nowrap' }}>
+                                  {formatLineItemDate(item.item_date)}
                                 </td>
                                 <td style={{ padding: '0.35rem 0.5rem', borderBottom: rowBorder, textAlign: 'right', color: (item.amount || 0) < 0 ? '#b91c1c' : '#374151', fontWeight: 500, verticalAlign: 'middle' }}>
                                   {formatAmount(item.amount)}
@@ -3053,6 +3137,11 @@ export default function Workflow() {
               {confirmDeleteLineItem.item.memo}
               {confirmDeleteLineItem.item.amount != null && (
                 <span> — {formatAmount(confirmDeleteLineItem.item.amount)}</span>
+              )}
+              {confirmDeleteLineItem.item.item_date && (
+                <span style={{ display: 'block', marginTop: 4 }}>
+                  Date: {formatLineItemDate(confirmDeleteLineItem.item.item_date)}
+                </span>
               )}
             </p>
             <div style={{ display: 'flex', gap: 8 }}>
@@ -3253,14 +3342,55 @@ export default function Workflow() {
 
       {editingLineItem && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
-            <h3 style={{ marginTop: 0 }}>{editingLineItem.item ? 'Edit' : 'Add'} Line Item</h3>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 360 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '1rem' }}>
+              <h3 style={{ margin: 0, flex: 1 }}>{editingLineItem.item ? 'Edit' : 'Add'} Line Item</h3>
+              {!editingLineItem.item && (
+                <button
+                  type="button"
+                  onClick={() => void importLineItemsFromClipboard()}
+                  disabled={lineItemPasteImporting}
+                  title="Import tab-separated rows from clipboard (date, memo, amount per line)"
+                  aria-label="Import line items from clipboard"
+                  className="wf-btn-modal-secondary"
+                  style={{
+                    padding: '0.35rem 0.5rem',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    opacity: lineItemPasteImporting ? 0.6 : 1,
+                  }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={22} height={22} fill="currentColor" aria-hidden>
+                    <path d="M360 160L280 160C266.7 160 256 149.3 256 136C256 122.7 266.7 112 280 112L360 112C373.3 112 384 122.7 384 136C384 149.3 373.3 160 360 160zM360 208C397.1 208 427.6 180 431.6 144L448 144C456.8 144 464 151.2 464 160L464 512C464 520.8 456.8 528 448 528L192 528C183.2 528 176 520.8 176 512L176 160C176 151.2 183.2 144 192 144L208.4 144C212.4 180 242.9 208 280 208L360 208zM419.9 96C407 76.7 385 64 360 64L280 64C255 64 233 76.7 220.1 96L192 96C156.7 96 128 124.7 128 160L128 512C128 547.3 156.7 576 192 576L448 576C483.3 576 512 547.3 512 512L512 160C512 124.7 483.3 96 448 96L419.9 96z" />
+                  </svg>
+                </button>
+              )}
+            </div>
             <form
               onSubmit={(e) => {
                 e.preventDefault()
-                saveLineItem(editingLineItem.stepId, editingLineItem.item, editingLineItem.link, editingLineItem.memo, editingLineItem.amount)
+                saveLineItem(
+                  editingLineItem.stepId,
+                  editingLineItem.item,
+                  editingLineItem.link,
+                  editingLineItem.memo,
+                  editingLineItem.amount,
+                  editingLineItem.itemDate
+                )
               }}
             >
+              <div style={{ marginBottom: '1rem' }}>
+                <label htmlFor="line-item-date" style={{ display: 'block', marginBottom: 4 }}>Date (optional)</label>
+                <input
+                  id="line-item-date"
+                  type="date"
+                  value={editingLineItem.itemDate}
+                  onChange={(e) => setEditingLineItem({ ...editingLineItem, itemDate: e.target.value })}
+                  style={{ width: '100%', padding: '0.5rem' }}
+                />
+              </div>
               <div style={{ marginBottom: '1rem' }}>
                 <label htmlFor="line-item-link" style={{ display: 'block', marginBottom: 4 }}>Link (optional)</label>
                 <input

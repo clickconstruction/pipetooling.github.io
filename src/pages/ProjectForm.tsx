@@ -147,15 +147,16 @@ export default function ProjectForm() {
 
   // Update customer search and auto-fill address when customerId changes
   // Also auto-set master_user_id from customer's master_user_id
-  // Skip overwriting address when address comes from URL (e.g. from "+ Add Project" in job modal)
+  // Skip copying customer address when coming from "+ Add Project" on a job (`job` param) or when
+  // `address` is present in the URL (including empty), so the job line is the only source for that flow.
   useEffect(() => {
     if (customerId && customers.length > 0) {
       const selectedCustomer = customers.find((c) => c.id === customerId)
       if (selectedCustomer) {
         setCustomerSearch(getCustomerDisplay(selectedCustomer))
-        const addressFromUrl = searchParams.get('address')
-        // Auto-fill address from customer only if not pre-filled from URL
-        if (!addressFromUrl && (isNew || !address.trim())) {
+        const fromJobModal = Boolean(searchParams.get('job'))
+        const addressExplicitInUrl = searchParams.has('address')
+        if (!fromJobModal && !addressExplicitInUrl && (isNew || !address.trim())) {
           setAddress(selectedCustomer.address ?? '')
         }
         // Project owner automatically matches customer owner - no need to set state, will use in submit

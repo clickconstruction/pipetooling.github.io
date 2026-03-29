@@ -72,9 +72,11 @@ import {
   RejectedClockSessionsSection,
 } from '../components/clock-sessions'
 import PeopleAppActivityPanel from '../components/people/PeopleAppActivityPanel'
+import { PeoplePayConfigModal } from '../components/people/PeoplePayConfigModal'
 import { PayStubDeleteIcon } from '../components/pay/PayStubDeleteIcon'
 import { PayStubPaidNoteIcon } from '../components/pay/PayStubPaidNoteIcon'
 import type { ClockSessionRow } from '../types/clockSessions'
+import type { PayConfigRow } from '../types/peoplePayConfig'
 
 type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
 type UserRow = { id: string; email: string | null; name: string; role: string; notes: string | null; phone: string | null }
@@ -131,6 +133,10 @@ function ledgerPayPeriodShortLabel(periodStartYmd: string, periodEndYmd: string)
 
 const SHOW_USERS_TAB_TAGS_KEY = 'people.usersTab.showTags'
 const SHOW_USERS_TAB_TAG_ORG_SIGNALS_KEY = 'people.usersTab.showTagOrgSignals'
+
+/** Pay History overlays: base layer; nested dialogs (e.g. Record payment from Draft Payroll) must be higher. */
+const Z_PEOPLE_PAY_MODAL = 1100
+const Z_PEOPLE_PAY_MODAL_NESTED = 1200
 
 /** Display order for People → Users tab sections (master roster + user-only roles + devs last). */
 type UsersTabSection = { type: 'personKind'; kind: PersonKind } | { type: 'dev' }
@@ -272,7 +278,6 @@ export default function People() {
   const [pushEnabledUserIds, setPushEnabledUserIds] = useState<Set<string>>(new Set())
   const [locationEnabledUserIds, setLocationEnabledUserIds] = useState<Set<string>>(new Set())
   const [documentUrlStatusByPersonName, setDocumentUrlStatusByPersonName] = useState<Record<string, 'green' | 'yellow' | 'red'>>({})
-  type PayConfigRow = { person_name: string; hourly_wage: number | null; is_salary: boolean; show_in_hours: boolean; show_in_cost_matrix: boolean; record_hours_but_salary: boolean }
   const [payConfig, setPayConfig] = useState<Record<string, PayConfigRow>>({})
   const [payConfigSaving, setPayConfigSaving] = useState(false)
   const [payConfigDraft, setPayConfigDraft] = useState<Record<string, string>>({})
@@ -283,7 +288,13 @@ export default function People() {
   const payConfigDebounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const [mergeDuplicates, setMergeDuplicates] = useState<Array<{ personName: string; userDisplayName: string; email: string }>>([])
   const [mergingPersonName, setMergingPersonName] = useState<string | null>(null)
-  const [payConfigSectionOpen, setPayConfigSectionOpen] = useState(false)
+  const [payConfigModalOpen, setPayConfigModalOpen] = useState(false)
+
+  useEffect(() => {
+    if (activeTab !== 'pay') {
+      setPayConfigModalOpen(false)
+    }
+  }, [activeTab])
   const [costMatrixShareSectionOpen, setCostMatrixShareSectionOpen] = useState(false)
   const [costMatrixTagColorsSectionOpen, setCostMatrixTagColorsSectionOpen] = useState(false)
   const [newTagName, setNewTagName] = useState('')
@@ -1381,6 +1392,43 @@ export default function People() {
     return [...fromUsers, ...fromPeople].sort((a, b) => a.name.localeCompare(b.name))
   }
 
+  const payConfigRosterSections = useMemo(() => {
+    const assigned = new Set<string>()
+    const sections: Array<{ label: string; names: string[] }> = []
+    for (const k of KINDS) {
+      if (k === 'sub') {
+        const items = byKind('sub')
+        const subSlices: Array<{ label: string; slice: typeof items }> = [
+          { label: 'Subcontractors (with account)', slice: items.filter((i) => i.source === 'user') },
+          { label: 'Subcontractors (roster only)', slice: items.filter((i) => i.source === 'people') },
+        ]
+        for (const { label, slice } of subSlices) {
+          const raw = slice.map((item) => item.name?.trim()).filter((n): n is string => Boolean(n))
+          const uniqueInSection = Array.from(new Set(raw)).sort((a, b) => a.localeCompare(b))
+          const names = uniqueInSection.filter((n) => {
+            if (assigned.has(n)) return false
+            assigned.add(n)
+            return true
+          })
+          if (names.length > 0) {
+            sections.push({ label, names })
+          }
+        }
+        continue
+      }
+      const items = byKind(k)
+      const raw = items.map((item) => item.name?.trim()).filter((n): n is string => Boolean(n))
+      const uniqueInSection = Array.from(new Set(raw)).sort((a, b) => a.localeCompare(b))
+      const names = uniqueInSection.filter((n) => {
+        if (assigned.has(n)) return false
+        assigned.add(n)
+        return true
+      })
+      sections.push({ label: KIND_LABELS[k], names })
+    }
+    return sections
+  }, [people, users])
+
   const resolvePersonIdForUsersRow = useCallback(
     (
       item: { source: 'people' | 'user'; id: string; email: string | null },
@@ -1837,16 +1885,6 @@ export default function People() {
         ) : null}
       </div>
     )
-  }
-
-  function allRosterNames(): string[] {
-    const names = new Set<string>()
-    for (const k of KINDS) {
-      for (const item of byKind(k)) {
-        if (item.name?.trim()) names.add(item.name.trim())
-      }
-    }
-    return Array.from(names).sort()
   }
 
   async function loadPayConfig() {
@@ -4428,6 +4466,42 @@ export default function People() {
     payStubAdditionalByStubId,
   ])
 
+  /** Generate Pay Reports preview: dates where another stub (same person, overlapping period) already has installments. */
+  const payPreviewOtherStubHintByDate = useMemo(() => {
+    const map = new Map<string, { hintText: string; stubIds: string[] }>()
+    const personName = payStubGeneratorPerson.trim()
+    if (!personName || payStubPeriodStart > payStubPeriodEnd) return map
+    const days = getDaysInRange(payStubPeriodStart, payStubPeriodEnd)
+    const sameAsGenerator = (s: PayStubRow) =>
+      s.period_start === payStubPeriodStart && s.period_end === payStubPeriodEnd
+    for (const date of days) {
+      const candidates = payStubs.filter((s) => {
+        if (s.person_name.trim() !== personName) return false
+        if (sameAsGenerator(s)) return false
+        if (s.period_start > date || s.period_end < date) return false
+        const paid = sumPayStubPaymentAmounts(payStubPaymentsByStubId[s.id] ?? [])
+        return paid > 0
+      })
+      if (candidates.length === 0) continue
+      candidates.sort((a, b) => {
+        const ca = a.created_at ?? ''
+        const cb = b.created_at ?? ''
+        return cb.localeCompare(ca)
+      })
+      const primary = candidates[0]
+      if (!primary) continue
+      const periodLabel = ledgerPayPeriodShortLabel(primary.period_start, primary.period_end)
+      const more = candidates.length - 1
+      const stubIds = candidates.map((c) => c.id)
+      const hintText =
+        more > 0
+          ? `Installments on report ${periodLabel} (+${more} more)`
+          : `Installments on report ${periodLabel}`
+      map.set(date, { hintText, stubIds })
+    }
+    return map
+  }, [payStubGeneratorPerson, payStubPeriodStart, payStubPeriodEnd, payStubs, payStubPaymentsByStubId])
+
   const teamsFiltered = useMemo(
     () =>
       teams.map((t) => ({
@@ -6206,6 +6280,30 @@ export default function People() {
                   const byDay = days.map((d) => ({ date: d, cost: getCostForPersonDate(payStubGeneratorPerson.trim(), d) }))
                   const total = byDay.reduce((s, x) => s + x.cost, 0)
                   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+                  const otherStubInstallmentsA11y =
+                    'Cash installments on another pay report are recorded for the whole report in the database, not allocated to individual days.'
+                  function openPayPreviewOtherStub(stubId: string) {
+                    const stub = payStubs.find((s) => s.id === stubId)
+                    if (!stub) {
+                      showToast('Pay report not found.', 'error')
+                      return
+                    }
+                    void viewPayStub(stub).catch((e) =>
+                      showToast(e instanceof Error ? e.message : 'Failed to open pay report', 'error'),
+                    )
+                  }
+                  const otherPayHintLinkStyle: React.CSSProperties = {
+                    margin: 0,
+                    padding: 0,
+                    border: 'none',
+                    background: 'none',
+                    color: '#2563eb',
+                    fontSize: 'inherit',
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    textAlign: 'left',
+                    maxWidth: '100%',
+                  }
                   return (
                     <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#f9fafb', borderRadius: 6, border: '1px solid #e5e7eb' }}>
                       <div style={{ fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.875rem' }}>
@@ -6218,11 +6316,23 @@ export default function People() {
                               <th style={{ padding: '0.25rem 0.5rem', textAlign: 'left' }}>Date</th>
                               <th style={{ padding: '0.25rem 0.5rem', textAlign: 'left' }}>Day</th>
                               <th style={{ padding: '0.25rem 0.5rem', textAlign: 'right' }}>Amount</th>
+                              <th style={{ padding: '0.25rem 0.5rem', textAlign: 'left' }}>Other payments</th>
                             </tr>
                           </thead>
                           <tbody>
                             {byDay.map(({ date, cost }) => {
                               const isCorrect = hoursDaysCorrect.has(date)
+                              const otherEntry = payPreviewOtherStubHintByDate.get(date)
+                              const rowTitleParts = [
+                                !isCorrect ? 'Day not marked Correct in Hours tab' : null,
+                                otherEntry ? `${otherEntry.hintText}. ${otherStubInstallmentsA11y}` : null,
+                              ].filter(Boolean)
+                              const rowTitle = rowTitleParts.length > 0 ? rowTitleParts.join(' ') : undefined
+                              const firstOtherId = otherEntry?.stubIds[0]
+                              const firstOtherStub = firstOtherId ? payStubs.find((s) => s.id === firstOtherId) : undefined
+                              const firstOtherLabel = firstOtherStub
+                                ? ledgerPayPeriodShortLabel(firstOtherStub.period_start, firstOtherStub.period_end)
+                                : null
                               return (
                                 <tr
                                   key={date}
@@ -6230,7 +6340,7 @@ export default function People() {
                                     borderBottom: '1px solid #f3f4f6',
                                     background: isCorrect ? undefined : 'rgba(251, 146, 60, 0.15)',
                                   }}
-                                  title={isCorrect ? undefined : 'Day not marked Correct in Hours tab'}
+                                  title={rowTitle}
                                 >
                                   <td style={{ padding: '0.25rem 0.5rem' }}>{date}</td>
                                   <td style={{ padding: '0.25rem 0.5rem', color: '#6b7280' }}>
@@ -6239,14 +6349,64 @@ export default function People() {
                                   <td style={{ padding: '0.25rem 0.5rem', textAlign: 'right' }}>
                                     ${cost > 0 ? cost.toFixed(2) : '0.00'}
                                   </td>
+                                  <td
+                                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', color: '#6b7280', maxWidth: 240 }}
+                                  >
+                                    {otherEntry && firstOtherId && firstOtherLabel ? (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
+                                        <button
+                                          type="button"
+                                          onClick={() => openPayPreviewOtherStub(firstOtherId)}
+                                          style={otherPayHintLinkStyle}
+                                          title={otherStubInstallmentsA11y}
+                                          aria-label={`View pay report ${firstOtherLabel} (installments on another period). ${otherStubInstallmentsA11y}`}
+                                        >
+                                          Installments on report {firstOtherLabel}
+                                        </button>
+                                        {otherEntry.stubIds.length > 1 ? (
+                                          <details style={{ fontSize: '0.6875rem', color: '#6b7280' }}>
+                                            <summary style={{ cursor: 'pointer', userSelect: 'none' }}>
+                                              {otherEntry.stubIds.length - 1} more report
+                                              {otherEntry.stubIds.length - 1 > 1 ? 's' : ''} with payments
+                                            </summary>
+                                            <div
+                                              style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', marginTop: '0.25rem' }}
+                                            >
+                                              {otherEntry.stubIds.slice(1).map((sid) => {
+                                                const s = payStubs.find((x) => x.id === sid)
+                                                const pl = s
+                                                  ? ledgerPayPeriodShortLabel(s.period_start, s.period_end)
+                                                  : sid.slice(0, 8)
+                                                return (
+                                                  <button
+                                                    key={sid}
+                                                    type="button"
+                                                    onClick={() => openPayPreviewOtherStub(sid)}
+                                                    style={otherPayHintLinkStyle}
+                                                    title={otherStubInstallmentsA11y}
+                                                    aria-label={`View pay report ${pl} (installments on another period). ${otherStubInstallmentsA11y}`}
+                                                  >
+                                                    {pl}
+                                                  </button>
+                                                )
+                                              })}
+                                            </div>
+                                          </details>
+                                        ) : null}
+                                      </div>
+                                    ) : (
+                                      '—'
+                                    )}
+                                  </td>
                                 </tr>
                               )
                             })}
                             <tr style={{ borderTop: '1px solid #e5e7eb', fontWeight: 600 }}>
                               <td colSpan={2} style={{ padding: '0.35rem 0.5rem' }}>Total</td>
-                              <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
+                              <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                                 ${total.toFixed(2)}
                               </td>
+                              <td style={{ padding: '0.35rem 0.5rem', color: '#9ca3af' }}>—</td>
                             </tr>
                           </tbody>
                         </table>
@@ -6578,7 +6738,7 @@ export default function People() {
       ) : null}
 
       {payStubDeleteConfirm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: Z_PEOPLE_PAY_MODAL }}>
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 400 }}>
             <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Are you sure?</h2>
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
@@ -6618,7 +6778,7 @@ export default function People() {
           onClick={(e) => {
             if (e.target === e.currentTarget) closePayStubNoteDetail()
           }}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: Z_PEOPLE_PAY_MODAL }}
         >
           <div
             role="dialog"
@@ -6698,7 +6858,7 @@ export default function People() {
       ) : null}
 
       {payStubMarkPaidTarget && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: Z_PEOPLE_PAY_MODAL_NESTED }}>
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 440, width: '100%' }}>
             <h2 style={{ margin: '0 0 0.75rem', fontSize: '1.25rem' }}>Record payment</h2>
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
@@ -6807,7 +6967,7 @@ export default function People() {
           return estGross > 0 && !stub
         }).length
         return (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: Z_PEOPLE_PAY_MODAL }}>
             <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 600, maxHeight: '85vh', overflow: 'auto' }}>
               <div style={{ marginBottom: '0.35rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
@@ -7105,23 +7265,62 @@ export default function People() {
           ) : (
           <>
           {canAccessPay && (
-            <div style={{ marginBottom: '1rem' }}>
-              <button
-                type="button"
-                onClick={() => setReviewHoursModalOpen(true)}
+            <>
+              <div
                 style={{
-                  padding: '0.35rem 0.75rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: 4,
-                  background: 'white',
-                  cursor: 'pointer',
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '0.5rem',
+                  marginBottom: '1rem',
                 }}
               >
-                Review Hours <span style={{ color: '#059669' }}>✓</span>
-              </button>
-            </div>
+                <button
+                  type="button"
+                  onClick={() => setReviewHoursModalOpen(true)}
+                  style={{
+                    padding: '0.35rem 0.75rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: 4,
+                    background: 'white',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                  }}
+                >
+                  Review Hours <span style={{ color: '#059669' }}>✓</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPayConfigModalOpen(true)}
+                  style={{
+                    padding: '0.45rem 0.85rem',
+                    margin: 0,
+                    marginLeft: 'auto',
+                    border: '1px solid #d1d5db',
+                    borderRadius: 4,
+                    background: '#f9fafb',
+                    cursor: 'pointer',
+                    fontSize: '0.9375rem',
+                    fontWeight: 600,
+                  }}
+                >
+                  People pay config
+                </button>
+              </div>
+              <PeoplePayConfigModal
+                open={payConfigModalOpen}
+                onClose={() => setPayConfigModalOpen(false)}
+                rosterSections={payConfigRosterSections}
+                payConfig={payConfig}
+                payConfigDraft={payConfigDraft}
+                payConfigSaving={payConfigSaving}
+                isDev={isDev}
+                onUpsertPayConfig={upsertPayConfig}
+                onHourlyWageChange={updatePayConfigHourlyWage}
+              />
+            </>
           )}
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
           {(() => {
@@ -7853,107 +8052,6 @@ export default function People() {
                 </li>
               ))}
             </ul>
-          </section>
-          )}
-          {canAccessPay && (
-          <section>
-            <button
-              type="button"
-              onClick={() => setPayConfigSectionOpen((prev) => !prev)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                margin: 0,
-                marginBottom: payConfigSectionOpen ? '0.75rem' : 0,
-                padding: 0,
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '1.125rem',
-                fontWeight: 600,
-                textAlign: 'left',
-              }}
-            >
-              <span style={{ fontSize: '0.75rem' }}>{payConfigSectionOpen ? '▼' : '▶'}</span>
-              People pay config
-            </button>
-            {payConfigSectionOpen && (
-              <>
-                <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.75rem' }}>
-                  Set hourly wage, Salary (8 hrs/day), Show in Hours (include in Hours tab), and Show in Cost Matrix (include in cost matrix and teams).
-                </p>
-                <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'auto', maxHeight: 320 }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                <thead style={{ background: '#f9fafb' }}>
-                  <tr>
-                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Name</th>
-                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Hourly wage ($)</th>
-                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Salary</th>
-                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }} title="Record hours for tracking (salary still used for pay)">Record hours</th>
-                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Show in Hours</th>
-                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Show in Cost Matrix</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {allRosterNames().map((n) => {
-                    const c = payConfig[n] ?? { person_name: n, hourly_wage: null, is_salary: false, show_in_hours: false, show_in_cost_matrix: false, record_hours_but_salary: false }
-                    return (
-                      <tr key={n} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                        <td style={{ padding: '0.5rem 0.75rem' }}>{n}</td>
-                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={payConfigDraft[n] !== undefined ? payConfigDraft[n] : (c.hourly_wage ?? '')}
-                            onChange={(e) => updatePayConfigHourlyWage(n, e.target.value)}
-                            disabled={payConfigSaving}
-                            style={{ width: 80, padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                          />
-                        </td>
-                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
-                          <input
-                            type="checkbox"
-                            checked={c.is_salary}
-                            onChange={(e) => upsertPayConfig(n, { is_salary: e.target.checked })}
-                            disabled={payConfigSaving}
-                          />
-                        </td>
-                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
-                          <input
-                            type="checkbox"
-                            checked={c.record_hours_but_salary}
-                            onChange={(e) => upsertPayConfig(n, { record_hours_but_salary: e.target.checked })}
-                            disabled={payConfigSaving || !c.is_salary}
-                            title={!c.is_salary ? 'Only applies when Salary is checked' : undefined}
-                          />
-                        </td>
-                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
-                          <input
-                            type="checkbox"
-                            checked={c.show_in_hours}
-                            onChange={(e) => upsertPayConfig(n, { show_in_hours: e.target.checked })}
-                            disabled={payConfigSaving || !isDev}
-                            title={!isDev ? 'Only dev can change this' : undefined}
-                          />
-                        </td>
-                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
-                          <input
-                            type="checkbox"
-                            checked={c.show_in_cost_matrix}
-                            onChange={(e) => upsertPayConfig(n, { show_in_cost_matrix: e.target.checked })}
-                            disabled={payConfigSaving}
-                          />
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-              </>
-            )}
           </section>
           )}
           {isDev && (
