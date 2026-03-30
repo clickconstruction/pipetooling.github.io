@@ -11,6 +11,23 @@
     <title>PipeTooling</title>
   </head>
   <body>
+    <script>
+      (function () {
+        try {
+          var k = 'pipetooling-hard-reload-restore'
+          var raw = sessionStorage.getItem(k)
+          if (!raw) return
+          sessionStorage.removeItem(k)
+          var o = JSON.parse(raw)
+          var path =
+            (o.pathname || '/') + (o.search == null ? '' : o.search) + (o.hash == null ? '' : o.hash)
+          var cur = location.pathname + location.search + location.hash
+          if (path !== cur) history.replaceState(null, '', path)
+        } catch (e) {
+          /* ignore */
+        }
+      })()
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

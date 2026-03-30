@@ -20,6 +20,7 @@ import {
 import DailyGoalsGateOverlay from './DailyGoalsGateOverlay'
 import { useDailyGoalsGate } from '../contexts/DailyGoalsGateContext'
 import { useAppActivityHeartbeat } from '../hooks/useAppActivityHeartbeat'
+import { hardReloadFromRoot } from '../lib/hardReload'
 
 const navStyle = ({ isActive }: { isActive: boolean }) => ({
   fontWeight: isActive ? 600 : undefined,
@@ -633,9 +634,7 @@ export default function Layout() {
                   type="button"
                   onClick={() => {
                     setGearOpen(false)
-                    const base = window.location.origin + window.location.pathname
-                    const hash = window.location.hash || ''
-                    window.location.href = base + '?nocache=' + Date.now() + hash
+                    hardReloadFromRoot()
                   }}
                   style={{
                     display: 'block',

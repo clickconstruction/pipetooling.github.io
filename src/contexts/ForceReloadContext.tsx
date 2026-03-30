@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import { hardReloadFromRoot } from '../lib/hardReload'
 
 function hardReload() {
   const lastReloadKey = 'force-reload-last'
@@ -12,15 +13,7 @@ function hardReload() {
     // sessionStorage may be unavailable
   }
 
-  const base = window.location.origin + window.location.pathname
-  const hash = window.location.hash || ''
-  const reload = () => { window.location.href = base + '?nocache=' + Date.now() + hash }
-  if (typeof caches !== 'undefined') {
-    caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
-      .then(reload, reload)
-  } else {
-    reload()
-  }
+  hardReloadFromRoot()
 }
 
 type ForceReloadContextValue = {
