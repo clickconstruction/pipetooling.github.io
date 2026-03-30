@@ -94,7 +94,7 @@ Customer (has master_user_id)
 ### Type Safety
 - Types auto-generated from Supabase schema: `src/types/database.ts`
 - Manual function types: `src/types/database-functions.ts`
-- Update command: `supabase gen types typescript --local > src/types/database.ts`
+- Update: `npm run gen-types:local` or `npm run gen-types:linked`, or manually with **`2>/dev/null`** so CLI stderr does not append to `database.ts` (see **`AGENTS.md`** constraint 3)
 
 ---
 
@@ -163,7 +163,7 @@ pipetooling.github.io/
 1. **Create migration**: `cd supabase && supabase migration new add_my_table`
 2. **Write SQL**: CREATE TABLE + RLS policies + constraints + foreign keys
 3. **Apply locally**: `supabase migration up`
-4. **Update types**: `supabase gen types typescript --local > src/types/database.ts`
+4. **Update types**: `npm run gen-types:local` (or `--linked` variant if no local DB; see **`AGENTS.md`**)
 5. **Test RLS**: Verify policies work for all 6 roles
 6. **Document**: Add to `PROJECT_DOCUMENTATION.md` and `MIGRATIONS.md`
 
@@ -412,7 +412,7 @@ import { createProjectWithTemplate } from '@/types/database-functions'
 
 1. **Never edit existing migrations**: Migrations are append-only. Create new migration to change schema.
 2. **Always add RLS policies**: Every new table needs SELECT/INSERT/UPDATE/DELETE policies for all roles.
-3. **Update types after schema changes**: Run `supabase gen types typescript --local > src/types/database.ts`
+3. **Update types after schema changes**: `npm run gen-types:local` or `npm run gen-types:linked` (stderr redirected; see **`AGENTS.md`**)
 4. **No `any` types**: TypeScript strict mode enforced. Use proper types or `unknown`.
 5. **Test all 5 roles**: Verify RLS works for dev, master, assistant, subcontractor, estimator.
 6. **Foreign keys need CASCADE behavior**: Decide ON DELETE CASCADE vs SET NULL vs RESTRICT.
@@ -476,7 +476,7 @@ import { createProjectWithTemplate } from '@/types/database-functions'
 
 ### TypeScript Build Errors
 - **Cause**: Types out of sync with database schema
-- **Fix**: Regenerate types with `supabase gen types typescript --local`
+- **Fix**: Regenerate types (`npm run gen-types:local` or linked; see **`AGENTS.md`**)
 
 ### Workflow Not Creating
 - **Cause**: Race condition with concurrent calls

@@ -1317,6 +1317,7 @@ export type Database = {
           id: string
           master_user_id: string
           name: string
+          stripe_customer_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -1328,6 +1329,7 @@ export type Database = {
           id?: string
           master_user_id: string
           name: string
+          stripe_customer_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -1339,6 +1341,7 @@ export type Database = {
           id?: string
           master_user_id?: string
           name?: string
+          stripe_customer_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -2137,30 +2140,51 @@ export type Database = {
           billed_at: string | null
           created_at: string | null
           estimated_bill_date: string | null
+          external_send_channel: string | null
+          external_send_note: string | null
+          hosted_invoice_url: string | null
           id: string
+          is_primary_rtb_bundle: boolean
           job_id: string
+          sent_to_customer_at: string | null
           sequence_order: number
           status: string
+          stripe_invoice_id: string | null
+          stripe_invoice_status: string | null
         }
         Insert: {
           amount: number
           billed_at?: string | null
           created_at?: string | null
           estimated_bill_date?: string | null
+          external_send_channel?: string | null
+          external_send_note?: string | null
+          hosted_invoice_url?: string | null
           id?: string
+          is_primary_rtb_bundle?: boolean
           job_id: string
+          sent_to_customer_at?: string | null
           sequence_order?: number
           status?: string
+          stripe_invoice_id?: string | null
+          stripe_invoice_status?: string | null
         }
         Update: {
           amount?: number
           billed_at?: string | null
           created_at?: string | null
           estimated_bill_date?: string | null
+          external_send_channel?: string | null
+          external_send_note?: string | null
+          hosted_invoice_url?: string | null
           id?: string
+          is_primary_rtb_bundle?: boolean
           job_id?: string
+          sent_to_customer_at?: string | null
           sequence_order?: number
           status?: string
+          stripe_invoice_id?: string | null
+          stripe_invoice_status?: string | null
         }
         Relationships: [
           {
@@ -6517,6 +6541,10 @@ export type Database = {
         Args: { p_created_by: string; p_source_po_id: string }
         Returns: Json
       }
+      ensure_single_ready_to_bill_invoice_for_job: {
+        Args: { p_job_id: string }
+        Returns: Json
+      }
       estimator_can_access_service_type: {
         Args: { p_service_type_id: string }
         Returns: boolean
@@ -6636,6 +6664,7 @@ export type Database = {
         Args: { p_status: string }
         Returns: {
           created_at: string
+          customer_id: string
           google_drive_link: string
           hcp_number: string
           id: string
@@ -6743,7 +6772,7 @@ export type Database = {
         Returns: {
           job_id: string
           last_note_at: string
-          last_note_author_name: string | null
+          last_note_author_name: string
           last_note_body: string
           note_count: number
         }[]
@@ -6859,6 +6888,10 @@ export type Database = {
         }[]
       }
       mark_invoice_paid: { Args: { p_invoice_id: string }; Returns: Json }
+      mark_invoice_paid_from_stripe: {
+        Args: { p_invoice_id: string }
+        Returns: Json
+      }
       mark_job_paid: { Args: { p_job_id: string }; Returns: Json }
       master_adopted_current_user: {
         Args: { master_user_id: string }

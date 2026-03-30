@@ -5,13 +5,13 @@ file: EDGE_FUNCTIONS.md
 type: API Reference
 purpose: Complete API documentation for all 10+ Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-03-29
+last_updated: 2026-03-30
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
 runtime: "Deno (TypeScript)"
 authentication: "Manual JWT validation"
-total_functions: 10
+total_functions: 12
 
 key_sections:
   - name: "create-user"
@@ -97,6 +97,8 @@ when_to_read:
    - [set-user-password](#set-user-password)
    - [claim-dev](#claim-dev)
    - [test-email](#test-email)
+   - [create-stripe-invoice](#create-stripe-invoice)
+   - [stripe-webhook](#stripe-webhook)
 4. [Error Handling](#error-handling)
 5. [Deployment](#deployment)
 
@@ -1123,6 +1125,115 @@ const { data, error } = await supabase.functions.invoke('test-email', {
 - [`supabase/functions/test-email/README.md`](supabase/functions/test-email/README.md)
 
 **Deployment**: See [`supabase/functions/test-email/DEPLOY.md`](supabase/functions/test-email/DEPLOY.md)
+
+---
+
+### create-stripe-invoice
+
+**Purpose**: Create and finalize a Stripe invoice for a **`jobs_ledger_invoices`** row in **Ready to Bill**, then persist **`hosted_invoice_url`**, **`stripe_invoice_id`**, and set status **billed**.
+
+**Endpoint**: `POST /functions/v1/create-stripe-invoice`
+
+**Authentication**: Bearer JWT validated with **`getUser`**; caller must be able to **SELECT** the target invoice via RLS (**`verify_jwt = false`** on the gateway — same pattern as **`test-email`**).
+
+**Required Secrets**:
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `STRIPE_SECRET_KEY`
+
+#### Request body
+
+```typescript
+interface CreateStripeInvoiceBody {
+  jobs_ledger_invoice_id: string
+  customer_id: string
+  amount_dollars: number
+  customer_email: string
+  customer_name: string
+  due_date: string // YYYY-MM-DD (local calendar day; server derives days_until_due)
+  memo?: string
+}
+```
+
+#### Example (browser)
+
+```typescript
+const { data: { session } } = await supabase.auth.refreshSession()
+if (!session?.access_token) throw new Error('Not signed in')
+
+const { data, error } = await supabase.functions.invoke('create-stripe-invoice', {
+  headers: { Authorization: `Bearer ${session.access_token}` },
+  body: {
+    jobs_ledger_invoice_id: invoiceId,
+    customer_id: customerId,
+    amount_dollars: 1234.56,
+    customer_email: 'customer@example.com',
+    customer_name: 'Customer Name',
+    due_date: '2026-04-15',
+    memo: 'Optional',
+  },
+})
+```
+
+#### Success response
+
+**Status**: 200
+
+```json
+{
+  "success": true,
+  "stripe_invoice_id": "in_...",
+  "hosted_invoice_url": "https://invoice.stripe.com/...",
+  "stripe_invoice_status": "open"
+}
+```
+
+If **`stripe_invoice_id`** and **`hosted_invoice_url`** are already set, returns the same shape with **`idempotent: true`**.
+
+#### Error responses (400)
+
+- **`Job must be linked to a customer before creating a Stripe invoice.`** — **`jobs_ledger.customer_id`** is null.
+- **`Customer must match the job linked customer.`** — body **`customer_id`** does not equal the job’s **`customer_id`**.
+
+#### Implementation notes
+
+1. Loads job and customer with **service role**; requires **`jobs_ledger.customer_id`** and matches body **`customer_id`** to it; ensures **`customers.master_user_id`** matches **`jobs_ledger.master_user_id`**.
+2. Creates or reuses **`customers.stripe_customer_id`** on Stripe; updates Stripe customer email/name.
+3. Creates draft invoice + invoice item, **finalize**s, then **UPDATE** **`jobs_ledger_invoices`** (**`status = 'billed'`**) and Stripe columns.
+
+**Gateway JWT**: [`supabase/config.toml`](supabase/config.toml) sets **`verify_jwt = false`**. Deploy with **`supabase functions deploy create-stripe-invoice --no-verify-jwt`** when the hosted gateway still enforces JWT.
+
+---
+
+### stripe-webhook
+
+**Purpose**: Handle Stripe **`invoice.paid`** (and sync status); marks the matching **`jobs_ledger_invoices`** row paid via **`mark_invoice_paid_from_stripe`** (service role — no end-user JWT).
+
+**Endpoint**: `POST /functions/v1/stripe-webhook`
+
+**Authentication**: **`Stripe-Signature`** header + raw body (**no** Bearer JWT). **`verify_jwt = false`**.
+
+**Required Secrets**:
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+
+#### Request
+
+- Method **POST** with **raw JSON body** (do not parse/re-stringify before verification).
+- Header **`stripe-signature`**: signing secret from Stripe Dashboard (or Stripe CLI) must match **`STRIPE_WEBHOOK_SECRET`**.
+
+#### Behavior
+
+1. **`constructEvent`** on raw body.
+2. On **`invoice.paid`**, resolve **`jobs_ledger_invoices`** by **`stripe_invoice_id`**; invoke **`mark_invoice_paid_from_stripe`** when appropriate; update **`stripe_invoice_status`**.
+3. Other event types may be ignored or lightly handled (see function source).
+
+**Ops**: Point Stripe webhook URL at **`https://<project-ref>.supabase.co/functions/v1/stripe-webhook`**. Use test mode keys in development.
+
+**Gateway JWT**: **`verify_jwt = false`** in [`supabase/config.toml`](supabase/config.toml). Deploy with **`--no-verify-jwt`**.
 
 ---
 

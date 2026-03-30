@@ -360,6 +360,12 @@ verify_jwt = false
 [functions.send-workflow-notification]
 verify_jwt = false
 
+[functions.create-stripe-invoice]
+verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.

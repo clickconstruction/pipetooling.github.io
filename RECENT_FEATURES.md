@@ -12,11 +12,14 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.186 → v2.4"
+version_range: "v2.189 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.189)"
+    line: ~523
+    description: "Primary RTB bundle (is_primary_rtb_bundle); merged Ready to Bill rows in Jobs Stages + Dashboard; ensure RPC sets flag"
   - name: "Latest Version (v2.186)"
-    line: ~519
+    line: ~537
     description: "Settings Templates & testing: collapsible Workflow email (Edge Function) smoke test for send-workflow-notification; test-email / send-workflow-notification gateway verify_jwt in config.toml"
   - name: "Latest Version (v2.185)"
     line: ~533
@@ -517,6 +520,19 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.189)
+
+**Date**: 2026-03-29
+
+### Ready to Bill — primary bundle row (Stages + Dashboard)
+
+- **Schema**: [`20260330055116_add_jobs_ledger_invoices_primary_rtb_bundle.sql`](supabase/migrations/20260330055116_add_jobs_ledger_invoices_primary_rtb_bundle.sql) — **`jobs_ledger_invoices.is_primary_rtb_bundle`** (default **`false`**); partial **unique** index on **`job_id`** where **`status = 'ready_to_bill'`** and the flag is true; **`ensure_single_ready_to_bill_invoice_for_job`** **INSERT**/**UPDATE** (sync) paths set the flag to **`true`**.
+- **Client**: Manual invoice inserts in **[`Jobs.tsx`](src/pages/Jobs.tsx)** use **`is_primary_rtb_bundle: false`**.
+- **Jobs Stages**: **`buildReadyToBillStageRows`** (**`job_with_primary_rtb`**); **`renderUnifiedStagesTable`** merged row UX; header count/total avoid double-counting the bundle line.
+- **Dashboard**: **`buildReadyToBillDashboardUnits`** / **`readyToBillDashboardUnits`** for dev, master_technician, and assistant **Ready to Bill** lists.
 
 ---
 

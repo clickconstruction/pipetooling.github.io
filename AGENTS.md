@@ -20,7 +20,7 @@
 | Term definitions | `GLOSSARY.md` → All domain terms and concepts |
 | Recent changes and features | `RECENT_FEATURES.md` → Chronological updates |
 | Bids system | `BIDS_SYSTEM.md` → Complete workflow documentation |
-| Edge Functions API | `EDGE_FUNCTIONS.md` → All 10 functions with examples |
+| Edge Functions API | `EDGE_FUNCTIONS.md` → All Edge Functions with examples |
 | Migration history | `MIGRATIONS.md` → All migrations by date and category |
 | Apply migrations / run SQL on linked Supabase (when Docker local unavailable) | Cursor **Supabase MCP** — read tool descriptors in `.cursor/.../mcps/` first; `apply_migration` for new files, `execute_sql` for ad-hoc queries; see [Supabase MCP](#supabase-mcp-cursor) below |
 | Workflow features | `WORKFLOW_FEATURES.md` → Stage management, financials |
@@ -38,6 +38,7 @@
 | Jobs Edit billing comma fields; Workflow line `item_date` + clipboard bulk import | `RECENT_FEATURES.md` → v2.181; `WORKFLOW_FEATURES.md` → Line Items For Office; `PROJECT_DOCUMENTATION.md` → Jobs §6, workflow_step_line_items; `MIGRATIONS.md` → 20270329210000; `src/lib/parseWorkflowLineItemPaste.ts`; `src/components/MoneyDecimalAmountInput.tsx` |
 | Clock In / Update Focus: assigned jobs auto-load, modal field borders / focus | `RECENT_FEATURES.md` → v2.182; `PROJECT_DOCUMENTATION.md` → Dashboard **Clock In/Out**; `src/components/ClockInOutButton.tsx` |
 | Jobs Stages + Workflow **job thread notes** (`jobs_ledger_thread_notes`); **Last activity** preview column; composer **Enter** / **Shift+Enter**; dropped `stage_notes` | `RECENT_FEATURES.md` → v2.183–v2.185; `PROJECT_DOCUMENTATION.md` → Jobs §6, Workflow; `MIGRATIONS.md` → `20260330023918`; `src/components/JobThreadNotesPanel.tsx`; `src/hooks/useJobThreadNotes.ts`; `src/pages/Jobs.tsx` |
+| **Invoice / Update** (Ready to Bill): Stripe **`create-stripe-invoice`** + **`stripe-webhook`**; external send metadata on **`jobs_ledger_invoices`**; **`SendRecordInvoiceModal`** on Jobs + Dashboard; Ham mode instant billed on Jobs | `RECENT_FEATURES.md` → v2.187; `EDGE_FUNCTIONS.md` → **create-stripe-invoice**, **stripe-webhook**; `MIGRATIONS.md` → `20260330045018`; `src/components/jobs/SendRecordInvoiceModal.tsx`; `src/pages/Jobs.tsx`; `src/pages/Dashboard.tsx` |
 | Settings **Templates & testing** (dev): **Workflow email (Edge Function)** smoke test for **`send-workflow-notification`**; **`test-email`** / **`send-workflow-notification`** gateway **`verify_jwt`** in `supabase/config.toml` | `RECENT_FEATURES.md` → v2.186; `EDGE_FUNCTIONS.md` → **send-workflow-notification**, **test-email**; `WORKFLOW_EMAIL_TESTING.md` → Quick smoke test; `src/pages/Settings.tsx` |
 | Dispatch dismissals, closed note, inbox thread notes | `RECENT_FEATURES.md` → v2.169, v2.136; `MIGRATIONS.md`; `GLOSSARY.md` → Task Dispatch |
 | Superintendent Jobs: Reports + Sub Ledger only (no Stages, Billing) | `RECENT_FEATURES.md` → v2.138; `ACCESS_CONTROL.md` → superintendent; `MIGRATIONS.md` → 20260623190000 |
@@ -63,7 +64,7 @@
 1. **Never edit existing migrations** — Append-only. Create new migration to change schema.
    - **Always create new migration files with the CLI** — Run `supabase migration new short_description_of_change` (snake_case description). Never invent timestamps, copy an existing migration file and tweak the name, or add a second file that shares the same `YYYYMMDDHHMMSS` prefix as another file in `supabase/migrations/` (one version number → one SQL file). Edit the generated file, then apply via `supabase db push` (or MCP `apply_migration` on that file).
 2. **Always add RLS policies** — Every new table needs SELECT/INSERT/UPDATE/DELETE for all 6 roles.
-3. **Update types after schema changes** — `supabase gen types typescript --local > src/types/database.ts`
+3. **Update types after schema changes** — **`2>/dev/null`** keeps the Supabase CLI’s stderr noise (login hints, update banners) out of `src/types/database.ts`. Examples: `supabase gen types typescript --local > src/types/database.ts 2>/dev/null`, or linked: `… --linked > src/types/database.ts 2>/dev/null`. Shortcuts: `npm run gen-types:local` / `npm run gen-types:linked`. If generation fails or the file looks wrong, rerun the same command **without** `2>/dev/null` to read the real error.
 4. **No `any` types** — TypeScript strict mode. Use proper types or `unknown`.
 5. **Wrap Supabase calls** — Use `withSupabaseRetry()` from `@/utils/errorHandling`
 6. **Test all 7 roles** — dev, master, assistant, subcontractor, estimator, primary, superintendent
@@ -72,7 +73,7 @@
 
 ## Supabase MCP (Cursor)
 
-When this workspace has the **Supabase MCP** server enabled, agents can apply new migration files and run SQL against the **linked** project via MCP (useful when local Docker / `supabase db reset` is not available). **Create the migration file first** with `supabase migration new …`, then edit it; use MCP `apply_migration` only for that generated path. **Always read each tool’s JSON descriptor** under the project’s `mcps` folder before calling — e.g. `execute_sql` for validation or reads, `apply_migration` to apply a file under `supabase/migrations/`. This does not replace **Critical Constraints** item 3: after schema changes, still run `supabase gen types typescript --local > src/types/database.ts` (or update `src/types/database.ts` equivalently).
+When this workspace has the **Supabase MCP** server enabled, agents can apply new migration files and run SQL against the **linked** project via MCP (useful when local Docker / `supabase db reset` is not available). **Create the migration file first** with `supabase migration new …`, then edit it; use MCP `apply_migration` only for that generated path. **Always read each tool’s JSON descriptor** under the project’s `mcps` folder before calling — e.g. `execute_sql` for validation or reads, `apply_migration` to apply a file under `supabase/migrations/`. This does not replace **Critical Constraints** item 3: after schema changes, still regenerate `src/types/database.ts` (see item 3 for `2>/dev/null` and npm scripts).
 
 ---
 

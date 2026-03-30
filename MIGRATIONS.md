@@ -329,6 +329,24 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Jobs Stages replaces Stage Notes textarea with read-only latest thread line; RPC drives preview + badges
 - **Category**: Jobs / Schema / RPC
 
+**`20260330045018_stripe_jobs_billing_invoice_columns.sql`**
+- **Purpose**: Stripe invoices + **record external send** metadata on ledger invoices; webhook-safe mark paid
+- **Changes**: **`customers.stripe_customer_id`** (partial unique); **`jobs_ledger_invoices`**: **`stripe_invoice_id`**, **`stripe_invoice_status`**, **`hosted_invoice_url`**, **`external_send_channel`** (CHECK: `housecallpro` \| `physical` \| `stripe_manual`), **`external_send_note`**, **`sent_to_customer_at`** (partial unique on **`stripe_invoice_id`**); **`mark_invoice_paid_from_stripe(p_invoice_id)`** (**SECURITY DEFINER**, same payment/ledger effect as **`mark_invoice_paid`**; **`REVOKE ALL`** from **`PUBLIC`**, **`GRANT EXECUTE`** to **`service_role`** only)
+- **Impact**: **Invoice / Update** UI; Edge Functions **`create-stripe-invoice`**, **`stripe-webhook`**
+- **Category**: Jobs / Billing / Integrations
+
+**`20260330055116_add_jobs_ledger_invoices_primary_rtb_bundle.sql`**
+- **Purpose**: Mark the ensure/Stripe **full-balance** **`ready_to_bill`** line so Stages and Dashboard can show **one** row with the parent job
+- **Changes**: **`jobs_ledger_invoices.is_primary_rtb_bundle`** NOT NULL DEFAULT false; partial **unique** index on **`job_id`** WHERE **`status = 'ready_to_bill'`** AND flag true; **`CREATE OR REPLACE`** **`ensure_single_ready_to_bill_invoice_for_job`** sets the flag on **INSERT** and on amount-sync **UPDATE** (Stripe-finalized rows unchanged)
+- **Impact**: **`buildReadyToBillStageRows`** / **`buildReadyToBillDashboardUnits`**; manual partial inserts stay **`false`**
+- **Category**: Jobs / Billing / UX
+
+**`20260330065236_add_customer_id_to_get_jobs_ledger_by_status.sql`**
+- **Purpose**: Dashboard **Ready to Bill** job cards can gate **Invoice / Update** without a second fetch
+- **Changes**: **`DROP FUNCTION`** **`get_jobs_ledger_by_status(text)`** then **`CREATE`** with **`customer_id uuid`** in **`RETURNS TABLE`** and **`SELECT`** (Postgres cannot change return row type with **`CREATE OR REPLACE`**)
+- **Impact**: **`JobForDashboard`** + billing customer guard on Dashboard; **`npm run gen-types:linked`** after apply
+- **Category**: Jobs / Dashboard / RPC
+
 **`20260330150000_team_leader_assignments.sql`**
 - **Purpose**: Team leader assignments (leader → member) and scoped access to member clock sessions / crew sync tables
 - **Changes**: Create `team_leader_assignments` (unique leader/member pair, no self-pair); helpers `is_team_lead_for_member`, `is_team_lead_for_person_name`, `can_manage_team_leader_assignments`; RLS on assignments; extend `clock_sessions`, `people_hours`, `people_crew_jobs`, `people_crew_bids` policies for team-lead paths; publish `team_leader_assignments` to `supabase_realtime` when missing
