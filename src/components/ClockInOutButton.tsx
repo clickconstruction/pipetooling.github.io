@@ -87,6 +87,9 @@ export default function ClockInOutButton({ userId, userName }: Props) {
   const [lastSelectedJobBid, setLastSelectedJobBid] = useState<UnifiedSearchResult | null>(null)
   const assignedJobsShownRef = useRef(false)
   const assignedJobsFetchGenRef = useRef(0)
+  const showToastRef = useRef(showToast)
+  showToastRef.current = showToast
+  const noAssignedJobsInfoToastShownRef = useRef(false)
   const unifiedSearchTextRef = useRef(unifiedSearchText)
   unifiedSearchTextRef.current = unifiedSearchText
   const [assignedJobsListLoading, setAssignedJobsListLoading] = useState(false)
@@ -231,6 +234,7 @@ export default function ClockInOutButton({ userId, userName }: Props) {
   useEffect(() => {
     if (!clockInModalOpen && !updateFocusModalOpen) {
       setAssignedJobsListLoading(false)
+      noAssignedJobsInfoToastShownRef.current = false
       return
     }
     const requestId = ++assignedJobsFetchGenRef.current
@@ -254,14 +258,15 @@ export default function ClockInOutButton({ userId, userName }: Props) {
         }))
         setUnifiedSearchResults(mapped)
         assignedJobsShownRef.current = mapped.length > 0
-        if (mapped.length === 0) {
-          showToast('You have no assigned jobs', 'info')
+        if (mapped.length === 0 && !noAssignedJobsInfoToastShownRef.current) {
+          noAssignedJobsInfoToastShownRef.current = true
+          showToastRef.current('You have no assigned jobs', 'info')
         }
       } catch {
         if (requestId !== assignedJobsFetchGenRef.current) return
         assignedJobsShownRef.current = false
         setUnifiedSearchResults([])
-        showToast('Could not load your jobs', 'error')
+        showToastRef.current('Could not load your jobs', 'error')
       } finally {
         if (requestId === assignedJobsFetchGenRef.current) {
           setAssignedJobsListLoading(false)
@@ -271,7 +276,8 @@ export default function ClockInOutButton({ userId, userName }: Props) {
     return () => {
       assignedJobsFetchGenRef.current++
     }
-  }, [clockInModalOpen, updateFocusModalOpen, showToast])
+    // showToast via ref only — including showToast here caused a loop when any toast updated ToastProvider and gave consumers a new reference chain in some builds.
+  }, [clockInModalOpen, updateFocusModalOpen])
 
   useEffect(() => {
     const t = setTimeout(() => {

@@ -1,5 +1,18 @@
 # Troubleshooting 404 Errors
 
+## `GET /dashboard` (or any app route) shows **404** in the browser Network tab
+
+**Context**: PipeTooling is a SPA on **GitHub Pages**. There is no real file at `/dashboard`—only `index.html` and a **`404.html`** copy of it ([`vite.config.ts`](vite.config.ts) `copy404Plugin`). GitHub Pages often returns **HTTP 404** for unknown paths while still **serving** `404.html`, so React Router can run. The DevTools **404** line may be **normal** if the app loads.
+
+**If the page is blank or stuck**:
+
+1. Confirm **[`dist/404.html`](vite.config.ts)** is deployed (CI checks this in [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)).
+2. After a full load once, the **service worker** ([`src/sw.ts`](src/sw.ts)) uses a **navigation fallback** to `index.html` so refreshes on `/dashboard` are handled from cache when the SW is active.
+3. **Hard refresh** or **unregister the service worker** (Application → Service Workers) if an old SW cached a bad response; try a private window.
+4. **Custom domain + Cloudflare (or other CDN)**: Ensure the CDN is not caching or replacing GitHub’s `404.html` behavior. You may need a **rewrite rule** (e.g. serve `index.html` for unknown paths with **200**) if the host strips SPA fallbacks.
+
+---
+
 ## RPC 404 (e.g. approve_clock_sessions)
 
 **Symptoms**: `POST /rest/v1/rpc/approve_clock_sessions` returns 404 even though the function exists and works via SQL.

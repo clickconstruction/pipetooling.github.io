@@ -64,6 +64,10 @@ jobs:
             echo "::error::index.html is missing from dist directory"
             exit 1
           fi
+          if [ ! -f dist/404.html ]; then
+            echo "::error::404.html is missing — vite copy-404 plugin should copy index.html for GitHub Pages SPA paths"
+            exit 1
+          fi
           echo "Contents of dist/index.html:"
           cat dist/index.html
           echo ""

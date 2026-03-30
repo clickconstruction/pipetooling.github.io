@@ -7,16 +7,19 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-03-29
+last_updated: 2026-03-30
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.189 → v2.4"
+version_range: "v2.190 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.190)"
+    line: ~526
+    description: "Customer required for RTB Invoice/Update + Ham billed; Dashboard RPC customer_id; Edit Job billing highlight + Record Payment + Open invoices order; RTB send-back copy"
   - name: "Latest Version (v2.189)"
-    line: ~523
+    line: ~545
     description: "Primary RTB bundle (is_primary_rtb_bundle); merged Ready to Bill rows in Jobs Stages + Dashboard; ensure RPC sets flag"
   - name: "Latest Version (v2.186)"
     line: ~537
@@ -520,6 +523,20 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.190)
+
+**Date**: 2026-03-30
+
+### Billing — linked customer, Edit Job UX, RTB labels
+
+- **Customer gate** ([`Jobs.tsx`](src/pages/Jobs.tsx), [`Dashboard.tsx`](src/pages/Dashboard.tsx)): **Ready to Bill** **Invoice / Update** and **Ham mode** instant **billed** require **`jobs_ledger.customer_id`**. If missing: **toast**; Jobs calls **`openEdit(job, { billingCustomerHighlight: true })`** (or invoice’s parent job) so **Edit Job** opens with **Customer** expanded and a **red callout** around **Link to customer**, search, and **Create customer from job** (`billingCustomerHighlight` state, `scrollIntoView`, cleared on link or close). Dashboard blocks the modal with a toast only (no navigation).
+- **RPC**: [`20260330065236_add_customer_id_to_get_jobs_ledger_by_status.sql`](supabase/migrations/20260330065236_add_customer_id_to_get_jobs_ledger_by_status.sql) — **`get_jobs_ledger_by_status`** returns **`customer_id`** (DROP/CREATE; Postgres cannot widen **`CREATE OR REPLACE`** return row type). See [`MIGRATIONS.md`](MIGRATIONS.md).
+- **Safety nets**: [`SendRecordInvoiceModal.tsx`](src/components/jobs/SendRecordInvoiceModal.tsx) — minimal shell if **`job.customer_id`** is missing. Edge **[`create-stripe-invoice`](supabase/functions/create-stripe-invoice/index.ts)** returns **400** when the job has no linked customer or body **`customer_id`** ≠ job (**[`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md)**).
+- **Edit Job — Billing**: **Open invoices** list appears **above** **Payments received ($)**; payments action button label **Record Payment** (was Add Payment).
+- **Ready to Bill copy** (Jobs **Stages** + Dashboard RTB cards): Secondary actions **Job: Send Job Back** (job row) and **Delete draft bill** (invoice-only / bundle remove draft); **Billed** section keeps **Send back** / **Remove line**. Confirmation modals use matching titles / primary buttons (`sendBackJob` **`toStatus === 'working'`**, `sendBackInvoice` **`action === 'delete'`**).
 
 ---
 

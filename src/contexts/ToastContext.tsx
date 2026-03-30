@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from 'react'
+import { createContext, useCallback, useContext, useMemo, useState } from 'react'
 import { Toast } from '../components/Toast'
 
 type ToastType = 'info' | 'warning' | 'error' | 'success'
@@ -12,17 +12,19 @@ const ToastContext = createContext<ToastContextValue | null>(null)
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Array<{ id: number; message: string; type: ToastType }>>([])
 
-  const showToast = (message: string, type: ToastType = 'info') => {
+  const showToast = useCallback((message: string, type: ToastType = 'info') => {
     const id = Date.now()
     setToasts((prev) => [...prev, { id, message, type }])
-  }
+  }, [])
 
   const removeToast = (id: number) => {
     setToasts((prev) => prev.filter((t) => t.id !== id))
   }
 
+  const contextValue = useMemo(() => ({ showToast }), [showToast])
+
   return (
-    <ToastContext.Provider value={{ showToast }}>
+    <ToastContext.Provider value={contextValue}>
       {children}
       {toasts.map((toast) => (
         <Toast
