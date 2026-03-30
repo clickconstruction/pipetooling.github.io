@@ -5,7 +5,7 @@ file: EDGE_FUNCTIONS.md
 type: API Reference
 purpose: Complete API documentation for all 10+ Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-04-27
+last_updated: 2026-03-29
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
@@ -528,52 +528,71 @@ const response = await supabase.functions.invoke('dev-login', {
 
 ### send-workflow-notification
 
-**Purpose**: Send email notifications for workflow events via Resend API
+**Purpose**: Send workflow stage email notifications via Resend; optionally send Web Push when **`recipient_user_id`** and VAPID keys are set.
 
 **Endpoint**: `POST /functions/v1/send-workflow-notification`
 
-**Required Role**: Authenticated user (any role)
+**Required Role**: Authenticated user (any role); JWT validated in the function via **`auth.getUser(token)`**.
 
 **Required Secrets**:
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
-- `RESEND_API_KEY` - API key for Resend email service
+- `RESEND_API_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` (optional but required for push + **`notification_history`** insert when **`recipient_user_id`** is sent)
+- `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` (optional, for push)
 
-#### Request Parameters
+**Gateway JWT**: Repo [`supabase/config.toml`](supabase/config.toml) sets **`verify_jwt = false`** for this function; deploy with **`supabase functions deploy send-workflow-notification --no-verify-jwt`** so the gateway does not return 401 before the function runs.
+
+#### Request body (actual contract)
 
 ```typescript
-interface SendNotificationRequest {
-  template_type: string      // Email template type
-  to_email: string          // Recipient email
-  variables: Record<string, string>  // Template variables
+interface SendWorkflowNotificationRequest {
+  template_type: string
+  step_id: string // real project step id when logging history; may be a placeholder when not inserting notification_history
+  recipient_email: string
+  recipient_name: string
+  recipient_user_id?: string // if set, may send push and insert notification_history (requires valid step linkage for FKs)
+  push_title?: string
+  push_body?: string
+  push_url?: string
+  variables?: Record<string, string> // merged into template {{keys}}
 }
 ```
 
-**Template Types**:
-- `'invitation'` - User invitation
-- `'sign_in'` - Sign-in notification
-- `'login_as'` - Impersonation notification
-- `'stage_assigned'` - Stage assignment
-- `'stage_started'` - Stage started
-- `'stage_complete'` - Stage completed
-- `'stage_approved'` - Stage approved
-- `'stage_rejected'` - Stage rejected
-- `'stage_reopened'` - Stage reopened
+**`template_type`** values used in production workflows (rows in **`email_templates`**):
+
+- `stage_assigned_started`, `stage_assigned_complete`, `stage_assigned_reopened`
+- `stage_me_started`, `stage_me_complete`, `stage_me_reopened`
+- `stage_next_complete_or_approved`, `stage_prior_rejected`
 
 #### Example Request
 
 ```typescript
-const response = await supabase.functions.invoke('send-workflow-notification', {
+const { data: { session } } = await supabase.auth.refreshSession()
+if (!session?.access_token) throw new Error('Not signed in')
+
+const { data, error } = await supabase.functions.invoke('send-workflow-notification', {
+  headers: { Authorization: `Bearer ${session.access_token}` },
   body: {
-    template_type: 'stage_assigned',
-    to_email: 'worker@example.com',
+    template_type: 'stage_assigned_started',
+    step_id: step.id,
+    recipient_email: 'worker@example.com',
+    recipient_name: 'Jane Doe',
+    recipient_user_id: userIdOptional,
+    push_title: 'Optional title',
+    push_body: 'Optional body',
+    push_url: 'https://app.example/workflows/proj#step-uuid',
     variables: {
-      name: 'John Doe',
-      project_name: 'Smith Residence Remodel',
+      name: 'Jane Doe',
+      email: 'worker@example.com',
+      project_name: 'Smith Residence',
       stage_name: 'Rough In',
-      assigned_by: 'Master Technician'
-    }
-  }
+      assigned_to_name: 'Jane Doe',
+      workflow_link: 'https://app.example/workflows/proj#step-uuid',
+      previous_stage_name: 'Prior stage',
+      rejection_reason: 'Reason text',
+    },
+  },
 })
 ```
 
@@ -584,56 +603,41 @@ const response = await supabase.functions.invoke('send-workflow-notification', {
 ```json
 {
   "success": true,
-  "message": "Email sent successfully",
-  "email_id": "resend_email_id"
+  "message": "Notification sent successfully",
+  "email_id": "resend_email_id",
+  "push_sent": 0
 }
 ```
 
 #### Error Responses
 
-**400 Bad Request** - Missing fields:
-```json
-{
-  "error": "Missing required fields: template_type, to_email, and variables"
-}
-```
+**400** — Missing **`template_type`**, **`step_id`**, **`recipient_email`**, or **`recipient_name`**, or invalid email.
 
-**404 Not Found** - Template not found:
-```json
-{
-  "error": "Email template not found for type: stage_assigned"
-}
-```
+**401** — Missing/invalid JWT (function body validation).
 
-**500 Internal Server Error** - Resend API error:
-```json
-{
-  "error": "Failed to send email: <resend error message>"
-}
-```
+**404** — No row in **`email_templates`** for **`template_type`**.
+
+**500** — **`RESEND_API_KEY`** missing, Resend failure, or other server error.
+
+#### Dev smoke test (Settings UI)
+
+Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (collapsible): one-shot invoke with placeholder data; omits **`recipient_user_id`** so **`notification_history`** is not written. See **[`WORKFLOW_EMAIL_TESTING.md`](./WORKFLOW_EMAIL_TESTING.md)** and **[`RECENT_FEATURES.md`](./RECENT_FEATURES.md)** v2.186.
 
 #### Implementation Details
 
-1. Validates authenticated user (any role)
-2. Fetches email template from `public.email_templates` table
-3. Replaces variables in template subject and body:
-   - Format: `{{variable_name}}`
-   - Example: `Hello {{name}}` → `Hello John Doe`
-4. Sends email via Resend API
-5. Returns success with Resend email ID
+1. **`getUser(JWT)`** from **`Authorization`** header
+2. Load **`subject`/`body`** from **`public.email_templates`** by **`template_type`**
+3. Replace **`{{variable}}`** from **`variables`**
+4. POST to Resend
+5. Optional Web Push to **`push_subscriptions`** for **`recipient_user_id`**
+6. Optional **`notification_history`** insert when **`recipient_user_id`** and service role resolve **`step_id`** → workflow/project
 
-**Variable Substitution**:
-```typescript
-// Template body: "Hello {{name}}, you've been assigned to {{stage_name}}"
-// Variables: { name: "John", stage_name: "Rough In" }
-// Result: "Hello John, you've been assigned to Rough In"
-```
+**See Also**:
 
-**See Also**: 
 - [EMAIL_TEMPLATES_SETUP.md](./EMAIL_TEMPLATES_SETUP.md)
-- [EMAIL_TESTING.md](./EMAIL_TESTING.md)
+- [WORKFLOW_EMAIL_TESTING.md](./WORKFLOW_EMAIL_TESTING.md)
 
-**Deployment**: See [`supabase/functions/send-workflow-notification/DEPLOY.md`](supabase/functions/send-workflow-notification/DEPLOY.md)
+**Deployment**: [`supabase/functions/send-workflow-notification/DEPLOY.md`](supabase/functions/send-workflow-notification/DEPLOY.md)
 
 ---
 
@@ -1039,36 +1043,39 @@ const response = await supabase.functions.invoke('claim-dev', {
 
 **Endpoint**: `POST /functions/v1/test-email`
 
-**Required Role**: Authenticated user (any role, but typically dev)
+**Required Role**: `dev` (legacy `owner` still allowed)
 
 **Required Secrets**:
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` (Supabase-hosted projects inject this automatically; used to read `public.users.role` reliably under RLS)
 - `RESEND_API_KEY`
 
-#### Request Parameters
+#### Request body
 
 ```typescript
 interface TestEmailRequest {
-  template_type: string              // Email template to test
-  test_email: string                 // Recipient email for test
-  variables?: Record<string, string> // Test variable values
+  to: string
+  subject: string
+  body: string // plain text; HTML is simple line-break conversion server-side
+  template_type?: string // optional tag for analytics/logging
 }
 ```
 
 #### Example Request
 
 ```typescript
-const response = await supabase.functions.invoke('test-email', {
+const { data: { session } } = await supabase.auth.refreshSession()
+if (!session?.access_token) throw new Error('Not signed in')
+
+const { data, error } = await supabase.functions.invoke('test-email', {
+  headers: { Authorization: `Bearer ${session.access_token}` },
   body: {
-    template_type: 'stage_assigned',
-    test_email: 'test@example.com',
-    variables: {
-      name: 'Test User',
-      project_name: 'Test Project',
-      stage_name: 'Test Stage'
-    }
-  }
+    to: 'test@example.com',
+    subject: 'Hello',
+    body: 'Line one\nLine two',
+    template_type: 'invitation',
+  },
 })
 ```
 
@@ -1079,55 +1086,37 @@ const response = await supabase.functions.invoke('test-email', {
 ```json
 {
   "success": true,
-  "message": "Test email sent successfully",
-  "template_type": "stage_assigned",
-  "to": "test@example.com",
-  "resend_id": "resend_email_id"
+  "message": "Test email sent successfully via Resend",
+  "email_id": "resend_email_id",
+  "email_preview": {
+    "to": "test@example.com",
+    "subject": "Hello",
+    "body": "Line one\nLine two",
+    "template_type": "invitation"
+  }
 }
 ```
 
 #### Error Responses
 
-**400 Bad Request** - Missing fields:
-```json
-{
-  "error": "Missing required fields: template_type and test_email"
-}
-```
+**400** — Missing **`to`**, **`subject`**, or **`body`**, or invalid email.
 
-**404 Not Found** - Template not found:
-```json
-{
-  "error": "Email template not found: stage_assigned"
-}
-```
+**401** — Not authenticated or invalid token.
 
-**500 Internal Server Error** - Resend error:
-```json
-{
-  "error": "Failed to send email via Resend: <error details>"
-}
-```
+**403** — Caller is not **`dev`** / **`owner`**.
+
+**500** — **`RESEND_API_KEY`** or Resend error.
 
 #### Implementation Details
 
-1. Fetches email template from `public.email_templates`
-2. Substitutes variables in subject and body
-3. Uses default placeholder values if variables not provided
-4. Sends via Resend API
-5. Returns Resend email ID for tracking
+1. Verifies caller is **`dev`** (or legacy **`owner`**) via **`users.role`** using the service role client
+2. Accepts **`to`**, **`subject`**, **`body`**, **`template_type`** in the JSON body (the **client** substitutes template variables before invoking; this function does **not** read **`email_templates`**)
+3. Sends via Resend API
+4. Returns Resend email ID for tracking
 
-**Default Variables** (used if not provided):
-```typescript
-{
-  name: '[Test Name]',
-  email: '[test@example.com]',
-  project_name: '[Test Project]',
-  stage_name: '[Test Stage]',
-  link: '[Test Link]',
-  // ... other template-specific variables
-}
-```
+**Gateway JWT**: [`supabase/config.toml`](supabase/config.toml) sets **`verify_jwt = false`** for **`test-email`** (JWT is still validated in the function). Deploy with **`--no-verify-jwt`** if the hosted function still verifies JWT at the edge. Call **`functions.invoke`** with **`Authorization: Bearer`** from **`refreshSession()`**’s **`access_token`**.
+
+**Request body** (required): **`to`**, **`subject`**, **`body`**; **`template_type`** is optional metadata for logging.
 
 **See Also**: 
 - [EMAIL_TESTING.md](./EMAIL_TESTING.md) - Complete testing documentation

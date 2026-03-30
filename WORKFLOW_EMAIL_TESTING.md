@@ -20,6 +20,18 @@ This guide helps you systematically test all workflow email notification scenari
 
 4. **Test Project**: Create a test project with a workflow containing multiple steps.
 
+## Quick smoke test (Settings, dev only)
+
+Use **Settings → Templates & testing → Workflow email (Edge Function)** (expand the section):
+
+1. Choose **Test target** (same user list as other template tests).
+2. Pick **`template_type`** from the dropdown (must match a row under **Email Templates** below, or the button stays disabled).
+3. Click **Send test**.
+
+This calls the **`send-workflow-notification`** Edge Function once: the **server** loads **`email_templates`** and sends via **Resend** (unlike **`test-email`**, which sends client-built subject/body). The test **does not** send **`recipient_user_id`**, so it **does not** write **`notification_history`** or push notifications.
+
+For full end-to-end behavior (flags, subscriptions, cross-step copy), continue with the scenarios below.
+
 ## Notification Types Overview
 
 ### 1. Assigned Person Notifications

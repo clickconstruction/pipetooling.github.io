@@ -2027,7 +2027,6 @@ export type Database = {
           pct_complete: number | null
           project_id: string | null
           revenue: number | null
-          stage_notes: string | null
           status: string
           updated_at: string | null
         }
@@ -2049,7 +2048,6 @@ export type Database = {
           pct_complete?: number | null
           project_id?: string | null
           revenue?: number | null
-          stage_notes?: string | null
           status?: string
           updated_at?: string | null
         }
@@ -2071,7 +2069,6 @@ export type Database = {
           pct_complete?: number | null
           project_id?: string | null
           revenue?: number | null
-          stage_notes?: string | null
           status?: string
           updated_at?: string | null
         }
@@ -2280,6 +2277,45 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jobs_ledger_thread_notes: {
+        Row: {
+          author_user_id: string
+          body: string
+          created_at: string
+          id: string
+          job_id: string
+        }
+        Insert: {
+          author_user_id: string
+          body: string
+          created_at?: string
+          id?: string
+          job_id: string
+        }
+        Update: {
+          author_user_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          job_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_ledger_thread_notes_author_user_id_fkey"
+            columns: ["author_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_thread_notes_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
             referencedColumns: ["id"]
           },
         ]
@@ -6701,6 +6737,16 @@ export type Database = {
       is_team_lead_for_person_name: {
         Args: { p_person_name: string }
         Returns: boolean
+      }
+      jobs_ledger_thread_note_stats: {
+        Args: { p_job_ids: string[] }
+        Returns: {
+          job_id: string
+          last_note_at: string
+          last_note_author_name: string | null
+          last_note_body: string
+          note_count: number
+        }[]
       }
       list_assigned_jobs_for_dashboard: {
         Args: never

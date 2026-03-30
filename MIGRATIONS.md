@@ -317,6 +317,18 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### March 30, 2026
 
+**`20260330021739_jobs_ledger_thread_notes.sql`**
+- **Purpose**: Append-only **thread notes** on jobs (`jobs_ledger`), similar to Dashboard Dispatch `dispatch_request_notes`
+- **Changes**: Create `jobs_ledger_thread_notes` (`job_id` → `jobs_ledger` ON DELETE CASCADE, `author_user_id` → `users`, `body` 1–2000 chars, `created_at`); index `(job_id, created_at)`; RLS **SELECT** / **INSERT** predicates align with `job_status_events` (same `jobs_ledger` visibility path); `jobs_ledger_thread_note_stats(p_job_ids uuid[])` RPC; add table to `supabase_realtime` publication when missing
+- **Impact**: Jobs **Stages** tables: expand column for thread (Central Time display, composer); Workflow linked-job chips: chevron + panel; `useJobThreadNotes` hook
+- **Category**: Jobs / Schema / RPC / Realtime
+
+**`20260330023918_extend_thread_note_stats_drop_stage_notes.sql`**
+- **Purpose**: Stages **last activity** column reads latest thread preview; remove legacy `stage_notes`
+- **Changes**: Backfill `jobs_ledger_thread_notes` from non-empty `jobs_ledger.stage_notes` (author `master_user_id`, skip jobs that already have thread rows); **`DROP FUNCTION`** `jobs_ledger_thread_note_stats(uuid[])` then **`CREATE FUNCTION`** (return type adds `last_note_body`, `last_note_author_name`; `GRANT EXECUTE` to `authenticated`); `ALTER TABLE jobs_ledger DROP COLUMN stage_notes`
+- **Impact**: Jobs Stages replaces Stage Notes textarea with read-only latest thread line; RPC drives preview + badges
+- **Category**: Jobs / Schema / RPC
+
 **`20260330150000_team_leader_assignments.sql`**
 - **Purpose**: Team leader assignments (leader → member) and scoped access to member clock sessions / crew sync tables
 - **Changes**: Create `team_leader_assignments` (unique leader/member pair, no self-pair); helpers `is_team_lead_for_member`, `is_team_lead_for_person_name`, `can_manage_team_leader_assignments`; RLS on assignments; extend `clock_sessions`, `people_hours`, `people_crew_jobs`, `people_crew_bids` policies for team-lead paths; publish `team_leader_assignments` to `supabase_realtime` when missing

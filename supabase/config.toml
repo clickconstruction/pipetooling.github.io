@@ -351,6 +351,15 @@ authorization_url_path = "/oauth/consent"
 # Allow dynamic client registration
 allow_dynamic_registration = false
 
+# JWT is validated inside the function via auth.getUser(token) + dev role check.
+# Gateway verify_jwt has caused 401s for legitimate browser sessions.
+[functions.test-email]
+verify_jwt = false
+
+# Same as test-email: validate JWT in function body (getUser); gateway verify_jwt caused 401s.
+[functions.send-workflow-notification]
+verify_jwt = false
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.

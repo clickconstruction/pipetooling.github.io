@@ -143,6 +143,25 @@ const PAGE_ACCESS: Array<{ page: string; dev: string; master: string; assistant:
 const VARIABLE_HINT = '{{name}}, {{email}}, {{role}}, {{link}}'
 const NOTIFICATION_VARIABLE_HINT = '{{assignee_name}}, {{item_title}}, {{name}}, {{stage_name}}, {{project_name}}, {{assigned_to_name}}, {{next_stage_name}}, {{rejection_reason}}'
 
+/** Placeholder step id for send-workflow-notification test (no recipient_user_id → no notification_history insert). */
+const WORKFLOW_FN_TEST_PLACEHOLDER_STEP_ID = '00000000-0000-4000-8000-000000000001'
+
+type WorkflowFnEmailTemplateType = Exclude<
+  EmailTemplate['template_type'],
+  'invitation' | 'sign_in' | 'login_as'
+>
+
+const WORKFLOW_FN_EMAIL_TEST_OPTIONS: Array<{ type: WorkflowFnEmailTemplateType; label: string }> = [
+  { type: 'stage_assigned_started', label: 'Stage Started (Assigned)' },
+  { type: 'stage_assigned_complete', label: 'Stage Complete (Assigned)' },
+  { type: 'stage_assigned_reopened', label: 'Stage Re-opened (Assigned)' },
+  { type: 'stage_me_started', label: 'Stage Started (ME)' },
+  { type: 'stage_me_complete', label: 'Stage Complete (ME)' },
+  { type: 'stage_me_reopened', label: 'Stage Re-opened (ME)' },
+  { type: 'stage_next_complete_or_approved', label: 'Next Stage Ready' },
+  { type: 'stage_prior_rejected', label: 'Prior work incomplete' },
+]
+
 function substituteNotificationVariables(
   template: NotificationTemplate,
   targetUser: UserRow
@@ -589,12 +608,18 @@ export default function Settings() {
     setTestNotificationSuccess(null)
     setTestNotificationSending(true)
     try {
-      const { error: refreshErr } = await supabase.auth.refreshSession()
-      if (refreshErr) {
+      const {
+        data: { session: refreshedSession },
+        error: refreshErr,
+      } = await supabase.auth.refreshSession()
+      if (refreshErr || !refreshedSession?.access_token) {
         setTestNotificationError('Session expired. Please sign out and sign back in.')
         return
       }
       const { data, error } = await supabase.functions.invoke('send-checklist-notification', {
+        headers: {
+          Authorization: `Bearer ${refreshedSession.access_token}`,
+        },
         body: {
           recipient_user_id: authUser.id,
           push_title: 'Test notification',
@@ -688,15 +713,21 @@ export default function Settings() {
   const [reportSettingsSaving, setReportSettingsSaving] = useState(false)
   const [notificationTemplates, setNotificationTemplates] = useState<NotificationTemplate[]>([])
   const [notificationTemplatesSectionOpen, setNotificationTemplatesSectionOpen] = useState(false)
+  const [workflowFnEmailSectionOpen, setWorkflowFnEmailSectionOpen] = useState(false)
   const [editingNotificationTemplate, setEditingNotificationTemplate] = useState<NotificationTemplate | null>(null)
   const [notificationTemplateTitle, setNotificationTemplateTitle] = useState('')
   const [notificationTemplateBody, setNotificationTemplateBody] = useState('')
   const [notificationTemplateSaving, setNotificationTemplateSaving] = useState(false)
   const [notificationTemplateError, setNotificationTemplateError] = useState<string | null>(null)
-  const [notificationTestTargetUserId, setNotificationTestTargetUserId] = useState('')
+  const [templateTestTargetUserId, setTemplateTestTargetUserId] = useState('')
   const [notificationTestSending, setNotificationTestSending] = useState<string | null>(null)
   const [notificationTestError, setNotificationTestError] = useState<string | null>(null)
   const [notificationTestSuccess, setNotificationTestSuccess] = useState<string | null>(null)
+  const [workflowFnTestTemplateType, setWorkflowFnTestTemplateType] =
+    useState<WorkflowFnEmailTemplateType>('stage_assigned_started')
+  const [workflowFnTestSending, setWorkflowFnTestSending] = useState(false)
+  const [workflowFnTestError, setWorkflowFnTestError] = useState<string | null>(null)
+  const [workflowFnTestSuccess, setWorkflowFnTestSuccess] = useState<string | null>(null)
   const [editingNonUserPerson, setEditingNonUserPerson] = useState<PersonRow | null>(null)
   const [editPersonName, setEditPersonName] = useState('')
   const [editPersonEmail, setEditPersonEmail] = useState('')
@@ -2377,11 +2408,11 @@ export default function Settings() {
   }
 
   async function sendTestNotificationTemplate(template: NotificationTemplate) {
-    if (!notificationTestTargetUserId) {
+    if (!templateTestTargetUserId) {
       setNotificationTestError('Select a test target first')
       return
     }
-    const targetUser = users.find((u) => u.id === notificationTestTargetUserId)
+    const targetUser = users.find((u) => u.id === templateTestTargetUserId)
     if (!targetUser) {
       setNotificationTestError('Target user not found')
       return
@@ -2390,8 +2421,11 @@ export default function Settings() {
     setNotificationTestError(null)
     setNotificationTestSuccess(null)
     try {
-      const { error: refreshErr } = await supabase.auth.refreshSession()
-      if (refreshErr) {
+      const {
+        data: { session: refreshedSession },
+        error: refreshErr,
+      } = await supabase.auth.refreshSession()
+      if (refreshErr || !refreshedSession?.access_token) {
         setNotificationTestError('Session expired. Please sign out and sign back in.')
         return
       }
@@ -2403,8 +2437,11 @@ export default function Settings() {
             ? '/settings'
             : '/workflow'
       const { data, error } = await supabase.functions.invoke('send-checklist-notification', {
+        headers: {
+          Authorization: `Bearer ${refreshedSession.access_token}`,
+        },
         body: {
-          recipient_user_id: notificationTestTargetUserId,
+          recipient_user_id: templateTestTargetUserId,
           push_title: title,
           push_body: body,
           push_url: pushUrl,
@@ -2516,26 +2553,40 @@ export default function Settings() {
 
   async function sendTestEmail(e: React.FormEvent) {
     e.preventDefault()
-    if (!testingTemplate || !authUser?.email) return
-    
+    if (!testingTemplate) return
+
+    if (!templateTestTargetUserId) {
+      setTestError('Select a test target first')
+      return
+    }
+    const targetUser = users.find((u) => u.id === templateTestTargetUserId)
+    if (!targetUser) {
+      setTestError('Target user not found')
+      return
+    }
+    const to = targetUser.email.trim()
+    if (!to) {
+      setTestError('Selected user has no email')
+      return
+    }
+
     setTestSending(true)
     setTestError(null)
-    
-    // Ensure we have an active session with a valid JWT
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    if (sessionError || !session) {
-      setTestError('Not authenticated. Please sign in again.')
+
+    const {
+      data: { session: refreshedSession },
+      error: refreshErr,
+    } = await supabase.auth.refreshSession()
+    if (refreshErr || !refreshedSession?.access_token) {
+      setTestError('Session expired. Please sign out and sign back in.')
       setTestSending(false)
       return
     }
-    
-    const userEmail = authUser.email
-    
-    // Replace variables with test data
+
     const testVariables: Record<string, string> = {
-      name: 'Test User',
-      email: userEmail,
-      role: 'assistant',
+      name: (targetUser.name || '').trim() || to,
+      email: targetUser.email,
+      role: targetUser.role,
       link: 'https://example.com/test-link',
       project_name: 'Test Project',
       stage_name: 'Test Stage',
@@ -2544,20 +2595,21 @@ export default function Settings() {
       previous_stage_name: 'Previous Stage',
       rejection_reason: 'Test rejection reason',
     }
-    
+
     const { subject, body } = replaceTemplateVariables(testingTemplate, testVariables)
-    
-    // Call test email function
-    // Note: Supabase client automatically includes JWT from current session
+
     const { data, error: eFn } = await supabase.functions.invoke('test-email', {
+      headers: {
+        Authorization: `Bearer ${refreshedSession.access_token}`,
+      },
       body: {
-        to: userEmail,
+        to,
         subject,
         body,
         template_type: testingTemplate.template_type,
       },
     })
-    
+
     setTestSending(false)
     
     if (eFn) {
@@ -2588,9 +2640,119 @@ export default function Settings() {
     if (err) {
       setTestError(err)
     } else {
-      alert(`Test email sent to ${userEmail}!\n\nSubject: ${subject}\n\nBody:\n${body}`)
+      const recipientLabel = (targetUser.name || '').trim()
+        ? `${targetUser.name} <${to}>`
+        : to
+      alert(`Test email sent to ${recipientLabel}!\n\nSubject: ${subject}\n\nBody:\n${body}`)
       setTestingTemplate(null)
     }
+  }
+
+  async function sendWorkflowNotificationEmailTest() {
+    if (!templateTestTargetUserId) {
+      setWorkflowFnTestError('Select a test target first')
+      return
+    }
+    const targetUser = users.find((u) => u.id === templateTestTargetUserId)
+    if (!targetUser) {
+      setWorkflowFnTestError('Target user not found')
+      return
+    }
+    const to = targetUser.email.trim()
+    if (!to) {
+      setWorkflowFnTestError('Selected user has no email')
+      return
+    }
+    const hasTemplate = emailTemplates.some((t) => t.template_type === workflowFnTestTemplateType)
+    if (!hasTemplate) {
+      setWorkflowFnTestError('Create this email template in the list below before testing the Edge Function')
+      return
+    }
+
+    setWorkflowFnTestSending(true)
+    setWorkflowFnTestError(null)
+    setWorkflowFnTestSuccess(null)
+
+    const {
+      data: { session: refreshedSession },
+      error: refreshErr,
+    } = await supabase.auth.refreshSession()
+    if (refreshErr || !refreshedSession?.access_token) {
+      setWorkflowFnTestError('Session expired. Please sign out and sign back in.')
+      setWorkflowFnTestSending(false)
+      return
+    }
+
+    const recipientName = (targetUser.name || '').trim() || to
+    const workflowLink = `${window.location.origin}/settings`
+    const variables: Record<string, string> = {
+      name: recipientName,
+      email: targetUser.email,
+      project_name: 'Test Project',
+      stage_name: 'Test Stage',
+      assigned_to_name: 'Jane Doe',
+      workflow_link: workflowLink,
+    }
+    if (workflowFnTestTemplateType === 'stage_next_complete_or_approved') {
+      variables.previous_stage_name = 'Previous Stage (test)'
+    }
+    if (workflowFnTestTemplateType === 'stage_prior_rejected') {
+      variables.previous_stage_name = 'Previous Stage (test)'
+      variables.rejection_reason = 'Test rejection'
+    }
+
+    const { data, error: eFn } = await supabase.functions.invoke('send-workflow-notification', {
+      headers: {
+        Authorization: `Bearer ${refreshedSession.access_token}`,
+      },
+      body: {
+        template_type: workflowFnTestTemplateType,
+        step_id: WORKFLOW_FN_TEST_PLACEHOLDER_STEP_ID,
+        recipient_email: to,
+        recipient_name: recipientName,
+        variables,
+      },
+    })
+
+    setWorkflowFnTestSending(false)
+
+    if (eFn) {
+      let msg = eFn.message
+      let statusCode = ''
+      if (eFn instanceof FunctionsHttpError) {
+        statusCode = ` (Status: ${eFn.context?.status || 'unknown'})`
+        if (eFn.context?.json) {
+          try {
+            const b = (await eFn.context.json()) as { error?: string; message?: string } | null
+            if (b?.error) msg = b.error
+            else if (b?.message) msg = b.message
+          } catch {
+            /* ignore */
+          }
+        }
+        if (eFn.context?.response) {
+          try {
+            const text = await eFn.context.response.text()
+            if (text) msg += ` - ${text}`
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+      setWorkflowFnTestError(`Error: ${msg}${statusCode}`)
+      return
+    }
+
+    const res = data as { error?: string; email_id?: string; push_sent?: number } | null
+    if (res?.error) {
+      setWorkflowFnTestError(res.error)
+      return
+    }
+    const pushPart =
+      typeof res?.push_sent === 'number' && res.push_sent > 0 ? ` Push sent: ${res.push_sent}.` : ''
+    setWorkflowFnTestSuccess(
+      `Sent via send-workflow-notification to ${to}. Resend id: ${res?.email_id ?? '—'}.${pushPart}`
+    )
   }
 
   function openTestEmail(template: EmailTemplate | { template_type: EmailTemplate['template_type']; subject: string; body: string }) {
@@ -2601,6 +2763,10 @@ export default function Settings() {
   function testCurrentTemplate() {
     if (!editingTemplate || !templateSubject.trim() || !templateBody.trim()) {
       setTemplateError('Please fill in both subject and body before testing')
+      return
+    }
+    if (!templateTestTargetUserId) {
+      setTemplateError('Select a test target under Templates & testing before testing')
       return
     }
     // Create a temporary template object from current form values
@@ -3870,10 +4036,10 @@ export default function Settings() {
 
   const { total: costMatrixTotal } = useCostMatrixTotal(myRole === 'dev')
 
-  // Default notification test target: current user if in list, else first user
+  // Default template test target (notifications + email): current user if in list, else first user
   useEffect(() => {
     if (myRole !== 'dev' || users.length === 0) return
-    setNotificationTestTargetUserId((prev) => {
+    setTemplateTestTargetUserId((prev) => {
       if (prev) return prev
       const meInList = authUser?.id && users.some((u) => u.id === authUser.id)
       return meInList ? authUser!.id : users[0]!.id
@@ -9833,6 +9999,119 @@ export default function Settings() {
       <SettingsGroup id="settings-templates" title="Templates & testing">
       {myRole === 'dev' && (
         <>
+          <p style={{ marginTop: '2rem', marginBottom: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
+            Choose who receives <strong>notification</strong> and <strong>email</strong> template tests (push goes to their devices; email goes to their account email).
+          </p>
+          <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <label htmlFor="templates-test-target" style={{ fontWeight: 600, fontSize: '0.875rem' }}>
+              Test target (notifications and email):
+            </label>
+            <select
+              id="templates-test-target"
+              value={templateTestTargetUserId}
+              onChange={(e) => {
+                setTemplateTestTargetUserId(e.target.value)
+                setNotificationTestError(null)
+                setNotificationTestSuccess(null)
+                setTestError(null)
+                setWorkflowFnTestError(null)
+                setWorkflowFnTestSuccess(null)
+              }}
+              style={{ padding: '0.35rem 0.5rem', minWidth: 200 }}
+            >
+              <option value="">Select user…</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.id === authUser?.id ? `${u.name || u.email} (Me)` : u.name || u.email}
+                </option>
+              ))}
+            </select>
+            {notificationTestSuccess && (
+              <span style={{ color: '#059669', fontSize: '0.875rem' }}>{notificationTestSuccess}</span>
+            )}
+            {notificationTestError && (
+              <span style={{ color: '#b91c1c', fontSize: '0.875rem' }}>{notificationTestError}</span>
+            )}
+          </div>
+
+          <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+            <button
+              type="button"
+              onClick={() => setWorkflowFnEmailSectionOpen((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                padding: '1rem',
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                fontWeight: 600,
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: '0.75rem' }}>{workflowFnEmailSectionOpen ? '▼' : '▶'}</span>
+              Workflow email (Edge Function)
+            </button>
+            {workflowFnEmailSectionOpen && (
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+                <p style={{ margin: '0 0 0.75rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
+                  Calls <code style={{ fontSize: '0.8125rem' }}>send-workflow-notification</code> so the server loads{' '}
+                  <code style={{ fontSize: '0.8125rem' }}>email_templates</code> by type and sends via Resend (not the{' '}
+                  <code style={{ fontSize: '0.8125rem' }}>test-email</code> shortcut). Does not write{' '}
+                  <code style={{ fontSize: '0.8125rem' }}>notification_history</code>.
+                </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
+                  <label htmlFor="workflow-fn-test-template" style={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                    Template type:
+                  </label>
+                  <select
+                    id="workflow-fn-test-template"
+                    value={workflowFnTestTemplateType}
+                    onChange={(e) => {
+                      setWorkflowFnTestTemplateType(e.target.value as WorkflowFnEmailTemplateType)
+                      setWorkflowFnTestError(null)
+                      setWorkflowFnTestSuccess(null)
+                    }}
+                    style={{ padding: '0.35rem 0.5rem', minWidth: 220 }}
+                  >
+                    {WORKFLOW_FN_EMAIL_TEST_OPTIONS.map((o) => (
+                      <option key={o.type} value={o.type}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => void sendWorkflowNotificationEmailTest()}
+                    disabled={
+                      !templateTestTargetUserId ||
+                      workflowFnTestSending ||
+                      !emailTemplates.some((t) => t.template_type === workflowFnTestTemplateType)
+                    }
+                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}
+                  >
+                    {workflowFnTestSending ? 'Sending…' : 'Send test'}
+                  </button>
+                </div>
+                {!emailTemplates.some((t) => t.template_type === workflowFnTestTemplateType) && (
+                  <p style={{ margin: '0.5rem 0 0 0', color: '#b45309', fontSize: '0.8125rem' }}>
+                    Create this template under Email Templates below to enable the button.
+                  </p>
+                )}
+                {workflowFnTestSuccess && (
+                  <p style={{ margin: '0.5rem 0 0 0', color: '#059669', fontSize: '0.875rem' }}>{workflowFnTestSuccess}</p>
+                )}
+                {workflowFnTestError && (
+                  <p style={{ margin: '0.5rem 0 0 0', color: '#b91c1c', fontSize: '0.875rem' }}>{workflowFnTestError}</p>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Notification Templates - collapsible, above Email Templates */}
           <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
             <button
@@ -9861,34 +10140,6 @@ export default function Settings() {
                 <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
                   Customize push notification title and body shown to users. Use variables like {NOTIFICATION_VARIABLE_HINT}.
                 </p>
-                <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <label htmlFor="notification-test-target" style={{ fontWeight: 600, fontSize: '0.875rem' }}>
-                    Test target:
-                  </label>
-                  <select
-                    id="notification-test-target"
-                    value={notificationTestTargetUserId}
-                    onChange={(e) => {
-                      setNotificationTestTargetUserId(e.target.value)
-                      setNotificationTestError(null)
-                      setNotificationTestSuccess(null)
-                    }}
-                    style={{ padding: '0.35rem 0.5rem', minWidth: 200 }}
-                  >
-                    <option value="">Select user…</option>
-                    {users.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.id === authUser?.id ? `${u.name || u.email} (Me)` : u.name || u.email}
-                      </option>
-                    ))}
-                  </select>
-                  {notificationTestSuccess && (
-                    <span style={{ color: '#059669', fontSize: '0.875rem' }}>{notificationTestSuccess}</span>
-                  )}
-                  {notificationTestError && (
-                    <span style={{ color: '#b91c1c', fontSize: '0.875rem' }}>{notificationTestError}</span>
-                  )}
-                </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   {[
                     { type: 'checklist_completed' as const, label: 'Checklist completed', description: 'When a checklist item is completed' },
@@ -9914,7 +10165,7 @@ export default function Settings() {
                             <button
                               type="button"
                               onClick={() => template && sendTestNotificationTemplate(template)}
-                              disabled={!template || !notificationTestTargetUserId || !!notificationTestSending}
+                              disabled={!template || !templateTestTargetUserId || !!notificationTestSending}
                               style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}
                             >
                               {notificationTestSending === type ? 'Sending…' : 'Test'}
@@ -10001,6 +10252,7 @@ export default function Settings() {
                         <button
                           type="button"
                           onClick={() => openTestEmail(template)}
+                          disabled={!templateTestTargetUserId}
                           style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#f0f9ff', color: '#0369a1', border: '1px solid #bae6fd' }}
                         >
                           Test
@@ -10052,6 +10304,7 @@ export default function Settings() {
                         <button
                           type="button"
                           onClick={() => openTestEmail(template)}
+                          disabled={!templateTestTargetUserId}
                           style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#f0f9ff', color: '#0369a1', border: '1px solid #bae6fd' }}
                         >
                           Test
@@ -10102,6 +10355,7 @@ export default function Settings() {
                         <button
                           type="button"
                           onClick={() => openTestEmail(template)}
+                          disabled={!templateTestTargetUserId}
                           style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#f0f9ff', color: '#0369a1', border: '1px solid #bae6fd' }}
                         >
                           Test
@@ -10151,6 +10405,7 @@ export default function Settings() {
                         <button
                           type="button"
                           onClick={() => openTestEmail(template)}
+                          disabled={!templateTestTargetUserId}
                           style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#f0f9ff', color: '#0369a1', border: '1px solid #bae6fd' }}
                         >
                           Test
@@ -10252,7 +10507,7 @@ export default function Settings() {
                     <button 
                       type="button" 
                       onClick={testCurrentTemplate}
-                      disabled={templateSaving || !templateSubject.trim() || !templateBody.trim()}
+                      disabled={templateSaving || !templateSubject.trim() || !templateBody.trim() || !templateTestTargetUserId}
                       style={{ background: '#f0f9ff', color: '#0369a1', border: '1px solid #bae6fd' }}
                     >
                       Test Email
@@ -10312,11 +10567,20 @@ export default function Settings() {
             </div>
           )}
 
-          {testingTemplate && (
+          {testingTemplate && (() => {
+            const testTargetUser = templateTestTargetUserId
+              ? users.find((u) => u.id === templateTestTargetUserId)
+              : undefined
+            const testTargetEmail = testTargetUser?.email?.trim() ?? ''
+            const testRecipientLabel =
+              testTargetEmail && (testTargetUser?.name || '').trim()
+                ? `${(testTargetUser?.name || '').trim()} <${testTargetEmail}>`
+                : testTargetEmail || '—'
+            return (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
               <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400 }}>
                 <p style={{ marginBottom: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>
-                  Send a test email to <strong>{authUser?.email || 'your account email'}</strong> with the template to verify it works. Variables will be replaced with test data.
+                  Send a test email to <strong>{testRecipientLabel}</strong> (the user selected under <strong>Test target</strong> above). Variables like {'{{name}}'}, {'{{email}}'}, and {'{{role}}'} use that user&apos;s data; other placeholders use sample values.
                 </p>
                 <form onSubmit={sendTestEmail}>
                   <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#f9fafb', borderRadius: 4, fontSize: '0.875rem' }}>
@@ -10326,7 +10590,7 @@ export default function Settings() {
                   </div>
                   {testError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{testError}</p>}
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <button type="submit" disabled={testSending || !authUser?.email}>
+                    <button type="submit" disabled={testSending || !templateTestTargetUserId || !testTargetEmail}>
                       {testSending ? 'Sending…' : 'Send Test Email'}
                     </button>
                     <button type="button" onClick={closeTestEmail} disabled={testSending}>Cancel</button>
@@ -10334,7 +10598,8 @@ export default function Settings() {
                 </form>
               </div>
             </div>
-          )}
+            )
+          })()}
 
           {/* Dashboard: Report Review - collapsible, dev-only */}
           <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>

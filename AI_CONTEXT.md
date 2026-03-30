@@ -152,6 +152,7 @@ pipetooling.github.io/
 - **`RECENT_FEATURES.md`** - Chronological feature log
 - **Team feedback** (clock-out / Dashboard prompts, Settings dev tools, RLS details): **`RECENT_FEATURES.md`** v2.157 (foundation) and **v2.162** (eligibility reset, submission SELECT policy, raw submission names)
 - **Settings layout**: Sharing and Adoption merged into **People & accounts** (`settings-people`); no separate `settings-sharing` jump — **`RECENT_FEATURES.md`** v2.165; **`PROJECT_DOCUMENTATION.md`** Settings §9; **`ACCESS_CONTROL.md`** Settings matrix
+- **Templates & testing** (dev): Collapsible **Workflow email (Edge Function)** invokes **`send-workflow-notification`** for a Resend smoke test — **`RECENT_FEATURES.md`** v2.186; **`WORKFLOW_EMAIL_TESTING.md`**; **`EDGE_FUNCTIONS.md`**
 
 ---
 
@@ -223,6 +224,8 @@ AI agents or automated tests can sign in without a password using the dev-login 
 | Clock In/Out, pending sessions, pay roster | `RECENT_FEATURES.md` → v2.100; `PROJECT_DOCUMENTATION.md` → Dashboard, Hours tab; `GLOSSARY.md` → Clock Sessions |
 | Dashboard "Currently clocked in" strip (Today column, My team/Everyone); supply house website in Materials | `RECENT_FEATURES.md` → v2.163; `PROJECT_DOCUMENTATION.md` → Dashboard, Materials; `src/hooks/useDashboardMyTeamSectionState.ts` |
 | Dashboard **My Time** / **Edit time** (this-week-only, Form/Visual, `myTimeDayTimeline`) | `RECENT_FEATURES.md` → v2.179; `PROJECT_DOCUMENTATION.md` → Dashboard **My Time**; `src/components/DashboardMyTimeSection.tsx`; `src/components/DashboardMyTimeDayEditorModal.tsx`; `src/components/my-time-day-editor/`; `src/lib/myTimeDayTimeline.ts` |
+| Dashboard **Clock In** / **Update Focus**: assigned jobs auto-load; field borders / focus | `RECENT_FEATURES.md` → v2.182; `PROJECT_DOCUMENTATION.md` → Dashboard **Clock In/Out**; `src/components/ClockInOutButton.tsx` |
+| Jobs **Stages** + Workflow linked jobs: **thread notes**, **Last activity** preview, composer **Enter** / **Shift+Enter**; `jobs_ledger.stage_notes` removed | `RECENT_FEATURES.md` → v2.183–v2.185; `PROJECT_DOCUMENTATION.md` → Jobs §6, Workflow; `MIGRATIONS.md` → `20260330023918`; `src/components/JobThreadNotesPanel.tsx`; `src/hooks/useJobThreadNotes.ts`; `src/pages/Jobs.tsx` |
 | Jobs **Edit Job** billing: **Job Total / Bid** and payment **Amount** comma formatting | `RECENT_FEATURES.md` → v2.181; `PROJECT_DOCUMENTATION.md` → Jobs §6; `src/pages/Jobs.tsx`; `src/components/MoneyDecimalAmountInput.tsx` |
 | Workflow **line items**: optional **`item_date`**; **Add Line Item** clipboard bulk import | `RECENT_FEATURES.md` → v2.181; `WORKFLOW_FEATURES.md` → Line Items For Office; `PROJECT_DOCUMENTATION.md` → workflow_step_line_items; `MIGRATIONS.md` → 20270329210000; `src/lib/parseWorkflowLineItemPaste.ts`; `src/pages/Workflow.tsx` |
 | Clock sessions table UX, My Roles Goals gate, `user_dashboard_goals` / `user_daily_goals_ack` | `RECENT_FEATURES.md` → v2.149; `PROJECT_DOCUMENTATION.md` → Dashboard, People, Quickfill, Settings; `MIGRATIONS.md` → 20260329120000; `GLOSSARY.md` → Clock Sessions, My Roles Goals |

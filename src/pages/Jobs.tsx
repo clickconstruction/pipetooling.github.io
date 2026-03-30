@@ -1,4 +1,12 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  Fragment,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+} from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { NO_CUSTOMER_TYPE_LABEL } from '../constants/customerTypeLabels'
 import { supabase } from '../lib/supabase'
@@ -8,10 +16,13 @@ import { useToastContext } from '../contexts/ToastContext'
 import { parseCustomerImport } from '../utils/parseCustomerImport'
 import { nameSimilarity } from '../utils/nameSimilarity'
 import { withSupabaseRetry } from '../utils/errorHandling'
+import { getDispatchNoteDisplayMeta } from '../utils/dispatchNoteDisplay'
 import NewReportModal from '../components/NewReportModal'
 import JobReportsModal from '../components/JobReportsModal'
 import AddInspectionModal from '../components/AddInspectionModal'
 import { ErrorBoundary } from '../components/ErrorBoundary'
+import { JobThreadNotesPanel } from '../components/JobThreadNotesPanel'
+import { useJobThreadNotes } from '../hooks/useJobThreadNotes'
 import { CrewJobsBlock } from '../components/CrewJobsBlock'
 import { MoneyDecimalAmountInput } from '../components/MoneyDecimalAmountInput'
 import type { Database } from '../types/database'
@@ -618,7 +629,6 @@ export default function Jobs() {
   const [assignedEditSelectedIds, setAssignedEditSelectedIds] = useState<string[]>([])
   const [assignedEditSavingId, setAssignedEditSavingId] = useState<string | null>(null)
   const [pctCompleteSavingId, setPctCompleteSavingId] = useState<string | null>(null)
-  const [stageNotesSavingId, setStageNotesSavingId] = useState<string | null>(null)
   const [estimatedCompletionDateSavingId, setEstimatedCompletionDateSavingId] = useState<string | null>(null)
   const assignedEditDropdownRef = useRef<HTMLDivElement | null>(null)
   const jobNameInputRef = useRef<HTMLInputElement | null>(null)
@@ -677,6 +687,25 @@ export default function Jobs() {
     }
     return { count30_90, sum30_90, count90, sum90 }
   }, [stagesFilteredJobs])
+
+  const {
+    expandedJobThreadId,
+    setExpandedJobThreadId,
+    jobThreadNotesByJobId,
+    jobThreadNotesLoadingId,
+    jobThreadSubmittingId,
+    jobThreadDraft,
+    setJobThreadDraft,
+    submitJobThreadNote,
+    jobThreadStatsByJobId,
+    refreshJobThreadStatsForJobIds,
+  } = useJobThreadNotes(showToast, authUser?.id)
+
+  useEffect(() => {
+    if (!authUser?.id || activeTab !== 'stages') return
+    const ids = [...new Set(stagesFilteredJobs.map((j) => j.id))]
+    void refreshJobThreadStatsForJobIds(ids)
+  }, [authUser?.id, activeTab, stagesFilteredJobs, refreshJobThreadStatsForJobIds])
 
   function getCustomerDisplay(c: CustomerRow): string {
     if (c.address) return `${c.name} - ${c.address}`
@@ -3219,6 +3248,14 @@ export default function Jobs() {
     setFormOpen(true)
   }
 
+  function openEditJobAndCreateCustomerFlow(job: JobWithDetails) {
+    openEdit(job)
+    if ((job.customer_name ?? '').trim()) {
+      setCreateCustomerFromJobType('residential')
+      setCreateCustomerFromJobModalOpen(true)
+    }
+  }
+
   async function handleCreateCustomerFromJob(customerType: 'residential' | 'commercial') {
     if (!authUser?.id) return
     const name = customerName.trim()
@@ -3323,6 +3360,7 @@ export default function Jobs() {
     setEditing(null)
     setProjectId(null)
     setNewInvoiceAmount('')
+    setCreateCustomerFromJobModalOpen(false)
   }
 
   async function createInvoice() {
@@ -3686,22 +3724,6 @@ export default function Jobs() {
       setError(err instanceof Error ? err.message : 'Failed to update % complete')
     } finally {
       setPctCompleteSavingId(null)
-    }
-  }
-
-  async function updateJobStageNotes(jobId: string, value: string | null) {
-    setStageNotesSavingId(jobId)
-    setError(null)
-    try {
-      const { error: err } = await supabase.from('jobs_ledger').update({ stage_notes: value || null }).eq('id', jobId)
-      if (err) throw err
-      setJobs((prev) =>
-        prev.map((j) => (j.id === jobId ? { ...j, stage_notes: value || null } : j))
-      )
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to update stage notes')
-    } finally {
-      setStageNotesSavingId(null)
     }
   }
 
@@ -4461,14 +4483,177 @@ export default function Jobs() {
               const impliedCustomerLink = !job.customer_id && customerListImpliesLinkedRow(customers, job.master_user_id, cn)
               const showNotInCustomersBadge = !job.customer_id && !impliedCustomerLink
               return (
-                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem', display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                <div
+                  style={{
+                    fontSize: '0.75rem',
+                    color: '#6b7280',
+                    marginTop: '0.15rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    gap: '0.25rem',
+                  }}
+                >
                   <span>Customer: {(job.customer_name ?? '').trim() || '—'}</span>
                   {showNotInCustomersBadge ? (
-                    <span style={{ padding: '0.1rem 0.3rem', fontSize: '0.6875rem', fontWeight: 500, background: '#fef3c7', color: '#92400e', borderRadius: 4 }}>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        openEditJobAndCreateCustomerFlow(job)
+                      }}
+                      aria-label="Open Edit Job and create customer from job"
+                      style={{
+                        padding: '0.1rem 0.3rem',
+                        fontSize: '0.6875rem',
+                        fontWeight: 500,
+                        fontFamily: 'inherit',
+                        background: '#fef3c7',
+                        color: '#92400e',
+                        border: 'none',
+                        borderRadius: 4,
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                      }}
+                    >
                       Not in Customers
-                    </span>
+                    </button>
                   ) : null}
                 </div>
+              )
+            }
+
+            function toggleStagesJobThreadExpanded(id: string) {
+              setExpandedJobThreadId((prev) => (prev === id ? null : id))
+            }
+
+            function shouldSuppressStagesRowJobThreadToggle(target: EventTarget | null): boolean {
+              const el = target instanceof Element ? target : null
+              if (!el) return false
+              return !!el.closest('button, a, input, textarea, select, label, [role="button"]')
+            }
+
+            function renderStagesThreadExpandButton(jobId: string) {
+              const expanded = expandedJobThreadId === jobId
+              const stat = jobThreadStatsByJobId[jobId]
+              const count = stat?.note_count ?? 0
+              return (
+                <button
+                  type="button"
+                  onClick={() => toggleStagesJobThreadExpanded(jobId)}
+                  aria-expanded={expanded}
+                  title={count > 0 ? `${count} thread note(s)` : 'Job notes thread'}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 2,
+                    padding: '0.25rem',
+                    border: 'none',
+                    background: 'none',
+                    cursor: 'pointer',
+                    color: '#374151',
+                    fontSize: '0.75rem',
+                    lineHeight: 1.1,
+                    flexShrink: 0,
+                    alignSelf: 'flex-start',
+                  }}
+                >
+                  <span aria-hidden>{expanded ? '\u25BC' : '\u25B6'}</span>
+                  {count > 0 ? (
+                    <span style={{ fontSize: '0.65rem', color: '#2563eb', fontWeight: 600 }}>{count}</span>
+                  ) : null}
+                </button>
+              )
+            }
+
+            function renderStagesLastActivityCell(jobId: string) {
+              const stat = jobThreadStatsByJobId[jobId]
+              const count = stat?.note_count ?? 0
+              const notes = jobThreadNotesByJobId[jobId]
+              const lastNote = notes?.length ? notes[notes.length - 1] : undefined
+              const fromThreadBody = (lastNote?.body ?? '').trim()
+              const titleForEmpty = 'Job notes thread'
+              const titleWithNotes = count > 0 ? `${count} thread note(s)` : titleForEmpty
+              const expanded = expandedJobThreadId === jobId
+
+              const tdShellStyle: CSSProperties = {
+                padding: '0.75rem',
+                verticalAlign: 'top',
+                display: 'flex',
+                flexDirection: 'row',
+                alignItems: 'flex-start',
+                gap: '0.35rem',
+              }
+
+              function lastActivityBodyInteractiveProps(title: string): {
+                role: 'button'
+                tabIndex: 0
+                title: string
+                'aria-expanded': boolean
+                onClick: () => void
+                onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void
+                style: CSSProperties
+              } {
+                return {
+                  role: 'button',
+                  tabIndex: 0,
+                  title,
+                  'aria-expanded': expanded,
+                  onClick: () => toggleStagesJobThreadExpanded(jobId),
+                  onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      toggleStagesJobThreadExpanded(jobId)
+                    }
+                  },
+                  style: {
+                    flex: 1,
+                    minWidth: 0,
+                    cursor: 'pointer',
+                  },
+                }
+              }
+
+              if (count === 0 || !stat?.last_note_at) {
+                return (
+                  <td style={tdShellStyle}>
+                    {renderStagesThreadExpandButton(jobId)}
+                    <div {...lastActivityBodyInteractiveProps(titleForEmpty)}>
+                      <span style={{ fontSize: '0.8125rem', color: '#9ca3af' }}>—</span>
+                    </div>
+                  </td>
+                )
+              }
+              const meta = getDispatchNoteDisplayMeta(stat.last_note_at)
+              const author =
+                stat.last_note_author_name?.trim() || lastNote?.author?.name?.trim() || ''
+              const body = (stat.last_note_body ?? '').trim() || fromThreadBody
+              return (
+                <td style={{ ...tdShellStyle, maxWidth: 280 }}>
+                  {renderStagesThreadExpandButton(jobId)}
+                  <div {...lastActivityBodyInteractiveProps(titleWithNotes)}>
+                    <div style={{ fontSize: '0.6875rem', color: '#6b7280', marginBottom: '0.2rem' }}>
+                      {author ? <span>{author}</span> : null}
+                      {author ? <span style={{ margin: '0 0.35rem' }}>·</span> : null}
+                      <span>{meta.weekdayTimeChicago}</span>
+                      <span style={{ marginLeft: '0.35rem' }}>({meta.daysAgoLabel})</span>
+                    </div>
+                    <div
+                      style={{
+                        fontSize: '0.8125rem',
+                        color: '#374151',
+                        lineHeight: 1.35,
+                        wordBreak: 'break-word',
+                        whiteSpace: 'pre-wrap',
+                        maxHeight: '4.2em',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {body || '—'}
+                    </div>
+                  </div>
+                </td>
               )
             }
 
@@ -4504,6 +4689,7 @@ export default function Jobs() {
             }
 
             function renderStagesTable(jobList: JobWithDetails[], actionLabel: React.ReactNode | null, onAction: (j: JobWithDetails) => void, showTimeOpen?: boolean, onSendBack?: (j: JobWithDetails) => void, onSendBackSimple?: (j: JobWithDetails) => void, showRemaining?: boolean, showFinalBill?: boolean, showPctComplete?: boolean) {
+              const stagesTableColCount = 6 + (showPctComplete ? 1 : 0)
               return (
                 <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
                   <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
@@ -4511,7 +4697,7 @@ export default function Jobs() {
                       <tr>
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Assigned<br />HCP</th>
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', minWidth: 200 }}>Stage Notes</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', minWidth: 200 }}>Last activity</th>
                         {showPctComplete && (
                           <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>% Complete<br />/ Value Created</th>
                         )}
@@ -4523,7 +4709,7 @@ export default function Jobs() {
                     <tbody>
                       {jobList.length === 0 ? (
                         <tr>
-                          <td colSpan={6 + (showPctComplete ? 1 : 0)} style={{ padding: '0.75rem', color: '#6b7280' }}>
+                          <td colSpan={stagesTableColCount} style={{ padding: '0.75rem', color: '#6b7280' }}>
                             No jobs in this group
                           </td>
                         </tr>
@@ -4533,6 +4719,10 @@ export default function Jobs() {
                           <tr
                             style={{
                               borderBottom: stagesRowHasProjectBanner(j.project_id, j.project) ? 'none' : '1px solid #e5e7eb',
+                            }}
+                            onClick={(e) => {
+                              if (shouldSuppressStagesRowJobThreadToggle(e.target)) return
+                              toggleStagesJobThreadExpanded(j.id)
                             }}
                           >
                             <td style={{ padding: '0.75rem', position: 'relative', verticalAlign: 'top' }}>
@@ -4677,31 +4867,7 @@ export default function Jobs() {
                               })()}
                               {renderJobCustomerLine(j)}
                             </td>
-                            <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
-                              <textarea
-                                key={`stage-notes-${j.id}-${j.stage_notes ?? 'null'}`}
-                                defaultValue={j.stage_notes ?? ''}
-                                onBlur={(e) => {
-                                  const v = e.target.value.trim()
-                                  if (v === (j.stage_notes ?? '')) return
-                                  updateJobStageNotes(j.id, v || null)
-                                }}
-                                disabled={stageNotesSavingId === j.id}
-                                maxLength={200}
-                                rows={2}
-                                wrap="soft"
-                                style={{
-                                  width: '100%',
-                                  padding: '0.25rem 0.35rem',
-                                  fontSize: '0.8125rem',
-                                  border: '1px solid #d1d5db',
-                                  borderRadius: 4,
-                                  background: 'transparent',
-                                  resize: 'vertical',
-                                  boxSizing: 'border-box',
-                                }}
-                              />
-                            </td>
+                            {renderStagesLastActivityCell(j.id)}
                             {showPctComplete && (
                               <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
@@ -4903,7 +5069,29 @@ export default function Jobs() {
                               </div>
                             </td>
                           </tr>
-                          {renderStagesProjectBannerRow(j.project_id, j.project, 6 + (showPctComplete ? 1 : 0))}
+                          {expandedJobThreadId === j.id && (
+                            <tr>
+                              <td
+                                colSpan={stagesTableColCount}
+                                style={{
+                                  padding: '0.5rem 0.75rem',
+                                  background: '#f9fafb',
+                                  borderBottom: '1px solid #e5e7eb',
+                                }}
+                              >
+                                <JobThreadNotesPanel
+                                  notes={jobThreadNotesByJobId[j.id] ?? []}
+                                  loading={jobThreadNotesLoadingId === j.id}
+                                  canPost={!!authUser}
+                                  draft={jobThreadDraft}
+                                  submitting={jobThreadSubmittingId === j.id}
+                                  onDraftChange={setJobThreadDraft}
+                                  onSubmit={() => void submitJobThreadNote(j.id)}
+                                />
+                              </td>
+                            </tr>
+                          )}
+                          {renderStagesProjectBannerRow(j.project_id, j.project, stagesTableColCount)}
                           </Fragment>
                         ))
                       )}
@@ -4944,6 +5132,7 @@ export default function Jobs() {
                 onEmptyEstDoneBillDateClick,
                 onEmptyInvoiceEstBillDateClick,
               } = options
+              const unifiedStagesColCount = 6
               return (
                 <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
                   <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
@@ -4951,7 +5140,7 @@ export default function Jobs() {
                       <tr>
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Assigned<br />HCP</th>
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', minWidth: 200 }}>Stage Notes</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', minWidth: 200 }}>Last activity</th>
                         <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Remaining<br />/ Total Bill</th>
                         <th style={{ padding: '0.75rem', width: 140, borderBottom: '1px solid #e5e7eb' }} />
                         <th style={{ padding: '0.75rem', width: 120, borderBottom: '1px solid #e5e7eb' }}>View<br />Reports</th>
@@ -4960,7 +5149,7 @@ export default function Jobs() {
                     <tbody>
                       {rows.length === 0 ? (
                         <tr>
-                          <td colSpan={6} style={{ padding: '0.75rem', color: '#6b7280' }}>
+                          <td colSpan={unifiedStagesColCount} style={{ padding: '0.75rem', color: '#6b7280' }}>
                             No jobs or invoices in this group
                           </td>
                         </tr>
@@ -4973,6 +5162,10 @@ export default function Jobs() {
                               <tr
                                 style={{
                                   borderBottom: stagesRowHasProjectBanner(j.project_id, j.project) ? 'none' : '1px solid #e5e7eb',
+                                }}
+                                onClick={(e) => {
+                                  if (shouldSuppressStagesRowJobThreadToggle(e.target)) return
+                                  toggleStagesJobThreadExpanded(j.id)
                                 }}
                               >
                                 <td style={{ padding: '0.75rem', verticalAlign: 'top', position: 'relative' }}>
@@ -5121,31 +5314,7 @@ export default function Jobs() {
                                   })()}
                                   {renderJobCustomerLine(j)}
                                 </td>
-                                <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
-                                  <textarea
-                                    key={`stage-notes-${j.id}-${j.stage_notes ?? 'null'}`}
-                                    defaultValue={j.stage_notes ?? ''}
-                                    onBlur={(e) => {
-                                      const v = e.target.value.trim()
-                                      if (v === (j.stage_notes ?? '')) return
-                                      updateJobStageNotes(j.id, v || null)
-                                    }}
-                                    disabled={stageNotesSavingId === j.id}
-                                    maxLength={200}
-                                    rows={2}
-                                    wrap="soft"
-                                    style={{
-                                      width: '100%',
-                                      padding: '0.25rem 0.35rem',
-                                      fontSize: '0.8125rem',
-                                      border: '1px solid #d1d5db',
-                                      borderRadius: 4,
-                                      background: 'transparent',
-                                      resize: 'vertical',
-                                      boxSizing: 'border-box',
-                                    }}
-                                  />
-                                </td>
+                                {renderStagesLastActivityCell(j.id)}
                                 <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
                                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                                     {showRemaining && (() => {
@@ -5290,7 +5459,29 @@ export default function Jobs() {
                                   </div>
                                 </td>
                               </tr>
-                              {renderStagesProjectBannerRow(j.project_id, j.project, 6)}
+                              {expandedJobThreadId === j.id && (
+                                <tr>
+                                  <td
+                                    colSpan={unifiedStagesColCount}
+                                    style={{
+                                      padding: '0.5rem 0.75rem',
+                                      background: '#f9fafb',
+                                      borderBottom: '1px solid #e5e7eb',
+                                    }}
+                                  >
+                                    <JobThreadNotesPanel
+                                      notes={jobThreadNotesByJobId[j.id] ?? []}
+                                      loading={jobThreadNotesLoadingId === j.id}
+                                      canPost={!!authUser}
+                                      draft={jobThreadDraft}
+                                      submitting={jobThreadSubmittingId === j.id}
+                                      onDraftChange={setJobThreadDraft}
+                                      onSubmit={() => void submitJobThreadNote(j.id)}
+                                    />
+                                  </td>
+                                </tr>
+                              )}
+                              {renderStagesProjectBannerRow(j.project_id, j.project, unifiedStagesColCount)}
                               </Fragment>
                             )
                           } else {
@@ -5301,6 +5492,10 @@ export default function Jobs() {
                               <tr
                                 style={{
                                   borderBottom: stagesRowHasProjectBanner(job.project_id, job.project) ? 'none' : '1px solid #e5e7eb',
+                                }}
+                                onClick={(e) => {
+                                  if (shouldSuppressStagesRowJobThreadToggle(e.target)) return
+                                  toggleStagesJobThreadExpanded(job.id)
                                 }}
                               >
                                 <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
@@ -5441,31 +5636,7 @@ export default function Jobs() {
                                   })()}
                                   {renderJobCustomerLine(job)}
                                 </td>
-                                <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
-                                  <textarea
-                                    key={`stage-notes-inv-${job.id}-${job.stage_notes ?? 'null'}`}
-                                    defaultValue={job.stage_notes ?? ''}
-                                    onBlur={(e) => {
-                                      const v = e.target.value.trim()
-                                      if (v === (job.stage_notes ?? '')) return
-                                      updateJobStageNotes(job.id, v || null)
-                                    }}
-                                    disabled={stageNotesSavingId === job.id}
-                                    maxLength={200}
-                                    rows={2}
-                                    wrap="soft"
-                                    style={{
-                                      width: '100%',
-                                      padding: '0.25rem 0.35rem',
-                                      fontSize: '0.8125rem',
-                                      border: '1px solid #d1d5db',
-                                      borderRadius: 4,
-                                      background: 'transparent',
-                                      resize: 'vertical',
-                                      boxSizing: 'border-box',
-                                    }}
-                                  />
-                                </td>
+                                {renderStagesLastActivityCell(job.id)}
                                 <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
                                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                                     <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
@@ -5579,7 +5750,29 @@ export default function Jobs() {
                                   </div>
                                 </td>
                               </tr>
-                              {renderStagesProjectBannerRow(job.project_id, job.project, 6)}
+                              {expandedJobThreadId === job.id && (
+                                <tr>
+                                  <td
+                                    colSpan={unifiedStagesColCount}
+                                    style={{
+                                      padding: '0.5rem 0.75rem',
+                                      background: '#f9fafb',
+                                      borderBottom: '1px solid #e5e7eb',
+                                    }}
+                                  >
+                                    <JobThreadNotesPanel
+                                      notes={jobThreadNotesByJobId[job.id] ?? []}
+                                      loading={jobThreadNotesLoadingId === job.id}
+                                      canPost={!!authUser}
+                                      draft={jobThreadDraft}
+                                      submitting={jobThreadSubmittingId === job.id}
+                                      onDraftChange={setJobThreadDraft}
+                                      onSubmit={() => void submitJobThreadNote(job.id)}
+                                    />
+                                  </td>
+                                </tr>
+                              )}
+                              {renderStagesProjectBannerRow(job.project_id, job.project, unifiedStagesColCount)}
                               </Fragment>
                             )
                           }
@@ -9078,58 +9271,72 @@ export default function Jobs() {
               )}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem', flexWrap: 'wrap', alignItems: 'center' }}>
-              <button
-                type="button"
-                onClick={saveJob}
-                disabled={!jobFormCanSubmit || saving}
-                title={!jobFormCanSubmit ? `Required: ${jobFormMissingFields.join(', ')}` : undefined}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: '#3b82f6',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 4,
-                  cursor: jobFormCanSubmit && !saving ? 'pointer' : 'not-allowed',
-                  fontWeight: 500,
-                }}
-              >
-                {saving ? 'Saving…' : 'Save'}
-              </button>
-              {!jobFormCanSubmit && !saving && jobFormMissingFields.length > 0 && (
-                <span style={{ fontSize: '0.8rem', color: '#FF6600', marginLeft: '0.5rem', display: 'inline-block' }}>
-                  <span style={{ display: 'block' }}>Required:</span>
-                  {jobFormMissingFields.map((f) => (
-                    <span key={f} style={{ display: 'block', marginLeft: '0.25em' }}>{f}</span>
-                  ))}
-                </span>
-              )}
-              <button type="button" onClick={closeForm} style={{ padding: '0.5rem 1rem', background: '#e5e7eb', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
-                Cancel
-              </button>
-              {editing && authRole !== 'primary' && (
+            <div
+              style={{
+                display: 'flex',
+                marginTop: '1.25rem',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '0.75rem',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                {editing && authRole !== 'primary' && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!editing) return
+                      if (!confirm('Delete this job from Billing?')) return
+                      const ok = await deleteJob(editing.id)
+                      if (ok) closeForm()
+                    }}
+                    disabled={deletingId === editing?.id}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      background: deletingId === editing?.id ? '#f3f4f6' : '#fee2e2',
+                      color: deletingId === editing?.id ? '#9ca3af' : '#b91c1c',
+                      border: 'none',
+                      borderRadius: 4,
+                      cursor: deletingId === editing?.id ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {deletingId === editing?.id ? 'Deleting…' : 'Delete'}
+                  </button>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                 <button
                   type="button"
-                  onClick={async () => {
-                    if (!editing) return
-                    if (!confirm('Delete this job from Billing?')) return
-                    const ok = await deleteJob(editing.id)
-                    if (ok) closeForm()
-                  }}
-                  disabled={deletingId === editing?.id}
+                  onClick={saveJob}
+                  disabled={!jobFormCanSubmit || saving}
+                  title={!jobFormCanSubmit ? `Required: ${jobFormMissingFields.join(', ')}` : undefined}
                   style={{
                     padding: '0.5rem 1rem',
-                    background: deletingId === editing?.id ? '#f3f4f6' : '#fee2e2',
-                    color: deletingId === editing?.id ? '#9ca3af' : '#b91c1c',
+                    background: '#3b82f6',
+                    color: 'white',
                     border: 'none',
                     borderRadius: 4,
-                    cursor: deletingId === editing?.id ? 'not-allowed' : 'pointer',
-                    marginLeft: 'auto',
+                    cursor: jobFormCanSubmit && !saving ? 'pointer' : 'not-allowed',
+                    fontWeight: 500,
                   }}
                 >
-                  {deletingId === editing?.id ? 'Deleting…' : 'Delete'}
+                  {saving ? 'Saving…' : 'Save'}
                 </button>
-              )}
+                {!jobFormCanSubmit && !saving && jobFormMissingFields.length > 0 && (
+                  <span style={{ fontSize: '0.8rem', color: '#FF6600', display: 'inline-block' }}>
+                    <span style={{ display: 'block' }}>Required:</span>
+                    {jobFormMissingFields.map((f) => (
+                      <span key={f} style={{ display: 'block', marginLeft: '0.25em' }}>
+                        {f}
+                      </span>
+                    ))}
+                  </span>
+                )}
+                <button type="button" onClick={closeForm} style={{ padding: '0.5rem 1rem', background: '#e5e7eb', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
           {createCustomerFromJobModalOpen && (

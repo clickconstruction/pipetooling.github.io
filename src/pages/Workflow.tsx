@@ -1,8 +1,11 @@
-import { useEffect, useState, useRef } from 'react'
+import { Fragment, useEffect, useState, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { parseWorkflowLineItemPaste } from '../lib/parseWorkflowLineItemPaste'
 import { useAuth } from '../hooks/useAuth'
+import { useToastContext } from '../contexts/ToastContext'
+import { useJobThreadNotes } from '../hooks/useJobThreadNotes'
+import { JobThreadNotesPanel } from '../components/JobThreadNotesPanel'
 import type { Database } from '../types/database'
 
 type Step = Database['public']['Tables']['project_workflow_steps']['Row']
@@ -130,6 +133,19 @@ function PersonDisplayWithContact({ name, contacts, userNames }: { name: string 
 export default function Workflow() {
   const { projectId } = useParams()
   const { user: authUser } = useAuth()
+  const { showToast } = useToastContext()
+  const {
+    expandedJobThreadId: expandedWorkflowJobThreadId,
+    setExpandedJobThreadId: setExpandedWorkflowJobThreadId,
+    jobThreadNotesByJobId: workflowJobThreadNotesByJobId,
+    jobThreadNotesLoadingId: workflowJobThreadNotesLoadingId,
+    jobThreadSubmittingId: workflowJobThreadSubmittingId,
+    jobThreadDraft: workflowJobThreadDraft,
+    setJobThreadDraft: setWorkflowJobThreadDraft,
+    submitJobThreadNote: submitWorkflowJobThreadNote,
+    jobThreadStatsByJobId: workflowJobThreadStatsByJobId,
+    refreshJobThreadStatsForJobIds: refreshWorkflowJobThreadStats,
+  } = useJobThreadNotes(showToast, authUser?.id)
   const [project, setProject] = useState<Project | null>(null)
   const [workflow, setWorkflow] = useState<Workflow | null>(null)
   const [steps, setSteps] = useState<Step[]>([])
@@ -837,6 +853,14 @@ export default function Workflow() {
       setProjectJobs([])
     }
   }, [projectId])
+
+  useEffect(() => {
+    if (!authUser?.id || projectJobs.length === 0) {
+      void refreshWorkflowJobThreadStats([])
+      return
+    }
+    void refreshWorkflowJobThreadStats(projectJobs.map((j) => j.id))
+  }, [authUser?.id, projectJobs, refreshWorkflowJobThreadStats])
 
   async function loadProjections(workflowId: string) {
     if (userRole !== 'dev' && userRole !== 'master_technician') return
@@ -2201,15 +2225,42 @@ export default function Workflow() {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center', justifyContent: 'flex-end' }}>
               <span style={{ fontSize: '0.8125rem', color: '#9ca3af' }}>Jobs:</span>
               {projectJobs.length === 0 && <span style={{ color: '#9ca3af', fontSize: '0.8125rem' }}>None</span>}
-              {projectJobs.map((j) => (
-                <Link
-                  key={j.id}
-                  to={`/jobs?edit=${j.id}&tab=stages`}
-                  style={{ padding: '0.15rem 0.4rem', background: '#f5f5f5', borderRadius: 4, fontSize: '0.8125rem', textDecoration: 'none', color: '#374151' }}
-                >
-                  {j.hcp_number || j.job_name || 'Job'}
-                </Link>
-              ))}
+              {projectJobs.map((j) => {
+                const expanded = expandedWorkflowJobThreadId === j.id
+                const stat = workflowJobThreadStatsByJobId[j.id]
+                const n = stat?.note_count ?? 0
+                return (
+                  <Fragment key={j.id}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                      <Link
+                        to={`/jobs?edit=${j.id}&tab=stages`}
+                        style={{ padding: '0.15rem 0.4rem', background: '#f5f5f5', borderRadius: 4, fontSize: '0.8125rem', textDecoration: 'none', color: '#374151' }}
+                      >
+                        {j.hcp_number || j.job_name || 'Job'}
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedWorkflowJobThreadId((prev) => (prev === j.id ? null : j.id))}
+                        aria-expanded={expanded}
+                        title={n > 0 ? `${n} thread note(s)` : 'Job notes thread'}
+                        style={{
+                          padding: '0.1rem 0.25rem',
+                          fontSize: '0.7rem',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: 4,
+                          background: 'white',
+                          cursor: 'pointer',
+                          color: '#374151',
+                          lineHeight: 1,
+                        }}
+                      >
+                        {expanded ? '\u25BC' : '\u25B6'}
+                        {n > 0 ? <span style={{ color: '#2563eb', marginLeft: 2 }}>{n}</span> : null}
+                      </button>
+                    </span>
+                  </Fragment>
+                )
+              })}
               <Link
                 to={`/jobs?newJob=true&project=${projectId}&tab=stages`}
                 style={{ padding: '0.15rem 0.4rem', background: '#e0f2fe', borderRadius: 4, fontSize: '0.8125rem', textDecoration: 'none', color: '#0369a1' }}
@@ -2217,6 +2268,19 @@ export default function Workflow() {
                 + Create Job
               </Link>
             </div>
+            {expandedWorkflowJobThreadId && (
+              <div style={{ width: '100%', maxWidth: 560, alignSelf: 'stretch' }}>
+                <JobThreadNotesPanel
+                  notes={workflowJobThreadNotesByJobId[expandedWorkflowJobThreadId] ?? []}
+                  loading={workflowJobThreadNotesLoadingId === expandedWorkflowJobThreadId}
+                  canPost={!!authUser}
+                  draft={workflowJobThreadDraft}
+                  submitting={workflowJobThreadSubmittingId === expandedWorkflowJobThreadId}
+                  onDraftChange={setWorkflowJobThreadDraft}
+                  onSubmit={() => void submitWorkflowJobThreadNote(expandedWorkflowJobThreadId)}
+                />
+              </div>
+            )}
             {canManageStages && (
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 {(steps.filter(s => s.status === 'completed' || s.status === 'approved' || s.status === 'skipped').length >= 2) && (

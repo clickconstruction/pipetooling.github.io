@@ -12,14 +12,29 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.181 → v2.4"
+version_range: "v2.186 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.186)"
+    line: ~519
+    description: "Settings Templates & testing: collapsible Workflow email (Edge Function) smoke test for send-workflow-notification; test-email / send-workflow-notification gateway verify_jwt in config.toml"
+  - name: "Latest Version (v2.185)"
+    line: ~533
+    description: "Jobs Stages: Last activity column (latest thread preview, Central Time); DROP stage_notes; jobs_ledger_thread_note_stats + body/author"
+  - name: "Latest Version (v2.184)"
+    line: ~535
+    description: "Job thread notes composer: Enter to post, Shift+Enter new line (JobThreadNotesPanel)"
+  - name: "Latest Version (v2.183)"
+    line: ~545
+    description: "Jobs Stages + Workflow: job ledger thread notes (expand row, stats RPC, realtime); useJobThreadNotes hook"
+  - name: "Latest Version (v2.182)"
+    line: ~561
+    description: "Dashboard Clock In / Update Focus: assigned jobs auto-loaded; no Choose button/labels; hidden single-type Filtering by line; stronger field borders + focus rings"
   - name: "Latest Version (v2.181)"
-    line: ~499
+    line: ~574
     description: "Jobs Edit billing: comma formatting for Job Total/Bid and payment amounts; Workflow line items optional item_date + clipboard bulk import (tab-separated)"
   - name: "Latest Version (v2.180)"
-    line: ~520
+    line: ~591
     description: "Bids New/Edit modal: SearchableSelect pickers; top field grid + mobile layout; Address / Distance+Plan Pages; wider modal; estimator header Bid button height"
   - name: "Latest Version (v2.179)"
     line: ~508
@@ -379,31 +394,36 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.181)](#latest-updates-v2181) - Jobs **Edit Job** billing: **comma** thousands on Job Total/Bid and payment amounts; Workflow **line items** optional **item_date** + **clipboard** bulk import (Add mode)
-2. [Latest Updates (v2.180)](#latest-updates-v2180) - Bids **New/Edit** modal: **SearchableSelect**, layout + mobile grid, Distance + Plan Pages row; estimator **Bid** header
-3. [Latest Updates (v2.179)](#latest-updates-v2179) - Dashboard **My Time** / **Edit time** (this-week-only editor, Form/Visual defaults, timeline UX)
-4. [Latest Updates (v2.178)](#latest-updates-v2178) - People **Primary** / **Superintendent** on `people` roster + Pay/Hours (`20260329042321`)
-5. [Latest Updates (v2.177)](#latest-updates-v2177) - People **Housing** tab + pay report **Housing** block (`20270329180000`)
-6. [Latest Updates (v2.176)](#latest-updates-v2176) - People Pay History: Ledger **open count** + **total remaining** (filtered rows)
-7. [Latest Updates (v2.175)](#latest-updates-v2175) - People Pay History: **Draft Payroll** (renamed from Run Payroll); bulk modal copy only
-8. [Latest Updates (v2.172)](#latest-updates-v2172) - Pay History: partial payments (`pay_stub_payments`), ledger balance, Run Payroll Partial
-9. [Latest Updates (v2.171)](#latest-updates-v2171) - People Hours: audit modal edit, job highlight on grid, shared clock edit modal
-10. [Latest Updates (v2.170)](#latest-updates-v2170) - People Pay History: ledger search, actions UX, bulk modal layout
-11. [Latest Updates (v2.164)](#latest-updates-v2164) - Settings (dev): Ignored task types list under Dashboard & alerts
-12. [Latest Updates (v2.163)](#latest-updates-v2163) - Dashboard clock strip; supply house website in expanded row
-13. [Latest Updates (v2.162)](#latest-updates-v2162) - Team feedback: dev eligibility reset, submissions RLS, raw submission names
-14. [Latest Updates (v2.153)](#latest-updates-v2153) - Dashboard My Team layout; pending banner jump UX
-15. [Latest Updates (v2.152)](#latest-updates-v2152) - My Team: People you lead hours table (Pending/Approved/Total)
-16. [Latest Updates (v2.151)](#latest-updates-v2151) - My Team clock notify + ledger; Edge Function
-17. [Latest Updates (v2.150)](#latest-updates-v2150) - Dashboard My Team: People you lead roster
-18. [Latest Updates (v2.149)](#latest-updates-v2149) - Clock sessions UX; daily goals gate; goals tables
-19. [Latest Updates (v2.148)](#latest-updates-v2148) - Bid Board All notes; customer notes UX; contact_method
-20. [Latest Updates (v2.145)](#latest-updates-v2145) - Master tech mobile nav Quickfill and Review in hamburger
-21. [Latest Updates (v2.144)](#latest-updates-v2144) - Assistant billing sections at top of Dashboard
-22. [Latest Updates (v2.143)](#latest-updates-v2143) - Assistant Dashboard section reorder
-23. [Latest Updates (v2.142)](#latest-updates-v2142) - Dashboard Assigned Jobs and Superintendent Jobs UX
-2. [Latest Updates (v2.139)](#latest-updates-v2139) - Fix cost_estimates RLS for assistants
-3. [Latest Updates (v2.138)](#latest-updates-v2138) - Revoke superintendent Jobs Billing access
+1. [Latest Updates (v2.186)](#latest-updates-v2186) - Settings **Templates & testing** (dev): collapsible **Workflow email (Edge Function)** one-shot test invoking `send-workflow-notification` (DB template + Resend; no `notification_history`); [`supabase/config.toml`](supabase/config.toml) `verify_jwt = false` for `test-email` and `send-workflow-notification`
+2. [Latest Updates (v2.185)](#latest-updates-v2185) - Jobs **Stages** **Last activity** column (latest thread note preview, Central Time); remove `jobs_ledger.stage_notes`; [`jobs_ledger_thread_note_stats`](supabase/migrations/20260330023918_extend_thread_note_stats_drop_stage_notes.sql) `last_note_body` / `last_note_author_name`
+3. [Latest Updates (v2.184)](#latest-updates-v2184) - Job thread notes: **Enter** submits note; **Shift+Enter** new line ([`JobThreadNotesPanel`](src/components/JobThreadNotesPanel.tsx))
+4. [Latest Updates (v2.183)](#latest-updates-v2183) - Jobs **Stages** + **Workflow** linked jobs: **thread notes** column (`jobs_ledger_thread_notes`, Dispatch-style panel); `jobs_ledger_thread_note_stats`; [`useJobThreadNotes`](src/hooks/useJobThreadNotes.ts)
+5. [Latest Updates (v2.182)](#latest-updates-v2182) - Dashboard **Clock In** / **Update Focus**: assigned jobs **auto-load** (`list_assigned_jobs_for_dashboard`); no **Choose from my jobs** control; **Filtering by** line hidden when a single service type; stronger notes/search **borders** and **focus** styles
+6. [Latest Updates (v2.181)](#latest-updates-v2181) - Jobs **Edit Job** billing: **comma** thousands on Job Total/Bid and payment amounts; Workflow **line items** optional **item_date** + **clipboard** bulk import (Add mode)
+7. [Latest Updates (v2.180)](#latest-updates-v2180) - Bids **New/Edit** modal: **SearchableSelect**, layout + mobile grid, Distance + Plan Pages row; estimator **Bid** header
+8. [Latest Updates (v2.179)](#latest-updates-v2179) - Dashboard **My Time** / **Edit time** (this-week-only editor, Form/Visual defaults, timeline UX)
+9. [Latest Updates (v2.178)](#latest-updates-v2178) - People **Primary** / **Superintendent** on `people` roster + Pay/Hours (`20260329042321`)
+10. [Latest Updates (v2.177)](#latest-updates-v2177) - People **Housing** tab + pay report **Housing** block (`20270329180000`)
+11. [Latest Updates (v2.176)](#latest-updates-v2176) - People Pay History: Ledger **open count** + **total remaining** (filtered rows)
+12. [Latest Updates (v2.175)](#latest-updates-v2175) - People Pay History: **Draft Payroll** (renamed from Run Payroll); bulk modal copy only
+13. [Latest Updates (v2.172)](#latest-updates-v2172) - Pay History: partial payments (`pay_stub_payments`), ledger balance, Run Payroll Partial
+14. [Latest Updates (v2.171)](#latest-updates-v2171) - People Hours: audit modal edit, job highlight on grid, shared clock edit modal
+15. [Latest Updates (v2.170)](#latest-updates-v2170) - People Pay History: ledger search, actions UX, bulk modal layout
+16. [Latest Updates (v2.164)](#latest-updates-v2164) - Settings (dev): Ignored task types list under Dashboard & alerts
+17. [Latest Updates (v2.163)](#latest-updates-v2163) - Dashboard clock strip; supply house website in expanded row
+18. [Latest Updates (v2.162)](#latest-updates-v2162) - Team feedback: dev eligibility reset, submissions RLS, raw submission names
+19. [Latest Updates (v2.153)](#latest-updates-v2153) - Dashboard My Team layout; pending banner jump UX
+20. [Latest Updates (v2.152)](#latest-updates-v2152) - My Team: People you lead hours table (Pending/Approved/Total)
+21. [Latest Updates (v2.151)](#latest-updates-v2151) - My Team clock notify + ledger; Edge Function
+22. [Latest Updates (v2.150)](#latest-updates-v2150) - Dashboard My Team: People you lead roster
+23. [Latest Updates (v2.149)](#latest-updates-v2149) - Clock sessions UX; daily goals gate; goals tables
+24. [Latest Updates (v2.148)](#latest-updates-v2148) - Bid Board All notes; customer notes UX; contact_method
+25. [Latest Updates (v2.145)](#latest-updates-v2145) - Master tech mobile nav Quickfill and Review in hamburger
+26. [Latest Updates (v2.144)](#latest-updates-v2144) - Assistant billing sections at top of Dashboard
+27. [Latest Updates (v2.143)](#latest-updates-v2143) - Assistant Dashboard section reorder
+28. [Latest Updates (v2.142)](#latest-updates-v2142) - Dashboard Assigned Jobs and Superintendent Jobs UX
+29. [Latest Updates (v2.139)](#latest-updates-v2139) - Fix cost_estimates RLS for assistants
+30. [Latest Updates (v2.138)](#latest-updates-v2138) - Revoke superintendent Jobs Billing access
 2. [Latest Updates (v2.135)](#latest-updates-v2135) - Workflow: Collapse old stages toggle, breadcrumb below buttons, no-wrap scroll
 2. [Latest Updates (v2.126)](#latest-updates-v2126) - Split clock session in Edit modal
 2. [Latest Updates (v2.121)](#latest-updates-v2121) - Stages ClickTooling icon, Billing UX refactor, Report count styling
@@ -497,6 +517,69 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.186)
+
+**Date**: 2026-03-29
+
+### Settings — Templates & testing: workflow email Edge Function smoke test
+
+- **[`Settings.tsx`](src/pages/Settings.tsx)** (`settings-templates`, dev only): Collapsible **Workflow email (Edge Function)** sends one email via **`send-workflow-notification`** (server reads **`email_templates`** by `template_type`, Resend). Uses the same **Test target** as other template tests; **does not** send **`recipient_user_id`**, so **no `notification_history`** row (avoids placeholder `step_id` FK issues). **`refreshSession`** + explicit **`Authorization: Bearer`** on **`functions.invoke`**. Template type dropdown covers the eight **`stage_*`** workflow email types; **Send test** is disabled until that row exists under Email Templates.
+- **`supabase/config.toml`**: **`[functions.send-workflow-notification] verify_jwt = false`** (same pattern as **`test-email`**: JWT checked inside the function). Redeploy hosted functions with **`--no-verify-jwt`** when needed so the browser is not blocked by gateway JWT verification.
+- **Docs**: This entry; **[`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md)** **`send-workflow-notification`** request shape; **[`WORKFLOW_EMAIL_TESTING.md`](WORKFLOW_EMAIL_TESTING.md)** quick smoke test.
+
+---
+
+## Latest Updates (v2.185)
+
+**Date**: 2026-03-30
+
+### Jobs — Stages Last activity (thread preview) and remove `stage_notes`
+
+- **Migration**: [`20260330023918_extend_thread_note_stats_drop_stage_notes.sql`](supabase/migrations/20260330023918_extend_thread_note_stats_drop_stage_notes.sql) — optional backfill from legacy `stage_notes` into `jobs_ledger_thread_notes` (master as author, skip jobs that already have thread rows); **`jobs_ledger_thread_note_stats`** returns **`last_note_body`** (400-char cap) and **`last_note_author_name`**; **`DROP COLUMN jobs_ledger.stage_notes`**
+- **UI**: [`Jobs.tsx`](src/pages/Jobs.tsx) — **Last activity** column replaces Stage Notes textarea: author + Central Time meta ([`getDispatchNoteDisplayMeta`](src/utils/dispatchNoteDisplay.ts)) + clamped preview; **—** when no notes
+- **Hook**: [`useJobThreadNotes`](src/hooks/useJobThreadNotes.ts) — extended stats shape; realtime **INSERT** merges stats via targeted RPC refresh
+
+---
+
+## Latest Updates (v2.184)
+
+**Date**: 2026-03-31
+
+### Jobs / Workflow — Job thread notes composer
+
+- **[`JobThreadNotesPanel`](src/components/JobThreadNotesPanel.tsx)**: **Enter** submits the note (same rules as **Post note**: non-empty trimmed body, not while submitting). **Shift+Enter** inserts a newline. Placeholder documents the shortcuts.
+
+---
+
+## Latest Updates (v2.183)
+
+**Date**: 2026-03-30
+
+### Jobs — Stages thread notes
+
+- **Schema**: [`jobs_ledger_thread_notes`](supabase/migrations/20260330021739_jobs_ledger_thread_notes.sql) — append-only rows per `jobs_ledger.id` (`body` 1–2000 chars); RLS **SELECT** / **INSERT** matches [`job_status_events`](supabase/migrations/20260623190000_revoke_superintendent_jobs_billing.sql) job visibility; **`jobs_ledger_thread_note_stats(p_job_ids)`** for collapsed note counts; **`supabase_realtime`** publication for live inserts.
+- **UI**: New leading column (chevron + optional count) on **Working**, **Ready to Bill**, **Billed**, and **Paid in Full** stage tables ([`renderStagesTable`](src/pages/Jobs.tsx), [`renderUnifiedStagesTable`](src/pages/Jobs.tsx)); expanded row shows [`JobThreadNotesPanel`](src/components/JobThreadNotesPanel.tsx) (Central Time / days-ago from [`getDispatchNoteDisplayMeta`](src/utils/dispatchNoteDisplay.ts)).
+- **Hook**: [`useJobThreadNotes`](src/hooks/useJobThreadNotes.ts) — load, submit, draft, stats batch helper, realtime refresh.
+
+### Workflow — Linked jobs
+
+- Project header **Jobs** chips: chevron beside each link opens the same thread panel for that `jobs_ledger` row (shared hook).
+
+---
+
+## Latest Updates (v2.182)
+
+**Date**: 2026-03-29
+
+### Dashboard — Clock In and Update Focus modals
+
+- **Assigned jobs**: Opening **Ready to clock in?** or **Update Focus** automatically loads the user’s assigned jobs via `list_assigned_jobs_for_dashboard` (wrapped in `withSupabaseRetry` in [`ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx)); results appear in the shared list with a **Loading…** state while fetching. Stale responses are ignored if the modal closes or the user types in the search box before the RPC returns (generation ref + `assignedJobsShownRef` / debounce behavior unchanged in spirit from the prior Clock-In-only prefetch).
+- **Removed**: Separate **Choose from my jobs?** button and the **Choose from my jobs:** label (both modals).
+- **Single service type**: When the user has exactly one bid filter type (e.g. subcontractor with one trade), the **Filtering by: [name]** line is **hidden** in both modals; search still uses that type.
+- **Field borders**: Required notes textarea and unified job/bid search input use a stronger **2px** border (`#64748b`). **Clock In** uses an orange **focus** outline (`#ff6600`); **Update Focus** uses blue (`#3b82f6`) for those fields.
 
 ---
 

@@ -53,14 +53,33 @@ serve(async (req) => {
       )
     }
 
-    // Check if user is dev
-    const { data: userData, error: userError } = await supabase
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    if (!serviceRoleKey) {
+      return new Response(
+        JSON.stringify({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured for test-email' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    const adminClient = createClient(supabaseUrl, serviceRoleKey)
+
+    // Check role with service role so RLS never hides the caller's row (anon + JWT can return 0 rows).
+    const { data: userData, error: userError } = await adminClient
       .from('users')
       .select('role')
       .eq('id', user.id)
       .single()
 
-    if (userError || !userData || userData.role !== 'dev') {
+    if (userError || !userData) {
+      return new Response(
+        JSON.stringify({
+          error: 'Forbidden - User profile not found or access denied',
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const role = userData.role as string
+    if (role !== 'dev' && role !== 'owner') {
       return new Response(
         JSON.stringify({ error: 'Forbidden - Only devs can send test emails' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
