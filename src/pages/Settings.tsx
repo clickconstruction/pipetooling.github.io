@@ -16,6 +16,7 @@ import ReportEditModal, { type ReportForEdit } from '../components/ReportEditMod
 import MyReportsModal, { type ReportForMyReports } from '../components/MyReportsModal'
 import ChecklistItemMuteModal from '../components/ChecklistItemMuteModal'
 import PasswordInput from '../components/PasswordInput'
+import { SalaryWorkScheduleSettings } from '../components/SalaryWorkScheduleSettings'
 import TeamFeedbackDevSettingsBlock from '../components/team-feedback/TeamFeedbackDevSettingsBlock'
 import TeamFeedbackMasterAggregates from '../components/team-feedback/TeamFeedbackMasterAggregates'
 import type { Database } from '../types/database'
@@ -502,6 +503,7 @@ export default function Settings() {
   const [teamLeaderAssignmentsSearchQuery, setTeamLeaderAssignmentsSearchQuery] = useState('')
   const [taskDispatchSectionOpen, setTaskDispatchSectionOpen] = useState(false)
   const [dashboardButtonsSectionOpen, setDashboardButtonsSectionOpen] = useState(false)
+  const [salaryWorkdaySectionOpen, setSalaryWorkdaySectionOpen] = useState(true)
   const [dailyGoalsSectionOpen, setDailyGoalsSectionOpen] = useState(false)
   const [teamLeadAssignmentsSectionOpen, setTeamLeadAssignmentsSectionOpen] = useState(false)
   const [reportNotificationsSectionOpen, setReportNotificationsSectionOpen] = useState(false)
@@ -5241,6 +5243,58 @@ export default function Settings() {
         )}
 
       </SettingsGroup>
+
+      {authUser?.id && (
+        <section
+          id="settings-salary-workday"
+          aria-labelledby="settings-salary-workday-heading"
+          style={{ marginBottom: '2rem', scrollMarginTop: '0.75rem' }}
+        >
+          <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb' }}>
+            <button
+              type="button"
+              id="settings-salary-workday-heading"
+              aria-expanded={salaryWorkdaySectionOpen}
+              aria-controls="settings-salary-workday-panel"
+              onClick={() => setSalaryWorkdaySectionOpen((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                padding: '1rem',
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1.125rem',
+                fontWeight: 600,
+                color: '#111827',
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: '0.75rem' }} aria-hidden>
+                {salaryWorkdaySectionOpen ? '▼' : '▶'}
+              </span>
+              Salaried workday
+            </button>
+            {salaryWorkdaySectionOpen && (
+              <div
+                id="settings-salary-workday-panel"
+                style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}
+              >
+                <SalaryWorkScheduleSettings
+                  userId={authUser.id}
+                  userPayName={users.find((u) => u.id === authUser.id)?.name?.trim() ?? ''}
+                  canEditPastDayOverrides={
+                    myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant'
+                  }
+                />
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       <SettingsGroup id="settings-dashboard" title="Dashboard & alerts">
 

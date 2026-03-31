@@ -465,7 +465,7 @@ export function DashboardMyTimeDayEditorModal({
   const { dayStartMs, dayEndMs } = useMemo(() => daySpanMs(sortedSessions, nowTick), [sortedSessions, nowTick])
   const totalDur = Math.max(1, dayEndMs - dayStartMs)
 
-  /** Option B: subtitle when clock data spans more than one Denver calendar day. */
+  /** Option B: subtitle when clock data spans more than one company calendar day. */
   const sessionsSpanDenverSubtitle = useMemo(() => {
     if (sortedSessions.length === 0) return null
     let minT = Infinity
@@ -1377,7 +1377,7 @@ export function DashboardMyTimeDayEditorModal({
         ) : null}
         {!editable ? (
           <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
-            Only this week can be edited from the dashboard (server uses America/Denver week boundaries).
+            Only this week can be edited from the dashboard (server uses America/Chicago week boundaries).
           </p>
         ) : sessionsFetchError ? (
           <p style={{ margin: 0, fontSize: '0.875rem', color: '#b91c1c' }}>{sessionsFetchError}</p>

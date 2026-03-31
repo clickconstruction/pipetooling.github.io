@@ -577,7 +577,7 @@ WHERE proname IN (
 - **RLS**: 
   - SELECT: Users can see projects they own OR projects from masters who adopted them
     - Assistants can see **all projects** from masters who adopted them (not just assigned stages)
-    - Migration: `supabase/migrations/verify_projects_rls_for_assistants.sql` ensures correct policy
+    - Migration: `supabase/archive/verify_projects_rls_for_assistants.sql` ensures correct policy
   - INSERT: Assistants, masters, and devs can create projects; project owner automatically matches customer owner
   - UPDATE: Assistants, masters, and devs can update projects they own or from masters who adopted them (project owner cannot be changed)
   - DELETE: Only devs and masters can delete projects
@@ -744,9 +744,12 @@ WHERE proname IN (
   - `rejected_by` (uuid, FK → `users.id`, nullable)
   - `revoked_at` (timestamptz, nullable)
   - `revoked_by` (uuid, FK → `users.id`, nullable)
-- **RLS**: Users SELECT/INSERT/UPDATE own (for clock out); pay-access (approved masters, assistants) SELECT/UPDATE/DELETE all for approval and edit; team leads may SELECT (and UPDATE for reject) rows where `is_team_lead_for_member(auth.uid(), user_id)`.
+  - `origin` (`user_punch` | `salary_schedule`) - salary rows are created/closed by `sync_salary_clock_sessions_for_day` / `sync_salary_clock_sessions_for_user_day` (not by the Clock In button)
+  - `salary_segment_index` (smallint, nullable) - for split salaried days: `1` or `2`; null for continuous 8h
+- **RLS**: Users SELECT/INSERT/UPDATE own (for clock out); pay-access (approved masters, assistants) SELECT/UPDATE/DELETE all for approval and edit; team leads may SELECT (and UPDATE for reject) rows where `is_team_lead_for_member(auth.uid(), user_id)`. Inserts from the client must use `origin = 'user_punch'`.
 - **Realtime**: Table in `supabase_realtime` publication for Hours tab live updates.
 - **RPCs**: `approve_clock_sessions(p_session_ids UUID[])` merges hours into `people_hours` and marks sessions approved; callers without pay access may process a session only when `is_team_lead_for_member(auth.uid(), session.user_id)`. For sessions with `job_ledger_id`, also creates/updates `people_crew_jobs` (percentages by hours); for sessions with `bid_id`, also creates/updates `people_crew_bids`. `revoke_clock_sessions(p_session_ids UUID[])` subtracts hours from `people_hours` and moves sessions back to Pending; same team-lead authorization for non–pay-access callers; for sessions with `job_ledger_id`, recomputes or removes `people_crew_jobs`; for sessions with `bid_id`, recomputes or removes `people_crew_bids`.
+- **Salary scheduling**: `salary_work_schedule_templates` (per-user default 8h layout) and optional `salary_work_schedule_day_overrides` (per `user_id` + `work_date`). Edge Function **`sync-salary-sessions`** (CRON_SECRET, service role) calls `sync_salary_clock_sessions_for_day` for **America/Chicago** (company calendar) date; authenticated users trigger `sync_salary_clock_sessions_for_user_day` after saving Settings. Dashboard uses **On shift** / **Off shift** (no punch) when the user is salaried and has a template (`ClockInOutButton`). **Settings `is_salary` check**: policy **`Users can read own people pay config row`** on **`people_pay_config`** (`20270331160000_users_read_own_people_pay_config.sql`) allows **SELECT** on the row where **`btrim(users.name) = btrim(person_name)`** for the current user so non–pay-master roles (e.g. superintendent) can open **Salaried workday**; wage columns may still be returned to the client for that row.
 
 #### `public.user_dashboard_goals`
 - **Purpose**: Lines shown in the **My Roles Goals** full-screen gate after the user’s first clock-in of a calendar day when at least one row exists. Managed in Settings by dev, master_technician, or assistant for a chosen user.
@@ -905,10 +908,10 @@ WHERE proname IN (
     - "View Invoice" button on linked line items opens modal with invoice #, supply house, amount, link
   - Assistants can view Ledger table but cannot see financial totals
 - **Migrations**: 
-  - `supabase/migrations/optimize_workflow_step_line_items_rls.sql` - RLS optimization
-  - `supabase/migrations/add_link_to_line_items.sql` - Added link field
-  - `supabase/migrations/add_purchase_order_to_line_items.sql` - Added purchase_order_id field
-  - `supabase/migrations/add_supply_house_invoice_to_line_items.sql` - Added supply_house_invoice_id field
+  - `supabase/archive/optimize_workflow_step_line_items_rls.sql` - RLS optimization
+  - `supabase/archive/add_link_to_line_items.sql` - Added link field
+  - `supabase/archive/add_purchase_order_to_line_items.sql` - Added purchase_order_id field
+  - `supabase/migrations/20260321120001_add_supply_house_invoice_to_line_items.sql` - Added supply_house_invoice_id field
   - `supabase/migrations/20270329210000_workflow_step_line_items_item_date.sql` - Added optional `item_date`
 
 #### `public.workflow_projections`
@@ -952,7 +955,7 @@ WHERE proname IN (
   - Authenticated users can insert actions for steps they have access to
   - Uses `can_access_step_for_action()` helper function to optimize performance
 - **Purpose**: Provides complete audit trail of all step state changes
-- **Migration**: `supabase/migrations/fix_project_workflow_step_actions_rls.sql`
+- **Migration**: `supabase/archive/fix_project_workflow_step_actions_rls.sql`
 
 ### Database Functions
 
@@ -972,21 +975,21 @@ WHERE proname IN (
 - **Purpose**: Checks if the given master has adopted the current user
 - **Usage**: Used in users table RLS policy to allow assistants to see masters who adopted them
 - **Implementation**: Uses `SECURITY DEFINER` to bypass RLS and avoid recursion
-- **Migration**: `supabase/migrations/fix_users_rls_for_project_masters.sql`
+- **Migration**: `supabase/archive/fix_users_rls_for_project_masters.sql`
 
 #### `public.can_access_project_via_step(step_id_param UUID)`
 - **Returns**: `boolean`
 - **Purpose**: Checks if the current user can access a project via a workflow step
 - **Usage**: Used in `workflow_step_line_items` RLS policies to optimize performance
 - **Implementation**: Uses `SECURITY DEFINER` to bypass RLS and avoid recursion
-- **Migration**: `supabase/migrations/optimize_workflow_step_line_items_rls.sql`
+- **Migration**: `supabase/archive/optimize_workflow_step_line_items_rls.sql`
 
 #### `public.can_access_step_for_action(step_id_param UUID)`
 - **Returns**: `boolean`
 - **Purpose**: Checks if the current user can access a step for recording actions
 - **Usage**: Used in `project_workflow_step_actions` RLS policies to optimize performance
 - **Implementation**: Uses `SECURITY DEFINER` to bypass RLS and avoid recursion
-- **Migration**: `supabase/migrations/fix_project_workflow_step_actions_rls.sql`
+- **Migration**: `supabase/archive/fix_project_workflow_step_actions_rls.sql`
 
 #### `public.claim_dev_with_code(code text)`
 - **Returns**: `boolean`
@@ -1004,7 +1007,7 @@ WHERE proname IN (
   - Calculates `price_change_percent` from old and new prices
   - Handles INSERT (old_price is NULL) and UPDATE (old_price from OLD record) correctly
   - Records `changed_at` (current timestamp) and `changed_by` (current user)
-- **Migration**: `supabase/migrations/create_price_history_trigger.sql`
+- **Migration**: `supabase/archive/create_price_history_trigger.sql`
 
 #### `public.get_supply_house_price_counts()`
 - **Returns**: Table of `(supply_house_id uuid, name text, price_count integer)`
@@ -1014,7 +1017,7 @@ WHERE proname IN (
   - LEFT JOIN to include supply houses with zero prices
   - Counts prices per supply house
   - Sorted by `price_count DESC` (most prices first)
-- **Migration**: `supabase/migrations/create_supply_house_stats_function.sql`
+- **Migration**: `supabase/archive/create_supply_house_stats_function.sql`
 - **Example Result**:
 ```sql
 supply_house_id | name              | price_count
@@ -2154,7 +2157,7 @@ user_id = auth.uid()
   - **Quick-action buttons** (dev, master_technician, assistant): Job, Job Labor, Bid, Project, Part, Assembly, New Prospect. Each opens the corresponding create flow. **Dashboard button visibility**: Users can configure which buttons to show in Settings → Dashboard buttons (checkboxes for each).
   - **Pinned Links** (from Settings or Layout Pin): Users manage their own page pins in Settings → Dashboard Page Pins → Page pins (Clear all, Remove per pin). Dev can pin Billed Awaiting Payment, Supply Houses AP, Sub Labor Due, and Cost matrix (Internal Team) to masters/devs dashboards. Pins show labels: "Billed Awaiting Payment (count) - $total", "Supply Houses: $X", "Sub Labor Due: $X,XXX", "Internal Team: $X,XXX". Billed pin navigates to Jobs Stages and opens Total by Name modal. Supply Houses link navigates to Materials Supply Houses, Sub Labor Due to Jobs Sub Labor tab, Cost matrix to People Pay Cost matrix.
   - **Currently clocked in** (when at least one **open** clock session applies in the current view): Compact table **below pinned links** (and **above** the **Pending clock sessions** yellow banner when the banner is shown). The **Clocked in today** subsection uses **one table** whose **`thead`** row combines the **collapse** chevron (same gutter as row carets), **Clocked in today**, and (when expanded) **Today | First clock-in**, with **Show all** / **Needs attention** in a top-right overlay when that filter applies (**Needs attention** lists people with at least one today session that is **unassigned** (no job and no bid) or **pending approval**—closed and not approved—using the same merged approve status as the strip, including optimistic approve; defaults to **Needs attention** focused mode; subsection expanded by default unless saved collapsed in **`dashboard_clock_strip_clocked_in_today_collapsed`**). Columns: header **Currently clocked in (n)** (counts open sessions), **Clocked in** (time), **Elapsed** (live duration for open session), **Today** (sum of **clock session** hours for today’s `work_date` for that person; excludes manual **People Hours** grid). **Per-session approve/reject** (dev, master_technician, assistant): when a person row is expanded, each **today** session line shows status (**open** / **pending** / **approved**); **pending** closed sessions can be **approved** via RPC (`approve_clock_sessions` on **short click**). After a **successful** approve, the strip shows **approved** immediately via **`optimisticStripApprovedIds`** / **`stripApproveStatusForSession`** in [`DashboardTeamActiveClockStrip`](src/components/DashboardTeamActiveClockStrip.tsx) (before **`loadPending`** refreshes **`approved_at`**; cleared when the server row catches up, the session leaves the strip, or **revoke** / strip **reject** runs). **Long-press** (~0.56s), **Shift+click**, and the screen-reader **Session actions** control open **[`ClockSessionStripActionsModal`](src/components/ClockSessionStripActionsModal.tsx)** with **Edit** (**current assignment** summary from strip embeds, **Open job** / **Open bid** links, **Change assignment** and **Clear assignment**, **focus memo**, and **job/bid** search—search starts collapsed when a job or bid is already linked until **Change assignment**), **Approve** / **Reject…** (pending), and **Revoke approval…** (approved; `revoke_clock_sessions` after **`window.confirm`**). **Reject…** in that modal closes it and opens the existing **in-app confirmation** overlay in [`DashboardTeamActiveClockStrip`](src/components/DashboardTeamActiveClockStrip.tsx) for `rejected_at` / `rejected_by`. **Z-index** order stacks the assign popover, then the actions modal, then the reject confirm. See [`ClockSessionStripApproveControl`](src/components/ClockSessionStripApproveControl.tsx). **My team / Everyone** (dev, master_technician, assistant only): toggle **My team** (people you lead) vs **Everyone** (same pending-week query without `user_id` filter; **RLS** limits who appears). Choice persisted in **`localStorage`** (`dashboard_clock_strip_scope`). **Jobs worked today**: when at least one today session in strip scope has **`job_ledger_id`**, a collapsible **two-column** subsection below **Clocked in today** groups by job (**chevron** | **job**): first line is the job **`Link`** plus inline **`[ totalHours • peopleCount ]`** (distinct people, **`formatHoursH`** on summed seconds—see **v2.203** in [`RECENT_FEATURES.md`](RECENT_FEATURES.md)), second line optional address; expand a job for per-session person, range, and duration (**detail row** **`colSpan` 2** via **`JOBS_WORKED_TODAY_COL_SPAN`**). Scope-toggle **`paddingRight`** gutter on the job column matches other strip metric cells. Data: **`jobsWorkedTodayStripRows`** (same scope as **`todaySessionsForStripScope`**; bid-only and rejected/revoked excluded); collapse pref **`dashboard_clock_strip_jobs_worked_today_collapsed`**. **Implementation**: [`DashboardTeamActiveClockStrip`](src/components/DashboardTeamActiveClockStrip.tsx), [`useDashboardMyTeamSectionState`](src/hooks/useDashboardMyTeamSectionState.ts) (`orgWidePendingSessions`, `hoursTodayByUserId` / `hoursTodayByUserIdOrg`, `jobsWorkedTodayStripRows`).
-  - **My Time**: Expandable **this week** and **last week** detail. **This week** — per-day grid with interactive cells that open **Edit time** when the day falls in the current Denver week (`getDefaultWeekRange()` from `src/utils/dateUtils.ts`). **Last week** — read-only day totals only (no **Edit time**). **Edit time** modal: **Visual** vs **Form** toggle; on open, defaults to **Form** under ~560px viewport width and **Visual** otherwise (see `DashboardMyTimeDayEditorModal.tsx` and `.myTimeDayClusterFormGrid` in `src/index.css`). **Form** mode uses a two-column layout: time controls (**Span**, **Split**, **Ends at**) on the left, block header (weekday / date / span) at the top-left of the grid, duration + job/bid assignment + notes on the right, with soft segment dividers; inner boundaries are edited with **Ends at** on the earlier segment (no duplicate cluster-level start control); per-segment **Split** via `addSplitMidInSegment` in `src/lib/myTimeDayTimeline.ts`. **Merge up** / **Merge down** (Form and Visual) remove a virtual segment by merging with the neighbor above or below (`removeSegmentMergeWithPrev` / `removeSegmentMergeWithNext` in the same module); at least two segments must remain and min segment duration matches splits; **no browser confirm** when the two segments’ job/bid allocation labels already match (`mergeAllocChoiceRequired`). When job/bid labels on the two segments differ, **Combine segments — choose job** (`MyTimeMergeSegmentsModal`) sets **`segmentJobOverrides`** on [`SplitEditorState`](src/lib/myTimeDayTimeline.ts) so chips and **Save** match; inner-boundary **drag** / **nudge** clears those overrides. Same-day segments use `type="time"` inputs; cross-day clusters use `datetime-local` (`myTimeDayEditorDatetime.ts`, `MyTimeDayClusterForm.tsx`). Use **People → Hours** (correct-day audit, pending approvals, etc.) to change time outside the dashboard’s **this week** window. **Components**: [`DashboardMyTimeSection.tsx`](src/components/DashboardMyTimeSection.tsx), [`DashboardMyTimeDayEditorModal.tsx`](src/components/DashboardMyTimeDayEditorModal.tsx), [`MyTimeDayClusterForm.tsx`](src/components/my-time-day-editor/MyTimeDayClusterForm.tsx), [`MyTimeDayClusterVisual.tsx`](src/components/my-time-day-editor/MyTimeDayClusterVisual.tsx), [`myTimeDayTimeline.ts`](src/lib/myTimeDayTimeline.ts).
+  - **My Time**: Expandable **this week** and **last week** detail. **This week** — per-day grid with interactive cells that open **Edit time** when the day falls in the current **America/Chicago** Sunday–Saturday week (`getDefaultWeekRange()` from `src/utils/dateUtils.ts`). **Last week** — read-only day totals only (no **Edit time**). **Edit time** modal: **Visual** vs **Form** toggle; on open, defaults to **Form** under ~560px viewport width and **Visual** otherwise (see `DashboardMyTimeDayEditorModal.tsx` and `.myTimeDayClusterFormGrid` in `src/index.css`). **Form** mode uses a two-column layout: time controls (**Span**, **Split**, **Ends at**) on the left, block header (weekday / date / span) at the top-left of the grid, duration + job/bid assignment + notes on the right, with soft segment dividers; inner boundaries are edited with **Ends at** on the earlier segment (no duplicate cluster-level start control); per-segment **Split** via `addSplitMidInSegment` in `src/lib/myTimeDayTimeline.ts`. **Merge up** / **Merge down** (Form and Visual) remove a virtual segment by merging with the neighbor above or below (`removeSegmentMergeWithPrev` / `removeSegmentMergeWithNext` in the same module); at least two segments must remain and min segment duration matches splits; **no browser confirm** when the two segments’ job/bid allocation labels already match (`mergeAllocChoiceRequired`). When job/bid labels on the two segments differ, **Combine segments — choose job** (`MyTimeMergeSegmentsModal`) sets **`segmentJobOverrides`** on [`SplitEditorState`](src/lib/myTimeDayTimeline.ts) so chips and **Save** match; inner-boundary **drag** / **nudge** clears those overrides. Same-day segments use `type="time"` inputs; cross-day clusters use `datetime-local` (`myTimeDayEditorDatetime.ts`, `MyTimeDayClusterForm.tsx`). Use **People → Hours** (correct-day audit, pending approvals, etc.) to change time outside the dashboard’s **this week** window. **Components**: [`DashboardMyTimeSection.tsx`](src/components/DashboardMyTimeSection.tsx), [`DashboardMyTimeDayEditorModal.tsx`](src/components/DashboardMyTimeDayEditorModal.tsx), [`MyTimeDayClusterForm.tsx`](src/components/my-time-day-editor/MyTimeDayClusterForm.tsx), [`MyTimeDayClusterVisual.tsx`](src/components/my-time-day-editor/MyTimeDayClusterVisual.tsx), [`myTimeDayTimeline.ts`](src/lib/myTimeDayTimeline.ts).
   - **Assistant layout order**: For assistants, Tally and Job Report row and pinned pages appear directly below Clock In/Out, before Ready to Bill and Dispatch. Order: Clock In → Tally + Job Report + pinned pages → Ready to Bill / Dispatch / Billed → Inspections → rest. Non-assistant roles keep the original order.
   - **Ready to Bill / Billed Awaiting Payment** (dev, master_technician, assistant): Lists mirror Jobs Stages (including **merged** job + **`is_primary_rtb_bundle`** invoice via **`readyToBillDashboardUnits`**); **`get_jobs_ledger_by_status`** supplies **`customer_id`** on job cards for the same customer gate as Jobs. **Invoice / Update** opens [`SendRecordInvoiceModal`](src/components/jobs/SendRecordInvoiceModal.tsx) (job rows load **`jobs_ledger`** billing fields when the modal opens). Without a linked customer: toast only (no navigation). **Ready to Bill** secondary button labels and send-back confirmation copy match Jobs (**Job: Send Job Back**, **Delete draft bill**). No Ham-mode shortcut on the Dashboard (always modal).
   - **My Team (team leads)** (users with **`team_leader_assignments`** as leader): Collapsible **My Team** with **Start–End** week controls; optional **People you lead** roster with per-person **Notify on clock in/out**, **Pending** / **Approved** / **Total** hours for the range, then (when loaded) **Clock activity** (expandable ledger of team **`clock_sessions`** in range) **above** **Active clock sessions** **above** **Pending sessions** (approve/reject in range). Assignments with **`dashboard_hours_visibility = strip_only`** omit that member from this detailed UI (and from pending-approval counts/lists) but they still show in **Currently clocked in** when applicable. If **every** assignment for that leader is **strip_only**, the **My Team** section is **not shown** on the Dashboard (leaders use **Currently clocked in** only for those members). When pending approvals exist for **full** members, a **Pending clock sessions** banner appears on the Dashboard: the **entire yellow bar** is a single **button** (accessible name: go to pending sessions in My Team); it **expands My Team** if collapsed and **scrolls** to the **Pending sessions** card. Pending session data continues to load from the dashboard hook while **My Team** is collapsed.
@@ -2720,7 +2723,7 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 
 ##### `rename_owner_to_dev`
 - **Purpose**: Updates the database to change the 'owner' role to 'dev' throughout the system
-- **Location**: `supabase/migrations/rename_owner_to_dev.sql`
+- **Location**: `supabase/archive/rename_owner_to_dev.sql`
 - **What it does**:
   1. Adds 'dev' to the `user_role` enum type
   2. Updates all existing user records from 'owner' to 'dev'
@@ -2729,16 +2732,16 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
   5. Drops the old `is_owner()` function (after all dependencies are updated)
   6. Renames `claim_owner_with_code()` to `claim_dev_with_code()`
 - **Key Feature**: The migration uses a `DO` block to query `pg_policy` system catalog and automatically find and update all policies that depend on `is_owner()`. This handles 30+ policies across multiple tables without manual updates.
-- **See**: `supabase/migrations/rename_owner_to_dev_README.md` for detailed instructions and troubleshooting
+- **See**: `supabase/archive/rename_owner_to_dev_README.md` for detailed instructions and troubleshooting
 
 ##### `fix_email_templates_rls`
 - **Purpose**: Fixes RLS policies on `email_templates` table to use `is_dev()` function
-- **Location**: `supabase/migrations/fix_email_templates_rls.sql`
+- **Location**: `supabase/archive/fix_email_templates_rls.sql`
 - **What it does**: Updates policies to use `is_dev()` instead of direct queries to avoid recursion issues
 
 ##### `allow_devs_read_all_people`
 - **Purpose**: Allows devs to read all people entries (not just their own)
-- **Location**: `supabase/migrations/allow_devs_read_all_people.sql`
+- **Location**: `supabase/archive/allow_devs_read_all_people.sql`
 - **What it does**: Adds a policy allowing devs to see all people entries via `is_dev()` function
 
 ##### `allow_devs_update_delete_people`
@@ -2758,7 +2761,7 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 
 ##### `add_finalized_notes_tracking`
 - **Purpose**: Adds ability to add notes to finalized purchase orders (add-only)
-- **Location**: `supabase/migrations/add_finalized_notes_tracking.sql`
+- **Location**: `supabase/archive/add_finalized_notes_tracking.sql`
 - **What it does**:
   1. Adds `notes_added_by` (UUID) and `notes_added_at` (TIMESTAMPTZ) columns to `purchase_orders`
   2. Creates RLS policy allowing updating notes fields on finalized POs, but only when `notes` is null (enforcing add-only behavior)
@@ -2766,7 +2769,7 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 
 ##### `add_link_to_line_items`
 - **Purpose**: Adds optional link field to workflow step line items
-- **Location**: `supabase/migrations/add_link_to_line_items.sql`
+- **Location**: `supabase/archive/add_link_to_line_items.sql`
 - **What it does**:
   1. Adds `link` (TEXT, nullable) column to `workflow_step_line_items` table
   2. Allows linking to external resources like Google Sheets or supply house listings
@@ -2774,7 +2777,7 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 
 ##### `add_purchase_order_to_line_items`
 - **Purpose**: Links purchase orders to workflow step line items
-- **Location**: `supabase/migrations/add_purchase_order_to_line_items.sql`
+- **Location**: `supabase/archive/add_purchase_order_to_line_items.sql`
 - **What it does**:
   1. Adds `purchase_order_id` (UUID, nullable, FK → `purchase_orders.id` ON DELETE SET NULL) to `workflow_step_line_items`
   2. Enables linking finalized purchase orders as line items in workflow steps
@@ -2782,7 +2785,7 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 
 ##### `add_price_confirmation_to_po_items`
 - **Purpose**: Adds price confirmation tracking to purchase order items
-- **Location**: `supabase/migrations/add_price_confirmation_to_po_items.sql`
+- **Location**: `supabase/archive/add_price_confirmation_to_po_items.sql`
 - **What it does**:
   1. Adds `price_confirmed_at` (TIMESTAMPTZ, nullable) and `price_confirmed_by` (UUID, nullable, FK → `users.id`) to `purchase_order_items`
   2. Allows assistants to confirm prices before finalizing purchase orders
@@ -2791,7 +2794,7 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 
 ##### `create_material_part_price_history`
 - **Purpose**: Creates table for tracking historical price changes
-- **Location**: `supabase/migrations/create_material_part_price_history.sql`
+- **Location**: `supabase/archive/create_material_part_price_history.sql`
 - **What it does**:
   1. Creates `material_part_price_history` table with columns: id, part_id, supply_house_id, old_price, new_price, price_change_percent, effective_date, changed_at, changed_by, notes
   2. Adds indexes on part_id, supply_house_id, and changed_at for performance
@@ -2799,7 +2802,7 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 
 ##### `create_price_history_trigger`
 - **Purpose**: Creates trigger to automatically log price changes
-- **Location**: `supabase/migrations/create_price_history_trigger.sql`
+- **Location**: `supabase/archive/create_price_history_trigger.sql`
 - **What it does**:
   1. Creates `track_price_history()` function that fires AFTER INSERT OR UPDATE on `material_part_prices`
   2. Calculates percentage change: `((NEW.price - OLD.price) / OLD.price) * 100`
@@ -2809,7 +2812,7 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 
 ##### `optimize_rls_for_master_sharing` (Updated)
 - **Purpose**: Optimizes RLS policies and fixes assistant step update permissions
-- **Location**: `supabase/migrations/optimize_rls_for_master_sharing.sql`
+- **Location**: `supabase/archive/optimize_rls_for_master_sharing.sql`
 - **What it does**:
   1. Creates helper functions (`can_access_project_via_workflow`, `can_access_project_via_step`) with `SECURITY DEFINER` to optimize performance
   2. **Fixed UPDATE policy for `project_workflow_steps`**: Updated `WITH CHECK` clause to allow assistants to update steps in workflows they can access (not just steps assigned to them), fixing 400 errors when changing assignments
@@ -3262,7 +3265,7 @@ async function myFunction() {
 - **Issue**: Assistants getting 400 errors when updating workflow steps (especially when changing `assigned_to_name`)
 - **Root Cause**: `WITH CHECK` clause in `project_workflow_steps` UPDATE policy was too restrictive - only allowed assistants to update steps where `assigned_to_name` matched their name, preventing assignment changes
 - **Solution**: Updated `optimize_rls_for_master_sharing.sql` migration to include `can_access_project_via_workflow(workflow_id)` check in `WITH CHECK` clause, allowing assistants to update any step in workflows they can access (via adoption/sharing)
-- **Migration**: `supabase/migrations/optimize_rls_for_master_sharing.sql` (updated UPDATE policy)
+- **Migration**: `supabase/archive/optimize_rls_for_master_sharing.sql` (updated UPDATE policy)
 - **Future**: Consider Supabase CLI type generation
 
 ### 11. Materials Price Book - Missing Prices in Expanded Row (FIXED 2026-02-04)
@@ -3335,7 +3338,7 @@ async function myFunction() {
 - **Issue**: Policies on `users` table that query `users` or `master_assistants` (which queries `users`) cause infinite recursion errors
 - **Solution**: Use `SECURITY DEFINER` functions to bypass RLS when checking relationships
 - **Example**: `master_adopted_current_user()` function uses `SECURITY DEFINER` to check `master_assistants` without triggering RLS
-- **Migration**: `supabase/migrations/fix_users_rls_for_project_masters.sql`
+- **Migration**: `supabase/archive/fix_users_rls_for_project_masters.sql`
 - **Result**: Assistants can now see master information (name/email) when viewing projects without recursion errors
 - **Master Sharing**: Similar pattern used for `master_shares` table - RLS policies check for sharing relationships without recursion
 
@@ -3343,14 +3346,14 @@ async function myFunction() {
 - **Issue**: Loading line items causes statement timeout errors (500 Internal Server Error)
 - **Solution**: Created `can_access_project_via_step()` helper function to optimize RLS policies
 - **Implementation**: Uses `SECURITY DEFINER` to bypass RLS, performs single optimized query
-- **Migration**: `supabase/migrations/optimize_workflow_step_line_items_rls.sql`
+- **Migration**: `supabase/archive/optimize_workflow_step_line_items_rls.sql`
 - **Result**: Line items load quickly without timeout errors
 
 ### 17. Step Actions RLS Errors
 - **Issue**: Recording workflow actions causes 403 Forbidden or 500 Internal Server Error
 - **Solution**: Created `can_access_step_for_action()` helper function to optimize RLS policies
 - **Implementation**: Uses `SECURITY DEFINER` to bypass RLS, checks step access efficiently
-- **Migration**: `supabase/migrations/fix_project_workflow_step_actions_rls.sql`
+- **Migration**: `supabase/archive/fix_project_workflow_step_actions_rls.sql`
 - **Result**: Actions can be recorded successfully without errors
 
 ### 18. Workflow Data Persistence Issues

@@ -366,6 +366,10 @@ verify_jwt = false
 [functions.stripe-webhook]
 verify_jwt = false
 
+# Cron: POST with X-Cron-Secret + service role RPC (salary auto clock_sessions).
+[functions.sync-salary-sessions]
+verify_jwt = false
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.

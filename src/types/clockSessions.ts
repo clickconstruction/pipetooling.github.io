@@ -5,6 +5,9 @@ export type ClockSessionRow = {
   clocked_out_at: string | null
   work_date: string
   notes: string
+  /** user_punch | salary_schedule */
+  origin?: string
+  salary_segment_index?: number | null
   job_ledger_id: string | null
   bid_id: string | null
   clock_in_lat: number | null

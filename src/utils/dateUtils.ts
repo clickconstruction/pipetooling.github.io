@@ -1,39 +1,54 @@
-/** Week range: Sunday–Saturday for the current week */
+/** Company-wide calendar for work_date, week gates, and My Time (matches server RPCs). */
+export const APP_CALENDAR_TZ = 'America/Chicago'
+
+const CHICAGO_WEEKDAY_SHORT_SUN0 = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
+
+function companyWeekdaySunday0(ms: number): number {
+  const w = new Intl.DateTimeFormat('en-US', {
+    timeZone: APP_CALENDAR_TZ,
+    weekday: 'short',
+  }).format(new Date(ms))
+  const idx = CHICAGO_WEEKDAY_SHORT_SUN0.indexOf(w as (typeof CHICAGO_WEEKDAY_SHORT_SUN0)[number])
+  return idx >= 0 ? idx : 0
+}
+
+/** Pure Gregorian YYYY-MM-DD ± n days (civil dates, not instants). */
+function addCalendarDaysYmd(ymd: string, deltaDays: number): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd.trim())
+  if (!m) return ymd
+  const y = Number(m[1])
+  const mo = Number(m[2]) - 1
+  const d = Number(m[3])
+  const base = new Date(Date.UTC(y, mo, d))
+  base.setUTCDate(base.getUTCDate() + deltaDays)
+  const yy = base.getUTCFullYear()
+  const mm = String(base.getUTCMonth() + 1).padStart(2, '0')
+  const dd = String(base.getUTCDate()).padStart(2, '0')
+  return `${yy}-${mm}-${dd}`
+}
+
+/** Week range: Sunday–Saturday for the current week (America/Chicago). */
 export function getDefaultWeekRange(): { start: string; end: string } {
-  const d = new Date()
-  const day = d.getDay()
-  const start = new Date(d)
-  start.setDate(d.getDate() - day)
-  const end = new Date(start)
-  end.setDate(start.getDate() + 6)
-  return {
-    start: start.toLocaleDateString('en-CA'),
-    end: end.toLocaleDateString('en-CA'),
-  }
+  const ms = Date.now()
+  const todayKey = denverCalendarDayKey(ms)
+  const dow = companyWeekdaySunday0(ms)
+  const start = addCalendarDaysYmd(todayKey, -dow)
+  const end = addCalendarDaysYmd(start, 6)
+  return { start, end }
 }
 
-/** Week range: Sunday–Saturday for the previous week */
+/** Week range: Sunday–Saturday for the previous week (America/Chicago). */
 export function getLastWeekRange(): { start: string; end: string } {
-  const d = new Date()
-  const day = d.getDay()
-  const thisSun = new Date(d)
-  thisSun.setDate(d.getDate() - day)
-  const lastSun = new Date(thisSun)
-  lastSun.setDate(thisSun.getDate() - 7)
-  const lastSat = new Date(lastSun)
-  lastSat.setDate(lastSun.getDate() + 6)
-  return {
-    start: lastSun.toLocaleDateString('en-CA'),
-    end: lastSat.toLocaleDateString('en-CA'),
-  }
+  const { start: thisSun } = getDefaultWeekRange()
+  const lastSun = addCalendarDaysYmd(thisSun, -7)
+  const lastSat = addCalendarDaysYmd(lastSun, 6)
+  return { start: lastSun, end: lastSat }
 }
 
-const TZ_DENVER = 'America/Denver'
-
-/** YYYY-MM-DD in Denver for an instant (en-CA). */
+/** YYYY-MM-DD in company calendar (America/Chicago) for an instant (en-CA). */
 export function denverCalendarDayKey(ms: number): string {
   return new Intl.DateTimeFormat('en-CA', {
-    timeZone: TZ_DENVER,
+    timeZone: APP_CALENDAR_TZ,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -43,7 +58,7 @@ export function denverCalendarDayKey(ms: number): string {
 /** e.g. Mar 24 (no year). */
 export function formatDenverCalendarDayShort(ms: number): string {
   return new Intl.DateTimeFormat('en-US', {
-    timeZone: TZ_DENVER,
+    timeZone: APP_CALENDAR_TZ,
     month: 'short',
     day: 'numeric',
   }).format(new Date(ms))
@@ -52,26 +67,26 @@ export function formatDenverCalendarDayShort(ms: number): string {
 /** e.g. Mar 24, 2026 */
 export function formatDenverCalendarDayWithYear(ms: number): string {
   return new Intl.DateTimeFormat('en-US', {
-    timeZone: TZ_DENVER,
+    timeZone: APP_CALENDAR_TZ,
     month: 'short',
     day: 'numeric',
     year: 'numeric',
   }).format(new Date(ms))
 }
 
-/** Time only in Denver, e.g. 12:06 PM */
+/** Time only in company calendar (Chicago), e.g. 12:06 PM */
 export function formatDenverTimeOnly(ms: number): string {
   return new Intl.DateTimeFormat('en-US', {
-    timeZone: TZ_DENVER,
+    timeZone: APP_CALENDAR_TZ,
     hour: 'numeric',
     minute: '2-digit',
   }).format(new Date(ms))
 }
 
-/** Short datetime in Denver (segment crossing midnight). */
+/** Short datetime in company calendar (segment crossing midnight). */
 export function formatDenverDateTimeShort(ms: number): string {
   return new Intl.DateTimeFormat('en-US', {
-    timeZone: TZ_DENVER,
+    timeZone: APP_CALENDAR_TZ,
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
@@ -80,7 +95,7 @@ export function formatDenverDateTimeShort(ms: number): string {
 }
 
 /**
- * Single Denver calendar day for block header, or range when block crosses midnight in Denver.
+ * Single company-calendar day for block header, or range when block crosses midnight in Chicago.
  */
 export function formatDenverBlockDateHeader(t0: number, t1: number): string {
   const k0 = denverCalendarDayKey(t0)
@@ -100,17 +115,17 @@ export function formatDenverBlockDateHeader(t0: number, t1: number): string {
   return `${y0} – ${y1}`
 }
 
-/** e.g. Monday (America/Denver). */
+/** e.g. Monday (America/Chicago). */
 export function formatDenverWeekday(ms: number): string {
   return new Intl.DateTimeFormat('en-US', {
-    timeZone: TZ_DENVER,
+    timeZone: APP_CALENDAR_TZ,
     weekday: 'long',
   }).format(new Date(ms))
 }
 
 function formatDenverWeekdayShort(ms: number): string {
   return new Intl.DateTimeFormat('en-US', {
-    timeZone: TZ_DENVER,
+    timeZone: APP_CALENDAR_TZ,
     weekday: 'short',
   }).format(new Date(ms))
 }
@@ -138,7 +153,7 @@ export function formatDenverBlockWeekdayHeader(t0: number, t1: number): string {
 
 const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const
 
-/** Friendly label for work_date YYYY-MM-DD (calendar date as stored; matches Denver work_date). */
+/** Friendly label for work_date YYYY-MM-DD (calendar date as stored; matches company work_date). */
 export function formatWorkDateYmdFriendly(ymd: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd.trim())
   if (!m) return ymd
@@ -149,7 +164,7 @@ export function formatWorkDateYmdFriendly(ymd: string): string {
   return `${MONTH_SHORT[mo - 1]} ${d}, ${y}`
 }
 
-/** Representative instant on this Denver work_date (for weekday extraction). */
+/** Representative instant on this company work_date (for weekday extraction). */
 function denverMsForWorkDateYmd(ymd: string): number | null {
   const trimmed = ymd.trim()
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed)
@@ -166,7 +181,7 @@ function denverMsForWorkDateYmd(ymd: string): number | null {
   return null
 }
 
-/** e.g. Monday Mar 30, 2026 (Denver weekday for work_date YYYY-MM-DD). */
+/** e.g. Monday Mar 30, 2026 (Chicago weekday for work_date YYYY-MM-DD). */
 export function formatWorkDateYmdWeekdayLongFriendly(ymd: string): string {
   const friendly = formatWorkDateYmdFriendly(ymd)
   const ms = denverMsForWorkDateYmd(ymd)
@@ -174,7 +189,7 @@ export function formatWorkDateYmdWeekdayLongFriendly(ymd: string): string {
   return `${formatDenverWeekday(ms)} ${friendly}`
 }
 
-/** Same Denver calendar day for both instants. */
+/** Same company calendar day for both instants. */
 export function denverSameCalendarDay(aMs: number, bMs: number): boolean {
   return denverCalendarDayKey(aMs) === denverCalendarDayKey(bMs)
 }
@@ -184,7 +199,7 @@ export function formatDenverTimeRangeSameDay(aMs: number, bMs: number): string {
 }
 
 const denverPartsFormatter = new Intl.DateTimeFormat('en-US', {
-  timeZone: TZ_DENVER,
+  timeZone: APP_CALENDAR_TZ,
   hour: 'numeric',
   minute: '2-digit',
   second: '2-digit',
@@ -213,7 +228,7 @@ function denverWallPartsAt(ms: number): {
 export type DenverHourMark = { ms: number; label: string }
 
 /**
- * Denver local times that are exactly H:00:00 with t0Ms < ms < t1Ms (strict), for strip hour rulers.
+ * Company-calendar local times that are exactly H:00:00 with t0Ms < ms < t1Ms (strict), for strip hour rulers.
  */
 export function denverHourMarksBetween(t0Ms: number, t1Ms: number): DenverHourMark[] {
   if (!(t1Ms > t0Ms)) return []

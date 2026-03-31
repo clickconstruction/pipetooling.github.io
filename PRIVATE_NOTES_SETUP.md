@@ -22,7 +22,7 @@ Two SQL migrations are needed:
 
 #### 1. Private Notes Field
 
-**File**: `supabase/migrations/add_private_notes_to_workflow_steps.sql`
+**File**: `supabase/archive/add_private_notes_to_workflow_steps.sql`
 
 **To apply**:
 1. Go to Supabase Dashboard → SQL Editor
@@ -36,7 +36,7 @@ The migration adds:
 
 #### 2. Line Items Table
 
-**File**: `supabase/migrations/create_workflow_step_line_items.sql`
+**File**: `supabase/archive/create_workflow_step_line_items.sql`
 
 **To apply**:
 1. Go to Supabase Dashboard → SQL Editor
@@ -57,7 +57,7 @@ The migration creates:
 
 #### 3. Projections Table
 
-**File**: `supabase/migrations/create_workflow_projections.sql`
+**File**: `supabase/archive/create_workflow_projections.sql`
 
 **To apply**:
 1. Go to Supabase Dashboard → SQL Editor

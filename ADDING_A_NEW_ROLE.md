@@ -2,7 +2,7 @@
 
 > **Purpose**: Step-by-step guide for adding a new user role (e.g., Primary) to PipeTooling. Use this to avoid policy/permission mistakes and ensure all touchpoints are updated.
 
-**Related**: [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) — Role permissions matrix; [supabase/migrations/README.md](./supabase/migrations/README.md) — Migration reference.
+**Related**: [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) — Role permissions matrix; [supabase/archive/README.md](./supabase/archive/README.md) — Migration reference.
 
 ---
 
@@ -153,7 +153,7 @@ $$;
 
 **Reference**: [supabase/migrations/20260212240000_allow_estimators_see_masters.sql](supabase/migrations/20260212240000_allow_estimators_see_masters.sql)
 
-**RLS performance**: Use `(select auth.uid())` and `(select auth.jwt())` in policies so the planner can cache the result per query. See [optimize_workflow_templates_rls.sql](supabase/migrations/optimize_workflow_templates_rls.sql) and Supabase RLS performance docs.
+**RLS performance**: Use `(select auth.uid())` and `(select auth.jwt())` in policies so the planner can cache the result per query. See [optimize_workflow_templates_rls.sql](supabase/archive/optimize_workflow_templates_rls.sql) and Supabase RLS performance docs.
 
 ---
 

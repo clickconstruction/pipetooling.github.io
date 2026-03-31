@@ -12,6 +12,8 @@ import {
 } from '../utils/unifiedJobBidSearch'
 import { getTeamFeedbackEligibility } from '../lib/teamFeedback'
 import { withSupabaseRetry } from '../utils/errorHandling'
+import { denverCalendarDayKey } from '../utils/dateUtils'
+import { syncSalaryClockSessionsForUserDay } from '../lib/salaryScheduleSync'
 import TeamFeedbackWizard from './team-feedback/TeamFeedbackWizard'
 
 function toLocalDateString(d: Date): string {
@@ -41,6 +43,7 @@ type TodaySession = {
   clocked_in_at: string
   clocked_out_at: string | null
   notes: string
+  origin?: string
   job_ledger_id: string | null
   bid_id: string | null
 }
@@ -94,6 +97,7 @@ export default function ClockInOutButton({ userId, userName }: Props) {
   unifiedSearchTextRef.current = unifiedSearchText
   const [assignedJobsListLoading, setAssignedJobsListLoading] = useState(false)
   const [teamFeedbackOpen, setTeamFeedbackOpen] = useState(false)
+  const [salaryUiActive, setSalaryUiActive] = useState(false)
 
   function parseLastJobBidFromStorage(raw: string | null): UnifiedSearchResult | null {
     if (!raw?.trim()) return null
@@ -140,10 +144,10 @@ export default function ClockInOutButton({ userId, userName }: Props) {
 
   const fetchSessions = useCallback(async () => {
     if (!userId) return
-    const today = toLocalDateString(new Date())
+    const today = denverCalendarDayKey(Date.now())
     const { data, error: err } = await supabase
       .from('clock_sessions')
-      .select('id, clocked_in_at, clocked_out_at, notes, job_ledger_id, bid_id')
+      .select('id, clocked_in_at, clocked_out_at, notes, job_ledger_id, bid_id, origin')
       .eq('user_id', userId)
       .eq('work_date', today)
     if (err) {
@@ -161,6 +165,39 @@ export default function ClockInOutButton({ userId, userName }: Props) {
       setTotalSecondsToday(computeTotalSecondsToday(sessions))
     }
   }, [userId])
+
+  useEffect(() => {
+    if (!userId || !userName?.trim()) {
+      setSalaryUiActive(false)
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      const [pay, tmpl] = await Promise.all([
+        supabase.from('people_pay_config').select('is_salary').eq('person_name', userName.trim()).maybeSingle(),
+        supabase.from('salary_work_schedule_templates').select('user_id').eq('user_id', userId).maybeSingle(),
+      ])
+      if (cancelled) return
+      const sal = !!pay.data?.is_salary
+      setSalaryUiActive(sal && !!tmpl.data)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [userId, userName])
+
+  useEffect(() => {
+    if (!salaryUiActive || !userId) return
+    void syncSalaryClockSessionsForUserDay(userId).then(() => {
+      void fetchSessions()
+    })
+    const t = window.setInterval(() => {
+      void syncSalaryClockSessionsForUserDay(userId).then(() => {
+        void fetchSessions()
+      })
+    }, 90_000)
+    return () => window.clearInterval(t)
+  }, [salaryUiActive, userId, fetchSessions])
 
   useEffect(() => {
     if (!userId) {
@@ -441,6 +478,7 @@ export default function ClockInOutButton({ userId, userName }: Props) {
   }
 
   async function handleClockOut() {
+    if (salaryUiActive) return
     if (!openSession) return
     setActionLoading(true)
     setError(null)
@@ -484,16 +522,36 @@ export default function ClockInOutButton({ userId, userName }: Props) {
 
   function handleOpenUpdateFocusModal() {
     if (!openSession) return
-    setUpdateFocusNotes('')
+    setUpdateFocusNotes(openSession.notes?.trim() ?? '')
     setUpdateFocusError(null)
     setUpdateFocusModalOpen(true)
   }
 
   async function handleUpdateFocus() {
-    if (!openSession || !userId || !userName?.trim() || !updateFocusNotes.trim()) return
+    if (!openSession || !userId || !userName?.trim()) return
+    if (!salaryUiActive && !updateFocusNotes.trim()) return
     setUpdateFocusLoading(true)
     setUpdateFocusError(null)
     try {
+      if (salaryUiActive) {
+        const { error } = await supabase
+          .from('clock_sessions')
+          .update({
+            job_ledger_id: selectedAssociation?.source === 'job' ? selectedAssociation.id : null,
+            bid_id: selectedAssociation?.source === 'bid' ? selectedAssociation.id : null,
+            notes: updateFocusNotes.trim() || openSession.notes || '',
+          })
+          .eq('id', openSession.id)
+        if (error) throw error
+        if (selectedAssociation && userId && typeof localStorage !== 'undefined') {
+          localStorage.setItem(`clock_in_last_job_bid_${userId}`, JSON.stringify(selectedAssociation))
+          setLastSelectedJobBid(selectedAssociation)
+        }
+        setUpdateFocusModalOpen(false)
+        await fetchSessions()
+        setUpdateFocusLoading(false)
+        return
+      }
       const now = new Date()
       let clockOutLat: number | null = null
       let clockOutLng: number | null = null
@@ -559,7 +617,7 @@ export default function ClockInOutButton({ userId, userName }: Props) {
     )
   }
 
-  const canClockIn = userName?.trim() && !openSession
+  const canClockIn = userName?.trim() && !openSession && !salaryUiActive
   const hasOpenSession = !!openSession
 
   return (
@@ -567,6 +625,23 @@ export default function ClockInOutButton({ userId, userName }: Props) {
     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', width: '100%' }}>
       {hasOpenSession ? (
         <>
+          {salaryUiActive ? (
+            <div
+              style={{
+                padding: '0.5rem 1rem',
+                fontSize: '1rem',
+                fontWeight: 600,
+                border: '2px solid #15803d',
+                borderRadius: 8,
+                background: '#dcfce7',
+                color: '#14532d',
+                fontVariantNumeric: 'tabular-nums',
+              }}
+              title="Salaried shift from your Settings workday"
+            >
+              On shift — {formatElapsed(totalSecondsToday)}
+            </div>
+          ) : (
           <button
             type="button"
             onClick={handleClockOut}
@@ -586,11 +661,16 @@ export default function ClockInOutButton({ userId, userName }: Props) {
           >
             {formatElapsed(totalSecondsToday)} — Clock Out
           </button>
+          )}
           <button
             type="button"
             onClick={handleOpenUpdateFocusModal}
             disabled={actionLoading || updateFocusLoading}
-            title="Switch to a new focus (clocks out and starts new session)"
+            title={
+              salaryUiActive
+                ? 'Change job or bid focus for this shift'
+                : 'Switch to a new focus (clocks out and starts new session)'
+            }
             style={{
               flex: 1,
               minWidth: 0,
@@ -607,6 +687,28 @@ export default function ClockInOutButton({ userId, userName }: Props) {
             Update Focus
           </button>
         </>
+      ) : salaryUiActive ? (
+        <div
+          style={{
+            width: '100%',
+            padding: '0 1.5rem',
+            minHeight: 48,
+            height: 48,
+            boxSizing: 'border-box',
+            fontSize: '1rem',
+            fontWeight: 600,
+            border: '2px solid #d1d5db',
+            borderRadius: 8,
+            background: '#f9fafb',
+            color: '#6b7280',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          title="Outside your scheduled shift windows (see Settings → Salaried workday)"
+        >
+          Off shift
+        </div>
       ) : (
         <button
           type="button"
@@ -790,7 +892,9 @@ export default function ClockInOutButton({ userId, userName }: Props) {
             <style>{`#update-focus-modal textarea:focus,#update-focus-modal input[type=text]:focus,#update-focus-modal input[type=text]:focus-visible{outline:2px solid #3b82f6;outline-offset:2px}`}</style>
             <h3 id="update-focus-modal-title" style={{ marginTop: 0, marginBottom: '0.5rem', textAlign: 'center' }}>Update Focus</h3>
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
-              This will clock out your current session and start a new one with the focus below.
+              {salaryUiActive
+                ? 'Link this shift to a different job or bid. Your session times stay the same.'
+                : 'This will clock out your current session and start a new one with the focus below.'}
             </p>
             <label style={{ display: 'block', marginBottom: '0.5rem' }}>
               <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>What are you working on?</span>
@@ -904,10 +1008,17 @@ export default function ClockInOutButton({ userId, userName }: Props) {
               <button
                 type="button"
                 onClick={handleUpdateFocus}
-                disabled={!updateFocusNotes.trim() || updateFocusLoading}
-                style={{ padding: '0.5rem 1rem', border: '1px solid #3b82f6', borderRadius: 4, background: '#3b82f6', color: 'white', cursor: updateFocusNotes.trim() && !updateFocusLoading ? 'pointer' : 'not-allowed' }}
+                disabled={(!salaryUiActive && !updateFocusNotes.trim()) || updateFocusLoading}
+                style={{
+                  padding: '0.5rem 1rem',
+                  border: '1px solid #3b82f6',
+                  borderRadius: 4,
+                  background: '#3b82f6',
+                  color: 'white',
+                  cursor: (salaryUiActive || updateFocusNotes.trim()) && !updateFocusLoading ? 'pointer' : 'not-allowed',
+                }}
               >
-                {updateFocusLoading ? 'Switching…' : 'Switch Focus'}
+                {updateFocusLoading ? (salaryUiActive ? 'Saving…' : 'Switching…') : salaryUiActive ? 'Save focus' : 'Switch Focus'}
               </button>
             </div>
           </div>

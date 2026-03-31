@@ -864,6 +864,24 @@ No body required. Validates via `X-Cron-Secret` header or `{"cron_secret": "..."
 
 ---
 
+### sync-salary-sessions
+
+**Purpose**: Materialize and close `clock_sessions` with `origin = 'salary_schedule'` for all users who have a row in `salary_work_schedule_templates`, for the current **America/Chicago** calendar date. Intended to run every 1–5 minutes via cron (same auth pattern as `send-scheduled-reminders`).
+
+**Endpoint**: `POST /functions/v1/sync-salary-sessions`
+
+**Required Role**: None (validates `CRON_SECRET`; uses service role for `sync_salary_clock_sessions_for_day`).
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`
+
+**Verify JWT**: `false` (`supabase/config.toml`)
+
+**Request**: Optional body `{"cron_secret":"..."}` or header `X-Cron-Secret`.
+
+**Success**: `{ "success": true, "work_date": "YYYY-MM-DD" }`
+
+---
+
 ### set-user-password
 
 **Purpose**: Set password for any user (dev-only operation)

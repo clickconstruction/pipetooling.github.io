@@ -260,10 +260,10 @@ const result = await supabase.rpc<CreateProjectWithTemplateResult>(
 
 ## 🔄 Migration Files Created
 
-1. `supabase/migrations/add_updated_at_triggers.sql` (157 lines)
-2. `supabase/migrations/add_cascading_customer_master_to_projects.sql` (38 lines)
-3. `supabase/migrations/add_data_integrity_constraints.sql` (79 lines)
-4. `supabase/migrations/create_transaction_functions.sql` (355 lines)
+1. `supabase/archive/add_updated_at_triggers.sql` (157 lines)
+2. `supabase/archive/add_cascading_customer_master_to_projects.sql` (38 lines)
+3. `supabase/archive/add_data_integrity_constraints.sql` (79 lines)
+4. `supabase/archive/create_transaction_functions.sql` (355 lines)
 
 **Total**: 4 migrations, 629 lines of SQL
 

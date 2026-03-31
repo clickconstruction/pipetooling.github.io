@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-07-23
+last_updated: 2026-03-31
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -44,7 +44,7 @@ quick_navigation:
 related_docs:
   - "[PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md) - Current schema"
   - "[DATABASE_IMPROVEMENTS_SUMMARY.md](./DATABASE_IMPROVEMENTS_SUMMARY.md) - v2.22 improvements"
-  - "[supabase/migrations/README.md](./supabase/migrations/README.md) - Migration files"
+  - "[supabase/archive/README.md](./supabase/archive/README.md) - Migration files"
 
 prerequisites:
   - Understanding of PostgreSQL DDL
@@ -101,6 +101,26 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Category**: People / Pay
 
 ### March 2027
+
+#### March 31, 2027
+
+**`20270331150000_company_calendar_america_chicago.sql`**
+- **Purpose**: Unify company calendar (`work_date` “today”, editable week gates, salary “today” RLS, template default timezone) on **America/Chicago**
+- **Changes**: `UPDATE` salary templates/overrides from `America/Denver` → `America/Chicago`; `ALTER` default timezone; recreate salary day-override policies; `CREATE OR REPLACE` `salary_sync_one_user_clock_sessions`, `sync_salary_clock_sessions_for_day`, `split_own_clock_session_segments`, `split_own_clock_session_cluster`, `replace_own_clock_session_cluster_mixed`, `leader_split_clock_session_segments`, `leader_split_clock_session_cluster`, `leader_replace_clock_session_cluster_mixed` (`v_tz` + messages)
+- **Impact**: Dashboard clock “today”, My Time week range (`dateUtils`), split/replace RPC week windows, Settings salary defaults, Edge `sync-salary-sessions` cron date
+- **Category**: Platform / Hours / People
+
+**`20270331160000_users_read_own_people_pay_config.sql`**
+- **Purpose**: Allow any authenticated user to **SELECT** their own **`people_pay_config`** row for Settings **Salaried workday** (`SalaryWorkScheduleSettings` loads `is_salary` by `person_name` = `users.name`)
+- **Changes**: `DROP POLICY IF EXISTS "Users can read own people pay config row"`; `CREATE POLICY` **FOR SELECT** `USING` (exists `users` row for `auth.uid()` with `btrim(name) = btrim(people_pay_config.person_name)`); `COMMENT ON POLICY`
+- **Impact**: Superintendent, primary, estimator, subcontractor (and others not pay-master / assistant / cost-matrix-shared) who are salaried see the workday editor; still no INSERT/UPDATE on `people_pay_config` without pay access
+- **Category**: People / RLS / Settings
+
+**`20270331140000_salary_schedule_and_clock_origin.sql`**
+- **Purpose**: Salaried 8h schedule templates, optional day overrides, `clock_sessions.origin` / `salary_segment_index`, and sync RPCs for auto open/close salary sessions
+- **Changes**: Tables `salary_work_schedule_templates`, `salary_work_schedule_day_overrides`; unique partial indexes on salary sessions; restrict client INSERT to `user_punch`; `sync_salary_clock_sessions_for_day` (service_role), `sync_salary_clock_sessions_for_user_day` (authenticated); internal `salary_sync_one_user_clock_sessions`
+- **Impact**: Settings Salaried workday; Edge Function `sync-salary-sessions`; Dashboard On shift / Off shift
+- **Category**: People / Hours / Dashboard
 
 #### March 24, 2027
 
@@ -2344,7 +2364,7 @@ supabase db diff
 - [PROJECT_DOCUMENTATION.md - Database Schema](./PROJECT_DOCUMENTATION.md#database-schema)
 - [DATABASE_IMPROVEMENTS_SUMMARY.md](./DATABASE_IMPROVEMENTS_SUMMARY.md) - v2.22 improvements
 - [DATABASE_FIXES_TEST_PLAN.md](./DATABASE_FIXES_TEST_PLAN.md) - Testing procedures
-- [supabase/migrations/README.md](./supabase/migrations/README.md) - Migration directory readme
+- [supabase/archive/README.md](./supabase/archive/README.md) - Migration directory readme
 
 ---
 

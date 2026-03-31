@@ -12,11 +12,17 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.203 → v2.4"
+version_range: "v2.206 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.206)"
+    line: ~583
+    description: "Settings Salaried workday collapsible; people_pay_config self-read RLS for salary Settings; Dashboard clock strip stripScopeOverlay wrapper removed (My team/Everyone, Needs attention)"
+  - name: "Latest Version (v2.205)"
+    line: ~596
+    description: "Company calendar America/Chicago: dateUtils APP_CALENDAR_TZ, getDefaultWeekRange Sunday week in Chicago, salary SQL + split RPCs v_tz, sync-salary-sessions, bulk UPDATE templates"
   - name: "Latest Version (v2.203)"
-    line: ~580
+    line: ~600
     description: "Dashboard Jobs worked today: two-column layout; job link + inline [ hours • people ] on line 1, address line 2; JOBS_WORKED_TODAY_COL_SPAN 2; DashboardTeamActiveClockStrip"
   - name: "Latest Version (v2.202)"
     line: ~590
@@ -439,48 +445,49 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.203)](#latest-updates-v2203) - Dashboard **Jobs worked today**: two-column table; **job link** + inline **`[ hours • people ]`** on line 1, **address** line 2; [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)
-2. [Latest Updates (v2.202)](#latest-updates-v2202) - Dashboard **Jobs worked today**: strip subsection by **`job_ledger_id`**; total hours + people; **`jobsWorkedTodayStripRows`**; [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx), [`useDashboardMyTeamSectionState.ts`](src/hooks/useDashboardMyTeamSectionState.ts)
-3. [Latest Updates (v2.200)](#latest-updates-v2200) - Dashboard **Clocked in today**: **optimistic** approved checkmark after successful **`approve_clock_sessions`** (before **`loadPending`**); [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)
-4. [Latest Updates (v2.199)](#latest-updates-v2199) - **Session actions** modal: **Current assignment** line, **Open job** / **Open bid**, **Change assignment** + collapsed search, **Clear assignment**; [`ClockSessionStripActionsModal.tsx`](src/components/ClockSessionStripActionsModal.tsx), [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)
-5. [Latest Updates (v2.198)](#latest-updates-v2198) - Dashboard **Clocked in today**: **Session actions** modal (**long-press** / **Shift+click** / SR) — **Approve**, **Reject…** (then confirm), **Edit** memo + job/bid, **Revoke approval**; [`ClockSessionStripActionsModal.tsx`](src/components/ClockSessionStripActionsModal.tsx), [`ClockSessionStripApproveControl.tsx`](src/components/ClockSessionStripApproveControl.tsx), [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)
-6. [Latest Updates (v2.197)](#latest-updates-v2197) - Dashboard **Clocked in today**: per-session **approve** (click) + **reject** (long-press or **Shift+click**, then **in-app confirm modal**); [`ClockSessionStripApproveControl.tsx`](src/components/ClockSessionStripApproveControl.tsx), [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)
-7. [Latest Updates (v2.196)](#latest-updates-v2196) - Dashboard **Clocked in today**: **Show all** vs **Show missing** (sessions with no job and no bid); [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)
-8. [Latest Updates (v2.195)](#latest-updates-v2195) - Dashboard **Currently clocked in** strip: **Clocked in today** unified **thead** row + collapse (`dashboard_clock_strip_clocked_in_today_collapsed`)
-9. [Latest Updates (v2.194)](#latest-updates-v2194) - **My Time** Visual: **split boundary** drag **ends on release over handle** (removed `pointerup` `stopPropagation`); **slimmer** handle + **`grabbing`** via `body.my-time-boundary-dragging`; coarse-pointer sizing ([`index.css`](src/index.css) `.myTimeBoundaryHandle`)
-10. [Latest Updates (v2.193)](#latest-updates-v2193) - **My Time**: merge **job-choice modal** when allocations differ (`MyTimeMergeSegmentsModal`, `segmentJobOverrides`, `setSegmentJobOverride`, `mergeAllocChoiceRequired`)
-11. [Latest Updates (v2.192)](#latest-updates-v2192) - Dashboard **My Time** / **Edit time**: **Merge up** / **Merge down** (remove a segment by merging with neighbor; notes + optional job/bid confirm); [`splitReducer`](src/lib/myTimeDayTimeline.ts) `removeSegmentMergeWithPrev` / `removeSegmentMergeWithNext`
-12. [Latest Updates (v2.191)](#latest-updates-v2191) - **Hard Reload** / force reload: document loads **`/`** then restores route (`hardReload.ts`, `index.html`); **Clock In**: single “no assigned jobs” info toast (`ToastContext`, `ClockInOutButton`)
-13. [Latest Updates (v2.186)](#latest-updates-v2186) - Settings **Templates & testing** (dev): collapsible **Workflow email (Edge Function)** one-shot test invoking `send-workflow-notification` (DB template + Resend; no `notification_history`); [`supabase/config.toml`](supabase/config.toml) `verify_jwt = false` for `test-email` and `send-workflow-notification`
-14. [Latest Updates (v2.185)](#latest-updates-v2185) - Jobs **Stages** **Last activity** column (latest thread note preview, Central Time); remove `jobs_ledger.stage_notes`; [`jobs_ledger_thread_note_stats`](supabase/migrations/20260330023918_extend_thread_note_stats_drop_stage_notes.sql) `last_note_body` / `last_note_author_name`
-15. [Latest Updates (v2.184)](#latest-updates-v2184) - Job thread notes: **Enter** submits note; **Shift+Enter** new line ([`JobThreadNotesPanel`](src/components/JobThreadNotesPanel.tsx))
-16. [Latest Updates (v2.183)](#latest-updates-v2183) - Jobs **Stages** + **Workflow** linked jobs: **thread notes** column (`jobs_ledger_thread_notes`, Dispatch-style panel); `jobs_ledger_thread_note_stats`; [`useJobThreadNotes`](src/hooks/useJobThreadNotes.ts)
-17. [Latest Updates (v2.182)](#latest-updates-v2182) - Dashboard **Clock In** / **Update Focus**: assigned jobs **auto-load** (`list_assigned_jobs_for_dashboard`); no **Choose from my jobs** control; **Filtering by** line hidden when a single service type; stronger notes/search **borders** and **focus** styles
-18. [Latest Updates (v2.181)](#latest-updates-v2181) - Jobs **Edit Job** billing: **comma** thousands on Job Total/Bid and payment amounts; Workflow **line items** optional **item_date** + **clipboard** bulk import (Add mode)
-19. [Latest Updates (v2.180)](#latest-updates-v2180) - Bids **New/Edit** modal: **SearchableSelect**, layout + mobile grid, Distance + Plan Pages row; estimator **Bid** header
-20. [Latest Updates (v2.179)](#latest-updates-v2179) - Dashboard **My Time** / **Edit time** (this-week-only editor, Form/Visual defaults, timeline UX)
-21. [Latest Updates (v2.178)](#latest-updates-v2178) - People **Primary** / **Superintendent** on `people` roster + Pay/Hours (`20260329042321`)
-22. [Latest Updates (v2.177)](#latest-updates-v2177) - People **Housing** tab + pay report **Housing** block (`20270329180000`)
-23. [Latest Updates (v2.176)](#latest-updates-v2176) - People Pay History: Ledger **open count** + **total remaining** (filtered rows)
-24. [Latest Updates (v2.175)](#latest-updates-v2175) - People Pay History: **Draft Payroll** (renamed from Run Payroll); bulk modal copy only
-25. [Latest Updates (v2.172)](#latest-updates-v2172) - Pay History: partial payments (`pay_stub_payments`), ledger balance, Run Payroll Partial
-26. [Latest Updates (v2.171)](#latest-updates-v2171) - People Hours: audit modal edit, job highlight on grid, shared clock edit modal
-27. [Latest Updates (v2.170)](#latest-updates-v2170) - People Pay History: ledger search, actions UX, bulk modal layout
-28. [Latest Updates (v2.164)](#latest-updates-v2164) - Settings (dev): Ignored task types list under Dashboard & alerts
-29. [Latest Updates (v2.163)](#latest-updates-v2163) - Dashboard clock strip; supply house website in expanded row
-30. [Latest Updates (v2.162)](#latest-updates-v2162) - Team feedback: dev eligibility reset, submissions RLS, raw submission names
-31. [Latest Updates (v2.153)](#latest-updates-v2153) - Dashboard My Team layout; pending banner jump UX
-32. [Latest Updates (v2.152)](#latest-updates-v2152) - My Team: People you lead hours table (Pending/Approved/Total)
-33. [Latest Updates (v2.151)](#latest-updates-v2151) - My Team clock notify + ledger; Edge Function
-34. [Latest Updates (v2.150)](#latest-updates-v2150) - Dashboard My Team: People you lead roster
-35. [Latest Updates (v2.149)](#latest-updates-v2149) - Clock sessions UX; daily goals gate; goals tables
-36. [Latest Updates (v2.148)](#latest-updates-v2148) - Bid Board All notes; customer notes UX; contact_method
-37. [Latest Updates (v2.145)](#latest-updates-v2145) - Master tech mobile nav Quickfill and Review in hamburger
-38. [Latest Updates (v2.144)](#latest-updates-v2144) - Assistant billing sections at top of Dashboard
-39. [Latest Updates (v2.143)](#latest-updates-v2143) - Assistant Dashboard section reorder
-40. [Latest Updates (v2.142)](#latest-updates-v2142) - Dashboard Assigned Jobs and Superintendent Jobs UX
-41. [Latest Updates (v2.139)](#latest-updates-v2139) - Fix cost_estimates RLS for assistants
-42. [Latest Updates (v2.138)](#latest-updates-v2138) - Revoke superintendent Jobs Billing access
+1. [Latest Updates (v2.206)](#latest-updates-v2206) - **Salaried workday** collapsible in Settings; **`people_pay_config`** self-read SELECT RLS; Dashboard **Currently In** corner toggles: removed **`stripScopeOverlay`** wrapper; [`Settings.tsx`](src/pages/Settings.tsx), [`20270331160000_users_read_own_people_pay_config.sql`](supabase/migrations/20270331160000_users_read_own_people_pay_config.sql), [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)
+2. [Latest Updates (v2.203)](#latest-updates-v2203) - Dashboard **Jobs worked today**: two-column table; **job link** + inline **`[ hours • people ]`** on line 1, **address** line 2; [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)
+3. [Latest Updates (v2.202)](#latest-updates-v2202) - Dashboard **Jobs worked today**: strip subsection by **`job_ledger_id`**; total hours + people; **`jobsWorkedTodayStripRows`**; [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx), [`useDashboardMyTeamSectionState.ts`](src/hooks/useDashboardMyTeamSectionState.ts)
+4. [Latest Updates (v2.200)](#latest-updates-v2200) - Dashboard **Clocked in today**: **optimistic** approved checkmark after successful **`approve_clock_sessions`** (before **`loadPending`**); [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)
+5. [Latest Updates (v2.199)](#latest-updates-v2199) - **Session actions** modal: **Current assignment** line, **Open job** / **Open bid**, **Change assignment** + collapsed search, **Clear assignment**; [`ClockSessionStripActionsModal.tsx`](src/components/ClockSessionStripActionsModal.tsx), [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)
+6. [Latest Updates (v2.198)](#latest-updates-v2198) - Dashboard **Clocked in today**: **Session actions** modal (**long-press** / **Shift+click** / SR) — **Approve**, **Reject…** (then confirm), **Edit** memo + job/bid, **Revoke approval**; [`ClockSessionStripActionsModal.tsx`](src/components/ClockSessionStripActionsModal.tsx), [`ClockSessionStripApproveControl.tsx`](src/components/ClockSessionStripApproveControl.tsx), [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)
+7. [Latest Updates (v2.197)](#latest-updates-v2197) - Dashboard **Clocked in today**: per-session **approve** (click) + **reject** (long-press or **Shift+click**, then **in-app confirm modal**); [`ClockSessionStripApproveControl.tsx`](src/components/ClockSessionStripApproveControl.tsx), [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)
+8. [Latest Updates (v2.196)](#latest-updates-v2196) - Dashboard **Clocked in today**: **Show all** vs **Show missing** (sessions with no job and no bid); [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)
+9. [Latest Updates (v2.195)](#latest-updates-v2195) - Dashboard **Currently clocked in** strip: **Clocked in today** unified **thead** row + collapse (`dashboard_clock_strip_clocked_in_today_collapsed`)
+10. [Latest Updates (v2.194)](#latest-updates-v2194) - **My Time** Visual: **split boundary** drag **ends on release over handle** (removed `pointerup` `stopPropagation`); **slimmer** handle + **`grabbing`** via `body.my-time-boundary-dragging`; coarse-pointer sizing ([`index.css`](src/index.css) `.myTimeBoundaryHandle`)
+11. [Latest Updates (v2.193)](#latest-updates-v2193) - **My Time**: merge **job-choice modal** when allocations differ (`MyTimeMergeSegmentsModal`, `segmentJobOverrides`, `setSegmentJobOverride`, `mergeAllocChoiceRequired`)
+12. [Latest Updates (v2.192)](#latest-updates-v2192) - Dashboard **My Time** / **Edit time**: **Merge up** / **Merge down** (remove a segment by merging with neighbor; notes + optional job/bid confirm); [`splitReducer`](src/lib/myTimeDayTimeline.ts) `removeSegmentMergeWithPrev` / `removeSegmentMergeWithNext`
+13. [Latest Updates (v2.191)](#latest-updates-v2191) - **Hard Reload** / force reload: document loads **`/`** then restores route (`hardReload.ts`, `index.html`); **Clock In**: single “no assigned jobs” info toast (`ToastContext`, `ClockInOutButton`)
+14. [Latest Updates (v2.186)](#latest-updates-v2186) - Settings **Templates & testing** (dev): collapsible **Workflow email (Edge Function)** one-shot test invoking `send-workflow-notification` (DB template + Resend; no `notification_history`); [`supabase/config.toml`](supabase/config.toml) `verify_jwt = false` for `test-email` and `send-workflow-notification`
+15. [Latest Updates (v2.185)](#latest-updates-v2185) - Jobs **Stages** **Last activity** column (latest thread note preview, Central Time); remove `jobs_ledger.stage_notes`; [`jobs_ledger_thread_note_stats`](supabase/migrations/20260330023918_extend_thread_note_stats_drop_stage_notes.sql) `last_note_body` / `last_note_author_name`
+16. [Latest Updates (v2.184)](#latest-updates-v2184) - Job thread notes: **Enter** submits note; **Shift+Enter** new line ([`JobThreadNotesPanel`](src/components/JobThreadNotesPanel.tsx))
+17. [Latest Updates (v2.183)](#latest-updates-v2183) - Jobs **Stages** + **Workflow** linked jobs: **thread notes** column (`jobs_ledger_thread_notes`, Dispatch-style panel); `jobs_ledger_thread_note_stats`; [`useJobThreadNotes`](src/hooks/useJobThreadNotes.ts)
+18. [Latest Updates (v2.182)](#latest-updates-v2182) - Dashboard **Clock In** / **Update Focus**: assigned jobs **auto-load** (`list_assigned_jobs_for_dashboard`); no **Choose from my jobs** control; **Filtering by** line hidden when a single service type; stronger notes/search **borders** and **focus** styles
+19. [Latest Updates (v2.181)](#latest-updates-v2181) - Jobs **Edit Job** billing: **comma** thousands on Job Total/Bid and payment amounts; Workflow **line items** optional **item_date** + **clipboard** bulk import (Add mode)
+20. [Latest Updates (v2.180)](#latest-updates-v2180) - Bids **New/Edit** modal: **SearchableSelect**, layout + mobile grid, Distance + Plan Pages row; estimator **Bid** header
+21. [Latest Updates (v2.179)](#latest-updates-v2179) - Dashboard **My Time** / **Edit time** (this-week-only editor, Form/Visual defaults, timeline UX)
+22. [Latest Updates (v2.178)](#latest-updates-v2178) - People **Primary** / **Superintendent** on `people` roster + Pay/Hours (`20260329042321`)
+23. [Latest Updates (v2.177)](#latest-updates-v2177) - People **Housing** tab + pay report **Housing** block (`20270329180000`)
+24. [Latest Updates (v2.176)](#latest-updates-v2176) - People Pay History: Ledger **open count** + **total remaining** (filtered rows)
+25. [Latest Updates (v2.175)](#latest-updates-v2175) - People Pay History: **Draft Payroll** (renamed from Run Payroll); bulk modal copy only
+26. [Latest Updates (v2.172)](#latest-updates-v2172) - Pay History: partial payments (`pay_stub_payments`), ledger balance, Run Payroll Partial
+27. [Latest Updates (v2.171)](#latest-updates-v2171) - People Hours: audit modal edit, job highlight on grid, shared clock edit modal
+28. [Latest Updates (v2.170)](#latest-updates-v2170) - People Pay History: ledger search, actions UX, bulk modal layout
+29. [Latest Updates (v2.164)](#latest-updates-v2164) - Settings (dev): Ignored task types list under Dashboard & alerts
+30. [Latest Updates (v2.163)](#latest-updates-v2163) - Dashboard clock strip; supply house website in expanded row
+31. [Latest Updates (v2.162)](#latest-updates-v2162) - Team feedback: dev eligibility reset, submissions RLS, raw submission names
+32. [Latest Updates (v2.153)](#latest-updates-v2153) - Dashboard My Team layout; pending banner jump UX
+33. [Latest Updates (v2.152)](#latest-updates-v2152) - My Team: People you lead hours table (Pending/Approved/Total)
+34. [Latest Updates (v2.151)](#latest-updates-v2151) - My Team clock notify + ledger; Edge Function
+35. [Latest Updates (v2.150)](#latest-updates-v2150) - Dashboard My Team: People you lead roster
+36. [Latest Updates (v2.149)](#latest-updates-v2149) - Clock sessions UX; daily goals gate; goals tables
+37. [Latest Updates (v2.148)](#latest-updates-v2148) - Bid Board All notes; customer notes UX; contact_method
+38. [Latest Updates (v2.145)](#latest-updates-v2145) - Master tech mobile nav Quickfill and Review in hamburger
+39. [Latest Updates (v2.144)](#latest-updates-v2144) - Assistant billing sections at top of Dashboard
+40. [Latest Updates (v2.143)](#latest-updates-v2143) - Assistant Dashboard section reorder
+41. [Latest Updates (v2.142)](#latest-updates-v2142) - Dashboard Assigned Jobs and Superintendent Jobs UX
+42. [Latest Updates (v2.139)](#latest-updates-v2139) - Fix cost_estimates RLS for assistants
+43. [Latest Updates (v2.138)](#latest-updates-v2138) - Revoke superintendent Jobs Billing access
 2. [Latest Updates (v2.135)](#latest-updates-v2135) - Workflow: Collapse old stages toggle, breadcrumb below buttons, no-wrap scroll
 2. [Latest Updates (v2.126)](#latest-updates-v2126) - Split clock session in Edit modal
 2. [Latest Updates (v2.121)](#latest-updates-v2121) - Stages ClickTooling icon, Billing UX refactor, Report count styling
@@ -574,6 +581,43 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.206)
+
+**Date**: 2026-03-31
+
+### Settings — Salaried workday UX; pay config self-read; clock strip overlays
+
+- **Salaried workday (collapsible)**: **[`Settings.tsx`](src/pages/Settings.tsx)** wraps **[`SalaryWorkScheduleSettings`](src/components/SalaryWorkScheduleSettings.tsx)** in a bordered panel with a header button (▼/▶), **`aria-expanded`** / **`aria-controls`**, default **expanded** (`salaryWorkdaySectionOpen`). Anchor remains **`#settings-salary-workday`**.
+- **`people_pay_config` RLS**: Migration **[`20270331160000_users_read_own_people_pay_config.sql`](supabase/migrations/20270331160000_users_read_own_people_pay_config.sql)** adds **`Users can read own people pay config row`** — **`FOR SELECT`** when **`btrim(users.name) = btrim(person_name)`** for **`auth.uid()`** — so salaried **superintendent**, **primary**, etc. can load **`is_salary`** in Settings (not only pay masters / assistants / cost-matrix shared). **`DROP POLICY IF EXISTS`** before **`CREATE`** keeps re-apply idempotent.
+- **Dashboard — Currently In corner controls**: **[`stripScopeOverlay`](src/components/DashboardTeamActiveClockStrip.tsx)** keeps absolute positioning only; removed frosted **`background`**, **`padding`**, **`borderRadius`**, and **`boxShadow`** ring so **My team / Everyone** and **Needs attention / Show all** sit flush on the orange header without a nested frame.
+
+---
+
+## Latest Updates (v2.205)
+
+**Date**: 2026-03-31
+
+### Company calendar: America/Chicago
+
+- **Semantics**: `work_date` “today,” Dashboard **My Time** week range (`getDefaultWeekRange` / `getLastWeekRange`), `denverCalendarDayKey` and Denver-named formatters in [`dateUtils.ts`](src/utils/dateUtils.ts) now use **`APP_CALENDAR_TZ` = `America/Chicago`** (matching server RPC week gates).
+- **Database**: [`20270331150000_company_calendar_america_chicago.sql`](supabase/migrations/20270331150000_company_calendar_america_chicago.sql) — `UPDATE` salary template/override rows from Mountain default; `ALTER` default; salary override RLS “today”; replaced salary sync + `split_own_*` / `replace_own_*` / `leader_*` clock RPCs (`v_tz`).
+- **Edge**: [`sync-salary-sessions`](supabase/functions/sync-salary-sessions/index.ts) uses Chicago calendar date for `p_work_date`.
+- **Release note**: Near midnight, Mountain vs Central can shift which calendar day is “today” for clock and salary override rules compared to pre-migration Denver.
+
+---
+
+## Latest Updates (v2.204)
+
+**Date**: 2026-03-31
+
+### Salaried workday and auto clock sessions
+
+- **Settings → Salaried workday**: Users marked salaried in `people_pay_config` can save an 8-hour **continuous** or **split** schedule (15-minute steps), optional **today-only override** (Central Time company date), in [`SalaryWorkScheduleSettings.tsx`](src/components/SalaryWorkScheduleSettings.tsx). Tables: `salary_work_schedule_templates`, `salary_work_schedule_day_overrides`; `clock_sessions.origin` / `salary_segment_index`.
+- **RPCs**: `sync_salary_clock_sessions_for_day` (service role) and `sync_salary_clock_sessions_for_user_day` (self or pay staff). Edge Function [`sync-salary-sessions`](supabase/functions/sync-salary-sessions/index.ts) for cron (`CRON_SECRET`).
+- **Dashboard**: [`ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx) shows **On shift** / **Off shift** and **Update focus** without clock out/in when a template exists; **Save focus** updates job/bid on the open salary session only.
 
 ---
 
@@ -4896,7 +4940,7 @@ Enhanced the Cost Estimate tab with automated driving cost calculations and stre
 **Database Changes**:
 - Table: `cost_estimates`
 - New columns: `driving_cost_rate` (NUMERIC(10,2), default 0.70), `hours_per_trip` (NUMERIC(10,2), default 2.0)
-- Migration file: `supabase/migrations/add_cost_estimate_driving_cost_fields.sql`
+- Migration file: `supabase/archive/add_cost_estimate_driving_cost_fields.sql`
 
 #### Labor Book Application Workflow
 
@@ -5542,8 +5586,8 @@ All changes are backward compatible. Existing code continues to work unchanged. 
 - `src/types/database.ts` – Updated `takeoff_book_entries`; added `takeoff_book_entry_items`.
 
 **Files added**:
-- `supabase/migrations/add_takeoff_book_entries_alias_names.sql`
-- `supabase/migrations/add_takeoff_book_entry_items.sql`
+- `supabase/archive/add_takeoff_book_entries_alias_names.sql`
+- `supabase/archive/add_takeoff_book_entry_items.sql`
 
 ### Materials Price Book improvements
 
@@ -5599,7 +5643,7 @@ All changes are backward compatible. Existing code continues to work unchanged. 
 - Bid Board Win/Loss column shows “Started or Complete” when applicable.
 
 **Database**:
-- Updated `bids.outcome` constraint via `supabase/migrations/add_bids_outcome_started_or_complete.sql`.
+- Updated `bids.outcome` constraint via `supabase/archive/add_bids_outcome_started_or_complete.sql`.
 
 **Files modified**:
 - `src/pages/Bids.tsx`
@@ -5618,7 +5662,7 @@ All changes are backward compatible. Existing code continues to work unchanged. 
 - Labor Book entries can include optional **additional names** (aliases) that match count rows’ Fixture or Tie-in (case-insensitive); first match wins by entry order.
 
 **Database**:
-- Added `labor_book_entries.alias_names` via `supabase/migrations/add_labor_book_entries_alias_names.sql`.
+- Added `labor_book_entries.alias_names` via `supabase/archive/add_labor_book_entries_alias_names.sql`.
 
 **Files modified**:
 - `src/pages/Bids.tsx`
@@ -5695,8 +5739,8 @@ All changes are backward compatible. Existing code continues to work unchanged. 
 - `src/pages/Settings.tsx` – Bids backup export includes price book (`price_book_versions`, `price_book_entries`), labor book (`labor_book_versions`, `labor_book_entries`), takeoff book (`takeoff_book_versions`, `takeoff_book_entries`), and full `purchase_orders` and `purchase_order_items` (all rows under RLS, including Takeoffs-created POs).
 
 **Files added**:
-- `supabase/migrations/create_labor_book_versions_and_entries.sql` – Creates `labor_book_versions` and `labor_book_entries` with RLS; seeds one "Default" version and sample entries.
-- `supabase/migrations/add_bids_selected_labor_book_version.sql` – Adds `bids.selected_labor_book_version_id` column.
+- `supabase/archive/create_labor_book_versions_and_entries.sql` – Creates `labor_book_versions` and `labor_book_entries` with RLS; seeds one "Default" version and sample entries.
+- `supabase/archive/add_bids_selected_labor_book_version.sql` – Adds `bids.selected_labor_book_version_id` column.
 
 ---
 
@@ -5727,9 +5771,9 @@ All changes are backward compatible. Existing code continues to work unchanged. 
 - `src/pages/Bids.tsx` – Pricing tab state and loaders; price book version/entry CRUD; bid pricing assignments; margin comparison table with assignment dropdowns and flags; version dropdown and "Go to Cost Estimate" prompt.
 
 **Files added**:
-- `supabase/migrations/create_price_book_versions_and_entries.sql` – Creates `price_book_versions` and `price_book_entries` with RLS.
-- `supabase/migrations/create_bid_pricing_assignments.sql` – Creates `bid_pricing_assignments` with RLS.
-- `supabase/migrations/add_bids_selected_price_book_version.sql` – Adds `bids.selected_price_book_version_id` column.
+- `supabase/archive/create_price_book_versions_and_entries.sql` – Creates `price_book_versions` and `price_book_entries` with RLS.
+- `supabase/archive/create_bid_pricing_assignments.sql` – Creates `bid_pricing_assignments` with RLS.
+- `supabase/archive/add_bids_selected_price_book_version.sql` – Adds `bids.selected_price_book_version_id` column.
 
 ---
 
@@ -5762,7 +5806,7 @@ All changes are backward compatible. Existing code continues to work unchanged. 
 - `src/pages/Bids.tsx` – `submissionBidHasCostEstimate` and `submissionBidCostEstimateAmount` state; `useEffect` to load cost estimate existence and amount for selected Submission bid; cost estimate indicator and View/Create button in Submission panel; `formatCurrency` helper; Cost Estimate tab and Submission preview use `formatCurrency`; Pricing tab (placeholder); `activeTab` type includes `'pricing'`.
 
 **Files added**:
-- `supabase/migrations/revert_price_book_and_bids_job_type.sql` – Drops price book tables and `bids.job_type` in dependency order.
+- `supabase/archive/revert_price_book_and_bids_job_type.sql` – Drops price book tables and `bids.job_type` in dependency order.
 
 ---
 
@@ -5818,7 +5862,7 @@ All changes are backward compatible. Existing code continues to work unchanged. 
 - `src/lib/materialPOUtils.ts` – Shared `expandTemplate`, `addExpandedPartsToPO` (used by Materials and Bids Takeoff)
 
 **Files added**:
-- `supabase/migrations/optimize_workflow_templates_rls.sql` – RLS optimization for workflow_templates
+- `supabase/archive/optimize_workflow_templates_rls.sql` – RLS optimization for workflow_templates
 
 ---
 
@@ -5848,7 +5892,7 @@ All changes are backward compatible. Existing code continues to work unchanged. 
 
 **Files added**:
 - `src/components/NewCustomerForm.tsx` – shared create-only customer form (used by CustomerForm for create and by Bids Add Customer modal).
-- `supabase/migrations/allow_estimators_select_customers.sql` – customers SELECT policy includes estimator; new INSERT policy for estimators when master is assigned.
+- `supabase/archive/allow_estimators_select_customers.sql` – customers SELECT policy includes estimator; new INSERT policy for estimators when master is assigned.
 
 **Files modified**:
 - `src/pages/CustomerForm.tsx` – uses `NewCustomerForm` when `isNew`; edit/delete flow unchanged.
@@ -5898,7 +5942,7 @@ All changes are backward compatible. Existing code continues to work unchanged. 
   - **Submission & Followup only**: When a bid is selected, the panel above the submission entries table shows Builder Name, Builder Address, **Builder Phone Number**, **Builder Email** (from customer or legacy GC/Builder), Project Name, Project Address, **Project Contact Name**, **Project Contact Phone**, **Project Contact Email**, Bid Size. Project contact fields are **not** shown on the Bid Board table.
 
 **Files Modified**:
-- `supabase/migrations/add_bids_gc_contact.sql` – New migration for gc_contact_name, gc_contact_phone, gc_contact_email
+- `supabase/archive/add_bids_gc_contact.sql` – New migration for gc_contact_name, gc_contact_phone, gc_contact_email
 - `src/types/database.ts` – `bids`: added `estimated_job_start_date`, `gc_contact_name`, `gc_contact_phone`, `gc_contact_email`
 - `src/pages/Bids.tsx` – state, form field, save payload, collapsible sections, search, column order/visibility, delete modal, Edit column, Won table column, wording, GC/Builder contact state/form/panel
 
@@ -5981,8 +6025,8 @@ All changes are backward compatible. Existing code continues to work unchanged. 
   - Index on `notes_added_by` for faster lookups
 
 **Files Modified**:
-- `supabase/migrations/add_finalized_notes_tracking.sql` - New migration for notes tracking
-- `supabase/migrations/optimize_rls_for_master_sharing.sql` - Fixed UPDATE policy for assistants
+- `supabase/archive/add_finalized_notes_tracking.sql` - New migration for notes tracking
+- `supabase/archive/optimize_rls_for_master_sharing.sql` - Fixed UPDATE policy for assistants
 - `src/types/database.ts` - Updated `purchase_orders` table types
 - `src/pages/Materials.tsx` - Added notes functionality, duplicate feature, moved delete buttons
 
@@ -6058,12 +6102,12 @@ All changes are backward compatible. Existing code continues to work unchanged. 
 - ✅ All policies now check for `master_shares` relationships in addition to `master_assistants`
 - ✅ **Added RLS timeout fix migration** for master sharing
   - Introduces helper-function-based policies to avoid statement timeouts (`57014`)
-  - File: `supabase/migrations/optimize_rls_for_master_sharing.sql`
+  - File: `supabase/archive/optimize_rls_for_master_sharing.sql`
 
 **Files Modified**:
-- `supabase/migrations/create_master_shares.sql` - New table
-- `supabase/migrations/update_*_rls_for_master_sharing.sql` - 6 migration files updating RLS policies
-- `supabase/migrations/optimize_rls_for_master_sharing.sql` - Fix statement timeout errors
+- `supabase/archive/create_master_shares.sql` - New table
+- `supabase/archive/update_*_rls_for_master_sharing.sql` - 6 legacy SQL files (archived; not CLI migrations) updating RLS policies
+- `supabase/archive/optimize_rls_for_master_sharing.sql` - Fix statement timeout errors
 - `src/types/database.ts` - Added master_shares table types
 - `src/pages/Settings.tsx` - Added UI for master sharing
 
@@ -6184,8 +6228,8 @@ All changes are backward compatible. Existing code continues to work unchanged. 
   - Fixes 403/500 errors when recording workflow actions
 
 **Migration Files Created**:
-- `supabase/migrations/optimize_workflow_step_line_items_rls.sql`
-- `supabase/migrations/fix_project_workflow_step_actions_rls.sql`
+- `supabase/archive/optimize_workflow_step_line_items_rls.sql`
+- `supabase/archive/fix_project_workflow_step_actions_rls.sql`
 
 **Key Functions**:
 - `public.can_access_project_via_step(step_id_param UUID)` - Checks project access via step
@@ -6219,7 +6263,7 @@ All changes are backward compatible. Existing code continues to work unchanged. 
 - **Total Left on Job: Projections - Ledger = ...** displayed at bottom of the panel
 
 **Database**: `workflow_projections` table
-**Migration**: `supabase/migrations/create_workflow_projections.sql`
+**Migration**: `supabase/archive/create_workflow_projections.sql`
 
 ### Set Start Date/Time
 
@@ -6388,7 +6432,7 @@ All changes are backward compatible. Existing code continues to work unchanged. 
 - **Confirmation modal** requires typing the customer name to confirm deletion
 - Navigates to customer list after successful deletion
 
-**Database**: RLS policy in `supabase/migrations/add_customers_delete_rls.sql`
+**Database**: RLS policy in `supabase/archive/add_customers_delete_rls.sql`
 - Masters can delete their own customers
 - Devs can delete any customer
 
@@ -6432,15 +6476,15 @@ All changes are backward compatible. Existing code continues to work unchanged. 
 
 Run these migrations in order:
 
-1. **Private Notes**: `supabase/migrations/add_private_notes_to_workflow_steps.sql`
-2. **Line Items**: `supabase/migrations/create_workflow_step_line_items.sql`
-3. **Email Templates**: `supabase/migrations/create_email_templates.sql` (see `EMAIL_TEMPLATES_SETUP.md`)
-4. **Projections**: `supabase/migrations/create_workflow_projections.sql`
-5. **Customer Delete RLS**: `supabase/migrations/add_customers_delete_rls.sql`
-6. **Projects RLS for Assistants**: `supabase/migrations/verify_projects_rls_for_assistants.sql` - Ensures assistants can see all projects from masters who adopted them
-7. **Users RLS Fix**: `supabase/migrations/fix_users_rls_for_project_masters.sql` - Fixes 406 errors when assistants try to load master information (uses SECURITY DEFINER function to avoid recursion)
-8. **Line Items RLS Optimization**: `supabase/migrations/optimize_workflow_step_line_items_rls.sql` - Optimizes RLS policies to prevent timeout errors when loading line items (uses helper function `can_access_project_via_step()`)
-9. **Step Actions RLS Fix**: `supabase/migrations/fix_project_workflow_step_actions_rls.sql` - Fixes 403/500 errors when recording workflow actions (uses helper function `can_access_step_for_action()`)
+1. **Private Notes**: `supabase/archive/add_private_notes_to_workflow_steps.sql`
+2. **Line Items**: `supabase/archive/create_workflow_step_line_items.sql`
+3. **Email Templates**: `supabase/archive/create_email_templates.sql` (see `EMAIL_TEMPLATES_SETUP.md`)
+4. **Projections**: `supabase/archive/create_workflow_projections.sql`
+5. **Customer Delete RLS**: `supabase/archive/add_customers_delete_rls.sql`
+6. **Projects RLS for Assistants**: `supabase/archive/verify_projects_rls_for_assistants.sql` - Ensures assistants can see all projects from masters who adopted them
+7. **Users RLS Fix**: `supabase/archive/fix_users_rls_for_project_masters.sql` - Fixes 406 errors when assistants try to load master information (uses SECURITY DEFINER function to avoid recursion)
+8. **Line Items RLS Optimization**: `supabase/archive/optimize_workflow_step_line_items_rls.sql` - Optimizes RLS policies to prevent timeout errors when loading line items (uses helper function `can_access_project_via_step()`)
+9. **Step Actions RLS Fix**: `supabase/archive/fix_project_workflow_step_actions_rls.sql` - Fixes 403/500 errors when recording workflow actions (uses helper function `can_access_step_for_action()`)
 
 ---
 

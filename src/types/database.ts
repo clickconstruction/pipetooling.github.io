@@ -822,10 +822,12 @@ export type Database = {
           id: string
           job_ledger_id: string | null
           notes: string
+          origin: string
           rejected_at: string | null
           rejected_by: string | null
           revoked_at: string | null
           revoked_by: string | null
+          salary_segment_index: number | null
           user_id: string
           work_date: string
         }
@@ -843,10 +845,12 @@ export type Database = {
           id?: string
           job_ledger_id?: string | null
           notes?: string
+          origin?: string
           rejected_at?: string | null
           rejected_by?: string | null
           revoked_at?: string | null
           revoked_by?: string | null
+          salary_segment_index?: number | null
           user_id: string
           work_date: string
         }
@@ -864,10 +868,12 @@ export type Database = {
           id?: string
           job_ledger_id?: string | null
           notes?: string
+          origin?: string
           rejected_at?: string | null
           rejected_by?: string | null
           revoked_at?: string | null
           revoked_by?: string | null
+          salary_segment_index?: number | null
           user_id?: string
           work_date?: string
         }
@@ -4950,6 +4956,186 @@ export type Database = {
           },
         ]
       }
+      salary_work_schedule_day_overrides: {
+        Row: {
+          bid_id: string | null
+          created_at: string | null
+          id: string
+          job_ledger_id: string | null
+          mode: string | null
+          segment_a_duration_minutes: number | null
+          segment_a_start_local: string | null
+          segment_b_bid_id: string | null
+          segment_b_duration_minutes: number | null
+          segment_b_job_ledger_id: string | null
+          segment_b_start_local: string | null
+          timezone: string | null
+          updated_at: string | null
+          use_split_focus: boolean | null
+          user_id: string
+          work_date: string
+        }
+        Insert: {
+          bid_id?: string | null
+          created_at?: string | null
+          id?: string
+          job_ledger_id?: string | null
+          mode?: string | null
+          segment_a_duration_minutes?: number | null
+          segment_a_start_local?: string | null
+          segment_b_bid_id?: string | null
+          segment_b_duration_minutes?: number | null
+          segment_b_job_ledger_id?: string | null
+          segment_b_start_local?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+          use_split_focus?: boolean | null
+          user_id: string
+          work_date: string
+        }
+        Update: {
+          bid_id?: string | null
+          created_at?: string | null
+          id?: string
+          job_ledger_id?: string | null
+          mode?: string | null
+          segment_a_duration_minutes?: number | null
+          segment_a_start_local?: string | null
+          segment_b_bid_id?: string | null
+          segment_b_duration_minutes?: number | null
+          segment_b_job_ledger_id?: string | null
+          segment_b_start_local?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+          use_split_focus?: boolean | null
+          user_id?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salary_work_schedule_day_overrides_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_work_schedule_day_overrides_job_ledger_id_fkey"
+            columns: ["job_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_work_schedule_day_overrides_segment_b_bid_id_fkey"
+            columns: ["segment_b_bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_work_schedule_day_overrides_segment_b_job_ledger_id_fkey"
+            columns: ["segment_b_job_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_work_schedule_day_overrides_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      salary_work_schedule_templates: {
+        Row: {
+          bid_id: string | null
+          created_at: string | null
+          job_ledger_id: string | null
+          mode: string
+          segment_a_duration_minutes: number
+          segment_a_start_local: string
+          segment_b_bid_id: string | null
+          segment_b_duration_minutes: number | null
+          segment_b_job_ledger_id: string | null
+          segment_b_start_local: string | null
+          timezone: string
+          updated_at: string | null
+          use_split_focus: boolean
+          user_id: string
+        }
+        Insert: {
+          bid_id?: string | null
+          created_at?: string | null
+          job_ledger_id?: string | null
+          mode: string
+          segment_a_duration_minutes?: number
+          segment_a_start_local: string
+          segment_b_bid_id?: string | null
+          segment_b_duration_minutes?: number | null
+          segment_b_job_ledger_id?: string | null
+          segment_b_start_local?: string | null
+          timezone?: string
+          updated_at?: string | null
+          use_split_focus?: boolean
+          user_id: string
+        }
+        Update: {
+          bid_id?: string | null
+          created_at?: string | null
+          job_ledger_id?: string | null
+          mode?: string
+          segment_a_duration_minutes?: number
+          segment_a_start_local?: string
+          segment_b_bid_id?: string | null
+          segment_b_duration_minutes?: number | null
+          segment_b_job_ledger_id?: string | null
+          segment_b_start_local?: string | null
+          timezone?: string
+          updated_at?: string | null
+          use_split_focus?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salary_work_schedule_templates_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_work_schedule_templates_job_ledger_id_fkey"
+            columns: ["job_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_work_schedule_templates_segment_b_bid_id_fkey"
+            columns: ["segment_b_bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_work_schedule_templates_segment_b_job_ledger_id_fkey"
+            columns: ["segment_b_job_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_work_schedule_templates_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_types: {
         Row: {
           color: string | null
@@ -6953,6 +7139,14 @@ export type Database = {
           revoked_count: number
         }[]
       }
+      salary_schedule_staff_or_self_target: {
+        Args: { p_target_user_id: string }
+        Returns: boolean
+      }
+      salary_sync_one_user_clock_sessions: {
+        Args: { p_now: string; p_user_id: string; p_work_date: string }
+        Returns: undefined
+      }
       search_bids_for_clock: {
         Args: {
           p_search_text?: string
@@ -7010,6 +7204,14 @@ export type Database = {
       }
       sync_crew_jobs_from_clock: {
         Args: { p_person_name: string; p_work_date: string }
+        Returns: undefined
+      }
+      sync_salary_clock_sessions_for_day: {
+        Args: { p_work_date?: string }
+        Returns: undefined
+      }
+      sync_salary_clock_sessions_for_user_day: {
+        Args: { p_user_id: string; p_work_date: string }
         Returns: undefined
       }
       team_feedback_aggregates_by_manager: {

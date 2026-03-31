@@ -395,10 +395,6 @@ const stripScopeOverlay: CSSProperties = {
   top: '0.2rem',
   right: '0.4rem',
   zIndex: 3,
-  background: 'rgba(250, 250, 250, 0.95)',
-  borderRadius: 4,
-  padding: '1px 3px',
-  boxShadow: '0 0 0 1px rgba(229, 231, 235, 0.9)',
 }
 
 /** Open clock sessions plus "Clocked in today" summary (Dashboard). Mount when there are open sessions or today rows so the tick interval runs when needed. */
@@ -428,7 +424,7 @@ export function DashboardTeamActiveClockStrip({
   showJobBidColumn?: boolean
   onJobBidSaved?: () => void
   onJobBidAssignError?: (msg: string) => void
-  /** Dev / master / assistant: open My Time day editor for this person's hours today (Denver). */
+  /** Dev / master / assistant: open My Time day editor for this person's hours today (company calendar). */
   onOpenStripMyTimeEditor?: (p: { subjectUserId: string; displayName: string }) => void
   /** For `rejected_by` when rejecting from the today strip. */
   authUserId?: string
