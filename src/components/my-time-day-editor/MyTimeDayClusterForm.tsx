@@ -1,6 +1,11 @@
 import { Fragment, useMemo, type CSSProperties } from 'react'
-import { AssignSessionJobPopover } from '../clock-sessions/AssignSessionJobPopover'
 import {
+  AssignSessionJobPopover,
+  type AssignSessionJobPopoverSession,
+} from '../clock-sessions/AssignSessionJobPopover'
+import {
+  clockSessionRowForSegmentAssign,
+  mergeAllocChoiceRequired,
   NO_JOB_BID_LINKED_LABEL,
   segmentAllocationLabelsForOverlap,
   unassignedSessionIdsOverlappingSegment,
@@ -84,7 +89,11 @@ export type MyTimeDayClusterFormProps = {
   patchClusterAction: (action: SplitAction) => void
   onCommitInnerBoundary: (boundaryIndex: number, ms: number) => void
   setAssignBulk: (v: { sessionIds: string[]; label: string } | null) => void
-  onSaved: () => void
+  onAssignJobSaved: () => void
+  /** My Time: persist virtual splits before assign so each segment has its own clock_sessions row. */
+  resolveAssignSession?: (segIdx: number) => Promise<AssignSessionJobPopoverSession | null>
+  /** When set, distinct job/bid on merge opens parent modal instead of confirm-only. */
+  onRequestMergeJobChoice?: (payload: { direction: 'prev' | 'next'; segIdx: number }) => void
 }
 
 export function MyTimeDayClusterForm({
@@ -103,7 +112,9 @@ export function MyTimeDayClusterForm({
   patchClusterAction,
   onCommitInnerBoundary,
   setAssignBulk,
-  onSaved,
+  onAssignJobSaved,
+  resolveAssignSession,
+  onRequestMergeJobChoice,
 }: MyTimeDayClusterFormProps) {
   const timeOnlyMode = denverSameCalendarDay(t0, t1)
   const anchorYmd = anchorDateYmdFromClusterStart(t0)
@@ -185,7 +196,14 @@ export function MyTimeDayClusterForm({
           showSingleUnassignedAssign && unassignedIds.length === 1
             ? c.find((row) => row.id === unassignedIds[0]!)
             : undefined
+        const showSingleAssignedChange =
+          !saving &&
+          allocLabels.length === 1 &&
+          allocLabels[0] !== NO_JOB_BID_LINKED_LABEL
+        const changeAssignTargetRow =
+          showSingleAssignedChange ? clockSessionRowForSegmentAssign(c, split, nowTick, segIdx) : null
         const endInputId = `my-time-${clusterId}-seg-${segIdx}-end`
+        const openLastCluster = !lastS.clocked_out_at
 
         const spanRangeText = openLast
           ? denverSameCalendarDay(a, b)
@@ -281,6 +299,82 @@ export function MyTimeDayClusterForm({
                 }}
               >
                 <span style={FORM_SPAN_VALUE_TEXT}>[{formatDurationMs(dur)}]</span>
+                {split.boundaries.length > 2 && !saving ? (
+                  <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+                    {segIdx > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const labUp = segmentAllocationLabelsForOverlap(
+                            c,
+                            split,
+                            nowTick,
+                            segIdx - 1,
+                            jobLabels,
+                            bidLabels
+                          )
+                          if (mergeAllocChoiceRequired(allocLabels, labUp)) {
+                            onRequestMergeJobChoice?.({ direction: 'prev', segIdx })
+                            return
+                          }
+                          patchClusterAction({
+                            type: 'removeSegmentMergeWithPrev',
+                            segIndex: segIdx,
+                            nowMs: nowTick,
+                            openLastCluster,
+                          })
+                        }}
+                        style={{
+                          padding: '1px 6px',
+                          fontSize: '0.68rem',
+                          border: '1px solid #d1d5db',
+                          borderRadius: 4,
+                          background: 'white',
+                          color: '#6b7280',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Merge up
+                      </button>
+                    ) : null}
+                    {segIdx < split.boundaries.length - 2 ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const labDn = segmentAllocationLabelsForOverlap(
+                            c,
+                            split,
+                            nowTick,
+                            segIdx + 1,
+                            jobLabels,
+                            bidLabels
+                          )
+                          if (mergeAllocChoiceRequired(allocLabels, labDn)) {
+                            onRequestMergeJobChoice?.({ direction: 'next', segIdx })
+                            return
+                          }
+                          patchClusterAction({
+                            type: 'removeSegmentMergeWithNext',
+                            segIndex: segIdx,
+                            nowMs: nowTick,
+                            openLastCluster,
+                          })
+                        }}
+                        style={{
+                          padding: '1px 6px',
+                          fontSize: '0.68rem',
+                          border: '1px solid #d1d5db',
+                          borderRadius: 4,
+                          background: 'white',
+                          color: '#6b7280',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Merge down
+                      </button>
+                    ) : null}
+                  </span>
+                ) : null}
                 <div
                   style={{
                     display: 'flex',
@@ -300,7 +394,10 @@ export function MyTimeDayClusterForm({
                           job_ledger_id: singleAssignRow.job_ledger_id,
                           bid_id: singleAssignRow.bid_id,
                         }}
-                        onSaved={onSaved}
+                        resolveSessionForAssign={
+                          resolveAssignSession ? () => resolveAssignSession(segIdx) : undefined
+                        }
+                        onSaved={onAssignJobSaved}
                       />
                     ) : null
                   ) : showSingleUnassignedAssign && unassignedIds.length > 1 ? (
@@ -345,27 +442,44 @@ export function MyTimeDayClusterForm({
                       </button>
                     </>
                   ) : (
-                    allocLabels.map((label, li) => (
-                      <span
-                        key={`${clusterId}-${segIdx}-alloc-${li}`}
-                        title={label}
-                        style={{
-                          fontSize: '0.68rem',
-                          lineHeight: 1.2,
-                          padding: '2px 6px',
-                          borderRadius: 4,
-                          border: multiAlloc ? '1px solid #f59e0b' : '1px solid #e5e7eb',
-                          background: multiAlloc ? '#fffbeb' : '#f9fafb',
-                          color: multiAlloc ? '#92400e' : '#374151',
-                          maxWidth: '100%',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {label}
-                      </span>
-                    ))
+                    <>
+                      {allocLabels.map((label, li) => (
+                        <span
+                          key={`${clusterId}-${segIdx}-alloc-${li}`}
+                          title={label}
+                          style={{
+                            fontSize: '0.68rem',
+                            lineHeight: 1.2,
+                            padding: '2px 6px',
+                            borderRadius: 4,
+                            border: multiAlloc ? '1px solid #f59e0b' : '1px solid #e5e7eb',
+                            background: multiAlloc ? '#fffbeb' : '#f9fafb',
+                            color: multiAlloc ? '#92400e' : '#374151',
+                            maxWidth: '100%',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {label}
+                        </span>
+                      ))}
+                      {!multiAlloc && changeAssignTargetRow ? (
+                        <AssignSessionJobPopover
+                          popoverZIndex={1250}
+                          compactTrigger
+                          session={{
+                            id: changeAssignTargetRow.id,
+                            job_ledger_id: changeAssignTargetRow.job_ledger_id,
+                            bid_id: changeAssignTargetRow.bid_id,
+                          }}
+                          resolveSessionForAssign={
+                            resolveAssignSession ? () => resolveAssignSession(segIdx) : undefined
+                          }
+                          onSaved={onAssignJobSaved}
+                        />
+                      ) : null}
+                    </>
                   )}
                 </div>
               </div>

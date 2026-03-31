@@ -4,6 +4,8 @@
 
 **Context**: PipeTooling is a SPA on **GitHub Pages**. There is no real file at `/dashboard`—only `index.html` and a **`404.html`** copy of it ([`vite.config.ts`](vite.config.ts) `copy404Plugin`). GitHub Pages often returns **HTTP 404** for unknown paths while still **serving** `404.html`, so React Router can run. The DevTools **404** line may be **normal** if the app loads.
 
+**Hard Reload / force reload** (gear menu **Hard Reload**, or dev **Global Reload** broadcast): The app navigates to **`/?nocache=…`** so the **document** request hits **`/`** (usually HTTP **200**), then an inline script in [`index.html`](index.html) restores `pathname` / `search` / `hash` from `sessionStorage` via **`history.replaceState`** before React boots ([`src/lib/hardReload.ts`](src/lib/hardReload.ts), [`ForceReloadContext.tsx`](src/contexts/ForceReloadContext.tsx), [`Layout.tsx`](src/components/Layout.tsx)). That avoids a misleading **404** on `GET /dashboard?nocache=…` during cache-bust reloads. Direct visits or refreshes on deep links can still show **404** on the document line; see below.
+
 **If the page is blank or stuck**:
 
 1. Confirm **[`dist/404.html`](vite.config.ts)** is deployed (CI checks this in [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)).

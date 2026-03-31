@@ -149,6 +149,31 @@ export function formatWorkDateYmdFriendly(ymd: string): string {
   return `${MONTH_SHORT[mo - 1]} ${d}, ${y}`
 }
 
+/** Representative instant on this Denver work_date (for weekday extraction). */
+function denverMsForWorkDateYmd(ymd: string): number | null {
+  const trimmed = ymd.trim()
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed)
+  if (!m) return null
+  const y = Number(m[1])
+  const mo = Number(m[2])
+  const d = Number(m[3])
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return null
+  let ms = Date.UTC(y, mo - 1, d, 12, 0, 0)
+  for (let i = 0; i < 48; i++) {
+    if (denverCalendarDayKey(ms) === trimmed) return ms
+    ms += 3600000
+  }
+  return null
+}
+
+/** e.g. Monday Mar 30, 2026 (Denver weekday for work_date YYYY-MM-DD). */
+export function formatWorkDateYmdWeekdayLongFriendly(ymd: string): string {
+  const friendly = formatWorkDateYmdFriendly(ymd)
+  const ms = denverMsForWorkDateYmd(ymd)
+  if (ms == null) return friendly
+  return `${formatDenverWeekday(ms)} ${friendly}`
+}
+
 /** Same Denver calendar day for both instants. */
 export function denverSameCalendarDay(aMs: number, bMs: number): boolean {
   return denverCalendarDayKey(aMs) === denverCalendarDayKey(bMs)

@@ -158,6 +158,8 @@ The project automatically deploys to GitHub Pages when changes are pushed to the
 
 See [PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md) for detailed deployment instructions.
 
+**SPA / 404**: Deep links may show **404** on the document request in DevTools; see [TROUBLESHOOT_404.md](./TROUBLESHOOT_404.md). In-app **Hard Reload** uses [`/?nocache=…`](src/lib/hardReload.ts) plus `history.replaceState` to reduce noisy 404s on cache-bust reloads.
+
 ### Sync to Testing Site
 
 To refresh the testing site (`testing-pipetooling.github.io`) with a copy of the main app:

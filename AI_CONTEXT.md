@@ -88,7 +88,8 @@ Customer (has master_user_id)
 ### Deployment
 - **Hosting**: GitHub Pages (static site)
 - **CI/CD**: GitHub Actions (`.github/workflows/deploy.yml`)
-- **Build**: `npm run build` → `dist/` → GitHub Pages
+- **Build**: `npm run build` → `dist/` → GitHub Pages (Vite `copy404Plugin` writes `dist/404.html` from `index.html` for deep-link fallback)
+- **SPA reload**: Hard Reload and broadcast force reload use [`src/lib/hardReload.ts`](src/lib/hardReload.ts) + [`index.html`](index.html) to load `/` then `history.replaceState` back to the prior route (fewer misleading document **404**s than reloading `/dashboard?nocache=…`). See [`TROUBLESHOOT_404.md`](TROUBLESHOOT_404.md).
 - **Sync to Testing**: Double-click `Sync to Testing.command` at project root to copy `pipetooling.github.io` → `testing-pipetooling.github.io`
 
 ### Type Safety
@@ -132,7 +133,7 @@ pipetooling.github.io/
 - **`src/pages/Prospects.tsx`** - Lead management (Convert tab, callbacks, Team tab for dev/assistant)
 - **`src/pages/Quickfill.tsx`** - Billing workflow (Crew Jobs / Bids, Receivables, Billed sections)
 - **`src/pages/Dashboard.tsx`** - Reports, pins, Estimator Dashboard
-- **`src/components/my-time-day-editor/`** - Dashboard **My Time** **Edit time** modal: **Form** vs **Visual** cluster editor (`MyTimeDayClusterForm.tsx`, `MyTimeDayClusterVisual.tsx`, datetime helpers)
+- **`src/components/my-time-day-editor/`** - Dashboard **My Time** **Edit time** modal: **Form** vs **Visual** cluster editor (`MyTimeDayClusterForm.tsx`, `MyTimeDayClusterVisual.tsx`, `MyTimeMergeSegmentsModal.tsx`, datetime helpers)
 - **`src/hooks/useAuth.ts`** - Authentication state and user role; used throughout app
 - **`src/hooks/usePushNotifications.ts`** - Push notification subscriptions for Checklist
 - **`src/contexts/ToastContext.tsx`** - Shared toast notifications (success, info, warning, error); use `useToastContext()` to show toasts from any component
@@ -223,8 +224,8 @@ AI agents or automated tests can sign in without a password using the dev-login 
 | Supabase disk IO / Materials performance | `RECENT_FEATURES.md` → v2.46; `PROJECT_DOCUMENTATION.md` → Materials Disk IO Optimizations |
 | Clock In/Out, pending sessions, pay roster | `RECENT_FEATURES.md` → v2.100; `PROJECT_DOCUMENTATION.md` → Dashboard, Hours tab; `GLOSSARY.md` → Clock Sessions |
 | Dashboard "Currently clocked in" strip (Today column, My team/Everyone); supply house website in Materials | `RECENT_FEATURES.md` → v2.163; `PROJECT_DOCUMENTATION.md` → Dashboard, Materials; `src/hooks/useDashboardMyTeamSectionState.ts` |
-| Dashboard **My Time** / **Edit time** (this-week-only, Form/Visual, `myTimeDayTimeline`) | `RECENT_FEATURES.md` → v2.179; `PROJECT_DOCUMENTATION.md` → Dashboard **My Time**; `src/components/DashboardMyTimeSection.tsx`; `src/components/DashboardMyTimeDayEditorModal.tsx`; `src/components/my-time-day-editor/`; `src/lib/myTimeDayTimeline.ts` |
-| Dashboard **Clock In** / **Update Focus**: assigned jobs auto-load; field borders / focus | `RECENT_FEATURES.md` → v2.182; `PROJECT_DOCUMENTATION.md` → Dashboard **Clock In/Out**; `src/components/ClockInOutButton.tsx` |
+| Dashboard **My Time** / **Edit time** (this-week-only, Form/Visual, merge + job override, `myTimeDayTimeline`) | `RECENT_FEATURES.md` → v2.193, v2.192, v2.179; `PROJECT_DOCUMENTATION.md` → Dashboard **My Time**; `src/components/DashboardMyTimeSection.tsx`; `src/components/DashboardMyTimeDayEditorModal.tsx`; `src/components/my-time-day-editor/`; `src/lib/myTimeDayTimeline.ts`; `src/lib/myTimeDaySavePlan.ts` |
+| Dashboard **Clock In** / **Update Focus**: assigned jobs auto-load; **no assigned jobs** toast once per modal (v2.191); field borders / focus | `RECENT_FEATURES.md` → v2.182, v2.191; `PROJECT_DOCUMENTATION.md` → Dashboard **Clock In/Out**; `src/components/ClockInOutButton.tsx`; `src/contexts/ToastContext.tsx` |
 | Jobs **Stages** + Workflow linked jobs: **thread notes**, **Last activity** preview, composer **Enter** / **Shift+Enter**; `jobs_ledger.stage_notes` removed | `RECENT_FEATURES.md` → v2.183–v2.185; `PROJECT_DOCUMENTATION.md` → Jobs §6, Workflow; `MIGRATIONS.md` → `20260330023918`; `src/components/JobThreadNotesPanel.tsx`; `src/hooks/useJobThreadNotes.ts`; `src/pages/Jobs.tsx` |
 | Ready to Bill **customer gate** + **Edit Job** billing highlight; **`get_jobs_ledger_by_status.customer_id`**; RTB **Job: Send Job Back** / **Delete draft bill**; Edit Job **Open invoices** order + **Record Payment** | `RECENT_FEATURES.md` → v2.190; `PROJECT_DOCUMENTATION.md` → Jobs §6, Dashboard; `MIGRATIONS.md` → `20260330065236`; `EDGE_FUNCTIONS.md` → **create-stripe-invoice**; `src/pages/Jobs.tsx`; `src/pages/Dashboard.tsx`; `src/components/jobs/SendRecordInvoiceModal.tsx` |
 | Jobs **Edit Job** billing: **Job Total / Bid** and payment **Amount** comma formatting | `RECENT_FEATURES.md` → v2.181; `PROJECT_DOCUMENTATION.md` → Jobs §6; `src/pages/Jobs.tsx`; `src/components/MoneyDecimalAmountInput.tsx` |

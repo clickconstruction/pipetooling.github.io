@@ -1,3 +1,4 @@
+import type { SplitClockSegmentPayload } from './splitOwnClockSessionSegments'
 import {
   boundariesMatchOriginalRows,
   CLUSTER_CONTIGUITY_EPS_MS,
@@ -7,11 +8,55 @@ import {
   type DayEditorSession,
   type SplitEditorState,
 } from './myTimeDayTimeline'
-import type { SplitClockSegmentPayload } from './splitOwnClockSessionSegments'
+
+/** True when editor segments are not yet 1:1 with DB row boundaries; per-segment job assign must persist first. */
+export function assignJobNeedsPersistedSplits(
+  c: DayEditorSession[],
+  split: SplitEditorState,
+  nowMs: number
+): boolean {
+  if (split.boundaries.length <= 2) return false
+  if (boundariesMatchOriginalRows(c, split, nowMs)) return false
+  return true
+}
 
 const TIME_TIE_MS = 1
 
 export const NO_JOB_BID_LINKED_LABEL = 'No job or bid linked'
+
+/** True when merge should open job-choice modal (distinct allocations; not both trivially unassigned). */
+export function mergeAllocChoiceRequired(a: string[], b: string[]): boolean {
+  const onlyNoJob =
+    a.length > 0 &&
+    b.length > 0 &&
+    a.every((x) => x === NO_JOB_BID_LINKED_LABEL) &&
+    b.every((x) => x === NO_JOB_BID_LINKED_LABEL)
+  if (onlyNoJob) return false
+  const key = (xs: string[]) => [...xs].sort().join('\u0001')
+  return key(a) !== key(b)
+}
+
+/** Effective job/bid for a segment (editor override wins). */
+export function effectiveSegmentJobBid(
+  c: DayEditorSession[],
+  split: SplitEditorState,
+  nowMs: number,
+  segIdx: number
+): { job_ledger_id: string | null; bid_id: string | null } {
+  const o = split.segmentJobOverrides?.[segIdx]
+  if (o) return { job_ledger_id: o.job_ledger_id, bid_id: o.bid_id }
+  const aligned =
+    boundariesMatchOriginalRows(c, split, nowMs) &&
+    split.boundaries.length - 1 === c.length &&
+    segIdx < c.length
+  if (aligned) {
+    const row = c[segIdx]!
+    return { job_ledger_id: row.job_ledger_id, bid_id: row.bid_id }
+  }
+  const segLo = split.boundaries[segIdx]!
+  const segHi = split.boundaries[segIdx + 1]!
+  return allocationForSegmentInterval(c, nowMs, segLo, segHi)
+}
 
 export function isRowUnassigned(s: Pick<DayEditorSession, 'job_ledger_id' | 'bid_id'>): boolean {
   return !s.job_ledger_id && !s.bid_id
@@ -44,6 +89,40 @@ export function unassignedSessionIdsOverlappingSegment(
     ids.push(s.id)
   }
   return ids
+}
+
+/**
+ * Clock row to target for AssignSessionJobPopover when a segment shows a single job/bid allocation.
+ * Matches allocation logic used for segment labels and save payloads.
+ */
+export function clockSessionRowForSegmentAssign(
+  c: DayEditorSession[],
+  split: SplitEditorState,
+  nowMs: number,
+  segIdx: number
+): DayEditorSession | null {
+  if (c.length === 0) return null
+  const aligned =
+    boundariesMatchOriginalRows(c, split, nowMs) &&
+    split.boundaries.length - 1 === c.length &&
+    segIdx < c.length
+  if (aligned) return c[segIdx] ?? null
+
+  const segLo = split.boundaries[segIdx]!
+  const segHi = split.boundaries[segIdx + 1]!
+  const alloc = allocationForSegmentInterval(c, nowMs, segLo, segHi)
+  let best: DayEditorSession | null = null
+  let bestOv = -1
+  for (const s of c) {
+    if (s.job_ledger_id !== alloc.job_ledger_id || s.bid_id !== alloc.bid_id) continue
+    const { lo, hi } = sessionRowIntervalMs(s, nowMs)
+    const ov = Math.min(segHi, hi) - Math.max(segLo, lo)
+    if (ov > TIME_TIE_MS && ov > bestOv) {
+      bestOv = ov
+      best = s
+    }
+  }
+  return best
 }
 
 export function labelForSession(
@@ -140,6 +219,20 @@ export function segmentAllocationLabelsForOverlap(
   jobLabels: Record<string, string>,
   bidLabels: Record<string, string>
 ): string[] {
+  const override = split.segmentJobOverrides?.[segIdx]
+  if (override) {
+    const pseudo: DayEditorSession = {
+      id: '',
+      clocked_in_at: '',
+      clocked_out_at: null,
+      work_date: '',
+      notes: '',
+      job_ledger_id: override.job_ledger_id,
+      bid_id: override.bid_id,
+      approved_at: null,
+    }
+    return [labelForSession(pseudo, jobLabels, bidLabels) ?? NO_JOB_BID_LINKED_LABEL]
+  }
   const aligned =
     boundariesMatchOriginalRows(c, split, nowMs) &&
     split.boundaries.length - 1 === c.length &&
@@ -191,6 +284,10 @@ export function attachAllocationsToPayloads(
   const aligned =
     boundariesMatchOriginalRows(c, split, nowMs) && base.length === c.length && split.notes.length === c.length
   return base.map((p, i) => {
+    const o = split.segmentJobOverrides?.[i]
+    if (o) {
+      return { ...p, job_ledger_id: o.job_ledger_id, bid_id: o.bid_id }
+    }
     if (aligned && i < c.length) {
       const row = c[i]!
       return {

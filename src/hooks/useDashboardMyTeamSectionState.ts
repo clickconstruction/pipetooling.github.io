@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useIntervalNowMs } from './useIntervalNowMs'
-import { CLOCK_SESSION_LIST_SELECT } from '../lib/clockSessionSelect'
+import { CLOCK_SESSION_LIST_SELECT, CLOCK_SESSION_TODAY_STRIP_SELECT } from '../lib/clockSessionSelect'
 import { getPersonNamesForUser } from '../lib/cascadePersonName'
 import { supabase } from '../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
-import type { ClockSessionRow } from '../types/clockSessions'
+import {
+  formatClockSessionJobOrBidModalLinesFromEmbeds,
+  shortJobOrBidLabelFromEmbeds,
+  type ClockSessionRow,
+} from '../types/clockSessions'
 
 function weekStartEndEnCA(): { start: string; end: string } {
   const d = new Date()
@@ -51,12 +55,45 @@ function sessionDurationSeconds(
   return Math.max(0, Math.floor((outMs - inMs) / 1000))
 }
 
-type TodaySessionRow = {
+export type TodaySessionStripRow = {
+  id: string
   user_id: string
   clocked_in_at: string
   clocked_out_at: string | null
+  approved_at: string | null
   rejected_at: string | null
   revoked_at: string | null
+  notes: string | null
+  job_ledger_id: string | null
+  bid_id: string | null
+  users: { name: string | null } | null
+  jobs_ledger: { hcp_number: string | null; job_name: string | null; job_address: string | null } | null
+  bids: {
+    bid_number: string | null
+    project_name: string | null
+    address: string | null
+    customers: { name: string | null } | null
+  } | null
+}
+
+/** One row per user for the dashboard "Clocked in today" table below the open-sessions strip. */
+export type ClockedInTodayStripRow = {
+  userId: string
+  displayName: string
+  firstClockedInAt: string
+  hoursToday: number
+  /** Non-rejected, non-revoked sessions for today (work_date), sorted by clock-in ascending. */
+  todaySessions: TodaySessionStripRow[]
+}
+
+/** One row per job for the dashboard "Jobs worked today" subsection (job-linked sessions only). */
+export type JobsWorkedTodayStripRow = {
+  jobLedgerId: string
+  label: string
+  addressLine: string | null
+  totalSeconds: number
+  distinctPeopleCount: number
+  sessions: TodaySessionStripRow[]
 }
 
 const CLOCK_ACTIVITY_SIMPLE_STORAGE_KEY = 'dashboard_my_team_clock_activity_simple'
@@ -109,12 +146,12 @@ export function useDashboardMyTeamSectionState(
   const [loadingLedger, setLoadingLedger] = useState(false)
   const [loadingMeta, setLoadingMeta] = useState(true)
   const [pendingSessions, setPendingSessions] = useState<ClockSessionRow[]>([])
-  const [todaySessionsRows, setTodaySessionsRows] = useState<TodaySessionRow[]>([])
+  const [todaySessionsRows, setTodaySessionsRows] = useState<TodaySessionStripRow[]>([])
   const [orgWidePendingSessions, setOrgWidePendingSessions] = useState<ClockSessionRow[]>([])
-  const [todaySessionsRowsOrg, setTodaySessionsRowsOrg] = useState<TodaySessionRow[]>([])
+  const [todaySessionsRowsOrg, setTodaySessionsRowsOrg] = useState<TodaySessionStripRow[]>([])
   const [loadingSessions, setLoadingSessions] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [myTeamExpanded, setMyTeamExpanded] = useState(true)
+  const [myTeamExpanded, setMyTeamExpanded] = useState(false)
   const [{ start: dateStart, end: dateEnd }, setDateRange] = useState(weekStartEndEnCA)
 
   const loadAssignments = useCallback(async () => {
@@ -204,12 +241,12 @@ export function useDashboardMyTeamSectionState(
         async () =>
           supabase
             .from('clock_sessions')
-            .select('user_id, clocked_in_at, clocked_out_at, rejected_at, revoked_at')
+            .select(CLOCK_SESSION_TODAY_STRIP_SELECT)
             .in('user_id', memberUserIds)
             .eq('work_date', today),
         'load team today clock sessions',
       )
-      setTodaySessionsRows((data ?? []) as TodaySessionRow[])
+      setTodaySessionsRows((data ?? []) as TodaySessionStripRow[])
     } catch {
       setTodaySessionsRows([])
     }
@@ -226,11 +263,11 @@ export function useDashboardMyTeamSectionState(
         async () =>
           supabase
             .from('clock_sessions')
-            .select('user_id, clocked_in_at, clocked_out_at, rejected_at, revoked_at')
+            .select(CLOCK_SESSION_TODAY_STRIP_SELECT)
             .eq('work_date', today),
         'load org today clock sessions',
       )
-      setTodaySessionsRowsOrg((data ?? []) as TodaySessionRow[])
+      setTodaySessionsRowsOrg((data ?? []) as TodaySessionStripRow[])
     } catch {
       setTodaySessionsRowsOrg([])
     }
@@ -626,6 +663,117 @@ export function useDashboardMyTeamSectionState(
     return out
   }, [todaySessionsRowsOrg, todayHoursNowMs])
 
+  const todaySessionsForStripScope = useMemo(
+    () => (orgWideStripEnabled ? todaySessionsRowsOrg : todaySessionsRows),
+    [orgWideStripEnabled, todaySessionsRowsOrg, todaySessionsRows],
+  )
+
+  const clockedInTodayStripRows = useMemo((): ClockedInTodayStripRow[] => {
+    const hoursMap = orgWideStripEnabled ? hoursTodayByUserIdOrg : hoursTodayByUserId
+    const rosterMap = new Map(teamMemberRoster.map((r) => [r.userId, r.displayName]))
+    const byUser = new Map<string, { firstIn: string; joinName: string | null }>()
+    const sessionsByUser = new Map<string, TodaySessionStripRow[]>()
+
+    for (const row of todaySessionsForStripScope) {
+      if (row.rejected_at || row.revoked_at) continue
+      const list = sessionsByUser.get(row.user_id)
+      if (list) {
+        list.push(row)
+      } else {
+        sessionsByUser.set(row.user_id, [row])
+      }
+      const joinName = row.users?.name?.trim() || null
+      const existing = byUser.get(row.user_id)
+      if (!existing) {
+        byUser.set(row.user_id, { firstIn: row.clocked_in_at, joinName })
+      } else {
+        if (row.clocked_in_at < existing.firstIn) {
+          existing.firstIn = row.clocked_in_at
+        }
+        if (!existing.joinName && joinName) existing.joinName = joinName
+      }
+    }
+
+    for (const [, list] of sessionsByUser) {
+      list.sort((a, b) => a.clocked_in_at.localeCompare(b.clocked_in_at))
+    }
+
+    const rows: ClockedInTodayStripRow[] = []
+    for (const [userId, { firstIn, joinName }] of byUser) {
+      let displayName = joinName ?? ''
+      if (!displayName && !orgWideStripEnabled) {
+        displayName = rosterMap.get(userId) ?? ''
+      }
+      if (!displayName) {
+        displayName = `User (${userId.slice(-6)})`
+      }
+      rows.push({
+        userId,
+        displayName,
+        firstClockedInAt: firstIn,
+        hoursToday: hoursMap[userId] ?? 0,
+        todaySessions: sessionsByUser.get(userId) ?? [],
+      })
+    }
+    rows.sort((a, b) => {
+      const c = a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' })
+      if (c !== 0) return c
+      return a.userId.localeCompare(b.userId)
+    })
+    return rows
+  }, [
+    todaySessionsForStripScope,
+    orgWideStripEnabled,
+    hoursTodayByUserIdOrg,
+    hoursTodayByUserId,
+    teamMemberRoster,
+  ])
+
+  const jobsWorkedTodayStripRows = useMemo((): JobsWorkedTodayStripRow[] => {
+    const byJob = new Map<string, TodaySessionStripRow[]>()
+    for (const row of todaySessionsForStripScope) {
+      if (row.rejected_at || row.revoked_at) continue
+      if (!row.job_ledger_id) continue
+      const jid = row.job_ledger_id
+      const list = byJob.get(jid)
+      if (list) list.push(row)
+      else byJob.set(jid, [row])
+    }
+    const out: JobsWorkedTodayStripRow[] = []
+    for (const [jobLedgerId, sessions] of byJob) {
+      sessions.sort((a, b) => a.clocked_in_at.localeCompare(b.clocked_in_at))
+      let totalSeconds = 0
+      for (const s of sessions) {
+        totalSeconds += sessionDurationSeconds(s.clocked_in_at, s.clocked_out_at, todayHoursNowMs)
+      }
+      const labelSession = sessions[0]!
+      const label =
+        shortJobOrBidLabelFromEmbeds({
+          jobs_ledger: labelSession.jobs_ledger,
+          bids: null,
+        }) ?? 'Job linked'
+      const lines = formatClockSessionJobOrBidModalLinesFromEmbeds({
+        jobs_ledger: labelSession.jobs_ledger,
+        bids: null,
+      })
+      const rawAddr = (lines?.line2 ?? labelSession.jobs_ledger?.job_address ?? '').trim()
+      const addressLine = rawAddr.length > 0 ? rawAddr : null
+      const distinctPeopleCount = new Set(sessions.map((s) => s.user_id)).size
+      out.push({
+        jobLedgerId,
+        label,
+        addressLine,
+        totalSeconds,
+        distinctPeopleCount,
+        sessions,
+      })
+    }
+    out.sort((a, b) =>
+      a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }),
+    )
+    return out
+  }, [todaySessionsForStripScope, todayHoursNowMs])
+
   const fullDetailMemberUserIdSet = useMemo(
     () =>
       new Set(
@@ -671,6 +819,9 @@ export function useDashboardMyTeamSectionState(
     orgWidePendingSessions,
     hoursTodayByUserId,
     hoursTodayByUserIdOrg,
+    todaySessionsForStripScope,
+    clockedInTodayStripRows,
+    jobsWorkedTodayStripRows,
     pendingApprovalCount,
     loadingSessions,
     error,

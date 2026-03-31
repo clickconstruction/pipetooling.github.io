@@ -114,7 +114,7 @@ Options: wait for it to finish, or temporarily upgrade compute to speed it up.
 2. Ensure client uses `db: { schema: 'public' }` (see [src/lib/supabase.ts](src/lib/supabase.ts))
 3. For approve_clock_sessions, the app uses [approveClockSessions](src/lib/approveClockSessions.ts) helper with fetch fallback
 
-**See**: [TROUBLESHOOT_404.md](./TROUBLESHOOT_404.md) → RPC 404; [RECENT_FEATURES.md](./RECENT_FEATURES.md) v2.125
+**See**: [TROUBLESHOOT_404.md](./TROUBLESHOOT_404.md) → RPC 404 and SPA document `/dashboard` 404; [RECENT_FEATURES.md](./RECENT_FEATURES.md) v2.125, v2.191
 
 ---
 

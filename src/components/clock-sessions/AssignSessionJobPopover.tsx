@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '../../lib/supabase'
@@ -15,6 +16,8 @@ export type AssignSessionJobPopoverSession = Pick<ClockSessionRow, 'id' | 'job_l
 
 type Props = {
   session: AssignSessionJobPopoverSession
+  /** When set, runs before DB update to e.g. persist splits so `session.id` targets only this segment. Return null to abort. */
+  resolveSessionForAssign?: () => Promise<AssignSessionJobPopoverSession | null>
   onSaved: () => void
   onError?: (msg: string) => void
   /** Default 100; use higher value when opened inside another modal (e.g. 1250). */
@@ -24,6 +27,10 @@ type Props = {
    * Ignored when session already has a job or bid.
    */
   unassignedTrigger?: 'default' | 'combined'
+  /** Shorter Assign/Change control for dense tables (e.g. dashboard clock strip). */
+  compactTrigger?: boolean
+  /** When false and session already has job/bid, render no trigger (e.g. strip where day editor handles changes). Default true. */
+  showChangeWhenAssigned?: boolean
 }
 
 const assignButtonStyle = {
@@ -46,12 +53,33 @@ const changeButtonStyle = {
   cursor: 'pointer' as const,
 }
 
+function compactAssignStyle(base: typeof assignButtonStyle): CSSProperties {
+  return {
+    ...base,
+    padding: '1px 5px',
+    fontSize: '0.68rem',
+    lineHeight: 1.1,
+  }
+}
+
+function compactChangeStyle(base: typeof changeButtonStyle): CSSProperties {
+  return {
+    ...base,
+    padding: '1px 5px',
+    fontSize: '0.68rem',
+    lineHeight: 1.1,
+  }
+}
+
 export function AssignSessionJobPopover({
   session,
+  resolveSessionForAssign,
   onSaved,
   onError,
   popoverZIndex = 100,
   unassignedTrigger = 'default',
+  compactTrigger = false,
+  showChangeWhenAssigned = true,
 }: Props) {
   const [open, setOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
@@ -62,6 +90,10 @@ export function AssignSessionJobPopover({
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   const hasJobOrBid = !!(session.job_ledger_id || session.bid_id)
+
+  useEffect(() => {
+    if (hasJobOrBid && !showChangeWhenAssigned) setOpen(false)
+  }, [hasJobOrBid, showChangeWhenAssigned])
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -127,6 +159,12 @@ export function AssignSessionJobPopover({
   async function handleSelect(item: UnifiedSearchResult) {
     setLoading(true)
     try {
+      let target = session
+      if (resolveSessionForAssign) {
+        const resolved = await resolveSessionForAssign()
+        if (!resolved) return
+        target = resolved
+      }
       await withSupabaseRetry(
         async () =>
           supabase
@@ -135,7 +173,7 @@ export function AssignSessionJobPopover({
               job_ledger_id: item.source === 'job' ? item.id : null,
               bid_id: item.source === 'bid' ? item.id : null,
             })
-            .eq('id', session.id),
+            .eq('id', target.id),
         'assign session job/bid'
       )
       setOpen(false)
@@ -152,12 +190,18 @@ export function AssignSessionJobPopover({
   async function handleClear() {
     setLoading(true)
     try {
+      let target = session
+      if (resolveSessionForAssign) {
+        const resolved = await resolveSessionForAssign()
+        if (!resolved) return
+        target = resolved
+      }
       await withSupabaseRetry(
         async () =>
           supabase
             .from('clock_sessions')
             .update({ job_ledger_id: null, bid_id: null })
-            .eq('id', session.id),
+            .eq('id', target.id),
         'clear session job/bid'
       )
       setOpen(false)
@@ -171,14 +215,17 @@ export function AssignSessionJobPopover({
     }
   }
 
+  const assignSt = compactTrigger ? compactAssignStyle(assignButtonStyle) : assignButtonStyle
+  const changeSt = compactTrigger ? compactChangeStyle(changeButtonStyle) : changeButtonStyle
+
   const triggerButton =
-    hasJobOrBid ? (
+    hasJobOrBid && !showChangeWhenAssigned ? null : hasJobOrBid ? (
       <button
         ref={buttonRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
         disabled={loading}
-        style={{ ...changeButtonStyle, opacity: loading ? 0.7 : 1 }}
+        style={{ ...changeSt, opacity: loading ? 0.7 : 1 }}
       >
         Change
       </button>
@@ -228,7 +275,7 @@ export function AssignSessionJobPopover({
         type="button"
         onClick={() => setOpen((o) => !o)}
         disabled={loading}
-        style={{ ...assignButtonStyle, opacity: loading ? 0.7 : 1 }}
+        style={{ ...assignSt, opacity: loading ? 0.7 : 1 }}
       >
         Assign
       </button>

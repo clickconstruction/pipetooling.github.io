@@ -772,6 +772,8 @@ Static site hosting service. Pipetooling deploys here via GitHub Actions.
 
 **Deployment**: Automatic on push to main branch
 
+**SPA note**: Deep links (e.g. `/dashboard`) have no static file; the host may return **HTTP 404** for the document while still serving **`404.html`** (copy of `index.html`). **Hard Reload** in the app loads **`/`** first then restores the path in the browser ([`TROUBLESHOOT_404.md`](TROUBLESHOOT_404.md), [`src/lib/hardReload.ts`](src/lib/hardReload.ts)).
+
 ### GitHub Actions
 CI/CD automation running workflows on GitHub events.
 

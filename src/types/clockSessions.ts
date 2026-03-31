@@ -25,13 +25,60 @@ export type ClockSessionRow = {
   bids: { bid_number: string | null; project_name: string | null; address: string | null; customers: { name: string | null } | null } | null
 }
 
-/** Job or bid one-line label for display; null if neither is linked. */
-export function formatClockSessionJobOrBidLabel(s: ClockSessionRow): string | null {
-  if (s.jobs_ledger) {
-    return `J${(s.jobs_ledger.hcp_number || '').trim() || '—'} · ${s.jobs_ledger.job_name || '—'} - ${s.jobs_ledger.job_address || '—'}`
+export type ClockSessionJobBidEmbeds = Pick<ClockSessionRow, 'jobs_ledger' | 'bids'>
+
+/** Two-line label for Session actions modal: HCP · name, then address (or bid equivalent). */
+export function formatClockSessionJobOrBidModalLinesFromEmbeds(
+  embeds: ClockSessionJobBidEmbeds,
+): { line1: string; line2: string | null } | null {
+  if (embeds.jobs_ledger) {
+    const hcp = (embeds.jobs_ledger.hcp_number || '').trim() || '—'
+    const name = (embeds.jobs_ledger.job_name || '—').trim()
+    const addr = (embeds.jobs_ledger.job_address || '').trim()
+    return {
+      line1: `J${hcp} · ${name}`,
+      line2: addr.length > 0 ? addr : null,
+    }
   }
-  if (s.bids) {
-    return `B${(s.bids.bid_number || '').trim() || '—'} · ${s.bids.project_name || '—'} - ${s.bids.address || s.bids.customers?.name || '—'}`
+  if (embeds.bids) {
+    const bn = (embeds.bids.bid_number || '').trim() || '—'
+    const pn = (embeds.bids.project_name || '—').trim()
+    const addr = (embeds.bids.address || embeds.bids.customers?.name || '').trim()
+    return {
+      line1: `B${bn} · ${pn}`,
+      line2: addr.length > 0 ? addr : null,
+    }
   }
   return null
+}
+
+/** Full job/bid one-line label from embedded rows only. */
+export function formatClockSessionJobOrBidLabelFromEmbeds(embeds: ClockSessionJobBidEmbeds): string | null {
+  if (embeds.jobs_ledger) {
+    return `J${(embeds.jobs_ledger.hcp_number || '').trim() || '—'} · ${embeds.jobs_ledger.job_name || '—'} - ${embeds.jobs_ledger.job_address || '—'}`
+  }
+  if (embeds.bids) {
+    return `B${(embeds.bids.bid_number || '').trim() || '—'} · ${embeds.bids.project_name || '—'} - ${embeds.bids.address || embeds.bids.customers?.name || '—'}`
+  }
+  return null
+}
+
+/** Short label for dense tables (e.g. clock strip). */
+export function shortJobOrBidLabelFromEmbeds(embeds: ClockSessionJobBidEmbeds): string | null {
+  if (embeds.jobs_ledger) {
+    const hcp = (embeds.jobs_ledger.hcp_number || '').trim() || '—'
+    const name = (embeds.jobs_ledger.job_name || '—').trim()
+    return `J${hcp} · ${name}`
+  }
+  if (embeds.bids) {
+    const bn = (embeds.bids.bid_number || '').trim() || '—'
+    const pn = (embeds.bids.project_name || '—').trim()
+    return `B${bn} · ${pn}`
+  }
+  return null
+}
+
+/** Job or bid one-line label for display; null if neither is linked. */
+export function formatClockSessionJobOrBidLabel(s: ClockSessionRow): string | null {
+  return formatClockSessionJobOrBidLabelFromEmbeds(s)
 }

@@ -230,16 +230,86 @@ export function daySpanMs(sortedSessions: DayEditorSession[], nowMs: number): { 
   return { dayStartMs: lo, dayEndMs: Math.max(hi, lo + 1) }
 }
 
+/** User-chosen job/bid for a segment (overrides overlap inference until Save). */
+export type SegmentJobOverride = {
+  job_ledger_id: string | null
+  bid_id: string | null
+}
+
 export type SplitEditorState = {
   boundaries: number[]
   notes: string[]
+  /** Per-segment index; cleared on inner-boundary drag/nudge (v1). */
+  segmentJobOverrides?: Partial<Record<number, SegmentJobOverride>>
 }
 
 export function cloneSplitState(split: SplitEditorState): SplitEditorState {
+  const ov = split.segmentJobOverrides
   return {
     boundaries: [...split.boundaries],
     notes: [...split.notes],
+    ...(ov && Object.keys(ov).length > 0 ? { segmentJobOverrides: { ...ov } } : {}),
   }
+}
+
+function pruneOverrides(o: Partial<Record<number, SegmentJobOverride>> | undefined) {
+  if (!o) return undefined
+  const next: Partial<Record<number, SegmentJobOverride>> = {}
+  for (const [k, v] of Object.entries(o)) {
+    const j = Number(k)
+    if (Number.isFinite(j) && v != null) next[j] = v
+  }
+  return Object.keys(next).length > 0 ? next : undefined
+}
+
+/** Split segment `segIndex` into two; new segment at `segIndex + 1`. Shift override keys `j > segIndex`. */
+function remapOverridesAfterSplitAtSegment(
+  overrides: Partial<Record<number, SegmentJobOverride>> | undefined,
+  segIndex: number
+): Partial<Record<number, SegmentJobOverride>> | undefined {
+  if (!overrides) return undefined
+  const next: Partial<Record<number, SegmentJobOverride>> = {}
+  for (const [keyStr, v] of Object.entries(overrides)) {
+    const j = Number(keyStr)
+    if (!Number.isFinite(j) || v == null) continue
+    if (j <= segIndex) next[j] = v
+    else next[j + 1] = v
+  }
+  return pruneOverrides(next)
+}
+
+/** Merge segments k-1 and k into k-1. */
+function remapOverridesMergePrev(
+  overrides: Partial<Record<number, SegmentJobOverride>> | undefined,
+  k: number
+): Partial<Record<number, SegmentJobOverride>> | undefined {
+  if (!overrides) return undefined
+  const next: Partial<Record<number, SegmentJobOverride>> = {}
+  for (const [keyStr, v] of Object.entries(overrides)) {
+    const j = Number(keyStr)
+    if (!Number.isFinite(j) || v == null) continue
+    if (j === k - 1 || j === k) continue
+    if (j < k - 1) next[j] = v
+    else next[j - 1] = v
+  }
+  return pruneOverrides(next)
+}
+
+/** Merge segments k and k+1 into k. */
+function remapOverridesMergeNext(
+  overrides: Partial<Record<number, SegmentJobOverride>> | undefined,
+  k: number
+): Partial<Record<number, SegmentJobOverride>> | undefined {
+  if (!overrides) return undefined
+  const next: Partial<Record<number, SegmentJobOverride>> = {}
+  for (const [keyStr, v] of Object.entries(overrides)) {
+    const j = Number(keyStr)
+    if (!Number.isFinite(j) || v == null) continue
+    if (j === k || j === k + 1) continue
+    if (j < k) next[j] = v
+    else next[j - 1] = v
+  }
+  return pruneOverrides(next)
 }
 
 export type SplitAction =
@@ -251,6 +321,85 @@ export type SplitAction =
   | { type: 'addSplitMidInSegment'; segIndex: number; joinTargets: number[] }
   | { type: 'nudge'; index: number; deltaMs: number }
   | { type: 'setNote'; index: number; text: string }
+  | {
+      type: 'removeSegmentMergeWithPrev'
+      segIndex: number
+      /** Same clock as My Time strip (`nowTick`) for open-last duration checks. */
+      nowMs: number
+      /** True when cluster last session has no clock-out (matches `buildPayloads` last segment). */
+      openLastCluster: boolean
+    }
+  | {
+      type: 'removeSegmentMergeWithNext'
+      segIndex: number
+      nowMs: number
+      openLastCluster: boolean
+    }
+  | {
+      type: 'setSegmentJobOverride'
+      segIndex: number
+      job_ledger_id: string | null
+      bid_id: string | null
+    }
+
+/** Split focus-note text into paragraphs (double-newline separated); trims each chunk. */
+function focusNoteParagraphs(s: string): string[] {
+  const parts = s.split(/\n{2,}/).map((p) => p.trim()).filter((p) => p.length > 0)
+  if (parts.length > 0) return parts
+  const t = s.trim()
+  return t.length > 0 ? [t] : []
+}
+
+/**
+ * Merge removed segment note into absorber (absorber first, then removed).
+ * Trims duplicate paragraphs (exact string match after trim); whole note equal → single copy.
+ */
+export function mergeSegmentNotes(absorber: string, removed: string): string {
+  const a = absorber.trim()
+  const b = removed.trim()
+  if (!b) return absorber
+  if (!a) return removed
+  if (a === b) return a
+
+  const ap = focusNoteParagraphs(absorber)
+  const bp = focusNoteParagraphs(removed)
+  if (ap.length === 0) return removed
+  if (bp.length === 0) return absorber
+
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const p of ap) {
+    if (seen.has(p)) continue
+    seen.add(p)
+    out.push(p)
+  }
+  for (const p of bp) {
+    if (seen.has(p)) continue
+    seen.add(p)
+    out.push(p)
+  }
+  return out.join('\n\n')
+}
+
+function segmentIntervalsMeetMinMs(
+  boundaries: number[],
+  nowMs: number,
+  openLastCluster: boolean
+): boolean {
+  const nSeg = boundaries.length - 1
+  if (nSeg < 1) return false
+  for (let i = 0; i < nSeg; i++) {
+    const lo = boundaries[i]!
+    const hi = boundaries[i + 1]!
+    const isLastSeg = i === nSeg - 1
+    if (openLastCluster && isLastSeg) {
+      if (nowMs - lo < MIN_SEGMENT_MS) return false
+    } else if (hi - lo < MIN_SEGMENT_MS) {
+      return false
+    }
+  }
+  return true
+}
 
 /** One segment by default; user adds splits via strip tap or Form Split / addSplitAt. */
 export function initialSplitState(session: DayEditorSession, nowMs: number): SplitEditorState {
@@ -305,7 +454,8 @@ export function splitReducer(state: SplitEditorState, action: SplitAction): Spli
       const maxMs = next[index + 1]! - MIN_SEGMENT_MS
       const clamped = Math.min(maxMs, Math.max(minMs, ms))
       next[index] = clamped
-      return { ...state, boundaries: next }
+      // v1: inner-boundary moves invalidate job overrides (indices / overlap change).
+      return { ...state, boundaries: next, segmentJobOverrides: undefined }
     }
     case 'nudge': {
       const { index, deltaMs } = action
@@ -315,7 +465,7 @@ export function splitReducer(state: SplitEditorState, action: SplitAction): Spli
       const maxMs = next[index + 1]! - MIN_SEGMENT_MS
       const clamped = Math.min(maxMs, Math.max(minMs, ms))
       next[index] = clamped
-      return { ...state, boundaries: next }
+      return { ...state, boundaries: next, segmentJobOverrides: undefined }
     }
     case 'addSplit': {
       const { boundaries, notes } = state
@@ -332,7 +482,8 @@ export function splitReducer(state: SplitEditorState, action: SplitAction): Spli
       const mid = boundaries[bestI]! + bestLen / 2
       const newBounds = [...boundaries.slice(0, bestI + 1), mid, ...boundaries.slice(bestI + 1)]
       const newNotes = [...notes.slice(0, bestI + 1), notes[bestI]!, ...notes.slice(bestI + 1)]
-      return { boundaries: newBounds, notes: newNotes }
+      const newOv = remapOverridesAfterSplitAtSegment(state.segmentJobOverrides, bestI)
+      return { ...state, boundaries: newBounds, notes: newNotes, segmentJobOverrides: newOv }
     }
     case 'addSplitAt': {
       const eps = action.epsilonMs ?? 1000
@@ -346,7 +497,8 @@ export function splitReducer(state: SplitEditorState, action: SplitAction): Spli
         if (ms - lo < MIN_SEGMENT_MS || hi - ms < MIN_SEGMENT_MS) continue
         const newBounds = [...boundaries.slice(0, i + 1), ms, ...boundaries.slice(i + 1)]
         const newNotes = [...notes.slice(0, i + 1), notes[i]!, ...notes.slice(i + 1)]
-        return { boundaries: newBounds, notes: newNotes }
+        const newOv = remapOverridesAfterSplitAtSegment(state.segmentJobOverrides, i)
+        return { ...state, boundaries: newBounds, notes: newNotes, segmentJobOverrides: newOv }
       }
       return state
     }
@@ -367,12 +519,53 @@ export function splitReducer(state: SplitEditorState, action: SplitAction): Spli
       if (ms - lo < MIN_SEGMENT_MS || hi - ms < MIN_SEGMENT_MS) return state
       const newBounds = [...boundaries.slice(0, segIndex + 1), ms, ...boundaries.slice(segIndex + 1)]
       const newNotes = [...notes.slice(0, segIndex + 1), notes[segIndex]!, ...notes.slice(segIndex + 1)]
-      return { boundaries: newBounds, notes: newNotes }
+      const newOv = remapOverridesAfterSplitAtSegment(state.segmentJobOverrides, segIndex)
+      return { ...state, boundaries: newBounds, notes: newNotes, segmentJobOverrides: newOv }
     }
     case 'setNote': {
       const next = [...state.notes]
       next[action.index] = action.text
       return { ...state, notes: next }
+    }
+    case 'removeSegmentMergeWithPrev': {
+      const k = action.segIndex
+      const { boundaries, notes } = state
+      if (boundaries.length < 3 || k < 1 || k >= notes.length) return state
+      const nextBounds = [...boundaries.slice(0, k), ...boundaries.slice(k + 1)]
+      if (nextBounds.length < 3) return state
+      const nextNotes = [
+        ...notes.slice(0, k - 1),
+        mergeSegmentNotes(notes[k - 1]!, notes[k]!),
+        ...notes.slice(k + 1),
+      ]
+      if (!segmentIntervalsMeetMinMs(nextBounds, action.nowMs, action.openLastCluster)) return state
+      const newOv = remapOverridesMergePrev(state.segmentJobOverrides, k)
+      return { ...state, boundaries: nextBounds, notes: nextNotes, segmentJobOverrides: newOv }
+    }
+    case 'removeSegmentMergeWithNext': {
+      const k = action.segIndex
+      const { boundaries, notes } = state
+      if (boundaries.length < 3 || k < 0 || k >= notes.length - 1) return state
+      const nextBounds = [...boundaries.slice(0, k + 1), ...boundaries.slice(k + 2)]
+      if (nextBounds.length < 3) return state
+      const nextNotes = [
+        ...notes.slice(0, k),
+        mergeSegmentNotes(notes[k + 1]!, notes[k]!),
+        ...notes.slice(k + 2),
+      ]
+      if (!segmentIntervalsMeetMinMs(nextBounds, action.nowMs, action.openLastCluster)) return state
+      const newOv = remapOverridesMergeNext(state.segmentJobOverrides, k)
+      return { ...state, boundaries: nextBounds, notes: nextNotes, segmentJobOverrides: newOv }
+    }
+    case 'setSegmentJobOverride': {
+      const { segIndex, job_ledger_id, bid_id } = action
+      const nSeg = state.boundaries.length - 1
+      if (segIndex < 0 || segIndex >= nSeg) return state
+      const prev = state.segmentJobOverrides ?? {}
+      return {
+        ...state,
+        segmentJobOverrides: { ...prev, [segIndex]: { job_ledger_id, bid_id } },
+      }
     }
     default:
       return state

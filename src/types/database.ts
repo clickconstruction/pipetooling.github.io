@@ -6476,6 +6476,10 @@ export type Database = {
         Args: { step_id_param: string }
         Returns: boolean
       }
+      can_edit_clock_sessions_for_user: {
+        Args: { p_target_user_id: string }
+        Returns: boolean
+      }
       can_manage_inspection_types: { Args: never; Returns: boolean }
       can_manage_team_leader_assignments: { Args: never; Returns: boolean }
       can_modify_people_labor_job: {
@@ -6775,6 +6779,27 @@ export type Database = {
           last_note_author_name: string
           last_note_body: string
           note_count: number
+        }[]
+      }
+      leader_replace_clock_session_cluster_mixed: {
+        Args: { p_segments: Json; p_session_ids: string[] }
+        Returns: {
+          error_message: string
+          inserted_ids: string[]
+        }[]
+      }
+      leader_split_clock_session_cluster: {
+        Args: { p_segments: Json; p_session_ids: string[] }
+        Returns: {
+          error_message: string
+          inserted_ids: string[]
+        }[]
+      }
+      leader_split_clock_session_segments: {
+        Args: { p_segments: Json; p_session_id: string }
+        Returns: {
+          error_message: string
+          inserted_ids: string[]
         }[]
       }
       list_assigned_jobs_for_dashboard: {

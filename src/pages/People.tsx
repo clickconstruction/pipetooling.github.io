@@ -8368,7 +8368,11 @@ export default function People() {
               emptyMessage={hoursClockSessionsSearching ? 'No matching sessions' : 'No active sessions'}
               renderNotesSecondary={(s) => {
                 const label = formatClockSessionJobOrBidLabel(s)
-                return label ? <span title={label}>{label}</span> : null
+                return label ? (
+                  <span title={label.replace(/\n/g, ' ')} style={{ whiteSpace: 'pre-line' }}>
+                    {label}
+                  </span>
+                ) : null
               }}
               renderJob={() => (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'nowrap', minWidth: 0 }} />
@@ -8421,7 +8425,11 @@ export default function People() {
               emptyMessage={hoursClockSessionsSearching ? 'No matching sessions' : 'No sessions awaiting approval'}
               renderNotesSecondary={(s) => {
                 const label = formatClockSessionJobOrBidLabel(s)
-                return label ? <span title={label}>{label}</span> : null
+                return label ? (
+                  <span title={label.replace(/\n/g, ' ')} style={{ whiteSpace: 'pre-line' }}>
+                    {label}
+                  </span>
+                ) : null
               }}
               renderJob={(s) => (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'nowrap', minWidth: 0 }}>

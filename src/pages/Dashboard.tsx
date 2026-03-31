@@ -26,6 +26,7 @@ import ClockInOutButton from '../components/ClockInOutButton'
 import TeamFeedbackWizard from '../components/team-feedback/TeamFeedbackWizard'
 import { fetchTeamFeedbackSettings } from '../lib/teamFeedback'
 import DashboardMyTimeSection from '../components/DashboardMyTimeSection'
+import { DashboardMyTimeDayEditorModal } from '../components/DashboardMyTimeDayEditorModal'
 import DashboardDevRejectedNotification from '../components/DashboardDevRejectedNotification'
 import DashboardMyTeamPendingBanner from '../components/DashboardMyTeamPendingBanner'
 import DashboardMyTeamSection from '../components/DashboardMyTeamSection'
@@ -40,6 +41,7 @@ import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
 import AssignedStageCard from '../components/AssignedStageCard'
 import SendRecordInvoiceModal, { type JobBillingContext } from '../components/jobs/SendRecordInvoiceModal'
 import { getNextDisplayOrders } from '../utils/checklistOrder'
+import { denverCalendarDayKey, getDefaultWeekRange } from '../utils/dateUtils'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import type { Database } from '../types/database'
 import type { ClockSessionRow } from '../types/clockSessions'
@@ -354,6 +356,7 @@ export default function Dashboard() {
   const { user: authUser, role, estimatorProspectsAccess } = useAuth()
   const showClockStripScopeToggle =
     role === 'dev' || role === 'master_technician' || role === 'assistant'
+  const pendingClockBannerAtMyTeamTop = Boolean(authUser?.id && !showClockStripScopeToggle)
   const [clockStripScope, setClockStripScope] = useState<'team' | 'everyone'>(readClockStripScope)
   const setClockStripScopePersist = useCallback((next: 'team' | 'everyone') => {
     setClockStripScope(next)
@@ -390,6 +393,19 @@ export default function Dashboard() {
     }
     return myTeam.hoursTodayByUserId
   }, [showClockStripScopeToggle, clockStripScope, myTeam.hoursTodayByUserIdOrg, myTeam.hoursTodayByUserId])
+
+  const showClockActivityStrip = useMemo(
+    () => sessionsForStrip.length > 0 || myTeam.clockedInTodayStripRows.length > 0,
+    [sessionsForStrip, myTeam.clockedInTodayStripRows],
+  )
+  const stripMyTimeDenverDateStr = useMemo(() => denverCalendarDayKey(Date.now()), [])
+  const [stripMyTimeEditor, setStripMyTimeEditor] = useState<{
+    subjectUserId: string
+    displayName: string
+  } | null>(null)
+  const openStripMyTimeEditor = useCallback((p: { subjectUserId: string; displayName: string }) => {
+    setStripMyTimeEditor(p)
+  }, [])
   const isMobile = useIsMobile()
   const [subscribedSteps, setSubscribedSteps] = useState<SubscribedStep[]>([])
   const [assignedSteps, setAssignedSteps] = useState<AssignedStep[]>([])
@@ -3013,13 +3029,26 @@ export default function Dashboard() {
         />
       )}
       {role === 'assistant' && tallyAndPinnedBlock}
-      {role === 'assistant' && authUser?.id && sessionsForStrip.length > 0 && (
+      {role === 'assistant' && authUser?.id && showClockActivityStrip && (
         <DashboardTeamActiveClockStrip
           sessions={sessionsForStrip}
           hoursTodayByUserId={hoursTodayForStrip}
+          clockedInTodayRows={myTeam.clockedInTodayStripRows}
+          jobsWorkedTodayRows={myTeam.jobsWorkedTodayStripRows}
           showScopeToggle={showClockStripScopeToggle}
           clockStripScope={clockStripScope}
           onClockStripScopeChange={setClockStripScopePersist}
+          showJobBidColumn={showClockStripScopeToggle}
+          onJobBidSaved={() => {
+            void myTeam.loadPending({ silent: true })
+          }}
+          onJobBidAssignError={(msg) => showToast(msg, 'error')}
+          onOpenStripMyTimeEditor={showClockStripScopeToggle ? openStripMyTimeEditor : undefined}
+          authUserId={authUser.id}
+          canApproveClockSessions={showClockStripScopeToggle}
+          onClockSessionsMutated={() => {
+            void myTeam.loadPending({ silent: true })
+          }}
         />
       )}
       {role === 'assistant' && authUser?.id && (
@@ -3354,80 +3383,51 @@ export default function Dashboard() {
           )}
         </>
       )}
-      {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') && dashboardButtonVisibility?.inspections !== false && (upcomingInspectionsLoading || upcomingInspections.length > 0) && (
-        <div style={{ marginBottom: '1rem' }}>
-          <h2 style={{ fontSize: '1.125rem', marginBottom: '0.5rem' }}>Upcoming inspection (3 days)</h2>
-          {upcomingInspectionsLoading ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
-          ) : upcomingInspections.length === 0 ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No inspections in the next 3 days.</p>
-          ) : (
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {upcomingInspections.map((i) => {
-                const today = new Date()
-                const parts = i.scheduled_date.split('-').map(Number)
-                const scheduled = new Date(parts[0] ?? 0, (parts[1] ?? 1) - 1, parts[2] ?? 1)
-                const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-                const diffDays = Math.round((scheduled.getTime() - todayStart.getTime()) / (24 * 60 * 60 * 1000))
-                const dayOfWeek = scheduled.toLocaleDateString('en-US', { weekday: 'long' })
-                const formatted = `${i.scheduled_date} (${diffDays}) ${dayOfWeek}`
-                return (
-                  <li key={i.id} style={{ marginBottom: '0.5rem' }}>
-                    <Link
-                      to="/jobs?tab=inspections"
-                      style={{
-                        display: 'block',
-                        padding: '0.5rem 0.75rem',
-                        background: '#eff6ff',
-                        border: '1px solid #bfdbfe',
-                        borderRadius: 4,
-                        color: '#1e40af',
-                        textDecoration: 'none',
-                        fontSize: '0.875rem',
-                      }}
-                    >
-                      <div>
-                        <span style={{ color: '#6b7280', marginRight: '0.5rem' }}>{formatted}</span>
-                        <span style={{ color: '#4b5563' }}>{' - '}{i.inspection_type}</span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.25rem' }}>
-                        <span style={{ fontWeight: 500 }}>{i.address}</span>
-                        {i.address?.trim() && (
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); openInExternalBrowser(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(i.address.trim())}`) }}
-                            title={`View ${i.address} on map`}
-                            style={{ display: 'inline-flex', alignItems: 'center', color: '#2563eb', flexShrink: 0, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 16, height: 16, fill: 'currentColor' }}>
-                              <path d="M576 112C576 103.7 571.7 96 564.7 91.6C557.7 87.2 548.8 86.8 541.4 90.5L416.5 152.1L244 93.4C230.3 88.7 215.3 89.6 202.1 95.7L77.8 154.3C69.4 158.2 64 166.7 64 176L64 528C64 536.2 68.2 543.9 75.1 548.3C82 552.7 90.7 553.2 98.2 549.7L225.5 489.8L396.2 546.7C409.9 551.3 424.7 550.4 437.8 544.2L562.2 485.7C570.6 481.7 576 473.3 576 464L576 112zM208 146.1L208 445.1L112 490.3L112 191.3L208 146.1zM256 449.4L256 148.3L384 191.8L384 492.1L256 449.4zM432 198L528 150.6L528 448.8L432 494L432 198z" />
-                            </svg>
-                          </button>
-                        )}
-                      </div>
-                    </Link>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-        </div>
-      )}
       {role !== 'assistant' && tallyAndPinnedBlock}
-      {role !== 'assistant' && authUser?.id && sessionsForStrip.length > 0 && (
+      {role !== 'assistant' && authUser?.id && showClockActivityStrip && (
         <DashboardTeamActiveClockStrip
           sessions={sessionsForStrip}
           hoursTodayByUserId={hoursTodayForStrip}
+          clockedInTodayRows={myTeam.clockedInTodayStripRows}
+          jobsWorkedTodayRows={myTeam.jobsWorkedTodayStripRows}
           showScopeToggle={showClockStripScopeToggle}
           clockStripScope={clockStripScope}
           onClockStripScopeChange={setClockStripScopePersist}
+          showJobBidColumn={showClockStripScopeToggle}
+          onJobBidSaved={() => {
+            void myTeam.loadPending({ silent: true })
+          }}
+          onJobBidAssignError={(msg) => showToast(msg, 'error')}
+          onOpenStripMyTimeEditor={showClockStripScopeToggle ? openStripMyTimeEditor : undefined}
+          authUserId={authUser.id}
+          canApproveClockSessions={showClockStripScopeToggle}
+          onClockSessionsMutated={() => {
+            void myTeam.loadPending({ silent: true })
+          }}
         />
       )}
-      {role !== 'assistant' && authUser?.id && (
+      {(role === 'dev' || role === 'master_technician') && authUser?.id && (
         <DashboardMyTeamPendingBanner
           pendingApprovalCount={myTeam.pendingApprovalCount}
           loadingSessions={myTeam.loadingSessions}
           onGoToPendingSessions={goToPendingSessionsInMyTeam}
+        />
+      )}
+      {stripMyTimeEditor && (
+        <DashboardMyTimeDayEditorModal
+          dateStr={stripMyTimeDenverDateStr}
+          sessions={[]}
+          subjectUserId={stripMyTimeEditor.subjectUserId}
+          subjectDisplayName={stripMyTimeEditor.displayName}
+          editableRange={getDefaultWeekRange()}
+          jobLabels={{}}
+          bidLabels={{}}
+          onClose={() => setStripMyTimeEditor(null)}
+          onSaved={() => {
+            void myTeam.loadPending({ silent: true })
+            setStripMyTimeEditor(null)
+          }}
+          onLinkedSessionsUpdated={() => void myTeam.loadPending({ silent: true })}
         />
       )}
       {isDev && authUser?.id && <DashboardDevRejectedNotification />}
@@ -5534,6 +5534,66 @@ export default function Dashboard() {
         </div>
       )}
 
+      {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') && dashboardButtonVisibility?.inspections !== false && (upcomingInspectionsLoading || upcomingInspections.length > 0) && (
+        <div style={{ marginTop: '2rem', marginBottom: '1rem' }}>
+          <h2 style={{ fontSize: '1.125rem', marginBottom: '0.5rem' }}>Upcoming inspection (3 days)</h2>
+          {upcomingInspectionsLoading ? (
+            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
+          ) : upcomingInspections.length === 0 ? (
+            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No inspections in the next 3 days.</p>
+          ) : (
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              {upcomingInspections.map((i) => {
+                const today = new Date()
+                const parts = i.scheduled_date.split('-').map(Number)
+                const scheduled = new Date(parts[0] ?? 0, (parts[1] ?? 1) - 1, parts[2] ?? 1)
+                const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+                const diffDays = Math.round((scheduled.getTime() - todayStart.getTime()) / (24 * 60 * 60 * 1000))
+                const dayOfWeek = scheduled.toLocaleDateString('en-US', { weekday: 'long' })
+                const formatted = `${i.scheduled_date} (${diffDays}) ${dayOfWeek}`
+                return (
+                  <li key={i.id} style={{ marginBottom: '0.5rem' }}>
+                    <Link
+                      to="/jobs?tab=inspections"
+                      style={{
+                        display: 'block',
+                        padding: '0.5rem 0.75rem',
+                        background: '#eff6ff',
+                        border: '1px solid #bfdbfe',
+                        borderRadius: 4,
+                        color: '#1e40af',
+                        textDecoration: 'none',
+                        fontSize: '0.875rem',
+                      }}
+                    >
+                      <div>
+                        <span style={{ color: '#6b7280', marginRight: '0.5rem' }}>{formatted}</span>
+                        <span style={{ color: '#4b5563' }}>{' - '}{i.inspection_type}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.25rem' }}>
+                        <span style={{ fontWeight: 500 }}>{i.address}</span>
+                        {i.address?.trim() && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); openInExternalBrowser(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(i.address.trim())}`) }}
+                            title={`View ${i.address} on map`}
+                            style={{ display: 'inline-flex', alignItems: 'center', color: '#2563eb', flexShrink: 0, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 16, height: 16, fill: 'currentColor' }}>
+                              <path d="M576 112C576 103.7 571.7 96 564.7 91.6C557.7 87.2 548.8 86.8 541.4 90.5L416.5 152.1L244 93.4C230.3 88.7 215.3 89.6 202.1 95.7L77.8 154.3C69.4 158.2 64 166.7 64 176L64 528C64 536.2 68.2 543.9 75.1 548.3C82 552.7 90.7 553.2 98.2 549.7L225.5 489.8L396.2 546.7C409.9 551.3 424.7 550.4 437.8 544.2L562.2 485.7C570.6 481.7 576 473.3 576 464L576 112zM208 146.1L208 445.1L112 490.3L112 191.3L208 146.1zM256 449.4L256 148.3L384 191.8L384 492.1L256 449.4zM432 198L528 150.6L528 448.8L432 494L432 198z" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
+      )}
+
       {role === 'superintendent' && (superintendentJobsLoading || superintendentJobs.filter((j) => !assignedJobs.some((a) => a.id === j.id)).length > 0) && (
         <div style={{ marginTop: '2rem' }}>
           <button
@@ -5812,7 +5872,13 @@ export default function Dashboard() {
         </div>
       )}
 
-      {authUser?.id && <DashboardMyTeamSection myTeam={myTeam} />}
+      {authUser?.id && (
+        <DashboardMyTeamSection
+          myTeam={myTeam}
+          showPendingBannerAtTop={pendingClockBannerAtMyTeamTop}
+          onGoToPendingSessions={goToPendingSessionsInMyTeam}
+        />
+      )}
 
       {authUser?.id && (
         <DashboardMyTimeSection userId={authUser.id} />

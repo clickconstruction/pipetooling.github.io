@@ -13,6 +13,7 @@ import {
   sessionDecimalHours,
 } from './clock-sessions'
 import type { ClockSessionRow } from '../types/clockSessions'
+import DashboardMyTeamPendingBanner from './DashboardMyTeamPendingBanner'
 
 function formatDecimalHours(hours: number): string {
   return `${hours.toFixed(2)}h`
@@ -51,9 +52,17 @@ function personDisplayName(s: ClockSessionRow): string {
   return s.users?.name?.trim() ?? 'Unknown'
 }
 
-type Props = { myTeam: DashboardMyTeamSectionState }
+type Props = {
+  myTeam: DashboardMyTeamSectionState
+  showPendingBannerAtTop?: boolean
+  onGoToPendingSessions?: () => void
+}
 
-export default function DashboardMyTeamSection({ myTeam }: Props) {
+export default function DashboardMyTeamSection({
+  myTeam,
+  showPendingBannerAtTop = false,
+  onGoToPendingSessions,
+}: Props) {
   const {
     authUserId,
     memberUserIds,
@@ -136,6 +145,15 @@ export default function DashboardMyTeamSection({ myTeam }: Props) {
 
   return (
     <section style={{ marginTop: '2rem', marginBottom: '2rem' }}>
+      {showPendingBannerAtTop && (
+        <div style={{ marginBottom: '1rem' }}>
+          <DashboardMyTeamPendingBanner
+            pendingApprovalCount={pendingApprovalCount}
+            loadingSessions={loadingSessions}
+            onGoToPendingSessions={onGoToPendingSessions}
+          />
+        </div>
+      )}
       <button
         type="button"
         onClick={() => setMyTeamExpanded((open) => !open)}
