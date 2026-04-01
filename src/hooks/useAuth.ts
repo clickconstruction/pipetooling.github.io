@@ -1,4 +1,13 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import {
+  createContext,
+  createElement,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+  type ReactNode,
+} from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 
@@ -19,7 +28,9 @@ interface UseAuthReturn {
   sessionExpiresAt: number | null
 }
 
-export function useAuth(): UseAuthReturn {
+const AuthContext = createContext<UseAuthReturn | null>(null)
+
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [role, setRole] = useState<UserRole | null>(null)
   const [estimatorProspectsAccess, setEstimatorProspectsAccess] = useState(false)
@@ -186,5 +197,22 @@ export function useAuth(): UseAuthReturn {
     }
   }, [checkSession])
 
-  return { user, role, estimatorProspectsAccess, loading, checkSession, sessionExpiresAt }
+  const value: UseAuthReturn = {
+    user,
+    role,
+    estimatorProspectsAccess,
+    loading,
+    checkSession,
+    sessionExpiresAt,
+  }
+
+  return createElement(AuthContext.Provider, { value }, children)
+}
+
+export function useAuth(): UseAuthReturn {
+  const ctx = useContext(AuthContext)
+  if (ctx == null) {
+    throw new Error('useAuth must be used within AuthProvider')
+  }
+  return ctx
 }

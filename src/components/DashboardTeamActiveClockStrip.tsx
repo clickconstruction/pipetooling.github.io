@@ -428,6 +428,7 @@ export function DashboardTeamActiveClockStrip({
   authUserId,
   canApproveClockSessions,
   onClockSessionsMutated,
+  onMaterializeSalarySession,
 }: {
   sessions: DashboardStripSession[]
   hoursTodayByUserId: Readonly<Record<string, number>>
@@ -447,9 +448,15 @@ export function DashboardTeamActiveClockStrip({
   canApproveClockSessions?: boolean
   /** Refresh today strip + pending after approve/reject. */
   onClockSessionsMutated?: () => void
+  /**
+   * Materialize `salary_schedule` open session via RPC (when UI shows synthetic schedule row only).
+   * After resolve, parent should refetch pending; Assign job/bid becomes available on the real row.
+   */
+  onMaterializeSalarySession?: (userId: string) => Promise<void>
 }) {
   const stripRejectTitleId = useId()
   const nowMs = useIntervalNowMs(45_000)
+  const [salaryMaterializeBusyUserId, setSalaryMaterializeBusyUserId] = useState<string | null>(null)
   const [stripApproveBusy, setStripApproveBusy] = useState<ReadonlySet<string>>(() => new Set())
   const [stripRejectConfirm, setStripRejectConfirm] = useState<StripRejectClockSessionPayload | null>(null)
   const [stripActionsSession, setStripActionsSession] = useState<ClockSessionStripActionsPayload | null>(null)
@@ -784,7 +791,10 @@ export function DashboardTeamActiveClockStrip({
             {sessions.map((s) => {
               const synthetic = isSyntheticSalaryStripSession(s)
               const inDate = new Date(s.clocked_in_at)
-              const todayH = hoursTodayByUserId[s.user_id] ?? 0
+              const todayHBase = hoursTodayByUserId[s.user_id] ?? 0
+              const todayH = synthetic
+                ? Math.max(todayHBase, sessionDurationSeconds(s.clocked_in_at, null, nowMs) / 3600)
+                : todayHBase
               const fullJobBid = synthetic ? null : formatClockSessionJobOrBidLabel(s as ClockSessionRow)
               const shortJb = synthetic ? null : shortJobOrBidLabel(s as ClockSessionRow)
               const jobHref =
@@ -874,6 +884,37 @@ export function DashboardTeamActiveClockStrip({
                           {synthetic && linkText ? (
                             <span style={{ fontSize: '0.72rem', color: '#6b7280' }} title={titleText}>
                               {linkText}
+                              {onMaterializeSalarySession ? (
+                                <>
+                                  {' · '}
+                                  <button
+                                    type="button"
+                                    disabled={salaryMaterializeBusyUserId === s.user_id}
+                                    title="Create the scheduled clock session so you can assign a job or bid"
+                                    onClick={() => {
+                                      setSalaryMaterializeBusyUserId(s.user_id)
+                                      void onMaterializeSalarySession(s.user_id).finally(() => {
+                                        setSalaryMaterializeBusyUserId((cur) =>
+                                          cur === s.user_id ? null : cur,
+                                        )
+                                      })
+                                    }}
+                                    style={{
+                                      padding: 0,
+                                      margin: 0,
+                                      border: 'none',
+                                      background: 'none',
+                                      cursor: salaryMaterializeBusyUserId === s.user_id ? 'wait' : 'pointer',
+                                      font: 'inherit',
+                                      fontSize: 'inherit',
+                                      color: '#2563eb',
+                                      textDecoration: 'underline',
+                                    }}
+                                  >
+                                    {salaryMaterializeBusyUserId === s.user_id ? '…' : 'Create session'}
+                                  </button>
+                                </>
+                              ) : null}
                             </span>
                           ) : null}
                           {jobHref && linkText ? (
@@ -1107,7 +1148,10 @@ export function DashboardTeamActiveClockStrip({
                             <button
                               type="button"
                               onClick={() =>
-                                onOpenStripMyTimeEditor({ subjectUserId: row.userId, displayName: row.displayName })
+                                onOpenStripMyTimeEditor({
+                                  subjectUserId: row.userId,
+                                  displayName: row.displayName,
+                                })
                               }
                               title="Edit today's time"
                               aria-label={`Edit today's time for ${row.displayName}`}

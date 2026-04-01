@@ -207,6 +207,10 @@ type Props = {
    * Omit or false for self My Time.
    */
   allowNcnsFromMyTime?: boolean
+  /** Strip-origin team day: show "Not coming in" (unpaid day off) in footer. Requires `subjectUserId`. */
+  showMarkNotComingIn?: boolean
+  /** Called after confirm; parent runs staff time-off RPC + refresh. */
+  onMarkNotComingIn?: () => void | Promise<void>
 }
 
 export function DashboardMyTimeDayEditorModal({
@@ -221,9 +225,31 @@ export function DashboardMyTimeDayEditorModal({
   onSaved,
   onLinkedSessionsUpdated,
   allowNcnsFromMyTime = false,
+  showMarkNotComingIn = false,
+  onMarkNotComingIn,
 }: Props) {
   const { start, end } = editableRangeProp ?? getDefaultWeekRange()
   const editable = dateStr >= start && dateStr <= end
+
+  const showNotComingInControl =
+    showMarkNotComingIn === true && Boolean(subjectUserIdProp?.trim())
+
+  const [markNotComingInBusy, setMarkNotComingInBusy] = useState(false)
+  const handleNotComingInClick = useCallback(async () => {
+    if (!onMarkNotComingIn) return
+    if (
+      !window.confirm(
+        'Mark this person as not coming in on this day? This adds unpaid time off on the calendar. They can still clock in if plans change.',
+      )
+    )
+      return
+    setMarkNotComingInBusy(true)
+    try {
+      await Promise.resolve(onMarkNotComingIn())
+    } finally {
+      setMarkNotComingInBusy(false)
+    }
+  }, [onMarkNotComingIn])
 
   const [authUserId, setAuthUserId] = useState<string | null>(null)
   const [authReady, setAuthReady] = useState(false)
@@ -1719,28 +1745,92 @@ export function DashboardMyTimeDayEditorModal({
 
             {error && <p style={{ margin: '0.75rem 0 0', fontSize: '0.8125rem', color: '#dc2626' }}>{error}</p>}
 
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap', marginTop: '1rem' }}>
-              <button
-                type="button"
-                onClick={() => void requestClose()}
-                disabled={saving}
-                style={{
-                  padding: '0.5rem 1rem',
-                  border: '1px solid #3b82f6',
-                  borderRadius: 4,
-                  background: '#3b82f6',
-                  color: 'white',
-                  cursor: saving ? 'not-allowed' : 'pointer',
-                  fontWeight: 600,
-                }}
-              >
-                {saving ? 'Saving…' : 'Close'}
-              </button>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '0.5rem',
+                marginTop: '1rem',
+              }}
+            >
+              <div style={{ minHeight: '2.25rem', display: 'flex', alignItems: 'center' }}>
+                {showNotComingInControl ? (
+                  <button
+                    type="button"
+                    disabled={saving || markNotComingInBusy}
+                    onClick={() => void handleNotComingInClick()}
+                    title="Add unpaid day off; they can still clock in"
+                    style={{
+                      padding: '0.35rem 0.65rem',
+                      fontSize: '0.8125rem',
+                      fontWeight: 600,
+                      color: '#6b21a8',
+                      background: '#f3e8ff',
+                      border: '1px solid #e9d5ff',
+                      borderRadius: 6,
+                      cursor: saving || markNotComingInBusy ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {markNotComingInBusy ? '…' : 'Not coming in'}
+                  </button>
+                ) : null}
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => void requestClose()}
+                  disabled={saving}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    border: '1px solid #3b82f6',
+                    borderRadius: 4,
+                    background: '#3b82f6',
+                    color: 'white',
+                    cursor: saving ? 'not-allowed' : 'pointer',
+                    fontWeight: 600,
+                  }}
+                >
+                  {saving ? 'Saving…' : 'Close'}
+                </button>
+              </div>
             </div>
           </>
         )}
         {!editable || resolvedSessions.length === 0 ? (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '0.5rem',
+              marginTop: '1rem',
+            }}
+          >
+            <div style={{ minHeight: '2.25rem', display: 'flex', alignItems: 'center' }}>
+              {showNotComingInControl ? (
+                <button
+                  type="button"
+                  disabled={markNotComingInBusy}
+                  onClick={() => void handleNotComingInClick()}
+                  title="Add unpaid day off; they can still clock in"
+                  style={{
+                    padding: '0.35rem 0.65rem',
+                    fontSize: '0.8125rem',
+                    fontWeight: 600,
+                    color: '#6b21a8',
+                    background: '#f3e8ff',
+                    border: '1px solid #e9d5ff',
+                    borderRadius: 6,
+                    cursor: markNotComingInBusy ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {markNotComingInBusy ? '…' : 'Not coming in'}
+                </button>
+              ) : null}
+            </div>
             <button
               type="button"
               onClick={onClose}

@@ -242,6 +242,8 @@ export function useDashboardMyTeamSectionState(
     templates: Database['public']['Tables']['salary_work_schedule_templates']['Row'][]
     overrides: Database['public']['Tables']['salary_work_schedule_day_overrides']['Row'][]
     timeOff: Database['public']['Tables']['user_time_off']['Row'][]
+    /** Resolved from `users` for every salary template `user_id` (org-wide strip names not on team roster). */
+    displayNameByUserId: Readonly<Record<string, string>>
   } | null>(null)
   const [loadingSessions, setLoadingSessions] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -379,7 +381,7 @@ export function useDashboardMyTeamSectionState(
       let tmplQuery = supabase.from('salary_work_schedule_templates').select('*')
       if (!orgWideStripEnabled) {
         if (memberUserIds.length === 0) {
-          setSalaryStripMeta({ todayYmd, templates: [], overrides: [], timeOff: [] })
+          setSalaryStripMeta({ todayYmd, templates: [], overrides: [], timeOff: [], displayNameByUserId: {} })
           return
         }
         tmplQuery = tmplQuery.in('user_id', memberUserIds)
@@ -388,8 +390,18 @@ export function useDashboardMyTeamSectionState(
       const tlist = (templates ?? []) as Database['public']['Tables']['salary_work_schedule_templates']['Row'][]
       const ids = [...new Set(tlist.map((t) => t.user_id))]
       if (ids.length === 0) {
-        setSalaryStripMeta({ todayYmd, templates: [], overrides: [], timeOff: [] })
+        setSalaryStripMeta({ todayYmd, templates: [], overrides: [], timeOff: [], displayNameByUserId: {} })
         return
+      }
+      const userRows = await withSupabaseRetry(
+        async () => supabase.from('users').select('id, name, email').in('id', ids),
+        'salary strip template user names',
+      )
+      type UserMini = { id: string; name: string | null; email: string | null }
+      const userById = new Map<string, UserMini>(((userRows ?? []) as UserMini[]).map((u) => [u.id, u]))
+      const displayNameByUserId: Record<string, string> = {}
+      for (const uid of ids) {
+        displayNameByUserId[uid] = displayNameForTeamMember(uid, userById.get(uid) ?? null)
       }
       const [overrides, timeOff] = await Promise.all([
         withSupabaseRetry(
@@ -417,6 +429,7 @@ export function useDashboardMyTeamSectionState(
         templates: tlist,
         overrides: (overrides ?? []) as Database['public']['Tables']['salary_work_schedule_day_overrides']['Row'][],
         timeOff: (timeOff ?? []) as Database['public']['Tables']['user_time_off']['Row'][],
+        displayNameByUserId,
       })
     } catch {
       setSalaryStripMeta(null)
@@ -987,7 +1000,7 @@ export function useDashboardMyTeamSectionState(
 
   const stripSyntheticSalarySessions = useMemo((): SyntheticSalaryStripSession[] => {
     if (!salaryStripMeta) return []
-    const { todayYmd, templates, overrides, timeOff } = salaryStripMeta
+    const { todayYmd, templates, overrides, timeOff, displayNameByUserId } = salaryStripMeta
     const ovByUser = new Map(overrides.map((o) => [o.user_id, o]))
     const timeOffByUser = new Map<string, Database['public']['Tables']['user_time_off']['Row'][]>()
     for (const r of timeOff) {
@@ -1015,7 +1028,9 @@ export function useDashboardMyTeamSectionState(
         overrideForDate: ov,
       })
       if (!clockInIso) continue
-      const display = rosterName.get(uid)?.trim() || `User (${uid.slice(-6)})`
+      const rosterD = rosterName.get(uid)?.trim()
+      const usersTableD = displayNameByUserId[uid]?.trim()
+      const display = rosterD || usersTableD || `User (${uid.slice(-6)})`
       out.push({
         kind: 'synthetic_salary',
         id: `synthetic-salary-${uid}-${todayYmd}`,

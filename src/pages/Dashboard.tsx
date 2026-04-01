@@ -50,6 +50,8 @@ import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { fetchDashboardPhase1 } from '../lib/dashboardBootQueries'
 import { readDashboardBootCache, writeDashboardBootCache } from '../lib/dashboardBootCache'
 import { displayNameFromAuthUser } from '../lib/displayNameFromAuthUser'
+import { syncSalaryClockSessionsForUserDay } from '../lib/salaryScheduleSync'
+import { recordNotComingInForUserAsStaff } from '../lib/notComingInTimeOff'
 import {
   AssignedSkeleton,
   ChecklistSkeleton,
@@ -332,6 +334,8 @@ export default function Dashboard() {
   const { user: authUser, role, estimatorProspectsAccess } = useAuth()
   const showClockStripScopeToggle =
     role === 'dev' || role === 'master_technician' || role === 'assistant'
+  const showStripSubjectMyTimeEditor =
+    showClockStripScopeToggle || role === 'superintendent'
   const pendingClockBannerAtMyTeamTop = Boolean(authUser?.id && !showClockStripScopeToggle)
   const [clockStripScope, setClockStripScope] = useState<'team' | 'everyone'>(readClockStripScope)
   const setClockStripScopePersist = useCallback((next: 'team' | 'everyone') => {
@@ -584,6 +588,39 @@ export default function Dashboard() {
 
   const isDev = role === 'dev'
   const { showToast } = useToastContext()
+  const materializeSalarySessionForStrip = useCallback(
+    async (userId: string) => {
+      const { error } = await syncSalaryClockSessionsForUserDay(userId)
+      if (error) {
+        showToast(error, 'error')
+        return
+      }
+      await myTeam.loadPending({ silent: true })
+    },
+    [showToast, myTeam.loadPending],
+  )
+  const handleStripMarkNotComingIn = useCallback(
+    async (p: { subjectUserId: string; displayName: string; workDateYmd: string }) => {
+      const result = await recordNotComingInForUserAsStaff({
+        subjectUserId: p.subjectUserId,
+        workDateYmd: p.workDateYmd,
+      })
+      if (result.ok && result.alreadyMarked) {
+        showToast(`${p.displayName} already has unpaid time off on ${p.workDateYmd}.`, 'warning')
+        return
+      }
+      if (!result.ok) {
+        showToast(result.message, 'error')
+        return
+      }
+      showToast(`Marked ${p.displayName} as not coming in (${p.workDateYmd}).`, 'success')
+      if (result.syncWarning) {
+        showToast(`Salary sync: ${result.syncWarning}`, 'warning')
+      }
+      void myTeam.loadPending({ silent: true })
+    },
+    [showToast, myTeam.loadPending],
+  )
   const visiblePins = filterPinnedByRole(pinnedRoutes, role, estimatorProspectsAccess)
   const pinsToShow = visiblePins
     .filter((p) => p.path !== '/dashboard' && p.path !== '/')
@@ -3402,12 +3439,17 @@ export default function Dashboard() {
             void myTeam.loadPending({ silent: true })
           }}
           onJobBidAssignError={(msg) => showToast(msg, 'error')}
-          onOpenStripMyTimeEditor={showClockStripScopeToggle ? openStripMyTimeEditor : undefined}
+          onOpenStripMyTimeEditor={
+            showStripSubjectMyTimeEditor ? openStripMyTimeEditor : undefined
+          }
           authUserId={authUser.id}
           canApproveClockSessions={showClockStripScopeToggle}
           onClockSessionsMutated={() => {
             void myTeam.loadPending({ silent: true })
           }}
+          onMaterializeSalarySession={
+            showClockStripScopeToggle ? materializeSalarySessionForStrip : undefined
+          }
         />
       )}
       {role === 'assistant' && authUser?.id && (
@@ -3764,12 +3806,17 @@ export default function Dashboard() {
             void myTeam.loadPending({ silent: true })
           }}
           onJobBidAssignError={(msg) => showToast(msg, 'error')}
-          onOpenStripMyTimeEditor={showClockStripScopeToggle ? openStripMyTimeEditor : undefined}
+          onOpenStripMyTimeEditor={
+            showStripSubjectMyTimeEditor ? openStripMyTimeEditor : undefined
+          }
           authUserId={authUser.id}
           canApproveClockSessions={showClockStripScopeToggle}
           onClockSessionsMutated={() => {
             void myTeam.loadPending({ silent: true })
           }}
+          onMaterializeSalarySession={
+            showClockStripScopeToggle ? materializeSalarySessionForStrip : undefined
+          }
         />
       )}
       {(role === 'dev' || role === 'master_technician') && authUser?.id && (
@@ -3789,6 +3836,17 @@ export default function Dashboard() {
           jobLabels={{}}
           bidLabels={{}}
           allowNcnsFromMyTime={showClockStripScopeToggle}
+          showMarkNotComingIn={showStripSubjectMyTimeEditor}
+          onMarkNotComingIn={
+            showStripSubjectMyTimeEditor
+              ? () =>
+                  handleStripMarkNotComingIn({
+                    subjectUserId: stripMyTimeEditor.subjectUserId,
+                    displayName: stripMyTimeEditor.displayName,
+                    workDateYmd: stripMyTimeDenverDateStr,
+                  })
+              : undefined
+          }
           onClose={() => setStripMyTimeEditor(null)}
           onSaved={() => {
             void myTeam.loadPending({ silent: true })

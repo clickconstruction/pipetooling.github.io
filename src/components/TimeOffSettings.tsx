@@ -4,6 +4,7 @@ import type { Database } from '../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { useToastContext } from '../contexts/ToastContext'
 import { denverWorkDateToday, syncSalaryClockSessionsForUserDay } from '../lib/salaryScheduleSync'
+import { recordNotComingInSelf } from '../lib/notComingInTimeOff'
 
 type TimeOffRow = Database['public']['Tables']['user_time_off']['Row']
 
@@ -80,6 +81,34 @@ export function TimeOffSettings({ userId }: { userId: string }) {
     }
   }
 
+  async function handleNotComingInToday() {
+    if (
+      !window.confirm(
+        'Mark yourself as not coming in today? This adds unpaid time off on the calendar. You can still clock in if plans change.',
+      )
+    )
+      return
+    setSaving(true)
+    try {
+      const ymd = denverWorkDateToday()
+      const result = await recordNotComingInSelf({ userId, workDateYmd: ymd })
+      if (result.ok && result.alreadyMarked) {
+        showToast('You already have unpaid time off on that date.', 'warning')
+        return
+      }
+      if (!result.ok) {
+        showToast(result.message, 'error')
+        return
+      }
+      showToast('Not coming in saved for today.', 'success')
+      await load()
+      const { error: syncErr } = await syncSalaryClockSessionsForUserDay(userId, ymd)
+      if (syncErr) showToast(syncErr, 'warning')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function handleDelete(id: string) {
     if (!window.confirm('Remove this unpaid time off entry?')) return
     try {
@@ -107,6 +136,25 @@ export function TimeOffSettings({ userId }: { userId: string }) {
         Add planned <strong>unpaid</strong> time off using <strong>company calendar dates</strong> (Central). Salary
         auto-sessions are skipped on these days after sync.
       </p>
+      <div style={{ marginBottom: '0.75rem' }}>
+        <button
+          type="button"
+          disabled={saving || !userId}
+          onClick={() => void handleNotComingInToday()}
+          style={{
+            padding: '0.4rem 0.75rem',
+            fontSize: '0.8125rem',
+            fontWeight: 600,
+            color: '#6b21a8',
+            background: '#f3e8ff',
+            border: '1px solid #e9d5ff',
+            borderRadius: 6,
+            cursor: saving ? 'wait' : 'pointer',
+          }}
+        >
+          Not coming in today
+        </button>
+      </div>
       <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 1rem 0' }}>
         {rows.length === 0 ? (
           <li style={{ color: '#6b7280', fontSize: '0.875rem' }}>No entries yet.</li>
