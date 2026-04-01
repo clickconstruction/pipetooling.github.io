@@ -532,7 +532,9 @@ export function splitReducer(state: SplitEditorState, action: SplitAction): Spli
       const { boundaries, notes } = state
       if (boundaries.length < 3 || k < 1 || k >= notes.length) return state
       const nextBounds = [...boundaries.slice(0, k), ...boundaries.slice(k + 1)]
-      if (nextBounds.length < 3) return state
+      // Allow collapsing to a single segment (2 boundaries). Former guard `nextBounds.length < 3`
+      // blocked the common "split once → merge back" case while Merge UI still showed.
+      if (nextBounds.length < 2) return state
       const nextNotes = [
         ...notes.slice(0, k - 1),
         mergeSegmentNotes(notes[k - 1]!, notes[k]!),
@@ -547,7 +549,7 @@ export function splitReducer(state: SplitEditorState, action: SplitAction): Spli
       const { boundaries, notes } = state
       if (boundaries.length < 3 || k < 0 || k >= notes.length - 1) return state
       const nextBounds = [...boundaries.slice(0, k + 1), ...boundaries.slice(k + 2)]
-      if (nextBounds.length < 3) return state
+      if (nextBounds.length < 2) return state
       const nextNotes = [
         ...notes.slice(0, k),
         mergeSegmentNotes(notes[k + 1]!, notes[k]!),
