@@ -385,7 +385,16 @@ function bidDisplayName(b: Bid): string {
   return b.project_name || ''
 }
 
-/** Matches Counts tab H2: `bidDisplayName(bid) || 'Bid'` — used for destructive confirm typing. */
+/** Tab header when a bid is selected: `B{n} project name` (space) if `bid_number` is set, else project name or `Bid`. */
+function bidWorkflowTabHeading(b: Bid): string {
+  const name = bidDisplayName(b).trim()
+  const label = name || 'Bid'
+  const num = b.bid_number?.trim()
+  if (num) return `B${num} ${label}`
+  return label
+}
+
+/** Project name only — used for destructive confirm typing (Counts clear-all). */
 function countsConfirmLabel(bid: BidWithBuilder | null): string {
   const t = bid?.project_name?.trim()
   return t || 'Bid'
@@ -8427,7 +8436,7 @@ export default function Bids() {
           {selectedBidForCounts && (
             <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.5rem 2rem', background: 'white', marginBottom: '1.5rem' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', marginBottom: '1rem' }}>
-                <h2 style={{ margin: 0 }}>{bidDisplayName(selectedBidForCounts) || 'Bid'}</h2>
+                <h2 style={{ margin: 0 }}>{bidWorkflowTabHeading(selectedBidForCounts)}</h2>
                 <div style={{ display: 'flex', justifyContent: 'center' }}>
                   <button
                     type="button"
@@ -8704,7 +8713,7 @@ export default function Bids() {
           {selectedBidForTakeoff && (
             <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.5rem 2rem', background: 'white', marginBottom: '1.5rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                <h2 style={{ margin: 0 }}>{bidDisplayName(selectedBidForTakeoff) || 'Bid'}</h2>
+                <h2 style={{ margin: 0 }}>{bidWorkflowTabHeading(selectedBidForTakeoff)}</h2>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                   {takeoffCountRows.length > 0 && selectedTakeoffBookVersionId && (
                     <>
@@ -9595,7 +9604,7 @@ export default function Bids() {
           {selectedBidForCostEstimate && (
             <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.5rem 2rem', background: 'white', marginBottom: '1.5rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h2 style={{ margin: 0 }}>{bidDisplayName(selectedBidForCostEstimate) || 'Bid'}</h2>
+                <h2 style={{ margin: 0 }}>{bidWorkflowTabHeading(selectedBidForCostEstimate)}</h2>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <button
                     type="button"
@@ -10714,7 +10723,7 @@ export default function Bids() {
           {selectedBidForPricing && (
             <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.5rem 2rem', background: 'white', marginBottom: '1.5rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                <h2 style={{ margin: 0, flex: '0 0 auto' }}>{bidDisplayName(selectedBidForPricing) || 'Bid'}</h2>
+                <h2 style={{ margin: 0, flex: '0 0 auto' }}>{bidWorkflowTabHeading(selectedBidForPricing)}</h2>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: '1 1 auto', justifyContent: 'center', minWidth: 0 }}>
                   <label style={{ fontSize: '0.875rem', marginRight: '0.25rem' }}>Price book</label>
                   <select
@@ -11859,7 +11868,7 @@ export default function Bids() {
             return (
               <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.5rem 2rem', background: 'white', marginBottom: '1.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <h2 style={{ margin: 0 }}>{bidDisplayName(bid) || 'Bid'}</h2>
+                  <h2 style={{ margin: 0 }}>{bidWorkflowTabHeading(bid)}</h2>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <button
                       type="button"
@@ -12193,7 +12202,7 @@ export default function Bids() {
           {selectedBidForSubmission && (
             <div ref={submissionSummaryCardRef} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.5rem 2rem', background: 'white', marginBottom: '1.5rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h2 style={{ margin: 0 }}>{bidDisplayName(selectedBidForSubmission) || 'Bid'}</h2>
+                <h2 style={{ margin: 0 }}>{bidWorkflowTabHeading(selectedBidForSubmission)}</h2>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <button
                     type="button"
@@ -13170,7 +13179,7 @@ export default function Bids() {
             return (
               <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.5rem 2rem', background: 'white', marginBottom: '1.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <h2 style={{ margin: 0 }}>{bidDisplayName(bid) || 'Bid'}</h2>
+                  <h2 style={{ margin: 0 }}>{bidWorkflowTabHeading(bid)}</h2>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <button
                       type="button"
@@ -13476,7 +13485,7 @@ export default function Bids() {
             return (
               <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.5rem 2rem', background: 'white', marginBottom: '1.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <h2 style={{ margin: 0 }}>{bidDisplayName(bid) || 'Bid'}</h2>
+                  <h2 style={{ margin: 0 }}>{bidWorkflowTabHeading(bid)}</h2>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <button type="button" onClick={() => openEditBid(bid)} title="Edit bid" style={{ padding: '0.5rem 1rem', background: '#eff6ff', border: '1px solid #3b82f6', borderRadius: 4, color: '#1d4ed8', cursor: 'pointer' }}>Edit bid</button>
                     <button type="button" onClick={closeSharedBidAndClearUrl} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Close</button>
@@ -13700,7 +13709,7 @@ export default function Bids() {
             return (
               <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.5rem 2rem', background: 'white', marginBottom: '1.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <h2 style={{ margin: 0 }}>{bidDisplayName(bid) || 'Bid'}</h2>
+                  <h2 style={{ margin: 0 }}>{bidWorkflowTabHeading(bid)}</h2>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <button type="button" onClick={() => { setBidFormOpen(true); setEditingBid(bid) }} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Edit bid</button>
                     <button type="button" onClick={closeSharedBidAndClearUrl} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Close</button>
