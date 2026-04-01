@@ -3179,6 +3179,24 @@ export type Database = {
           },
         ]
       }
+      mercury_account_nicknames: {
+        Row: {
+          mercury_account_id: string
+          nickname: string
+          updated_at: string
+        }
+        Insert: {
+          mercury_account_id: string
+          nickname: string
+          updated_at?: string
+        }
+        Update: {
+          mercury_account_id?: string
+          nickname?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       mercury_transactions: {
         Row: {
           amount: number

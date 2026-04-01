@@ -611,11 +611,23 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: [`Banking.tsx`](src/pages/Banking.tsx) read-only grid; Edge Functions documented in **`EDGE_FUNCTIONS.md`**
 - **Category**: Banking / Integrations / RLS
 
+**`20260401195701_mercury_account_nicknames.sql`**
+- **Purpose**: **Banking (dev)**: optional friendly labels per **`mercury_account_id`**; **RLS** dev **`SELECT` / **`INSERT`** / **`UPDATE`** / **`DELETE`** (edited from the Banking UI)
+- **Changes**: `CREATE TABLE mercury_account_nicknames` (`mercury_account_id` PK, `nickname` 1–120 chars, `updated_at`); dev policies; **`GRANT`** to **`authenticated`** and **`service_role`**
+- **Impact**: [`Banking.tsx`](src/pages/Banking.tsx) account filter labels, sortable grid, nickname management block
+- **Category**: Banking / Integrations / RLS
+
 **`20260401004452_attendance_incidents_subject_select_own.sql`**
 - **Purpose**: Let the **subject** of an attendance incident **SELECT** their own row (Calendar NCNS chip)
 - **Changes**: `CREATE POLICY "Attendance incidents subject select own"` **`FOR SELECT`** **`USING (subject_user_id = auth.uid())`**
 - **Impact**: [`Calendar.tsx`](src/pages/Calendar.tsx) can load NCNS for signed-in user without staff/team-lead role; staff policies unchanged (ORed)
 - **Category**: People / RLS / Calendar
+
+**`20260401190823_can_edit_clock_sessions_option_a_roles.sql`**
+- **Purpose**: **Dashboard My Time** — broaden **`can_edit_clock_sessions_for_user`** so **master_technician**, **assistant**, and **superintendent** may use leader **split/replace-day** RPCs for **any** target user (same helper path as dev team-lead)
+- **Changes**: `CREATE OR REPLACE FUNCTION can_edit_clock_sessions_for_user` with additional `EXISTS (... profiles.role IN (...))` branches; comment + **`GRANT EXECUTE`**
+- **Impact**: Master / assistant / superintendent can merge or split another person’s day in **Edit time** without being that user; documented in **`RECENT_FEATURES.md`** v2.216 and **`ACCESS_CONTROL.md`**
+- **Category**: Clock Sessions / People Hours / Access control
 
 #### April 25, 2026
 

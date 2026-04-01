@@ -480,7 +480,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 | **Workflow** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ | ✅ limited |
 | **People** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ | ❌ |
 | **Jobs** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ✅ Reports + Billing | ✅ Reports + Sub Ledger |
-| **Banking** | ✅ dev only (Mercury ledger) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Banking** | ✅ dev only (Mercury ledger + **`mercury_account_nicknames`**) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Calendar** | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
 | **Bids** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited |
 | **Materials** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited |
@@ -512,6 +512,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 | Task Dispatch (header: send task + optional reference + links to Dispatch group) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Dispatch inbox (open requests, mark closed) | ✅ | ❌ | If in Dispatch group | ❌ | ❌ | ❌ | ❌ |
 | My Team (pending clock sessions for assigned members; approve/reject/assign job) | ✅ if leader | ✅ if leader | ✅ if leader | ✅ if leader | ✅ if leader | ✅ if leader | ✅ if leader |
+| **My Time** **Edit time** (clock strip): leader **split/replace-day** RPCs — **`can_edit_clock_sessions_for_user`** (**`20260401190823`**) treats **master_technician**, **assistant**, and **superintendent** like the dev team-lead path for **any** target user (broad edit capability on those RPCs) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | NCNS from team **My Time** day editor (clock strip): **`record_ncns_and_reject_sessions_for_day`** rejects all **closed** sessions for that **`work_date`**, inserts **`attendance_incidents`**; **approved** hours removed from **`people_hours`**; **two-step** UI confirm (payroll + trust) when any session was approved; **RPC** also allowed for **team lead** for subject (same as approve/revoke), UI shown for **dev / master / assistant** with clock strip scope only | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Rejected clock sessions (org-wide, review/delete) | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 

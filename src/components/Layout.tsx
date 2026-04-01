@@ -771,7 +771,15 @@ export default function Layout() {
           )}
         </span>
       </nav>
-      <main className="appMain" style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+      <main
+        className="appMain"
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          flex: 1,
+          ...(location.pathname === '/banking' ? { paddingTop: '0.25rem' } : {}),
+        }}
+      >
         <div style={{ flex: 1 }}>
           <Suspense fallback={<div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>}>
             <Outlet />

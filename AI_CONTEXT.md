@@ -135,7 +135,7 @@ pipetooling.github.io/
 - **`src/pages/Dashboard.tsx`** - Reports, pins, Estimator Dashboard; **clock strip** **Assign** uses **`applyOptimisticClockSessionAssign`** (from **`useDashboardMyTeamSectionState`**) for instant job/bid labels, then silent **`loadPending`**
 - **`src/components/Layout.tsx`** - Nav; right cluster **Task Dispatch** / **Estimator Inbox** / **Task** / **Bid** share **`headerActionButtonBase`** height
 - **`src/components/my-time-day-editor/`** - Dashboard **My Time** **Edit time** modal: **Form** vs **Visual** cluster editor (`MyTimeDayClusterForm.tsx`, `MyTimeDayClusterVisual.tsx`, `MyTimeMergeSegmentsModal.tsx`, datetime helpers)
-- **`src/hooks/useAuth.ts`** - Authentication state and user role; used throughout app
+- **`src/hooks/useAuth.ts`** - **`AuthProvider`** + **`useAuth()`** context (session and role); [`src/main.tsx`](src/main.tsx) wraps **`App`** inside **`BrowserRouter`**
 - **`src/hooks/usePushNotifications.ts`** - Push notification subscriptions for Checklist
 - **`src/contexts/ToastContext.tsx`** - Shared toast notifications (success, info, warning, error); use `useToastContext()` to show toasts from any component
 - **`src/lib/supabase.ts`** - Supabase client configuration (includes `db: { schema: 'public' }`)

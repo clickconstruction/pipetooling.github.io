@@ -4590,7 +4590,7 @@ export default function Bids() {
     y += lineHeight
     pushLink('Job Plans:', b.plans_link?.trim() || null)
     y += lineHeight
-    pushLink('Count Tooling:', b.count_tooling_link?.trim() || null)
+    pushLink('Marked Up Plans or Cover Page:', b.count_tooling_link?.trim() || null)
     y += lineHeight
     pushLink('Bid Submission:', b.bid_submission_link?.trim() || null)
 
@@ -4768,7 +4768,7 @@ export default function Bids() {
     y += lineHeight
     pushLink('Job Plans:', b.plans_link?.trim() || null)
     y += lineHeight
-    pushLink('Count Tooling:', b.count_tooling_link?.trim() || null)
+    pushLink('Marked Up Plans or Cover Page:', b.count_tooling_link?.trim() || null)
     y += lineHeight
     pushLink('Bid Submission:', b.bid_submission_link?.trim() || null)
 
@@ -7380,7 +7380,7 @@ export default function Bids() {
             '-'
           )}
         </td>
-        <td style={{ padding: 0, textAlign: 'center' }} title="Count Tool">
+        <td style={{ padding: 0, textAlign: 'center' }} title="Marked up plans or cover page">
           {bid.count_tooling_link ? (
             <a href={bid.count_tooling_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(bid.count_tooling_link!) }} style={{ color: '#3b82f6', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={20} height={20} fill="currentColor">
@@ -12291,7 +12291,7 @@ export default function Bids() {
                   ) : '—'}
                 </p>
                 <p style={{ margin: '0.25rem 0' }}>
-                  <strong>Count Tooling</strong>{' '}
+                  <strong>Marked Up Plans or Cover Page</strong>{' '}
                   {selectedBidForSubmission.count_tooling_link?.trim() ? (
                     <a href={selectedBidForSubmission.count_tooling_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(selectedBidForSubmission.count_tooling_link!.trim()) }} style={{ color: '#3b82f6' }}>{selectedBidForSubmission.count_tooling_link}</a>
                   ) : '—'}
@@ -12728,7 +12728,7 @@ export default function Bids() {
                   <tr>
                     <th style={{ padding: '0.75rem', textAlign: 'center', width: 44, borderBottom: '1px solid #e5e7eb' }} title="Project Folder" />
                     <th style={{ padding: '0.75rem', textAlign: 'center', width: 44, borderBottom: '1px solid #e5e7eb' }} title="Job Plans" />
-                    <th style={{ padding: '0.75rem', textAlign: 'center', width: 44, borderBottom: '1px solid #e5e7eb' }} title="Count Tool" />
+                    <th style={{ padding: '0.75rem', textAlign: 'center', width: 44, borderBottom: '1px solid #e5e7eb' }} title="Marked up plans or cover page" />
                     <th style={{ padding: '0.75rem', textAlign: 'center', width: 44, borderBottom: '1px solid #e5e7eb' }} title="Bid Submission" />
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project / GC</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Start Date</th>
@@ -12776,7 +12776,7 @@ export default function Bids() {
                         </td>
                         <td style={{ padding: 0, textAlign: 'center', width: 44 }} onClick={(e) => e.stopPropagation()}>
                           {bid.count_tooling_link ? (
-                            <a href={bid.count_tooling_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openInExternalBrowser(bid.count_tooling_link!) }} title="Count Tool" style={{ color: '#3b82f6', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem' }}>
+                            <a href={bid.count_tooling_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openInExternalBrowser(bid.count_tooling_link!) }} title="Marked up plans or cover page" style={{ color: '#3b82f6', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem' }}>
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} fill="currentColor">
                                 <path d="M192 112L304 112L304 200C304 239.8 336.2 272 376 272L464 272L464 512C464 520.8 456.8 528 448 528L192 528C183.2 528 176 520.8 176 512L176 128C176 119.2 183.2 112 192 112zM352 131.9L444.1 224L376 224C362.7 224 352 213.3 352 200L352 131.9zM192 64C156.7 64 128 92.7 128 128L128 512C128 547.3 156.7 576 192 576L448 576C483.3 576 512 547.3 512 512L512 250.5C512 233.5 505.3 217.2 493.3 205.2L370.7 82.7C358.7 70.7 342.5 64 325.5 64L192 64zM298.2 359.6C306.8 349.5 305.7 334.4 295.6 325.8C285.5 317.2 270.4 318.3 261.8 328.4L213.8 384.4C206.1 393.4 206.1 406.6 213.8 415.6L261.8 471.6C270.4 481.7 285.6 482.8 295.6 474.2C305.6 465.6 306.8 450.4 298.2 440.4L263.6 400L298.2 359.6zM378.2 328.4C369.6 318.3 354.4 317.2 344.4 325.8C334.4 334.4 333.2 349.6 341.8 359.6L376.4 400L341.8 440.4C333.2 450.5 334.3 465.6 344.4 474.2C354.5 482.8 369.6 481.7 378.2 471.6L426.2 415.6C433.9 406.6 433.9 393.4 426.2 384.4L378.2 328.4z"/>
                               </svg>
@@ -14148,9 +14148,9 @@ export default function Bids() {
               </div>
               <div className="bid-form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Count Tooling</label>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Marked Up Plans or Cover Page</label>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <input type="url" value={countToolingLink} onChange={(e) => setCountToolingLink(e.target.value)} placeholder="https://counttooling.com/... " style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                    <input type="url" value={countToolingLink} onChange={(e) => setCountToolingLink(e.target.value)} placeholder="https://... " style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
                     <button
                       type="button"
                       onClick={async () => {
