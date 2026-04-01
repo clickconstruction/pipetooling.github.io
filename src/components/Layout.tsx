@@ -1,12 +1,14 @@
-import { useState, useEffect, useRef, useMemo, Suspense } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback, Suspense } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useForceReload } from '../contexts/ForceReloadContext'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import { useDispatchTaskModal } from '../contexts/DispatchTaskModalContext'
+import { useEstimatorTaskModal } from '../contexts/EstimatorTaskModalContext'
 import ChecklistAddModal from './ChecklistAddModal'
 import DispatchTaskModal from './DispatchTaskModal'
+import EstimatorTaskModal from './EstimatorTaskModal'
 import NewCustomerModal from './NewCustomerModal'
 import EditCustomerModal from './EditCustomerModal'
 import {
@@ -21,6 +23,7 @@ import DailyGoalsGateOverlay from './DailyGoalsGateOverlay'
 import { useDailyGoalsGate } from '../contexts/DailyGoalsGateContext'
 import { useAppActivityHeartbeat } from '../hooks/useAppActivityHeartbeat'
 import { hardReloadFromRoot } from '../lib/hardReload'
+import { prefetchDashboardPhase1 } from '../lib/dashboardPrefetch'
 
 const navStyle = ({ isActive }: { isActive: boolean }) => ({
   fontWeight: isActive ? 600 : undefined,
@@ -41,6 +44,19 @@ const IMPERSONATION_KEY = 'impersonation_original'
 const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/checklist', '/settings', '/tally']
 const PRIMARY_PATHS = ['/dashboard', '/materials', '/jobs', '/bids', '/calendar', '/checklist', '/settings', '/tally']
 const SUPERINTENDENT_PATHS = ['/dashboard', '/projects', '/workflows', '/jobs', '/bids', '/materials', '/calendar', '/checklist', '/settings', '/tally']
+
+const HEADER_ACTION_BUTTON_HEIGHT = 'calc(1rem + 1.25em)'
+
+const headerActionButtonBase = {
+  height: HEADER_ACTION_BUTTON_HEIGHT,
+  boxSizing: 'border-box' as const,
+  display: 'inline-flex' as const,
+  alignItems: 'center' as const,
+  justifyContent: 'center' as const,
+  borderRadius: 4,
+  cursor: 'pointer' as const,
+  border: 'none' as const,
+}
 
 export default function Layout() {
   const navigate = useNavigate()
@@ -73,6 +89,23 @@ export default function Layout() {
   const forceReload = useForceReload()
   const checklistAddModal = useChecklistAddModal()
   const dispatchTaskModal = useDispatchTaskModal()
+  const estimatorTaskModal = useEstimatorTaskModal()
+  const dashboardPrefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const scheduleDashboardPrefetch = useCallback(() => {
+    if (!authUser?.id) return
+    if (dashboardPrefetchTimerRef.current) clearTimeout(dashboardPrefetchTimerRef.current)
+    dashboardPrefetchTimerRef.current = setTimeout(() => {
+      dashboardPrefetchTimerRef.current = null
+      void prefetchDashboardPhase1(authUser.id)
+    }, 150)
+  }, [authUser?.id])
+
+  useEffect(() => {
+    return () => {
+      if (dashboardPrefetchTimerRef.current) clearTimeout(dashboardPrefetchTimerRef.current)
+    }
+  }, [])
 
   useEffect(() => {
     const mql = window.matchMedia('(max-width: 640px)')
@@ -194,7 +227,14 @@ export default function Layout() {
     })
     return (
       <span style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-        <NavLink to="/dashboard" style={iconLinkStyle} end title="Dashboard" aria-label="Dashboard">
+        <NavLink
+          to="/dashboard"
+          style={iconLinkStyle}
+          end
+          title="Dashboard"
+          aria-label="Dashboard"
+          onPointerEnter={scheduleDashboardPrefetch}
+        >
           {dashboardIcon}
         </NavLink>
         {(role === 'dev' || role === 'assistant') && (
@@ -218,7 +258,17 @@ export default function Layout() {
       return (
         <>
           {!excludeHeaderLinks && (
-            <NavLink to="/dashboard" style={({ isActive }) => ({ ...linkStyle({ isActive }), display: onNavClick ? 'flex' : 'inline-flex', alignItems: 'center', ...(onNavClick && { width: '100%', boxSizing: 'border-box' }) })} end onClick={onNavClick} title="Dashboard" aria-label="Dashboard">{dashboardContent}</NavLink>
+            <NavLink
+              to="/dashboard"
+              style={({ isActive }) => ({ ...linkStyle({ isActive }), display: onNavClick ? 'flex' : 'inline-flex', alignItems: 'center', ...(onNavClick && { width: '100%', boxSizing: 'border-box' }) })}
+              end
+              onClick={onNavClick}
+              onPointerEnter={scheduleDashboardPrefetch}
+              title="Dashboard"
+              aria-label="Dashboard"
+            >
+              {dashboardContent}
+            </NavLink>
           )}
           <NavLink to="/materials" style={linkStyle} onClick={onNavClick}>Materials</NavLink>
           <NavLink to="/bids" style={linkStyle} onClick={onNavClick}>Bids</NavLink>
@@ -234,7 +284,17 @@ export default function Layout() {
       return (
         <>
           {!excludeHeaderLinks && (
-            <NavLink to="/dashboard" style={({ isActive }) => ({ ...linkStyle({ isActive }), display: onNavClick ? 'flex' : 'inline-flex', alignItems: 'center', ...(onNavClick && { width: '100%', boxSizing: 'border-box' }) })} end onClick={onNavClick} title="Dashboard" aria-label="Dashboard">{dashboardContent}</NavLink>
+            <NavLink
+              to="/dashboard"
+              style={({ isActive }) => ({ ...linkStyle({ isActive }), display: onNavClick ? 'flex' : 'inline-flex', alignItems: 'center', ...(onNavClick && { width: '100%', boxSizing: 'border-box' }) })}
+              end
+              onClick={onNavClick}
+              onPointerEnter={scheduleDashboardPrefetch}
+              title="Dashboard"
+              aria-label="Dashboard"
+            >
+              {dashboardContent}
+            </NavLink>
           )}
           <NavLink to="/materials" style={linkStyle} onClick={onNavClick}>Materials</NavLink>
           <NavLink to="/jobs" style={linkStyle} onClick={onNavClick}>Jobs</NavLink>
@@ -255,13 +315,28 @@ export default function Layout() {
           </NavLink>
         )}
         {!excludeHeaderLinks && (
-          <NavLink to="/dashboard" style={({ isActive }) => ({ ...linkStyle({ isActive }), display: onNavClick ? 'flex' : 'inline-flex', alignItems: 'center', ...(onNavClick && { width: '100%', boxSizing: 'border-box' }) })} end onClick={onNavClick} title="Dashboard" aria-label="Dashboard">{dashboardContent}</NavLink>
+          <NavLink
+            to="/dashboard"
+            style={({ isActive }) => ({ ...linkStyle({ isActive }), display: onNavClick ? 'flex' : 'inline-flex', alignItems: 'center', ...(onNavClick && { width: '100%', boxSizing: 'border-box' }) })}
+            end
+            onClick={onNavClick}
+            onPointerEnter={scheduleDashboardPrefetch}
+            title="Dashboard"
+            aria-label="Dashboard"
+          >
+            {dashboardContent}
+          </NavLink>
         )}
         {role !== 'subcontractor' && (
           <>
             <NavLink to="/projects" style={linkStyle} onClick={onNavClick}>Projects</NavLink>
             {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
               <NavLink to="/jobs" style={linkStyle} onClick={onNavClick}>Jobs</NavLink>
+            )}
+            {role === 'dev' && (
+              <NavLink to="/banking" style={linkStyle} onClick={onNavClick}>
+                Banking
+              </NavLink>
             )}
             {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
               <>
@@ -412,19 +487,32 @@ export default function Layout() {
               title="Task Dispatch"
               aria-label="Task Dispatch"
               style={{
+                ...headerActionButtonBase,
                 padding: '0.5rem 0.5rem',
                 background: '#0ea5e9',
                 color: 'white',
-                border: 'none',
-                borderRadius: 4,
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
               }}
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
                 <path d="M280 128C266.7 128 256 138.7 256 152C256 165.3 266.7 176 280 176L296 176L296 209.3C188.8 220.7 104.2 307.7 96.6 416L543.5 416C535.8 307.7 451.2 220.7 344 209.3L344 176L360 176C373.3 176 384 165.3 384 152C384 138.7 373.3 128 360 128L280 128zM88 464C74.7 464 64 474.7 64 488C64 501.3 74.7 512 88 512L552 512C565.3 512 576 501.3 576 488C576 474.7 565.3 464 552 464L88 464z"/>
+              </svg>
+            </button>
+          )}
+          {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'estimator') && (
+            <button
+              type="button"
+              onClick={() => estimatorTaskModal?.openEstimatorModal()}
+              title="Estimator Inbox"
+              aria-label="Estimator Inbox"
+              style={{
+                ...headerActionButtonBase,
+                padding: '0.5rem 0.5rem',
+                background: '#7c3aed',
+                color: 'white',
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
+                <path d="M468 64C487.2 64 505.6 71.6 519.1 85.2L554.8 120.9C568.4 134.4 576 152.8 576 172C576 191.2 568.4 209.6 554.8 223.1L509.9 268L372 130.1L416.9 85.2C430.4 71.6 448.8 64 468 64zM122.9 379.1L338.1 164L476 301.9L260.9 517.1C250.2 527.8 236.8 535.6 222.2 539.7L94.4 575.1C86.1 577.4 77.1 575.1 71 568.9C64.9 562.7 62.5 553.8 64.8 545.5L100.4 417.8C104.5 403.2 112.2 389.9 123 379.1zM289.4 144.8L144.8 289.4L75.7 220.3C60.1 204.7 60.1 179.4 75.7 163.7L163.7 75.7C179.3 60.1 204.6 60.1 220.3 75.7L226.2 81.6L169.9 137.9C162.1 145.7 162.1 158.4 169.9 166.2C177.7 174 190.4 174 198.2 166.2L254.5 109.9L289.4 144.8zM495.2 350.6L530.1 385.5L473.8 441.8C466 449.6 466 462.3 473.8 470.1C481.6 477.9 494.3 477.9 502.1 470.1L558.4 413.8L564.3 419.7C579.9 435.3 579.9 460.6 564.3 476.3L476.3 564.3C460.7 579.9 435.4 579.9 419.7 564.3L350.6 495.2L495.2 350.6z" />
               </svg>
             </button>
           )}
@@ -435,16 +523,11 @@ export default function Layout() {
               title="Task"
               aria-label="Task"
               style={{
+                ...headerActionButtonBase,
                 padding: '0.5rem 0.5rem',
                 background: '#3b82f6',
                 color: 'white',
-                border: 'none',
-                borderRadius: 4,
-                cursor: 'pointer',
                 fontWeight: 500,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
               }}
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
@@ -459,18 +542,11 @@ export default function Layout() {
               title="New Bid"
               aria-label="New Bid"
               style={{
+                ...headerActionButtonBase,
                 padding: '0.5rem 1rem',
-                minHeight: 'calc(1rem + 1.25em)',
-                boxSizing: 'border-box',
                 background: '#3b82f6',
                 color: 'white',
-                border: 'none',
-                borderRadius: 4,
-                cursor: 'pointer',
                 fontWeight: 500,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
               }}
             >
               Bid
@@ -870,6 +946,7 @@ export default function Layout() {
       </main>
       <ChecklistAddModal />
       <DispatchTaskModal />
+      <EstimatorTaskModal />
       <NewCustomerModal />
       <EditCustomerModal />
     </div>

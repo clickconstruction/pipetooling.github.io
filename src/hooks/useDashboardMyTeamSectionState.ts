@@ -8,7 +8,45 @@ import {
   formatClockSessionJobOrBidModalLinesFromEmbeds,
   shortJobOrBidLabelFromEmbeds,
   type ClockSessionRow,
+  type SyntheticSalaryStripSession,
 } from '../types/clockSessions'
+import type { Database } from '../types/database'
+import { getSalarySyntheticClockInIso } from '../lib/salaryOnShift'
+import { denverCalendarDayKey } from '../utils/dateUtils'
+import type { AssignSessionJobSavedPatch } from '../components/clock-sessions/AssignSessionJobPopover'
+
+function optimisticPatchClockSessionRow(row: ClockSessionRow, patch: AssignSessionJobSavedPatch): ClockSessionRow {
+  if (row.id !== patch.sessionId) return row
+  if (patch.selection === null) {
+    return { ...row, job_ledger_id: null, bid_id: null, jobs_ledger: null, bids: null }
+  }
+  const sel = patch.selection
+  if (sel.source === 'job') {
+    return {
+      ...row,
+      job_ledger_id: sel.id,
+      bid_id: null,
+      jobs_ledger: {
+        hcp_number: sel.hcp_number ?? null,
+        job_name: sel.job_name ?? null,
+        job_address: sel.job_address ?? null,
+      },
+      bids: null,
+    }
+  }
+  return {
+    ...row,
+    bid_id: sel.id,
+    job_ledger_id: null,
+    bids: {
+      bid_number: sel.bid_number ?? null,
+      project_name: sel.project_name ?? null,
+      address: sel.address ?? null,
+      customers: { name: sel.customer_name?.trim() ? sel.customer_name : null },
+    },
+    jobs_ledger: null,
+  }
+}
 
 function weekStartEndEnCA(): { start: string; end: string } {
   const d = new Date()
@@ -76,6 +114,39 @@ export type TodaySessionStripRow = {
   } | null
 }
 
+function optimisticPatchTodayStripRow(row: TodaySessionStripRow, patch: AssignSessionJobSavedPatch): TodaySessionStripRow {
+  if (row.id !== patch.sessionId) return row
+  if (patch.selection === null) {
+    return { ...row, job_ledger_id: null, bid_id: null, jobs_ledger: null, bids: null }
+  }
+  const sel = patch.selection
+  if (sel.source === 'job') {
+    return {
+      ...row,
+      job_ledger_id: sel.id,
+      bid_id: null,
+      jobs_ledger: {
+        hcp_number: sel.hcp_number ?? null,
+        job_name: sel.job_name ?? null,
+        job_address: sel.job_address ?? null,
+      },
+      bids: null,
+    }
+  }
+  return {
+    ...row,
+    bid_id: sel.id,
+    job_ledger_id: null,
+    bids: {
+      bid_number: sel.bid_number ?? null,
+      project_name: sel.project_name ?? null,
+      address: sel.address ?? null,
+      customers: { name: sel.customer_name?.trim() ? sel.customer_name : null },
+    },
+    jobs_ledger: null,
+  }
+}
+
 /** One row per user for the dashboard "Clocked in today" table below the open-sessions strip. */
 export type ClockedInTodayStripRow = {
   userId: string
@@ -122,6 +193,23 @@ function personDisplayName(s: ClockSessionRow): string {
   return s.users?.name?.trim() ?? 'Unknown'
 }
 
+function sortPendingSessionsDesc(a: ClockSessionRow, b: ClockSessionRow): number {
+  const wd = b.work_date.localeCompare(a.work_date)
+  if (wd !== 0) return wd
+  return b.clocked_in_at.localeCompare(a.clocked_in_at)
+}
+
+/** Unapproved rows merged with approved-but-still-open `salary_schedule` rows (dedupe by `id`). */
+function mergePendingWithOpenSalarySchedule(
+  unapproved: ClockSessionRow[],
+  openSalary: ClockSessionRow[],
+): ClockSessionRow[] {
+  const byId = new Map<string, ClockSessionRow>()
+  for (const s of openSalary) byId.set(s.id, s)
+  for (const s of unapproved) byId.set(s.id, s)
+  return [...byId.values()].sort(sortPendingSessionsDesc)
+}
+
 export type DashboardMyTeamSectionOptions = {
   /** When true, load org-wide pending sessions + today hours for the clock strip (RLS-bounded). */
   orgWideStripEnabled?: boolean
@@ -149,6 +237,12 @@ export function useDashboardMyTeamSectionState(
   const [todaySessionsRows, setTodaySessionsRows] = useState<TodaySessionStripRow[]>([])
   const [orgWidePendingSessions, setOrgWidePendingSessions] = useState<ClockSessionRow[]>([])
   const [todaySessionsRowsOrg, setTodaySessionsRowsOrg] = useState<TodaySessionStripRow[]>([])
+  const [salaryStripMeta, setSalaryStripMeta] = useState<{
+    todayYmd: string
+    templates: Database['public']['Tables']['salary_work_schedule_templates']['Row'][]
+    overrides: Database['public']['Tables']['salary_work_schedule_day_overrides']['Row'][]
+    timeOff: Database['public']['Tables']['user_time_off']['Row'][]
+  } | null>(null)
   const [loadingSessions, setLoadingSessions] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [myTeamExpanded, setMyTeamExpanded] = useState(false)
@@ -163,6 +257,7 @@ export function useDashboardMyTeamSectionState(
       setTodaySessionsRows([])
       setOrgWidePendingSessions([])
       setTodaySessionsRowsOrg([])
+      setSalaryStripMeta(null)
       setLoadingMeta(false)
       return
     }
@@ -225,6 +320,7 @@ export function useDashboardMyTeamSectionState(
       setTodaySessionsRows([])
       setOrgWidePendingSessions([])
       setTodaySessionsRowsOrg([])
+      setSalaryStripMeta(null)
     } finally {
       setLoadingMeta(false)
     }
@@ -273,33 +369,110 @@ export function useDashboardMyTeamSectionState(
     }
   }, [authUserId])
 
+  const loadSalaryStripContext = useCallback(async () => {
+    if (!authUserId) {
+      setSalaryStripMeta(null)
+      return
+    }
+    const todayYmd = denverCalendarDayKey(Date.now())
+    try {
+      let tmplQuery = supabase.from('salary_work_schedule_templates').select('*')
+      if (!orgWideStripEnabled) {
+        if (memberUserIds.length === 0) {
+          setSalaryStripMeta({ todayYmd, templates: [], overrides: [], timeOff: [] })
+          return
+        }
+        tmplQuery = tmplQuery.in('user_id', memberUserIds)
+      }
+      const templates = await withSupabaseRetry(async () => await tmplQuery, 'salary strip templates')
+      const tlist = (templates ?? []) as Database['public']['Tables']['salary_work_schedule_templates']['Row'][]
+      const ids = [...new Set(tlist.map((t) => t.user_id))]
+      if (ids.length === 0) {
+        setSalaryStripMeta({ todayYmd, templates: [], overrides: [], timeOff: [] })
+        return
+      }
+      const [overrides, timeOff] = await Promise.all([
+        withSupabaseRetry(
+          async () =>
+            supabase
+              .from('salary_work_schedule_day_overrides')
+              .select('*')
+              .in('user_id', ids)
+              .eq('work_date', todayYmd),
+          'salary strip day overrides',
+        ),
+        withSupabaseRetry(
+          async () =>
+            supabase
+              .from('user_time_off')
+              .select('*')
+              .in('user_id', ids)
+              .lte('start_date', todayYmd)
+              .gte('end_date', todayYmd),
+          'salary strip time off',
+        ),
+      ])
+      setSalaryStripMeta({
+        todayYmd,
+        templates: tlist,
+        overrides: (overrides ?? []) as Database['public']['Tables']['salary_work_schedule_day_overrides']['Row'][],
+        timeOff: (timeOff ?? []) as Database['public']['Tables']['user_time_off']['Row'][],
+      })
+    } catch {
+      setSalaryStripMeta(null)
+    }
+  }, [authUserId, memberUserIds, orgWideStripEnabled])
+
   const loadOrgWidePending = useCallback(async () => {
     if (!authUserId) {
       setOrgWidePendingSessions([])
       setTodaySessionsRowsOrg([])
+      setSalaryStripMeta(null)
       return
     }
     try {
-      const data = await withSupabaseRetry(
-        async () =>
-          supabase
-            .from('clock_sessions')
-            .select(CLOCK_SESSION_LIST_SELECT)
-            .is('approved_at', null)
-            .is('rejected_at', null)
-            .gte('work_date', dateStart)
-            .lte('work_date', dateEnd)
-            .order('work_date', { ascending: false })
-            .order('clocked_in_at', { ascending: false }),
-        'load org-wide pending clock sessions',
+      const [unapprovedRes, salaryOpenRes] = await Promise.all([
+        withSupabaseRetry(
+          async () =>
+            supabase
+              .from('clock_sessions')
+              .select(CLOCK_SESSION_LIST_SELECT)
+              .is('approved_at', null)
+              .is('rejected_at', null)
+              .is('revoked_at', null)
+              .gte('work_date', dateStart)
+              .lte('work_date', dateEnd)
+              .order('work_date', { ascending: false })
+              .order('clocked_in_at', { ascending: false }),
+          'load org-wide pending clock sessions',
+        ),
+        withSupabaseRetry(
+          async () =>
+            supabase
+              .from('clock_sessions')
+              .select(CLOCK_SESSION_LIST_SELECT)
+              .eq('origin', 'salary_schedule')
+              .is('clocked_out_at', null)
+              .is('rejected_at', null)
+              .is('revoked_at', null)
+              .gte('work_date', dateStart)
+              .lte('work_date', dateEnd)
+              .order('work_date', { ascending: false })
+              .order('clocked_in_at', { ascending: false }),
+          'load org-wide open approved salary clock sessions',
+        ),
+      ])
+      const merged = mergePendingWithOpenSalarySchedule(
+        (unapprovedRes ?? []) as ClockSessionRow[],
+        (salaryOpenRes ?? []) as ClockSessionRow[],
       )
-      setOrgWidePendingSessions((data ?? []) as unknown as ClockSessionRow[])
-      await loadTodayClockSessionsOrg()
+      setOrgWidePendingSessions(merged)
+      await Promise.all([loadTodayClockSessionsOrg(), loadSalaryStripContext()])
     } catch {
       setOrgWidePendingSessions([])
       setTodaySessionsRowsOrg([])
     }
-  }, [authUserId, dateStart, dateEnd, loadTodayClockSessionsOrg])
+  }, [authUserId, dateStart, dateEnd, loadTodayClockSessionsOrg, loadSalaryStripContext])
 
   const loadTeamHoursSummary = useCallback(async () => {
     const fullDetailIds = teamMemberRoster
@@ -414,6 +587,7 @@ export function useDashboardMyTeamSectionState(
       setPendingSessions([])
       setHoursSummaryByUserId({})
       setTodaySessionsRows([])
+      setSalaryStripMeta(null)
       return
     }
     if (!silent) {
@@ -421,26 +595,49 @@ export function useDashboardMyTeamSectionState(
     }
     setError(null)
     try {
-      const data = await withSupabaseRetry(
-        async () =>
-          supabase
-            .from('clock_sessions')
-            .select(CLOCK_SESSION_LIST_SELECT)
-            .in('user_id', memberUserIds)
-            .is('approved_at', null)
-            .is('rejected_at', null)
-            .gte('work_date', dateStart)
-            .lte('work_date', dateEnd)
-            .order('work_date', { ascending: false })
-            .order('clocked_in_at', { ascending: false }),
-        'load team pending clock sessions',
+      const [unapprovedRes, salaryOpenRes] = await Promise.all([
+        withSupabaseRetry(
+          async () =>
+            supabase
+              .from('clock_sessions')
+              .select(CLOCK_SESSION_LIST_SELECT)
+              .in('user_id', memberUserIds)
+              .is('approved_at', null)
+              .is('rejected_at', null)
+              .is('revoked_at', null)
+              .gte('work_date', dateStart)
+              .lte('work_date', dateEnd)
+              .order('work_date', { ascending: false })
+              .order('clocked_in_at', { ascending: false }),
+          'load team pending clock sessions',
+        ),
+        withSupabaseRetry(
+          async () =>
+            supabase
+              .from('clock_sessions')
+              .select(CLOCK_SESSION_LIST_SELECT)
+              .in('user_id', memberUserIds)
+              .eq('origin', 'salary_schedule')
+              .is('clocked_out_at', null)
+              .is('rejected_at', null)
+              .is('revoked_at', null)
+              .gte('work_date', dateStart)
+              .lte('work_date', dateEnd)
+              .order('work_date', { ascending: false })
+              .order('clocked_in_at', { ascending: false }),
+          'load team open approved salary clock sessions',
+        ),
+      ])
+      const merged = mergePendingWithOpenSalarySchedule(
+        (unapprovedRes ?? []) as ClockSessionRow[],
+        (salaryOpenRes ?? []) as ClockSessionRow[],
       )
-      setPendingSessions((data ?? []) as unknown as ClockSessionRow[])
-      await loadTeamHoursSummary()
-      await loadTodayClockSessions()
-      if (orgWideStripEnabled) {
-        await loadOrgWidePending()
-      }
+      setPendingSessions(merged)
+      await Promise.all([
+        loadTeamHoursSummary(),
+        loadTodayClockSessions(),
+        orgWideStripEnabled ? loadOrgWidePending() : loadSalaryStripContext(),
+      ])
     } catch (e) {
       setError(formatErrorMessage(e))
       if (!silent) {
@@ -460,7 +657,15 @@ export function useDashboardMyTeamSectionState(
     loadTodayClockSessions,
     orgWideStripEnabled,
     loadOrgWidePending,
+    loadSalaryStripContext,
   ])
+
+  const applyOptimisticClockSessionAssign = useCallback((patch: AssignSessionJobSavedPatch) => {
+    setPendingSessions((prev) => prev.map((r) => optimisticPatchClockSessionRow(r, patch)))
+    setOrgWidePendingSessions((prev) => prev.map((r) => optimisticPatchClockSessionRow(r, patch)))
+    setTodaySessionsRows((prev) => prev.map((r) => optimisticPatchTodayStripRow(r, patch)))
+    setTodaySessionsRowsOrg((prev) => prev.map((r) => optimisticPatchTodayStripRow(r, patch)))
+  }, [])
 
   const removePendingSessionFromState = useCallback((sessionId: string) => {
     setPendingSessions((prev) => prev.filter((s) => s.id !== sessionId))
@@ -475,7 +680,13 @@ export function useDashboardMyTeamSectionState(
   }, [loadPending])
 
   useEffect(() => {
-    if (!orgWideStripEnabled || !authUserId) {
+    if (!authUserId) {
+      setOrgWidePendingSessions([])
+      setTodaySessionsRowsOrg([])
+      setSalaryStripMeta(null)
+      return
+    }
+    if (!orgWideStripEnabled) {
       setOrgWidePendingSessions([])
       setTodaySessionsRowsOrg([])
       return
@@ -774,6 +985,72 @@ export function useDashboardMyTeamSectionState(
     return out
   }, [todaySessionsForStripScope, todayHoursNowMs])
 
+  const stripSyntheticSalarySessions = useMemo((): SyntheticSalaryStripSession[] => {
+    if (!salaryStripMeta) return []
+    const { todayYmd, templates, overrides, timeOff } = salaryStripMeta
+    const ovByUser = new Map(overrides.map((o) => [o.user_id, o]))
+    const timeOffByUser = new Map<string, Database['public']['Tables']['user_time_off']['Row'][]>()
+    for (const r of timeOff) {
+      const arr = timeOffByUser.get(r.user_id) ?? []
+      arr.push(r)
+      timeOffByUser.set(r.user_id, arr)
+    }
+    const pendingSource = orgWideStripEnabled ? orgWidePendingSessions : pendingSessions
+    const openUserIds = new Set<string>()
+    for (const row of pendingSource) {
+      if (row.clocked_out_at == null) openUserIds.add(row.user_id)
+    }
+    const rosterName = new Map(teamMemberRoster.map((r) => [r.userId, r.displayName]))
+    const out: SyntheticSalaryStripSession[] = []
+    for (const template of templates) {
+      const uid = template.user_id
+      if (openUserIds.has(uid)) continue
+      const toRows = timeOffByUser.get(uid) ?? []
+      const ov = ovByUser.get(uid)
+      const clockInIso = getSalarySyntheticClockInIso({
+        workDateYmd: todayYmd,
+        nowMs: todayHoursNowMs,
+        timeOffRows: toRows,
+        template,
+        overrideForDate: ov,
+      })
+      if (!clockInIso) continue
+      const display = rosterName.get(uid)?.trim() || `User (${uid.slice(-6)})`
+      out.push({
+        kind: 'synthetic_salary',
+        id: `synthetic-salary-${uid}-${todayYmd}`,
+        user_id: uid,
+        clocked_in_at: clockInIso,
+        clocked_out_at: null,
+        work_date: todayYmd,
+        notes: '',
+        job_ledger_id: null,
+        bid_id: null,
+        approved_at: null,
+        rejected_at: null,
+        revoked_at: null,
+        users: { name: display },
+        jobs_ledger: null,
+        bids: null,
+      })
+    }
+    out.sort((a, b) => {
+      const an = (a.users?.name ?? '').trim() || a.user_id
+      const bn = (b.users?.name ?? '').trim() || b.user_id
+      const c = an.localeCompare(bn, undefined, { sensitivity: 'base' })
+      if (c !== 0) return c
+      return a.user_id.localeCompare(b.user_id)
+    })
+    return out
+  }, [
+    salaryStripMeta,
+    orgWideStripEnabled,
+    orgWidePendingSessions,
+    pendingSessions,
+    teamMemberRoster,
+    todayHoursNowMs,
+  ])
+
   const fullDetailMemberUserIdSet = useMemo(
     () =>
       new Set(
@@ -822,6 +1099,7 @@ export function useDashboardMyTeamSectionState(
     todaySessionsForStripScope,
     clockedInTodayStripRows,
     jobsWorkedTodayStripRows,
+    stripSyntheticSalarySessions,
     pendingApprovalCount,
     loadingSessions,
     error,
@@ -833,6 +1111,7 @@ export function useDashboardMyTeamSectionState(
     setDateRange,
     shiftWeek,
     loadPending,
+    applyOptimisticClockSessionAssign,
     removePendingSessionFromState,
     setNotifyPreference,
     orderedLedgerSessions,

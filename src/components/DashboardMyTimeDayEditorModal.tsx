@@ -11,6 +11,8 @@ import {
   type SplitClockSegmentPayload,
 } from '../lib/splitOwnClockSessionSegments'
 import { AssignFocusModal } from './AssignFocusModal'
+import { AdjustClockSessionTimesModal } from './AdjustClockSessionTimesModal'
+import { ForceClockOutModal } from './people/ForceClockOutModal'
 import {
   assignJobNeedsPersistedSplits,
   attachAllocationsToPayloads,
@@ -69,6 +71,8 @@ function formatDurationMs(ms: number): string {
 
 /** Ignore strip «tap» if the pointer moved more than this (avoids add-split on slight drags). */
 const STRIP_TAP_MOVE_THRESHOLD_PX = 8
+
+const NCNS_DETAILS_MAX_LEN = 4000
 
 /** Applied to `document.body` while dragging a Visual split boundary (`grabbing` cursor, teardown). */
 const MY_TIME_BOUNDARY_DRAG_BODY_CLASS = 'my-time-boundary-dragging'
@@ -198,6 +202,11 @@ type Props = {
   onSaved: () => void
   /** Refresh parent lists (e.g. dashboard clock strip) when job/bid link changes without full save — avoids closing the modal when only `onSaved` would dismiss. */
   onLinkedSessionsUpdated?: () => void
+  /**
+   * Dev / master / assistant: allow recording NCNS for another user's day (rejects sessions + attendance incident).
+   * Omit or false for self My Time.
+   */
+  allowNcnsFromMyTime?: boolean
 }
 
 export function DashboardMyTimeDayEditorModal({
@@ -211,6 +220,7 @@ export function DashboardMyTimeDayEditorModal({
   onClose,
   onSaved,
   onLinkedSessionsUpdated,
+  allowNcnsFromMyTime = false,
 }: Props) {
   const { start, end } = editableRangeProp ?? getDefaultWeekRange()
   const editable = dateStr >= start && dateStr <= end
@@ -222,6 +232,13 @@ export function DashboardMyTimeDayEditorModal({
   const [sessionsFetchError, setSessionsFetchError] = useState<string | null>(null)
   const [resolvedSubjectLabel, setResolvedSubjectLabel] = useState<string | null>(null)
   const [sessionsFetchNonce, setSessionsFetchNonce] = useState(0)
+  const [forceClockOutSession, setForceClockOutSession] = useState<DayEditorSession | null>(null)
+  const [adjustTimesSession, setAdjustTimesSession] = useState<DayEditorSession | null>(null)
+  type NcnsUiPhase = 'off' | 'simple' | 'approved_warn' | 'approved_confirm'
+  const [ncnsUi, setNcnsUi] = useState<NcnsUiPhase>('off')
+  const [ncnsPayrollAck, setNcnsPayrollAck] = useState(false)
+  const [ncnsDetails, setNcnsDetails] = useState('')
+  const [ncnsBusy, setNcnsBusy] = useState(false)
 
   const onAssignJobSaved = useCallback(() => {
     setSessionsFetchNonce((n) => n + 1)
@@ -230,6 +247,26 @@ export function DashboardMyTimeDayEditorModal({
       onSaved()
     }
   }, [sessionsProp.length, onSaved, onLinkedSessionsUpdated])
+
+  const onForceClockOutSaved = useCallback(() => {
+    setSessionsFetchNonce((n) => n + 1)
+    onLinkedSessionsUpdated?.()
+    setForceClockOutSession(null)
+  }, [onLinkedSessionsUpdated])
+
+  const openForceClockOut = useCallback((s: DayEditorSession) => {
+    setForceClockOutSession(s)
+  }, [])
+
+  const onAdjustTimesSaved = useCallback(() => {
+    setSessionsFetchNonce((n) => n + 1)
+    onLinkedSessionsUpdated?.()
+    setAdjustTimesSession(null)
+  }, [onLinkedSessionsUpdated])
+
+  const openAdjustTimes = useCallback((s: DayEditorSession) => {
+    setAdjustTimesSession(s)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -354,6 +391,41 @@ export function DashboardMyTimeDayEditorModal({
       [...resolvedSessions].sort((a, b) => new Date(a.clocked_in_at).getTime() - new Date(b.clocked_in_at).getTime()),
     [resolvedSessions]
   )
+
+  const ncnsDayHasApprovedSession = useMemo(() => sortedSessions.some((s) => s.approved_at), [sortedSessions])
+  const ncnsHasOpenSession = useMemo(() => sortedSessions.some((s) => !s.clocked_out_at), [sortedSessions])
+  const ncnsActionEligible =
+    allowNcnsFromMyTime &&
+    !editingSelf &&
+    editable &&
+    !!effectiveSubjectUserId &&
+    sortedSessions.length > 0 &&
+    !ncnsHasOpenSession &&
+    !sessionsLoading &&
+    !pendingAuthForFetch
+
+  useEffect(() => {
+    setNcnsUi('off')
+    setNcnsPayrollAck(false)
+    setNcnsDetails('')
+  }, [dateStr, effectiveSubjectUserId])
+
+  const ncnsButtonTitle = useMemo(() => {
+    if (!allowNcnsFromMyTime || editingSelf) return ''
+    if (!editable) return ''
+    if (sessionsLoading || pendingAuthForFetch) return 'Loading…'
+    if (sortedSessions.length === 0) return 'No sessions to reject for this day'
+    if (ncnsHasOpenSession) return 'Clock out all sessions before recording NCNS'
+    return 'Record no-call-no-show for this day'
+  }, [
+    allowNcnsFromMyTime,
+    editingSelf,
+    editable,
+    sessionsLoading,
+    pendingAuthForFetch,
+    sortedSessions.length,
+    ncnsHasOpenSession,
+  ])
 
   const [extraJobLabels, setExtraJobLabels] = useState<Record<string, string>>({})
   const [extraBidLabels, setExtraBidLabels] = useState<Record<string, string>>({})
@@ -657,6 +729,50 @@ export function DashboardMyTimeDayEditorModal({
 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const runRecordNcns = useCallback(async () => {
+    if (!effectiveSubjectUserId) return
+    setNcnsBusy(true)
+    setError(null)
+    const trimmedDetails = ncnsDetails.trim()
+    try {
+      const data = await withSupabaseRetry(
+        async () =>
+          supabase.rpc('record_ncns_and_reject_sessions_for_day', {
+            p_subject_user_id: effectiveSubjectUserId,
+            p_work_date: dateStr,
+            ...(trimmedDetails ? { p_details: trimmedDetails } : {}),
+          }),
+        'record ncns and reject sessions for day'
+      )
+      const row = (data ?? [])[0] as
+        | { rejected_count: number; had_approved_sessions: boolean; error_message: string | null }
+        | undefined
+      if (row?.error_message) {
+        setError(row.error_message)
+        return
+      }
+      setNcnsUi('off')
+      setNcnsPayrollAck(false)
+      setNcnsDetails('')
+      onSaved()
+      onClose()
+    } catch (e: unknown) {
+      setError(formatErrorMessage(e, 'Could not record NCNS'))
+    } finally {
+      setNcnsBusy(false)
+    }
+  }, [dateStr, effectiveSubjectUserId, ncnsDetails, onClose, onSaved])
+
+  const openNcnsFlow = useCallback(() => {
+    if (!ncnsActionEligible) return
+    setNcnsPayrollAck(false)
+    setNcnsDetails('')
+    setError(null)
+    if (ncnsDayHasApprovedSession) setNcnsUi('approved_warn')
+    else setNcnsUi('simple')
+  }, [ncnsActionEligible, ncnsDayHasApprovedSession])
+
   const [assignBulk, setAssignBulk] = useState<{ sessionIds: string[]; label: string } | null>(null)
   const [mergeJobChoice, setMergeJobChoice] = useState<MergeJobChoiceState | null>(null)
   /* Mobile default Form — matches .myTimeDayClusterFormGrid single-column breakpoint (560px). */
@@ -1158,12 +1274,26 @@ export function DashboardMyTimeDayEditorModal({
 
   const requestClose = useCallback(async () => {
     if (saving) return
+    if (ncnsUi !== 'off') {
+      setNcnsUi('off')
+      setNcnsPayrollAck(false)
+      setNcnsDetails('')
+      return
+    }
     if (mergeJobChoice) {
       setMergeJobChoice(null)
       return
     }
     if (assignBulk) {
       setAssignBulk(null)
+      return
+    }
+    if (forceClockOutSession) {
+      setForceClockOutSession(null)
+      return
+    }
+    if (adjustTimesSession) {
+      setAdjustTimesSession(null)
       return
     }
     if (!editable || !authUserId) {
@@ -1210,6 +1340,8 @@ export function DashboardMyTimeDayEditorModal({
     saving,
     mergeJobChoice,
     assignBulk,
+    forceClockOutSession,
+    adjustTimesSession,
     editable,
     authUserId,
     sessionClusters,
@@ -1220,6 +1352,7 @@ export function DashboardMyTimeDayEditorModal({
     onClose,
     onSaved,
     persistDirtyChangesAsync,
+    ncnsUi,
   ])
 
   function handleBackdropClose() {
@@ -1231,6 +1364,13 @@ export function DashboardMyTimeDayEditorModal({
     const onWindowKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
       if (saving) return
+      if (ncnsUi !== 'off') {
+        e.preventDefault()
+        setNcnsUi('off')
+        setNcnsPayrollAck(false)
+        setNcnsDetails('')
+        return
+      }
       if (dragRef.current) {
         e.preventDefault()
         cancelBoundaryDrag()
@@ -1241,12 +1381,30 @@ export function DashboardMyTimeDayEditorModal({
         cancelStripTapGesture()
         return
       }
+      if (forceClockOutSession) {
+        e.preventDefault()
+        setForceClockOutSession(null)
+        return
+      }
+      if (adjustTimesSession) {
+        e.preventDefault()
+        setAdjustTimesSession(null)
+        return
+      }
       e.preventDefault()
       void requestClose()
     }
     window.addEventListener('keydown', onWindowKeyDown, true)
     return () => window.removeEventListener('keydown', onWindowKeyDown, true)
-  }, [cancelBoundaryDrag, cancelStripTapGesture, requestClose, saving])
+  }, [
+    adjustTimesSession,
+    cancelBoundaryDrag,
+    cancelStripTapGesture,
+    forceClockOutSession,
+    ncnsUi,
+    requestClose,
+    saving,
+  ])
 
   return (
     <>
@@ -1308,64 +1466,88 @@ export function DashboardMyTimeDayEditorModal({
           >
             {modalTitleText}
           </h3>
-          {editable && resolvedSessions.length > 0 ? (
-            <div
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                alignItems: 'center',
-                justifyContent: 'flex-end',
-                gap: 8,
-              }}
-            >
-              <span style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 500 }}>Edit layout</span>
-              <div
-                role="group"
-                aria-label="Visual or form editor"
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+              gap: 8,
+            }}
+          >
+            {allowNcnsFromMyTime && !editingSelf && editable ? (
+              <button
+                type="button"
+                onClick={openNcnsFlow}
+                disabled={!ncnsActionEligible || saving || ncnsBusy}
+                title={ncnsButtonTitle || undefined}
                 style={{
-                  display: 'inline-flex',
-                  border: '1px solid #d1d5db',
-                  borderRadius: 6,
-                  overflow: 'hidden',
+                  padding: '0.35rem 0.55rem',
                   fontSize: '0.75rem',
+                  fontWeight: 600,
+                  border: '1px solid #b45309',
+                  borderRadius: 6,
+                  background: '#fffbeb',
+                  color: '#b45309',
+                  cursor:
+                    !ncnsActionEligible || saving || ncnsBusy ? 'not-allowed' : 'pointer',
+                  opacity: !ncnsActionEligible || saving || ncnsBusy ? 0.65 : 1,
                 }}
               >
-                <button
-                  type="button"
-                  onClick={() => setLayoutMode('visual')}
-                  disabled={saving}
+                NCNS
+              </button>
+            ) : null}
+            {editable && resolvedSessions.length > 0 ? (
+              <>
+                <span style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 500 }}>Edit layout</span>
+                <div
+                  role="group"
+                  aria-label="Visual or form editor"
                   style={{
-                    border: 'none',
-                    margin: 0,
-                    padding: '0.35rem 0.65rem',
-                    background: layoutMode === 'visual' ? '#eff6ff' : 'white',
-                    color: layoutMode === 'visual' ? '#1d4ed8' : '#374151',
-                    cursor: saving ? 'not-allowed' : 'pointer',
-                    fontWeight: layoutMode === 'visual' ? 600 : 400,
+                    display: 'inline-flex',
+                    border: '1px solid #d1d5db',
+                    borderRadius: 6,
+                    overflow: 'hidden',
+                    fontSize: '0.75rem',
                   }}
                 >
-                  Visual
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLayoutMode('form')}
-                  disabled={saving}
-                  style={{
-                    border: 'none',
-                    borderLeft: '1px solid #d1d5db',
-                    margin: 0,
-                    padding: '0.35rem 0.65rem',
-                    background: layoutMode === 'form' ? '#eff6ff' : 'white',
-                    color: layoutMode === 'form' ? '#1d4ed8' : '#374151',
-                    cursor: saving ? 'not-allowed' : 'pointer',
-                    fontWeight: layoutMode === 'form' ? 600 : 400,
-                  }}
-                >
-                  Form
-                </button>
-              </div>
-            </div>
-          ) : null}
+                  <button
+                    type="button"
+                    onClick={() => setLayoutMode('visual')}
+                    disabled={saving}
+                    style={{
+                      border: 'none',
+                      margin: 0,
+                      padding: '0.35rem 0.65rem',
+                      background: layoutMode === 'visual' ? '#eff6ff' : 'white',
+                      color: layoutMode === 'visual' ? '#1d4ed8' : '#374151',
+                      cursor: saving ? 'not-allowed' : 'pointer',
+                      fontWeight: layoutMode === 'visual' ? 600 : 400,
+                    }}
+                  >
+                    Visual
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLayoutMode('form')}
+                    disabled={saving}
+                    style={{
+                      border: 'none',
+                      borderLeft: '1px solid #d1d5db',
+                      margin: 0,
+                      padding: '0.35rem 0.65rem',
+                      background: layoutMode === 'form' ? '#eff6ff' : 'white',
+                      color: layoutMode === 'form' ? '#1d4ed8' : '#374151',
+                      cursor: saving ? 'not-allowed' : 'pointer',
+                      fontWeight: layoutMode === 'form' ? 600 : 400,
+                    }}
+                  >
+                    Form
+                  </button>
+                </div>
+              </>
+            ) : null}
+          </div>
         </div>
         {sessionsSpanDenverSubtitle ? (
           <p
@@ -1499,6 +1681,8 @@ export function DashboardMyTimeDayEditorModal({
                       onRequestMergeJobChoice={(payload) =>
                         openMergeJobChoiceForCluster(clusterId, payload)
                       }
+                      onForceClockOut={editable && !saving ? openForceClockOut : undefined}
+                      onAdjustTimes={editable && !saving ? openAdjustTimes : undefined}
                     />
                   ) : (
                     <MyTimeDayClusterForm
@@ -1525,6 +1709,8 @@ export function DashboardMyTimeDayEditorModal({
                       onRequestMergeJobChoice={(payload) =>
                         openMergeJobChoiceForCluster(clusterId, payload)
                       }
+                      onForceClockOut={editable && !saving ? openForceClockOut : undefined}
+                      onAdjustTimes={editable && !saving ? openAdjustTimes : undefined}
                     />
                   )
                 })
@@ -1595,6 +1781,295 @@ export function DashboardMyTimeDayEditorModal({
           setAssignBulk(null)
         }}
       />
+    ) : null}
+    {forceClockOutSession && !forceClockOutSession.clocked_out_at ? (
+      <ForceClockOutModal
+        session={{
+          id: forceClockOutSession.id,
+          clocked_in_at: forceClockOutSession.clocked_in_at,
+          clocked_out_at: forceClockOutSession.clocked_out_at,
+          approved_at: forceClockOutSession.approved_at,
+        }}
+        zIndex={1300}
+        onClose={() => setForceClockOutSession(null)}
+        onSaved={onForceClockOutSaved}
+      />
+    ) : null}
+    {adjustTimesSession ? (
+      <AdjustClockSessionTimesModal
+        session={{
+          id: adjustTimesSession.id,
+          clocked_in_at: adjustTimesSession.clocked_in_at,
+          clocked_out_at: adjustTimesSession.clocked_out_at,
+          work_date: adjustTimesSession.work_date,
+          notes: adjustTimesSession.notes,
+          job_ledger_id: adjustTimesSession.job_ledger_id,
+          bid_id: adjustTimesSession.bid_id,
+          approved_at: adjustTimesSession.approved_at,
+        }}
+        zIndex={1300}
+        onClose={() => setAdjustTimesSession(null)}
+        onSaved={onAdjustTimesSaved}
+      />
+    ) : null}
+    {ncnsUi !== 'off' ? (
+      <div
+        role="presentation"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.45)',
+          zIndex: 1310,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1rem',
+        }}
+        onClick={() => {
+          if (ncnsBusy) return
+          setNcnsUi('off')
+          setNcnsPayrollAck(false)
+          setNcnsDetails('')
+        }}
+      >
+        <div
+          role="alertdialog"
+          aria-modal
+          aria-labelledby="ncns-dialog-title"
+          style={{
+            background: 'white',
+            borderRadius: 8,
+            padding: '1.25rem',
+            maxWidth: 420,
+            width: '100%',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {ncnsUi === 'simple' ? (
+            <>
+              <h3 id="ncns-dialog-title" style={{ margin: '0 0 0.75rem 0', fontSize: '1.05rem' }}>
+                Record no-call, no-show?
+              </h3>
+              <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}>
+                This records a no-call, no-show for <strong>{modalTitlePerson}</strong> on{' '}
+                <strong>{formatWorkDateYmdWeekdayLongFriendly(dateStr)}</strong>. Every closed clock session for that
+                day will be rejected, an attendance incident will be saved, and time / payroll totals will reflect the
+                rejection.
+              </p>
+              <label
+                htmlFor="ncns-details-simple"
+                style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: 6 }}
+              >
+                Details (optional)
+              </label>
+              <textarea
+                id="ncns-details-simple"
+                value={ncnsDetails}
+                disabled={ncnsBusy}
+                maxLength={NCNS_DETAILS_MAX_LEN}
+                onChange={(e) => setNcnsDetails(e.target.value)}
+                rows={3}
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  marginBottom: '1rem',
+                  fontSize: '0.875rem',
+                  padding: '0.5rem 0.6rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  resize: 'vertical',
+                  fontFamily: 'inherit',
+                  lineHeight: 1.45,
+                }}
+                placeholder="Context for this NCNS (visible in People → Writeups)"
+              />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  disabled={ncnsBusy}
+                  onClick={() => {
+                    setNcnsUi('off')
+                    setNcnsPayrollAck(false)
+                    setNcnsDetails('')
+                  }}
+                  style={{
+                    padding: '0.5rem 0.85rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: 4,
+                    background: 'white',
+                    cursor: ncnsBusy ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={ncnsBusy}
+                  onClick={() => void runRecordNcns()}
+                  style={{
+                    padding: '0.5rem 0.85rem',
+                    border: '1px solid #b45309',
+                    borderRadius: 4,
+                    background: '#fffbeb',
+                    color: '#b45309',
+                    fontWeight: 600,
+                    cursor: ncnsBusy ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {ncnsBusy ? 'Working…' : 'Record NCNS'}
+                </button>
+              </div>
+            </>
+          ) : null}
+          {ncnsUi === 'approved_warn' ? (
+            <>
+              <h3 id="ncns-dialog-title" style={{ margin: '0 0 0.75rem 0', fontSize: '1.05rem' }}>
+                Approved time on this day
+              </h3>
+              <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}>
+                Some time on this day was <strong>already approved</strong>. Recording a no-call, no-show will reject those
+                sessions and <strong>remove the approved hours from payroll totals</strong>. The person may experience
+                this as breaking <strong>trust</strong> if it is not discussed with them. Only continue if you accept
+                those consequences.
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  disabled={ncnsBusy}
+                  onClick={() => {
+                    setNcnsUi('off')
+                    setNcnsPayrollAck(false)
+                    setNcnsDetails('')
+                  }}
+                  style={{
+                    padding: '0.5rem 0.85rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: 4,
+                    background: 'white',
+                    cursor: ncnsBusy ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={ncnsBusy}
+                  onClick={() => {
+                    setNcnsPayrollAck(false)
+                    setNcnsUi('approved_confirm')
+                  }}
+                  style={{
+                    padding: '0.5rem 0.85rem',
+                    border: '1px solid #3b82f6',
+                    borderRadius: 4,
+                    background: '#3b82f6',
+                    color: 'white',
+                    fontWeight: 600,
+                    cursor: ncnsBusy ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  Continue
+                </button>
+              </div>
+            </>
+          ) : null}
+          {ncnsUi === 'approved_confirm' ? (
+            <>
+              <h3 id="ncns-dialog-title" style={{ margin: '0 0 0.75rem 0', fontSize: '1.05rem' }}>
+                Confirm payroll and trust
+              </h3>
+              <label
+                style={{
+                  display: 'flex',
+                  gap: 10,
+                  alignItems: 'flex-start',
+                  margin: '0 0 1rem 0',
+                  fontSize: '0.875rem',
+                  color: '#374151',
+                  lineHeight: 1.45,
+                  cursor: ncnsBusy ? 'default' : 'pointer',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={ncnsPayrollAck}
+                  disabled={ncnsBusy}
+                  onChange={(e) => setNcnsPayrollAck(e.target.checked)}
+                  style={{ marginTop: 3 }}
+                />
+                <span>
+                  I understand this removes approved hours from payroll totals and may seriously affect trust with this
+                  person.
+                </span>
+              </label>
+              <label
+                htmlFor="ncns-details-approved"
+                style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: 6 }}
+              >
+                Details (optional)
+              </label>
+              <textarea
+                id="ncns-details-approved"
+                value={ncnsDetails}
+                disabled={ncnsBusy}
+                maxLength={NCNS_DETAILS_MAX_LEN}
+                onChange={(e) => setNcnsDetails(e.target.value)}
+                rows={3}
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  marginBottom: '1rem',
+                  fontSize: '0.875rem',
+                  padding: '0.5rem 0.6rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  resize: 'vertical',
+                  fontFamily: 'inherit',
+                  lineHeight: 1.45,
+                }}
+                placeholder="Context for this NCNS (visible in People → Writeups)"
+              />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  disabled={ncnsBusy}
+                  onClick={() => {
+                    setNcnsUi('approved_warn')
+                    setNcnsPayrollAck(false)
+                  }}
+                  style={{
+                    padding: '0.5rem 0.85rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: 4,
+                    background: 'white',
+                    cursor: ncnsBusy ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  disabled={ncnsBusy || !ncnsPayrollAck}
+                  onClick={() => void runRecordNcns()}
+                  style={{
+                    padding: '0.5rem 0.85rem',
+                    border: '1px solid #b45309',
+                    borderRadius: 4,
+                    background: ncnsPayrollAck ? '#fffbeb' : '#f3f4f6',
+                    color: '#b45309',
+                    fontWeight: 600,
+                    cursor: ncnsBusy || !ncnsPayrollAck ? 'not-allowed' : 'pointer',
+                    opacity: ncnsPayrollAck ? 1 : 0.6,
+                  }}
+                >
+                  {ncnsBusy ? 'Working…' : 'Record NCNS'}
+                </button>
+              </div>
+            </>
+          ) : null}
+        </div>
+      </div>
     ) : null}
     </>
   )

@@ -93,6 +93,7 @@ when_to_read:
    - [send-workflow-notification](#send-workflow-notification)
    - [send-checklist-notification](#send-checklist-notification)
    - [notify-dispatch-request](#notify-dispatch-request)
+   - [notify-estimator-request](#notify-estimator-request)
    - [notify-team-lead-clock](#notify-team-lead-clock)
    - [set-user-password](#set-user-password)
    - [claim-dev](#claim-dev)
@@ -768,6 +769,49 @@ When the Dispatch group is empty: `push_sent: 0`, `recipients: 0`, friendly `mes
 
 ---
 
+### notify-estimator-request
+
+**Purpose**: After a user creates an `estimator_requests` row (Estimator Inbox), notify every member of `estimator_group_members` via Web Push without exposing the member list to the client (service role reads the group).
+
+**Endpoint**: `POST /functions/v1/notify-estimator-request`
+
+**Required Role**: Authenticated user who is the request author (`from_user_id` on the row)
+
+**Required Secrets**:
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (if missing, returns 200 with `push_sent: 0`)
+
+**Verify JWT**: `false` at gateway; function validates caller matches `from_user_id` (same pattern as other client-invoked notify functions).
+
+#### Request body
+
+```json
+{ "estimator_request_id": "<uuid>" }
+```
+
+#### Success response
+
+```json
+{
+  "success": true,
+  "message": "Estimator inbox notifications processed",
+  "push_sent": 2,
+  "recipients": 3
+}
+```
+
+When the Estimator Inbox group is empty: `push_sent: 0`, `recipients: 0`, friendly `message`.
+
+#### Implementation notes
+
+1. User-scoped client loads `estimator_requests` by id; rejects if not found or `from_user_id !== auth.uid()`.
+2. Admin client loads all `estimator_group_members`, then for each user loads `push_subscriptions` and sends push (`tag`: `estimator-<request_id>`, `url`: `/dashboard`).
+3. Logs `notification_history` with `template_type: estimator_request` per recipient when at least one push succeeded for that recipient.
+
+---
+
 ### notify-team-lead-clock
 
 **Purpose**: When a team member **clocks in** (`clock_sessions` INSERT with `clocked_in_at`) or **clocks out** (`clocked_out_at` becomes non-null on UPDATE), send Web Push to each **leader** who opted in via `team_leader_clock_notify_prefs` for that leader–member assignment. Intended to be invoked by a **Database Webhook** on `public.clock_sessions` (INSERT + UPDATE), not from the browser.
@@ -1250,6 +1294,57 @@ If **`stripe_invoice_id`** and **`hosted_invoice_url`** are already set, returns
 3. Other event types may be ignored or lightly handled (see function source).
 
 **Ops**: Point Stripe webhook URL at **`https://<project-ref>.supabase.co/functions/v1/stripe-webhook`**. Use test mode keys in development.
+
+**Gateway JWT**: **`verify_jwt = false`** in [`supabase/config.toml`](supabase/config.toml). Deploy with **`--no-verify-jwt`**.
+
+---
+
+### sync-mercury-transactions
+
+**Purpose**: **Dev-only** pull from Mercury **[List transactions](https://docs.mercury.com/reference/listtransactions)** into **`mercury_transactions`** (service-role upsert). Invoked from the Banking page **Refresh** button via `supabase.functions.invoke`.
+
+**Endpoint**: `POST /functions/v1/sync-mercury-transactions`
+
+**Authentication**: **`Authorization: Bearer <user JWT>`**. Function validates session and **`users.role = 'dev'`**.
+
+**Required Secrets**:
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `MERCURY_API_KEY` — read-only Mercury API token ([Getting Started](https://docs.mercury.com/docs/getting-started))
+
+#### Request body (optional JSON)
+
+- `start`, `end` — YYYY-MM-DD filter on Mercury **`createdAt`** (defaults: last **90** days through today).
+- `lookback_days` — if `start` omitted, use this many days back (default **90**, max **3650**).
+
+#### Response
+
+```json
+{ "success": true, "upserted": 1234, "start": "2025-01-01", "end": "2026-04-01" }
+```
+
+**Gateway JWT**: [`supabase/config.toml`](supabase/config.toml) sets **`verify_jwt = false`**; JWT is validated in the function (same pattern as **`create-stripe-invoice`**). Deploy with **`supabase functions deploy sync-mercury-transactions --no-verify-jwt`** if the hosted gateway still enforces JWT.
+
+---
+
+### mercury-webhook
+
+**Purpose**: Receive Mercury **[webhook](https://docs.mercury.com/reference/webhooks)** events for **`transaction`** resources; verify **`Mercury-Signature`**, **`GET /transaction/{id}`**, upsert into **`mercury_transactions`**.
+
+**Endpoint**: `POST /functions/v1/mercury-webhook`
+
+**Authentication**: **`Mercury-Signature`** header + **raw body** (no Bearer JWT). **`verify_jwt = false`**.
+
+**Required Secrets**:
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `MERCURY_API_KEY` — fetch full transaction after event
+- `MERCURY_WEBHOOK_SECRET` — endpoint **`secretKey`** for HMAC verification (`t` + `.` + raw body per Mercury docs)
+
+**Non-transaction events** (e.g. balance updates) return **200** with `skipped: true`.
+
+**Ops**: Register HTTPS URL **`https://<project-ref>.supabase.co/functions/v1/mercury-webhook`** in Mercury. Webhooks are **not** available in Mercury sandbox.
 
 **Gateway JWT**: **`verify_jwt = false`** in [`supabase/config.toml`](supabase/config.toml). Deploy with **`--no-verify-jwt`**.
 

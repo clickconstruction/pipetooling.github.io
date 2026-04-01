@@ -1,3 +1,34 @@
+/** Dashboard "Currently In" row when schedule implies on-shift but no open `clock_sessions` row yet. */
+export type SyntheticSalaryStripSession = {
+  kind: 'synthetic_salary'
+  id: string
+  user_id: string
+  clocked_in_at: string
+  clocked_out_at: null
+  work_date: string
+  notes: string
+  job_ledger_id: null
+  bid_id: null
+  approved_at: null
+  rejected_at: null
+  revoked_at: null
+  users: { name: string | null } | null
+  jobs_ledger: null
+  bids: null
+}
+
+export type DashboardStripSession = ClockSessionRow | SyntheticSalaryStripSession
+
+export function isSyntheticSalaryStripSession(s: DashboardStripSession): s is SyntheticSalaryStripSession {
+  return (s as SyntheticSalaryStripSession).kind === 'synthetic_salary'
+}
+
+/** Muted “(s)” in Currently In when row is schedule-driven (synthetic or real salary_schedule session). */
+export function shouldShowSalaryStripNameSuffix(s: DashboardStripSession): boolean {
+  if (isSyntheticSalaryStripSession(s)) return true
+  return (s as ClockSessionRow).origin === 'salary_schedule'
+}
+
 export type ClockSessionRow = {
   id: string
   user_id: string

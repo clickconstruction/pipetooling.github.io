@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import {
   AssignSessionJobPopover,
   type AssignSessionJobPopoverSession,
@@ -26,6 +27,7 @@ import {
   formatDenverTimeOnly,
   formatDenverTimeRangeSameDay,
 } from '../../utils/dateUtils'
+import { ForceClockOutIcon } from '../icons/ForceClockOutIcon'
 
 function formatDurationMs(ms: number): string {
   const h = ms / 3600000
@@ -55,6 +57,8 @@ export type MyTimeDayClusterVisualProps = {
   onAssignJobSaved: () => void
   resolveAssignSession?: (segIdx: number) => Promise<AssignSessionJobPopoverSession | null>
   onRequestMergeJobChoice?: (payload: { direction: 'prev' | 'next'; segIdx: number }) => void
+  onForceClockOut?: (session: DayEditorSession) => void
+  onAdjustTimes?: (session: DayEditorSession) => void
 }
 
 export function MyTimeDayClusterVisual({
@@ -80,6 +84,8 @@ export function MyTimeDayClusterVisual({
   onAssignJobSaved,
   resolveAssignSession,
   onRequestMergeJobChoice,
+  onForceClockOut,
+  onAdjustTimes,
 }: MyTimeDayClusterVisualProps) {
   const openLastCluster = !lastS.clocked_out_at
   return (
@@ -296,19 +302,54 @@ export function MyTimeDayClusterVisual({
             })}
           </div>
         </div>
-        <span
+        <div
           style={{
-            fontSize: '0.65rem',
-            color: '#9ca3af',
-            fontVariantNumeric: 'tabular-nums',
-            lineHeight: 1.15,
-            textAlign: 'center',
-            pointerEvents: 'none',
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 4,
+            maxWidth: '9rem',
           }}
         >
-          {formatDenverTimeOnly(t1)}
-          {!lastS.clocked_out_at ? ' (open)' : ''}
-        </span>
+          <span
+            style={{
+              fontSize: '0.65rem',
+              color: '#9ca3af',
+              fontVariantNumeric: 'tabular-nums',
+              lineHeight: 1.15,
+              textAlign: 'center',
+              pointerEvents: 'none',
+            }}
+          >
+            {formatDenverTimeOnly(t1)}
+          </span>
+          {onForceClockOut && !lastS.clocked_out_at ? (
+            <button
+              type="button"
+              disabled={saving}
+              title="Force clock out and fix hours"
+              aria-label="Force clock out and fix hours"
+              onClick={() => onForceClockOut(lastS)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: 0,
+                padding: 0,
+                border: 'none',
+                background: 'transparent',
+                cursor: saving ? 'not-allowed' : 'pointer',
+                color: '#6b7280',
+                lineHeight: 0,
+                flexShrink: 0,
+                verticalAlign: 'middle',
+              }}
+            >
+              <ForceClockOutIcon />
+            </button>
+          ) : null}
+        </div>
       </div>
       <div
         style={{
@@ -353,8 +394,15 @@ export function MyTimeDayClusterVisual({
               !saving &&
               allocLabels.length === 1 &&
               allocLabels[0] !== NO_JOB_BID_LINKED_LABEL
-            const changeAssignTargetRow =
-              showSingleAssignedChange ? clockSessionRowForSegmentAssign(c, split, nowTick, segIdx) : null
+            const adjustRow = clockSessionRowForSegmentAssign(c, split, nowTick, segIdx)
+            const changeAssignTargetRow = showSingleAssignedChange ? adjustRow : null
+            const visualSpanAndDur = `${segmentAssignLabel} [${formatDurationMs(dur)}]`
+            const visualSpanAdjustClickable = Boolean(onAdjustTimes && adjustRow && !saving)
+            const visualSpanDurText: CSSProperties = {
+              fontSize: '0.75rem',
+              color: '#9ca3af',
+              fontVariantNumeric: 'tabular-nums',
+            }
             return (
               <div
                 key={`seg-${clusterId}-${segIdx}`}
@@ -374,26 +422,24 @@ export function MyTimeDayClusterVisual({
                     marginBottom: 6,
                   }}
                 >
-                  <span
-                    style={{
-                      fontSize: '0.62rem',
-                      color: '#9ca3af',
-                      fontVariantNumeric: 'tabular-nums',
-                    }}
-                  >
-                    {denverSameCalendarDay(a, b)
-                      ? formatDenverTimeRangeSameDay(a, b)
-                      : `${formatDenverDateTimeShort(a)} – ${formatDenverDateTimeShort(b)}`}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: '0.62rem',
-                      color: '#9ca3af',
-                      fontVariantNumeric: 'tabular-nums',
-                    }}
-                  >
-                    [{formatDurationMs(dur)}]
-                  </span>
+                  {visualSpanAdjustClickable ? (
+                    <button
+                      type="button"
+                      className="myTimeDaySpanAdjustLink"
+                      disabled={saving}
+                      aria-label="Adjust clock-in and clock-out for this segment"
+                      onClick={() => adjustRow && onAdjustTimes?.(adjustRow)}
+                      style={{
+                        fontSize: visualSpanDurText.fontSize,
+                        fontVariantNumeric: visualSpanDurText.fontVariantNumeric,
+                        margin: 0,
+                      }}
+                    >
+                      {visualSpanAndDur}
+                    </button>
+                  ) : (
+                    <span style={visualSpanDurText}>{visualSpanAndDur}</span>
+                  )}
                   {split.boundaries.length > 2 && !saving ? (
                     <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
                       {segIdx > 0 ? (

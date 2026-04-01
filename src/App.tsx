@@ -18,6 +18,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Templates = lazy(() => import('./pages/Templates'))
 const People = lazy(() => import('./pages/People'))
 const Jobs = lazy(() => import('./pages/Jobs'))
+const Banking = lazy(() => import('./pages/Banking'))
 const Materials = lazy(() => import('./pages/Materials'))
 const Quickfill = lazy(() => import('./pages/Quickfill'))
 const Bids = lazy(() => import('./pages/Bids'))
@@ -30,6 +31,7 @@ import { registerSW } from 'virtual:pwa-register'
 import { ForceReloadProvider } from './contexts/ForceReloadContext'
 import { ChecklistAddModalProvider } from './contexts/ChecklistAddModalContext'
 import { DispatchTaskModalProvider } from './contexts/DispatchTaskModalContext'
+import { EstimatorTaskModalProvider } from './contexts/EstimatorTaskModalContext'
 import { NewCustomerModalProvider } from './contexts/NewCustomerModalContext'
 import { EditCustomerModalProvider } from './contexts/EditCustomerModalContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -135,13 +137,15 @@ function AppContent() {
               <ForceReloadProvider>
                 <ChecklistAddModalProvider>
                   <DispatchTaskModalProvider>
-                    <NewCustomerModalProvider>
-                      <EditCustomerModalProvider>
-                        <DailyGoalsGateProvider>
-                          <Layout />
-                        </DailyGoalsGateProvider>
-                      </EditCustomerModalProvider>
-                    </NewCustomerModalProvider>
+                    <EstimatorTaskModalProvider>
+                      <NewCustomerModalProvider>
+                        <EditCustomerModalProvider>
+                          <DailyGoalsGateProvider>
+                            <Layout />
+                          </DailyGoalsGateProvider>
+                        </EditCustomerModalProvider>
+                      </NewCustomerModalProvider>
+                    </EstimatorTaskModalProvider>
                   </DispatchTaskModalProvider>
                 </ChecklistAddModalProvider>
               </ForceReloadProvider>
@@ -158,6 +162,7 @@ function AppContent() {
           <Route path="projects/:id/edit" element={<ProjectForm />} />
           <Route path="workflows/:projectId" element={<Workflow />} />
           <Route path="jobs" element={<Jobs />} />
+          <Route path="banking" element={<Banking />} />
           <Route path="quickfill" element={<ErrorBoundary><Quickfill /></ErrorBoundary>} />
           <Route path="people" element={<People />} />
           <Route path="calendar" element={<Calendar />} />

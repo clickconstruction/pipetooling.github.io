@@ -95,6 +95,54 @@ export type Database = {
           },
         ]
       }
+      attendance_incidents: {
+        Row: {
+          created_at: string
+          created_by_user_id: string
+          details: string | null
+          id: string
+          incident_type: string
+          metadata: Json
+          subject_user_id: string
+          work_date: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_user_id: string
+          details?: string | null
+          id?: string
+          incident_type?: string
+          metadata?: Json
+          subject_user_id: string
+          work_date: string
+        }
+        Update: {
+          created_at?: string
+          created_by_user_id?: string
+          details?: string | null
+          id?: string
+          incident_type?: string
+          metadata?: Json
+          subject_user_id?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_incidents_created_by_user_id_fkey"
+            columns: ["created_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_incidents_subject_user_id_fkey"
+            columns: ["subject_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_count_row_custom_prices: {
         Row: {
           bid_id: string
@@ -1604,6 +1652,171 @@ export type Database = {
         }
         Relationships: []
       }
+      estimator_group_members: {
+        Row: {
+          user_id: string
+        }
+        Insert: {
+          user_id: string
+        }
+        Update: {
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estimator_group_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      estimator_request_dismissals: {
+        Row: {
+          dismissed_at: string
+          request_id: string
+          user_id: string
+        }
+        Insert: {
+          dismissed_at?: string
+          request_id: string
+          user_id: string
+        }
+        Update: {
+          dismissed_at?: string
+          request_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estimator_request_dismissals_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "estimator_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      estimator_request_notes: {
+        Row: {
+          author_user_id: string
+          body: string
+          created_at: string
+          id: string
+          request_id: string
+        }
+        Insert: {
+          author_user_id: string
+          body: string
+          created_at?: string
+          id?: string
+          request_id: string
+        }
+        Update: {
+          author_user_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          request_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estimator_request_notes_author_user_id_fkey"
+            columns: ["author_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estimator_request_notes_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "estimator_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      estimator_requests: {
+        Row: {
+          bid_id: string | null
+          closed_at: string | null
+          closed_by_user_id: string | null
+          closed_note: string | null
+          created_at: string
+          from_user_id: string
+          id: string
+          job_ledger_id: string | null
+          links: string[]
+          location_lat: number | null
+          location_lng: number | null
+          reference_summary: string | null
+          status: string
+          title: string
+        }
+        Insert: {
+          bid_id?: string | null
+          closed_at?: string | null
+          closed_by_user_id?: string | null
+          closed_note?: string | null
+          created_at?: string
+          from_user_id: string
+          id?: string
+          job_ledger_id?: string | null
+          links?: string[]
+          location_lat?: number | null
+          location_lng?: number | null
+          reference_summary?: string | null
+          status?: string
+          title: string
+        }
+        Update: {
+          bid_id?: string | null
+          closed_at?: string | null
+          closed_by_user_id?: string | null
+          closed_note?: string | null
+          created_at?: string
+          from_user_id?: string
+          id?: string
+          job_ledger_id?: string | null
+          links?: string[]
+          location_lat?: number | null
+          location_lng?: number | null
+          reference_summary?: string | null
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estimator_requests_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estimator_requests_closed_by_user_id_fkey"
+            columns: ["closed_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estimator_requests_from_user_id_fkey"
+            columns: ["from_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estimator_requests_job_ledger_id_fkey"
+            columns: ["job_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       external_team_job_payments: {
         Row: {
           amount: number
@@ -2965,6 +3178,66 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      mercury_transactions: {
+        Row: {
+          amount: number
+          counterparty_id: string | null
+          counterparty_name: string | null
+          created_at: string
+          currency: string
+          dashboard_link: string | null
+          external_memo: string | null
+          id: string
+          kind: string
+          mercury_account_id: string
+          mercury_category: Json | null
+          mercury_id: string
+          note: string | null
+          posted_at: string | null
+          raw: Json | null
+          status: string
+          synced_at: string
+        }
+        Insert: {
+          amount: number
+          counterparty_id?: string | null
+          counterparty_name?: string | null
+          created_at: string
+          currency?: string
+          dashboard_link?: string | null
+          external_memo?: string | null
+          id?: string
+          kind: string
+          mercury_account_id: string
+          mercury_category?: Json | null
+          mercury_id: string
+          note?: string | null
+          posted_at?: string | null
+          raw?: Json | null
+          status: string
+          synced_at?: string
+        }
+        Update: {
+          amount?: number
+          counterparty_id?: string | null
+          counterparty_name?: string | null
+          created_at?: string
+          currency?: string
+          dashboard_link?: string | null
+          external_memo?: string | null
+          id?: string
+          kind?: string
+          mercury_account_id?: string
+          mercury_category?: Json | null
+          mercury_id?: string
+          note?: string | null
+          posted_at?: string | null
+          raw?: Json | null
+          status?: string
+          synced_at?: string
+        }
+        Relationships: []
       }
       notification_history: {
         Row: {
@@ -5053,6 +5326,7 @@ export type Database = {
         Row: {
           bid_id: string | null
           created_at: string | null
+          exclude_weekends: boolean
           job_ledger_id: string | null
           mode: string
           segment_a_duration_minutes: number
@@ -5069,6 +5343,7 @@ export type Database = {
         Insert: {
           bid_id?: string | null
           created_at?: string | null
+          exclude_weekends?: boolean
           job_ledger_id?: string | null
           mode: string
           segment_a_duration_minutes?: number
@@ -5085,6 +5360,7 @@ export type Database = {
         Update: {
           bid_id?: string | null
           created_at?: string | null
+          exclude_weekends?: boolean
           job_ledger_id?: string | null
           mode?: string
           segment_a_duration_minutes?: number
@@ -6196,6 +6472,47 @@ export type Database = {
           },
         ]
       }
+      user_time_off: {
+        Row: {
+          created_at: string
+          end_date: string
+          id: string
+          kind: string
+          note: string | null
+          start_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          id?: string
+          kind?: string
+          note?: string | null
+          start_date: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          id?: string
+          kind?: string
+          note?: string | null
+          start_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_time_off_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           archived_at: string | null
@@ -6612,11 +6929,124 @@ export type Database = {
           },
         ]
       }
+      writeup_templates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          schema: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          schema?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          schema?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "writeup_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      writeups: {
+        Row: {
+          answers: Json
+          created_at: string
+          disclosure: Database["public"]["Enums"]["writeup_disclosure"] | null
+          filled_by_user_id: string
+          id: string
+          status: string
+          subject_user_id: string
+          submitted_at: string | null
+          template_id: string
+          updated_at: string
+        }
+        Insert: {
+          answers?: Json
+          created_at?: string
+          disclosure?: Database["public"]["Enums"]["writeup_disclosure"] | null
+          filled_by_user_id: string
+          id?: string
+          status?: string
+          subject_user_id: string
+          submitted_at?: string | null
+          template_id: string
+          updated_at?: string
+        }
+        Update: {
+          answers?: Json
+          created_at?: string
+          disclosure?: Database["public"]["Enums"]["writeup_disclosure"] | null
+          filled_by_user_id?: string
+          id?: string
+          status?: string
+          subject_user_id?: string
+          submitted_at?: string | null
+          template_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "writeups_filled_by_user_id_fkey"
+            columns: ["filled_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "writeups_subject_user_id_fkey"
+            columns: ["subject_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "writeups_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "writeup_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      _pay_staff_bulk_insert_user_time_off_row: {
+        Args: {
+          p_end_date: string
+          p_note: string
+          p_should_sync: boolean
+          p_start_date: string
+          p_today: string
+          p_uid: string
+        }
+        Returns: Json
+      }
       approve_clock_sessions: {
         Args: { p_session_ids: string[] }
         Returns: {
@@ -6738,6 +7168,14 @@ export type Database = {
       estimator_can_access_service_type: {
         Args: { p_service_type_id: string }
         Returns: boolean
+      }
+      estimator_inbox_note_stats: {
+        Args: { p_request_ids: string[] }
+        Returns: {
+          last_note_at: string
+          note_count: number
+          request_id: string
+        }[]
       }
       get_archived_user_names: { Args: never; Returns: string[] }
       get_assigned_steps_for_dashboard: {
@@ -6947,6 +7385,7 @@ export type Database = {
       is_dev_or_master_or_assistant: { Args: never; Returns: boolean }
       is_dispatch_group_member: { Args: never; Returns: boolean }
       is_estimator: { Args: never; Returns: boolean }
+      is_estimator_group_member: { Args: never; Returns: boolean }
       is_master_or_dev: { Args: never; Returns: boolean }
       is_pay_approved_master: { Args: never; Returns: boolean }
       is_team_lead_for_member: {
@@ -7115,6 +7554,27 @@ export type Database = {
       notify_dispatch_license_expiry_if_needed: {
         Args: { p_license_id: string; p_link: string }
         Returns: string
+      }
+      pay_staff_bulk_insert_user_time_off: {
+        Args: {
+          p_end_date: string
+          p_note?: string
+          p_start_date: string
+          p_user_ids: string[]
+        }
+        Returns: Json
+      }
+      record_ncns_and_reject_sessions_for_day: {
+        Args: {
+          p_details?: string
+          p_subject_user_id: string
+          p_work_date: string
+        }
+        Returns: {
+          error_message: string
+          had_approved_sessions: boolean
+          rejected_count: number
+        }[]
       }
       replace_own_clock_session_cluster_mixed: {
         Args: { p_segments: Json; p_session_ids: string[] }
@@ -7297,6 +7757,7 @@ export type Database = {
         | "primary"
         | "superintendent"
       workflow_status: "draft" | "active" | "completed"
+      writeup_disclosure: "discussed_with_subject" | "withheld_from_subject"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -7449,6 +7910,7 @@ export const Constants = {
         "superintendent",
       ],
       workflow_status: ["draft", "active", "completed"],
+      writeup_disclosure: ["discussed_with_subject", "withheld_from_subject"],
     },
   },
 } as const

@@ -480,6 +480,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 | **Workflow** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ | ✅ limited |
 | **People** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ | ❌ |
 | **Jobs** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ✅ Reports + Billing | ✅ Reports + Sub Ledger |
+| **Banking** | ✅ dev only (Mercury ledger) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Calendar** | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
 | **Bids** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited |
 | **Materials** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited |
@@ -511,7 +512,16 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 | Task Dispatch (header: send task + optional reference + links to Dispatch group) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Dispatch inbox (open requests, mark closed) | ✅ | ❌ | If in Dispatch group | ❌ | ❌ | ❌ | ❌ |
 | My Team (pending clock sessions for assigned members; approve/reject/assign job) | ✅ if leader | ✅ if leader | ✅ if leader | ✅ if leader | ✅ if leader | ✅ if leader | ✅ if leader |
+| NCNS from team **My Time** day editor (clock strip): **`record_ncns_and_reject_sessions_for_day`** rejects all **closed** sessions for that **`work_date`**, inserts **`attendance_incidents`**; **approved** hours removed from **`people_hours`**; **two-step** UI confirm (payroll + trust) when any session was approved; **RPC** also allowed for **team lead** for subject (same as approve/revoke), UI shown for **dev / master / assistant** with clock strip scope only | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Rejected clock sessions (org-wide, review/delete) | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+
+### Calendar
+
+| Feature | dev | master | assistant | sub | estimator | primary | superintendent |
+|---------|-----|--------|-----------|-----|-----------|---------|----------------|
+| **NCNS** on own days: read **`attendance_incidents`** where **`subject_user_id = self`** (Calendar badge / day modal); policy `"Attendance incidents subject select own"` | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| **Salary schedule (green)**: **`scheduled`** chips / modal workday only when **`work_date` > today**; **unpaid time off (`time_off`)** purple chip **all dates** | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| **Recorded time** on Calendar: aggregate own **`clock_sessions`** in visible month (toggle) | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
 
 ### Settings (selected)
 
@@ -559,6 +569,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 | Offsets tab (backcharges, damages, apply to pay stub) | ✅ | ✅ If Pay Approved | ✅ If master Pay Approved | ❌ | ❌ | ❌ | ❌ |
 | Licenses tab (license type, note, date of expiry per person) | ✅ | ✅ If Pay Approved | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Contracts tab (templates, assignments, document status per person) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Writeups tab (`?tab=writeups`): custom form templates, writeups about a subject user, Discussed vs Withheld disclosure; submitted rows immutable; dev-only delete submitted; **unified list** also shows **read-only** NCNS rows from **`attendance_incidents`** (same RLS as incidents); legacy `?tab=contracts&contracts_sub=writeups` redirects to `tab=writeups` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Activity tab (first-party app usage: org-wide UTC table; dev grants assistant / master / primary) | ✅ + manage grants | ✅ if granted | ✅ if granted | ❌ | ❌ | ✅ if granted | ❌ |
 
 ### Workflow Management

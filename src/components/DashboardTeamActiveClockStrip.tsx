@@ -17,7 +17,10 @@ import { approveClockSessions } from '../lib/approveClockSessions'
 import { supabase } from '../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { useIntervalNowMs } from '../hooks/useIntervalNowMs'
-import { AssignSessionJobPopover } from './clock-sessions/AssignSessionJobPopover'
+import {
+  AssignSessionJobPopover,
+  type AssignSessionJobSavedPatch,
+} from './clock-sessions/AssignSessionJobPopover'
 import {
   ClockSessionStripActionsModal,
   type ClockSessionStripActionsPayload,
@@ -33,6 +36,9 @@ import {
   formatClockSessionJobOrBidModalLinesFromEmbeds,
   shortJobOrBidLabelFromEmbeds,
   type ClockSessionRow,
+  type DashboardStripSession,
+  isSyntheticSalaryStripSession,
+  shouldShowSalaryStripNameSuffix,
 } from '../types/clockSessions'
 
 const timeOpts: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit' }
@@ -152,7 +158,7 @@ function normalizeStripActionsPayloadFallback(
   }
 }
 
-function personName(s: ClockSessionRow): string {
+function personName(s: DashboardStripSession): string {
   return s.users?.name?.trim() ?? 'Unknown'
 }
 
@@ -211,15 +217,24 @@ const td = {
   verticalAlign: 'middle' as const,
 }
 
+const stripSalaryNameSuffix: CSSProperties = {
+  marginLeft: '0.15rem',
+  fontSize: '0.68rem',
+  color: '#9ca3af',
+  fontWeight: 400,
+}
+
 /** Match ClockInOutButton enabled fill (`#ff6600`). */
 const STRIP_SECTION_HEAD_BG = '#ff6600'
 const STRIP_SECTION_HEAD_TEXT = '#ffffff'
-const STRIP_SECTION_HEAD_BORDER_BOTTOM = '1px solid rgba(255,255,255,0.22)'
+/** Per-cell bottom edge (avoid border-collapse dropping the soft line under the first column). */
+const STRIP_SECTION_HEAD_BOTTOM_EDGE = 'inset 0 -1px 0 0 rgba(255,255,255,0.22)'
 
 const stripSectionTh: CSSProperties = {
   ...th,
   color: STRIP_SECTION_HEAD_TEXT,
-  borderBottom: STRIP_SECTION_HEAD_BORDER_BOTTOM,
+  borderBottom: 'none',
+  boxShadow: STRIP_SECTION_HEAD_BOTTOM_EDGE,
 }
 
 /** Chevron column width; also used to indent expanded session rows under the name column. */
@@ -414,7 +429,7 @@ export function DashboardTeamActiveClockStrip({
   canApproveClockSessions,
   onClockSessionsMutated,
 }: {
-  sessions: ClockSessionRow[]
+  sessions: DashboardStripSession[]
   hoursTodayByUserId: Readonly<Record<string, number>>
   clockedInTodayRows: readonly ClockedInTodayStripRow[]
   jobsWorkedTodayRows?: readonly JobsWorkedTodayStripRow[]
@@ -422,7 +437,7 @@ export function DashboardTeamActiveClockStrip({
   clockStripScope?: 'team' | 'everyone'
   onClockStripScopeChange?: (scope: 'team' | 'everyone') => void
   showJobBidColumn?: boolean
-  onJobBidSaved?: () => void
+  onJobBidSaved?: (patch: AssignSessionJobSavedPatch) => void
   onJobBidAssignError?: (msg: string) => void
   /** Dev / master / assistant: open My Time day editor for this person's hours today (company calendar). */
   onOpenStripMyTimeEditor?: (p: { subjectUserId: string; displayName: string }) => void
@@ -743,7 +758,7 @@ export function DashboardTeamActiveClockStrip({
               <tr style={{ background: STRIP_SECTION_HEAD_BG }}>
                 <th
                   scope="col"
-                  style={{ ...stripSectionTh, position: 'relative' as const, fontWeight: 700 }}
+                  style={{ ...stripSectionTh, fontWeight: 700 }}
                   aria-label={`Person name; ${sessions.length} currently in`}
                 >
                   Currently In ({sessions.length})
@@ -767,36 +782,46 @@ export function DashboardTeamActiveClockStrip({
             </thead>
           <tbody>
             {sessions.map((s) => {
+              const synthetic = isSyntheticSalaryStripSession(s)
               const inDate = new Date(s.clocked_in_at)
               const todayH = hoursTodayByUserId[s.user_id] ?? 0
-              const fullJobBid = formatClockSessionJobOrBidLabel(s)
-              const shortJb = shortJobOrBidLabel(s)
-              const jobHref = s.job_ledger_id
-                ? `/jobs?edit=${encodeURIComponent(s.job_ledger_id)}`
-                : null
-              const bidHref = s.bid_id
-                ? `/bids?bidId=${encodeURIComponent(s.bid_id)}&tab=submission-followup`
-                : null
-              const linkText = shortJb ?? (s.job_ledger_id ? 'Job' : s.bid_id ? 'Bid' : null)
-              const titleText = fullJobBid ?? linkText ?? undefined
+              const fullJobBid = synthetic ? null : formatClockSessionJobOrBidLabel(s as ClockSessionRow)
+              const shortJb = synthetic ? null : shortJobOrBidLabel(s as ClockSessionRow)
+              const jobHref =
+                !synthetic && s.job_ledger_id
+                  ? `/jobs?edit=${encodeURIComponent(s.job_ledger_id)}`
+                  : null
+              const bidHref =
+                !synthetic && s.bid_id
+                  ? `/bids?bidId=${encodeURIComponent(s.bid_id)}&tab=submission-followup`
+                  : null
+              const linkText = synthetic
+                ? 'Salary schedule'
+                : shortJb ?? (s.job_ledger_id ? 'Job' : s.bid_id ? 'Bid' : null)
+              const titleText = synthetic ? 'On schedule; session sync may follow' : fullJobBid ?? linkText ?? undefined
               const elapsedStr = formatElapsedOpen(s.clocked_in_at, nowMs)
               const inStr = inDate.toLocaleTimeString(undefined, timeOpts)
+              const sessionInPartStyle: CSSProperties = { color: '#4b5563', fontWeight: 400 }
               const sessionInCell = (
                 <>
-                  <span style={{ fontWeight: 600, color: '#1d4ed8' }}>{elapsedStr}</span>
-                  <span style={{ color: '#4b5563', fontWeight: 400 }}>{' | '}{inStr}</span>
+                  <span style={sessionInPartStyle}>{elapsedStr}</span>
+                  <span style={sessionInPartStyle}>{' | '}{inStr}</span>
                 </>
               )
               const memo = (s.notes ?? '').trim()
-              const hasJobOrBid = !!(s.job_ledger_id || s.bid_id)
+              const hasJobOrBid = !synthetic && !!(s.job_ledger_id || s.bid_id)
 
               return (
                 <tr key={s.id}>
-                  <td style={td}>{personName(s)}</td>
-                  <td style={{ ...td, textAlign: 'right', fontWeight: 600, color: '#374151' }}>
-                    {formatHoursH(todayH)}
+                  <td style={td}>
+                    {personName(s)}
+                    {shouldShowSalaryStripNameSuffix(s) ? (
+                      <span style={stripSalaryNameSuffix} title="Salary schedule">
+                        (s)
+                      </span>
+                    ) : null}
                   </td>
-                  <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' as const }}>
+                  <td style={{ ...td, textAlign: 'right' }}>
                     {onOpenStripMyTimeEditor ? (
                       <button
                         type="button"
@@ -804,6 +829,7 @@ export function DashboardTeamActiveClockStrip({
                           onOpenStripMyTimeEditor({ subjectUserId: s.user_id, displayName: personName(s) })
                         }
                         title="Edit today's time"
+                        aria-label={`Edit today's time for ${personName(s)}`}
                         style={{
                           border: 'none',
                           background: 'none',
@@ -811,31 +837,43 @@ export function DashboardTeamActiveClockStrip({
                           margin: 0,
                           cursor: 'pointer',
                           font: 'inherit',
+                          fontWeight: 600,
+                          color: '#1d4ed8',
                           textAlign: 'right',
                           width: '100%',
                         }}
                       >
-                        {sessionInCell}
+                        {formatHoursH(todayH)}
                       </button>
                     ) : (
-                      sessionInCell
+                      <span style={{ fontWeight: 600, color: '#374151' }}>{formatHoursH(todayH)}</span>
                     )}
+                  </td>
+                  <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' as const }}>
+                    {sessionInCell}
                   </td>
                   {showJobBidColumn && (
                     <td style={{ ...td, maxWidth: 220 }}>
                       <div style={jobBidCellFlex}>
                         <div style={jobBidLinkMemoGroup}>
-                          {!hasJobOrBid ? (
+                          {!hasJobOrBid && !synthetic ? (
                             <span style={{ flexShrink: 0 }}>
                               <AssignSessionJobPopover
-                                session={s}
-                                onSaved={() => onJobBidSaved?.()}
+                                session={s as ClockSessionRow}
+                                onSaved={(p) => {
+                                  if (p) onJobBidSaved?.(p)
+                                }}
                                 onError={onJobBidAssignError}
                                 popoverZIndex={STRIP_POPOVER_Z}
                                 unassignedTrigger="default"
                                 compactTrigger
                                 showChangeWhenAssigned={onOpenStripMyTimeEditor == null}
                               />
+                            </span>
+                          ) : null}
+                          {synthetic && linkText ? (
+                            <span style={{ fontSize: '0.72rem', color: '#6b7280' }} title={titleText}>
+                              {linkText}
                             </span>
                           ) : null}
                           {jobHref && linkText ? (
@@ -855,7 +893,9 @@ export function DashboardTeamActiveClockStrip({
                           <span style={{ flexShrink: 0 }}>
                             <AssignSessionJobPopover
                               session={s}
-                              onSaved={() => onJobBidSaved?.()}
+                              onSaved={(p) => {
+                                if (p) onJobBidSaved?.(p)
+                              }}
                               onError={onJobBidAssignError}
                               popoverZIndex={STRIP_POPOVER_Z}
                               unassignedTrigger="default"
@@ -1232,7 +1272,9 @@ export function DashboardTeamActiveClockStrip({
                                                             job_ledger_id: s.job_ledger_id,
                                                             bid_id: s.bid_id,
                                                           }}
-                                                          onSaved={() => onJobBidSaved()}
+                                                          onSaved={(p) => {
+                                                            if (p) onJobBidSaved(p)
+                                                          }}
                                                           onError={onJobBidAssignError}
                                                           popoverZIndex={STRIP_POPOVER_Z}
                                                           unassignedTrigger="default"
@@ -1303,7 +1345,9 @@ export function DashboardTeamActiveClockStrip({
                                                           job_ledger_id: s.job_ledger_id,
                                                           bid_id: s.bid_id,
                                                         }}
-                                                        onSaved={() => onJobBidSaved()}
+                                                        onSaved={(p) => {
+                                                          if (p) onJobBidSaved(p)
+                                                        }}
                                                         onError={onJobBidAssignError}
                                                         popoverZIndex={STRIP_POPOVER_Z}
                                                         unassignedTrigger="default"
@@ -1395,9 +1439,7 @@ export function DashboardTeamActiveClockStrip({
                       aria-label={`Jobs worked today; each row shows job name with today's hours and people (${jobsWorkedTodayRows.length} jobs)`}
                       style={{
                         ...stripSectionTh,
-                        ...(showClockedInTodayToggle && !clockedInTodaySectionCollapsed
-                          ? { paddingRight: 'clamp(8rem, 20vw, 12rem)' }
-                          : {}),
+                        ...(scopeShowsOverlay ? { paddingRight: 'clamp(8rem, 20vw, 12rem)' } : {}),
                       }}
                     >
                       <span style={srOnly}>{'Expand session rows per job. '}</span>
@@ -1462,9 +1504,7 @@ export function DashboardTeamActiveClockStrip({
                           <td
                             style={{
                               ...clockedInTodayRowTd,
-                              ...(showClockedInTodayToggle && !clockedInTodaySectionCollapsed
-                                ? { paddingRight: 'clamp(8rem, 20vw, 12rem)' }
-                                : {}),
+                              ...(scopeShowsOverlay ? { paddingRight: 'clamp(8rem, 20vw, 12rem)' } : {}),
                             }}
                           >
                             <div

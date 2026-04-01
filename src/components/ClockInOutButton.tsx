@@ -11,17 +11,10 @@ import {
   type UnifiedSearchResult,
 } from '../utils/unifiedJobBidSearch'
 import { getTeamFeedbackEligibility } from '../lib/teamFeedback'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { denverCalendarDayKey } from '../utils/dateUtils'
 import { syncSalaryClockSessionsForUserDay } from '../lib/salaryScheduleSync'
 import TeamFeedbackWizard from './team-feedback/TeamFeedbackWizard'
-
-function toLocalDateString(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
 
 function formatElapsed(seconds: number): string {
   const h = Math.floor(seconds / 3600)
@@ -145,24 +138,81 @@ export default function ClockInOutButton({ userId, userName }: Props) {
   const fetchSessions = useCallback(async () => {
     if (!userId) return
     const today = denverCalendarDayKey(Date.now())
-    const { data, error: err } = await supabase
-      .from('clock_sessions')
-      .select('id, clocked_in_at, clocked_out_at, notes, job_ledger_id, bid_id, origin')
-      .eq('user_id', userId)
-      .eq('work_date', today)
-    if (err) {
-      setError(err.message)
-      setOpenSession(null)
-      setTodaySessions([])
-      return
+
+    const [openResult, todayResult] = await Promise.all([
+      (async (): Promise<
+        | { ok: true; row: TodaySession | null }
+        | { ok: false; error: unknown }
+      > => {
+        try {
+          const row = await withSupabaseRetry(
+            async () =>
+              supabase
+                .from('clock_sessions')
+                .select('id, clocked_in_at, clocked_out_at, notes, job_ledger_id, bid_id, origin')
+                .eq('user_id', userId)
+                .is('clocked_out_at', null)
+                .is('rejected_at', null)
+                .is('revoked_at', null)
+                .order('clocked_in_at', { ascending: false })
+                .limit(1)
+                .maybeSingle(),
+            'clock_sessions open for user'
+          )
+          return { ok: true, row: (row ?? null) as TodaySession | null }
+        } catch (e) {
+          return { ok: false, error: e }
+        }
+      })(),
+      (async (): Promise<
+        | { ok: true; sessions: TodaySession[] }
+        | { ok: false; error: unknown }
+      > => {
+        try {
+          const rows = await withSupabaseRetry(
+            async () =>
+              supabase
+                .from('clock_sessions')
+                .select('id, clocked_in_at, clocked_out_at, notes, job_ledger_id, bid_id, origin')
+                .eq('user_id', userId)
+                .eq('work_date', today),
+            'clock_sessions today for user'
+          )
+          return { ok: true, sessions: (rows ?? []) as TodaySession[] }
+        } catch (e) {
+          return { ok: false, error: e }
+        }
+      })(),
+    ])
+
+    const errParts: string[] = []
+    if (!openResult.ok) {
+      errParts.push(formatErrorMessage(openResult.error, 'Could not load open clock session'))
     }
-    setError(null)
-    const sessions = (data ?? []) as TodaySession[]
-    setTodaySessions(sessions)
-    const open = sessions.find((s) => !s.clocked_out_at)
-    setOpenSession(open ? { id: open.id, clocked_in_at: open.clocked_in_at, notes: open.notes, job_ledger_id: open.job_ledger_id, bid_id: open.bid_id } : null)
-    if (sessions.length > 0) {
-      setTotalSecondsToday(computeTotalSecondsToday(sessions))
+    if (!todayResult.ok) {
+      errParts.push(formatErrorMessage(todayResult.error, 'Could not load today clock sessions'))
+    }
+    setError(errParts.length > 0 ? errParts.join(' ') : null)
+
+    if (openResult.ok) {
+      const open = openResult.row
+      if (open && !open.clocked_out_at) {
+        setOpenSession({
+          id: open.id,
+          clocked_in_at: open.clocked_in_at,
+          notes: open.notes ?? '',
+          job_ledger_id: open.job_ledger_id,
+          bid_id: open.bid_id,
+        })
+      } else {
+        setOpenSession(null)
+      }
+    }
+
+    if (todayResult.ok) {
+      const sessions = todayResult.sessions
+      setTodaySessions(sessions)
+      setTotalSecondsToday(sessions.length > 0 ? computeTotalSecondsToday(sessions) : 0)
     }
   }, [userId])
 
@@ -209,7 +259,7 @@ export default function ClockInOutButton({ userId, userName }: Props) {
   }, [userId, fetchSessions])
 
   useEffect(() => {
-    if (!openSession || todaySessions.length === 0) return
+    if (!openSession && todaySessions.length === 0) return
     const interval = setInterval(() => {
       setTotalSecondsToday(computeTotalSecondsToday(todaySessions))
     }, 1000)
@@ -454,7 +504,7 @@ export default function ClockInOutButton({ userId, userName }: Props) {
       const { error: err } = await supabase.from('clock_sessions').insert({
         user_id: userId,
         clocked_in_at: now.toISOString(),
-        work_date: toLocalDateString(now),
+        work_date: denverCalendarDayKey(now.getTime()),
         notes: clockInNotes.trim(),
         job_ledger_id: selectedAssociation?.source === 'job' ? selectedAssociation?.id : null,
         bid_id: selectedAssociation?.source === 'bid' ? selectedAssociation?.id : null,
@@ -467,7 +517,7 @@ export default function ClockInOutButton({ userId, userName }: Props) {
         setLastSelectedJobBid(selectedAssociation)
       }
       setClockInModalOpen(false)
-      const workDate = toLocalDateString(now)
+      const workDate = denverCalendarDayKey(now.getTime())
       await fetchSessions()
       await notifyFirstClockInOfDay(workDate, userId)
     } catch (e) {
@@ -586,7 +636,7 @@ export default function ClockInOutButton({ userId, userName }: Props) {
       const { error: errIn } = await supabase.from('clock_sessions').insert({
         user_id: userId,
         clocked_in_at: now.toISOString(),
-        work_date: toLocalDateString(now),
+        work_date: denverCalendarDayKey(now.getTime()),
         notes: updateFocusNotes.trim(),
         job_ledger_id: selectedAssociation?.source === 'job' ? selectedAssociation?.id : null,
         bid_id: selectedAssociation?.source === 'bid' ? selectedAssociation?.id : null,
@@ -599,7 +649,7 @@ export default function ClockInOutButton({ userId, userName }: Props) {
         setLastSelectedJobBid(selectedAssociation)
       }
       setUpdateFocusModalOpen(false)
-      const workDate = toLocalDateString(now)
+      const workDate = denverCalendarDayKey(now.getTime())
       await fetchSessions()
       await notifyFirstClockInOfDay(workDate, userId)
     } catch (e) {

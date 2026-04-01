@@ -1,4 +1,8 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { WriteupsContractsSubTab } from '../components/writeups/WriteupsContractsSubTab'
+import type { WriteupListRow } from '../components/writeups/WriteupEditorModal'
+import type { NcnsListRow } from '../components/writeups/writeupsTimelineTypes'
+import type { WriteupTemplateRow } from '../components/writeups/WriteupTemplateManagerModal'
 import { Link, useSearchParams } from 'react-router-dom'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
@@ -17,6 +21,7 @@ import { CLOCK_SESSION_LIST_SELECT } from '../lib/clockSessionSelect'
 import { approveClockSessions } from '../lib/approveClockSessions'
 import { clockSessionMatchesSearch } from '../lib/clockSessionSearch'
 import { cascadePersonNameInPayTables } from '../lib/cascadePersonName'
+import { denverWorkDateToday, syncSalaryClockSessionsForUserDay } from '../lib/salaryScheduleSync'
 import {
   isPayStubFullyPaid,
   remainingPayStubBalance,
@@ -73,6 +78,7 @@ import {
 } from '../components/clock-sessions'
 import PeopleAppActivityPanel from '../components/people/PeopleAppActivityPanel'
 import { PeoplePayConfigModal } from '../components/people/PeoplePayConfigModal'
+import { SalariedWorkdaysBulkModal } from '../components/people/SalariedWorkdaysBulkModal'
 import { PayStubDeleteIcon } from '../components/pay/PayStubDeleteIcon'
 import { PayStubPaidNoteIcon } from '../components/pay/PayStubPaidNoteIcon'
 import type { ClockSessionRow } from '../types/clockSessions'
@@ -161,7 +167,19 @@ const tabStyle = (active: boolean) => ({
   cursor: 'pointer' as const,
 })
 
-type PeopleTab = 'users' | 'pay_stubs' | 'pay' | 'hours' | 'vehicles' | 'housing' | 'offsets' | 'licenses' | 'contracts' | 'review' | 'activity'
+type PeopleTab =
+  | 'users'
+  | 'pay_stubs'
+  | 'pay'
+  | 'hours'
+  | 'vehicles'
+  | 'housing'
+  | 'offsets'
+  | 'licenses'
+  | 'contracts'
+  | 'writeups'
+  | 'review'
+  | 'activity'
 
 type Vehicle = { id: string; year: number | null; make: string; model: string; vin: string | null; weekly_insurance_cost: number; weekly_registration_cost: number; created_at: string | null; updated_at: string | null }
 type VehicleOdometerEntry = { id: string; vehicle_id: string; odometer_value: number; read_date: string; created_at: string | null }
@@ -205,6 +223,8 @@ export default function People() {
   const { widthPx: hoursGridFirstColWidthPx, measurer: hoursGridFirstColMeasurer } = useHoursGridFirstColWidthPx()
   const hoursGridFirstColW = hoursGridFirstColWidthPx ?? 200
   const [users, setUsers] = useState<UserRow[]>([])
+  const usersRef = useRef<UserRow[]>([])
+  usersRef.current = users
   const [people, setPeople] = useState<Person[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -286,13 +306,22 @@ export default function People() {
   const payConfigDraftRef = useRef(payConfigDraft)
   payConfigDraftRef.current = payConfigDraft
   const payConfigDebounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  /** Last successful DB `is_salary` per pay row; used to detect false→true after debounced save. */
+  const lastPersistedPayConfigRef = useRef<Record<string, { is_salary: boolean }>>({})
   const [mergeDuplicates, setMergeDuplicates] = useState<Array<{ personName: string; userDisplayName: string; email: string }>>([])
   const [mergingPersonName, setMergingPersonName] = useState<string | null>(null)
   const [payConfigModalOpen, setPayConfigModalOpen] = useState(false)
+  const [salariedWorkdaysModalOpen, setSalariedWorkdaysModalOpen] = useState(false)
 
   useEffect(() => {
     if (activeTab !== 'pay') {
       setPayConfigModalOpen(false)
+    }
+  }, [activeTab])
+
+  useEffect(() => {
+    if (activeTab !== 'hours') {
+      setSalariedWorkdaysModalOpen(false)
     }
   }, [activeTab])
   const [costMatrixShareSectionOpen, setCostMatrixShareSectionOpen] = useState(false)
@@ -575,6 +604,11 @@ export default function People() {
   const [templateFormNewDocumentName, setTemplateFormNewDocumentName] = useState('')
   const [templateFormSaving, setTemplateFormSaving] = useState(false)
   const [templateFormMode, setTemplateFormMode] = useState<'none' | 'create' | 'edit'>('none')
+  const [writeupTemplatesRows, setWriteupTemplatesRows] = useState<WriteupTemplateRow[]>([])
+  const [writeupsRows, setWriteupsRows] = useState<WriteupListRow[]>([])
+  const [ncnsRows, setNcnsRows] = useState<NcnsListRow[]>([])
+  const [writeupsLoading, setWriteupsLoading] = useState(false)
+  const [writeupsError, setWriteupsError] = useState<string | null>(null)
 
   // Review tab state
   type ReviewPeriod = 'today' | 'yesterday' | 'last_week' | 'last_two_weeks' | 'last_month'
@@ -805,10 +839,20 @@ export default function People() {
       tab === 'offsets' ||
       tab === 'licenses' ||
       tab === 'contracts' ||
+      tab === 'writeups' ||
       tab === 'review' ||
       tab === 'activity'
     ) {
       if (tab === 'activity' && activityAccessResolved && !canSeeActivityTab) {
+        setSearchParams((p) => {
+          const next = new URLSearchParams(p)
+          next.set('tab', 'users')
+          return next
+        }, { replace: true })
+        setActiveTab('users')
+        return
+      }
+      if (tab === 'writeups' && !canAccessContracts) {
         setSearchParams((p) => {
           const next = new URLSearchParams(p)
           next.set('tab', 'users')
@@ -825,7 +869,18 @@ export default function People() {
         return next
       }, { replace: true })
     }
-  }, [searchParams, activityAccessResolved, canSeeActivityTab, setSearchParams])
+  }, [searchParams, activityAccessResolved, canSeeActivityTab, canAccessContracts, setSearchParams])
+
+  useEffect(() => {
+    if (searchParams.get('tab') !== 'contracts') return
+    if (searchParams.get('contracts_sub') !== 'writeups') return
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p)
+      next.set('tab', 'writeups')
+      next.delete('contracts_sub')
+      return next
+    }, { replace: true })
+  }, [searchParams, setSearchParams])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -1899,9 +1954,12 @@ export default function People() {
       console.warn('loadPayConfig: assistant got empty data', { error, rowCount: (data ?? []).length })
     }
     const map: Record<string, PayConfigRow> = {}
+    const persistedSalary: Record<string, { is_salary: boolean }> = {}
     for (const r of (data ?? []) as PayConfigRow[]) {
       map[r.person_name] = r
+      persistedSalary[r.person_name] = { is_salary: !!r.is_salary }
     }
+    lastPersistedPayConfigRef.current = persistedSalary
     setPayConfig(map)
     setPayConfigDraft({})
   }
@@ -3685,6 +3743,90 @@ export default function People() {
     }
   }
 
+  const loadWriteupsData = useCallback(async () => {
+    setWriteupsLoading(true)
+    setWriteupsError(null)
+    try {
+      const tplRows = await withSupabaseRetry(
+        async () =>
+          await supabase
+            .from('writeup_templates')
+            .select('id, name, description, is_active, schema, created_at')
+            .order('name'),
+        'fetch writeup templates'
+      )
+      const list = (tplRows ?? []) as WriteupTemplateRow[]
+      setWriteupTemplatesRows(list)
+      const tplMap = new Map(list.map((t) => [t.id, t.name]))
+      const [wRows, incidentRows] = await Promise.all([
+        withSupabaseRetry(
+          async () =>
+            await supabase
+              .from('writeups')
+              .select(
+                'id, template_id, subject_user_id, filled_by_user_id, status, disclosure, answers, submitted_at, created_at'
+              )
+              .order('created_at', { ascending: false }),
+          'fetch writeups'
+        ),
+        withSupabaseRetry(
+          async () =>
+            await supabase
+              .from('attendance_incidents')
+              .select('id, subject_user_id, work_date, created_by_user_id, created_at, metadata, details')
+              .eq('incident_type', 'no_call_no_show')
+              .order('created_at', { ascending: false }),
+          'fetch attendance incidents ncns'
+        ),
+      ])
+      setWriteupsRows(
+        (wRows ?? []).map((r) => ({
+          id: r.id,
+          template_id: r.template_id,
+          template_name: tplMap.get(r.template_id) ?? '—',
+          subject_user_id: r.subject_user_id,
+          subject_name: users.find((u) => u.id === r.subject_user_id)?.name ?? 'Unknown',
+          filled_by_user_id: r.filled_by_user_id,
+          author_name: users.find((u) => u.id === r.filled_by_user_id)?.name ?? 'Unknown',
+          status: r.status as 'draft' | 'submitted',
+          disclosure: r.disclosure ?? null,
+          submitted_at: r.submitted_at ?? null,
+          created_at: r.created_at,
+          answers: r.answers,
+        }))
+      )
+      setNcnsRows(
+        (incidentRows ?? []).map((r) => {
+          let hadApproved = false
+          let source: string | null = null
+          const meta = r.metadata
+          if (meta && typeof meta === 'object' && !Array.isArray(meta)) {
+            const o = meta as Record<string, unknown>
+            if (o.had_approved_sessions === true) hadApproved = true
+            if (typeof o.source === 'string') source = o.source
+          }
+          return {
+            id: r.id,
+            subject_user_id: r.subject_user_id,
+            subject_name: users.find((u) => u.id === r.subject_user_id)?.name ?? 'Unknown',
+            created_by_user_id: r.created_by_user_id,
+            author_name: users.find((u) => u.id === r.created_by_user_id)?.name ?? 'Unknown',
+            work_date: r.work_date,
+            created_at: r.created_at,
+            had_approved_sessions: hadApproved,
+            source,
+            details: r.details ?? null,
+          }
+        })
+      )
+    } catch (e) {
+      setWriteupsError(e instanceof Error ? e.message : 'Failed to load writeups')
+      setNcnsRows([])
+    } finally {
+      setWriteupsLoading(false)
+    }
+  }, [users])
+
   function getDocumentsForPersonByTemplate(personName: string, templateId: string): { document_name: string; doc: PersonContractDocument | null }[] {
     const templateDocNames = new Set(contractTemplateDocuments.filter((d) => d.template_id === templateId).map((d) => d.document_name))
     const existingByDoc = new Map(personContractDocuments.filter((d) => d.person_name === personName).map((d) => [d.document_name, d]))
@@ -4112,6 +4254,14 @@ export default function People() {
   }, [activeTab, canAccessContracts])
 
   useEffect(() => {
+    if (activeTab !== 'writeups' || !canAccessContracts) return
+    const t = window.setTimeout(() => {
+      void loadWriteupsData()
+    }, 80)
+    return () => window.clearTimeout(t)
+  }, [activeTab, canAccessContracts, loadWriteupsData])
+
+  useEffect(() => {
     if (activeTab === 'review' && isDev) {
       const t = setTimeout(() => loadPayConfig(), 80)
       return () => clearTimeout(t)
@@ -4220,8 +4370,26 @@ export default function People() {
       delete payConfigDebounceRef.current[personName]
       setPayConfigSaving(true)
       const toSave = payConfigRef.current[personName] ?? full
+      const prevPersistedSalary = lastPersistedPayConfigRef.current[personName]?.is_salary === true
       const { error } = await supabase.from('people_pay_config').upsert(toSave, { onConflict: 'person_name' })
-      if (error) setError(error.message)
+      if (error) {
+        setError(error.message)
+      } else {
+        const becameSalary = toSave.is_salary === true && !prevPersistedSalary
+        lastPersistedPayConfigRef.current[personName] = { is_salary: !!toSave.is_salary }
+        if (becameSalary) {
+          const uid = usersRef.current.find((u) => u.name?.trim() === personName.trim())?.id
+          if (uid) {
+            const { error: syncErr } = await syncSalaryClockSessionsForUserDay(uid, denverWorkDateToday())
+            if (syncErr) showToast(syncErr, 'error')
+          } else {
+            showToast(
+              'Salary saved. No matching login user for this name—salary time sync skipped.',
+              'info',
+            )
+          }
+        }
+      }
       setPayConfigSaving(false)
     }, 2000)
   }
@@ -4243,7 +4411,14 @@ export default function People() {
       const toSave = { ...(payConfigRef.current[personName] ?? full), hourly_wage: finalWage }
       const { error } = await supabase.from('people_pay_config').upsert(toSave, { onConflict: 'person_name' })
       if (error) setError(error.message)
-      else setPayConfigDraft((prev) => { const next = { ...prev }; delete next[personName]; return next })
+      else {
+        lastPersistedPayConfigRef.current[personName] = { is_salary: !!toSave.is_salary }
+        setPayConfigDraft((prev) => {
+          const next = { ...prev }
+          delete next[personName]
+          return next
+        })
+      }
       setPayConfigSaving(false)
     }, 2000)
   }
@@ -5370,6 +5545,16 @@ export default function People() {
 
   const canEditUserNotes = authUserRole !== null && ['dev', 'master_technician', 'assistant'].includes(authUserRole)
   const canCreatePeopleInRoster = canEditUserNotes
+  const showSalariedWorkdaysHoursButton = canEditUserNotes && activeTab === 'hours' && canAccessHours
+
+  const writeupUserSelectOptions = useMemo(
+    () =>
+      [...users]
+        .filter((u) => (u.name ?? '').trim().length > 0)
+        .map((u) => ({ value: u.id, label: u.name }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    [users]
+  )
 
   if (loading) return <p>Loading...</p>
 
@@ -5519,6 +5704,22 @@ export default function People() {
             style={tabStyle(activeTab === 'contracts')}
           >
             Contracts
+          </button>
+        )}
+        {canAccessContracts && (
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('writeups')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'writeups')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'writeups')}
+          >
+            Writeups
           </button>
         )}
         {isDev && (
@@ -8250,6 +8451,7 @@ export default function People() {
       )}
 
       {activeTab === 'hours' && canAccessHours && (
+        <>
         <div>
           {hoursTabLoading ? (
             <p style={{ color: '#6b7280' }}>Loading…</p>
@@ -8349,6 +8551,26 @@ export default function People() {
                 }}
               >
                 Clear
+              </button>
+            ) : null}
+            {showSalariedWorkdaysHoursButton ? (
+              <button
+                type="button"
+                onClick={() => setSalariedWorkdaysModalOpen(true)}
+                style={{
+                  marginLeft: 'auto',
+                  padding: '0.35rem 0.65rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  background: '#f9fafb',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  color: '#374151',
+                  flexShrink: 0,
+                }}
+              >
+                Salaried workdays
               </button>
             ) : null}
           </div>
@@ -9013,6 +9235,13 @@ export default function People() {
           </>
           )}
         </div>
+        <SalariedWorkdaysBulkModal
+          open={salariedWorkdaysModalOpen}
+          onClose={() => setSalariedWorkdaysModalOpen(false)}
+          payConfig={payConfig}
+          users={users}
+        />
+        </>
       )}
 
       {activeTab === 'vehicles' && canAccessPay && (
@@ -9815,6 +10044,20 @@ export default function People() {
           )}
         </div>
       )}
+
+      {activeTab === 'writeups' && canAccessContracts && authUser?.id ? (
+        <WriteupsContractsSubTab
+          writeups={writeupsRows}
+          ncnsRows={ncnsRows}
+          templates={writeupTemplatesRows}
+          userOptions={writeupUserSelectOptions}
+          loading={writeupsLoading}
+          error={writeupsError}
+          authUserId={authUser.id}
+          isDev={isDev}
+          onRefresh={loadWriteupsData}
+        />
+      ) : null}
 
       {contractsTemplateModalOpen && activeTab === 'contracts' && canAccessContracts && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>

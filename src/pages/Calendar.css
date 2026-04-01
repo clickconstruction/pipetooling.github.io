@@ -1,0 +1,12 @@
+.calendar-grid-day {
+  background: #fff;
+}
+
+.calendar-grid-day:hover {
+  background: #eff6ff;
+}
+
+.calendar-grid-day:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}

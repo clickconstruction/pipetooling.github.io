@@ -4,7 +4,7 @@ import type { Database } from '../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { useToastContext } from '../contexts/ToastContext'
 import { denverWorkDateToday, syncSalaryClockSessionsForUserDay } from '../lib/salaryScheduleSync'
-import { APP_CALENDAR_TZ } from '../utils/dateUtils'
+import { APP_CALENDAR_TZ, formatIanaTimeZoneLongOffsetLabel } from '../utils/dateUtils'
 
 type TemplateInsert = Database['public']['Tables']['salary_work_schedule_templates']['Insert']
 
@@ -47,31 +47,8 @@ function normalizeSalaryTimezone(raw: string | null | undefined): string {
   return APP_CALENDAR_TZ
 }
 
-/** E.g. UTC−05:00 (Unicode minus). Null if `Intl` longOffset is unavailable. */
-function formatUtcOffsetLabelForZone(iana: string, at: Date = new Date()): string | null {
-  try {
-    const dtf = new Intl.DateTimeFormat('en-US', { timeZone: iana, timeZoneName: 'longOffset' })
-    const parts = dtf.formatToParts(at)
-    const tzPart = parts.find((p) => p.type === 'timeZoneName')?.value
-    if (!tzPart) return null
-    let m = tzPart.match(/^GMT([+-])(\d{1,2})(?::(\d{2}))?$/)
-    if (!m && tzPart.startsWith('UTC')) {
-      m = tzPart.match(/^UTC([+-])(\d{1,2})(?::(\d{2}))?$/)
-    }
-    if (!m) return null
-    const sign = m[1]
-    const hh = (m[2] ?? '0').padStart(2, '0')
-    const mm = (m[3] ?? '00').padStart(2, '0')
-    const unicodeMinus = '\u2212'
-    const displaySign = sign === '-' ? unicodeMinus : '+'
-    return `UTC${displaySign}${hh}:${mm}`
-  } catch {
-    return null
-  }
-}
-
 function formatTimezoneSelectOptionLabel(iana: string, regionLabel: string, at: Date = new Date()): string {
-  const off = formatUtcOffsetLabelForZone(iana, at)
+  const off = formatIanaTimeZoneLongOffsetLabel(iana, at)
   return off ? `${regionLabel} (${off})` : regionLabel
 }
 
@@ -95,6 +72,7 @@ export function SalaryWorkScheduleSettings({
   const [segmentBStart, setSegmentBStart] = useState('12:30')
   const [useSplitFocus, setUseSplitFocus] = useState(false)
   const [timezone, setTimezone] = useState(APP_CALENDAR_TZ)
+  const [excludeWeekends, setExcludeWeekends] = useState(true)
   const [todayOverrideEnabled, setTodayOverrideEnabled] = useState(false)
   const [ovMode, setOvMode] = useState<'continuous' | 'split'>('continuous')
   const [ovAStart, setOvAStart] = useState('08:00')
@@ -151,6 +129,7 @@ export function SalaryWorkScheduleSettings({
         setSegmentBStart(timeLocalToInput(row.segment_b_start_local))
         setUseSplitFocus(row.use_split_focus)
         setTimezone(normalizeSalaryTimezone(row.timezone))
+        setExcludeWeekends(row.exclude_weekends ?? true)
       } else {
         setMode('continuous')
         setSegmentAStart('08:00')
@@ -158,6 +137,7 @@ export function SalaryWorkScheduleSettings({
         setSegmentBStart('12:30')
         setUseSplitFocus(false)
         setTimezone(APP_CALENDAR_TZ)
+        setExcludeWeekends(true)
       }
       const ovDay = canEditPastDayOverrides ? overrideDateYmd : denverWorkDateToday()
       const ov = (await withSupabaseRetry(
@@ -192,6 +172,7 @@ export function SalaryWorkScheduleSettings({
       const payload: TemplateInsert = {
         user_id: userId,
         timezone: timezone.trim() || APP_CALENDAR_TZ,
+        exclude_weekends: excludeWeekends,
         mode,
         segment_a_start_local: toPgTime(segmentAStart),
         segment_a_duration_minutes: mode === 'continuous' ? 480 : segmentADuration,
@@ -244,8 +225,13 @@ export function SalaryWorkScheduleSettings({
         )
       }
 
+      const todayYmd = denverWorkDateToday()
       const syncErr = (await syncSalaryClockSessionsForUserDay(userId, ovDay)).error
       if (syncErr) throw new Error(syncErr)
+      if (ovDay !== todayYmd) {
+        const syncTodayErr = (await syncSalaryClockSessionsForUserDay(userId, todayYmd)).error
+        if (syncTodayErr) throw new Error(syncTodayErr)
+      }
 
       showToast('Workday schedule saved', 'success')
       await load()
@@ -268,7 +254,8 @@ export function SalaryWorkScheduleSettings({
       <p style={{ color: '#6b7280', fontSize: '0.875rem', marginTop: 0 }}>
         You are marked <strong>salaried</strong> in pay settings. Define your usual 8-hour day (15-minute steps). The app
         creates clock sessions automatically so your team sees you on the clock strip. Use <strong>Update focus</strong> on
-        the dashboard to link jobs or bids.
+        the dashboard to link jobs or bids. To work on a Saturday or Sunday, turn on <strong>Custom schedule for this date</strong>{' '}
+        below and pick that day.
       </p>
       <label style={{ display: 'block', marginBottom: '0.75rem' }}>
         <span style={{ fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>Timezone</span>
@@ -283,6 +270,16 @@ export function SalaryWorkScheduleSettings({
             </option>
           ))}
         </select>
+      </label>
+      <label style={{ display: 'block', marginBottom: '0.75rem' }}>
+        <input
+          type="checkbox"
+          checked={excludeWeekends}
+          onChange={(e) => setExcludeWeekends(e.target.checked)}
+        />
+        <span style={{ marginLeft: '0.35rem' }}>
+          Weekdays only (skip auto sessions Sat–Sun unless you use a custom date schedule below)
+        </span>
       </label>
       <div style={{ marginBottom: '0.75rem' }}>
         <span style={{ fontWeight: 600, marginRight: '0.5rem' }}>Day layout</span>

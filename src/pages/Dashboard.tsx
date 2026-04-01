@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { upsertBidNotesReadWatermark } from '../lib/userBidNotesReadState'
@@ -29,7 +29,6 @@ import DashboardMyTimeSection from '../components/DashboardMyTimeSection'
 import { DashboardMyTimeDayEditorModal } from '../components/DashboardMyTimeDayEditorModal'
 import DashboardDevRejectedNotification from '../components/DashboardDevRejectedNotification'
 import DashboardMyTeamPendingBanner from '../components/DashboardMyTeamPendingBanner'
-import DashboardMyTeamSection from '../components/DashboardMyTeamSection'
 import { DashboardTeamActiveClockStrip } from '../components/DashboardTeamActiveClockStrip'
 import { useDashboardMyTeamSectionState } from '../hooks/useDashboardMyTeamSectionState'
 import {
@@ -37,14 +36,33 @@ import {
   type DispatchInboxRow,
   type DispatchThreadNoteRow,
 } from '../components/DispatchInboxSection'
+import {
+  EstimatorInboxSection,
+  type EstimatorInboxRow,
+  type EstimatorThreadNoteRow,
+} from '../components/EstimatorInboxSection'
 import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
 import AssignedStageCard from '../components/AssignedStageCard'
 import SendRecordInvoiceModal, { type JobBillingContext } from '../components/jobs/SendRecordInvoiceModal'
 import { getNextDisplayOrders } from '../utils/checklistOrder'
 import { denverCalendarDayKey, getDefaultWeekRange } from '../utils/dateUtils'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import { fetchDashboardPhase1 } from '../lib/dashboardBootQueries'
+import { readDashboardBootCache, writeDashboardBootCache } from '../lib/dashboardBootCache'
+import { displayNameFromAuthUser } from '../lib/displayNameFromAuthUser'
+import {
+  AssignedSkeleton,
+  ChecklistSkeleton,
+  DashboardListRowSkeleton,
+  MyBidsSectionSkeleton,
+  MyTeamSectionSkeleton,
+  RecentReportsSkeleton,
+  SubscribedSkeleton,
+} from '../components/dashboard/DashboardSkeletons'
+
+const DashboardMyTeamSection = lazy(() => import('../components/DashboardMyTeamSection'))
 import type { Database } from '../types/database'
-import type { ClockSessionRow } from '../types/clockSessions'
+import type { ClockSessionRow, DashboardStripSession } from '../types/clockSessions'
 
 const DASHBOARD_CLOCK_STRIP_SCOPE_KEY = 'dashboard_clock_strip_scope'
 
@@ -278,8 +296,6 @@ type ChecklistInstance = {
   checklist_instance_assignees?: Array<{ user_id: string }>
 }
 
-const skeletonStyle = { background: '#f3f4f6', borderRadius: 8 }
-
 // Paths each role can access (for filtering pinned items). When role is null, treat as primary to prevent flash.
 const SUBCONTRACTOR_PATHS = new Set(['/', '/dashboard', '/checklist', '/settings', '/tally'])
 const PRIMARY_PATHS = new Set(['/dashboard', '/materials', '/jobs', '/bids', '/calendar', '/checklist', '/settings', '/tally'])
@@ -311,46 +327,6 @@ function filterPinnedByRole(pins: PinnedItem[], role: string | null, estimatorPr
   return pins.filter((p) => allowed.has(p.path))
 }
 
-function ChecklistSkeleton() {
-  return (
-    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-      {[1, 2, 3].map((i) => (
-        <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-          <div style={{ ...skeletonStyle, width: 18, height: 18, flexShrink: 0 }} />
-          <div style={{ ...skeletonStyle, flex: 1, height: 20 }} />
-        </li>
-      ))}
-    </ul>
-  )
-}
-
-function AssignedSkeleton() {
-  return (
-    <div>
-      {[1, 2].map((i) => (
-        <div key={i} style={{ padding: '1rem', marginBottom: '0.75rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
-          <div style={{ ...skeletonStyle, height: 18, width: '60%', marginBottom: 8 }} />
-          <div style={{ ...skeletonStyle, height: 14, width: '40%', marginBottom: 8 }} />
-          <div style={{ ...skeletonStyle, height: 14, width: '30%' }} />
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function SubscribedSkeleton() {
-  return (
-    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-      {[1, 2].map((i) => (
-        <li key={i} style={{ padding: '0.75rem 0', borderBottom: '1px solid #e5e7eb' }}>
-          <div style={{ ...skeletonStyle, height: 16, width: '50%', marginBottom: 4 }} />
-          <div style={{ ...skeletonStyle, height: 14, width: '35%' }} />
-        </li>
-      ))}
-    </ul>
-  )
-}
-
 export default function Dashboard() {
   const navigate = useNavigate()
   const { user: authUser, role, estimatorProspectsAccess } = useAuth()
@@ -379,13 +355,29 @@ export default function Dashboard() {
       })
     })
   }, [myTeam.setMyTeamExpanded])
-  const sessionsForStrip = useMemo(() => {
-    const isOpen = (s: ClockSessionRow) => s.clocked_out_at == null
-    if (showClockStripScopeToggle && clockStripScope === 'everyone') {
-      return myTeam.orgWidePendingSessions.filter(isOpen)
-    }
-    return myTeam.pendingSessions.filter(isOpen)
-  }, [showClockStripScopeToggle, clockStripScope, myTeam.orgWidePendingSessions, myTeam.pendingSessions])
+  const sessionsForStrip = useMemo((): DashboardStripSession[] => {
+    const isOpen = (s: DashboardStripSession) => s.clocked_out_at == null
+    const base =
+      showClockStripScopeToggle && clockStripScope === 'everyone'
+        ? myTeam.orgWidePendingSessions
+        : myTeam.pendingSessions
+    const realOpen = base.filter(isOpen) as ClockSessionRow[]
+    const merged: DashboardStripSession[] = [...realOpen, ...myTeam.stripSyntheticSalarySessions]
+    merged.sort((a, b) => {
+      const an = (a.users?.name ?? '').trim() || a.user_id
+      const bn = (b.users?.name ?? '').trim() || b.user_id
+      const c = an.localeCompare(bn, undefined, { sensitivity: 'base' })
+      if (c !== 0) return c
+      return a.clocked_in_at.localeCompare(b.clocked_in_at)
+    })
+    return merged
+  }, [
+    showClockStripScopeToggle,
+    clockStripScope,
+    myTeam.orgWidePendingSessions,
+    myTeam.pendingSessions,
+    myTeam.stripSyntheticSalarySessions,
+  ])
 
   const hoursTodayForStrip = useMemo(() => {
     if (showClockStripScopeToggle && clockStripScope === 'everyone') {
@@ -506,6 +498,10 @@ export default function Dashboard() {
   const [upcomingInspections, setUpcomingInspections] = useState<Array<{ id: string; address: string; inspection_type: string; scheduled_date: string }>>([])
   const [upcomingInspectionsLoading, setUpcomingInspectionsLoading] = useState(false)
   const [userName, setUserName] = useState<string | null>(null)
+  const clockDisplayName = useMemo(
+    () => userName ?? displayNameFromAuthUser(authUser),
+    [userName, authUser],
+  )
   const [teamFeedbackHomeEnabled, setTeamFeedbackHomeEnabled] = useState(false)
   const [teamFeedbackWizardOpen, setTeamFeedbackWizardOpen] = useState(false)
   const [dispatchInboxEligible, setDispatchInboxEligible] = useState(false)
@@ -521,6 +517,20 @@ export default function Dashboard() {
   const [dispatchNoteSubmitRequestId, setDispatchNoteSubmitRequestId] = useState<string | null>(null)
   const [dispatchNoteDraft, setDispatchNoteDraft] = useState('')
   const expandedDispatchRequestIdRef = useRef<string | null>(null)
+
+  const [estimatorInboxEligible, setEstimatorInboxEligible] = useState(false)
+  const [estimatorRequestsOpen, setEstimatorRequestsOpen] = useState(true)
+  const [estimatorRequests, setEstimatorRequests] = useState<EstimatorInboxRow[]>([])
+  const [estimatorRequestsLoading, setEstimatorRequestsLoading] = useState(false)
+  const [estimatorRequestDismissingId, setEstimatorRequestDismissingId] = useState<string | null>(null)
+  const [expandedEstimatorRequestId, setExpandedEstimatorRequestId] = useState<string | null>(null)
+  const [estimatorThreadNotesByRequestId, setEstimatorThreadNotesByRequestId] = useState<
+    Record<string, EstimatorThreadNoteRow[]>
+  >({})
+  const [estimatorNotesLoadingRequestId, setEstimatorNotesLoadingRequestId] = useState<string | null>(null)
+  const [estimatorNoteSubmitRequestId, setEstimatorNoteSubmitRequestId] = useState<string | null>(null)
+  const [estimatorNoteDraft, setEstimatorNoteDraft] = useState('')
+  const expandedEstimatorRequestIdRef = useRef<string | null>(null)
 
   type MyBidOthersBidItem = {
     id: string
@@ -691,6 +701,29 @@ export default function Dashboard() {
     }
   }, [authUser?.id, role])
 
+  useEffect(() => {
+    if (!authUser?.id) {
+      setEstimatorInboxEligible(false)
+      return
+    }
+    if (role === 'dev') {
+      setEstimatorInboxEligible(true)
+      return
+    }
+    let cancelled = false
+    supabase
+      .from('estimator_group_members')
+      .select('user_id')
+      .eq('user_id', authUser.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setEstimatorInboxEligible(!!data)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [authUser?.id, role])
+
   const loadDispatchRequests = useCallback(() => {
     if (!authUser?.id || !dispatchInboxEligible) {
       setDispatchRequests([])
@@ -842,6 +875,158 @@ export default function Dashboard() {
       supabase.removeChannel(channel)
     }
   }, [authUser?.id, dispatchInboxEligible, loadDispatchNotesForRequest, loadDispatchRequests])
+
+  const loadEstimatorRequests = useCallback(() => {
+    if (!authUser?.id || !estimatorInboxEligible) {
+      setEstimatorRequests([])
+      return
+    }
+    setEstimatorRequestsLoading(true)
+    void Promise.all([
+      supabase
+        .from('estimator_requests')
+        .select(
+          'id, title, links, created_at, from_user_id, reference_summary, location_lat, location_lng, status, closed_at, closed_by_user_id, closed_note, sender:users!estimator_requests_from_user_id_fkey(name, email), closed_by:users!estimator_requests_closed_by_user_id_fkey(name)',
+        )
+        .order('created_at', { ascending: false }),
+      supabase.from('estimator_request_dismissals').select('request_id').eq('user_id', authUser.id),
+    ]).then(async ([requestsRes, dismissalsRes]) => {
+      if (requestsRes.error) {
+        setEstimatorRequestsLoading(false)
+        console.error('Estimator inbox load:', requestsRes.error)
+        return
+      }
+      const dismissedIds = new Set(
+        (dismissalsRes.data ?? []).map((r: { request_id: string }) => r.request_id),
+      )
+      const rows = ((requestsRes.data ?? []) as EstimatorInboxRow[]).filter(
+        (r) => !dismissedIds.has(r.id),
+      )
+      rows.sort((a, b) => {
+        const aOpen = a.status === 'open' ? 1 : 0
+        const bOpen = b.status === 'open' ? 1 : 0
+        if (aOpen !== bOpen) return bOpen - aOpen
+        const aDate = a.status === 'closed' ? (a.closed_at ?? a.created_at ?? '') : (a.created_at ?? '')
+        const bDate = b.status === 'closed' ? (b.closed_at ?? b.created_at ?? '') : (b.created_at ?? '')
+        return bDate.localeCompare(aDate)
+      })
+
+      let merged: EstimatorInboxRow[] = rows.map((r) => ({
+        ...r,
+        note_count: 0,
+        last_note_at: null,
+      }))
+
+      if (rows.length > 0) {
+        try {
+          const statsRows = await withSupabaseRetry(
+            async () =>
+              supabase.rpc('estimator_inbox_note_stats', { p_request_ids: rows.map((r) => r.id) }),
+            'estimator inbox note stats',
+          )
+          type StatRow = { request_id: string; note_count: number; last_note_at: string | null }
+          const list = (statsRows ?? []) as StatRow[]
+          const byId = new Map(
+            list.map((s) => [
+              s.request_id,
+              { note_count: Number(s.note_count), last_note_at: s.last_note_at ?? null },
+            ]),
+          )
+          merged = rows.map((r) => {
+            const s = byId.get(r.id)
+            return {
+              ...r,
+              note_count: s?.note_count ?? 0,
+              last_note_at: s?.last_note_at ?? null,
+            }
+          })
+        } catch (e) {
+          console.error('Estimator inbox note stats:', e)
+        }
+      }
+
+      setEstimatorRequests(merged)
+      setEstimatorRequestsLoading(false)
+    })
+  }, [authUser?.id, estimatorInboxEligible])
+
+  const loadEstimatorNotesForRequest = useCallback(
+    async (requestId: string) => {
+      setEstimatorNotesLoadingRequestId(requestId)
+      try {
+        const data = await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('estimator_request_notes')
+              .select(
+                'id, body, created_at, author:users!estimator_request_notes_author_user_id_fkey(name)',
+              )
+              .eq('request_id', requestId)
+              .order('created_at', { ascending: true }),
+          'load estimator_request notes',
+        )
+        const rows = (data as EstimatorThreadNoteRow[] | null) ?? []
+        setEstimatorThreadNotesByRequestId((prev) => ({ ...prev, [requestId]: rows }))
+      } catch (e) {
+        showToast(formatErrorMessage(e, 'Failed to load estimator notes'), 'error')
+      } finally {
+        setEstimatorNotesLoadingRequestId(null)
+      }
+    },
+    [showToast],
+  )
+
+  useEffect(() => {
+    expandedEstimatorRequestIdRef.current = expandedEstimatorRequestId
+  }, [expandedEstimatorRequestId])
+
+  useEffect(() => {
+    if (!expandedEstimatorRequestId) return
+    setEstimatorNoteDraft('')
+    void loadEstimatorNotesForRequest(expandedEstimatorRequestId)
+  }, [expandedEstimatorRequestId, loadEstimatorNotesForRequest])
+
+  useEffect(() => {
+    if (!authUser?.id || !estimatorInboxEligible) {
+      setEstimatorRequests([])
+      return
+    }
+    loadEstimatorRequests()
+  }, [authUser?.id, estimatorInboxEligible, loadEstimatorRequests])
+
+  useEffect(() => {
+    if (!authUser?.id || !estimatorInboxEligible) return
+    const channel = supabase
+      .channel('dashboard-estimator-requests')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'estimator_requests' }, () => {
+        loadEstimatorRequests()
+      })
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [authUser?.id, estimatorInboxEligible, loadEstimatorRequests])
+
+  useEffect(() => {
+    if (!authUser?.id || !estimatorInboxEligible) return
+    const channel = supabase
+      .channel('dashboard-estimator-request-notes')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'estimator_request_notes' },
+        (payload) => {
+          const rid = (payload.new as { request_id?: string } | null)?.request_id
+          if (rid && expandedEstimatorRequestIdRef.current === rid) {
+            void loadEstimatorNotesForRequest(rid)
+          }
+          loadEstimatorRequests()
+        },
+      )
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [authUser?.id, estimatorInboxEligible, loadEstimatorNotesForRequest, loadEstimatorRequests])
 
   useEffect(() => {
     if (!authUser?.id) {
@@ -1455,29 +1640,24 @@ export default function Dashboard() {
     }
     let cancelled = false
     setUserError(null)
-    setUserLoading(true)
-    setChecklistLoading(true)
-    setAssignedLoading(true)
-    setSubscribedLoading(true)
-
     const today = toLocalDateString(new Date())
+    const cached = readDashboardBootCache(authUser.id, today)
 
-    // Phase 1: Parallel fetch user name, allUsers, subs, checklist (role from useAuth)
-    Promise.all([
-      supabase.from('users').select('name').eq('id', authUser.id).single(),
-      supabase.from('users').select('name'),
-      supabase
-        .from('step_subscriptions')
-        .select('step_id, notify_when_started, notify_when_complete, notify_when_reopened')
-        .eq('user_id', authUser.id)
-        .or('notify_when_started.eq.true,notify_when_complete.eq.true,notify_when_reopened.eq.true'),
-      supabase
-        .from('checklist_instances')
-        .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title, links), checklist_instance_assignees!inner(user_id)')
-        .eq('checklist_instance_assignees.user_id', authUser.id)
-        .eq('scheduled_date', today)
-        .order('created_at', { ascending: true }),
-    ]).then(async ([userRes, allUsersRes, subsRes, checklistRes]) => {
+    if (cached) {
+      setTodayChecklist(cached.todayChecklist as ChecklistInstance[])
+      setChecklistLoading(false)
+      setUserNames(new Set(cached.userNamesLower))
+      setUserName(cached.userName)
+      setUserLoading(false)
+    } else {
+      setUserLoading(true)
+      setChecklistLoading(true)
+      setAssignedLoading(true)
+      setSubscribedLoading(true)
+    }
+
+    // Phase 1: shared query module (see dashboardBootQueries.ts); stale cache hydrates above before this resolves.
+    fetchDashboardPhase1(supabase, authUser.id, today).then(([userRes, allUsersRes, subsRes, checklistRes]) => {
       if (cancelled) return
 
       const { data: userData, error: userErr } = userRes
@@ -1501,28 +1681,45 @@ export default function Dashboard() {
       })
       setUserNames(userNamesSet)
 
-      let checklistData = (checklistRes.data ?? []) as ChecklistInstance[]
-      if (!cancelled && checklistData.length > 0) {
-        const itemIds = [...new Set(checklistData.map((r) => r.checklist_item_id))]
-        const { data: orderData } = await supabase
-          .from('checklist_item_assignees')
-          .select('checklist_item_id, display_order')
-          .eq('user_id', authUser.id)
-          .in('checklist_item_id', itemIds)
-        const orderMap = new Map<string, number>()
-        for (const row of (orderData ?? []) as Array<{ checklist_item_id: string; display_order: number | null }>) {
-          orderMap.set(row.checklist_item_id, row.display_order ?? 999999)
-        }
-        checklistData = [...checklistData].sort((a, b) => {
-          const orderA = orderMap.get(a.checklist_item_id) ?? 999999
-          const orderB = orderMap.get(b.checklist_item_id) ?? 999999
-          if (orderA !== orderB) return orderA - orderB
-          return (a.created_at ?? '').localeCompare(b.created_at ?? '')
+      const checklistDataUnsorted = (checklistRes.data ?? []) as ChecklistInstance[]
+      if (!cancelled) {
+        setTodayChecklist(checklistDataUnsorted)
+        setChecklistLoading(false)
+      }
+
+      const writeBootCache = (checklistForCache: ChecklistInstance[]) => {
+        if (cancelled) return
+        writeDashboardBootCache(authUser.id, today, {
+          userName: user?.name ?? null,
+          userNamesLower: Array.from(userNamesSet),
+          todayChecklist: checklistForCache,
         })
       }
-      if (!cancelled) {
-        setTodayChecklist(checklistData)
-        setChecklistLoading(false)
+
+      if (!cancelled && checklistDataUnsorted.length > 0) {
+        void (async () => {
+          const itemIds = [...new Set(checklistDataUnsorted.map((r) => r.checklist_item_id))]
+          const { data: orderData } = await supabase
+            .from('checklist_item_assignees')
+            .select('checklist_item_id, display_order')
+            .eq('user_id', authUser.id)
+            .in('checklist_item_id', itemIds)
+          if (cancelled) return
+          const orderMap = new Map<string, number>()
+          for (const row of (orderData ?? []) as Array<{ checklist_item_id: string; display_order: number | null }>) {
+            orderMap.set(row.checklist_item_id, row.display_order ?? 999999)
+          }
+          const sorted = [...checklistDataUnsorted].sort((a, b) => {
+            const orderA = orderMap.get(a.checklist_item_id) ?? 999999
+            const orderB = orderMap.get(b.checklist_item_id) ?? 999999
+            if (orderA !== orderB) return orderA - orderB
+            return (a.created_at ?? '').localeCompare(b.created_at ?? '')
+          })
+          if (!cancelled) setTodayChecklist(sorted)
+          writeBootCache(sorted)
+        })()
+      } else if (!cancelled) {
+        writeBootCache(checklistDataUnsorted)
       }
 
       const subs = subsRes.data ?? []
@@ -2812,6 +3009,166 @@ export default function Dashboard() {
     showToast('Dismissed.', 'success')
   }
 
+  function toggleExpandEstimatorRequest(requestId: string) {
+    setExpandedEstimatorRequestId((prev) => (prev === requestId ? null : requestId))
+  }
+
+  async function submitEstimatorNote(requestId: string) {
+    if (!authUser?.id) return
+    const body = estimatorNoteDraft.trim()
+    if (!body) {
+      showToast('Enter a note.', 'error')
+      return
+    }
+    if (body.length > 2000) {
+      showToast('Note must be 2000 characters or less.', 'error')
+      return
+    }
+
+    let wasClosed = false
+    const row = estimatorRequests.find((r) => r.id === requestId)
+    if (row) {
+      wasClosed = row.status === 'closed'
+    } else {
+      const { data: statusRow, error: statusErr } = await supabase
+        .from('estimator_requests')
+        .select('status')
+        .eq('id', requestId)
+        .maybeSingle()
+      if (statusErr) {
+        showToast(statusErr.message, 'error')
+        return
+      }
+      wasClosed = statusRow?.status === 'closed'
+    }
+
+    setEstimatorNoteSubmitRequestId(requestId)
+    try {
+      await withSupabaseRetry(
+        async () =>
+          supabase.from('estimator_request_notes').insert({
+            request_id: requestId,
+            author_user_id: authUser.id,
+            body,
+          }),
+        'insert estimator_request note',
+      )
+
+      if (wasClosed) {
+        try {
+          await withSupabaseRetry(
+            async () =>
+              supabase
+                .from('estimator_requests')
+                .update({
+                  status: 'open',
+                  closed_at: null,
+                  closed_by_user_id: null,
+                  closed_note: null,
+                })
+                .eq('id', requestId),
+            'reopen estimator request',
+          )
+        } catch (reopenErr) {
+          setEstimatorNoteDraft('')
+          await loadEstimatorNotesForRequest(requestId)
+          loadEstimatorRequests()
+          showToast(formatErrorMessage(reopenErr, 'Note saved, but reopen failed.'), 'error')
+          return
+        }
+      }
+
+      setEstimatorNoteDraft('')
+      await loadEstimatorNotesForRequest(requestId)
+      loadEstimatorRequests()
+      showToast(wasClosed ? 'Note added and task reopened.' : 'Note added.', 'success')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Failed to add note'), 'error')
+    } finally {
+      setEstimatorNoteSubmitRequestId(null)
+    }
+  }
+
+  async function submitEstimatorNoteAndClose(requestId: string) {
+    if (!authUser?.id) return
+    const body = estimatorNoteDraft.trim()
+    if (!body) {
+      showToast('Enter a note.', 'error')
+      return
+    }
+    if (body.length > 2000) {
+      showToast('Note must be 2000 characters or less.', 'error')
+      return
+    }
+
+    const row = estimatorRequests.find((r) => r.id === requestId)
+    if (row?.status === 'closed') {
+      showToast('This request is already closed.', 'error')
+      return
+    }
+
+    setEstimatorNoteSubmitRequestId(requestId)
+    try {
+      await withSupabaseRetry(
+        async () =>
+          supabase.from('estimator_request_notes').insert({
+            request_id: requestId,
+            author_user_id: authUser.id,
+            body,
+          }),
+        'insert estimator_request note',
+      )
+
+      try {
+        await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('estimator_requests')
+              .update({
+                status: 'closed',
+                closed_at: new Date().toISOString(),
+                closed_by_user_id: authUser.id,
+                closed_note: body,
+              })
+              .eq('id', requestId),
+          'close estimator request',
+        )
+      } catch (closeErr) {
+        setEstimatorNoteDraft('')
+        await loadEstimatorNotesForRequest(requestId)
+        loadEstimatorRequests()
+        showToast(formatErrorMessage(closeErr, 'Note saved, but mark closed failed.'), 'error')
+        return
+      }
+
+      setEstimatorNoteDraft('')
+      await loadEstimatorNotesForRequest(requestId)
+      loadEstimatorRequests()
+      showToast('Note added and request marked closed.', 'success')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Failed to add note'), 'error')
+    } finally {
+      setEstimatorNoteSubmitRequestId(null)
+    }
+  }
+
+  async function dismissEstimatorRequest(requestId: string) {
+    if (!authUser?.id) return
+    setEstimatorRequestDismissingId(requestId)
+    const { error } = await supabase.from('estimator_request_dismissals').insert({
+      user_id: authUser.id,
+      request_id: requestId,
+    })
+    setEstimatorRequestDismissingId(null)
+    if (error) {
+      showToast(error.message, 'error')
+      return
+    }
+    setEstimatorRequests((prev) => prev.filter((r) => r.id !== requestId))
+    setExpandedEstimatorRequestId((ex) => (ex === requestId ? null : ex))
+    showToast('Dismissed.', 'success')
+  }
+
   const showChecklist = checklistLoading || todayChecklist.length > 0
   const showAssigned = assignedLoading || assignedSteps.length > 0
   const showSubscribed = role === 'dev' || role === 'master_technician' || role === 'assistant'
@@ -2983,6 +3340,7 @@ export default function Dashboard() {
     </>
   )
 
+  /** Above-the-fold: quick actions and clock first; checklist/assigned use skeletons until data arrives. */
   return (
     <div>
       {showDashboardQuickButtons && quickButtonsPlacement === 'top' && (
@@ -2996,7 +3354,7 @@ export default function Dashboard() {
       )}
       {authUser?.id && (
         <div style={{ marginBottom: '1rem' }}>
-          <ClockInOutButton userId={authUser.id} userName={userName} />
+          <ClockInOutButton userId={authUser.id} userName={clockDisplayName} />
         </div>
       )}
       {authUser?.id && teamFeedbackHomeEnabled && (
@@ -3039,7 +3397,8 @@ export default function Dashboard() {
           clockStripScope={clockStripScope}
           onClockStripScopeChange={setClockStripScopePersist}
           showJobBidColumn={showClockStripScopeToggle}
-          onJobBidSaved={() => {
+          onJobBidSaved={(patch) => {
+            myTeam.applyOptimisticClockSessionAssign(patch)
             void myTeam.loadPending({ silent: true })
           }}
           onJobBidAssignError={(msg) => showToast(msg, 'error')}
@@ -3073,14 +3432,7 @@ export default function Dashboard() {
             {readyToBillExpanded && (
             <>
             {readyToBillLoading && readyToBillDashboardUnits.length === 0 ? (
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {[1, 2].map((i) => (
-                  <li key={i} style={{ padding: '0.75rem 0', borderBottom: '1px solid #e5e7eb' }}>
-                    <div style={{ ...skeletonStyle, height: 16, width: '50%', marginBottom: 4 }} />
-                    <div style={{ ...skeletonStyle, height: 14, width: '35%' }} />
-                  </li>
-                ))}
-              </ul>
+              <DashboardListRowSkeleton rows={2} />
             ) : readyToBillDashboardUnits.length === 0 ? (
               <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No jobs or invoices ready to bill yet</p>
             ) : (
@@ -3272,6 +3624,26 @@ export default function Dashboard() {
               onDismiss={dismissDispatchRequest}
             />
           )}
+          {authUser?.id && estimatorInboxEligible && (
+            <EstimatorInboxSection
+              sectionOpen={estimatorRequestsOpen}
+              onToggleSection={() => setEstimatorRequestsOpen((o) => !o)}
+              requests={estimatorRequests}
+              loading={estimatorRequestsLoading}
+              expandedRequestId={expandedEstimatorRequestId}
+              onToggleExpandRequest={toggleExpandEstimatorRequest}
+              notesByRequestId={estimatorThreadNotesByRequestId}
+              notesLoadingRequestId={estimatorNotesLoadingRequestId}
+              noteSubmitRequestId={estimatorNoteSubmitRequestId}
+              canAddNotes={estimatorInboxEligible}
+              estimatorRequestDismissingId={estimatorRequestDismissingId}
+              noteDraft={estimatorNoteDraft}
+              onNoteDraftChange={setEstimatorNoteDraft}
+              onSubmitNote={submitEstimatorNote}
+              onSubmitNoteAndClose={submitEstimatorNoteAndClose}
+              onDismiss={dismissEstimatorRequest}
+            />
+          )}
           {(waitingForPaymentLoading || waitingForPaymentInvoices.length > 0 || waitingForPaymentJobs.length > 0) && (
             <div style={{ marginTop: '2rem', marginBottom: '1rem' }}>
               <button
@@ -3286,14 +3658,7 @@ export default function Dashboard() {
               {waitingForPaymentExpanded && (
               <>
               {waitingForPaymentLoading && waitingForPaymentInvoices.length === 0 && waitingForPaymentJobs.length === 0 ? (
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                  {[1, 2].map((i) => (
-                    <li key={i} style={{ padding: '0.75rem 0', borderBottom: '1px solid #e5e7eb' }}>
-                      <div style={{ ...skeletonStyle, height: 16, width: '50%', marginBottom: 4 }} />
-                      <div style={{ ...skeletonStyle, height: 14, width: '35%' }} />
-                    </li>
-                  ))}
-                </ul>
+                <DashboardListRowSkeleton rows={2} />
               ) : (
                 <div>
                   {waitingForPaymentJobs.map((j) => {
@@ -3394,7 +3759,8 @@ export default function Dashboard() {
           clockStripScope={clockStripScope}
           onClockStripScopeChange={setClockStripScopePersist}
           showJobBidColumn={showClockStripScopeToggle}
-          onJobBidSaved={() => {
+          onJobBidSaved={(patch) => {
+            myTeam.applyOptimisticClockSessionAssign(patch)
             void myTeam.loadPending({ silent: true })
           }}
           onJobBidAssignError={(msg) => showToast(msg, 'error')}
@@ -3422,6 +3788,7 @@ export default function Dashboard() {
           editableRange={getDefaultWeekRange()}
           jobLabels={{}}
           bidLabels={{}}
+          allowNcnsFromMyTime={showClockStripScopeToggle}
           onClose={() => setStripMyTimeEditor(null)}
           onSaved={() => {
             void myTeam.loadPending({ silent: true })
@@ -3451,6 +3818,26 @@ export default function Dashboard() {
           onDismiss={dismissDispatchRequest}
         />
       )}
+      {authUser?.id && estimatorInboxEligible && role !== 'assistant' && (
+        <EstimatorInboxSection
+          sectionOpen={estimatorRequestsOpen}
+          onToggleSection={() => setEstimatorRequestsOpen((o) => !o)}
+          requests={estimatorRequests}
+          loading={estimatorRequestsLoading}
+          expandedRequestId={expandedEstimatorRequestId}
+          onToggleExpandRequest={toggleExpandEstimatorRequest}
+          notesByRequestId={estimatorThreadNotesByRequestId}
+          notesLoadingRequestId={estimatorNotesLoadingRequestId}
+          noteSubmitRequestId={estimatorNoteSubmitRequestId}
+          canAddNotes={estimatorInboxEligible}
+          estimatorRequestDismissingId={estimatorRequestDismissingId}
+          noteDraft={estimatorNoteDraft}
+          onNoteDraftChange={setEstimatorNoteDraft}
+          onSubmitNote={submitEstimatorNote}
+          onSubmitNoteAndClose={submitEstimatorNoteAndClose}
+          onDismiss={dismissEstimatorRequest}
+        />
+      )}
       {(role === 'dev' || role === 'master_technician') && (
         <div style={{ marginTop: '2rem', marginBottom: '1rem' }}>
           <button
@@ -3465,14 +3852,7 @@ export default function Dashboard() {
           {readyToBillExpanded && (
           <>
           {readyToBillLoading && readyToBillDashboardUnits.length === 0 ? (
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {[1, 2].map((i) => (
-                <li key={i} style={{ padding: '0.75rem 0', borderBottom: '1px solid #e5e7eb' }}>
-                  <div style={{ ...skeletonStyle, height: 16, width: '50%', marginBottom: 4 }} />
-                  <div style={{ ...skeletonStyle, height: 14, width: '35%' }} />
-                </li>
-              ))}
-            </ul>
+            <DashboardListRowSkeleton rows={2} />
           ) : readyToBillDashboardUnits.length === 0 ? (
             <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No jobs or invoices ready to bill yet</p>
           ) : (
@@ -3660,14 +4040,7 @@ export default function Dashboard() {
           {waitingForPaymentExpanded && (
           <>
           {waitingForPaymentLoading && waitingForPaymentInvoices.length === 0 && waitingForPaymentJobs.length === 0 ? (
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {[1, 2].map((i) => (
-                <li key={i} style={{ padding: '0.75rem 0', borderBottom: '1px solid #e5e7eb' }}>
-                  <div style={{ ...skeletonStyle, height: 16, width: '50%', marginBottom: 4 }} />
-                  <div style={{ ...skeletonStyle, height: 14, width: '35%' }} />
-                </li>
-              ))}
-            </ul>
+            <DashboardListRowSkeleton rows={2} />
           ) : (
             <div>
               {waitingForPaymentJobs.map((j) => {
@@ -4054,7 +4427,7 @@ export default function Dashboard() {
             )}
           </div>
           {(isMobile || myBidsSectionExpanded) && (myBidsLoading ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
+            <MyBidsSectionSkeleton />
           ) : (
             <>
               {(() => {
@@ -5056,7 +5429,7 @@ export default function Dashboard() {
                 )}
               </div>
               {recentReportsLoading ? (
-                <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading reports…</p>
+                <RecentReportsSkeleton />
               ) : recentReports.length > 0 ? (
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                   {recentReports
@@ -5347,14 +5720,7 @@ export default function Dashboard() {
             </h2>
           </button>
           {assignedJobsExpanded && (assignedJobsLoading && assignedJobs.length === 0 ? (
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {[1, 2].map((i) => (
-                <li key={i} style={{ padding: '0.75rem 0', borderBottom: '1px solid #e5e7eb' }}>
-                  <div style={{ ...skeletonStyle, height: 16, width: '50%', marginBottom: 4 }} />
-                  <div style={{ ...skeletonStyle, height: 14, width: '35%' }} />
-                </li>
-              ))}
-            </ul>
+            <DashboardListRowSkeleton rows={2} />
           ) : (
             <div>
               {assignedJobs.map((j) => (
@@ -5609,14 +5975,7 @@ export default function Dashboard() {
           </button>
           {superintendentJobsExpanded && (
             superintendentJobsLoading && superintendentJobs.length === 0 ? (
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {[1, 2].map((i) => (
-                  <li key={i} style={{ padding: '0.75rem 0', borderBottom: '1px solid #e5e7eb' }}>
-                    <div style={{ ...skeletonStyle, height: 16, width: '50%', marginBottom: 4 }} />
-                    <div style={{ ...skeletonStyle, height: 14, width: '35%' }} />
-                  </li>
-                ))}
-              </ul>
+              <DashboardListRowSkeleton rows={2} />
             ) : (
               <div>
                 {superintendentJobs
@@ -5873,11 +6232,13 @@ export default function Dashboard() {
       )}
 
       {authUser?.id && (
-        <DashboardMyTeamSection
-          myTeam={myTeam}
-          showPendingBannerAtTop={pendingClockBannerAtMyTeamTop}
-          onGoToPendingSessions={goToPendingSessionsInMyTeam}
-        />
+        <Suspense fallback={<MyTeamSectionSkeleton />}>
+          <DashboardMyTeamSection
+            myTeam={myTeam}
+            showPendingBannerAtTop={pendingClockBannerAtMyTeamTop}
+            onGoToPendingSessions={goToPendingSessionsInMyTeam}
+          />
+        </Suspense>
       )}
 
       {authUser?.id && (

@@ -1,6 +1,51 @@
 /** Company-wide calendar for work_date, week gates, and My Time (matches server RPCs). */
 export const APP_CALENDAR_TZ = 'America/Chicago'
 
+/** Stable UTC instant (noon) for a civil YYYY-MM-DD — used for DST-aware zone offset labels. */
+export function referenceDateForWorkDateYmd(workDateYmd: string): Date {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(workDateYmd.trim())
+  if (!m) return new Date()
+  const y = Number(m[1])
+  const mo = Number(m[2]) - 1
+  const d = Number(m[3])
+  return new Date(Date.UTC(y, mo, d, 12, 0, 0))
+}
+
+/** E.g. UTC−06:00 (Unicode minus). Null if `Intl` longOffset is unavailable. */
+export function formatIanaTimeZoneLongOffsetLabel(iana: string, at: Date): string | null {
+  try {
+    const dtf = new Intl.DateTimeFormat('en-US', { timeZone: iana, timeZoneName: 'longOffset' })
+    const parts = dtf.formatToParts(at)
+    const tzPart = parts.find((p) => p.type === 'timeZoneName')?.value
+    if (!tzPart) return null
+    let m = tzPart.match(/^GMT([+-])(\d{1,2})(?::(\d{2}))?$/)
+    if (!m && tzPart.startsWith('UTC')) {
+      m = tzPart.match(/^UTC([+-])(\d{1,2})(?::(\d{2}))?$/)
+    }
+    if (!m) return null
+    const sign = m[1]
+    const hh = (m[2] ?? '0').padStart(2, '0')
+    const mm = (m[3] ?? '00').padStart(2, '0')
+    const unicodeMinus = '\u2212'
+    const displaySign = sign === '-' ? unicodeMinus : '+'
+    return `UTC${displaySign}${hh}:${mm}`
+  } catch {
+    return null
+  }
+}
+
+/** E.g. CST, CDT (DST-aware for `at`). Null if `Intl` short name is unavailable. */
+export function formatIanaTimeZoneShortAbbrev(iana: string, at: Date): string | null {
+  try {
+    const dtf = new Intl.DateTimeFormat('en-US', { timeZone: iana, timeZoneName: 'short' })
+    const parts = dtf.formatToParts(at)
+    const v = parts.find((p) => p.type === 'timeZoneName')?.value?.trim()
+    return v && v.length > 0 ? v : null
+  } catch {
+    return null
+  }
+}
+
 const CHICAGO_WEEKDAY_SHORT_SUN0 = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
 
 function companyWeekdaySunday0(ms: number): number {

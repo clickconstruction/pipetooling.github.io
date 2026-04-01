@@ -32,6 +32,7 @@ import {
   parseDatetimeLocalToMs,
   parseTimeOnAnchorDateToMs,
 } from './myTimeDayEditorDatetime'
+import { ForceClockOutIcon } from '../icons/ForceClockOutIcon'
 
 function formatDurationMs(ms: number): string {
   const h = ms / 3600000
@@ -94,6 +95,8 @@ export type MyTimeDayClusterFormProps = {
   resolveAssignSession?: (segIdx: number) => Promise<AssignSessionJobPopoverSession | null>
   /** When set, distinct job/bid on merge opens parent modal instead of confirm-only. */
   onRequestMergeJobChoice?: (payload: { direction: 'prev' | 'next'; segIdx: number }) => void
+  onForceClockOut?: (session: DayEditorSession) => void
+  onAdjustTimes?: (session: DayEditorSession) => void
 }
 
 export function MyTimeDayClusterForm({
@@ -115,6 +118,8 @@ export function MyTimeDayClusterForm({
   onAssignJobSaved,
   resolveAssignSession,
   onRequestMergeJobChoice,
+  onForceClockOut,
+  onAdjustTimes,
 }: MyTimeDayClusterFormProps) {
   const timeOnlyMode = denverSameCalendarDay(t0, t1)
   const anchorYmd = anchorDateYmdFromClusterStart(t0)
@@ -145,18 +150,51 @@ export function MyTimeDayClusterForm({
       >
         {formatDenverBlockDateHeader(t0, t1)}
       </span>
-      <span
+      <div
         style={{
-          fontSize: '0.65rem',
-          color: '#9ca3af',
-          fontVariantNumeric: 'tabular-nums',
-          lineHeight: 1.15,
-          textAlign: 'left',
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          gap: 6,
+          justifyContent: 'flex-start',
         }}
       >
-        {formatDenverTimeOnly(t0)} – {formatDenverTimeOnly(t1)}
-        {!lastS.clocked_out_at ? ' (open)' : ''}
-      </span>
+        <span
+          style={{
+            fontSize: '0.65rem',
+            color: '#9ca3af',
+            fontVariantNumeric: 'tabular-nums',
+            lineHeight: 1.15,
+            textAlign: 'left',
+          }}
+        >
+          {formatDenverTimeOnly(t0)} – {formatDenverTimeOnly(t1)}
+        </span>
+        {onForceClockOut && !lastS.clocked_out_at ? (
+          <button
+            type="button"
+            disabled={saving}
+            title="Force clock out and fix hours"
+            aria-label="Force clock out and fix hours"
+            onClick={() => onForceClockOut(lastS)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: 0,
+              padding: 0,
+              border: 'none',
+              background: 'transparent',
+              cursor: saving ? 'not-allowed' : 'pointer',
+              color: '#6b7280',
+              lineHeight: 0,
+              verticalAlign: 'middle',
+            }}
+          >
+            <ForceClockOutIcon />
+          </button>
+        ) : null}
+      </div>
     </div>
   )
 
@@ -200,8 +238,6 @@ export function MyTimeDayClusterForm({
           !saving &&
           allocLabels.length === 1 &&
           allocLabels[0] !== NO_JOB_BID_LINKED_LABEL
-        const changeAssignTargetRow =
-          showSingleAssignedChange ? clockSessionRowForSegmentAssign(c, split, nowTick, segIdx) : null
         const endInputId = `my-time-${clusterId}-seg-${segIdx}-end`
         const openLastCluster = !lastS.clocked_out_at
 
@@ -212,6 +248,11 @@ export function MyTimeDayClusterForm({
           : denverSameCalendarDay(a, b)
             ? formatDenverTimeRangeSameDay(a, b)
             : `${formatDenverDateTimeShort(a)} – ${formatDenverDateTimeShort(b)}`
+
+        const adjustRow = clockSessionRowForSegmentAssign(c, split, nowTick, segIdx)
+        const changeAssignTargetRow = showSingleAssignedChange ? adjustRow : null
+        const spanAndDurText = `${spanRangeText} [${formatDurationMs(dur)}]`
+        const spanAdjustClickable = Boolean(onAdjustTimes && adjustRow && !saving)
 
         return (
           <Fragment key={`seg-form-${clusterId}-${segIdx}`}>
@@ -226,7 +267,25 @@ export function MyTimeDayClusterForm({
             >
               <div style={FORM_ROW_GRID}>
                 <span style={FORM_LABEL_CELL}>Span</span>
-                <span style={FORM_SPAN_VALUE_TEXT}>{spanRangeText}</span>
+                {spanAdjustClickable ? (
+                  <button
+                    type="button"
+                    className="myTimeDaySpanAdjustLink"
+                    disabled={saving}
+                    aria-label="Adjust clock-in and clock-out for this segment"
+                    onClick={() => adjustRow && onAdjustTimes?.(adjustRow)}
+                    style={{
+                      fontSize: FORM_SPAN_VALUE_TEXT.fontSize,
+                      fontVariantNumeric: FORM_SPAN_VALUE_TEXT.fontVariantNumeric,
+                      minWidth: FORM_SPAN_VALUE_TEXT.minWidth,
+                      margin: 0,
+                    }}
+                  >
+                    {spanAndDurText}
+                  </button>
+                ) : (
+                  <span style={FORM_SPAN_VALUE_TEXT}>{spanAndDurText}</span>
+                )}
               </div>
               {canSplitThis ? (
                 <div style={{ ...FORM_ROW_GRID, marginTop: 6 }}>
@@ -298,7 +357,6 @@ export function MyTimeDayClusterForm({
                   minWidth: 0,
                 }}
               >
-                <span style={FORM_SPAN_VALUE_TEXT}>[{formatDurationMs(dur)}]</span>
                 {split.boundaries.length > 2 && !saving ? (
                   <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
                     {segIdx > 0 ? (

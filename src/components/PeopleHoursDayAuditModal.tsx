@@ -519,13 +519,15 @@ export function PeopleHoursDayAuditModal({
                         </span>
                       )}
                       {showClockEdit ? (
-                        <button
-                          type="button"
-                          onClick={() => setClockEditSession(s)}
-                          style={{ marginLeft: 'auto', padding: '0.15rem 0.45rem', fontSize: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer' }}
-                        >
-                          Edit
-                        </button>
+                        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
+                          <button
+                            type="button"
+                            onClick={() => setClockEditSession(s)}
+                            style={{ padding: '0.15rem 0.45rem', fontSize: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer' }}
+                          >
+                            Edit
+                          </button>
+                        </div>
                       ) : null}
                     </div>
                     {notesRaw ? (

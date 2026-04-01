@@ -132,7 +132,8 @@ pipetooling.github.io/
 - **`src/pages/Jobs.tsx`** - Jobs (Reports, Stages, Billing, Team Labor, Sub Labor, Parts, Job Summary, Inspections, Teams Summary tabs)
 - **`src/pages/Prospects.tsx`** - Lead management (Convert tab, callbacks, Team tab for dev/assistant)
 - **`src/pages/Quickfill.tsx`** - Billing workflow (Crew Jobs / Bids, Receivables, Billed sections)
-- **`src/pages/Dashboard.tsx`** - Reports, pins, Estimator Dashboard
+- **`src/pages/Dashboard.tsx`** - Reports, pins, Estimator Dashboard; **clock strip** **Assign** uses **`applyOptimisticClockSessionAssign`** (from **`useDashboardMyTeamSectionState`**) for instant job/bid labels, then silent **`loadPending`**
+- **`src/components/Layout.tsx`** - Nav; right cluster **Task Dispatch** / **Estimator Inbox** / **Task** / **Bid** share **`headerActionButtonBase`** height
 - **`src/components/my-time-day-editor/`** - Dashboard **My Time** **Edit time** modal: **Form** vs **Visual** cluster editor (`MyTimeDayClusterForm.tsx`, `MyTimeDayClusterVisual.tsx`, `MyTimeMergeSegmentsModal.tsx`, datetime helpers)
 - **`src/hooks/useAuth.ts`** - Authentication state and user role; used throughout app
 - **`src/hooks/usePushNotifications.ts`** - Push notification subscriptions for Checklist
@@ -214,7 +215,7 @@ AI agents or automated tests can sign in without a password using the dev-login 
 | User role permissions | `ACCESS_CONTROL.md` → Page/Feature access matrices |
 | Adding a new role | `ADDING_A_NEW_ROLE.md` → Step-by-step guide |
 | Term definitions | `GLOSSARY.md` → All domain terms and concepts |
-| Recent changes and features | `RECENT_FEATURES.md` → Chronological updates |
+| Recent changes and features | `RECENT_FEATURES.md` → Chronological updates (e.g. v2.214 layout + strip Assign UX + calendar chips) |
 | Bids system | `BIDS_SYSTEM.md` → Complete workflow documentation |
 | Edge Functions API | `EDGE_FUNCTIONS.md` → All 10 functions with examples |
 | Migration history | `MIGRATIONS.md` → All migrations by date and category |

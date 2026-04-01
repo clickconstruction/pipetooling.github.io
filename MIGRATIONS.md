@@ -116,6 +116,36 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Superintendent, primary, estimator, subcontractor (and others not pay-master / assistant / cost-matrix-shared) who are salaried see the workday editor; still no INSERT/UPDATE on `people_pay_config` without pay access
 - **Category**: People / RLS / Settings
 
+**`20270331170000_user_time_off.sql`**
+- **Purpose**: **`user_time_off`** — per-user time-off ranges (`start_date`/`end_date`, `kind`) for **Calendar** and salary sync
+- **Changes**: Create table + index `(user_id, start_date, end_date)`; RLS SELECT (self, `salary_schedule_staff_or_self_target`, team lead), INSERT/UPDATE/DELETE self-only
+- **Impact**: Settings **Unpaid time off**; `/calendar` chips when salaried; input for **`salary_sync_one_user_clock_sessions`** time-off skip. **`kind`** became **`unpaid` only** in **`20270331190000`**
+- **Category**: People / Calendar / RLS
+
+**`20270331180000_salary_sync_respect_user_time_off.sql`**
+- **Purpose**: On company **`work_date`** covered by **`user_time_off`**, delete **non-final** `clock_sessions` with **`origin = 'salary_schedule'`** and skip opening new salary sessions
+- **Changes**: `CREATE OR REPLACE` **`salary_sync_one_user_clock_sessions`** with early PTO check + `DELETE` guarded by `approved_at`/`rejected_at`/`revoked_at` null; re-comment + `REVOKE ALL` on function
+- **Impact**: PTO days no longer show **On shift** from auto salary sessions after sync
+- **Category**: People / Hours / Dashboard
+
+**`20270331190000_user_time_off_unpaid_only.sql`**
+- **Purpose**: **`user_time_off.kind`** is **`unpaid` only** (backfill + constraint + default)
+- **Changes**: `UPDATE` legacy `kind` → `unpaid`; drop/recreate `user_time_off_kind_check` **CHECK (`kind = 'unpaid')`**; `ALTER COLUMN kind SET DEFAULT 'unpaid'`; column comment
+- **Impact**: Settings UI and Calendar labels are unpaid-only; inserts must satisfy constraint
+- **Category**: People / Calendar
+
+**`20270331191000_salary_template_exclude_weekends.sql`**
+- **Purpose**: Default **Mon–Fri** salary materialization: skip **Sat–Sun** unless a **meaningful** `salary_work_schedule_day_overrides` row exists for that `work_date`
+- **Changes**: `salary_work_schedule_templates.exclude_weekends` (NOT NULL DEFAULT true); `CREATE OR REPLACE` **`salary_sync_one_user_clock_sessions`** — after PTO and template load, if `exclude_weekends` and ISO weekend and not meaningful override, `DELETE` non-final `salary_schedule` rows for that day and `RETURN`
+- **Impact**: Settings **Weekdays only** checkbox; Calendar **`resolveCalendarWorkday`** matches sync; optional weekend work via **Custom schedule for this date**
+- **Category**: People / Hours / Calendar
+
+**`20270331193000_writeups_templates_and_submissions.sql`**
+- **Purpose**: **Writeups** — HR-style forms on People (**Writeups** tab; `writeup_templates`, `writeups`, enum **`writeup_disclosure`**)
+- **Changes**: Create **`writeup_disclosure`**, **`writeup_templates`** (`schema` JSONB blocks), **`writeups`** (subject/filled_by FK to **`users`**, draft vs submitted, **`answers` JSONB**); RLS staff bundle matching contracts; submitted rows not updatable (draft UPDATE only); draft DELETE for staff, submitted DELETE for dev
+- **Impact**: People **Writeups** tab; template builder + list/filter by subject; **Discussed with subject** / **Withheld from subject** on submit
+- **Category**: People / RLS
+
 **`20270331140000_salary_schedule_and_clock_origin.sql`**
 - **Purpose**: Salaried 8h schedule templates, optional day overrides, `clock_sessions.origin` / `salary_segment_index`, and sync RPCs for auto open/close salary sessions
 - **Changes**: Tables `salary_work_schedule_templates`, `salary_work_schedule_day_overrides`; unique partial indexes on salary sessions; restrict client INSERT to `user_punch`; `sync_salary_clock_sessions_for_day` (service_role), `sync_salary_clock_sessions_for_user_day` (authenticated); internal `salary_sync_one_user_clock_sessions`
@@ -573,6 +603,20 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### April 2026
 
+#### April 1, 2026
+
+**`20260401052909_mercury_transactions_ledger.sql`**
+- **Purpose**: **Banking (dev)**: ledger table **`mercury_transactions`** synced from Mercury API (`sync-mercury-transactions` / **`mercury-webhook`**); **RLS** dev-only **`SELECT`**, no client writes (service role upserts)
+- **Changes**: `CREATE TABLE mercury_transactions` (Mercury tx id, account, amounts, status/kind, category JSON, `raw`, `synced_at`); indexes; policies
+- **Impact**: [`Banking.tsx`](src/pages/Banking.tsx) read-only grid; Edge Functions documented in **`EDGE_FUNCTIONS.md`**
+- **Category**: Banking / Integrations / RLS
+
+**`20260401004452_attendance_incidents_subject_select_own.sql`**
+- **Purpose**: Let the **subject** of an attendance incident **SELECT** their own row (Calendar NCNS chip)
+- **Changes**: `CREATE POLICY "Attendance incidents subject select own"` **`FOR SELECT`** **`USING (subject_user_id = auth.uid())`**
+- **Impact**: [`Calendar.tsx`](src/pages/Calendar.tsx) can load NCNS for signed-in user without staff/team-lead role; staff policies unchanged (ORed)
+- **Category**: People / RLS / Calendar
+
 #### April 25, 2026
 
 **`20260425120000_add_job_owner_override_robert.sql`**
@@ -942,6 +986,18 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Changes**: Create `person_offsets` (person_name, type backcharge|damage, amount, description, occurred_date, pay_stub_id nullable); RLS same as pay_stubs
 - **Impact**: People Offsets tab; offsets shown on pay reports (applied reduce net pay, pending listed for visibility)
 - **Category**: People / Offsets
+
+**`20260331191952_estimator_inbox_group_and_requests.sql`**
+- **Purpose**: **Estimator Inbox** — parallel to Task Dispatch: separate group, requests, thread notes, dismissals, and `estimator_inbox_note_stats` RPC
+- **Changes**: `estimator_group_members` (assistant/estimator); `is_estimator_group_member()`; `estimator_requests` (mirror dispatch columns + job/bid/location/closed_note); guard trigger; `estimator_request_notes`; `estimator_request_dismissals`; RLS aligned with dispatch; `GRANT EXECUTE` on `estimator_inbox_note_stats(uuid[])`
+- **Impact**: Layout purple pencil → send modal; Dashboard **Estimator inbox**; Settings **Estimator Inbox group**; Edge `notify-estimator-request`
+- **Category**: Dashboard / Notifications / RLS
+
+**`20260331232529_ncns_reject_day_sessions.sql`**
+- **Purpose**: **NCNS** (no-call-no-show) from team **My Time** day editor: record **`attendance_incidents`** and reject all **closed** **`clock_sessions`** for a user **`work_date`**
+- **Changes**: Create **`attendance_incidents`** ( **`incident_type`** check **`no_call_no_show`**, **`metadata`** JSONB); RLS (staff bundle + team lead for subject, dev update/delete); **`record_ncns_and_reject_sessions_for_day`** — pay staff or team lead for subject; for **approved** sessions subtract **`people_hours`** (same as **`revoke_clock_sessions`**), sync crew job/bid, then **`rejected_at`** / clear approval; insert incident with **`had_approved_sessions`** in **`metadata`**
+- **Impact**: Dashboard **My Time** modal (strip) **NCNS** button; **two-step** confirm when any session was approved
+- **Category**: People / Hours / Dashboard / RLS
 
 **`20260321120000_create_person_licenses.sql`**
 - **Purpose**: Licenses per person (plumber, journeyman, etc.)

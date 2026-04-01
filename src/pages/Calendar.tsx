@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import './Calendar.css'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import type { Database } from '../types/database'
+import { withSupabaseRetry } from '../utils/errorHandling'
+import { aggregateCalendarClockedHoursByDate } from '../lib/calendarClockedHoursByDate'
+import { resolveCalendarWorkday, UNPAID_TIME_OFF_LABEL } from '../lib/resolveCalendarWorkday'
 
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator'
 
@@ -30,6 +35,23 @@ type CalendarProspectCallback = {
   title: string | null
 }
 
+type SalaryTemplateRow = Database['public']['Tables']['salary_work_schedule_templates']['Row']
+type SalaryOverrideRow = Database['public']['Tables']['salary_work_schedule_day_overrides']['Row']
+type UserTimeOffRow = Database['public']['Tables']['user_time_off']['Row']
+
+type NcnsCalendarDayInfo = {
+  id: string
+  created_at: string
+  details: string | null
+}
+
+type UpcomingListItem =
+  | { dateKey: string; type: 'step'; step: CalendarStep }
+  | { dateKey: string; type: 'bid'; bid: CalendarBid }
+  | { dateKey: string; type: 'callback'; callback: CalendarProspectCallback }
+  | { dateKey: string; type: 'time_off'; timeOff: UserTimeOffRow }
+  | { dateKey: string; type: 'salary_override'; workDate: string }
+
 function getBidSubmissionStatus(bid: CalendarBid): 'on time' | 'early' | 'not sent' {
   if (!bid.bid_date_sent || !bid.bid_date_sent.trim()) return 'not sent'
   const dueDate = bid.bid_due_date.slice(0, 10)
@@ -40,6 +62,21 @@ function getBidSubmissionStatus(bid: CalendarBid): 'on time' | 'early' | 'not se
 
 function getBidSubmissionStatusColor(status: 'on time' | 'early' | 'not sent'): string {
   return status === 'not sent' ? '#dc2626' : '#16a34a'
+}
+
+const CALENDAR_DAY_ACCENT = '#2563eb'
+const CALENDAR_DAY_HOVER_BG = '#eff6ff'
+/** In-month date numeral on white / hover (slightly darker than border for readability). */
+const CALENDAR_DAY_NUMERAL = '#1d4ed8'
+
+function calendarGridDayAriaLabel(day: Date): string {
+  const when = day.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  })
+  return `${when}, open day details`
 }
 
 // Helper functions for Central Time (America/Chicago timezone)
@@ -86,6 +123,86 @@ function getCentralDate(date: Date): Date {
   return new Date(year, month, day)
 }
 
+/** Month grid: anchor month plus leading/trailing weekdays from adjacent months (matches calendar UI). */
+function getDaysInMonth(date: Date): Date[] {
+  const year = date.getFullYear()
+  const month = date.getMonth()
+  const firstDay = new Date(year, month, 1)
+  const lastDay = new Date(year, month + 1, 0)
+  const days: Date[] = []
+
+  const startDayOfWeek = firstDay.getDay()
+  for (let i = startDayOfWeek - 1; i >= 0; i--) {
+    days.push(new Date(year, month, -i))
+  }
+
+  for (let day = 1; day <= lastDay.getDate(); day++) {
+    days.push(new Date(year, month, day))
+  }
+
+  const endDayOfWeek = lastDay.getDay()
+  for (let day = 1; day <= 6 - endDayOfWeek; day++) {
+    days.push(new Date(year, month + 1, day))
+  }
+
+  return days
+}
+
+/** YYYY-MM-DD bounds for all cells shown in the month grid (includes padding days). */
+function getVisibleGridDateRange(anchorMonth: Date): { gridStart: string; gridEnd: string } {
+  const keys = getDaysInMonth(anchorMonth).map((d) => formatDateKey(d))
+  if (keys.length === 0) {
+    const y = anchorMonth.getFullYear()
+    const m = anchorMonth.getMonth()
+    const fallbackStart = formatDateKey(new Date(y, m, 1))
+    const fallbackEnd = formatDateKey(new Date(y, m + 1, 0))
+    return { gridStart: fallbackStart, gridEnd: fallbackEnd }
+  }
+  let gridStart = keys[0] as string
+  let gridEnd = keys[0] as string
+  for (const k of keys) {
+    if (k < gridStart) gridStart = k
+    if (k > gridEnd) gridEnd = k
+  }
+  return { gridStart, gridEnd }
+}
+
+/** Green scheduled chips are a forward projection; PTO (`time_off`) still shows on all dates. */
+function showScheduledSalaryProjectionForYmd(dayYmd: string, todayYmd: string): boolean {
+  return dayYmd > todayYmd
+}
+
+function ncnsCalendarChipTitle(info: NcnsCalendarDayInfo): string {
+  const base = 'No-call, no-show recorded for this day.'
+  const d = info.details?.trim()
+  if (!d) return base
+  return d.length > 160 ? `${base} ${d.slice(0, 157)}…` : `${base} ${d}`
+}
+
+function formatCalendarRecordedLine(rec: { hours: number; openCount: number } | undefined): {
+  text: string
+  title: string
+} {
+  const titleBase = 'Sum of closed clock sessions (not rejected, not revoked).'
+  if (!rec || (rec.hours < 1e-6 && rec.openCount === 0)) {
+    return { text: 'Recorded —', title: titleBase }
+  }
+  if (rec.hours < 1e-6 && rec.openCount > 0) {
+    return {
+      text: rec.openCount === 1 ? 'Clocked in (open)' : `Clocked in (${rec.openCount} open)`,
+      title: `${titleBase} Open session(s) not counted in hours until clocked out.`,
+    }
+  }
+  const h = rec.hours
+  const value = h >= 10 ? h.toFixed(1) : h.toFixed(2)
+  const openNote = rec.openCount > 0 ? ` ${rec.openCount} open session(s).` : ''
+  return { text: `Recorded ${value}h`, title: titleBase + openNote }
+}
+
+function calendarRecordedHasVisibleSummary(rec: { hours: number; openCount: number } | undefined): boolean {
+  return Boolean(rec && (rec.hours >= 1e-6 || rec.openCount > 0))
+}
+
 export default function Calendar() {
   const { user: authUser } = useAuth()
   const [userName, setUserName] = useState<string | null>(null)
@@ -95,11 +212,102 @@ export default function Calendar() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedDayForModal, setSelectedDayForModal] = useState<Date | null>(null)
+  const [showMyWorkday, setShowMyWorkday] = useState(true)
+  const [showRecordedTime, setShowRecordedTime] = useState(true)
+  const [isSalaryLayerEligible, setIsSalaryLayerEligible] = useState(false)
+  const [salaryTemplate, setSalaryTemplate] = useState<SalaryTemplateRow | null>(null)
+  const [salaryOverridesByDate, setSalaryOverridesByDate] = useState<Record<string, SalaryOverrideRow>>({})
+  const [timeOffRows, setTimeOffRows] = useState<UserTimeOffRow[]>([])
+  const [ncnsByWorkDate, setNcnsByWorkDate] = useState<Map<string, NcnsCalendarDayInfo>>(() => new Map())
+  const [recordedByWorkDate, setRecordedByWorkDate] = useState<
+    Record<string, { hours: number; openCount: number }>
+  >({})
   // Initialize currentMonth in Central Time
   const [currentMonth, setCurrentMonth] = useState(() => {
     const now = new Date()
     return getCentralDate(now)
   })
+
+  useEffect(() => {
+    if (!authUser?.id) return
+    try {
+      const v = localStorage.getItem(`calendar_show_my_workday_${authUser.id}`)
+      if (v !== null) setShowMyWorkday(v === 'true')
+    } catch {
+      /* ignore */
+    }
+  }, [authUser?.id])
+
+  useEffect(() => {
+    if (!authUser?.id) return
+    try {
+      const v = localStorage.getItem(`calendar_show_recorded_time_${authUser.id}`)
+      if (v !== null) setShowRecordedTime(v === 'true')
+    } catch {
+      /* ignore */
+    }
+  }, [authUser?.id])
+
+  useEffect(() => {
+    const uid = authUser?.id
+    if (!uid) {
+      setNcnsByWorkDate(new Map())
+      setRecordedByWorkDate({})
+      return
+    }
+    const { gridStart, gridEnd } = getVisibleGridDateRange(currentMonth)
+    let cancelled = false
+    ;(async () => {
+      try {
+        const [incidentList, clockRows] = await Promise.all([
+          withSupabaseRetry(
+            async () =>
+              await supabase
+                .from('attendance_incidents')
+                .select('id, work_date, created_at, details')
+                .eq('subject_user_id', uid)
+                .eq('incident_type', 'no_call_no_show')
+                .gte('work_date', gridStart)
+                .lte('work_date', gridEnd)
+                .order('created_at', { ascending: false }),
+            'calendar ncns incidents'
+          ),
+          withSupabaseRetry(
+            async () =>
+              await supabase
+                .from('clock_sessions')
+                .select('work_date, clocked_in_at, clocked_out_at, rejected_at, revoked_at')
+                .eq('user_id', uid)
+                .gte('work_date', gridStart)
+                .lte('work_date', gridEnd),
+            'calendar clock sessions month'
+          ),
+        ])
+        if (cancelled) return
+        const nextNcns = new Map<string, NcnsCalendarDayInfo>()
+        for (const row of incidentList ?? []) {
+          const wd = row.work_date
+          if (!nextNcns.has(wd)) {
+            nextNcns.set(wd, {
+              id: row.id,
+              created_at: row.created_at,
+              details: row.details ?? null,
+            })
+          }
+        }
+        setNcnsByWorkDate(nextNcns)
+        setRecordedByWorkDate(aggregateCalendarClockedHoursByDate(clockRows ?? []))
+      } catch {
+        if (!cancelled) {
+          setNcnsByWorkDate(new Map())
+          setRecordedByWorkDate({})
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [authUser?.id, currentMonth])
 
   useEffect(() => {
     if (!authUser?.id) {
@@ -122,6 +330,81 @@ export default function Calendar() {
       setLoading(false)
     })()
   }, [authUser?.id])
+
+  useEffect(() => {
+    if (!authUser?.id || !userName?.trim()) {
+      setIsSalaryLayerEligible(false)
+      setSalaryTemplate(null)
+      setSalaryOverridesByDate({})
+      setTimeOffRows([])
+      return
+    }
+    const { gridStart, gridEnd } = getVisibleGridDateRange(currentMonth)
+    ;(async () => {
+      try {
+        const payRow = await withSupabaseRetry(
+          async () =>
+            supabase.from('people_pay_config').select('is_salary').eq('person_name', userName.trim()).maybeSingle(),
+          'calendar pay config',
+        )
+        const isSalary = !!(payRow as { is_salary?: boolean } | null)?.is_salary
+        if (!isSalary) {
+          setIsSalaryLayerEligible(false)
+          setSalaryTemplate(null)
+          setSalaryOverridesByDate({})
+          setTimeOffRows([])
+          return
+        }
+        const template = await withSupabaseRetry(
+          async () =>
+            supabase.from('salary_work_schedule_templates').select('*').eq('user_id', authUser.id).maybeSingle(),
+          'calendar salary template',
+        )
+        if (!template) {
+          setIsSalaryLayerEligible(false)
+          setSalaryTemplate(null)
+          setSalaryOverridesByDate({})
+          setTimeOffRows([])
+          return
+        }
+        setIsSalaryLayerEligible(true)
+        setSalaryTemplate(template)
+        const [ovList, ptoList] = await Promise.all([
+          withSupabaseRetry(
+            async () =>
+              supabase
+                .from('salary_work_schedule_day_overrides')
+                .select('*')
+                .eq('user_id', authUser.id)
+                .gte('work_date', gridStart)
+                .lte('work_date', gridEnd),
+            'calendar salary overrides',
+          ),
+          withSupabaseRetry(
+            async () =>
+              supabase
+                .from('user_time_off')
+                .select('*')
+                .eq('user_id', authUser.id)
+                .lte('start_date', gridEnd)
+                .gte('end_date', gridStart),
+            'calendar user time off',
+          ),
+        ])
+        const map: Record<string, SalaryOverrideRow> = {}
+        for (const row of ovList ?? []) {
+          map[row.work_date] = row
+        }
+        setSalaryOverridesByDate(map)
+        setTimeOffRows(ptoList ?? [])
+      } catch {
+        setIsSalaryLayerEligible(false)
+        setSalaryTemplate(null)
+        setSalaryOverridesByDate({})
+        setTimeOffRows([])
+      }
+    })()
+  }, [authUser?.id, userName, currentMonth])
 
   async function loadAssignedSteps(name: string | null) {
     if (!name) {
@@ -247,33 +530,6 @@ export default function Calendar() {
     setProspectCallbacks((data ?? []) as CalendarProspectCallback[])
   }
 
-  function getDaysInMonth(date: Date): Date[] {
-    const year = date.getFullYear()
-    const month = date.getMonth()
-    const firstDay = new Date(year, month, 1)
-    const lastDay = new Date(year, month + 1, 0)
-    const days: Date[] = []
-    
-    // Add padding days from previous month
-    const startDayOfWeek = firstDay.getDay()
-    for (let i = startDayOfWeek - 1; i >= 0; i--) {
-      days.push(new Date(year, month, -i))
-    }
-    
-    // Add days of current month
-    for (let day = 1; day <= lastDay.getDate(); day++) {
-      days.push(new Date(year, month, day))
-    }
-    
-    // Add padding days to fill last week
-    const endDayOfWeek = lastDay.getDay()
-    for (let day = 1; day <= 6 - endDayOfWeek; day++) {
-      days.push(new Date(year, month + 1, day))
-    }
-    
-    return days
-  }
-
   function getStepsForDate(date: Date): CalendarStep[] {
     const dateKey = formatDateKey(date)
     return steps.filter((s) => {
@@ -321,8 +577,17 @@ export default function Calendar() {
     return null
   }
 
-  function buildUpcomingList(): Array<{ dateKey: string; type: 'step' | 'bid' | 'callback'; step?: CalendarStep; bid?: CalendarBid; callback?: CalendarProspectCallback }> {
-    const items: Array<{ dateKey: string; type: 'step' | 'bid' | 'callback'; step?: CalendarStep; bid?: CalendarBid; callback?: CalendarProspectCallback }> = []
+  function getWorkdayResolutionForDate(date: Date) {
+    return resolveCalendarWorkday({
+      workDateYmd: formatDateKey(date),
+      timeOffRows,
+      template: salaryTemplate,
+      overrideForDate: salaryOverridesByDate[formatDateKey(date)],
+    })
+  }
+
+  function buildUpcomingList(): UpcomingListItem[] {
+    const items: UpcomingListItem[] = []
     steps.forEach((s) => {
       const key = getStepDateKey(s)
       if (key && key >= todayKey) items.push({ dateKey: key, type: 'step', step: s })
@@ -335,6 +600,17 @@ export default function Calendar() {
       const key = getCentralDateFromUTC(cb.callback_date)
       if (key && key >= todayKey) items.push({ dateKey: key, type: 'callback', callback: cb })
     })
+    if (isSalaryLayerEligible) {
+      timeOffRows.forEach((r) => {
+        if (r.end_date >= todayKey) items.push({ dateKey: r.start_date, type: 'time_off', timeOff: r })
+      })
+      Object.values(salaryOverridesByDate).forEach((ov) => {
+        const key = ov.work_date
+        if (key >= todayKey && (ov.mode != null || ov.segment_a_start_local != null)) {
+          items.push({ dateKey: key, type: 'salary_override', workDate: key })
+        }
+      })
+    }
     items.sort((a, b) => a.dateKey.localeCompare(b.dateKey))
     return items
   }
@@ -391,9 +667,54 @@ export default function Calendar() {
                 →
               </button>
             </div>
-            <button type="button" onClick={today} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}>
-              Today
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+              {isSalaryLayerEligible ? (
+                <label
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', cursor: 'pointer', userSelect: 'none' }}
+                  title="Scheduled (green) hours show from tomorrow onward only. Unpaid time off appears on all days. Use recorded time for past days."
+                >
+                  <input
+                    type="checkbox"
+                    checked={showMyWorkday}
+                    onChange={(e) => {
+                      const on = e.target.checked
+                      setShowMyWorkday(on)
+                      if (authUser?.id) {
+                        try {
+                          localStorage.setItem(`calendar_show_my_workday_${authUser.id}`, String(on))
+                        } catch {
+                          /* ignore */
+                        }
+                      }
+                    }}
+                  />
+                  Show my workday
+                </label>
+              ) : null}
+              {authUser?.id ? (
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', cursor: 'pointer', userSelect: 'none' }}>
+                  <input
+                    type="checkbox"
+                    checked={showRecordedTime}
+                    onChange={(e) => {
+                      const on = e.target.checked
+                      setShowRecordedTime(on)
+                      if (authUser?.id) {
+                        try {
+                          localStorage.setItem(`calendar_show_recorded_time_${authUser.id}`, String(on))
+                        } catch {
+                          /* ignore */
+                        }
+                      }
+                    }}
+                  />
+                  Show recorded time
+                </label>
+              ) : null}
+              <button type="button" onClick={today} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}>
+                Today
+              </button>
+            </div>
           </div>
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', background: '#e5e7eb', border: '1px solid #e5e7eb' }}>
@@ -411,17 +732,18 @@ export default function Calendar() {
               return (
                 <div
                   key={idx}
+                  className="calendar-grid-day"
                   role="button"
                   tabIndex={0}
+                  aria-label={calendarGridDayAriaLabel(day)}
                   onClick={() => setSelectedDayForModal(day)}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedDayForModal(day) } }}
                   style={{
-                    background: 'white',
                     height: 120,
                     minHeight: 120,
                     maxHeight: 120,
                     padding: '0.5rem',
-                    border: isToday ? '2px solid #2563eb' : 'none',
+                    border: isToday ? `2px solid ${CALENDAR_DAY_ACCENT}` : 'none',
                     display: 'flex',
                     flexDirection: 'column',
                     overflow: 'hidden',
@@ -431,7 +753,7 @@ export default function Calendar() {
                   <div
                     style={{
                       fontSize: '0.875rem',
-                      color: isCurrentMonthDay ? '#111827' : '#9ca3af',
+                      color: isCurrentMonthDay ? CALENDAR_DAY_NUMERAL : '#9ca3af',
                       fontWeight: isToday ? 600 : 400,
                       marginBottom: '0.25rem',
                       flexShrink: 0,
@@ -439,15 +761,17 @@ export default function Calendar() {
                   >
                     {day.getDate()}
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, overflow: 'auto', flex: 1, minHeight: 0 }} onClick={(e) => e.stopPropagation()}>
+                  <div style={{ display: 'flex', flexDirection: 'column', overflow: 'auto', flex: 1, minHeight: 0 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {daySteps.map((step) => (
                       <Link
                         key={step.id}
                         to={`/workflows/${step.project_id}`}
+                        onClick={(e) => e.stopPropagation()}
                         style={{
                           fontSize: '0.75rem',
                           padding: '2px 4px',
-                          background: step.status === 'completed' || step.status === 'approved' ? '#f0fdf4' : step.status === 'skipped' ? '#f3f4f6' : step.status === 'rejected' ? '#fef2f2' : '#eff6ff',
+                          background: step.status === 'completed' || step.status === 'approved' ? '#f0fdf4' : step.status === 'skipped' ? '#f3f4f6' : step.status === 'rejected' ? '#fef2f2' : CALENDAR_DAY_HOVER_BG,
                           color: '#111827',
                           textDecoration: 'none',
                           borderRadius: 3,
@@ -471,6 +795,7 @@ export default function Calendar() {
                       <Link
                         key={bid.id}
                         to={`/bids?bidId=${bid.id}&tab=submission-followup`}
+                        onClick={(e) => e.stopPropagation()}
                         style={{
                           fontSize: '0.75rem',
                           padding: '2px 4px',
@@ -503,6 +828,7 @@ export default function Calendar() {
                       <Link
                         key={cb.id}
                         to={`/prospects?tab=follow-up&prospect_id=${cb.prospect_id}`}
+                        onClick={(e) => e.stopPropagation()}
                         style={{
                           fontSize: '0.75rem',
                           padding: '2px 4px',
@@ -522,6 +848,115 @@ export default function Calendar() {
                         <div style={{ fontSize: '0.6875rem', color: '#4f46e5' }}>Prospect</div>
                       </Link>
                     ))}
+                    </div>
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 2,
+                        marginTop: 'auto',
+                        flexShrink: 0,
+                      }}
+                    >
+                    {showMyWorkday &&
+                      isSalaryLayerEligible &&
+                      (() => {
+                        const wd = getWorkdayResolutionForDate(day)
+                        if (wd.kind === 'none') return null
+                        if (wd.kind === 'time_off') {
+                          return (
+                            <Link
+                              key="workday-timeoff"
+                              to="/settings#settings-time-off"
+                              onClick={(e) => e.stopPropagation()}
+                              style={{
+                                fontSize: '0.75rem',
+                                padding: '2px 4px',
+                                background: '#f3e8ff',
+                                color: '#6b21a8',
+                                textDecoration: 'none',
+                                borderRadius: 3,
+                                overflow: 'hidden',
+                                fontWeight: 500,
+                              }}
+                              title={wd.note ?? wd.kindLabel}
+                            >
+                              {wd.kindLabel}
+                            </Link>
+                          )
+                        }
+                        const dayKey = formatDateKey(day)
+                        if (!showScheduledSalaryProjectionForYmd(dayKey, todayKey)) return null
+                        return wd.blocks.map((b, idx) => (
+                          <Link
+                            key={`workday-${wd.source}-${idx}`}
+                            to="/settings#settings-salary-workday"
+                            onClick={(e) => e.stopPropagation()}
+                            style={{
+                              fontSize: '0.75rem',
+                              padding: '2px 4px',
+                              background: '#ecfdf5',
+                              color: '#065f46',
+                              textDecoration: 'none',
+                              borderRadius: 3,
+                              overflow: 'hidden',
+                              fontWeight: 500,
+                            }}
+                            title={`Workday (${wd.source})${b.segmentIndex ? ` · block ${b.segmentIndex}` : ''}`}
+                          >
+                            {b.label}
+                          </Link>
+                        ))
+                      })()}
+                    {(() => {
+                      const dk = formatDateKey(day)
+                      const ncns = ncnsByWorkDate.get(dk)
+                      return ncns ? (
+                        <span
+                          key="ncns-chip"
+                          role="note"
+                          onClick={(e) => e.stopPropagation()}
+                          style={{
+                            fontSize: '0.75rem',
+                            padding: '2px 4px',
+                            background: '#fff7ed',
+                            color: '#9a3412',
+                            borderRadius: 3,
+                            fontWeight: 600,
+                            border: '1px solid #fdba74',
+                          }}
+                          title={ncnsCalendarChipTitle(ncns)}
+                        >
+                          NCNS
+                        </span>
+                      ) : null
+                    })()}
+                    {showRecordedTime
+                      ? (() => {
+                          const dk = formatDateKey(day)
+                          const rec = recordedByWorkDate[dk]
+                          if (!calendarRecordedHasVisibleSummary(rec)) return null
+                          const { text, title } = formatCalendarRecordedLine(rec)
+                          return (
+                            <span
+                              key="recorded-chip"
+                              onClick={(e) => e.stopPropagation()}
+                              style={{
+                                fontSize: '0.6875rem',
+                                padding: '2px 4px',
+                                color: '#4b5563',
+                                borderRadius: 3,
+                                fontWeight: 500,
+                              }}
+                              title={title}
+                            >
+                              {text}
+                            </span>
+                          )
+                        })()
+                      : null}
+                    </div>
                   </div>
                 </div>
               )
@@ -532,8 +967,24 @@ export default function Calendar() {
             const modalSteps = getStepsForDate(selectedDayForModal)
             const modalBids = getBidsForDate(selectedDayForModal)
             const modalCallbacks = getCallbacksForDate(selectedDayForModal)
+            const modalWorkday = showMyWorkday && isSalaryLayerEligible ? getWorkdayResolutionForDate(selectedDayForModal) : { kind: 'none' as const }
             const modalDateStr = formatUpcomingDate(formatDateKey(selectedDayForModal))
-            const hasItems = modalSteps.length > 0 || modalBids.length > 0 || modalCallbacks.length > 0
+            const modalDayKey = formatDateKey(selectedDayForModal)
+            const showModalScheduled = showScheduledSalaryProjectionForYmd(modalDayKey, todayKey)
+            const modalHasVisibleSalarySection =
+              modalWorkday.kind === 'time_off' ||
+              (modalWorkday.kind === 'scheduled' && showModalScheduled)
+            const modalNcns = ncnsByWorkDate.get(modalDayKey)
+            const modalRec = recordedByWorkDate[modalDayKey]
+            const modalRecordedVisible = calendarRecordedHasVisibleSummary(modalRec)
+            const modalRecordedFmt = formatCalendarRecordedLine(modalRec)
+            const hasItems =
+              modalSteps.length > 0 ||
+              modalBids.length > 0 ||
+              modalCallbacks.length > 0 ||
+              modalHasVisibleSalarySection ||
+              modalNcns != null ||
+              (showRecordedTime && modalRecordedVisible)
             return (
               <div
                 style={{
@@ -574,6 +1025,91 @@ export default function Calendar() {
                     <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No items on this day.</p>
                   ) : (
                     <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                      {modalWorkday.kind === 'time_off' && (
+                        <li style={{ marginBottom: '0.5rem' }}>
+                          <Link
+                            to="/settings#settings-time-off"
+                            onClick={() => setSelectedDayForModal(null)}
+                            style={{
+                              display: 'block',
+                              padding: '0.5rem 0.75rem',
+                              background: '#f3e8ff',
+                              color: '#6b21a8',
+                              textDecoration: 'none',
+                              borderRadius: 4,
+                              border: '1px solid #e9d5ff',
+                            }}
+                          >
+                            <div style={{ fontWeight: 600 }}>{modalWorkday.kindLabel}</div>
+                            {modalWorkday.note ? <div style={{ fontSize: '0.875rem', marginTop: 4 }}>{modalWorkday.note}</div> : null}
+                            <div style={{ fontSize: '0.8125rem', marginTop: 4, color: '#7c3aed' }}>Unpaid time off — Settings</div>
+                          </Link>
+                        </li>
+                      )}
+                      {modalWorkday.kind === 'scheduled' && showModalScheduled && (
+                        <li style={{ marginBottom: '0.5rem' }}>
+                          <Link
+                            to="/settings#settings-salary-workday"
+                            onClick={() => setSelectedDayForModal(null)}
+                            style={{
+                              display: 'block',
+                              padding: '0.5rem 0.75rem',
+                              background: '#ecfdf5',
+                              color: '#065f46',
+                              textDecoration: 'none',
+                              borderRadius: 4,
+                              border: '1px solid #a7f3d0',
+                            }}
+                          >
+                            <div style={{ fontWeight: 600 }}>Workday ({modalWorkday.source})</div>
+                            <div style={{ fontSize: '0.875rem', marginTop: 4 }}>
+                              {modalWorkday.blocks.map((b) => b.label).join(' · ')}
+                            </div>
+                          </Link>
+                        </li>
+                      )}
+                      {modalNcns ? (
+                        <li style={{ marginBottom: '0.5rem' }}>
+                          <div
+                            style={{
+                              display: 'block',
+                              padding: '0.5rem 0.75rem',
+                              background: '#fff7ed',
+                              color: '#9a3412',
+                              borderRadius: 4,
+                              border: '1px solid #fdba74',
+                            }}
+                          >
+                            <div style={{ fontWeight: 600 }}>No-call, no-show</div>
+                            <div style={{ fontSize: '0.875rem', marginTop: 4 }}>
+                              Logged {new Date(modalNcns.created_at).toLocaleString()}
+                            </div>
+                            {modalNcns.details?.trim() ? (
+                              <div style={{ fontSize: '0.875rem', marginTop: 6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                {modalNcns.details}
+                              </div>
+                            ) : null}
+                          </div>
+                        </li>
+                      ) : null}
+                      {showRecordedTime && modalRecordedVisible ? (
+                        <li style={{ marginBottom: '0.5rem' }}>
+                          <div
+                            style={{
+                              display: 'block',
+                              padding: '0.5rem 0.75rem',
+                              background: '#f9fafb',
+                              color: '#374151',
+                              borderRadius: 4,
+                              border: '1px solid #e5e7eb',
+                            }}
+                            title={modalRecordedFmt.title}
+                          >
+                            <div style={{ fontWeight: 600 }}>Recorded time</div>
+                            <div style={{ fontSize: '0.875rem', marginTop: 4 }}>{modalRecordedFmt.text}</div>
+                          </div>
+                        </li>
+                      ) : null}
                       {modalSteps.map((step) => (
                         <li key={step.id} style={{ marginBottom: '0.5rem' }}>
                           <Link
@@ -582,7 +1118,7 @@ export default function Calendar() {
                             style={{
                               display: 'block',
                               padding: '0.5rem 0.75rem',
-                              background: step.status === 'completed' || step.status === 'approved' ? '#f0fdf4' : step.status === 'skipped' ? '#f3f4f6' : step.status === 'rejected' ? '#fef2f2' : '#eff6ff',
+                              background: step.status === 'completed' || step.status === 'approved' ? '#f0fdf4' : step.status === 'skipped' ? '#f3f4f6' : step.status === 'rejected' ? '#fef2f2' : CALENDAR_DAY_HOVER_BG,
                               color: '#111827',
                               textDecoration: 'none',
                               borderRadius: 4,
@@ -655,7 +1191,20 @@ export default function Calendar() {
               ) : (
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                 {upcomingItems.map((item) => (
-                  <li key={item.type === 'step' ? item.step!.id : item.type === 'bid' ? item.bid!.id : item.callback!.id} style={{ marginBottom: '0.5rem' }}>
+                  <li
+                    key={
+                      item.type === 'step'
+                        ? `s-${item.step.id}`
+                        : item.type === 'bid'
+                          ? `b-${item.bid.id}`
+                          : item.type === 'callback'
+                            ? `c-${item.callback.id}`
+                            : item.type === 'time_off'
+                              ? `timeoff-${item.timeOff.id}`
+                              : `ov-${item.workDate}`
+                    }
+                    style={{ marginBottom: '0.5rem' }}
+                  >
                     {item.type === 'step' && item.step ? (
                       <Link
                         to={`/workflows/${item.step.project_id}`}
@@ -664,7 +1213,7 @@ export default function Calendar() {
                           alignItems: 'center',
                           gap: '1rem',
                           padding: '0.5rem 0.75rem',
-                          background: item.step.status === 'completed' || item.step.status === 'approved' ? '#f0fdf4' : item.step.status === 'skipped' ? '#f3f4f6' : item.step.status === 'rejected' ? '#fef2f2' : '#eff6ff',
+                          background: item.step.status === 'completed' || item.step.status === 'approved' ? '#f0fdf4' : item.step.status === 'skipped' ? '#f3f4f6' : item.step.status === 'rejected' ? '#fef2f2' : CALENDAR_DAY_HOVER_BG,
                           color: '#111827',
                           textDecoration: 'none',
                           borderRadius: 4,
@@ -723,6 +1272,49 @@ export default function Calendar() {
                         </span>
                         <span style={{ fontWeight: 500 }}>{item.callback.title ?? 'Prospect callback'}</span>
                         <span style={{ fontSize: '0.875rem', color: '#4f46e5' }}>— Follow Up</span>
+                      </Link>
+                    ) : item.type === 'time_off' ? (
+                      <Link
+                        to="/settings#settings-time-off"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '1rem',
+                          padding: '0.5rem 0.75rem',
+                          background: '#f3e8ff',
+                          color: '#6b21a8',
+                          textDecoration: 'none',
+                          borderRadius: 4,
+                          border: '1px solid #e9d5ff',
+                        }}
+                      >
+                        <span style={{ fontSize: '0.875rem', color: '#7c3aed', minWidth: 120 }}>
+                          {formatUpcomingDate(item.timeOff.start_date)} – {formatUpcomingDate(item.timeOff.end_date)}
+                        </span>
+                        <span style={{ fontWeight: 500 }}>
+                          {UNPAID_TIME_OFF_LABEL}
+                          {item.timeOff.note ? ` — ${item.timeOff.note}` : ''}
+                        </span>
+                      </Link>
+                    ) : item.type === 'salary_override' ? (
+                      <Link
+                        to="/settings#settings-salary-workday"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '1rem',
+                          padding: '0.5rem 0.75rem',
+                          background: '#ecfdf5',
+                          color: '#065f46',
+                          textDecoration: 'none',
+                          borderRadius: 4,
+                          border: '1px solid #a7f3d0',
+                        }}
+                      >
+                        <span style={{ fontSize: '0.875rem', color: '#047857', minWidth: 120 }}>
+                          {formatUpcomingDate(item.workDate)}
+                        </span>
+                        <span style={{ fontWeight: 500 }}>Custom workday schedule</span>
                       </Link>
                     ) : null}
                   </li>

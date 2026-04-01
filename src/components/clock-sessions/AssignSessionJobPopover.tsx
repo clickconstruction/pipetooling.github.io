@@ -14,11 +14,17 @@ import type { ClockSessionRow } from '../../types/clockSessions'
 
 export type AssignSessionJobPopoverSession = Pick<ClockSessionRow, 'id' | 'job_ledger_id' | 'bid_id'>
 
+/** After a successful assign or clear; `selection: null` means job/bid cleared. */
+export type AssignSessionJobSavedPatch = {
+  sessionId: string
+  selection: UnifiedSearchResult | null
+}
+
 type Props = {
   session: AssignSessionJobPopoverSession
   /** When set, runs before DB update to e.g. persist splits so `session.id` targets only this segment. Return null to abort. */
   resolveSessionForAssign?: () => Promise<AssignSessionJobPopoverSession | null>
-  onSaved: () => void
+  onSaved: (patch?: AssignSessionJobSavedPatch) => void
   onError?: (msg: string) => void
   /** Default 100; use higher value when opened inside another modal (e.g. 1250). */
   popoverZIndex?: number
@@ -103,12 +109,37 @@ export function AssignSessionJobPopover({
         setSearchResults([])
         return
       }
-      Promise.all([
+      void Promise.all([
         supabase.rpc('search_jobs_ledger', { search_text: q }),
         supabase.rpc('search_bids_for_clock', { p_search_text: q }),
-      ]).then(([jobsRes, bidsRes]) => {
+      ]).then(async ([jobsRes, bidsRes]) => {
         const jobs = (jobsRes.data ?? []) as JobSearchResult[]
-        const bids = (bidsRes.data ?? []) as BidSearchResult[]
+        let bids = (bidsRes.data ?? []) as BidSearchResult[]
+        const firstBid = bids[0] as (BidSearchResult & Record<string, unknown>) | undefined
+        const rpcHasServiceTypeName =
+          firstBid != null && Object.prototype.hasOwnProperty.call(firstBid, 'service_type_name')
+
+        if (!rpcHasServiceTypeName && bids.length > 0) {
+          try {
+            const ids = bids.map((b) => b.id)
+            type EnrichRow = { id: string; service_type: { name: string } | null }
+            const rows = await withSupabaseRetry(
+              async () =>
+                supabase.from('bids').select('id, service_type:service_types(name)').in('id', ids),
+              'assign popover enrich bid service types',
+            )
+            const nameById = new Map<string, string | null>(
+              (rows ?? []).map((r: EnrichRow) => [r.id, r.service_type?.name ?? null]),
+            )
+            bids = bids.map((b) => ({
+              ...b,
+              service_type_name: nameById.get(b.id) ?? null,
+            }))
+          } catch {
+            /* RLS or network: keep RPC-shaped rows without service_type_name */
+          }
+        }
+
         const merged: UnifiedSearchResult[] = [
           ...jobs.map((j) => ({ source: 'job' as const, ...j })),
           ...bids.map((b) => ({ source: 'bid' as const, ...b })),
@@ -179,7 +210,7 @@ export function AssignSessionJobPopover({
       setOpen(false)
       setSearchText('')
       setSearchResults([])
-      onSaved()
+      onSaved({ sessionId: target.id, selection: item })
     } catch (e) {
       onError?.(e instanceof Error ? e.message : 'Failed to assign')
     } finally {
@@ -207,7 +238,7 @@ export function AssignSessionJobPopover({
       setOpen(false)
       setSearchText('')
       setSearchResults([])
-      onSaved()
+      onSaved({ sessionId: target.id, selection: null })
     } catch (e) {
       onError?.(e instanceof Error ? e.message : 'Failed to clear')
     } finally {
@@ -338,46 +369,66 @@ export function AssignSessionJobPopover({
                     No results
                   </div>
                 ) : (
-                  searchResults.map((item) => (
-                    <button
-                      key={`${item.source}:${item.id}`}
-                      type="button"
-                      onClick={() => handleSelect(item)}
-                      disabled={loading}
-                      style={{
-                        display: 'block',
-                        width: '100%',
-                        padding: '0.5rem 0.75rem',
-                        textAlign: 'left',
-                        border: 'none',
-                        borderBottom: '1px solid #f3f4f6',
-                        background: 'none',
-                        cursor: loading ? 'not-allowed' : 'pointer',
-                        fontSize: '0.875rem',
-                      }}
-                    >
-                      <div style={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                        {item.source === 'bid' && (() => {
-                          const t = getBidServiceTypeTag(item.service_type_name)
-                          return t ? (
-                            <span
-                              style={{
-                                padding: '0.1rem 0.35rem',
-                                fontSize: '0.6875rem',
-                                fontWeight: 500,
-                                background: t.color,
-                                color: '#fff',
-                                borderRadius: 4,
-                              }}
-                            >
-                              [{t.tag}]
-                            </span>
-                          ) : null
-                        })()}
-                        {formatUnifiedResult(item)}
-                      </div>
-                    </button>
-                  ))
+                  searchResults.map((item) => {
+                    const bidTag = item.source === 'bid' ? getBidServiceTypeTag(item.service_type_name) : null
+                    /* Unknown bid service_type_name or jobs: left gutter stays 4px transparent (no gray stripe — avoids implying a trade). */
+                    const stripeColor = bidTag?.color ?? 'transparent'
+                    return (
+                      <button
+                        key={`${item.source}:${item.id}`}
+                        type="button"
+                        onClick={() => handleSelect(item)}
+                        disabled={loading}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'stretch',
+                          width: '100%',
+                          padding: 0,
+                          border: 'none',
+                          borderBottom: '1px solid #f3f4f6',
+                          background: 'none',
+                          cursor: loading ? 'not-allowed' : 'pointer',
+                          fontSize: '0.875rem',
+                          textAlign: 'left',
+                        }}
+                      >
+                        <div
+                          aria-hidden
+                          style={{
+                            width: 4,
+                            flexShrink: 0,
+                            alignSelf: 'stretch',
+                            background: stripeColor,
+                          }}
+                        />
+                        <div
+                          style={{
+                            flex: 1,
+                            minWidth: 0,
+                            padding: '0.5rem 0.75rem',
+                          }}
+                        >
+                          <div style={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                            {bidTag ? (
+                              <span
+                                style={{
+                                  padding: '0.1rem 0.35rem',
+                                  fontSize: '0.6875rem',
+                                  fontWeight: 500,
+                                  background: bidTag.color,
+                                  color: '#fff',
+                                  borderRadius: 4,
+                                }}
+                              >
+                                [{bidTag.tag}]
+                              </span>
+                            ) : null}
+                            {formatUnifiedResult(item)}
+                          </div>
+                        </div>
+                      </button>
+                    )
+                  })
                 )
               ) : (
                 <div style={{ padding: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>

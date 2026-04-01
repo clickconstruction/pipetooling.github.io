@@ -17,6 +17,7 @@ import MyReportsModal, { type ReportForMyReports } from '../components/MyReports
 import ChecklistItemMuteModal from '../components/ChecklistItemMuteModal'
 import PasswordInput from '../components/PasswordInput'
 import { SalaryWorkScheduleSettings } from '../components/SalaryWorkScheduleSettings'
+import { TimeOffSettings } from '../components/TimeOffSettings'
 import TeamFeedbackDevSettingsBlock from '../components/team-feedback/TeamFeedbackDevSettingsBlock'
 import TeamFeedbackMasterAggregates from '../components/team-feedback/TeamFeedbackMasterAggregates'
 import type { Database } from '../types/database'
@@ -502,8 +503,10 @@ export default function Settings() {
   const [teamLeaderSortDir, setTeamLeaderSortDir] = useState<'asc' | 'desc'>('asc')
   const [teamLeaderAssignmentsSearchQuery, setTeamLeaderAssignmentsSearchQuery] = useState('')
   const [taskDispatchSectionOpen, setTaskDispatchSectionOpen] = useState(false)
+  const [estimatorInboxSectionOpen, setEstimatorInboxSectionOpen] = useState(false)
   const [dashboardButtonsSectionOpen, setDashboardButtonsSectionOpen] = useState(false)
   const [salaryWorkdaySectionOpen, setSalaryWorkdaySectionOpen] = useState(true)
+  const [timeOffSectionOpen, setTimeOffSectionOpen] = useState(true)
   const [dailyGoalsSectionOpen, setDailyGoalsSectionOpen] = useState(false)
   const [teamLeadAssignmentsSectionOpen, setTeamLeadAssignmentsSectionOpen] = useState(false)
   const [reportNotificationsSectionOpen, setReportNotificationsSectionOpen] = useState(false)
@@ -512,6 +515,9 @@ export default function Settings() {
   const [dispatchMemberIds, setDispatchMemberIds] = useState<Set<string>>(new Set())
   const [dispatchGroupError, setDispatchGroupError] = useState<string | null>(null)
   const [dispatchGroupSavingUserId, setDispatchGroupSavingUserId] = useState<string | null>(null)
+  const [estimatorMemberIds, setEstimatorMemberIds] = useState<Set<string>>(new Set())
+  const [estimatorGroupError, setEstimatorGroupError] = useState<string | null>(null)
+  const [estimatorGroupSavingUserId, setEstimatorGroupSavingUserId] = useState<string | null>(null)
 
   // Service Types state
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
@@ -1673,6 +1679,9 @@ export default function Settings() {
       const { data: dgm, error: dgmErr } = await supabase.from('dispatch_group_members').select('user_id')
       if (dgmErr) setError(dgmErr.message)
       else setDispatchMemberIds(new Set((dgm ?? []).map((r: { user_id: string }) => r.user_id)))
+      const { data: egm, error: egmErr } = await supabase.from('estimator_group_members').select('user_id')
+      if (egmErr) setError(egmErr.message)
+      else setEstimatorMemberIds(new Set((egm ?? []).map((r: { user_id: string }) => r.user_id)))
       const { data: jobOwnerOverrides } = await supabase.from('app_settings').select('key, value_text').like('key', 'job_owner_override_%')
       const overrides: Record<string, string> = {}
       for (const row of jobOwnerOverrides ?? []) {
@@ -1724,6 +1733,30 @@ export default function Settings() {
       }
     } finally {
       setDispatchGroupSavingUserId(null)
+    }
+  }
+
+  async function toggleEstimatorGroupMember(userId: string, currentlyMember: boolean) {
+    if (myRole !== 'dev') return
+    setEstimatorGroupSavingUserId(userId)
+    setEstimatorGroupError(null)
+    try {
+      if (currentlyMember) {
+        const { error } = await supabase.from('estimator_group_members').delete().eq('user_id', userId)
+        if (error) setEstimatorGroupError(error.message)
+        else
+          setEstimatorMemberIds((prev) => {
+            const n = new Set(prev)
+            n.delete(userId)
+            return n
+          })
+      } else {
+        const { error } = await supabase.from('estimator_group_members').insert({ user_id: userId })
+        if (error) setEstimatorGroupError(error.message)
+        else setEstimatorMemberIds((prev) => new Set(prev).add(userId))
+      }
+    } finally {
+      setEstimatorGroupSavingUserId(null)
     }
   }
 
@@ -5296,6 +5329,49 @@ export default function Settings() {
         </section>
       )}
 
+      {authUser?.id && (
+        <section
+          id="settings-time-off"
+          aria-labelledby="settings-time-off-heading"
+          style={{ marginBottom: '2rem', scrollMarginTop: '0.75rem' }}
+        >
+          <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb' }}>
+            <button
+              type="button"
+              id="settings-time-off-heading"
+              aria-expanded={timeOffSectionOpen}
+              aria-controls="settings-time-off-panel"
+              onClick={() => setTimeOffSectionOpen((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                padding: '1rem',
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1.125rem',
+                fontWeight: 600,
+                color: '#111827',
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: '0.75rem' }} aria-hidden>
+                {timeOffSectionOpen ? '▼' : '▶'}
+              </span>
+              Unpaid time off
+            </button>
+            {timeOffSectionOpen && (
+              <div id="settings-time-off-panel" style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+                <TimeOffSettings userId={authUser.id} />
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
       <SettingsGroup id="settings-dashboard" title="Dashboard & alerts">
 
       {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
@@ -7538,12 +7614,12 @@ export default function Settings() {
             {taskDispatchSectionOpen && (
               <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
                 <p style={{ marginTop: 0, marginBottom: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
-                  Choose which <strong>assistants</strong> and <strong>estimators</strong> receive Task Dispatch notifications and see the Dispatch inbox on Dashboard.
-                  Only users with role Assistant or Estimator can be added (enforced by the database).
+                  <strong>Task Dispatch</strong> (hard-hat header button): choose which <strong>assistants</strong> and <strong>estimators</strong> receive those push notifications and see the Dispatch inbox on the Dashboard.
+                  This is separate from <strong>Estimator Inbox</strong> (purple pencil button). Only Assistant or Estimator accounts can be added (enforced by the database).
                 </p>
                 {dispatchMemberIds.size === 0 && (
                   <p style={{ marginBottom: '0.75rem', color: '#b45309', fontSize: '0.875rem' }}>
-                    No dispatch members yet — nobody will receive push notifications until you select at least one assistant or estimator.
+                    No Task Dispatch members yet — nobody will receive Task Dispatch pushes until you select at least one assistant or estimator.
                   </p>
                 )}
                 {dispatchGroupError && (
@@ -7572,6 +7648,78 @@ export default function Settings() {
                             ) : null}
                           </span>
                           {dispatchGroupSavingUserId === u.id && (
+                            <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Saving…</span>
+                          )}
+                        </label>
+                      )
+                    })}
+                  {users.filter((u) => u.role === 'assistant' || u.role === 'estimator').length === 0 && (
+                    <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No assistant or estimator accounts in the system.</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+            <button
+              type="button"
+              onClick={() => setEstimatorInboxSectionOpen((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                padding: '1rem',
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                fontWeight: 600,
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: '0.75rem' }}>{estimatorInboxSectionOpen ? '▼' : '▶'}</span>
+              Estimator Inbox group
+            </button>
+            {estimatorInboxSectionOpen && (
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+                <p style={{ marginTop: 0, marginBottom: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
+                  <strong>Estimator Inbox</strong> (purple pencil header button): choose which <strong>assistants</strong> and <strong>estimators</strong> receive those push notifications and see the Estimator inbox on the Dashboard.
+                  Independent from Task Dispatch. Only Assistant or Estimator accounts can be added.
+                </p>
+                {estimatorMemberIds.size === 0 && (
+                  <p style={{ marginBottom: '0.75rem', color: '#b45309', fontSize: '0.875rem' }}>
+                    No Estimator Inbox members yet — nobody will receive Estimator Inbox pushes until you select at least one assistant or estimator.
+                  </p>
+                )}
+                {estimatorGroupError && (
+                  <p style={{ color: '#b91c1c', marginBottom: '0.75rem' }}>{estimatorGroupError}</p>
+                )}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: 480 }}>
+                  {users
+                    .filter((u) => u.role === 'assistant' || u.role === 'estimator')
+                    .map((u) => {
+                      const checked = estimatorMemberIds.has(u.id)
+                      return (
+                        <label
+                          key={u.id}
+                          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: estimatorGroupSavingUserId ? 'not-allowed' : 'pointer' }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            disabled={!!estimatorGroupSavingUserId}
+                            onChange={() => toggleEstimatorGroupMember(u.id, checked)}
+                          />
+                          <span>
+                            {u.name || u.email}
+                            {u.email && u.name ? (
+                              <span style={{ color: '#6b7280', fontSize: '0.875rem', marginLeft: '0.35rem' }}>({u.email})</span>
+                            ) : null}
+                          </span>
+                          {estimatorGroupSavingUserId === u.id && (
                             <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Saving…</span>
                           )}
                         </label>

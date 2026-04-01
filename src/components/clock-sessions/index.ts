@@ -1,4 +1,5 @@
 export { AssignSessionJobPopover } from './AssignSessionJobPopover'
+export type { AssignSessionJobSavedPatch } from './AssignSessionJobPopover'
 export { ClockSessionLocationCell } from './ClockSessionLocationCell'
 export {
   ClockSessionsTable,
