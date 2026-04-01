@@ -3197,6 +3197,24 @@ export type Database = {
         }
         Relationships: []
       }
+      mercury_debit_card_nicknames: {
+        Row: {
+          mercury_debit_card_id: string
+          nickname: string
+          updated_at: string
+        }
+        Insert: {
+          mercury_debit_card_id: string
+          nickname: string
+          updated_at?: string
+        }
+        Update: {
+          mercury_debit_card_id?: string
+          nickname?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       mercury_transactions: {
         Row: {
           amount: number

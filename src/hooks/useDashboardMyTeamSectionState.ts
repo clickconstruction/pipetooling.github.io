@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useIntervalNowMs } from './useIntervalNowMs'
 import { CLOCK_SESSION_LIST_SELECT, CLOCK_SESSION_TODAY_STRIP_SELECT } from '../lib/clockSessionSelect'
 import { getPersonNamesForUser } from '../lib/cascadePersonName'
@@ -246,6 +246,8 @@ export function useDashboardMyTeamSectionState(
     displayNameByUserId: Readonly<Record<string, string>>
   } | null>(null)
   const [loadingSessions, setLoadingSessions] = useState(false)
+  /** Latest-wins for overlapping `loadPending` runs (unstable effect deps / fast re-snapshot). */
+  const loadPendingGenerationRef = useRef(0)
   const [error, setError] = useState<string | null>(null)
   const [myTeamExpanded, setMyTeamExpanded] = useState(false)
   const [{ start: dateStart, end: dateEnd }, setDateRange] = useState(weekStartEndEnCA)
@@ -542,14 +544,17 @@ export function useDashboardMyTeamSectionState(
       const emailByUserId = new Map<string, string | null>(
         ((memberEmails ?? []) as Array<{ id: string; email: string | null }>).map((r) => [r.id, r.email]),
       )
+      const nameLists = await Promise.all(
+        fullDetailIds.map((uid) => getPersonNamesForUser(uid, emailByUserId.get(uid) ?? null)),
+      )
       const namesByUserId = new Map<string, Set<string>>()
       const allNames: string[] = []
-      for (const uid of fullDetailIds) {
-        const names = await getPersonNamesForUser(uid, emailByUserId.get(uid) ?? null)
-        const set = new Set(names.map((n) => n.trim()).filter(Boolean))
+      fullDetailIds.forEach((uid, i) => {
+        const list = nameLists[i] ?? []
+        const set = new Set(list.map((n) => n.trim()).filter(Boolean))
         namesByUserId.set(uid, set)
         for (const n of set) allNames.push(n)
-      }
+      })
       const uniqueNames = [...new Set(allNames)]
       if (uniqueNames.length > 0) {
         const phRows = await withSupabaseRetry(
@@ -603,8 +608,10 @@ export function useDashboardMyTeamSectionState(
       setSalaryStripMeta(null)
       return
     }
+    let generation = -1
     if (!silent) {
       setLoadingSessions(true)
+      generation = ++loadPendingGenerationRef.current
     }
     setError(null)
     try {
@@ -645,6 +652,7 @@ export function useDashboardMyTeamSectionState(
         (unapprovedRes ?? []) as ClockSessionRow[],
         (salaryOpenRes ?? []) as ClockSessionRow[],
       )
+      if (!silent && generation !== loadPendingGenerationRef.current) return
       setPendingSessions(merged)
       await Promise.all([
         loadTeamHoursSummary(),
@@ -653,12 +661,14 @@ export function useDashboardMyTeamSectionState(
       ])
     } catch (e) {
       setError(formatErrorMessage(e))
-      if (!silent) {
+      if (!silent && generation === loadPendingGenerationRef.current) {
         setPendingSessions([])
       }
     } finally {
       if (!silent) {
-        setLoadingSessions(false)
+        if (generation === loadPendingGenerationRef.current) {
+          setLoadingSessions(false)
+        }
       }
     }
   }, [

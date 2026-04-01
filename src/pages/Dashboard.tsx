@@ -1882,8 +1882,7 @@ export default function Dashboard() {
         }
       }
 
-      void loadSubscribed()
-      void loadAssigned()
+      void Promise.all([loadSubscribed(), loadAssigned()]).catch(() => {})
     })
     return () => { cancelled = true }
   }, [authUser?.id])

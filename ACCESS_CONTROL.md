@@ -480,7 +480,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 | **Workflow** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ | ✅ limited |
 | **People** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ | ❌ |
 | **Jobs** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ✅ Reports + Billing | ✅ Reports + Sub Ledger |
-| **Banking** | ✅ dev only (Mercury ledger + **`mercury_account_nicknames`**) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Banking** | ✅ full Mercury (Ledger + Sorting + Configuration + sync); RLS SELECT on **`mercury_transactions`** + nicknames | ❌ | ✅ **Sorting** (default slice, no Configuration / no sync); read **`mercury_transactions`** + nicknames; **edit `mercury_debit_card_nicknames`** only (RLS) | ❌ | ❌ | ❌ | ❌ |
 | **Calendar** | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
 | **Bids** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited |
 | **Materials** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited |
