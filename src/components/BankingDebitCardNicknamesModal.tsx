@@ -1,4 +1,4 @@
-import { useEffect, type Dispatch, type SetStateAction } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { formatMercuryDebitCardIdCompact } from '../lib/mercuryRawDebitCard'
 
 export type BankingDebitCardNicknamesModalProps = {
@@ -6,11 +6,9 @@ export type BankingDebitCardNicknamesModalProps = {
   onClose: () => void
   debitCardIds: string[]
   nicknameByDebitCard: Record<string, string>
-  nicknameDrafts: Record<string, string>
-  setNicknameDrafts: Dispatch<SetStateAction<Record<string, string>>>
   savingNicknameId: string | null
-  onSave: (mercuryDebitCardId: string) => void
-  onClear: (mercuryDebitCardId: string) => void
+  onSave: (mercuryDebitCardId: string, nickname: string) => Promise<boolean>
+  onClear: (mercuryDebitCardId: string) => Promise<boolean>
   onOpenRecentTransactions?: (mercuryDebitCardId: string) => void
   /** When true, Escape should close the stacked recent-tx preview first, not this modal. */
   recentPreviewOpen?: boolean
@@ -21,14 +19,43 @@ export function BankingDebitCardNicknamesModal({
   onClose,
   debitCardIds,
   nicknameByDebitCard,
-  nicknameDrafts,
-  setNicknameDrafts,
   savingNicknameId,
   onSave,
   onClear,
   onOpenRecentTransactions,
   recentPreviewOpen = false,
 }: BankingDebitCardNicknamesModalProps) {
+  /** Drafts live here so typing does not re-render the heavy Banking page. */
+  const [localDrafts, setLocalDrafts] = useState<Record<string, string>>({})
+  const wasOpenRef = useRef(false)
+  /** Ids the user has edited this open session — skip prop sync for those so late loads do not wipe typing. */
+  const touchedRef = useRef<Set<string>>(new Set())
+
+  useEffect(() => {
+    if (open && !wasOpenRef.current) {
+      touchedRef.current.clear()
+      setLocalDrafts(Object.fromEntries(debitCardIds.map((id) => [id, nicknameByDebitCard[id] ?? ''])))
+    }
+    wasOpenRef.current = open
+  }, [open, debitCardIds, nicknameByDebitCard])
+
+  useEffect(() => {
+    if (!open) return
+    setLocalDrafts((prev) => {
+      const next = { ...prev }
+      let changed = false
+      for (const id of debitCardIds) {
+        if (touchedRef.current.has(id)) continue
+        const s = nicknameByDebitCard[id] ?? ''
+        if (prev[id] !== s) {
+          next[id] = s
+          changed = true
+        }
+      }
+      return changed ? next : prev
+    })
+  }, [open, debitCardIds, nicknameByDebitCard])
+
   useEffect(() => {
     if (!open) return
     const onKeyDown = (e: KeyboardEvent) => {
@@ -143,8 +170,11 @@ export function BankingDebitCardNicknamesModal({
                   {formatMercuryDebitCardIdCompact(id)}
                 </button>
                 <input
-                  value={nicknameDrafts[id] ?? nicknameByDebitCard[id] ?? ''}
-                  onChange={(e) => setNicknameDrafts((d) => ({ ...d, [id]: e.target.value }))}
+                  value={localDrafts[id] ?? ''}
+                  onChange={(e) => {
+                    touchedRef.current.add(id)
+                    setLocalDrafts((d) => ({ ...d, [id]: e.target.value }))
+                  }}
                   placeholder="Nickname"
                   maxLength={120}
                   style={{ flex: '1 1 12rem', minWidth: 140, padding: '4px 8px', fontSize: '0.875rem' }}
@@ -152,7 +182,12 @@ export function BankingDebitCardNicknamesModal({
                 <button
                   type="button"
                   disabled={savingNicknameId === id}
-                  onClick={() => onSave(id)}
+                  onClick={() => {
+                    void (async () => {
+                      const ok = await onSave(id, localDrafts[id] ?? '')
+                      if (ok) touchedRef.current.delete(id)
+                    })()
+                  }}
                   style={{
                     padding: '4px 10px',
                     fontSize: '0.8125rem',
@@ -167,7 +202,15 @@ export function BankingDebitCardNicknamesModal({
                 <button
                   type="button"
                   disabled={savingNicknameId === id || !nicknameByDebitCard[id]}
-                  onClick={() => onClear(id)}
+                  onClick={() => {
+                    void (async () => {
+                      const ok = await onClear(id)
+                      if (ok) {
+                        touchedRef.current.delete(id)
+                        setLocalDrafts((d) => ({ ...d, [id]: '' }))
+                      }
+                    })()
+                  }}
                   style={{
                     padding: '4px 10px',
                     fontSize: '0.8125rem',

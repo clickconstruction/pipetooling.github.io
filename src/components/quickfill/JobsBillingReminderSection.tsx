@@ -13,7 +13,7 @@ type JobWithDetails = JobsLedgerRow & {
   fixtures: JobsLedgerFixture[]
 }
 
-export function JobsBillingReminderSection() {
+export function JobsBillingReminderSection({ minHcpNumber }: { minHcpNumber: number }) {
   const { user: authUser, role } = useAuth()
   const [loading, setLoading] = useState(true)
   const [counts, setCounts] = useState<{
@@ -42,7 +42,16 @@ export function JobsBillingReminderSection() {
         setLoading(false)
         return
       }
-      const jobIds = jobList.map((j) => j.id)
+      const filtered = jobList.filter((j) => {
+        const hcp = parseInt(j.hcp_number, 10)
+        return Number.isFinite(hcp) && hcp >= minHcpNumber
+      })
+      if (filtered.length === 0 || cancelled) {
+        setCounts({ specificWork: 0, billedMaterials: 0, totalBill: 0 })
+        setLoading(false)
+        return
+      }
+      const jobIds = filtered.map((j) => j.id)
       const [matsRes, fixturesRes] = await Promise.all([
         supabase.from('jobs_ledger_materials').select('*').in('job_id', jobIds).order('sequence_order'),
         supabase.from('jobs_ledger_fixtures').select('*').in('job_id', jobIds).order('sequence_order'),
@@ -61,7 +70,7 @@ export function JobsBillingReminderSection() {
         arr.push(f)
         fixturesByJob.set(f.job_id, arr)
       }
-      const jobsWithDetails: JobWithDetails[] = jobList.map((j) => ({
+      const jobsWithDetails: JobWithDetails[] = filtered.map((j) => ({
         ...j,
         materials: materialsByJob.get(j.id) ?? [],
         fixtures: fixturesByJob.get(j.id) ?? [],
@@ -90,7 +99,7 @@ export function JobsBillingReminderSection() {
     return () => {
       cancelled = true
     }
-  }, [authUser?.id])
+  }, [authUser?.id, minHcpNumber])
 
   const canAccess = role === 'dev' || role === 'master_technician' || role === 'assistant'
   if (!canAccess) return null
@@ -115,8 +124,8 @@ export function JobsBillingReminderSection() {
       }}
     >
       <span style={{ fontSize: '0.9375rem', fontWeight: 500, color: '#92400e' }}>
-        Keep Jobs Billing up to date: {counts?.specificWork ?? 0} Specific Work, {counts?.billedMaterials ?? 0} Billed
-        Materials, {counts?.totalBill ?? 0} Total Bill need filling
+        Keep Jobs Billing up to date (HCP ≥ {minHcpNumber}): {counts?.specificWork ?? 0} Specific Work,{' '}
+        {counts?.billedMaterials ?? 0} Billed Materials, {counts?.totalBill ?? 0} Total Bill need filling
       </span>
       <Link
         to="/jobs?tab=billing"

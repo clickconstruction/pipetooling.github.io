@@ -3215,6 +3215,84 @@ export type Database = {
         }
         Relationships: []
       }
+      mercury_transaction_attributions: {
+        Row: {
+          mercury_transaction_id: string
+          person_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          mercury_transaction_id: string
+          person_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          mercury_transaction_id?: string
+          person_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mercury_transaction_attributions_mercury_transaction_id_fkey"
+            columns: ["mercury_transaction_id"]
+            isOneToOne: true
+            referencedRelation: "mercury_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mercury_transaction_attributions_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mercury_transaction_job_allocations: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          id: string
+          job_id: string
+          mercury_transaction_id: string
+          note: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_id: string
+          mercury_transaction_id: string
+          note?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_id?: string
+          mercury_transaction_id?: string
+          note?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mercury_transaction_job_allocations_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mercury_transaction_job_allocations_mercury_transaction_id_fkey"
+            columns: ["mercury_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "mercury_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mercury_transactions: {
         Row: {
           amount: number
@@ -7515,6 +7593,13 @@ export type Database = {
           updated_at: string
         }[]
       }
+      list_people_for_banking_attribution: {
+        Args: never
+        Returns: {
+          id: string
+          name: string
+        }[]
+      }
       list_reports_with_job_info: {
         Args: never
         Returns: {
@@ -7573,6 +7658,13 @@ export type Database = {
           quantity: number
         }[]
       }
+      list_users_for_banking_attribution: {
+        Args: never
+        Returns: {
+          id: string
+          name: string
+        }[]
+      }
       mark_invoice_paid: { Args: { p_invoice_id: string }; Returns: Json }
       mark_invoice_paid_from_stripe: {
         Args: { p_invoice_id: string }
@@ -7612,6 +7704,15 @@ export type Database = {
           rejected_count: number
         }[]
       }
+      replace_mercury_transaction_splits: {
+        Args: {
+          p_mercury_transaction_id: string
+          p_person_id: string
+          p_rows: Json
+          p_user_id?: string
+        }
+        Returns: undefined
+      }
       replace_own_clock_session_cluster_mixed: {
         Args: { p_segments: Json; p_session_ids: string[] }
         Returns: {
@@ -7634,6 +7735,10 @@ export type Database = {
           error_message: string
           revoked_count: number
         }[]
+      }
+      salary_force_close_open_sessions_after_shift: {
+        Args: { p_now: string; p_user_id: string; p_work_date: string }
+        Returns: undefined
       }
       salary_schedule_staff_or_self_target: {
         Args: { p_target_user_id: string }

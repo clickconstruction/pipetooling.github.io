@@ -147,6 +147,7 @@ The app uses strict TypeScript (`strict`, `noUncheckedIndexedAccess`). Supabase 
 - **Jobs Reports**: Devs can delete reports; others have full CRUD except delete
 - **Jobs Stages – Billed Awaiting Payment**: Stage shows jobs and invoices awaiting payment; Total by Name modal breaks down by job; Dashboard pin opens modal and navigates to Stages
 - **Quickfill – Billed Awaiting Payment**: Summary section with HCP, Job, Assigned, Remaining table; link to Jobs Stages
+- **Quickfill – Banking sorting**: Paginated Mercury snapshot (person/job gaps); summary **Without person**, **Not split to jobs**, **Total available**; parallel enrich load ([`BankingSortingSnapshotSection.tsx`](src/components/quickfill/BankingSortingSnapshotSection.tsx)); see `RECENT_FEATURES.md` v2.222
 
 ## Deployment
 

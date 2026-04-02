@@ -1156,9 +1156,28 @@ button.myTimeDaySpanAdjustLink:disabled {
   );
 }
 
+/* My Time Form + Visual: Option B segment row wraps on narrow viewports (center may stack) */
+@media (max-width: 520px) {
+  .myTimeDaySegmentOptionBRow {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+}
+
 @media (max-width: 560px) {
   .myTimeDayClusterFormGrid {
     grid-template-columns: 1fr;
+  }
+
+  .myTimeDayFormSpanFullRowInner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .myTimeDayFormSpanLabel {
+    width: 100% !important;
+    text-align: left;
+    padding-right: 0;
   }
 }
 

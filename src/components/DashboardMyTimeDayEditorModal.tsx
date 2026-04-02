@@ -260,6 +260,8 @@ export function DashboardMyTimeDayEditorModal({
   const [sessionsFetchNonce, setSessionsFetchNonce] = useState(0)
   const [forceClockOutSession, setForceClockOutSession] = useState<DayEditorSession | null>(null)
   const [adjustTimesSession, setAdjustTimesSession] = useState<DayEditorSession | null>(null)
+  const [rejectSessionConfirm, setRejectSessionConfirm] = useState<DayEditorSession | null>(null)
+  const [rejectSessionBusyId, setRejectSessionBusyId] = useState<string | null>(null)
   type NcnsUiPhase = 'off' | 'simple' | 'approved_warn' | 'approved_confirm'
   const [ncnsUi, setNcnsUi] = useState<NcnsUiPhase>('off')
   const [ncnsPayrollAck, setNcnsPayrollAck] = useState(false)
@@ -293,6 +295,52 @@ export function DashboardMyTimeDayEditorModal({
   const openAdjustTimes = useCallback((s: DayEditorSession) => {
     setAdjustTimesSession(s)
   }, [])
+
+  /**
+   * Per-segment reject updates one `clock_sessions` row (same target as adjust times / assign).
+   * Virtual-split overlap edge case: only that row is rejected; user may need another reject.
+   */
+  const handleRejectSession = useCallback((session: DayEditorSession) => {
+    if (!session.clocked_out_at) return
+    setRejectSessionConfirm(session)
+  }, [])
+
+  const closeRejectSessionModal = useCallback(() => {
+    if (rejectSessionBusyId != null) return
+    setRejectSessionConfirm(null)
+  }, [rejectSessionBusyId])
+
+  const confirmRejectSession = useCallback(
+    async (session: DayEditorSession) => {
+      if (!session.clocked_out_at) return
+      setRejectSessionBusyId(session.id)
+      setError(null)
+      try {
+        await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('clock_sessions')
+              .update({
+                rejected_at: new Date().toISOString(),
+                rejected_by: authUserId ?? null,
+              })
+              .eq('id', session.id),
+          'reject clock session from my time day editor',
+        )
+        setRejectSessionConfirm(null)
+        setSessionsFetchNonce((n) => n + 1)
+        onLinkedSessionsUpdated?.()
+        if (sessionsProp.length > 0) {
+          onSaved()
+        }
+      } catch (e: unknown) {
+        setError(formatErrorMessage(e, 'Could not reject session'))
+      } finally {
+        setRejectSessionBusyId(null)
+      }
+    },
+    [authUserId, onLinkedSessionsUpdated, onSaved, sessionsProp.length],
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -1709,6 +1757,8 @@ export function DashboardMyTimeDayEditorModal({
                       }
                       onForceClockOut={editable && !saving ? openForceClockOut : undefined}
                       onAdjustTimes={editable && !saving ? openAdjustTimes : undefined}
+                      onRejectSession={editable && !saving ? handleRejectSession : undefined}
+                      rejectSessionBusyId={rejectSessionBusyId}
                     />
                   ) : (
                     <MyTimeDayClusterForm
@@ -1737,6 +1787,8 @@ export function DashboardMyTimeDayEditorModal({
                       }
                       onForceClockOut={editable && !saving ? openForceClockOut : undefined}
                       onAdjustTimes={editable && !saving ? openAdjustTimes : undefined}
+                      onRejectSession={editable && !saving ? handleRejectSession : undefined}
+                      rejectSessionBusyId={rejectSessionBusyId}
                     />
                   )
                 })
@@ -1901,6 +1953,109 @@ export function DashboardMyTimeDayEditorModal({
         onClose={() => setAdjustTimesSession(null)}
         onSaved={onAdjustTimesSaved}
       />
+    ) : null}
+    {rejectSessionConfirm ? (
+      <div
+        role="presentation"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.45)',
+          zIndex: 1310,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1rem',
+        }}
+        onClick={closeRejectSessionModal}
+      >
+        <div
+          role="alertdialog"
+          aria-modal
+          aria-labelledby="reject-session-dialog-title"
+          style={{
+            background: 'white',
+            borderRadius: 8,
+            padding: '1.25rem',
+            maxWidth: 420,
+            width: '100%',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h3 id="reject-session-dialog-title" style={{ margin: '0 0 0.75rem 0', fontSize: '1.05rem' }}>
+            Reject clock session?
+          </h3>
+          <p
+            style={{
+              margin: '0 0 0.5rem 0',
+              fontSize: '0.8125rem',
+              color: '#6b7280',
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            {formatDenverTimeOnly(new Date(rejectSessionConfirm.clocked_in_at).getTime())} –{' '}
+            {rejectSessionConfirm.clocked_out_at
+              ? formatDenverTimeOnly(new Date(rejectSessionConfirm.clocked_out_at).getTime())
+              : ''}
+            {` · ${formatWorkDateYmdWeekdayLongFriendly(dateStr)}`}
+          </p>
+          <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}>
+            This session will no longer count toward hours until restored by staff.
+          </p>
+          {rejectSessionConfirm.approved_at != null ? (
+            <p
+              style={{
+                margin: '0 0 1rem 0',
+                fontSize: '0.875rem',
+                color: '#92400e',
+                background: '#fffbeb',
+                border: '1px solid #fcd34d',
+                borderRadius: 6,
+                padding: '0.65rem 0.75rem',
+                lineHeight: 1.5,
+              }}
+            >
+              This session was already approved. Rejecting removes those hours from payroll until it is approved
+              again.
+            </p>
+          ) : null}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              disabled={rejectSessionBusyId != null}
+              onClick={closeRejectSessionModal}
+              style={{
+                padding: '0.45rem 0.85rem',
+                fontSize: '0.875rem',
+                border: '1px solid #d1d5db',
+                borderRadius: 6,
+                background: 'white',
+                cursor: rejectSessionBusyId != null ? 'not-allowed' : 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={rejectSessionBusyId != null}
+              onClick={() => void confirmRejectSession(rejectSessionConfirm)}
+              style={{
+                padding: '0.45rem 0.85rem',
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                border: '1px solid #dc2626',
+                borderRadius: 6,
+                background: '#fef2f2',
+                color: '#b91c1c',
+                cursor: rejectSessionBusyId != null ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {rejectSessionBusyId != null ? 'Rejecting…' : 'Reject session'}
+            </button>
+          </div>
+        </div>
+      </div>
     ) : null}
     {ncnsUi !== 'off' ? (
       <div

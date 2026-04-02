@@ -333,7 +333,7 @@ export default function Layout() {
             {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
               <NavLink to="/jobs" style={linkStyle} onClick={onNavClick}>Jobs</NavLink>
             )}
-            {(role === 'dev' || role === 'assistant') && (
+            {(role === 'dev' || role === 'assistant' || role === 'master_technician') && (
               <NavLink to="/banking" style={linkStyle} onClick={onNavClick}>
                 Banking
               </NavLink>

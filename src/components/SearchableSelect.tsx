@@ -30,6 +30,8 @@ export type SearchableSelectProps = {
   required?: boolean
   /** Accessible name for the listbox */
   listAriaLabel?: string
+  /** Portaled dropdown z-index; raise above modals with higher overlays (default 1100). */
+  portalZIndex?: number
 }
 
 function normalizeOptions(
@@ -52,6 +54,7 @@ export function SearchableSelect({
   emptyOption,
   required = false,
   listAriaLabel = 'Options',
+  portalZIndex = PORTAL_Z_INDEX,
 }: SearchableSelectProps) {
   const reactId = useId()
   const baseId = idProp ?? reactId
@@ -274,7 +277,7 @@ export function SearchableSelect({
     top: pos.top,
     left: pos.left,
     width: pos.width,
-    zIndex: PORTAL_Z_INDEX,
+    zIndex: portalZIndex,
     boxSizing: 'border-box',
   })
 

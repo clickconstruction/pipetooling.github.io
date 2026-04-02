@@ -1,17 +1,21 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { BilledAwaitingPaymentSection } from '../components/quickfill/BilledAwaitingPaymentSection'
 import { CantReachSection } from '../components/quickfill/CantReachSection'
 import { CrewJobsSection } from '../components/quickfill/CrewJobsSection'
 import { JobsBillingReminderSection } from '../components/quickfill/JobsBillingReminderSection'
 import { UnpricedFixturesSection } from '../components/quickfill/UnpricedFixturesSection'
 import { SupplyHousesSection } from '../components/quickfill/SupplyHousesSection'
+import { BankingSortingSnapshotSection } from '../components/quickfill/BankingSortingSnapshotSection'
 import { HoursSection } from '../components/quickfill/HoursSection'
+import { QuickfillPeopleHoursNewSection } from '../components/quickfill/QuickfillPeopleHoursNewSection'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useUnpricedFixturesCount } from '../hooks/useUnpricedFixturesCount'
 
 const SECTIONS: { id: string; sectionId: string; label: string }[] = [
-  { id: 'quickfill-hours', sectionId: 'hours', label: 'Hours' },
+  { id: 'quickfill-hours', sectionId: 'hours', label: 'People Hours (Old)' },
+  { id: 'quickfill-people-hours-new', sectionId: 'people-hours-new', label: 'People Hours (new)' },
+  { id: 'quickfill-banking-sorting', sectionId: 'banking-sorting', label: 'Banking sorting' },
   { id: 'quickfill-crew-jobs', sectionId: 'crew-jobs', label: 'Crew Jobs / Bids' },
   { id: 'quickfill-billed-awaiting', sectionId: 'billed-awaiting', label: 'Billing Awaiting Payments' },
   { id: 'quickfill-unpriced-fixtures', sectionId: 'unpriced-fixtures', label: 'Unpriced Fixtures' },
@@ -23,7 +27,29 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
 /** localStorage value: JSON array of sectionId strings that are hidden; missing/empty = all sections visible */
 const QUICKFILL_HIDDEN_SECTIONS_KEY = 'pipetooling_quickfill_hidden_sections'
 
+/** Min HCP (inclusive) for Jobs Billing reminder counts on Quickfill */
+const QUICKFILL_JOBS_BILLING_MIN_HCP_KEY = 'pipetooling_quickfill_jobs_billing_min_hcp'
+const DEFAULT_JOBS_BILLING_MIN_HCP = 406
+
 const VALID_SECTION_IDS = new Set(SECTIONS.map((s) => s.sectionId))
+
+function loadJobsBillingMinHcpFromStorage(): number {
+  if (typeof window === 'undefined') return DEFAULT_JOBS_BILLING_MIN_HCP
+  try {
+    const raw = window.localStorage.getItem(QUICKFILL_JOBS_BILLING_MIN_HCP_KEY)
+    if (raw == null || raw === '') return DEFAULT_JOBS_BILLING_MIN_HCP
+    const n = parseInt(raw, 10)
+    if (!Number.isFinite(n) || n < 0) return DEFAULT_JOBS_BILLING_MIN_HCP
+    return n
+  } catch {
+    return DEFAULT_JOBS_BILLING_MIN_HCP
+  }
+}
+
+function saveJobsBillingMinHcpToStorage(n: number): void {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(QUICKFILL_JOBS_BILLING_MIN_HCP_KEY, String(n))
+}
 
 function loadHiddenSectionIdsFromStorage(): Set<string> {
   if (typeof window === 'undefined') return new Set()
@@ -65,6 +91,14 @@ const BUTTON_BORDER: Record<ButtonColor, string> = {
   green: '#22c55e',
 }
 
+/** Match Banking page main title (Banking h1); use h2 on Quickfill because page has an h1 */
+const QUICKFILL_SECTION_TITLE_STYLE: CSSProperties = {
+  margin: '0 0 1rem 0',
+  fontSize: '1.5rem',
+  fontWeight: 700,
+  textAlign: 'left',
+}
+
 function formatRelativeTime(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime()
   const mins = Math.floor(ms / 60000)
@@ -93,10 +127,15 @@ export default function Quickfill() {
   const [forceExpandedSections, setForceExpandedSections] = useState<Set<string>>(new Set(['cant-reach']))
   const [hiddenSectionIds, setHiddenSectionIds] = useState<Set<string>>(() => loadHiddenSectionIdsFromStorage())
   const [activeSectionsPanelOpen, setActiveSectionsPanelOpen] = useState(false)
+  const [jobsBillingMinHcp, setJobsBillingMinHcp] = useState<number>(() => loadJobsBillingMinHcpFromStorage())
 
   useEffect(() => {
     saveHiddenSectionIdsToStorage(hiddenSectionIds)
   }, [hiddenSectionIds])
+
+  useEffect(() => {
+    saveJobsBillingMinHcpToStorage(jobsBillingMinHcp)
+  }, [jobsBillingMinHcp])
 
   function isSectionVisible(sectionId: string): boolean {
     return !hiddenSectionIds.has(sectionId)
@@ -119,6 +158,15 @@ export default function Quickfill() {
   }
 
   const hasAnyVisibleSection = SECTIONS.some(({ sectionId }) => sectionWouldRenderOnPage(sectionId))
+
+  const firstVisibleSectionId = useMemo(() => {
+    for (const { sectionId } of SECTIONS) {
+      if (hiddenSectionIds.has(sectionId)) continue
+      if (sectionId === 'unpriced-fixtures' && unpricedFixturesCount <= 0) continue
+      return sectionId
+    }
+    return null
+  }, [hiddenSectionIds, unpricedFixturesCount])
 
   async function loadSectionMarks() {
     const { data } = await supabase
@@ -221,7 +269,8 @@ export default function Quickfill() {
       {isSectionVisible('hours') && (
       <QuickfillSectionWrapper
         id="quickfill-hours"
-        label="Hours"
+        label="People Hours (Old)"
+        withTopDivider={firstVisibleSectionId !== null && firstVisibleSectionId !== 'hours'}
         color={getButtonColor(sectionMarks['hours']?.marked_at ?? null)}
         collapsed={isCollapsed('hours') && !forceExpandedSections.has('hours')}
         mark={sectionMarks['hours']}
@@ -231,10 +280,39 @@ export default function Quickfill() {
         <HoursSection />
       </QuickfillSectionWrapper>
       )}
+      {isSectionVisible('people-hours-new') && (
+      <QuickfillSectionWrapper
+        id="quickfill-people-hours-new"
+        label="People Hours (new)"
+        withTopDivider={firstVisibleSectionId !== null && firstVisibleSectionId !== 'people-hours-new'}
+        color={getButtonColor(sectionMarks['people-hours-new']?.marked_at ?? null)}
+        collapsed={isCollapsed('people-hours-new') && !forceExpandedSections.has('people-hours-new')}
+        mark={sectionMarks['people-hours-new']}
+        onMarkUpToDate={() => markSectionUpToDate('people-hours-new')}
+        onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'people-hours-new']))}
+      >
+        <QuickfillPeopleHoursNewSection />
+      </QuickfillSectionWrapper>
+      )}
+      {isSectionVisible('banking-sorting') && (
+      <QuickfillSectionWrapper
+        id="quickfill-banking-sorting"
+        label="Banking sorting"
+        withTopDivider={firstVisibleSectionId !== null && firstVisibleSectionId !== 'banking-sorting'}
+        color={getButtonColor(sectionMarks['banking-sorting']?.marked_at ?? null)}
+        collapsed={isCollapsed('banking-sorting') && !forceExpandedSections.has('banking-sorting')}
+        mark={sectionMarks['banking-sorting']}
+        onMarkUpToDate={() => markSectionUpToDate('banking-sorting')}
+        onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'banking-sorting']))}
+      >
+        <BankingSortingSnapshotSection />
+      </QuickfillSectionWrapper>
+      )}
       {isSectionVisible('crew-jobs') && (
       <QuickfillSectionWrapper
         id="quickfill-crew-jobs"
         label="Crew Jobs / Bids"
+        withTopDivider={firstVisibleSectionId !== null && firstVisibleSectionId !== 'crew-jobs'}
         color={getButtonColor(sectionMarks['crew-jobs']?.marked_at ?? null)}
         collapsed={isCollapsed('crew-jobs') && !forceExpandedSections.has('crew-jobs')}
         mark={sectionMarks['crew-jobs']}
@@ -248,6 +326,7 @@ export default function Quickfill() {
       <QuickfillSectionWrapper
         id="quickfill-billed-awaiting"
         label="Billing Awaiting Payments"
+        withTopDivider={firstVisibleSectionId !== null && firstVisibleSectionId !== 'billed-awaiting'}
         color={getButtonColor(sectionMarks['billed-awaiting']?.marked_at ?? null)}
         collapsed={isCollapsed('billed-awaiting') && !forceExpandedSections.has('billed-awaiting')}
         mark={sectionMarks['billed-awaiting']}
@@ -261,6 +340,7 @@ export default function Quickfill() {
         <QuickfillSectionWrapper
           id="quickfill-unpriced-fixtures"
           label="Unpriced Fixtures"
+          withTopDivider={firstVisibleSectionId !== null && firstVisibleSectionId !== 'unpriced-fixtures'}
           color={getButtonColor(sectionMarks['unpriced-fixtures']?.marked_at ?? null)}
           collapsed={isCollapsed('unpriced-fixtures') && !forceExpandedSections.has('unpriced-fixtures')}
           mark={sectionMarks['unpriced-fixtures']}
@@ -274,6 +354,7 @@ export default function Quickfill() {
       <QuickfillSectionWrapper
         id="quickfill-cant-reach"
         label="Unreachable Prospects"
+        withTopDivider={firstVisibleSectionId !== null && firstVisibleSectionId !== 'cant-reach'}
         color={getButtonColor(sectionMarks['cant-reach']?.marked_at ?? null)}
         collapsed={isCollapsed('cant-reach') && !forceExpandedSections.has('cant-reach')}
         mark={sectionMarks['cant-reach']}
@@ -287,6 +368,7 @@ export default function Quickfill() {
       <QuickfillSectionWrapper
         id="quickfill-supply-houses"
         label="Supply Houses and Subs"
+        withTopDivider={firstVisibleSectionId !== null && firstVisibleSectionId !== 'supply-houses'}
         color={getButtonColor(sectionMarks['supply-houses']?.marked_at ?? null)}
         collapsed={isCollapsed('supply-houses') && !forceExpandedSections.has('supply-houses')}
         mark={sectionMarks['supply-houses']}
@@ -300,13 +382,14 @@ export default function Quickfill() {
       <QuickfillSectionWrapper
         id="quickfill-jobs-billing"
         label="Jobs Billing"
+        withTopDivider={firstVisibleSectionId !== null && firstVisibleSectionId !== 'jobs-billing'}
         color={getButtonColor(sectionMarks['jobs-billing']?.marked_at ?? null)}
         collapsed={isCollapsed('jobs-billing') && !forceExpandedSections.has('jobs-billing')}
         mark={sectionMarks['jobs-billing']}
         onMarkUpToDate={() => markSectionUpToDate('jobs-billing')}
         onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'jobs-billing']))}
       >
-        <JobsBillingReminderSection />
+        <JobsBillingReminderSection minHcpNumber={jobsBillingMinHcp} />
       </QuickfillSectionWrapper>
       )}
       <div
@@ -347,14 +430,48 @@ export default function Quickfill() {
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {SECTIONS.map(({ sectionId, label }) => (
                 <li key={sectionId}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
-                    <input
-                      type="checkbox"
-                      checked={isSectionVisible(sectionId)}
-                      onChange={(e) => setSectionVisible(sectionId, e.target.checked)}
-                    />
-                    <span>{label}</span>
-                  </label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                      <input
+                        type="checkbox"
+                        checked={isSectionVisible(sectionId)}
+                        onChange={(e) => setSectionVisible(sectionId, e.target.checked)}
+                      />
+                      <span>{label}</span>
+                    </label>
+                    {sectionId === 'jobs-billing' && (
+                      <label
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                          fontSize: '0.8125rem',
+                          color: '#6b7280',
+                        }}
+                      >
+                        <span>Min HCP (inclusive)</span>
+                        <input
+                          type="number"
+                          min={0}
+                          step={1}
+                          value={jobsBillingMinHcp}
+                          onChange={(e) => {
+                            const v = parseInt(e.target.value, 10)
+                            setJobsBillingMinHcp(
+                              Number.isFinite(v) && v >= 0 ? v : DEFAULT_JOBS_BILLING_MIN_HCP,
+                            )
+                          }}
+                          style={{
+                            width: '4.5rem',
+                            padding: '0.2rem 0.35rem',
+                            border: '1px solid #d1d5db',
+                            borderRadius: 4,
+                            fontSize: '0.8125rem',
+                          }}
+                        />
+                      </label>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>
@@ -368,6 +485,7 @@ export default function Quickfill() {
 function QuickfillSectionWrapper({
   id,
   label,
+  withTopDivider,
   color,
   collapsed,
   mark,
@@ -377,15 +495,23 @@ function QuickfillSectionWrapper({
 }: {
   id: string
   label: string
+  withTopDivider: boolean
   color: ButtonColor
   collapsed: boolean
   mark: { marked_at: string; marked_by?: string; marked_by_name?: string | null } | undefined
   onMarkUpToDate: () => void
   onOpenNow: () => void
-  children: React.ReactNode
+  children: ReactNode
 }) {
   return (
-    <div id={id} style={{ marginBottom: '2rem' }}>
+    <div
+      id={id}
+      style={{
+        marginBottom: '2rem',
+        ...(withTopDivider ? { borderTop: '2px solid #94a3b8', paddingTop: '1.5rem' } : {}),
+      }}
+    >
+      <h2 style={QUICKFILL_SECTION_TITLE_STYLE}>{label}</h2>
       {collapsed ? (
         <div
           style={{

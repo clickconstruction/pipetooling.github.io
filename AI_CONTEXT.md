@@ -17,7 +17,7 @@
   2. Bids (estimation system: Bid Board, Builder Review, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission, RFI, Change Order, Lien Release)
   3. Materials (Supply Houses with invoices, price book, templates, purchase orders)
   4. Checklist (recurring tasks, Today/History/Manage tabs, push notifications)
-  - **Prospects** (lead management, Convert tab, callbacks) and **Quickfill** (billing workflow, Crew Jobs / Bids, Receivables) are major subsystems
+  - **Prospects** (lead management, Convert tab, callbacks) and **Quickfill** (billing workflow, **Banking sorting** snapshot, Crew Jobs / Bids with Realtime **`CrewJobsBlock`**) are major subsystems
 
 ---
 
@@ -131,7 +131,7 @@ pipetooling.github.io/
 - **`src/components/ChecklistTitleWithLinks.tsx`** - Renders checklist titles with [1], [2], etc. as clickable links
 - **`src/pages/Jobs.tsx`** - Jobs (Reports, Stages, Billing, Team Labor, Sub Labor, Parts, Job Summary, Inspections, Teams Summary tabs)
 - **`src/pages/Prospects.tsx`** - Lead management (Convert tab, callbacks, Team tab for dev/assistant)
-- **`src/pages/Quickfill.tsx`** - Billing workflow (Crew Jobs / Bids, Receivables, Billed sections)
+- **`src/pages/Quickfill.tsx`** - Billing workflow (Crew Jobs / Bids: `src/components/CrewJobsBlock.tsx` with Realtime on `people_crew_jobs` / `people_crew_bids`, wrapped by `src/components/quickfill/CrewJobsSection.tsx`; Billed; **Banking sorting** via `src/components/quickfill/BankingSortingSnapshotSection.tsx`)
 - **`src/pages/Dashboard.tsx`** - Reports, pins, Estimator Dashboard; **clock strip** **Assign** uses **`applyOptimisticClockSessionAssign`** (from **`useDashboardMyTeamSectionState`**) for instant job/bid labels, then silent **`loadPending`**
 - **`src/components/Layout.tsx`** - Nav; right cluster **Task Dispatch** / **Estimator Inbox** / **Task** / **Bid** share **`headerActionButtonBase`** height
 - **`src/components/my-time-day-editor/`** - Dashboard **My Time** **Edit time** modal: **Form** vs **Visual** cluster editor (`MyTimeDayClusterForm.tsx`, `MyTimeDayClusterVisual.tsx`, `MyTimeMergeSegmentsModal.tsx`, datetime helpers)

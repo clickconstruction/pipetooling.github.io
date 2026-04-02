@@ -59,6 +59,8 @@ export type MyTimeDayClusterVisualProps = {
   onRequestMergeJobChoice?: (payload: { direction: 'prev' | 'next'; segIdx: number }) => void
   onForceClockOut?: (session: DayEditorSession) => void
   onAdjustTimes?: (session: DayEditorSession) => void
+  onRejectSession?: (session: DayEditorSession) => void | Promise<void>
+  rejectSessionBusyId?: string | null
 }
 
 export function MyTimeDayClusterVisual({
@@ -86,6 +88,8 @@ export function MyTimeDayClusterVisual({
   onRequestMergeJobChoice,
   onForceClockOut,
   onAdjustTimes,
+  onRejectSession,
+  rejectSessionBusyId = null,
 }: MyTimeDayClusterVisualProps) {
   const openLastCluster = !lastS.clocked_out_at
   return (
@@ -398,6 +402,9 @@ export function MyTimeDayClusterVisual({
             const changeAssignTargetRow = showSingleAssignedChange ? adjustRow : null
             const visualSpanAndDur = `${segmentAssignLabel} [${formatDurationMs(dur)}]`
             const visualSpanAdjustClickable = Boolean(onAdjustTimes && adjustRow && !saving)
+            const showSegmentReject =
+              Boolean(onRejectSession && adjustRow && adjustRow.clocked_out_at && !saving)
+            const segmentRejectDisabled = Boolean(rejectSessionBusyId != null)
             const visualSpanDurText: CSSProperties = {
               fontSize: '0.75rem',
               color: '#9ca3af',
@@ -414,214 +421,351 @@ export function MyTimeDayClusterVisual({
                 }}
               >
                 <div
+                  className="myTimeDaySegmentOptionBRow"
                   style={{
                     display: 'flex',
-                    flexWrap: 'wrap',
                     alignItems: 'center',
+                    width: '100%',
+                    minWidth: 0,
+                    flexWrap: 'nowrap',
                     gap: 6,
                     marginBottom: 6,
                   }}
                 >
-                  {visualSpanAdjustClickable ? (
-                    <button
-                      type="button"
-                      className="myTimeDaySpanAdjustLink"
-                      disabled={saving}
-                      aria-label="Adjust clock-in and clock-out for this segment"
-                      onClick={() => adjustRow && onAdjustTimes?.(adjustRow)}
-                      style={{
-                        fontSize: visualSpanDurText.fontSize,
-                        fontVariantNumeric: visualSpanDurText.fontVariantNumeric,
-                        margin: 0,
-                      }}
-                    >
-                      {visualSpanAndDur}
-                    </button>
-                  ) : (
-                    <span style={visualSpanDurText}>{visualSpanAndDur}</span>
-                  )}
-                  {split.boundaries.length > 2 && !saving ? (
-                    <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
-                      {segIdx > 0 ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const labUp = segmentAllocationLabelsForOverlap(
-                              c,
-                              split,
-                              nowTick,
-                              segIdx - 1,
-                              jobLabels,
-                              bidLabels
-                            )
-                            if (mergeAllocChoiceRequired(allocLabels, labUp)) {
-                              onRequestMergeJobChoice?.({ direction: 'prev', segIdx })
-                              return
-                            }
-                            patchClusterAction({
-                              type: 'removeSegmentMergeWithPrev',
-                              segIndex: segIdx,
-                              nowMs: nowTick,
-                              openLastCluster,
-                            })
-                          }}
-                          style={{
-                            padding: '1px 6px',
-                            fontSize: '0.68rem',
-                            border: '1px solid #d1d5db',
-                            borderRadius: 4,
-                            background: 'white',
-                            color: '#6b7280',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          Merge up
-                        </button>
-                      ) : null}
-                      {segIdx < split.boundaries.length - 2 ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const labDn = segmentAllocationLabelsForOverlap(
-                              c,
-                              split,
-                              nowTick,
-                              segIdx + 1,
-                              jobLabels,
-                              bidLabels
-                            )
-                            if (mergeAllocChoiceRequired(allocLabels, labDn)) {
-                              onRequestMergeJobChoice?.({ direction: 'next', segIdx })
-                              return
-                            }
-                            patchClusterAction({
-                              type: 'removeSegmentMergeWithNext',
-                              segIndex: segIdx,
-                              nowMs: nowTick,
-                              openLastCluster,
-                            })
-                          }}
-                          style={{
-                            padding: '1px 6px',
-                            fontSize: '0.68rem',
-                            border: '1px solid #d1d5db',
-                            borderRadius: 4,
-                            background: 'white',
-                            color: '#6b7280',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          Merge down
-                        </button>
-                      ) : null}
-                    </span>
-                  ) : null}
                   <div
                     style={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: 4,
-                      alignItems: 'center',
+                      flex: 1,
                       minWidth: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'flex-start',
+                      gap: 6,
                     }}
                   >
-                    {showSingleUnassignedAssign && unassignedIds.length === 1 ? (
-                      singleAssignRow ? (
-                        <AssignSessionJobPopover
-                          popoverZIndex={1250}
-                          unassignedTrigger="combined"
-                          session={{
-                            id: singleAssignRow.id,
-                            job_ledger_id: singleAssignRow.job_ledger_id,
-                            bid_id: singleAssignRow.bid_id,
-                          }}
-                          resolveSessionForAssign={
-                            resolveAssignSession ? () => resolveAssignSession(segIdx) : undefined
-                          }
-                          onSaved={onAssignJobSaved}
-                        />
-                      ) : null
-                    ) : showSingleUnassignedAssign && unassignedIds.length > 1 ? (
-                      <>
-                        <span
-                          title={NO_JOB_BID_LINKED_LABEL}
-                          style={{
-                            fontSize: '0.68rem',
-                            lineHeight: 1.2,
-                            padding: '2px 6px',
-                            borderRadius: 4,
-                            border: '1px solid #e5e7eb',
-                            background: '#f9fafb',
-                            color: '#374151',
-                            maxWidth: '100%',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {NO_JOB_BID_LINKED_LABEL}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setAssignBulk({
-                              sessionIds: unassignedIds,
-                              label: segmentAssignLabel,
-                            })
-                          }
-                          style={{
-                            padding: '0.15rem 0.45rem',
-                            fontSize: '0.68rem',
-                            border: '1px solid #3b82f6',
-                            borderRadius: 4,
-                            background: '#eff6ff',
-                            color: '#2563eb',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          Add job or bid
-                        </button>
-                      </>
+                    {visualSpanAdjustClickable ? (
+                      <button
+                        type="button"
+                        className="myTimeDaySpanAdjustLink"
+                        disabled={saving}
+                        aria-label="Adjust clock-in and clock-out for this segment"
+                        onClick={() => adjustRow && onAdjustTimes?.(adjustRow)}
+                        style={{
+                          flex: '1 1 auto',
+                          minWidth: 0,
+                          maxWidth: '100%',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          textAlign: 'left',
+                          fontSize: visualSpanDurText.fontSize,
+                          fontVariantNumeric: visualSpanDurText.fontVariantNumeric,
+                          margin: 0,
+                        }}
+                      >
+                        {visualSpanAndDur}
+                      </button>
                     ) : (
-                      <>
-                        {allocLabels.map((label, li) => (
-                          <span
-                            key={`${clusterId}-${segIdx}-alloc-${li}`}
-                            title={label}
+                      <span
+                        style={{
+                          ...visualSpanDurText,
+                          flex: '1 1 auto',
+                          minWidth: 0,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {visualSpanAndDur}
+                      </span>
+                    )}
+                    {split.boundaries.length > 2 && !saving ? (
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          flexWrap: 'wrap',
+                          gap: 4,
+                          alignItems: 'center',
+                          flexShrink: 0,
+                        }}
+                      >
+                        {segIdx > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const labUp = segmentAllocationLabelsForOverlap(
+                                c,
+                                split,
+                                nowTick,
+                                segIdx - 1,
+                                jobLabels,
+                                bidLabels
+                              )
+                              if (mergeAllocChoiceRequired(allocLabels, labUp)) {
+                                onRequestMergeJobChoice?.({ direction: 'prev', segIdx })
+                                return
+                              }
+                              patchClusterAction({
+                                type: 'removeSegmentMergeWithPrev',
+                                segIndex: segIdx,
+                                nowMs: nowTick,
+                                openLastCluster,
+                              })
+                            }}
                             style={{
+                              padding: '1px 6px',
                               fontSize: '0.68rem',
-                              lineHeight: 1.2,
-                              padding: '2px 6px',
+                              border: '1px solid #d1d5db',
                               borderRadius: 4,
-                              border: multiAlloc ? '1px solid #f59e0b' : '1px solid #e5e7eb',
-                              background: multiAlloc ? '#fffbeb' : '#f9fafb',
-                              color: multiAlloc ? '#92400e' : '#374151',
-                              maxWidth: '100%',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
+                              background: 'white',
+                              color: '#6b7280',
+                              cursor: 'pointer',
                             }}
                           >
-                            {label}
-                          </span>
-                        ))}
-                        {!multiAlloc && changeAssignTargetRow ? (
+                            Merge up
+                          </button>
+                        ) : null}
+                        {segIdx < split.boundaries.length - 2 ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const labDn = segmentAllocationLabelsForOverlap(
+                                c,
+                                split,
+                                nowTick,
+                                segIdx + 1,
+                                jobLabels,
+                                bidLabels
+                              )
+                              if (mergeAllocChoiceRequired(allocLabels, labDn)) {
+                                onRequestMergeJobChoice?.({ direction: 'next', segIdx })
+                                return
+                              }
+                              patchClusterAction({
+                                type: 'removeSegmentMergeWithNext',
+                                segIndex: segIdx,
+                                nowMs: nowTick,
+                                openLastCluster,
+                              })
+                            }}
+                            style={{
+                              padding: '1px 6px',
+                              fontSize: '0.68rem',
+                              border: '1px solid #d1d5db',
+                              borderRadius: 4,
+                              background: 'white',
+                              color: '#6b7280',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Merge down
+                          </button>
+                        ) : null}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: 4,
+                        alignItems: 'center',
+                        minWidth: 0,
+                        justifyContent: 'center',
+                      }}
+                    >
+                      {showSingleUnassignedAssign && unassignedIds.length === 1 ? (
+                        singleAssignRow ? (
                           <AssignSessionJobPopover
                             popoverZIndex={1250}
-                            compactTrigger
+                            unassignedTrigger="combined"
                             session={{
-                              id: changeAssignTargetRow.id,
-                              job_ledger_id: changeAssignTargetRow.job_ledger_id,
-                              bid_id: changeAssignTargetRow.bid_id,
+                              id: singleAssignRow.id,
+                              job_ledger_id: singleAssignRow.job_ledger_id,
+                              bid_id: singleAssignRow.bid_id,
                             }}
                             resolveSessionForAssign={
                               resolveAssignSession ? () => resolveAssignSession(segIdx) : undefined
                             }
                             onSaved={onAssignJobSaved}
                           />
-                        ) : null}
-                      </>
-                    )}
+                        ) : null
+                      ) : showSingleUnassignedAssign && unassignedIds.length > 1 ? (
+                        <>
+                          <span
+                            title={NO_JOB_BID_LINKED_LABEL}
+                            style={{
+                              fontSize: '0.68rem',
+                              lineHeight: 1.2,
+                              padding: '2px 6px',
+                              borderRadius: 4,
+                              border: '1px solid #e5e7eb',
+                              background: '#f9fafb',
+                              color: '#374151',
+                              maxWidth: '100%',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {NO_JOB_BID_LINKED_LABEL}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setAssignBulk({
+                                sessionIds: unassignedIds,
+                                label: segmentAssignLabel,
+                              })
+                            }
+                            style={{
+                              padding: '0.15rem 0.45rem',
+                              fontSize: '0.68rem',
+                              border: '1px solid #3b82f6',
+                              borderRadius: 4,
+                              background: '#eff6ff',
+                              color: '#2563eb',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Add job or bid
+                          </button>
+                        </>
+                      ) : multiAlloc ? (
+                        <>
+                          {allocLabels.map((label, li) => (
+                            <span
+                              key={`${clusterId}-${segIdx}-alloc-${li}`}
+                              title={label}
+                              style={{
+                                fontSize: '0.68rem',
+                                lineHeight: 1.2,
+                                padding: '2px 6px',
+                                borderRadius: 4,
+                                border: '1px solid #f59e0b',
+                                background: '#fffbeb',
+                                color: '#92400e',
+                                maxWidth: '100%',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {label}
+                            </span>
+                          ))}
+                        </>
+                      ) : changeAssignTargetRow ? (
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            flexWrap: 'nowrap',
+                            minWidth: 0,
+                            width: '100%',
+                          }}
+                        >
+                          <span
+                            title={allocLabels[0] ?? ''}
+                            style={{
+                              fontSize: '0.68rem',
+                              lineHeight: 1.2,
+                              padding: '2px 6px',
+                              borderRadius: 4,
+                              border: '1px solid #e5e7eb',
+                              background: '#f9fafb',
+                              color: '#374151',
+                              flex: 1,
+                              minWidth: 0,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {allocLabels[0] ?? ''}
+                          </span>
+                          <span style={{ flexShrink: 0 }}>
+                            <AssignSessionJobPopover
+                              popoverZIndex={1250}
+                              compactTrigger
+                              session={{
+                                id: changeAssignTargetRow.id,
+                                job_ledger_id: changeAssignTargetRow.job_ledger_id,
+                                bid_id: changeAssignTargetRow.bid_id,
+                              }}
+                              resolveSessionForAssign={
+                                resolveAssignSession ? () => resolveAssignSession(segIdx) : undefined
+                              }
+                              onSaved={onAssignJobSaved}
+                            />
+                          </span>
+                        </div>
+                      ) : (
+                        <>
+                          {allocLabels.map((label, li) => (
+                            <span
+                              key={`${clusterId}-${segIdx}-alloc-${li}`}
+                              title={label}
+                              style={{
+                                fontSize: '0.68rem',
+                                lineHeight: 1.2,
+                                padding: '2px 6px',
+                                borderRadius: 4,
+                                border: '1px solid #e5e7eb',
+                                background: '#f9fafb',
+                                color: '#374151',
+                                maxWidth: '100%',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {label}
+                            </span>
+                          ))}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      display: 'flex',
+                      justifyContent: 'flex-end',
+                      alignItems: 'center',
+                    }}
+                  >
+                    {showSegmentReject ? (
+                      <button
+                        type="button"
+                        disabled={segmentRejectDisabled}
+                        title="Reject this clock session"
+                        aria-label="Reject session"
+                        onClick={() => adjustRow && onRejectSession?.(adjustRow)}
+                        style={{
+                          flexShrink: 0,
+                          padding: '0 4px',
+                          border: 'none',
+                          background: 'transparent',
+                          cursor: segmentRejectDisabled ? 'not-allowed' : 'pointer',
+                          color: '#9ca3af',
+                          fontSize: '1rem',
+                          lineHeight: 1,
+                        }}
+                      >
+                        ×
+                      </button>
+                    ) : null}
                   </div>
                 </div>
                 <textarea

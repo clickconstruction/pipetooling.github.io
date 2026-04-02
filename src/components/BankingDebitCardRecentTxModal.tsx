@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react'
 import type { Database } from '../types/database'
+import { formatMercuryKind } from '../lib/mercuryKindLabels'
 import { formatMercuryDebitCardIdCompact, mercuryDebitCardIdFromRaw } from '../lib/mercuryRawDebitCard'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
@@ -160,7 +161,7 @@ export function BankingDebitCardRecentTxModal({
                   <tr key={r.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                     <td style={{ padding: '0.45rem 0.75rem', whiteSpace: 'nowrap' }}>{formatDate(r.posted_at)}</td>
                     <td style={{ padding: '0.45rem 0.75rem' }}>{formatCurrency(Number(r.amount))}</td>
-                    <td style={{ padding: '0.45rem 0.75rem' }}>{r.kind}</td>
+                    <td style={{ padding: '0.45rem 0.75rem' }}>{formatMercuryKind(r.kind)}</td>
                     <td style={{ padding: '0.45rem 0.75rem', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {r.counterparty_name ?? '—'}
                     </td>

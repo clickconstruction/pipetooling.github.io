@@ -554,13 +554,32 @@ export function SupplyHousesTab({
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: showTitle ? '1fr auto 1fr' : '1fr',
+          alignItems: 'center',
+          marginBottom: '0.75rem',
+          gap: '0.5rem',
+        }}
+      >
+        {showTitle && <span aria-hidden="true" style={{ minWidth: 0 }} />}
         {showTitle && (
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0, textAlign: 'center', flex: 1 }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0, justifySelf: 'center' }}>
             Supply Houses
           </h2>
         )}
-        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem', marginLeft: showTitle ? 0 : 'auto' }}>
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            cursor: 'pointer',
+            fontSize: '0.875rem',
+            justifySelf: 'end',
+            whiteSpace: 'nowrap',
+          }}
+        >
           <input
             type="checkbox"
             checked={showPaidInvoices}

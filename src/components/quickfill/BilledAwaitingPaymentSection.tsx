@@ -121,9 +121,17 @@ export function BilledAwaitingPaymentSection() {
 
   return (
     <section style={{ marginBottom: '2rem' }}>
-      <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.75rem', textAlign: 'center' }}>
-        Billed Awaiting Payment ({rows.length}) - ${formatCurrency(total)}
-      </h2>
+      <div
+        style={{
+          fontSize: '0.9375rem',
+          fontWeight: 600,
+          marginBottom: '0.75rem',
+          textAlign: 'left',
+          color: '#374151',
+        }}
+      >
+        {rows.length} line{rows.length !== 1 ? 's' : ''} · ${formatCurrency(total)} remaining
+      </div>
       {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
       <div style={{ overflowX: 'auto', marginBottom: '1rem' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>

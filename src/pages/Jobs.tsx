@@ -10,6 +10,7 @@ import {
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { NO_CUSTOMER_TYPE_LABEL } from '../constants/customerTypeLabels'
 import { supabase } from '../lib/supabase'
+import { pageUnderlineTabStyle } from '../lib/pageUnderlineTabStyle'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { useAuth } from '../hooks/useAuth'
 import { useToastContext } from '../contexts/ToastContext'
@@ -158,17 +159,6 @@ type LaborJob = { id: string; assigned_to_name: string; address: string; job_num
 type CrewJobAssignment = { job_id: string; pct: number }
 type CrewJobRow = { crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }
 type TeamLaborRow = { jobId: string; hcpNumber: string; jobName: string; jobAddress: string; people: string[]; manHours: number; jobCost: number; breakdown: Array<{ personName: string; hours: number; cost: number }> }
-
-const tabStyle = (active: boolean) => ({
-  padding: '0.75rem 1.5rem',
-  border: 'none',
-  background: 'none',
-  borderBottom: active ? '2px solid #3b82f6' : '2px solid transparent',
-  color: active ? '#3b82f6' : '#6b7280',
-  fontWeight: active ? 600 : 400,
-  cursor: 'pointer' as const,
-  flexShrink: 0,
-})
 
 function formatCurrency(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -642,6 +632,7 @@ export default function Jobs() {
   const [deletingTallyPartId, setDeletingTallyPartId] = useState<string | null>(null)
   const [updatingFixtureCostId, setUpdatingFixtureCostId] = useState<string | null>(null)
   const [expandedPartsJobIds, setExpandedPartsJobIds] = useState<Set<string>>(new Set())
+  const [mercuryCardChargesByJobId, setMercuryCardChargesByJobId] = useState<Map<string, number>>(() => new Map())
   const [pendingScrollToPartsJobId, setPendingScrollToPartsJobId] = useState<string | null>(null)
   const [reportTemplatesModalOpen, setReportTemplatesModalOpen] = useState(false)
   const [reportTemplatesList, setReportTemplatesList] = useState<Array<{ id: string; name: string; sequence_order: number }>>([])
@@ -2943,6 +2934,30 @@ export default function Jobs() {
     }
   }, [activeTab, authUser?.id])
 
+  const jobIdsKeyForCardCharges = useMemo(() => jobs.map((j) => j.id).sort().join(','), [jobs])
+
+  useEffect(() => {
+    if (jobs.length === 0) {
+      setMercuryCardChargesByJobId(new Map())
+      return
+    }
+    const ids = jobs.map((j) => j.id)
+    void withSupabaseRetry(
+      async () =>
+        supabase.from('mercury_transaction_job_allocations').select('job_id, amount').in('job_id', ids),
+      'mercury card charges by job',
+    )
+      .then((rows) => {
+        const m = new Map<string, number>()
+        for (const row of rows ?? []) {
+          const jid = row.job_id
+          m.set(jid, (m.get(jid) ?? 0) + Math.abs(Number(row.amount)))
+        }
+        setMercuryCardChargesByJobId(m)
+      })
+      .catch(() => setMercuryCardChargesByJobId(new Map()))
+  }, [jobIdsKeyForCardCharges])
+
   useEffect(() => {
     if (activeTab === 'inspections' && authUser?.id) {
       const t = setTimeout(() => {
@@ -3216,7 +3231,8 @@ export default function Jobs() {
       const partsFromTally = partsCostByJobId.get(job.id) ?? 0
       const invoicesFromSupplyHouses = invoiceAmountByJob[job.id] ?? 0
       const billedMaterialsSum = (job.materials ?? []).reduce((s, m) => s + Number(m.amount ?? 0), 0)
-      const partsCost = partsFromTally + invoicesFromSupplyHouses + billedMaterialsSum
+      const cardCharges = mercuryCardChargesByJobId.get(job.id) ?? 0
+      const partsCost = partsFromTally + invoicesFromSupplyHouses + billedMaterialsSum + cardCharges
       const totalBill = job.revenue != null ? Number(job.revenue) : 0
       const profit = totalBill - partsCost - laborCost
       return {
@@ -3228,7 +3244,7 @@ export default function Jobs() {
         profit,
       }
     })
-  }, [jobs, laborJobs, tallyParts, teamLaborData, driveMileageCost, driveTimePerMile, invoiceAmountByJob])
+  }, [jobs, laborJobs, tallyParts, teamLaborData, driveMileageCost, driveTimePerMile, invoiceAmountByJob, mercuryCardChargesByJobId])
 
   const subLaborDueTotal = useMemo(() => {
     const q = subLaborSearch.trim().toLowerCase()
@@ -3930,7 +3946,7 @@ export default function Jobs() {
                 return next
               })
             }}
-            style={tabStyle(activeTab === 'teams-summary')}
+            style={pageUnderlineTabStyle(activeTab === 'teams-summary')}
           >
             Teams
           </button>
@@ -3945,7 +3961,7 @@ export default function Jobs() {
                 return next
               })
             }}
-            style={tabStyle(activeTab === 'reports')}
+            style={pageUnderlineTabStyle(activeTab === 'reports')}
           >
             Reports
           </button>
@@ -3960,7 +3976,7 @@ export default function Jobs() {
                 return next
               })
             }}
-            style={tabStyle(activeTab === 'stages')}
+            style={pageUnderlineTabStyle(activeTab === 'stages')}
           >
             Stages
           </button>
@@ -3980,7 +3996,7 @@ export default function Jobs() {
                   return next
                 })
               }}
-              style={tabStyle(activeTab === 'billing')}
+              style={pageUnderlineTabStyle(activeTab === 'billing')}
             >
               Billing
             </button>
@@ -3997,7 +4013,7 @@ export default function Jobs() {
                 return next
               })
             }}
-            style={tabStyle(activeTab === 'combined-labor')}
+            style={pageUnderlineTabStyle(activeTab === 'combined-labor')}
           >
             Team Labor
           </button>
@@ -4012,7 +4028,7 @@ export default function Jobs() {
                 return next
               })
             }}
-            style={tabStyle(activeTab === 'sub_sheet_ledger')}
+            style={pageUnderlineTabStyle(activeTab === 'sub_sheet_ledger')}
           >
             Sub Labor
           </button>
@@ -4027,7 +4043,7 @@ export default function Jobs() {
                 return next
               })
             }}
-            style={tabStyle(activeTab === 'parts')}
+            style={pageUnderlineTabStyle(activeTab === 'parts')}
           >
             Parts
           </button>
@@ -4045,7 +4061,7 @@ export default function Jobs() {
                 return next
               })
             }}
-            style={tabStyle(activeTab === 'job-summary')}
+            style={pageUnderlineTabStyle(activeTab === 'job-summary')}
           >
             Job Summary
           </button>
@@ -4063,7 +4079,7 @@ export default function Jobs() {
                 return next
               })
             }}
-            style={tabStyle(activeTab === 'inspections')}
+            style={pageUnderlineTabStyle(activeTab === 'inspections')}
           >
             Inspections
           </button>
@@ -7113,6 +7129,7 @@ export default function Jobs() {
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Parts from Tally</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Billed Materials</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Invoices from Supply Houses</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Card charges</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total Parts Cost</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Parts</th>
                   </tr>
@@ -7177,7 +7194,26 @@ export default function Jobs() {
                       jobName: j.job_name ?? null,
                       parts: [] as TallyPartRow[],
                     }))
-                    const jobRows = [...jobRowsFromTally, ...materialsOnlyRows, ...invoicesOnlyRows].sort((a, b) => {
+                    const materialsOnlyJobIds = new Set(materialsOnlyJobs.map((j) => j.id))
+                    const invoicesOnlyJobIds = new Set(invoicesOnlyJobs.map((j) => j.id))
+                    const cardChargesOnlyJobs = jobs.filter(
+                      (j) =>
+                        (mercuryCardChargesByJobId.get(j.id) ?? 0) !== 0 &&
+                        !jobIdsFromTally.has(j.id) &&
+                        !materialsOnlyJobIds.has(j.id) &&
+                        !invoicesOnlyJobIds.has(j.id) &&
+                        (!showMyJobsOnly || !myJobIds || myJobIds.has(j.id)) &&
+                        (!q ||
+                          (j.hcp_number ?? '').toLowerCase().includes(q) ||
+                          (j.job_name ?? '').toLowerCase().includes(q)),
+                    )
+                    const cardChargesOnlyRows = cardChargesOnlyJobs.map((j) => ({
+                      jobId: j.id,
+                      hcpNumber: j.hcp_number ?? null,
+                      jobName: j.job_name ?? null,
+                      parts: [] as TallyPartRow[],
+                    }))
+                    const jobRows = [...jobRowsFromTally, ...materialsOnlyRows, ...invoicesOnlyRows, ...cardChargesOnlyRows].sort((a, b) => {
                       const ha = (a.hcpNumber ?? '').trim()
                       const hb = (b.hcpNumber ?? '').trim()
                       return -ha.localeCompare(hb, undefined, { numeric: true })
@@ -7185,7 +7221,7 @@ export default function Jobs() {
                     if (jobRows.length === 0) {
                       return (
                         <tr>
-                          <td colSpan={8} style={{ padding: '1rem', color: '#6b7280', textAlign: 'center' }}>
+                          <td colSpan={9} style={{ padding: '1rem', color: '#6b7280', textAlign: 'center' }}>
                             No tally parts yet. Subs can record parts via the Job Parts Tally flow on the Dashboard.
                           </td>
                         </tr>
@@ -7195,6 +7231,7 @@ export default function Jobs() {
                       const expanded = expandedPartsJobIds.has(jobId)
                       const job = jobs.find((j) => j.id === jobId)
                       const billedMaterialsSum = (job?.materials ?? []).reduce((s, m) => s + Number(m.amount ?? 0), 0)
+                      const cardCharges = mercuryCardChargesByJobId.get(jobId) ?? 0
                       const partsTotal = parts.reduce((sum, r) => {
                         if (r.part_id == null) {
                           return sum + (Number(r.fixture_cost ?? 0) * Number(r.quantity))
@@ -7231,13 +7268,16 @@ export default function Jobs() {
                           <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 500 }}>{formatCurrency(partsTotal)}</td>
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>{formatCurrency(billedMaterialsSum)}</td>
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>{formatCurrency(invoiceAmountByJob[jobId] ?? 0)}</td>
-                          <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 500 }}>{formatCurrency(partsTotal + billedMaterialsSum + (invoiceAmountByJob[jobId] ?? 0))}</td>
+                          <td style={{ padding: '0.75rem', textAlign: 'right' }}>{formatCurrency(cardCharges)}</td>
+                          <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 500 }}>
+                            {formatCurrency(partsTotal + billedMaterialsSum + (invoiceAmountByJob[jobId] ?? 0) + cardCharges)}
+                          </td>
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>{parts.length}</td>
                         </tr>,
                         ...(expanded
                           ? [
                               <tr key={`${jobId}-parts`}>
-                                <td colSpan={8} style={{ padding: 0, borderBottom: '1px solid #e5e7eb', background: '#fff', verticalAlign: 'top' }}>
+                                <td colSpan={9} style={{ padding: 0, borderBottom: '1px solid #e5e7eb', background: '#fff', verticalAlign: 'top' }}>
                                   {parts.length > 0 && (
                                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                                     <thead>
@@ -7340,6 +7380,11 @@ export default function Jobs() {
                                       ))}
                                     </tbody>
                                   </table>
+                                  )}
+                                  {parts.length === 0 && cardCharges !== 0 && (
+                                    <div style={{ padding: '0.75rem', color: '#4b5563', fontSize: '0.8125rem' }}>
+                                      Card charges are split from Mercury transactions on the Banking page.
+                                    </div>
                                   )}
                                   {job && job.materials.length > 0 && (
                                     <div style={{ padding: '0.75rem', borderTop: '1px solid #e5e7eb', background: '#f9fafb' }}>

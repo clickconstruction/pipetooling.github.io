@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatCurrency, formatDateWithRelativeLabel } from '../lib/format'
 import { useAuth } from '../hooks/useAuth'
@@ -230,6 +230,12 @@ export function CrewJobsBlock({
     setTeamLaborLoading(false)
   }
 
+  const refreshCrewFromRealtimeRef = useRef<() => void>(() => {})
+  refreshCrewFromRealtimeRef.current = () => {
+    void loadCrewJobs(crewJobsDate)
+    void doLoadTeamLaborData()
+  }
+
   async function saveCrewRow(personName: string, row: CrewRow) {
     if (!canEdit) return
     setCrewJobsData((prev) => ({ ...prev, [personName]: row }))
@@ -265,65 +271,6 @@ export function CrewJobsBlock({
       await doLoadTeamLaborData()
       onCrewJobsChange?.()
     }
-  }
-
-  async function copyCrewFromYesterday() {
-    if (!canEdit) return
-    const d = new Date(crewJobsDate + 'T12:00:00')
-    d.setDate(d.getDate() - 1)
-    const yesterday = d.toLocaleDateString('en-CA')
-    const [jobsRes, bidsRes] = await Promise.all([
-      supabase.from('people_crew_jobs').select('person_name, crew_lead_person_name, job_assignments').eq('work_date', yesterday),
-      supabase.from('people_crew_bids').select('person_name, crew_lead_person_name, bid_assignments').eq('work_date', yesterday),
-    ])
-    if (jobsRes.error || bidsRes.error) {
-      setError(jobsRes.error?.message ?? bidsRes.error?.message ?? 'Failed to load yesterday')
-      return
-    }
-    const jobsRows = (jobsRes.data ?? []) as Array<{
-      person_name: string
-      crew_lead_person_name: string | null
-      job_assignments: Array<{ job_id: string; pct: number }>
-    }>
-    const bidsRows = (bidsRes.data ?? []) as Array<{
-      person_name: string
-      crew_lead_person_name: string | null
-      bid_assignments: Array<{ bid_id: string; pct: number }>
-    }>
-    const bidsByPerson: Record<string, Array<{ bid_id: string; pct: number }>> = {}
-    for (const r of bidsRows) {
-      bidsByPerson[r.person_name] = Array.isArray(r.bid_assignments) ? r.bid_assignments : []
-    }
-    const allPersonNames = new Set([...jobsRows.map((r) => r.person_name), ...bidsRows.map((r) => r.person_name)])
-    const toCopy = [...allPersonNames].filter((personName) => {
-      const j = jobsRows.find((r) => r.person_name === personName)
-      const b = bidsRows.find((r) => r.person_name === personName)
-      const jobs = Array.isArray(j?.job_assignments) ? j.job_assignments : []
-      const bids = bidsByPerson[personName] ?? []
-      const crewLead = j?.crew_lead_person_name ?? b?.crew_lead_person_name
-      const hasData = !!(crewLead || jobs.length > 0 || bids.length > 0)
-      return hasData && showPeopleForMatrix.includes(personName)
-    })
-    if (toCopy.length === 0) {
-      setError('No crew assignments for yesterday')
-      return
-    }
-    setError(null)
-    for (const personName of toCopy) {
-      const j = jobsRows.find((r) => r.person_name === personName)
-      const b = bidsRows.find((r) => r.person_name === personName)
-      const jobs = Array.isArray(j?.job_assignments) ? j!.job_assignments : []
-      const bids = bidsByPerson[personName] ?? []
-      const unified = mergeToUnified(jobs, bids)
-      const crewLead = j?.crew_lead_person_name ?? b?.crew_lead_person_name ?? null
-      const row: CrewRow = {
-        crew_lead_person_name: crewLead,
-        unifiedAssignments: unified,
-      }
-      await saveCrewRow(personName, row)
-    }
-    await doLoadTeamLaborData()
-    onCrewJobsChange?.()
   }
 
   function addAssignmentToPerson(
@@ -374,6 +321,37 @@ export function CrewJobsBlock({
 
   useEffect(() => {
     if (canAccess || canEditProp) loadCrewJobs(crewJobsDate)
+  }, [canAccess, canEditProp, crewJobsDate])
+
+  useEffect(() => {
+    if (!(canAccess || canEditProp)) return
+    const dateFilter = crewJobsDate
+    const channel = supabase
+      .channel(`crew-jobs-block-${dateFilter}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'people_crew_jobs',
+          filter: `work_date=eq.${dateFilter}`,
+        },
+        () => refreshCrewFromRealtimeRef.current()
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'people_crew_bids',
+          filter: `work_date=eq.${dateFilter}`,
+        },
+        () => refreshCrewFromRealtimeRef.current()
+      )
+      .subscribe()
+    return () => {
+      void supabase.removeChannel(channel)
+    }
   }, [canAccess, canEditProp, crewJobsDate])
 
   useEffect(() => {
@@ -435,11 +413,6 @@ export function CrewJobsBlock({
 
   if (!canAccess && canEditProp === undefined) return null
 
-  const hasAnyCrewToday = showPeopleForMatrix.some((p) => {
-    const r = crewJobsData[p] ?? { crew_lead_person_name: null, unifiedAssignments: [] }
-    return !!(r.crew_lead_person_name || (r.unifiedAssignments?.length ?? 0) > 0)
-  })
-
   function getEffectiveAssignments(personName: string): UnifiedAssignment[] {
     const row = crewJobsData[personName] ?? { crew_lead_person_name: null, unifiedAssignments: [] }
     if (row.crew_lead_person_name) {
@@ -500,15 +473,6 @@ export function CrewJobsBlock({
             Hide users with zero hours
           </label>
         </div>
-        {!crewJobsLoading && !hasAnyCrewToday && canEdit && (
-          <button
-            type="button"
-            onClick={copyCrewFromYesterday}
-            style={{ padding: '0.35rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer', fontSize: '0.875rem' }}
-          >
-            Same team as yesterday
-          </button>
-        )}
       </div>
       {crewJobsLoading ? (
         <p style={{ color: '#6b7280' }}>Loading…</p>

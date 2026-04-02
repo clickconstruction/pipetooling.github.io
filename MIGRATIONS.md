@@ -617,6 +617,20 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: [`Banking.tsx`](src/pages/Banking.tsx) account filter labels, sortable grid, nickname management block
 - **Category**: Banking / Integrations / RLS
 
+#### April 2, 2026
+
+**`20260402003356_mercury_job_allocation_note.sql`**
+- **Purpose**: **Banking** Mercury job splits: optional per-allocation **`note`**; **`replace_mercury_transaction_splits`** persists **`note`** from **`p_rows`**
+- **Changes**: **`ALTER TABLE mercury_transaction_job_allocations ADD COLUMN note text`**; **`CREATE OR REPLACE`** **`replace_mercury_transaction_splits`** (insert includes **`note`** via **`NULLIF(trim(elem->>'note'), '')`**)
+- **Impact**: [`MercuryTransactionAllocationsModal.tsx`](src/components/MercuryTransactionAllocationsModal.tsx) positive charge / **$**–**%** UI saves notes; [`Banking.tsx`](src/pages/Banking.tsx) loads **`note`**
+- **Category**: Banking / RLS
+
+**`20260402120000_clock_sessions_sync_crew_assignments_trigger.sql`**
+- **Purpose**: Keep **`people_crew_jobs`** / **`people_crew_bids`** aligned when **`job_ledger_id`** or **`bid_id`** changes on an **approved** **`clock_sessions`** row (strip **Assign** / **Change** without a second approve); enable Realtime for crew tables
+- **Changes**: Function **`clock_sessions_sync_crew_assignments_after_job_bid()`**; trigger **`clock_sessions_sync_crew_assignments_tr`** **`AFTER UPDATE OF job_ledger_id, bid_id`**; **`PERFORM`** **`sync_crew_jobs_from_clock`** and **`sync_crew_bids_from_clock`** when **`approved_at IS NOT NULL`**, **`rejected_at`** / **`revoked_at`** null, name present; conditional **`ALTER PUBLICATION supabase_realtime ADD TABLE`** for **`people_crew_jobs`** and **`people_crew_bids`**
+- **Impact**: [`CrewJobsBlock.tsx`](src/components/CrewJobsBlock.tsx) **`postgres_changes`** subscription receives writes from approve/sync/trigger; **Quickfill** and **Jobs → Team Labor** refetch automatically
+- **Category**: Hours / Clock Sessions / Crew Jobs / Realtime
+
 **`20260401004452_attendance_incidents_subject_select_own.sql`**
 - **Purpose**: Let the **subject** of an attendance incident **SELECT** their own row (Calendar NCNS chip)
 - **Changes**: `CREATE POLICY "Attendance incidents subject select own"` **`FOR SELECT`** **`USING (subject_user_id = auth.uid())`**

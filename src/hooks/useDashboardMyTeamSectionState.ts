@@ -213,6 +213,11 @@ function mergePendingWithOpenSalarySchedule(
 export type DashboardMyTeamSectionOptions = {
   /** When true, load org-wide pending sessions + today hours for the clock strip (RLS-bounded). */
   orgWideStripEnabled?: boolean
+  /**
+   * When set (e.g. Quickfill day picker), load strip `clock_sessions` for this `work_date` (YYYY-MM-DD)
+   * and align salary strip meta. When unset, team/org loaders use browser-local today (unchanged).
+   */
+  stripWorkDateYmd?: string
 }
 
 export function useDashboardMyTeamSectionState(
@@ -220,6 +225,7 @@ export function useDashboardMyTeamSectionState(
   options?: DashboardMyTeamSectionOptions,
 ) {
   const orgWideStripEnabled = options?.orgWideStripEnabled === true
+  const stripWorkDateYmd = options?.stripWorkDateYmd
   const [memberUserIds, setMemberUserIds] = useState<string[]>([])
   const [teamMemberRoster, setTeamMemberRoster] = useState<TeamMemberRosterRow[]>([])
   const [hoursSummaryByUserId, setHoursSummaryByUserId] = useState<Record<string, TeamHoursSummary>>({})
@@ -335,7 +341,7 @@ export function useDashboardMyTeamSectionState(
       setTodaySessionsRows([])
       return
     }
-    const today = new Date().toLocaleDateString('en-CA')
+    const workDate = stripWorkDateYmd ?? new Date().toLocaleDateString('en-CA')
     try {
       const data = await withSupabaseRetry(
         async () =>
@@ -343,42 +349,42 @@ export function useDashboardMyTeamSectionState(
             .from('clock_sessions')
             .select(CLOCK_SESSION_TODAY_STRIP_SELECT)
             .in('user_id', memberUserIds)
-            .eq('work_date', today),
+            .eq('work_date', workDate),
         'load team today clock sessions',
       )
       setTodaySessionsRows((data ?? []) as TodaySessionStripRow[])
     } catch {
       setTodaySessionsRows([])
     }
-  }, [authUserId, memberUserIds])
+  }, [authUserId, memberUserIds, stripWorkDateYmd])
 
   const loadTodayClockSessionsOrg = useCallback(async () => {
     if (!authUserId) {
       setTodaySessionsRowsOrg([])
       return
     }
-    const today = new Date().toLocaleDateString('en-CA')
+    const workDate = stripWorkDateYmd ?? new Date().toLocaleDateString('en-CA')
     try {
       const data = await withSupabaseRetry(
         async () =>
           supabase
             .from('clock_sessions')
             .select(CLOCK_SESSION_TODAY_STRIP_SELECT)
-            .eq('work_date', today),
+            .eq('work_date', workDate),
         'load org today clock sessions',
       )
       setTodaySessionsRowsOrg((data ?? []) as TodaySessionStripRow[])
     } catch {
       setTodaySessionsRowsOrg([])
     }
-  }, [authUserId])
+  }, [authUserId, stripWorkDateYmd])
 
   const loadSalaryStripContext = useCallback(async () => {
     if (!authUserId) {
       setSalaryStripMeta(null)
       return
     }
-    const todayYmd = denverCalendarDayKey(Date.now())
+    const todayYmd = stripWorkDateYmd ?? denverCalendarDayKey(Date.now())
     try {
       let tmplQuery = supabase.from('salary_work_schedule_templates').select('*')
       if (!orgWideStripEnabled) {
@@ -436,7 +442,7 @@ export function useDashboardMyTeamSectionState(
     } catch {
       setSalaryStripMeta(null)
     }
-  }, [authUserId, memberUserIds, orgWideStripEnabled])
+  }, [authUserId, memberUserIds, orgWideStripEnabled, stripWorkDateYmd])
 
   const loadOrgWidePending = useCallback(async () => {
     if (!authUserId) {
@@ -1010,6 +1016,12 @@ export function useDashboardMyTeamSectionState(
 
   const stripSyntheticSalarySessions = useMemo((): SyntheticSalaryStripSession[] => {
     if (!salaryStripMeta) return []
+    if (
+      stripWorkDateYmd !== undefined &&
+      stripWorkDateYmd !== denverCalendarDayKey(Date.now())
+    ) {
+      return []
+    }
     const { todayYmd, templates, overrides, timeOff, displayNameByUserId } = salaryStripMeta
     const ovByUser = new Map(overrides.map((o) => [o.user_id, o]))
     const timeOffByUser = new Map<string, Database['public']['Tables']['user_time_off']['Row'][]>()
@@ -1074,6 +1086,7 @@ export function useDashboardMyTeamSectionState(
     pendingSessions,
     teamMemberRoster,
     todayHoursNowMs,
+    stripWorkDateYmd,
   ])
 
   const fullDetailMemberUserIdSet = useMemo(

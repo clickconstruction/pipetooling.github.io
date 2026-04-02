@@ -8,6 +8,8 @@ export type BankingSortingConfigV1 = {
   kinds: string[]
   /** Empty = all accounts */
   accountIds: string[]
+  /** Empty = any debit card (rows without debit card in raw still pass when empty) */
+  debitCardIds: string[]
   /** YYYY-MM-DD (America/Chicago calendar); show transactions whose posted date is on or after this day */
   startDateYmd: string
 }
@@ -34,6 +36,7 @@ export function defaultBankingSortingConfig(): BankingSortingConfigV1 {
     v: BANKING_SORTING_CONFIG_VERSION,
     kinds: [],
     accountIds: [],
+    debitCardIds: [],
     startDateYmd: ymdAddDays(todayChicago, -90),
   }
 }
@@ -48,11 +51,20 @@ function normalizeConfig(raw: unknown): BankingSortingConfigV1 | null {
   if (o.v !== BANKING_SORTING_CONFIG_VERSION) return null
   if (!Array.isArray(o.kinds) || !o.kinds.every((x) => typeof x === 'string')) return null
   if (!Array.isArray(o.accountIds) || !o.accountIds.every((x) => typeof x === 'string')) return null
+  const rawDebit = o.debitCardIds
+  const debitCardIds =
+    rawDebit === undefined
+      ? []
+      : Array.isArray(rawDebit) && rawDebit.every((x) => typeof x === 'string')
+        ? rawDebit.map((id) => id.trim().toLowerCase()).filter((id) => id.length > 0)
+        : null
+  if (debitCardIds === null) return null
   if (typeof o.startDateYmd !== 'string' || !isValidYmd(o.startDateYmd)) return null
   return {
     v: BANKING_SORTING_CONFIG_VERSION,
     kinds: o.kinds,
     accountIds: o.accountIds,
+    debitCardIds,
     startDateYmd: o.startDateYmd.trim(),
   }
 }
