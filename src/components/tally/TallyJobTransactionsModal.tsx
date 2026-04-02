@@ -1,27 +1,8 @@
 import { useEffect, useMemo } from 'react'
 import type { Database } from '../../types/database'
-import type { MercuryJobSplit } from '../MercuryTransactionAllocationsModal'
+import { parseTallyJobSplitsJson } from '../../lib/tallyJobSplits'
 
 type TallyLinkedMercuryRow = Database['public']['Functions']['list_my_linked_mercury_transactions_for_tally']['Returns'][number]
-
-function parseTallyJobSplitsJson(jobSplits: TallyLinkedMercuryRow['job_splits']): MercuryJobSplit[] {
-  if (jobSplits == null || !Array.isArray(jobSplits)) return []
-  const out: MercuryJobSplit[] = []
-  for (const item of jobSplits) {
-    if (!item || typeof item !== 'object') continue
-    const o = item as Record<string, unknown>
-    const jobId = o.job_id
-    if (typeof jobId !== 'string') continue
-    const amt = o.amount
-    const amount = typeof amt === 'number' ? amt : Number(amt)
-    if (!Number.isFinite(amount)) continue
-    const s: MercuryJobSplit = { job_id: jobId, amount }
-    const n = o.note
-    if (typeof n === 'string' && n.trim() !== '') s.note = n
-    out.push(s)
-  }
-  return out
-}
 
 function rowHasJobSplit(row: TallyLinkedMercuryRow, jobId: string): boolean {
   const raw = row.job_splits

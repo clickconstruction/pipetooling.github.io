@@ -4,35 +4,16 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import type { Database } from '../types/database'
-import {
-  MercuryTransactionAllocationsModal,
-  type MercuryJobSplit,
-} from '../components/MercuryTransactionAllocationsModal'
+import { MercuryTransactionNoteIcon } from '../components/icons/MercuryTransactionNoteIcon'
+import { MercuryTransactionAllocationsModal } from '../components/MercuryTransactionAllocationsModal'
 import { TallyJobTransactionsModal } from '../components/tally/TallyJobTransactionsModal'
+import { parseTallyJobSplitsJson } from '../lib/tallyJobSplits'
+import { filterTallyLinkedMercuryRowsBySearchQuery } from '../lib/tallyTransactionSearch'
 
 type TallyLinkedMercuryRow = Database['public']['Functions']['list_my_linked_mercury_transactions_for_tally']['Returns'][number]
 type TallyLinkedDebitCardRow = Database['public']['Functions']['list_my_linked_mercury_debit_cards_for_tally']['Returns'][number]
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 type TallyTxSortKey = 'posted_at' | 'amount' | 'counterparty_name'
-
-function parseTallyJobSplitsJson(jobSplits: TallyLinkedMercuryRow['job_splits']): MercuryJobSplit[] {
-  if (jobSplits == null || !Array.isArray(jobSplits)) return []
-  const out: MercuryJobSplit[] = []
-  for (const item of jobSplits) {
-    if (!item || typeof item !== 'object') continue
-    const o = item as Record<string, unknown>
-    const jobId = o.job_id
-    if (typeof jobId !== 'string') continue
-    const amt = o.amount
-    const amount = typeof amt === 'number' ? amt : Number(amt)
-    if (!Number.isFinite(amount)) continue
-    const s: MercuryJobSplit = { job_id: jobId, amount }
-    const n = o.note
-    if (typeof n === 'string' && n.trim() !== '') s.note = n
-    out.push(s)
-  }
-  return out
-}
 
 type TallyJobSplitEntry = { jobId: string; label: string }
 
@@ -265,6 +246,8 @@ export default function JobTally() {
   const [tallyJobDrilldown, setTallyJobDrilldown] = useState<{ jobId: string; label: string } | null>(null)
   const [tallyDebitCardFilterId, setTallyDebitCardFilterId] = useState<string | null>(null)
   const [tallyTxScope, setTallyTxScope] = useState<TallyTxScope>('unlinked')
+  const [tallyTxSearchQuery, setTallyTxSearchQuery] = useState('')
+  const [tallyOpenNoteTxId, setTallyOpenNoteTxId] = useState<string | null>(null)
 
   const loadTallyTransactions = useCallback(async () => {
     if (!authUser?.id) return
@@ -347,14 +330,24 @@ export default function JobTally() {
     return tallyTxRows.filter((r) => r.mercury_debit_card_id === tallyDebitCardFilterId)
   }, [tallyTxRows, tallyDebitCardFilterId])
 
+  const tallyUnlinkedCountInScope = useMemo(
+    () => tallyTxRowsFiltered.filter((r) => !tallyRowHasJobAllocations(r)).length,
+    [tallyTxRowsFiltered],
+  )
+
   const tallyTxRowsForTable = useMemo(() => {
     if (tallyTxScope === 'all') return tallyTxRowsFiltered
     return tallyTxRowsFiltered.filter((r) => !tallyRowHasJobAllocations(r))
   }, [tallyTxRowsFiltered, tallyTxScope])
 
+  const tallyTxRowsForSearch = useMemo(
+    () => filterTallyLinkedMercuryRowsBySearchQuery(tallyTxRowsForTable, tallyTxSearchQuery, tallyJobLabelById),
+    [tallyTxRowsForTable, tallyTxSearchQuery, tallyJobLabelById],
+  )
+
   const tallyTxSorted = useMemo(
-    () => sortTallyRowsStable(tallyTxRowsForTable, tallyTxSort),
-    [tallyTxRowsForTable, tallyTxSort],
+    () => sortTallyRowsStable(tallyTxRowsForSearch, tallyTxSort),
+    [tallyTxRowsForSearch, tallyTxSort],
   )
 
   useEffect(() => {
@@ -370,6 +363,15 @@ export default function JobTally() {
     if (activeTab !== 'transactions' || !authUser?.id) return
     void loadTallyTransactions()
   }, [activeTab, authUser?.id, loadTallyTransactions])
+
+  useEffect(() => {
+    if (tallyOpenNoteTxId === null) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setTallyOpenNoteTxId(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [tallyOpenNoteTxId])
 
   useEffect(() => {
     if (!authUser?.id) return
@@ -697,40 +699,84 @@ export default function JobTally() {
           <div
             style={{
               display: 'flex',
-              flexWrap: 'wrap',
+              flexWrap: 'nowrap',
               alignItems: 'center',
-              justifyContent: 'center',
+              justifyContent: 'space-between',
               gap: '0.35rem',
               marginBottom: '0.5rem',
               width: '100%',
+              maxWidth: '100%',
+              overflowX: 'auto',
+              WebkitOverflowScrolling: 'touch',
             }}
           >
-            <button
-              type="button"
-              onClick={() => setTallyTxScope('all')}
-              aria-pressed={tallyTxScope === 'all'}
-              aria-label={
-                tallyTxScope === 'all'
-                  ? 'Showing all transactions including assigned to jobs (selected)'
-                  : 'Show all transactions including those assigned to jobs'
-              }
-              style={tallyCardFilterChipButtonStyle(tallyTxScope === 'all')}
+            <div
+              style={{
+                flex: '1 1 auto',
+                minWidth: 0,
+                textAlign: 'left',
+                paddingRight: '0.25rem',
+              }}
             >
-              Show all
-            </button>
-            <button
-              type="button"
-              onClick={() => setTallyTxScope('unlinked')}
-              aria-pressed={tallyTxScope === 'unlinked'}
-              aria-label={
-                tallyTxScope === 'unlinked'
-                  ? 'Showing only transactions not assigned to jobs (selected)'
-                  : 'Show only transactions not assigned to jobs'
-              }
-              style={tallyCardFilterChipButtonStyle(tallyTxScope === 'unlinked')}
+              {!tallyTxLoading && tallyTxRows.length > 0 ? (
+                <span
+                  aria-live="polite"
+                  style={{
+                    fontSize: '0.8125rem',
+                    color: '#64748b',
+                    lineHeight: 1.5,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
+                  <span style={{ fontWeight: 600, color: '#374151' }}>Transactions to sort:</span>
+                  {tallyUnlinkedCountInScope === 1
+                    ? ' 1 unlinked'
+                    : ` ${tallyUnlinkedCountInScope} unlinked`}
+                  {tallyTxSearchQuery.trim() !== '' ? (
+                    <span style={{ color: '#64748b' }}>
+                      {' '}
+                      · Showing {tallyTxRowsForSearch.length} of {tallyTxRowsForTable.length}
+                    </span>
+                  ) : null}
+                </span>
+              ) : null}
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'nowrap',
+                alignItems: 'center',
+                gap: '0.35rem',
+                flexShrink: 0,
+              }}
             >
-              Show unlinked
-            </button>
+              <button
+                type="button"
+                onClick={() => setTallyTxScope('all')}
+                aria-pressed={tallyTxScope === 'all'}
+                aria-label={
+                  tallyTxScope === 'all'
+                    ? 'Showing all transactions including assigned to jobs (selected)'
+                    : 'Show all transactions including those assigned to jobs'
+                }
+                style={tallyCardFilterChipButtonStyle(tallyTxScope === 'all')}
+              >
+                Show all
+              </button>
+              <button
+                type="button"
+                onClick={() => setTallyTxScope('unlinked')}
+                aria-pressed={tallyTxScope === 'unlinked'}
+                aria-label={
+                  tallyTxScope === 'unlinked'
+                    ? 'Showing only transactions not assigned to jobs (selected)'
+                    : 'Show only transactions not assigned to jobs'
+                }
+                style={tallyCardFilterChipButtonStyle(tallyTxScope === 'unlinked')}
+              >
+                Show unlinked
+              </button>
+            </div>
           </div>
           {!tallyTxLoading ? (
             <div
@@ -758,19 +804,51 @@ export default function JobTally() {
                 <>
                   <div
                     style={{
-                      color: '#6b7280',
-                      fontSize: '0.8125rem',
-                      lineHeight: 1.5,
-                      marginBottom: '0.35rem',
-                      textAlign: 'center',
+                      display: 'flex',
+                      flexWrap: 'nowrap',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '0.35rem',
                       width: '100%',
+                      maxWidth: '100%',
+                      marginBottom: '0.35rem',
+                      overflowX: 'auto',
+                      WebkitOverflowScrolling: 'touch',
                     }}
                   >
-                    <span style={{ fontWeight: 500, color: '#374151' }}>Filter by card</span>
-                    <span>
-                      {' · '}
-                      {linkedDebitCards.length} card{linkedDebitCards.length === 1 ? '' : 's'} linked
-                    </span>
+                    <div
+                      style={{
+                        color: '#6b7280',
+                        fontSize: '0.8125rem',
+                        lineHeight: 1.5,
+                        textAlign: 'left',
+                        flex: '1 1 auto',
+                        minWidth: 0,
+                        paddingRight: '0.25rem',
+                      }}
+                    >
+                      <span style={{ fontWeight: 500, color: '#374151' }}>Filter by card</span>
+                      <span>
+                        {' · '}
+                        {linkedDebitCards.length} card{linkedDebitCards.length === 1 ? '' : 's'} linked
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setTallyDebitCardFilterId(null)}
+                      aria-pressed={tallyDebitCardFilterId === null}
+                      aria-label={
+                        tallyDebitCardFilterId === null
+                          ? 'Showing all cards (selected)'
+                          : 'Show transactions from all cards'
+                      }
+                      style={{
+                        ...tallyCardFilterChipButtonStyle(tallyDebitCardFilterId === null),
+                        flexShrink: 0,
+                      }}
+                    >
+                      All cards
+                    </button>
                   </div>
                   <div
                     style={{
@@ -782,19 +860,6 @@ export default function JobTally() {
                       width: '100%',
                     }}
                   >
-                    <button
-                      type="button"
-                      onClick={() => setTallyDebitCardFilterId(null)}
-                      aria-pressed={tallyDebitCardFilterId === null}
-                      aria-label={
-                        tallyDebitCardFilterId === null
-                          ? 'Showing all cards (selected)'
-                          : 'Show transactions from all cards'
-                      }
-                      style={tallyCardFilterChipButtonStyle(tallyDebitCardFilterId === null)}
-                    >
-                      All cards
-                    </button>
                     {linkedDebitCards.map((c) => {
                       const label = formatLinkedCardDisplayLabel(c)
                       const active = tallyDebitCardFilterId === c.mercury_debit_card_id
@@ -879,8 +944,101 @@ export default function JobTally() {
               </button>
             </p>
           ) : (
-            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', marginLeft: '-0.25rem', marginRight: '-0.25rem' }}>
-              <table style={{ width: '100%', minWidth: 380, borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+            <>
+              {!tallyTxLoading && tallyTxRows.length > 0 ? (
+                <div
+                  style={{
+                    marginBottom: '0.65rem',
+                    width: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.35rem',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      width: '100%',
+                    }}
+                  >
+                    <input
+                      id="job-tally-tx-search"
+                      type="search"
+                      value={tallyTxSearchQuery}
+                      onChange={(e) => setTallyTxSearchQuery(e.target.value)}
+                      placeholder="Counterparty, note, job, amount…"
+                      autoComplete="off"
+                      aria-label="Search transactions"
+                      style={{
+                        flex: '1 1 200px',
+                        minWidth: 0,
+                        padding: '0.45rem 0.55rem',
+                        fontSize: '0.875rem',
+                        lineHeight: 1.35,
+                        border: '1px solid #d1d5db',
+                        borderRadius: 6,
+                        color: '#111827',
+                      }}
+                    />
+                    {tallyTxSearchQuery.trim() !== '' ? (
+                      <button
+                        type="button"
+                        onClick={() => setTallyTxSearchQuery('')}
+                        style={{
+                          flexShrink: 0,
+                          padding: '0.4rem 0.65rem',
+                          fontSize: '0.8125rem',
+                          fontWeight: 500,
+                          lineHeight: 1.25,
+                          borderRadius: 6,
+                          border: '1px solid #d1d5db',
+                          background: 'white',
+                          color: '#374151',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Clear
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+              {tallyTxRowsForTable.length > 0 &&
+              tallyTxSearchQuery.trim() !== '' &&
+              tallyTxRowsForSearch.length === 0 ? (
+                <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: '0 0 0.75rem', lineHeight: 1.5 }}>
+                  No transactions match your search.{' '}
+                  <button
+                    type="button"
+                    onClick={() => setTallyTxSearchQuery('')}
+                    style={{
+                      padding: 0,
+                      margin: 0,
+                      font: 'inherit',
+                      color: '#1d4ed8',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      textDecoration: 'underline',
+                      textUnderlineOffset: 2,
+                    }}
+                  >
+                    Clear search
+                  </button>
+                </p>
+              ) : (
+                <div
+                  style={{
+                    overflowX: 'auto',
+                    WebkitOverflowScrolling: 'touch',
+                    marginLeft: '-0.25rem',
+                    marginRight: '-0.25rem',
+                  }}
+                >
+                  <table style={{ width: '100%', minWidth: 380, borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                 <thead>
                   <tr>
                     <TallySortTh label="Posted" column="posted_at" sort={tallyTxSort} onSort={setTallyTxSortForColumn} />
@@ -917,10 +1075,87 @@ export default function JobTally() {
                           {formatTallyCurrency(Number(row.amount))}
                         </td>
                         <td style={{ padding: '0.45rem 0.6rem', verticalAlign: 'top', maxWidth: 200 }}>
-                          <div style={{ fontWeight: 500, color: '#111827' }}>{row.counterparty_name?.trim() || '—'}</div>
-                          {row.note?.trim() ? (
-                            <div style={{ color: '#64748b', fontSize: '0.75rem', marginTop: 2 }}>{row.note.trim()}</div>
-                          ) : null}
+                          {(() => {
+                            const noteText = row.note?.trim() ?? ''
+                            const hasNote = noteText.length > 0
+                            const noteOpen = tallyOpenNoteTxId === row.mercury_transaction_id
+                            const notePanelId = `tally-tx-note-${row.mercury_transaction_id}`
+                            return (
+                              <>
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'flex-start',
+                                    gap: '0.35rem',
+                                    justifyContent: 'space-between',
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      fontWeight: 500,
+                                      color: '#111827',
+                                      flex: '1 1 auto',
+                                      minWidth: 0,
+                                      wordBreak: 'break-word',
+                                    }}
+                                  >
+                                    {row.counterparty_name?.trim() || '—'}
+                                  </div>
+                                  {hasNote ? (
+                                    <button
+                                      type="button"
+                                      title="Note"
+                                      onClick={() =>
+                                        setTallyOpenNoteTxId(
+                                          noteOpen ? null : row.mercury_transaction_id,
+                                        )
+                                      }
+                                      aria-expanded={noteOpen}
+                                      aria-controls={notePanelId}
+                                      aria-label={
+                                        noteOpen
+                                          ? 'Hide Mercury transaction note'
+                                          : 'Show Mercury transaction note'
+                                      }
+                                      style={{
+                                        flexShrink: 0,
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        padding: '0.35rem',
+                                        minWidth: 32,
+                                        minHeight: 32,
+                                        margin: 0,
+                                        border: '1px solid #e5e7eb',
+                                        borderRadius: 6,
+                                        background: '#f9fafb',
+                                        color: '#4b5563',
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      <MercuryTransactionNoteIcon />
+                                    </button>
+                                  ) : null}
+                                </div>
+                                {hasNote ? (
+                                  <div
+                                    id={notePanelId}
+                                    role="region"
+                                    aria-label="Transaction note"
+                                    hidden={!noteOpen}
+                                    style={{
+                                      color: '#64748b',
+                                      fontSize: '0.75rem',
+                                      marginTop: 6,
+                                      wordBreak: 'break-word',
+                                    }}
+                                  >
+                                    {noteText}
+                                  </div>
+                                ) : null}
+                              </>
+                            )
+                          })()}
                         </td>
                       </tr>
                       <tr>
@@ -1034,7 +1269,9 @@ export default function JobTally() {
                   ))}
                 </tbody>
               </table>
-            </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
