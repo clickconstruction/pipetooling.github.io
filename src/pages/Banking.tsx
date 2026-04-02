@@ -19,6 +19,7 @@ import { BankingAccountNicknamesModal } from '../components/BankingAccountNickna
 import { BankingDebitCardNicknamesModal } from '../components/BankingDebitCardNicknamesModal'
 import { BankingDebitCardRecentTxModal } from '../components/BankingDebitCardRecentTxModal'
 import { BankingSortingConfigModal } from '../components/BankingSortingConfigModal'
+import { BankingUserCardLinkModal } from '../components/BankingUserCardLinkModal'
 import { formatMercuryKind } from '../lib/mercuryKindLabels'
 import { formatMercuryDebitCardIdCompact, mercuryDebitCardIdFromRaw } from '../lib/mercuryRawDebitCard'
 import {
@@ -683,6 +684,7 @@ export default function Banking() {
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'posted_at', dir: 'desc' })
   const [sortingConfig, setSortingConfig] = useState<BankingSortingConfigV1>(defaultBankingSortingConfig)
   const [sortingConfigModalOpen, setSortingConfigModalOpen] = useState(false)
+  const [userCardLinkModalOpen, setUserCardLinkModalOpen] = useState(false)
   const [sortingSort, setSortingSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'posted_at', dir: 'desc' })
   const [allocationsByTxId, setAllocationsByTxId] = useState<Map<string, MercuryJobSplit[]>>(() => new Map())
   const [personIdByTxId, setPersonIdByTxId] = useState<Map<string, string | null>>(() => new Map())
@@ -723,7 +725,10 @@ export default function Banking() {
   }, [activeTab])
 
   useEffect(() => {
-    if (activeTab !== 'sorting') setSortingConfigModalOpen(false)
+    if (activeTab !== 'sorting') {
+      setSortingConfigModalOpen(false)
+      setUserCardLinkModalOpen(false)
+    }
   }, [activeTab])
 
   useEffect(() => {
@@ -1324,7 +1329,24 @@ export default function Banking() {
                 </button>
               ) : null}
               {canAccessBanking ? (
-                <div style={{ flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexShrink: 0 }}>
+                  <button
+                    type="button"
+                    onClick={() => setUserCardLinkModalOpen(true)}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      borderRadius: 4,
+                      border: '1px solid #059669',
+                      background: '#ecfdf5',
+                      color: '#047857',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    User Card Link
+                  </button>
                   <BankingNicknamesMenu
                     menuOpen={nicknamesMenuOpen}
                     onMenuOpenChange={setNicknamesMenuOpen}
@@ -1623,6 +1645,17 @@ export default function Banking() {
           onSave={handleSortingConfigSave}
         />
       )}
+
+      {canAccessBanking ? (
+        <BankingUserCardLinkModal
+          open={userCardLinkModalOpen}
+          onClose={() => setUserCardLinkModalOpen(false)}
+          debitCardIds={debitCardManageIds}
+          nicknameByDebitCard={nicknameByDebitCard}
+          usersOptions={usersSelectOptions}
+          authUserId={user?.id ?? null}
+        />
+      ) : null}
     </div>
   )
 }

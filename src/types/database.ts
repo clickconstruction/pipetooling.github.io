@@ -3215,6 +3215,38 @@ export type Database = {
         }
         Relationships: []
       }
+      mercury_debit_card_user_links: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          mercury_debit_card_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          mercury_debit_card_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          mercury_debit_card_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mercury_debit_card_user_links_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mercury_transaction_attributions: {
         Row: {
           mercury_transaction_id: string
@@ -7574,6 +7606,31 @@ export type Database = {
           job_name: string
         }[]
       }
+      list_my_linked_mercury_debit_cards_for_tally: {
+        Args: never
+        Returns: {
+          mercury_debit_card_id: string
+          nickname: string
+        }[]
+      }
+      list_my_linked_mercury_transactions_for_tally: {
+        Args: never
+        Returns: {
+          amount: number
+          counterparty_name: string
+          currency: string
+          job_splits: Json
+          jobs_summary: string
+          mercury_account_id: string
+          mercury_debit_card_id: string
+          mercury_id: string
+          mercury_transaction_id: string
+          note: string
+          person_label: string
+          posted_at: string
+          raw: Json
+        }[]
+      }
       list_my_reports: {
         Args: never
         Returns: {
@@ -7679,6 +7736,7 @@ export type Database = {
         Args: { sharing_master_id: string }
         Returns: boolean
       }
+      mercury_debit_card_id_from_raw: { Args: { p_raw: Json }; Returns: string }
       notify_dispatch_license_expiry_if_needed: {
         Args: { p_license_id: string; p_link: string }
         Returns: string
@@ -7703,6 +7761,10 @@ export type Database = {
           had_approved_sessions: boolean
           rejected_count: number
         }[]
+      }
+      replace_mercury_job_splits_for_my_linked_card: {
+        Args: { p_mercury_transaction_id: string; p_rows: Json }
+        Returns: undefined
       }
       replace_mercury_transaction_splits: {
         Args: {
@@ -7770,6 +7832,15 @@ export type Database = {
           hcp_number: string
           id: string
           source: string
+        }[]
+      }
+      search_jobs_for_tally_mercury_assign: {
+        Args: { search_text?: string }
+        Returns: {
+          hcp_number: string
+          id: string
+          job_address: string
+          job_name: string
         }[]
       }
       search_jobs_ledger: {

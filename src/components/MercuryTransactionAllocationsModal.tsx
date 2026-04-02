@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'r
 import { supabase } from '../lib/supabase'
 import { useToastContext } from '../contexts/ToastContext'
 import { withSupabaseRetry } from '../utils/errorHandling'
-import type { Database } from '../types/database'
+import type { Database, Json } from '../types/database'
 import { formatMercuryDebitCardIdCompact, mercuryDebitCardIdFromRaw } from '../lib/mercuryRawDebitCard'
 import { pushRecentPersonUserId, readRecentPersonUserIds } from '../lib/mercuryAllocRecentPersonUserIds'
 import { shortUuidPrefix } from '../lib/shortUuidPrefix'
@@ -45,6 +45,8 @@ export type MercuryTransactionAllocationsModalProps = {
   nicknameByAccount?: Record<string, string>
   /** Logged-in operator auth user id; when null, recent Person chips are disabled. */
   recentPersonPicksStorageKey: string | null
+  /** Job Tally linked-card flow: hide attribution, save via replace_mercury_job_splits_for_my_linked_card, scoped job search. */
+  tallySelfService?: boolean
 }
 
 type SplitMode = 'dollars' | 'percent'
@@ -239,6 +241,7 @@ export function MercuryTransactionAllocationsModal({
   nicknameByDebitCard = {},
   nicknameByAccount = {},
   recentPersonPicksStorageKey,
+  tallySelfService = false,
 }: MercuryTransactionAllocationsModalProps) {
   const { showToast } = useToastContext()
   const [lines, setLines] = useState<SplitLine[]>([])
@@ -284,8 +287,9 @@ export function MercuryTransactionAllocationsModal({
         return
       }
       setJobSearchLoading(true)
+      const rpcName = tallySelfService ? 'search_jobs_for_tally_mercury_assign' : 'search_jobs_ledger'
       void withSupabaseRetry(
-        async () => supabase.rpc('search_jobs_ledger', { search_text: q }),
+        async () => supabase.rpc(rpcName, { search_text: q }),
         'mercury allocations job search',
       )
         .then((data) => {
@@ -298,7 +302,7 @@ export function MercuryTransactionAllocationsModal({
         })
     }, 300)
     return () => clearTimeout(t)
-  }, [open, jobSearch])
+  }, [open, jobSearch, tallySelfService])
 
   useEffect(() => {
     if (!open || !recentPersonPicksStorageKey) {
@@ -432,17 +436,28 @@ export function MercuryTransactionAllocationsModal({
         p_user_id = null
         p_person_id = null
       }
-      await withSupabaseRetry(
-        async () =>
-          supabase.rpc('replace_mercury_transaction_splits', {
-            p_mercury_transaction_id: transaction.id,
-            p_rows,
-            p_person_id: p_person_id ?? '',
-            p_user_id: p_user_id ?? undefined,
-          }),
-        'replace_mercury_transaction_splits',
-      )
-      if (recentPersonPicksStorageKey && p_user_id) {
+      if (tallySelfService) {
+        await withSupabaseRetry(
+          async () =>
+            supabase.rpc('replace_mercury_job_splits_for_my_linked_card', {
+              p_mercury_transaction_id: transaction.id,
+              p_rows: p_rows as unknown as Json,
+            }),
+          'replace_mercury_job_splits_for_my_linked_card',
+        )
+      } else {
+        await withSupabaseRetry(
+          async () =>
+            supabase.rpc('replace_mercury_transaction_splits', {
+              p_mercury_transaction_id: transaction.id,
+              p_rows,
+              p_person_id: p_person_id ?? '',
+              p_user_id: p_user_id ?? undefined,
+            }),
+          'replace_mercury_transaction_splits',
+        )
+      }
+      if (!tallySelfService && recentPersonPicksStorageKey && p_user_id) {
         pushRecentPersonUserId(recentPersonPicksStorageKey, p_user_id)
       }
       const savedAllocations: MercuryJobSplit[] = p_rows.map((r) => {
@@ -453,8 +468,8 @@ export function MercuryTransactionAllocationsModal({
       showToast('Saved allocations.', 'success')
       onSaved({
         mercuryTransactionId: transaction.id,
-        userId: p_user_id,
-        personId: p_person_id,
+        userId: tallySelfService ? null : p_user_id,
+        personId: tallySelfService ? null : p_person_id,
         allocations: savedAllocations,
       })
       onClose()
@@ -523,7 +538,7 @@ export function MercuryTransactionAllocationsModal({
         }}
       >
         <h2 id="mercury-alloc-title" style={{ margin: '0 0 0.75rem', fontSize: '1.125rem', fontWeight: 600 }}>
-          Link to person and jobs
+          {tallySelfService ? 'Assign to jobs' : 'Link to person and jobs'}
         </h2>
 
         <div style={{ overflowX: 'auto', marginBottom: '0.85rem' }}>
@@ -597,88 +612,92 @@ export function MercuryTransactionAllocationsModal({
           </table>
         </div>
 
-        {showAttributionHint ? (
+        {!tallySelfService && showAttributionHint ? (
           <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: '#6b7280' }}>
             Legacy person (roster): <strong>{legacyPersonDisplayName}</strong>. Pick a user below to replace with a login, or remove attribution.
           </p>
         ) : null}
 
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            gap: '0.4rem 0.5rem',
-            marginBottom: '0.35rem',
-          }}
-        >
-          <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>Person</span>
-          {recentChipsOrdered.length > 0 ? (
-            <>
-              <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500 }}>Recent</span>
-              {recentChipsOrdered.map((id) => {
-                const label =
-                  usersOptions.find((o) => o.value === id)?.label ?? shortUuidPrefix(id)
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => {
-                      setUserId(id)
-                      setStripAttribution(false)
-                    }}
-                    style={{
-                      fontSize: '0.75rem',
-                      fontWeight: 500,
-                      padding: '3px 10px',
-                      borderRadius: 999,
-                      border: '1px solid #e2e8f0',
-                      background: userId === id ? '#e0f2fe' : '#fff',
-                      color: '#334155',
-                      cursor: 'pointer',
-                      fontFamily: 'inherit',
-                      maxWidth: 140,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                    title={label}
-                  >
-                    {label}
-                  </button>
-                )
-              })}
-            </>
-          ) : null}
-        </div>
-        <div style={{ marginBottom: '0.5rem' }}>
-          <SearchableSelect
-            value={userId}
-            onChange={(v) => {
-              setUserId(v)
-              setStripAttribution(false)
-            }}
-            options={usersOptions}
-            emptyOption={emptyUserOption}
-            placeholder="Optional"
-            listAriaLabel="Person"
-            portalZIndex={1160}
-          />
-        </div>
-        {(initialPersonId || initialUserId) && (
-          <div style={{ marginBottom: '1rem' }}>
-            <button
-              type="button"
-              onClick={() => {
-                setUserId('')
-                setStripAttribution(true)
+        {!tallySelfService ? (
+          <>
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                gap: '0.4rem 0.5rem',
+                marginBottom: '0.35rem',
               }}
-              style={{ fontSize: '0.75rem', color: '#b91c1c', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
             >
-              Remove person attribution
-            </button>
-          </div>
-        )}
+              <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>Person</span>
+              {recentChipsOrdered.length > 0 ? (
+                <>
+                  <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500 }}>Recent</span>
+                  {recentChipsOrdered.map((id) => {
+                    const label =
+                      usersOptions.find((o) => o.value === id)?.label ?? shortUuidPrefix(id)
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => {
+                          setUserId(id)
+                          setStripAttribution(false)
+                        }}
+                        style={{
+                          fontSize: '0.75rem',
+                          fontWeight: 500,
+                          padding: '3px 10px',
+                          borderRadius: 999,
+                          border: '1px solid #e2e8f0',
+                          background: userId === id ? '#e0f2fe' : '#fff',
+                          color: '#334155',
+                          cursor: 'pointer',
+                          fontFamily: 'inherit',
+                          maxWidth: 140,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                        title={label}
+                      >
+                        {label}
+                      </button>
+                    )
+                  })}
+                </>
+              ) : null}
+            </div>
+            <div style={{ marginBottom: '0.5rem' }}>
+              <SearchableSelect
+                value={userId}
+                onChange={(v) => {
+                  setUserId(v)
+                  setStripAttribution(false)
+                }}
+                options={usersOptions}
+                emptyOption={emptyUserOption}
+                placeholder="Optional"
+                listAriaLabel="Person"
+                portalZIndex={1160}
+              />
+            </div>
+            {(initialPersonId || initialUserId) && (
+              <div style={{ marginBottom: '1rem' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUserId('')
+                    setStripAttribution(true)
+                  }}
+                  style={{ fontSize: '0.75rem', color: '#b91c1c', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                >
+                  Remove person attribution
+                </button>
+              </div>
+            )}
+          </>
+        ) : null}
 
         <div style={{ fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.35rem' }}>Job splits</div>
         <input
