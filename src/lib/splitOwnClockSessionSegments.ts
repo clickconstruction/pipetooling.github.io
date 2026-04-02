@@ -6,7 +6,7 @@ export type SplitClockSegmentPayload = {
   clocked_in_at: string
   clocked_out_at: string | null
   notes: string
-  /** Per-segment job/bid for `replace_own_clock_session_cluster_mixed` only; omit for single-session split RPCs. */
+  /** Optional per-segment job/bid for single-session splits (`split_*_clock_session_segments`) and mixed cluster replace. */
   job_ledger_id?: string | null
   bid_id?: string | null
 }
