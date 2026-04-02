@@ -264,7 +264,7 @@ export default function JobTally() {
   const [tallyAllocModalRow, setTallyAllocModalRow] = useState<TallyLinkedMercuryRow | null>(null)
   const [tallyJobDrilldown, setTallyJobDrilldown] = useState<{ jobId: string; label: string } | null>(null)
   const [tallyDebitCardFilterId, setTallyDebitCardFilterId] = useState<string | null>(null)
-  const [tallyTxScope, setTallyTxScope] = useState<TallyTxScope>('all')
+  const [tallyTxScope, setTallyTxScope] = useState<TallyTxScope>('unlinked')
 
   const loadTallyTransactions = useCallback(async () => {
     if (!authUser?.id) return
@@ -312,6 +312,29 @@ export default function JobTally() {
     }
     return m
   }, [jobs, tallyTxRows])
+
+  const tallyNicknameByDebitCard = useMemo(() => {
+    const m: Record<string, string> = {}
+    for (const c of linkedDebitCards) {
+      const nick = typeof c.nickname === 'string' ? c.nickname.trim() : ''
+      if (nick === '') continue
+      m[String(c.mercury_debit_card_id).toLowerCase()] = nick
+    }
+    return m
+  }, [linkedDebitCards])
+
+  const tallyNicknameByAccount = useMemo(() => {
+    const m: Record<string, string> = {}
+    for (const row of tallyTxRows) {
+      const aid = row.mercury_account_id
+      if (!aid) continue
+      const nick =
+        typeof row.mercury_account_nickname === 'string' ? row.mercury_account_nickname.trim() : ''
+      if (nick === '') continue
+      m[aid] = nick
+    }
+    return m
+  }, [tallyTxRows])
 
   const setTallyTxSortForColumn = useCallback((key: TallyTxSortKey) => {
     setTallyTxSort((s) =>
@@ -1495,6 +1518,8 @@ export default function JobTally() {
         initialPersonId={null}
         initialUserId={null}
         jobLabelById={tallyJobLabelById}
+        nicknameByDebitCard={tallyNicknameByDebitCard}
+        nicknameByAccount={tallyNicknameByAccount}
         usersOptions={[]}
         tallySelfService
         recentPersonPicksStorageKey={null}

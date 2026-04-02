@@ -7622,6 +7622,7 @@ export type Database = {
           job_splits: Json
           jobs_summary: string
           mercury_account_id: string
+          mercury_account_nickname: string
           mercury_debit_card_id: string
           mercury_id: string
           mercury_transaction_id: string
