@@ -20,7 +20,7 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-billed-awaiting', sectionId: 'billed-awaiting', label: 'Billing Awaiting Payments' },
   { id: 'quickfill-unpriced-fixtures', sectionId: 'unpriced-fixtures', label: 'Unpriced Fixtures' },
   { id: 'quickfill-cant-reach', sectionId: 'cant-reach', label: 'Unreachable Prospects' },
-  { id: 'quickfill-supply-houses', sectionId: 'supply-houses', label: 'Supply Houses and Subs' },
+  { id: 'quickfill-supply-houses', sectionId: 'supply-houses', label: 'Supply Houses' },
   { id: 'quickfill-jobs-billing', sectionId: 'jobs-billing', label: 'Jobs Billing' },
 ]
 
@@ -367,7 +367,7 @@ export default function Quickfill() {
       {isSectionVisible('supply-houses') && (
       <QuickfillSectionWrapper
         id="quickfill-supply-houses"
-        label="Supply Houses and Subs"
+        label="Supply Houses"
         withTopDivider={firstVisibleSectionId !== null && firstVisibleSectionId !== 'supply-houses'}
         color={getButtonColor(sectionMarks['supply-houses']?.marked_at ?? null)}
         collapsed={isCollapsed('supply-houses') && !forceExpandedSections.has('supply-houses')}
