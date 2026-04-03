@@ -18,20 +18,20 @@ function zonedYmdFromUtcMs(utcMs: number, timeZone: string): string | null {
   return `${y}-${mo}-${d}`
 }
 
-function zonedHhMmFromUtcMs(utcMs: number, timeZone: string): string | null {
-  const formatter = new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    hourCycle: 'h23',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-  const parts = formatter.formatToParts(new Date(utcMs))
-  const get = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((p) => p.type === type)?.value ?? ''
-  const h = get('hour')
-  const mi = get('minute')
-  if (!/^\d{2}$/.test(h) || !/^\d{2}$/.test(mi)) return null
-  return `${h}:${mi}`
+/** 12-hour local wall time in `timeZone` (e.g. "12:00 PM") for display next to `<input type="time">`. */
+function zonedWallTime12hFromUtcMs(utcMs: number, timeZone: string): string | null {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    })
+    const s = formatter.format(new Date(utcMs)).trim()
+    return s.length > 0 ? s : null
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -51,7 +51,7 @@ export function formatSalaryBlockEndDisplay(params: {
   const startMs = salaryZonedWallClockToUtcMs(anchorWorkDateYmd, t.h, t.m, t.s, timeZone)
   if (startMs == null) return '—'
   const endMs = startMs + durationMinutes * 60 * 1000
-  const endClock = zonedHhMmFromUtcMs(endMs, timeZone)
+  const endClock = zonedWallTime12hFromUtcMs(endMs, timeZone)
   const endYmd = zonedYmdFromUtcMs(endMs, timeZone)
   if (!endClock || !endYmd) return '—'
   const anchor = anchorWorkDateYmd.trim()

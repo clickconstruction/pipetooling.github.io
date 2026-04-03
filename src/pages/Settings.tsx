@@ -18,6 +18,9 @@ import ChecklistItemMuteModal from '../components/ChecklistItemMuteModal'
 import PasswordInput from '../components/PasswordInput'
 import { SalaryWorkScheduleSettings } from '../components/SalaryWorkScheduleSettings'
 import { TimeOffSettings } from '../components/TimeOffSettings'
+import type { PayConfigRow } from '../types/peoplePayConfig'
+import { buildSalariedWorkdayPickerRows } from '../lib/buildSalariedWorkdayPickerRows'
+import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import TeamFeedbackDevSettingsBlock from '../components/team-feedback/TeamFeedbackDevSettingsBlock'
 import TeamFeedbackMasterAggregates from '../components/team-feedback/TeamFeedbackMasterAggregates'
 import type { Database } from '../types/database'
@@ -324,6 +327,7 @@ export default function Settings() {
   const { user: authUser } = useAuth()
   const pushNotifications = usePushNotifications(authUser?.id)
   const { showToast } = useToastContext()
+  const allSalariedDevNarrowViewport = useNarrowViewport640()
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [myEstimatorProspectsAccess, setMyEstimatorProspectsAccess] = useState(false)
   const [estimatorServiceTypeIds, setEstimatorServiceTypeIds] = useState<string[] | null>(null)
@@ -461,6 +465,9 @@ export default function Settings() {
   const [myProfileOriginalName, setMyProfileOriginalName] = useState('')
   const [myProfileSaving, setMyProfileSaving] = useState(false)
   const [myProfileError, setMyProfileError] = useState<string | null>(null)
+  /** Personal Salaried workday: shown only when people_pay_config matches profile name and is_salary */
+  const [selfIsSalariedInPayConfig, setSelfIsSalariedInPayConfig] = useState(false)
+  const [selfPaySalaryLoaded, setSelfPaySalaryLoaded] = useState(false)
   const [prospectCopyNoResponse, setProspectCopyNoResponse] = useState('')
   const [prospectCopyPhoneFollowup, setProspectCopyPhoneFollowup] = useState('')
   const [prospectCopyJustCheckingIn, setProspectCopyJustCheckingIn] = useState('')
@@ -506,6 +513,10 @@ export default function Settings() {
   const [estimatorInboxSectionOpen, setEstimatorInboxSectionOpen] = useState(false)
   const [dashboardButtonsSectionOpen, setDashboardButtonsSectionOpen] = useState(false)
   const [salaryWorkdaySectionOpen, setSalaryWorkdaySectionOpen] = useState(true)
+  const [allSalariedDevSectionOpen, setAllSalariedDevSectionOpen] = useState(false)
+  const [devPayConfigForSalaried, setDevPayConfigForSalaried] = useState<Record<string, PayConfigRow> | null>(null)
+  const [devPayConfigLoading, setDevPayConfigLoading] = useState(false)
+  const [devSalariedSelectedUserId, setDevSalariedSelectedUserId] = useState<string | null>(null)
   const [timeOffSectionOpen, setTimeOffSectionOpen] = useState(true)
   const [dailyGoalsSectionOpen, setDailyGoalsSectionOpen] = useState(false)
   const [teamLeadAssignmentsSectionOpen, setTeamLeadAssignmentsSectionOpen] = useState(false)
@@ -1473,11 +1484,36 @@ export default function Settings() {
     setPinCostMatrixMasterIds(new Set(rows.map((r) => r.user_id)))
   }
 
+  async function refreshSelfPaySalaryForPayName(payNameRaw: string) {
+    const payName = payNameRaw.trim()
+    if (!payName) {
+      setSelfIsSalariedInPayConfig(false)
+      setSelfPaySalaryLoaded(true)
+      return
+    }
+    try {
+      const payRow = await withSupabaseRetry(
+        async () =>
+          supabase.from('people_pay_config').select('is_salary').eq('person_name', payName).maybeSingle(),
+        'settings self pay salary flag',
+      )
+      setSelfIsSalariedInPayConfig(!!(payRow as { is_salary?: boolean } | null)?.is_salary)
+    } catch {
+      setSelfIsSalariedInPayConfig(false)
+    } finally {
+      setSelfPaySalaryLoaded(true)
+    }
+  }
+
   async function loadData() {
     if (!authUser?.id) {
+      setSelfPaySalaryLoaded(false)
+      setSelfIsSalariedInPayConfig(false)
       setLoading(false)
       return
     }
+    setSelfPaySalaryLoaded(false)
+    setSelfIsSalariedInPayConfig(false)
     const { data: me, error: eMe } = await supabase
       .from('users')
       .select('role, estimator_service_type_ids, estimator_prospects_access, name, email, phone')
@@ -1485,6 +1521,8 @@ export default function Settings() {
       .single()
     if (eMe) {
       setError(eMe.message)
+      setSelfIsSalariedInPayConfig(false)
+      setSelfPaySalaryLoaded(true)
       setLoading(false)
       return
     }
@@ -1510,7 +1548,9 @@ export default function Settings() {
     } else {
       setEstimatorServiceTypeIds(null)
     }
-    
+
+    await refreshSelfPaySalaryForPayName(loadedName)
+
     // Load assistants, primaries, superintendents, and adoptions for masters and devs
     if (role === 'master_technician' || role === 'dev') {
       await loadAssistantsAndAdoptions(authUser.id)
@@ -1873,6 +1913,7 @@ export default function Settings() {
       await cascadePersonNameInPayTables(myProfileOriginalName.trim(), trimmedName)
     }
     setMyProfileOriginalName(trimmedName)
+    await refreshSelfPaySalaryForPayName(trimmedName)
     setMyProfileSaving(false)
     showToast('Profile saved.', 'success')
   }
@@ -4120,6 +4161,65 @@ export default function Settings() {
     setSelectedServiceTypeForAssemblies((prev) => (prev && visibleIds.includes(prev) ? prev : visibleIds[0]!))
   }, [myRole, estimatorServiceTypeIds, serviceTypes])
 
+  const devSalariedPickerRows = useMemo(() => {
+    if (devPayConfigForSalaried == null) return []
+    return buildSalariedWorkdayPickerRows(devPayConfigForSalaried, users)
+  }, [devPayConfigForSalaried, users])
+
+  const devSalariedSelectedPayName = useMemo(
+    () =>
+      devSalariedPickerRows.find((r) => r.userId === devSalariedSelectedUserId)?.personName ?? '',
+    [devSalariedPickerRows, devSalariedSelectedUserId],
+  )
+
+  useEffect(() => {
+    if (!allSalariedDevSectionOpen) {
+      setDevPayConfigForSalaried(null)
+      setDevSalariedSelectedUserId(null)
+      return
+    }
+    if (myRole !== 'dev') return
+    let cancelled = false
+    setDevPayConfigLoading(true)
+    void (async () => {
+      try {
+        const data = await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('people_pay_config')
+              .select(
+                'person_name, hourly_wage, is_salary, show_in_hours, show_in_cost_matrix, record_hours_but_salary',
+              ),
+          'settings dev all salaried pay config',
+        )
+        if (cancelled) return
+        const record: Record<string, PayConfigRow> = {}
+        for (const r of (Array.isArray(data) ? data : []) as PayConfigRow[]) {
+          record[r.person_name] = r
+        }
+        setDevPayConfigForSalaried(record)
+      } catch (e) {
+        if (!cancelled) {
+          showToast(formatErrorMessage(e), 'error')
+          setDevPayConfigForSalaried({})
+        }
+      } finally {
+        if (!cancelled) setDevPayConfigLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [allSalariedDevSectionOpen, myRole, showToast])
+
+  useEffect(() => {
+    if (devPayConfigForSalaried == null) return
+    setDevSalariedSelectedUserId((prev) => {
+      if (prev && devSalariedPickerRows.some((r) => r.userId === prev)) return prev
+      return devSalariedPickerRows.find((r) => r.userId != null)?.userId ?? null
+    })
+  }, [devPayConfigForSalaried, devSalariedPickerRows])
+
   useEffect(() => {
     if (assemblyTypes.length > 0) {
       loadAssemblyTypeAssemblyCounts()
@@ -5277,55 +5377,230 @@ export default function Settings() {
 
       </SettingsGroup>
 
-      {authUser?.id && (
+      {authUser?.id &&
+        (myRole === 'dev' || (selfPaySalaryLoaded && selfIsSalariedInPayConfig)) && (
         <section
           id="settings-salary-workday"
-          aria-labelledby="settings-salary-workday-heading"
+          aria-labelledby={
+            selfPaySalaryLoaded && selfIsSalariedInPayConfig
+              ? 'settings-salary-workday-heading'
+              : 'settings-all-salaried-dev-heading'
+          }
           style={{ marginBottom: '2rem', scrollMarginTop: '0.75rem' }}
         >
-          <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb' }}>
-            <button
-              type="button"
-              id="settings-salary-workday-heading"
-              aria-expanded={salaryWorkdaySectionOpen}
-              aria-controls="settings-salary-workday-panel"
-              onClick={() => setSalaryWorkdaySectionOpen((prev) => !prev)}
+          {selfPaySalaryLoaded && selfIsSalariedInPayConfig && (
+            <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb' }}>
+              <button
+                type="button"
+                id="settings-salary-workday-heading"
+                aria-expanded={salaryWorkdaySectionOpen}
+                aria-controls="settings-salary-workday-panel"
+                onClick={() => setSalaryWorkdaySectionOpen((prev) => !prev)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  margin: 0,
+                  padding: '1rem',
+                  width: '100%',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '1.125rem',
+                  fontWeight: 600,
+                  color: '#111827',
+                  textAlign: 'left',
+                }}
+              >
+                <span style={{ fontSize: '0.75rem' }} aria-hidden>
+                  {salaryWorkdaySectionOpen ? '▼' : '▶'}
+                </span>
+                Salaried workday
+              </button>
+              {salaryWorkdaySectionOpen && (
+                <div
+                  id="settings-salary-workday-panel"
+                  style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}
+                >
+                  <SalaryWorkScheduleSettings
+                    userId={authUser.id}
+                    userPayName={myProfileName.trim()}
+                    canEditPastDayOverrides={
+                      myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant'
+                    }
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {myRole === 'dev' && (
+            <div
               style={{
+                marginTop: selfPaySalaryLoaded && selfIsSalariedInPayConfig ? '1rem' : 0,
+                border: '1px solid #e5e7eb',
+                borderRadius: 8,
+                background: '#f9fafb',
+                maxHeight: 'min(70vh, 720px)',
                 display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                margin: 0,
-                padding: '1rem',
-                width: '100%',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '1.125rem',
-                fontWeight: 600,
-                color: '#111827',
-                textAlign: 'left',
+                flexDirection: 'column',
+                minHeight: 0,
               }}
             >
-              <span style={{ fontSize: '0.75rem' }} aria-hidden>
-                {salaryWorkdaySectionOpen ? '▼' : '▶'}
-              </span>
-              Salaried workday
-            </button>
-            {salaryWorkdaySectionOpen && (
-              <div
-                id="settings-salary-workday-panel"
-                style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}
+              <button
+                type="button"
+                id="settings-all-salaried-dev-heading"
+                aria-expanded={allSalariedDevSectionOpen}
+                aria-controls="settings-all-salaried-dev-panel"
+                onClick={() => setAllSalariedDevSectionOpen((prev) => !prev)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  margin: 0,
+                  padding: '1rem',
+                  width: '100%',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '1.125rem',
+                  fontWeight: 600,
+                  color: '#111827',
+                  textAlign: 'left',
+                  flexShrink: 0,
+                }}
               >
-                <SalaryWorkScheduleSettings
-                  userId={authUser.id}
-                  userPayName={users.find((u) => u.id === authUser.id)?.name?.trim() ?? ''}
-                  canEditPastDayOverrides={
-                    myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant'
-                  }
-                />
-              </div>
-            )}
-          </div>
+                <span style={{ fontSize: '0.75rem' }} aria-hidden>
+                  {allSalariedDevSectionOpen ? '▼' : '▶'}
+                </span>
+                All salaried users (dev)
+              </button>
+              {allSalariedDevSectionOpen && (
+                <div
+                  id="settings-all-salaried-dev-panel"
+                  style={{
+                    padding: '0 1rem 1rem 1rem',
+                    borderTop: '1px solid #e5e7eb',
+                    flex: 1,
+                    minHeight: 0,
+                    overflow: 'auto',
+                  }}
+                >
+                  <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#4b5563' }}>
+                    Edits apply to the <strong>selected</strong> user&apos;s workday template and day overrides, including salary
+                    session sync — same as the salaried workday block above for your own account.
+                  </p>
+                  {devPayConfigLoading || devPayConfigForSalaried == null ? (
+                    <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>Loading…</p>
+                  ) : (
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexDirection: allSalariedDevNarrowViewport ? 'column' : 'row',
+                        gap: '0.75rem',
+                        alignItems: 'stretch',
+                        minHeight: 0,
+                      }}
+                    >
+                      <div
+                        style={{
+                          flex: allSalariedDevNarrowViewport ? '0 0 auto' : '0 0 220px',
+                          maxHeight: allSalariedDevNarrowViewport ? 'min(40vh, 280px)' : 'none',
+                          overflow: 'auto',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: 6,
+                          background: '#fafafa',
+                        }}
+                      >
+                        {devSalariedPickerRows.length === 0 ? (
+                          <p style={{ margin: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                            No salaried people in pay config yet. Use the <strong>Pay</strong> tab to mark someone as Salary.
+                          </p>
+                        ) : (
+                          <ul style={{ listStyle: 'none', margin: 0, padding: '0.35rem 0' }}>
+                            {devSalariedPickerRows.map((r) => {
+                              const uid = r.userId
+                              const selectable = uid != null
+                              const active = selectable && uid === devSalariedSelectedUserId
+                              return (
+                                <li key={r.personName}>
+                                  <button
+                                    type="button"
+                                    disabled={!selectable}
+                                    onClick={() => uid != null && setDevSalariedSelectedUserId(uid)}
+                                    title={
+                                      selectable
+                                        ? undefined
+                                        : 'No matching login user — pay name must match the user display name in Users.'
+                                    }
+                                    aria-current={active ? 'true' : undefined}
+                                    style={{
+                                      display: 'block',
+                                      width: '100%',
+                                      textAlign: 'left',
+                                      padding: '0.45rem 0.65rem',
+                                      border: 'none',
+                                      borderBottom: '1px solid #f3f4f6',
+                                      background: active ? '#eff6ff' : 'transparent',
+                                      color: selectable ? (active ? '#1d4ed8' : '#111827') : '#9ca3af',
+                                      cursor: selectable ? 'pointer' : 'not-allowed',
+                                      fontSize: '0.875rem',
+                                      fontWeight: active ? 600 : 400,
+                                    }}
+                                  >
+                                    {r.personName}
+                                    {!selectable ? (
+                                      <span
+                                        style={{
+                                          display: 'block',
+                                          fontSize: '0.72rem',
+                                          fontWeight: 400,
+                                          color: '#9ca3af',
+                                          marginTop: 2,
+                                        }}
+                                      >
+                                        No matching user
+                                      </span>
+                                    ) : null}
+                                  </button>
+                                </li>
+                              )
+                            })}
+                          </ul>
+                        )}
+                      </div>
+                      <div
+                        style={{
+                          flex: 1,
+                          minWidth: 0,
+                          minHeight: 200,
+                          overflow: 'auto',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: 6,
+                          padding: '0.75rem 1rem',
+                          background: 'white',
+                        }}
+                      >
+                        {devSalariedPickerRows.length === 0 ? null : devSalariedSelectedUserId &&
+                          devSalariedSelectedPayName ? (
+                          <SalaryWorkScheduleSettings
+                            key={devSalariedSelectedUserId}
+                            userId={devSalariedSelectedUserId}
+                            userPayName={devSalariedSelectedPayName}
+                            canEditPastDayOverrides
+                          />
+                        ) : (
+                          <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
+                            Select someone with a matching login user to edit their salaried workday.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </section>
       )}
 

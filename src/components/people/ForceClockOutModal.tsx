@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
-import { fromDatetimeLocal, toDatetimeLocal } from '../../utils/datetimeLocal'
+import { defaultClockOutLocal } from '../../lib/forceClockOutDefaultOut'
+import { fromDatetimeLocal } from '../../utils/datetimeLocal'
 
 export type ForceClockOutSession = {
   id: string
@@ -16,13 +17,6 @@ export type ForceClockOutModalProps = {
   onSaved?: () => void
   showToast?: (message: string, variant?: 'success' | 'error' | 'warning' | 'info') => void
   zIndex?: number
-}
-
-function defaultClockOutLocal(clockedInIso: string): string {
-  const inMs = new Date(clockedInIso).getTime()
-  const nowMs = Date.now()
-  const outMs = Math.max(nowMs, inMs + 60_000)
-  return toDatetimeLocal(new Date(outMs).toISOString())
 }
 
 export function ForceClockOutModal({

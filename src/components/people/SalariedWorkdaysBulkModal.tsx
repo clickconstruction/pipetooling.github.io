@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { PayConfigRow } from '../../types/peoplePayConfig'
+import { buildSalariedWorkdayPickerRows, type SalariedWorkdayPickerRow } from '../../lib/buildSalariedWorkdayPickerRows'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { useToastContext } from '../../contexts/ToastContext'
 import { payStaffBulkInsertUserTimeOff, type PayStaffBulkTimeOffResult } from '../../lib/payStaffBulkTimeOff'
@@ -14,8 +15,6 @@ export type SalariedWorkdaysBulkModalProps = {
   users: SalariedWorkdaysBulkUser[]
 }
 
-type Row = { personName: string; userId: string | null }
-
 export function SalariedWorkdaysBulkModal({ open, onClose, payConfig, users }: SalariedWorkdaysBulkModalProps) {
   const narrowViewport = useNarrowViewport640()
   const { showToast } = useToastContext()
@@ -27,16 +26,7 @@ export function SalariedWorkdaysBulkModal({ open, onClose, payConfig, users }: S
   const [bulkSubmitting, setBulkSubmitting] = useState(false)
   const [lastBulkResult, setLastBulkResult] = useState<PayStaffBulkTimeOffResult | null>(null)
 
-  const rows = useMemo(() => {
-    const out: Row[] = []
-    for (const [personName, cfg] of Object.entries(payConfig)) {
-      if (!cfg?.is_salary) continue
-      const userId = users.find((u) => u.name?.trim() === personName.trim())?.id ?? null
-      out.push({ personName, userId })
-    }
-    out.sort((a, b) => a.personName.localeCompare(b.personName, undefined, { sensitivity: 'base' }))
-    return out
-  }, [payConfig, users])
+  const rows = useMemo(() => buildSalariedWorkdayPickerRows(payConfig, users), [payConfig, users])
 
   const userNameById = useCallback(
     (id: string) => users.find((u) => u.id === id)?.name?.trim() || id.slice(0, 8),
@@ -62,7 +52,10 @@ export function SalariedWorkdaysBulkModal({ open, onClose, payConfig, users }: S
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [open, onClose])
 
-  const rowsWithLogin = useMemo(() => rows.filter((r): r is Row & { userId: string } => r.userId != null), [rows])
+  const rowsWithLogin = useMemo(
+    () => rows.filter((r): r is SalariedWorkdayPickerRow & { userId: string } => r.userId != null),
+    [rows],
+  )
 
   function toggleBulkChecked(userId: string, checked: boolean) {
     setBulkCheckedIds((prev) => {

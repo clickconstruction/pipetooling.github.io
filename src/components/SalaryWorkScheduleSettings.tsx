@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
@@ -10,6 +10,12 @@ import {
   syncSalaryClockSessionsForUserDay,
 } from '../lib/salaryScheduleSync'
 import { formatSalaryBlockEndDisplay } from '../lib/salaryScheduleEndTimeDisplay'
+import {
+  breakMinutesBetweenAB,
+  nearestValidSplitBreakMinute,
+  segmentBStartFromBreak,
+  validSplitBreakMinutesForAnchor,
+} from '../lib/salarySplitBreakDerivedStart'
 import { APP_CALENDAR_TZ, formatIanaTimeZoneLongOffsetLabel } from '../utils/dateUtils'
 
 type TemplateInsert = Database['public']['Tables']['salary_work_schedule_templates']['Insert']
@@ -68,6 +74,56 @@ function formatTimezoneSelectOptionLabel(iana: string, regionLabel: string, at: 
 
 const SALARY_END_HINT_STYLE: CSSProperties = { fontSize: '0.875rem', color: '#6b7280' }
 
+const SALARY_SESSION_FIELDS_ROW: CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: '1rem',
+  alignItems: 'flex-end',
+}
+
+const SALARY_SESSION_FIELDS_STACK: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '0.65rem',
+  alignItems: 'flex-start',
+}
+
+const SALARY_SESSION_CONTROL_MAX: CSSProperties = { width: '100%', maxWidth: '12rem' }
+
+const SALARY_BREAK_STRIP_STYLE: CSSProperties = {
+  border: '1px solid #e5e7eb',
+  borderRadius: 8,
+  padding: '0.75rem 0.875rem',
+  background: '#f9fafb',
+}
+
+function SalarySessionPanel({
+  title,
+  variant,
+  children,
+}: {
+  title: string
+  variant: 'a' | 'b'
+  children: ReactNode
+}) {
+  const accent = variant === 'a' ? '#2563eb' : '#d97706'
+  const bg = variant === 'a' ? '#eff6ff' : '#fffbeb'
+  return (
+    <div
+      style={{
+        background: bg,
+        border: '1px solid #e5e7eb',
+        borderLeft: `4px solid ${accent}`,
+        borderRadius: 8,
+        padding: '0.75rem 0.875rem',
+      }}
+    >
+      <div style={{ fontWeight: 700, fontSize: '0.8125rem', marginBottom: '0.5rem', color: '#374151' }}>{title}</div>
+      {children}
+    </div>
+  )
+}
+
 export function SalaryWorkScheduleSettings({
   userId,
   userPayName,
@@ -96,12 +152,40 @@ export function SalaryWorkScheduleSettings({
   const [ovAStart, setOvAStart] = useState('08:00')
   const [ovADur, setOvADur] = useState(480)
   const [ovBStart, setOvBStart] = useState('12:30')
+  const [splitBreakMinutes, setSplitBreakMinutes] = useState(60)
+  const [ovSplitBreakMinutes, setOvSplitBreakMinutes] = useState(60)
   const [overrideDateYmd, setOverrideDateYmd] = useState<string>(() => denverWorkDateToday())
 
   const durOptionsA = useMemo(() => validSegmentADurations(), [])
   const segmentBDuration = 480 - segmentADuration
   const ovBDuration = 480 - ovADur
   const effectiveOverrideDate = canEditPastDayOverrides ? overrideDateYmd : denverWorkDateToday()
+
+  const templateBreakOptions = useMemo(
+    () =>
+      mode === 'split'
+        ? validSplitBreakMinutesForAnchor({
+            segmentAStart,
+            segmentADurationMinutes: segmentADuration,
+            timeZone: timezone,
+            anchorWorkDateYmd: effectiveOverrideDate,
+          })
+        : [],
+    [mode, segmentAStart, segmentADuration, timezone, effectiveOverrideDate],
+  )
+
+  const overrideBreakOptions = useMemo(
+    () =>
+      todayOverrideEnabled && ovMode === 'split'
+        ? validSplitBreakMinutesForAnchor({
+            segmentAStart: ovAStart,
+            segmentADurationMinutes: ovADur,
+            timeZone: timezone,
+            anchorWorkDateYmd: effectiveOverrideDate,
+          })
+        : [],
+    [todayOverrideEnabled, ovMode, ovAStart, ovADur, timezone, effectiveOverrideDate],
+  )
 
   const load = useCallback(async () => {
     if (!userId) {
@@ -156,19 +240,33 @@ export function SalaryWorkScheduleSettings({
         'salary settings template',
       )) as Database['public']['Tables']['salary_work_schedule_templates']['Row'] | null
       const segmentAAllowed = validSegmentADurations()
+      const anchorYmd = canEditPastDayOverrides ? overrideDateYmd : denverWorkDateToday()
       if (row) {
         const rowSplit = row.mode === 'split'
         setMode((rowSplit ? 'split' : 'continuous') as 'continuous' | 'split')
-        setSegmentAStart(timeLocalToInput(row.segment_a_start_local))
-        setSegmentADuration(
-          rowSplit
-            ? coerceSplitSegmentAMinutes(row.segment_a_duration_minutes, segmentAAllowed)
-            : (row.segment_a_duration_minutes ?? 480),
-        )
-        setSegmentBStart(timeLocalToInput(row.segment_b_start_local))
+        const aStart = timeLocalToInput(row.segment_a_start_local)
+        const aDur = rowSplit
+          ? coerceSplitSegmentAMinutes(row.segment_a_duration_minutes, segmentAAllowed)
+          : (row.segment_a_duration_minutes ?? 480)
+        const bStart = timeLocalToInput(row.segment_b_start_local)
+        setSegmentAStart(aStart)
+        setSegmentADuration(aDur)
+        setSegmentBStart(bStart)
         setUseSplitFocus(row.use_split_focus)
-        setTimezone(normalizeSalaryTimezone(row.timezone))
+        const tzRow = normalizeSalaryTimezone(row.timezone)
+        setTimezone(tzRow)
         setExcludeWeekends(row.exclude_weekends ?? true)
+        setSplitBreakMinutes(
+          rowSplit
+            ? breakMinutesBetweenAB({
+                segmentAStart: aStart,
+                segmentADurationMinutes: aDur,
+                segmentBStart: bStart,
+                timeZone: tzRow,
+                anchorWorkDateYmd: anchorYmd,
+              })
+            : 60,
+        )
       } else {
         setMode('continuous')
         setSegmentAStart('08:00')
@@ -177,8 +275,9 @@ export function SalaryWorkScheduleSettings({
         setUseSplitFocus(false)
         setTimezone(APP_CALENDAR_TZ)
         setExcludeWeekends(true)
+        setSplitBreakMinutes(60)
       }
-      const ovDay = canEditPastDayOverrides ? overrideDateYmd : denverWorkDateToday()
+      const ovDay = anchorYmd
       const ov = (await withSupabaseRetry(
         async () =>
           supabase.from('salary_work_schedule_day_overrides').select('*').eq('user_id', userId).eq('work_date', ovDay).maybeSingle(),
@@ -188,15 +287,29 @@ export function SalaryWorkScheduleSettings({
         setTodayOverrideEnabled(true)
         const ovSplit = ov.mode === 'split'
         setOvMode((ovSplit ? 'split' : 'continuous') as 'continuous' | 'split')
-        setOvAStart(timeLocalToInput(ov.segment_a_start_local))
-        setOvADur(
+        const ovTz = normalizeSalaryTimezone(ov.timezone ?? row?.timezone ?? '')
+        const ovaStart = timeLocalToInput(ov.segment_a_start_local ?? row?.segment_a_start_local)
+        const ovaDur = ovSplit
+          ? coerceSplitSegmentAMinutes(ov.segment_a_duration_minutes, segmentAAllowed)
+          : (ov.segment_a_duration_minutes ?? 480)
+        const ovbStart = timeLocalToInput(ov.segment_b_start_local ?? row?.segment_b_start_local)
+        setOvAStart(ovaStart)
+        setOvADur(ovaDur)
+        setOvBStart(ovbStart)
+        setOvSplitBreakMinutes(
           ovSplit
-            ? coerceSplitSegmentAMinutes(ov.segment_a_duration_minutes, segmentAAllowed)
-            : (ov.segment_a_duration_minutes ?? 480),
+            ? breakMinutesBetweenAB({
+                segmentAStart: ovaStart,
+                segmentADurationMinutes: ovaDur,
+                segmentBStart: ovbStart,
+                timeZone: ovTz,
+                anchorWorkDateYmd: ovDay,
+              })
+            : 60,
         )
-        setOvBStart(timeLocalToInput(ov.segment_b_start_local))
       } else {
         setTodayOverrideEnabled(false)
+        setOvSplitBreakMinutes(60)
       }
     } catch (e) {
       showToast(formatErrorMessage(e, 'Failed to load schedule'), 'error')
@@ -208,6 +321,63 @@ export function SalaryWorkScheduleSettings({
   useEffect(() => {
     void load()
   }, [load])
+
+  useEffect(() => {
+    if (mode !== 'split') return
+    const opts = validSplitBreakMinutesForAnchor({
+      segmentAStart,
+      segmentADurationMinutes: segmentADuration,
+      timeZone: timezone,
+      anchorWorkDateYmd: effectiveOverrideDate,
+    })
+    if (opts.length === 0) return
+    let br = splitBreakMinutes
+    if (!opts.includes(br)) {
+      const n = nearestValidSplitBreakMinute(br, opts)
+      if (n != null && n !== br) {
+        setSplitBreakMinutes(n)
+        return
+      }
+    }
+    br = opts.includes(splitBreakMinutes) ? splitBreakMinutes : nearestValidSplitBreakMinute(splitBreakMinutes, opts) ?? opts[0]!
+    const next = segmentBStartFromBreak({
+      segmentAStart,
+      segmentADurationMinutes: segmentADuration,
+      breakMinutes: br,
+      timeZone: timezone,
+      anchorWorkDateYmd: effectiveOverrideDate,
+    })
+    if (next != null) setSegmentBStart(next)
+  }, [mode, segmentAStart, segmentADuration, splitBreakMinutes, timezone, effectiveOverrideDate])
+
+  useEffect(() => {
+    if (!todayOverrideEnabled || ovMode !== 'split') return
+    const opts = validSplitBreakMinutesForAnchor({
+      segmentAStart: ovAStart,
+      segmentADurationMinutes: ovADur,
+      timeZone: timezone,
+      anchorWorkDateYmd: effectiveOverrideDate,
+    })
+    if (opts.length === 0) return
+    let br = ovSplitBreakMinutes
+    if (!opts.includes(br)) {
+      const n = nearestValidSplitBreakMinute(br, opts)
+      if (n != null && n !== br) {
+        setOvSplitBreakMinutes(n)
+        return
+      }
+    }
+    br =
+      opts.includes(ovSplitBreakMinutes) ? ovSplitBreakMinutes : nearestValidSplitBreakMinute(ovSplitBreakMinutes, opts) ?? opts[0]!
+    const next = segmentBStartFromBreak({
+      segmentAStart: ovAStart,
+      segmentADurationMinutes: ovADur,
+      breakMinutes: br,
+      timeZone: timezone,
+      anchorWorkDateYmd: effectiveOverrideDate,
+    })
+    if (next != null) setOvBStart(next)
+  }, [todayOverrideEnabled, ovMode, ovAStart, ovADur, ovSplitBreakMinutes, timezone, effectiveOverrideDate])
 
   async function handleRemoveOrphanWorkSchedule() {
     if (!userId) return
@@ -250,6 +420,31 @@ export function SalaryWorkScheduleSettings({
         showToast('Split segments must total 8 hours', 'error')
         return
       }
+      if (mode === 'split') {
+        const brOpts = validSplitBreakMinutesForAnchor({
+          segmentAStart,
+          segmentADurationMinutes: segmentADuration,
+          timeZone: timezone,
+          anchorWorkDateYmd: effectiveOverrideDate,
+        })
+        if (brOpts.length === 0) {
+          showToast('No valid break length fits this first session on the selected work date.', 'error')
+          return
+        }
+        const br =
+          brOpts.includes(splitBreakMinutes) ? splitBreakMinutes : nearestValidSplitBreakMinute(splitBreakMinutes, brOpts) ?? brOpts[0]!
+        const derivedB = segmentBStartFromBreak({
+          segmentAStart,
+          segmentADurationMinutes: segmentADuration,
+          breakMinutes: br,
+          timeZone: timezone,
+          anchorWorkDateYmd: effectiveOverrideDate,
+        })
+        if (derivedB == null) {
+          showToast('This break does not fit on the selected work date in your timezone.', 'error')
+          return
+        }
+      }
       await withSupabaseRetry(
         async () => supabase.from('salary_work_schedule_templates').upsert(payload, { onConflict: 'user_id' }),
         'salary template upsert',
@@ -275,6 +470,33 @@ export function SalaryWorkScheduleSettings({
         if (ovMode === 'split' && ovADur + (480 - ovADur) !== 480) {
           showToast('Override segments must total 8 hours', 'error')
           return
+        }
+        if (ovMode === 'split') {
+          const ovBrOpts = validSplitBreakMinutesForAnchor({
+            segmentAStart: ovAStart,
+            segmentADurationMinutes: ovADur,
+            timeZone: timezone,
+            anchorWorkDateYmd: effectiveOverrideDate,
+          })
+          if (ovBrOpts.length === 0) {
+            showToast('No valid break length fits this override first session on the selected work date.', 'error')
+            return
+          }
+          const ovBr =
+            ovBrOpts.includes(ovSplitBreakMinutes)
+              ? ovSplitBreakMinutes
+              : nearestValidSplitBreakMinute(ovSplitBreakMinutes, ovBrOpts) ?? ovBrOpts[0]!
+          const ovDerivedB = segmentBStartFromBreak({
+            segmentAStart: ovAStart,
+            segmentADurationMinutes: ovADur,
+            breakMinutes: ovBr,
+            timeZone: timezone,
+            anchorWorkDateYmd: effectiveOverrideDate,
+          })
+          if (ovDerivedB == null) {
+            showToast('Override break does not fit on the selected work date in your timezone.', 'error')
+            return
+          }
         }
         await withSupabaseRetry(
           async () => supabase.from('salary_work_schedule_day_overrides').upsert(ovPayload, { onConflict: 'user_id,work_date' }),
@@ -397,61 +619,130 @@ export function SalaryWorkScheduleSettings({
           Two sessions
         </label>
       </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'flex-end', marginBottom: '0.75rem' }}>
-        <label>
-          <span style={{ fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>First block start</span>
-          <input type="time" step={900} value={segmentAStart} onChange={(e) => setSegmentAStart(e.target.value)} />
-        </label>
+      <div style={{ marginBottom: '0.75rem' }}>
         {mode === 'continuous' ? (
-          <span style={SALARY_END_HINT_STYLE}>
-            Day end:{' '}
-            {formatSalaryBlockEndDisplay({
-              startHhMm: segmentAStart,
-              durationMinutes: 480,
-              timeZone: timezone,
-              anchorWorkDateYmd: effectiveOverrideDate,
-            })}
-          </span>
-        ) : null}
-        {mode === 'split' ? (
-          <>
-            <label>
-              <span style={{ fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>First block length (hours)</span>
-              <select value={segmentADuration} onChange={(e) => setSegmentADuration(Number(e.target.value))}>
-                {durOptionsA.map((m) => (
-                  <option key={m} value={m}>
-                    {formatSegmentLengthHoursLabel(m)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <span style={SALARY_END_HINT_STYLE}>
-              First Session End:{' '}
-              {formatSalaryBlockEndDisplay({
-                startHhMm: segmentAStart,
-                durationMinutes: segmentADuration,
-                timeZone: timezone,
-                anchorWorkDateYmd: effectiveOverrideDate,
-              })}
-            </span>
-            <label>
-              <span style={{ fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>Second block start</span>
-              <input type="time" step={900} value={segmentBStart} onChange={(e) => setSegmentBStart(e.target.value)} />
-            </label>
-            <span style={SALARY_END_HINT_STYLE}>
-              Second block: {formatSegmentLengthHoursLabel(segmentBDuration)} (total 8 h)
-            </span>
-            <span style={SALARY_END_HINT_STYLE}>
-              Second Session End:{' '}
-              {formatSalaryBlockEndDisplay({
-                startHhMm: segmentBStart,
-                durationMinutes: segmentBDuration,
-                timeZone: timezone,
-                anchorWorkDateYmd: effectiveOverrideDate,
-              })}
-            </span>
-          </>
-        ) : null}
+          <SalarySessionPanel title="Workday" variant="a">
+            <div style={SALARY_SESSION_FIELDS_STACK}>
+              <label>
+                <span style={{ fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>Start</span>
+                <input
+                  type="time"
+                  step={900}
+                  value={segmentAStart}
+                  onChange={(e) => setSegmentAStart(e.target.value)}
+                  style={SALARY_SESSION_CONTROL_MAX}
+                />
+              </label>
+              <div>
+                <span style={{ fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>End</span>
+                <span>
+                  {formatSalaryBlockEndDisplay({
+                    startHhMm: segmentAStart,
+                    durationMinutes: 480,
+                    timeZone: timezone,
+                    anchorWorkDateYmd: effectiveOverrideDate,
+                  })}
+                </span>
+              </div>
+            </div>
+          </SalarySessionPanel>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <SalarySessionPanel title="First session" variant="a">
+              <div style={SALARY_SESSION_FIELDS_STACK}>
+                <label>
+                  <span style={{ fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>Start</span>
+                  <input
+                    type="time"
+                    step={900}
+                    value={segmentAStart}
+                    onChange={(e) => setSegmentAStart(e.target.value)}
+                    style={SALARY_SESSION_CONTROL_MAX}
+                  />
+                </label>
+                <label>
+                  <span style={{ fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>Length (hours)</span>
+                  <select
+                    value={segmentADuration}
+                    onChange={(e) => setSegmentADuration(Number(e.target.value))}
+                    style={SALARY_SESSION_CONTROL_MAX}
+                  >
+                    {durOptionsA.map((m) => (
+                      <option key={m} value={m}>
+                        {formatSegmentLengthHoursLabel(m)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div>
+                  <span style={{ fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>End</span>
+                  <span>
+                    {formatSalaryBlockEndDisplay({
+                      startHhMm: segmentAStart,
+                      durationMinutes: segmentADuration,
+                      timeZone: timezone,
+                      anchorWorkDateYmd: effectiveOverrideDate,
+                    })}
+                  </span>
+                </div>
+              </div>
+            </SalarySessionPanel>
+            <div style={SALARY_BREAK_STRIP_STYLE}>
+              <div style={{ fontWeight: 700, fontSize: '0.8125rem', marginBottom: '0.5rem', color: '#374151' }}>Break</div>
+              <label>
+                <span style={{ fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>Length (hours)</span>
+                <select
+                  value={
+                    templateBreakOptions.includes(splitBreakMinutes)
+                      ? splitBreakMinutes
+                      : (templateBreakOptions[0] ?? splitBreakMinutes)
+                  }
+                  onChange={(e) => setSplitBreakMinutes(Number(e.target.value))}
+                  style={SALARY_SESSION_CONTROL_MAX}
+                  disabled={templateBreakOptions.length === 0}
+                >
+                  {(templateBreakOptions.length > 0 ? templateBreakOptions : [0, 15, 30, 45, 60]).map((m) => (
+                    <option key={m} value={m}>
+                      {formatSegmentLengthHoursLabel(m)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <SalarySessionPanel title="Second session" variant="b">
+              <div style={SALARY_SESSION_FIELDS_STACK}>
+                <div>
+                  <span style={{ fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>Start</span>
+                  <span>
+                    {formatSalaryBlockEndDisplay({
+                      startHhMm: segmentBStart,
+                      durationMinutes: 0,
+                      timeZone: timezone,
+                      anchorWorkDateYmd: effectiveOverrideDate,
+                    })}
+                  </span>
+                </div>
+                <div>
+                  <span style={{ fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>Length (hours)</span>
+                  <span>
+                    {formatSegmentLengthHoursLabel(segmentBDuration)} · 8 h day total
+                  </span>
+                </div>
+                <div>
+                  <span style={{ fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>End</span>
+                  <span>
+                    {formatSalaryBlockEndDisplay({
+                      startHhMm: segmentBStart,
+                      durationMinutes: segmentBDuration,
+                      timeZone: timezone,
+                      anchorWorkDateYmd: effectiveOverrideDate,
+                    })}
+                  </span>
+                </div>
+              </div>
+            </SalarySessionPanel>
+          </div>
+        )}
       </div>
       {mode === 'split' && (
         <label style={{ display: 'block', marginBottom: '0.75rem' }}>
@@ -481,90 +772,159 @@ export function SalaryWorkScheduleSettings({
           Custom schedule for this date ({effectiveOverrideDate} Central)
         </label>
         {todayOverrideEnabled && (
-          <div style={{ marginTop: '0.75rem', display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'flex-end' }}>
-            <div>
-              <span style={{ fontWeight: 600, marginRight: '0.5rem' }}>Override layout</span>
-              <label style={{ marginRight: '0.75rem' }}>
-                <input
-                  type="radio"
-                  name="ov-mode"
-                  checked={ovMode === 'continuous'}
-                  onChange={() => {
-                    setOvMode('continuous')
-                    setOvADur(480)
-                  }}
-                />{' '}
-                Straight
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="ov-mode"
-                  checked={ovMode === 'split'}
-                  onChange={() => {
-                    if (ovMode === 'continuous') {
-                      setOvADur((d) => (d === 480 ? SPLIT_FIRST_BLOCK_DEFAULT_MINUTES : d))
-                    }
-                    setOvMode('split')
-                  }}
-                />{' '}
-                Split
-              </label>
+          <div style={{ marginTop: '0.75rem' }}>
+            <div
+              style={{
+                ...SALARY_SESSION_FIELDS_ROW,
+                marginBottom: ovMode === 'split' ? '0.75rem' : 0,
+              }}
+            >
+              <div>
+                <span style={{ fontWeight: 600, marginRight: '0.5rem' }}>Override layout</span>
+                <label style={{ marginRight: '0.75rem' }}>
+                  <input
+                    type="radio"
+                    name="ov-mode"
+                    checked={ovMode === 'continuous'}
+                    onChange={() => {
+                      setOvMode('continuous')
+                      setOvADur(480)
+                    }}
+                  />{' '}
+                  Straight
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="ov-mode"
+                    checked={ovMode === 'split'}
+                    onChange={() => {
+                      if (ovMode === 'continuous') {
+                        setOvADur((d) => (d === 480 ? SPLIT_FIRST_BLOCK_DEFAULT_MINUTES : d))
+                      }
+                      setOvMode('split')
+                    }}
+                  />{' '}
+                  Split
+                </label>
+              </div>
+              {ovMode === 'continuous' ? (
+                <>
+                  <label>
+                    <span style={{ fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>First start</span>
+                    <input type="time" step={900} value={ovAStart} onChange={(e) => setOvAStart(e.target.value)} />
+                  </label>
+                  <span style={SALARY_END_HINT_STYLE}>
+                    Day end:{' '}
+                    {formatSalaryBlockEndDisplay({
+                      startHhMm: ovAStart,
+                      durationMinutes: 480,
+                      timeZone: timezone,
+                      anchorWorkDateYmd: effectiveOverrideDate,
+                    })}
+                  </span>
+                </>
+              ) : null}
             </div>
-            <label>
-              <span style={{ fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>First start</span>
-              <input type="time" step={900} value={ovAStart} onChange={(e) => setOvAStart(e.target.value)} />
-            </label>
-            {ovMode === 'continuous' ? (
-              <span style={SALARY_END_HINT_STYLE}>
-                Day end:{' '}
-                {formatSalaryBlockEndDisplay({
-                  startHhMm: ovAStart,
-                  durationMinutes: 480,
-                  timeZone: timezone,
-                  anchorWorkDateYmd: effectiveOverrideDate,
-                })}
-              </span>
+            {ovMode === 'split' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <SalarySessionPanel title="First session (override)" variant="a">
+                  <div style={SALARY_SESSION_FIELDS_STACK}>
+                    <label>
+                      <span style={{ fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>Start</span>
+                      <input
+                        type="time"
+                        step={900}
+                        value={ovAStart}
+                        onChange={(e) => setOvAStart(e.target.value)}
+                        style={SALARY_SESSION_CONTROL_MAX}
+                      />
+                    </label>
+                    <label>
+                      <span style={{ fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>Length (hours)</span>
+                      <select
+                        value={ovADur}
+                        onChange={(e) => setOvADur(Number(e.target.value))}
+                        style={SALARY_SESSION_CONTROL_MAX}
+                      >
+                        {durOptionsA.map((m) => (
+                          <option key={m} value={m}>
+                            {formatSegmentLengthHoursLabel(m)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <div>
+                      <span style={{ fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>End</span>
+                      <span>
+                        {formatSalaryBlockEndDisplay({
+                          startHhMm: ovAStart,
+                          durationMinutes: ovADur,
+                          timeZone: timezone,
+                          anchorWorkDateYmd: effectiveOverrideDate,
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                </SalarySessionPanel>
+                <div style={SALARY_BREAK_STRIP_STYLE}>
+                  <div style={{ fontWeight: 700, fontSize: '0.8125rem', marginBottom: '0.5rem', color: '#374151' }}>
+                    Break
+                  </div>
+                  <label>
+                    <span style={{ fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>Length (hours)</span>
+                    <select
+                      value={
+                        overrideBreakOptions.includes(ovSplitBreakMinutes)
+                          ? ovSplitBreakMinutes
+                          : (overrideBreakOptions[0] ?? ovSplitBreakMinutes)
+                      }
+                      onChange={(e) => setOvSplitBreakMinutes(Number(e.target.value))}
+                      style={SALARY_SESSION_CONTROL_MAX}
+                      disabled={overrideBreakOptions.length === 0}
+                    >
+                      {(overrideBreakOptions.length > 0 ? overrideBreakOptions : [0, 15, 30, 45, 60]).map((m) => (
+                        <option key={m} value={m}>
+                          {formatSegmentLengthHoursLabel(m)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <SalarySessionPanel title="Second session (override)" variant="b">
+                  <div style={SALARY_SESSION_FIELDS_STACK}>
+                    <div>
+                      <span style={{ fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>Start</span>
+                      <span>
+                        {formatSalaryBlockEndDisplay({
+                          startHhMm: ovBStart,
+                          durationMinutes: 0,
+                          timeZone: timezone,
+                          anchorWorkDateYmd: effectiveOverrideDate,
+                        })}
+                      </span>
+                    </div>
+                    <div>
+                      <span style={{ fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>Length (hours)</span>
+                      <span>
+                        {formatSegmentLengthHoursLabel(ovBDuration)} · 8 h day total
+                      </span>
+                    </div>
+                    <div>
+                      <span style={{ fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>End</span>
+                      <span>
+                        {formatSalaryBlockEndDisplay({
+                          startHhMm: ovBStart,
+                          durationMinutes: ovBDuration,
+                          timeZone: timezone,
+                          anchorWorkDateYmd: effectiveOverrideDate,
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                </SalarySessionPanel>
+              </div>
             ) : null}
-            {ovMode === 'split' && (
-              <>
-                <label>
-                  <span style={{ fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>First length (hours)</span>
-                  <select value={ovADur} onChange={(e) => setOvADur(Number(e.target.value))}>
-                    {durOptionsA.map((m) => (
-                      <option key={m} value={m}>
-                        {formatSegmentLengthHoursLabel(m)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <span style={SALARY_END_HINT_STYLE}>
-                  First Session End:{' '}
-                  {formatSalaryBlockEndDisplay({
-                    startHhMm: ovAStart,
-                    durationMinutes: ovADur,
-                    timeZone: timezone,
-                    anchorWorkDateYmd: effectiveOverrideDate,
-                  })}
-                </span>
-                <label>
-                  <span style={{ fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>Second start</span>
-                  <input type="time" step={900} value={ovBStart} onChange={(e) => setOvBStart(e.target.value)} />
-                </label>
-                <span style={SALARY_END_HINT_STYLE}>
-                  Second block: {formatSegmentLengthHoursLabel(ovBDuration)} (total 8 h)
-                </span>
-                <span style={SALARY_END_HINT_STYLE}>
-                  Second Session End:{' '}
-                  {formatSalaryBlockEndDisplay({
-                    startHhMm: ovBStart,
-                    durationMinutes: ovBDuration,
-                    timeZone: timezone,
-                    anchorWorkDateYmd: effectiveOverrideDate,
-                  })}
-                </span>
-              </>
-            )}
           </div>
         )}
       </div>

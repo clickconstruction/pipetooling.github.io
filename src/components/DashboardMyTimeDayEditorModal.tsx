@@ -52,6 +52,8 @@ import {
   MyTimeMergeSegmentsModal,
   type MergeJobAllocOption,
 } from './my-time-day-editor/MyTimeMergeSegmentsModal'
+import { useToastContext } from '../contexts/ToastContext'
+import { forceClockOutDefaultOutIso } from '../lib/forceClockOutDefaultOut'
 import { supabase } from '../lib/supabase'
 import { formatErrorMessage, DatabaseError, withSupabaseRetry } from '../utils/errorHandling'
 import {
@@ -228,6 +230,7 @@ export function DashboardMyTimeDayEditorModal({
   showMarkNotComingIn = false,
   onMarkNotComingIn,
 }: Props) {
+  const { showToast } = useToastContext()
   const { start, end } = editableRangeProp ?? getDefaultWeekRange()
   const editable = dateStr >= start && dateStr <= end
 
@@ -267,6 +270,7 @@ export function DashboardMyTimeDayEditorModal({
   const [ncnsPayrollAck, setNcnsPayrollAck] = useState(false)
   const [ncnsDetails, setNcnsDetails] = useState('')
   const [ncnsBusy, setNcnsBusy] = useState(false)
+  const [ncnsPrecloseOpenSessions, setNcnsPrecloseOpenSessions] = useState<DayEditorSession[] | null>(null)
 
   const onAssignJobSaved = useCallback(() => {
     setSessionsFetchNonce((n) => n + 1)
@@ -457,6 +461,22 @@ export function DashboardMyTimeDayEditorModal({
     }
   }, [sessionsProp.length, effectiveSubjectUserId, dateStr, sessionsFetchNonce])
 
+  const fetchDaySessionsForEditor = useCallback(async (): Promise<DayEditorSession[]> => {
+    if (!effectiveSubjectUserId || !dateStr) return []
+    const data = await withSupabaseRetry(
+      async () =>
+        supabase
+          .from('clock_sessions')
+          .select('id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, bid_id, approved_at')
+          .eq('user_id', effectiveSubjectUserId)
+          .eq('work_date', dateStr)
+          .is('rejected_at', null)
+          .is('revoked_at', null),
+      'clock_sessions day for my time editor refetch',
+    )
+    return (data ?? []) as DayEditorSession[]
+  }, [effectiveSubjectUserId, dateStr])
+
   const resolvedSessions = sessionsProp.length > 0 ? sessionsProp : (fetchedSessions ?? [])
   const pendingAuthForFetch = sessionsProp.length === 0 && !subjectUserIdProp && !authReady
 
@@ -466,15 +486,13 @@ export function DashboardMyTimeDayEditorModal({
     [resolvedSessions]
   )
 
-  const ncnsDayHasApprovedSession = useMemo(() => sortedSessions.some((s) => s.approved_at), [sortedSessions])
   const ncnsHasOpenSession = useMemo(() => sortedSessions.some((s) => !s.clocked_out_at), [sortedSessions])
-  const ncnsActionEligible =
+  const ncnsClickAllowed =
     allowNcnsFromMyTime &&
     !editingSelf &&
     editable &&
     !!effectiveSubjectUserId &&
     sortedSessions.length > 0 &&
-    !ncnsHasOpenSession &&
     !sessionsLoading &&
     !pendingAuthForFetch
 
@@ -489,7 +507,7 @@ export function DashboardMyTimeDayEditorModal({
     if (!editable) return ''
     if (sessionsLoading || pendingAuthForFetch) return 'Loading…'
     if (sortedSessions.length === 0) return 'No sessions to reject for this day'
-    if (ncnsHasOpenSession) return 'Clock out all sessions before recording NCNS'
+    if (ncnsHasOpenSession) return 'Click to clock out open sessions at current time, then record NCNS'
     return 'Record no-call-no-show for this day'
   }, [
     allowNcnsFromMyTime,
@@ -838,14 +856,92 @@ export function DashboardMyTimeDayEditorModal({
     }
   }, [dateStr, effectiveSubjectUserId, ncnsDetails, onClose, onSaved])
 
-  const openNcnsFlow = useCallback(() => {
-    if (!ncnsActionEligible) return
+  const enterNcnsDialogFromSessions = useCallback((rows: DayEditorSession[]) => {
     setNcnsPayrollAck(false)
     setNcnsDetails('')
     setError(null)
-    if (ncnsDayHasApprovedSession) setNcnsUi('approved_warn')
+    if (rows.some((s) => s.approved_at)) setNcnsUi('approved_warn')
     else setNcnsUi('simple')
-  }, [ncnsActionEligible, ncnsDayHasApprovedSession])
+  }, [])
+
+  const forceClockOutOpenSessionsThenOpenNcns = useCallback(
+    async (openSessions: DayEditorSession[]) => {
+      setNcnsBusy(true)
+      setError(null)
+      try {
+        for (const s of openSessions) {
+          const outIso = forceClockOutDefaultOutIso(s.clocked_in_at)
+          await withSupabaseRetry(
+            async () =>
+              supabase.from('clock_sessions').update({ clocked_out_at: outIso }).eq('id', s.id),
+            'force clock out before ncns',
+          )
+        }
+        onLinkedSessionsUpdated?.()
+        const rows = await fetchDaySessionsForEditor()
+        if (rows.some((s) => !s.clocked_out_at)) {
+          const msg = 'Could not close all sessions. Try again.'
+          setError(msg)
+          showToast(msg, 'error')
+          return
+        }
+        setFetchedSessions(rows)
+        enterNcnsDialogFromSessions(rows)
+      } catch (e: unknown) {
+        const msg = formatErrorMessage(e, 'Could not clock out before NCNS')
+        setError(msg)
+        showToast(msg, 'error')
+      } finally {
+        setNcnsBusy(false)
+      }
+    },
+    [
+      enterNcnsDialogFromSessions,
+      fetchDaySessionsForEditor,
+      onLinkedSessionsUpdated,
+      showToast,
+    ],
+  )
+
+  const closeNcnsPrecloseModal = useCallback(() => {
+    if (ncnsBusy) return
+    setNcnsPrecloseOpenSessions(null)
+  }, [ncnsBusy])
+
+  const handleNcnsPrecloseContinue = useCallback(() => {
+    if (!ncnsPrecloseOpenSessions?.length) return
+    const toClose = ncnsPrecloseOpenSessions
+    setNcnsPrecloseOpenSessions(null)
+    void forceClockOutOpenSessionsThenOpenNcns(toClose)
+  }, [forceClockOutOpenSessionsThenOpenNcns, ncnsPrecloseOpenSessions])
+
+  const handleNcnsHeaderClick = useCallback(() => {
+    if (!ncnsClickAllowed) {
+      showToast(ncnsButtonTitle || 'Cannot record NCNS right now.', 'warning')
+      return
+    }
+    if (!ncnsHasOpenSession) {
+      enterNcnsDialogFromSessions(sortedSessions)
+      return
+    }
+    if (sessionsProp.length > 0) {
+      showToast(
+        'Close open sessions in this view first, or refresh after clocking out elsewhere.',
+        'warning',
+      )
+      return
+    }
+    const openSessions = sortedSessions.filter((s) => !s.clocked_out_at)
+    setNcnsPrecloseOpenSessions(openSessions)
+  }, [
+    ncnsClickAllowed,
+    ncnsHasOpenSession,
+    sortedSessions,
+    sessionsProp.length,
+    enterNcnsDialogFromSessions,
+    showToast,
+    ncnsButtonTitle,
+  ])
 
   const [assignBulk, setAssignBulk] = useState<{ sessionIds: string[]; label: string } | null>(null)
   const [mergeJobChoice, setMergeJobChoice] = useState<MergeJobChoiceState | null>(null)
@@ -1354,6 +1450,10 @@ export function DashboardMyTimeDayEditorModal({
       setNcnsDetails('')
       return
     }
+    if (ncnsPrecloseOpenSessions) {
+      setNcnsPrecloseOpenSessions(null)
+      return
+    }
     if (mergeJobChoice) {
       setMergeJobChoice(null)
       return
@@ -1427,6 +1527,7 @@ export function DashboardMyTimeDayEditorModal({
     onSaved,
     persistDirtyChangesAsync,
     ncnsUi,
+    ncnsPrecloseOpenSessions,
   ])
 
   function handleBackdropClose() {
@@ -1443,6 +1544,11 @@ export function DashboardMyTimeDayEditorModal({
         setNcnsUi('off')
         setNcnsPayrollAck(false)
         setNcnsDetails('')
+        return
+      }
+      if (ncnsPrecloseOpenSessions) {
+        e.preventDefault()
+        if (!ncnsBusy) setNcnsPrecloseOpenSessions(null)
         return
       }
       if (dragRef.current) {
@@ -1475,6 +1581,8 @@ export function DashboardMyTimeDayEditorModal({
     cancelBoundaryDrag,
     cancelStripTapGesture,
     forceClockOutSession,
+    ncnsBusy,
+    ncnsPrecloseOpenSessions,
     ncnsUi,
     requestClose,
     saving,
@@ -1549,28 +1657,6 @@ export function DashboardMyTimeDayEditorModal({
               gap: 8,
             }}
           >
-            {allowNcnsFromMyTime && !editingSelf && editable ? (
-              <button
-                type="button"
-                onClick={openNcnsFlow}
-                disabled={!ncnsActionEligible || saving || ncnsBusy}
-                title={ncnsButtonTitle || undefined}
-                style={{
-                  padding: '0.35rem 0.55rem',
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  border: '1px solid #b45309',
-                  borderRadius: 6,
-                  background: '#fffbeb',
-                  color: '#b45309',
-                  cursor:
-                    !ncnsActionEligible || saving || ncnsBusy ? 'not-allowed' : 'pointer',
-                  opacity: !ncnsActionEligible || saving || ncnsBusy ? 0.65 : 1,
-                }}
-              >
-                NCNS
-              </button>
-            ) : null}
             {editable && resolvedSessions.length > 0 ? (
               <>
                 <span style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 500 }}>Edit layout</span>
@@ -1807,7 +1893,15 @@ export function DashboardMyTimeDayEditorModal({
                 marginTop: '1rem',
               }}
             >
-              <div style={{ minHeight: '2.25rem', display: 'flex', alignItems: 'center' }}>
+              <div
+                style={{
+                  minHeight: '2.25rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: 8,
+                }}
+              >
                 {showNotComingInControl ? (
                   <button
                     type="button"
@@ -1826,6 +1920,31 @@ export function DashboardMyTimeDayEditorModal({
                     }}
                   >
                     {markNotComingInBusy ? '…' : 'Not coming in'}
+                  </button>
+                ) : null}
+                {allowNcnsFromMyTime && !editingSelf && editable ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleNcnsHeaderClick()}
+                    disabled={!ncnsClickAllowed || saving || ncnsBusy || ncnsPrecloseOpenSessions != null}
+                    title={ncnsButtonTitle || undefined}
+                    style={{
+                      padding: '0.35rem 0.55rem',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      border: '1px solid #b45309',
+                      borderRadius: 6,
+                      background: '#fffbeb',
+                      color: '#b45309',
+                      cursor:
+                        !ncnsClickAllowed || saving || ncnsBusy || ncnsPrecloseOpenSessions != null
+                          ? 'not-allowed'
+                          : 'pointer',
+                      opacity:
+                        !ncnsClickAllowed || saving || ncnsBusy || ncnsPrecloseOpenSessions != null ? 0.65 : 1,
+                    }}
+                  >
+                    NCNS
                   </button>
                 ) : null}
               </div>
@@ -1861,7 +1980,15 @@ export function DashboardMyTimeDayEditorModal({
               marginTop: '1rem',
             }}
           >
-            <div style={{ minHeight: '2.25rem', display: 'flex', alignItems: 'center' }}>
+            <div
+              style={{
+                minHeight: '2.25rem',
+                display: 'flex',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: 8,
+              }}
+            >
               {showNotComingInControl ? (
                 <button
                   type="button"
@@ -1880,6 +2007,31 @@ export function DashboardMyTimeDayEditorModal({
                   }}
                 >
                   {markNotComingInBusy ? '…' : 'Not coming in'}
+                </button>
+              ) : null}
+              {allowNcnsFromMyTime && !editingSelf && editable ? (
+                <button
+                  type="button"
+                  onClick={() => void handleNcnsHeaderClick()}
+                  disabled={!ncnsClickAllowed || saving || ncnsBusy || ncnsPrecloseOpenSessions != null}
+                  title={ncnsButtonTitle || undefined}
+                  style={{
+                    padding: '0.35rem 0.55rem',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    border: '1px solid #b45309',
+                    borderRadius: 6,
+                    background: '#fffbeb',
+                    color: '#b45309',
+                    cursor:
+                      !ncnsClickAllowed || saving || ncnsBusy || ncnsPrecloseOpenSessions != null
+                        ? 'not-allowed'
+                        : 'pointer',
+                    opacity:
+                      !ncnsClickAllowed || saving || ncnsBusy || ncnsPrecloseOpenSessions != null ? 0.65 : 1,
+                  }}
+                >
+                  NCNS
                 </button>
               ) : null}
             </div>
@@ -1953,6 +2105,97 @@ export function DashboardMyTimeDayEditorModal({
         onClose={() => setAdjustTimesSession(null)}
         onSaved={onAdjustTimesSaved}
       />
+    ) : null}
+    {ncnsPrecloseOpenSessions ? (
+      <div
+        role="presentation"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.45)',
+          zIndex: 1305,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1rem',
+        }}
+        onClick={closeNcnsPrecloseModal}
+      >
+        <div
+          role="alertdialog"
+          aria-modal
+          aria-labelledby="ncns-preclose-dialog-title"
+          style={{
+            background: 'white',
+            borderRadius: 8,
+            padding: '1.25rem',
+            maxWidth: 420,
+            width: '100%',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h3 id="ncns-preclose-dialog-title" style={{ margin: '0 0 0.75rem 0', fontSize: '1.05rem' }}>
+            Clock out open sessions?
+          </h3>
+          {ncnsPrecloseOpenSessions.some((s) => s.approved_at) ? (
+            <p
+              style={{
+                margin: '0 0 1rem 0',
+                fontSize: '0.875rem',
+                color: '#92400e',
+                background: '#fffbeb',
+                border: '1px solid #fcd34d',
+                borderRadius: 6,
+                padding: '0.65rem 0.75rem',
+                lineHeight: 1.5,
+              }}
+            >
+              At least one open session was already approved. Setting clock-out will change recorded hours and
+              may require re-approval.
+            </p>
+          ) : null}
+          <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}>
+            Clock out {ncnsPrecloseOpenSessions.length} open session
+            {ncnsPrecloseOpenSessions.length === 1 ? '' : 's'} at the current time, then record no-call
+            no-show? This changes their hours for today.
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              disabled={ncnsBusy}
+              onClick={closeNcnsPrecloseModal}
+              style={{
+                padding: '0.45rem 0.85rem',
+                fontSize: '0.875rem',
+                border: '1px solid #d1d5db',
+                borderRadius: 6,
+                background: 'white',
+                cursor: ncnsBusy ? 'not-allowed' : 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={ncnsBusy}
+              onClick={handleNcnsPrecloseContinue}
+              style={{
+                padding: '0.45rem 0.85rem',
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                border: '1px solid #b45309',
+                borderRadius: 6,
+                background: '#fffbeb',
+                color: '#b45309',
+                cursor: ncnsBusy ? 'not-allowed' : 'pointer',
+              }}
+            >
+              Continue
+            </button>
+          </div>
+        </div>
+      </div>
     ) : null}
     {rejectSessionConfirm ? (
       <div

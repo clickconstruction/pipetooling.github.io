@@ -346,45 +346,60 @@ type StripRejectClockSessionPayload = {
   timeRangeLabel: string
 }
 
+/** Legacy key; superseded by `DASHBOARD_CLOCK_STRIP_CLOCKED_IN_TODAY_EXPAND_MODE_KEY`. */
 const DASHBOARD_CLOCK_STRIP_CLOCKED_IN_TODAY_COLLAPSED_KEY = 'dashboard_clock_strip_clocked_in_today_collapsed'
 
-function readClockedInTodaySectionCollapsed(): boolean {
+type ClockedInTodayExpandMode = 'collapsed' | 'unassignedPeek' | 'full'
+
+const DASHBOARD_CLOCK_STRIP_CLOCKED_IN_TODAY_EXPAND_MODE_KEY =
+  'dashboard_clock_strip_clocked_in_today_expand_mode'
+
+function isClockedInTodayExpandMode(s: string | null): s is ClockedInTodayExpandMode {
+  return s === 'collapsed' || s === 'unassignedPeek' || s === 'full'
+}
+
+function readClockedInTodayExpandMode(): ClockedInTodayExpandMode {
   try {
-    if (
-      typeof localStorage !== 'undefined' &&
-      localStorage.getItem(DASHBOARD_CLOCK_STRIP_CLOCKED_IN_TODAY_COLLAPSED_KEY) === '1'
-    ) {
-      return true
+    if (typeof localStorage !== 'undefined') {
+      const v = localStorage.getItem(DASHBOARD_CLOCK_STRIP_CLOCKED_IN_TODAY_EXPAND_MODE_KEY)
+      if (isClockedInTodayExpandMode(v)) return v
+      const legacy = localStorage.getItem(DASHBOARD_CLOCK_STRIP_CLOCKED_IN_TODAY_COLLAPSED_KEY)
+      if (legacy === '1') return 'collapsed'
+      if (legacy === '0') return 'full'
     }
   } catch {
     /* ignore */
   }
-  return false
+  return 'collapsed'
 }
 
-function persistClockedInTodaySectionCollapsed(collapsed: boolean): void {
+function persistClockedInTodayExpandMode(mode: ClockedInTodayExpandMode): void {
   try {
-    localStorage.setItem(DASHBOARD_CLOCK_STRIP_CLOCKED_IN_TODAY_COLLAPSED_KEY, collapsed ? '1' : '0')
+    localStorage.setItem(DASHBOARD_CLOCK_STRIP_CLOCKED_IN_TODAY_EXPAND_MODE_KEY, mode)
   } catch {
     /* ignore */
   }
+}
+
+function cycleClockedInTodayExpandMode(m: ClockedInTodayExpandMode): ClockedInTodayExpandMode {
+  if (m === 'collapsed') return 'unassignedPeek'
+  if (m === 'unassignedPeek') return 'full'
+  return 'collapsed'
 }
 
 const DASHBOARD_CLOCK_STRIP_JOBS_WORKED_TODAY_COLLAPSED_KEY =
   'dashboard_clock_strip_jobs_worked_today_collapsed'
 
+/** Default collapsed; expanded only after user opens section (`'0'`). */
 function readJobsWorkedTodaySectionCollapsed(): boolean {
   try {
-    if (
-      typeof localStorage !== 'undefined' &&
-      localStorage.getItem(DASHBOARD_CLOCK_STRIP_JOBS_WORKED_TODAY_COLLAPSED_KEY) === '1'
-    ) {
-      return true
+    if (typeof localStorage !== 'undefined') {
+      return localStorage.getItem(DASHBOARD_CLOCK_STRIP_JOBS_WORKED_TODAY_COLLAPSED_KEY) !== '0'
     }
   } catch {
     /* ignore */
   }
-  return false
+  return true
 }
 
 function persistJobsWorkedTodaySectionCollapsed(collapsed: boolean): void {
@@ -674,8 +689,8 @@ export function DashboardTeamActiveClockStrip({
   const [clockedInTodayTableMode, setClockedInTodayTableMode] = useState<ClockedInTodayTableMode>('missing')
   /** Users who collapsed session detail; everyone else is expanded by default. */
   const [collapsedClockedInTodayUserIds, setCollapsedClockedInTodayUserIds] = useState(() => new Set<string>())
-  const [clockedInTodaySectionCollapsed, setClockedInTodaySectionCollapsed] = useState(() =>
-    readClockedInTodaySectionCollapsed()
+  const [clockedInTodayExpandMode, setClockedInTodayExpandMode] = useState<ClockedInTodayExpandMode>(() =>
+    readClockedInTodayExpandMode(),
   )
   const [jobsWorkedTodaySectionCollapsed, setJobsWorkedTodaySectionCollapsed] = useState(() =>
     readJobsWorkedTodaySectionCollapsed(),
@@ -683,9 +698,20 @@ export function DashboardTeamActiveClockStrip({
   const [collapsedJobsWorkedTodayJobLedgerIds, setCollapsedJobsWorkedTodayJobLedgerIds] = useState(
     () => new Set<string>(),
   )
+  const clockedInTodaySectionOpen = clockedInTodayExpandMode !== 'collapsed'
   const clockedInTodayVisible =
     clockedInTodayTableMode === 'all' ? clockedInTodayRows : clockedInTodayFocusedRows
+  const clockedInTodayUnassignedRows = useMemo(
+    () => clockedInTodayRows.filter((row) => stripRowHasUnassignedSession(row)),
+    [clockedInTodayRows],
+  )
+  const clockedInTodayBodyRows = useMemo((): readonly ClockedInTodayStripRow[] => {
+    if (clockedInTodayExpandMode === 'collapsed') return []
+    if (clockedInTodayExpandMode === 'unassignedPeek') return clockedInTodayUnassignedRows
+    return clockedInTodayVisible
+  }, [clockedInTodayExpandMode, clockedInTodayUnassignedRows, clockedInTodayVisible])
   const showClockedInTodayToggle =
+    clockedInTodayExpandMode === 'full' &&
     clockedInTodayRows.length > 0 &&
     (clockedInTodayTableMode === 'missing' || clockedInTodayFocusedRows.length < clockedInTodayRows.length)
   const clockedInTodayColSpan = 3
@@ -992,14 +1018,10 @@ export function DashboardTeamActiveClockStrip({
               <div
                 style={{
                   position: 'relative',
-                  ...(showClockedInTodayToggle && !clockedInTodaySectionCollapsed
-                    ? { minHeight: '2.25rem' }
-                    : {}),
+                  ...(showClockedInTodayToggle ? { minHeight: '2.25rem' } : {}),
                 }}
               >
-                {showClockedInTodayToggle && !clockedInTodaySectionCollapsed
-                  ? clockedInTodayModeOverlay
-                  : null}
+                {showClockedInTodayToggle ? clockedInTodayModeOverlay : null}
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ background: STRIP_SECTION_HEAD_BG }}>
@@ -1014,23 +1036,34 @@ export function DashboardTeamActiveClockStrip({
                         <button
                           type="button"
                           id="clocked-in-today-section-toggle"
-                          aria-expanded={!clockedInTodaySectionCollapsed}
+                          aria-expanded={clockedInTodaySectionOpen}
                           aria-controls="clocked-in-today-section-panel"
+                          title={
+                            clockedInTodayExpandMode === 'collapsed'
+                              ? 'Show people with unassigned job or bid only'
+                              : clockedInTodayExpandMode === 'unassignedPeek'
+                                ? 'Show full clocked-in list with Needs attention / Show all'
+                                : 'Collapse clocked-in today'
+                          }
                           onClick={() => {
-                            setClockedInTodaySectionCollapsed((v) => {
-                              const next = !v
-                              persistClockedInTodaySectionCollapsed(next)
+                            setClockedInTodayExpandMode((m) => {
+                              const next = cycleClockedInTodayExpandMode(m)
+                              persistClockedInTodayExpandMode(next)
                               return next
                             })
                           }}
                           aria-label={
-                            clockedInTodaySectionCollapsed
-                              ? `Show clocked-in today list, ${clockedInTodayRows.length} ${
+                            clockedInTodayExpandMode === 'collapsed'
+                              ? `Show unassigned only: people with no job or bid today, out of ${clockedInTodayRows.length} ${
                                   clockedInTodayRows.length === 1 ? 'person' : 'people'
-                                }`
-                              : `Hide clocked-in today list, ${clockedInTodayRows.length} ${
-                                  clockedInTodayRows.length === 1 ? 'person' : 'people'
-                                }`
+                                } clocked in`
+                              : clockedInTodayExpandMode === 'unassignedPeek'
+                                ? `Expand to full list and filters, ${clockedInTodayRows.length} ${
+                                    clockedInTodayRows.length === 1 ? 'person' : 'people'
+                                  }`
+                                : `Collapse to header only, ${clockedInTodayRows.length} ${
+                                    clockedInTodayRows.length === 1 ? 'person' : 'people'
+                                  }`
                           }
                           style={{
                             border: 'none',
@@ -1043,7 +1076,7 @@ export function DashboardTeamActiveClockStrip({
                           }}
                         >
                           <span aria-hidden>
-                            {clockedInTodaySectionCollapsed ? '\u25B6' : '\u25BC'}
+                            {clockedInTodayExpandMode === 'collapsed' ? '\u25B6' : '\u25BC'}
                           </span>
                         </button>
                       </th>
@@ -1052,6 +1085,10 @@ export function DashboardTeamActiveClockStrip({
                         style={stripSectionTh}
                         aria-label={`Names of people clocked in today, ${clockedInTodayRows.length} ${
                           clockedInTodayRows.length === 1 ? 'person' : 'people'
+                        }${
+                          clockedInTodayExpandMode === 'unassignedPeek'
+                            ? `; showing ${clockedInTodayUnassignedRows.length} with unassigned job or bid`
+                            : ''
                         }`}
                       >
                         <span style={srOnly}>{'Expand session rows. '}</span>
@@ -1061,17 +1098,17 @@ export function DashboardTeamActiveClockStrip({
                         scope="col"
                         style={{
                           ...stripSectionTh,
-                          ...(showClockedInTodayToggle && !clockedInTodaySectionCollapsed
+                          ...(showClockedInTodayToggle
                             ? { paddingRight: 'clamp(8rem, 20vw, 12rem)' }
                             : {}),
                         }}
                       >
-                        {clockedInTodaySectionCollapsed ? '' : 'Today | First clock-in'}
+                        {clockedInTodaySectionOpen ? 'Today | First clock-in' : ''}
                       </th>
                     </tr>
                   </thead>
-                  <tbody hidden={clockedInTodaySectionCollapsed}>
-                    {clockedInTodaySectionCollapsed ? null : clockedInTodayVisible.length === 0 ? (
+                  <tbody hidden={!clockedInTodaySectionOpen}>
+                    {!clockedInTodaySectionOpen ? null : clockedInTodayBodyRows.length === 0 ? (
                       <tr>
                         <td
                           colSpan={clockedInTodayColSpan}
@@ -1081,18 +1118,20 @@ export function DashboardTeamActiveClockStrip({
                             padding: '0.35rem 0.4rem 0.5rem',
                             fontSize: '0.75rem',
                             color: '#6b7280',
-                            ...(showClockedInTodayToggle && !clockedInTodaySectionCollapsed
+                            ...(showClockedInTodayToggle
                               ? { paddingRight: 'clamp(8rem, 20vw, 12rem)' }
                               : {}),
                           }}
                         >
-                          {clockedInTodayTableMode === 'missing'
-                            ? 'No sessions need attention today (unassigned job/bid or pending approval).'
-                            : 'No rows to display.'}
+                          {clockedInTodayExpandMode === 'unassignedPeek'
+                            ? 'No unassigned job/bid sessions today.'
+                            : clockedInTodayTableMode === 'missing'
+                              ? 'No sessions need attention today (unassigned job/bid or pending approval).'
+                              : 'No rows to display.'}
                         </td>
                       </tr>
                     ) : (
-                      clockedInTodayVisible.map((row) => {
+                      clockedInTodayBodyRows.map((row) => {
                   const hasDetail = row.todaySessions.length > 0
                   const expanded = hasDetail && !collapsedClockedInTodayUserIds.has(row.userId)
                   const detailId = `clocked-in-today-detail-${row.userId}`
@@ -1145,7 +1184,7 @@ export function DashboardTeamActiveClockStrip({
                             ...clockedInTodayRowTd,
                             textAlign: 'left',
                             whiteSpace: 'nowrap' as const,
-                            ...(showClockedInTodayToggle && !clockedInTodaySectionCollapsed
+                            ...(showClockedInTodayToggle
                               ? { paddingRight: 'clamp(8rem, 20vw, 12rem)' }
                               : {}),
                           }}
