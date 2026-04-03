@@ -14,6 +14,10 @@ import type { Database } from '../types/database'
 import { getSalarySyntheticClockInIso } from '../lib/salaryOnShift'
 import { denverCalendarDayKey } from '../utils/dateUtils'
 import type { AssignSessionJobSavedPatch } from '../components/clock-sessions/AssignSessionJobPopover'
+import {
+  fetchSalariedUserIdSetFromUserIds,
+  filterSessionsToSalariedSalaryOrigin,
+} from '../lib/salaryPayConfigGate'
 
 function optimisticPatchClockSessionRow(row: ClockSessionRow, patch: AssignSessionJobSavedPatch): ClockSessionRow {
   if (row.id !== patch.sessionId) return row
@@ -395,7 +399,11 @@ export function useDashboardMyTeamSectionState(
         tmplQuery = tmplQuery.in('user_id', memberUserIds)
       }
       const templates = await withSupabaseRetry(async () => await tmplQuery, 'salary strip templates')
-      const tlist = (templates ?? []) as Database['public']['Tables']['salary_work_schedule_templates']['Row'][]
+      const tlistRaw = (templates ?? []) as Database['public']['Tables']['salary_work_schedule_templates']['Row'][]
+      const salariedTemplateOwners = await fetchSalariedUserIdSetFromUserIds([
+        ...new Set(tlistRaw.map((t) => t.user_id)),
+      ])
+      const tlist = tlistRaw.filter((t) => salariedTemplateOwners.has(t.user_id))
       const ids = [...new Set(tlist.map((t) => t.user_id))]
       if (ids.length === 0) {
         setSalaryStripMeta({ todayYmd, templates: [], overrides: [], timeOff: [], displayNameByUserId: {} })
@@ -487,7 +495,10 @@ export function useDashboardMyTeamSectionState(
         (unapprovedRes ?? []) as ClockSessionRow[],
         (salaryOpenRes ?? []) as ClockSessionRow[],
       )
-      setOrgWidePendingSessions(merged)
+      const salariedForPending = await fetchSalariedUserIdSetFromUserIds([
+        ...new Set(merged.map((s) => s.user_id)),
+      ])
+      setOrgWidePendingSessions(filterSessionsToSalariedSalaryOrigin(merged, salariedForPending))
       await Promise.all([loadTodayClockSessionsOrg(), loadSalaryStripContext()])
     } catch {
       setOrgWidePendingSessions([])
@@ -658,8 +669,11 @@ export function useDashboardMyTeamSectionState(
         (unapprovedRes ?? []) as ClockSessionRow[],
         (salaryOpenRes ?? []) as ClockSessionRow[],
       )
+      const salariedForPending = await fetchSalariedUserIdSetFromUserIds([
+        ...new Set(merged.map((s) => s.user_id)),
+      ])
       if (!silent && generation !== loadPendingGenerationRef.current) return
-      setPendingSessions(merged)
+      setPendingSessions(filterSessionsToSalariedSalaryOrigin(merged, salariedForPending))
       await Promise.all([
         loadTeamHoursSummary(),
         loadTodayClockSessions(),

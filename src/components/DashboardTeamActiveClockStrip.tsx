@@ -429,6 +429,7 @@ export function DashboardTeamActiveClockStrip({
   canApproveClockSessions,
   onClockSessionsMutated,
   onMaterializeSalarySession,
+  hideCurrentlyInTable = false,
 }: {
   sessions: DashboardStripSession[]
   hoursTodayByUserId: Readonly<Record<string, number>>
@@ -453,6 +454,8 @@ export function DashboardTeamActiveClockStrip({
    * After resolve, parent should refetch pending; Assign job/bid becomes available on the real row.
    */
   onMaterializeSalarySession?: (userId: string) => Promise<void>
+  /** When true, omit the live open-sessions "Currently In" table (e.g. Quickfill browsing a non-today work date). */
+  hideCurrentlyInTable?: boolean
 }) {
   const stripRejectTitleId = useId()
   const nowMs = useIntervalNowMs(45_000)
@@ -759,6 +762,7 @@ export function DashboardTeamActiveClockStrip({
             </div>
           </div>
         ) : null}
+        {!hideCurrentlyInTable ? (
         <div style={{ overflowX: 'auto' }} aria-live="polite">
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
@@ -968,6 +972,8 @@ export function DashboardTeamActiveClockStrip({
             })}
           </tbody>
         </table>
+        </div>
+        ) : null}
         <div
           style={{
             borderTop: '1px solid #e5e7eb',
@@ -1712,7 +1718,6 @@ export function DashboardTeamActiveClockStrip({
         ) : null}
       </div>
     </div>
-  </div>
   <ClockSessionStripActionsModal
     open={stripActionsPayload != null}
     payload={stripActionsPayload}

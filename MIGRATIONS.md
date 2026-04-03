@@ -100,6 +100,16 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Review Hours modal "Mark as reviewed" checkbox; Hours reviewed ledger on Pay tab
 - **Category**: People / Pay
 
+### April 2027
+
+#### April 3, 2027
+
+**`20270403101000_salary_sync_cleanup_when_no_template.sql`**
+- **Purpose**: When **`salary_work_schedule_templates`** is absent for a user, delete **non-final** `clock_sessions` with **`origin = 'salary_schedule'`** for that `work_date` (same guard as PTO path)
+- **Changes**: `CREATE OR REPLACE` **`salary_sync_one_user_clock_sessions`** — replace `IF NOT FOUND` early return with `DELETE` + `RETURN`; update `COMMENT`
+- **Impact**: Removing salaried template / switching to hourly + `sync_salary_clock_sessions_for_user_day` clears orphan auto sessions for processed dates; dashboard strip + Pay People cleanup align with `people_pay_config.is_salary`
+- **Category**: People / Hours / Dashboard
+
 ### March 2027
 
 #### March 31, 2027

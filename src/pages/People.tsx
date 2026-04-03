@@ -21,7 +21,11 @@ import { CLOCK_SESSION_LIST_SELECT } from '../lib/clockSessionSelect'
 import { approveClockSessions } from '../lib/approveClockSessions'
 import { clockSessionMatchesSearch } from '../lib/clockSessionSearch'
 import { cascadePersonNameInPayTables } from '../lib/cascadePersonName'
-import { denverWorkDateToday, syncSalaryClockSessionsForUserDay } from '../lib/salaryScheduleSync'
+import {
+  denverWorkDateToday,
+  removeSalaryScheduleForUser,
+  syncSalaryClockSessionsForUserDay,
+} from '../lib/salaryScheduleSync'
 import {
   isPayStubFullyPaid,
   remainingPayStubBalance,
@@ -4376,17 +4380,23 @@ export default function People() {
         setError(error.message)
       } else {
         const becameSalary = toSave.is_salary === true && !prevPersistedSalary
+        const stoppedBeingSalary = toSave.is_salary === false && prevPersistedSalary
         lastPersistedPayConfigRef.current[personName] = { is_salary: !!toSave.is_salary }
+        const uidMatch = usersRef.current.find((u) => u.name?.trim() === personName.trim())?.id
         if (becameSalary) {
-          const uid = usersRef.current.find((u) => u.name?.trim() === personName.trim())?.id
-          if (uid) {
-            const { error: syncErr } = await syncSalaryClockSessionsForUserDay(uid, denverWorkDateToday())
+          if (uidMatch) {
+            const { error: syncErr } = await syncSalaryClockSessionsForUserDay(uidMatch, denverWorkDateToday())
             if (syncErr) showToast(syncErr, 'error')
           } else {
             showToast(
               'Salary saved. No matching login user for this name—salary time sync skipped.',
               'info',
             )
+          }
+        } else if (stoppedBeingSalary) {
+          if (uidMatch) {
+            const { error: rmErr } = await removeSalaryScheduleForUser(uidMatch)
+            if (rmErr) showToast(rmErr, 'error')
           }
         }
       }

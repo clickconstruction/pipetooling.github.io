@@ -4,7 +4,11 @@ import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { useToastContext } from '../contexts/ToastContext'
-import { denverWorkDateToday, syncSalaryClockSessionsForUserDay } from '../lib/salaryScheduleSync'
+import {
+  denverWorkDateToday,
+  removeSalaryScheduleForUser,
+  syncSalaryClockSessionsForUserDay,
+} from '../lib/salaryScheduleSync'
 import { formatSalaryBlockEndDisplay } from '../lib/salaryScheduleEndTimeDisplay'
 import { APP_CALENDAR_TZ, formatIanaTimeZoneLongOffsetLabel } from '../utils/dateUtils'
 
@@ -78,6 +82,8 @@ export function SalaryWorkScheduleSettings({
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [isSalary, setIsSalary] = useState(false)
+  /** Pay config says hourly but a `salary_work_schedule_templates` row may still exist from before. */
+  const [orphanWorkScheduleTemplate, setOrphanWorkScheduleTemplate] = useState(false)
   const [mode, setMode] = useState<'continuous' | 'split'>('continuous')
   const [segmentAStart, setSegmentAStart] = useState('08:00')
   const [segmentADuration, setSegmentADuration] = useState(480)
@@ -100,6 +106,7 @@ export function SalaryWorkScheduleSettings({
   const load = useCallback(async () => {
     if (!userId) {
       setIsSalary(false)
+      setOrphanWorkScheduleTemplate(false)
       setLoading(false)
       return
     }
@@ -118,6 +125,7 @@ export function SalaryWorkScheduleSettings({
     }
     if (!name) {
       setIsSalary(false)
+      setOrphanWorkScheduleTemplate(false)
       setLoading(false)
       return
     }
@@ -129,8 +137,20 @@ export function SalaryWorkScheduleSettings({
       const sal = !!(payRow as { is_salary?: boolean } | null)?.is_salary
       setIsSalary(sal)
       if (!sal) {
+        try {
+          const tmpl = await withSupabaseRetry(
+            async () =>
+              supabase.from('salary_work_schedule_templates').select('user_id').eq('user_id', userId).maybeSingle(),
+            'salary orphan template probe',
+          )
+          const tr = tmpl as { user_id?: string } | null
+          setOrphanWorkScheduleTemplate(!!tr?.user_id)
+        } catch {
+          setOrphanWorkScheduleTemplate(false)
+        }
         return
       }
+      setOrphanWorkScheduleTemplate(false)
       const row = (await withSupabaseRetry(
         async () => supabase.from('salary_work_schedule_templates').select('*').eq('user_id', userId).maybeSingle(),
         'salary settings template',
@@ -188,6 +208,24 @@ export function SalaryWorkScheduleSettings({
   useEffect(() => {
     void load()
   }, [load])
+
+  async function handleRemoveOrphanWorkSchedule() {
+    if (!userId) return
+    setSaving(true)
+    try {
+      const { error } = await removeSalaryScheduleForUser(userId)
+      if (error) {
+        showToast(error, 'error')
+        return
+      }
+      showToast('Saved work schedule removed', 'success')
+      await load()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Remove failed'), 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   async function handleSaveTemplate() {
     if (!isSalary) return
@@ -271,7 +309,32 @@ export function SalaryWorkScheduleSettings({
       <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading pay schedule…</p>
     )
   }
-  if (!isSalary) return null
+  if (!isSalary) {
+    if (!orphanWorkScheduleTemplate) return null
+    return (
+      <div style={{ marginBottom: '1.5rem' }}>
+        <p style={{ color: '#6b7280', fontSize: '0.875rem', marginTop: 0 }}>
+          You are not marked salaried in pay settings, but a saved salaried workday schedule still exists. Remove it to
+          avoid showing automatic &quot;(s)&quot; sessions on the team clock strip.
+        </p>
+        <button
+          type="button"
+          onClick={() => void handleRemoveOrphanWorkSchedule()}
+          disabled={saving}
+          style={{
+            padding: '0.5rem 0.75rem',
+            borderRadius: 6,
+            border: '1px solid #d1d5db',
+            background: saving ? '#f3f4f6' : '#fff',
+            cursor: saving ? 'wait' : 'pointer',
+            fontWeight: 600,
+          }}
+        >
+          {saving ? 'Removing…' : 'Remove saved work schedule'}
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div style={{ marginBottom: '1.5rem' }}>

@@ -1,6 +1,11 @@
 import { supabase } from './supabase'
 import { denverCalendarDayKey } from '../utils/dateUtils'
-import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import {
+  DatabaseError,
+  formatErrorMessage,
+  withRetry,
+  withSupabaseRetry,
+} from '../utils/errorHandling'
 
 /** YYYY-MM-DD for `work_date` using company calendar (America/Chicago). */
 export function denverWorkDateToday(): string {
@@ -25,5 +30,24 @@ export async function syncSalaryClockSessionsForUserDay(
     return { error: null }
   } catch (e) {
     return { error: formatErrorMessage(e, 'Sync failed') }
+  }
+}
+
+/** Remove salary work schedule data and refresh sync so hourly pay config matches the clock strip. */
+export async function removeSalaryScheduleForUser(userId: string): Promise<{ error: string | null }> {
+  try {
+    await withRetry(async () => {
+      const r = await supabase.from('salary_work_schedule_templates').delete().eq('user_id', userId)
+      if (r.error) throw new DatabaseError(r.error.message)
+      return r
+    })
+    await withRetry(async () => {
+      const r = await supabase.from('salary_work_schedule_day_overrides').delete().eq('user_id', userId)
+      if (r.error) throw new DatabaseError(r.error.message)
+      return r
+    })
+    return syncSalaryClockSessionsForUserDay(userId, denverWorkDateToday())
+  } catch (e) {
+    return { error: formatErrorMessage(e, 'Failed to remove salary work schedule') }
   }
 }

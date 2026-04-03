@@ -95,6 +95,9 @@ export function QuickfillPeopleHoursNewSection() {
     stripWorkDateYmd: selectedYmd,
   })
 
+  const todayDenver = denverCalendarDayKey(Date.now())
+  const showLiveCurrentlyIn = selectedYmd === todayDenver
+
   const sessionsForStrip = useMemo((): DashboardStripSession[] => {
     const isOpen = (s: DashboardStripSession) => s.clocked_out_at == null
     const base =
@@ -118,6 +121,11 @@ export function QuickfillPeopleHoursNewSection() {
     myTeam.pendingSessions,
     myTeam.stripSyntheticSalarySessions,
   ])
+
+  const sessionsForQuickfillStrip = useMemo(
+    () => (showLiveCurrentlyIn ? sessionsForStrip : []),
+    [showLiveCurrentlyIn, sessionsForStrip],
+  )
 
   const hoursTodayForStrip = useMemo(() => {
     if (showClockStripScopeToggle && clockStripScope === 'everyone') {
@@ -176,7 +184,6 @@ export function QuickfillPeopleHoursNewSection() {
   }
 
   const dateLabel = formatDenverCalendarDayWithYear(referenceDateForWorkDateYmd(selectedYmd).getTime())
-  const todayDenver = denverCalendarDayKey(Date.now())
 
   return (
     <section style={{ marginBottom: '2rem' }}>
@@ -219,7 +226,8 @@ export function QuickfillPeopleHoursNewSection() {
         Assistance only makes sure hours are correct, they do not approve!
       </p>
       <DashboardTeamActiveClockStrip
-        sessions={sessionsForStrip}
+        sessions={sessionsForQuickfillStrip}
+        hideCurrentlyInTable={!showLiveCurrentlyIn}
         hoursTodayByUserId={hoursTodayForStrip}
         clockedInTodayRows={myTeam.clockedInTodayStripRows}
         jobsWorkedTodayRows={myTeam.jobsWorkedTodayStripRows}
