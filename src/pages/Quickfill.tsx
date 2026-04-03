@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { BilledAwaitingPaymentSection } from '../components/quickfill/BilledAwaitingPaymentSection'
 import { CantReachSection } from '../components/quickfill/CantReachSection'
 import { CrewJobsSection } from '../components/quickfill/CrewJobsSection'
@@ -11,6 +11,7 @@ import { QuickfillPeopleHoursNewSection } from '../components/quickfill/Quickfil
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useUnpricedFixturesCount } from '../hooks/useUnpricedFixturesCount'
+import { withSupabaseRetry } from '../utils/errorHandling'
 
 const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-hours', sectionId: 'hours', label: 'People Hours (Old)' },
@@ -24,49 +25,21 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-jobs-billing', sectionId: 'jobs-billing', label: 'Jobs Billing' },
 ]
 
-/** localStorage value: JSON array of sectionId strings that are hidden; missing/empty = all sections visible */
-const QUICKFILL_HIDDEN_SECTIONS_KEY = 'pipetooling_quickfill_hidden_sections'
-
-/** Min HCP (inclusive) for Jobs Billing reminder counts on Quickfill */
-const QUICKFILL_JOBS_BILLING_MIN_HCP_KEY = 'pipetooling_quickfill_jobs_billing_min_hcp'
+const APP_SETTINGS_KEY_QUICKFILL_HIDDEN = 'quickfill_hidden_section_ids'
+const APP_SETTINGS_KEY_QUICKFILL_MIN_HCP = 'quickfill_jobs_billing_min_hcp'
 const DEFAULT_JOBS_BILLING_MIN_HCP = 406
 
 const VALID_SECTION_IDS = new Set(SECTIONS.map((s) => s.sectionId))
 
-function loadJobsBillingMinHcpFromStorage(): number {
-  if (typeof window === 'undefined') return DEFAULT_JOBS_BILLING_MIN_HCP
+function parseHiddenSectionIdsFromValueText(raw: string | null | undefined): Set<string> {
+  if (raw == null || raw === '') return new Set()
   try {
-    const raw = window.localStorage.getItem(QUICKFILL_JOBS_BILLING_MIN_HCP_KEY)
-    if (raw == null || raw === '') return DEFAULT_JOBS_BILLING_MIN_HCP
-    const n = parseInt(raw, 10)
-    if (!Number.isFinite(n) || n < 0) return DEFAULT_JOBS_BILLING_MIN_HCP
-    return n
-  } catch {
-    return DEFAULT_JOBS_BILLING_MIN_HCP
-  }
-}
-
-function saveJobsBillingMinHcpToStorage(n: number): void {
-  if (typeof window === 'undefined') return
-  window.localStorage.setItem(QUICKFILL_JOBS_BILLING_MIN_HCP_KEY, String(n))
-}
-
-function loadHiddenSectionIdsFromStorage(): Set<string> {
-  if (typeof window === 'undefined') return new Set()
-  try {
-    const raw = window.localStorage.getItem(QUICKFILL_HIDDEN_SECTIONS_KEY)
-    if (!raw) return new Set()
     const parsed = JSON.parse(raw) as unknown
     if (!Array.isArray(parsed)) return new Set()
     return new Set(parsed.filter((id): id is string => typeof id === 'string' && VALID_SECTION_IDS.has(id)))
   } catch {
     return new Set()
   }
-}
-
-function saveHiddenSectionIdsToStorage(hidden: Set<string>): void {
-  if (typeof window === 'undefined') return
-  window.localStorage.setItem(QUICKFILL_HIDDEN_SECTIONS_KEY, JSON.stringify([...hidden]))
 }
 
 type ButtonColor = 'red' | 'yellow' | 'green'
@@ -121,31 +94,117 @@ function hoursUntilExpand(markedAt: string): number {
 }
 
 export default function Quickfill() {
-  const { user: authUser } = useAuth()
+  const { user: authUser, role } = useAuth()
   const unpricedFixturesCount = useUnpricedFixturesCount()
   const [sectionMarks, setSectionMarks] = useState<Record<string, { marked_at: string; marked_by?: string; marked_by_name?: string | null }>>({})
   const [forceExpandedSections, setForceExpandedSections] = useState<Set<string>>(new Set(['cant-reach']))
-  const [hiddenSectionIds, setHiddenSectionIds] = useState<Set<string>>(() => loadHiddenSectionIdsFromStorage())
+  const [hiddenSectionIds, setHiddenSectionIds] = useState<Set<string>>(() => new Set())
   const [activeSectionsPanelOpen, setActiveSectionsPanelOpen] = useState(false)
-  const [jobsBillingMinHcp, setJobsBillingMinHcp] = useState<number>(() => loadJobsBillingMinHcpFromStorage())
+  const [jobsBillingMinHcp, setJobsBillingMinHcp] = useState<number>(DEFAULT_JOBS_BILLING_MIN_HCP)
+
+  const persistHiddenSectionIds = useCallback(async (hidden: Set<string>) => {
+    try {
+      await withSupabaseRetry(
+        async () =>
+          await supabase.from('app_settings').upsert(
+            { key: APP_SETTINGS_KEY_QUICKFILL_HIDDEN, value_text: JSON.stringify([...hidden]) },
+            { onConflict: 'key' },
+          ),
+        'save quickfill hidden section ids',
+      )
+    } catch (e) {
+      console.error(e)
+    }
+  }, [])
+
+  const persistJobsBillingMinHcp = useCallback(async (n: number) => {
+    try {
+      await withSupabaseRetry(
+        async () =>
+          await supabase.from('app_settings').upsert(
+            { key: APP_SETTINGS_KEY_QUICKFILL_MIN_HCP, value_num: n },
+            { onConflict: 'key' },
+          ),
+        'save quickfill jobs billing min hcp',
+      )
+    } catch (e) {
+      console.error(e)
+    }
+  }, [])
 
   useEffect(() => {
-    saveHiddenSectionIdsToStorage(hiddenSectionIds)
-  }, [hiddenSectionIds])
+    let cancelled = false
+    ;(async () => {
+      try {
+        const rows = await withSupabaseRetry(
+          async () =>
+            await supabase
+              .from('app_settings')
+              .select('key, value_text, value_num')
+              .in('key', [APP_SETTINGS_KEY_QUICKFILL_HIDDEN, APP_SETTINGS_KEY_QUICKFILL_MIN_HCP]),
+          'load quickfill layout settings',
+        )
+        if (cancelled) return
+        let hidden = new Set<string>()
+        let minHcp = DEFAULT_JOBS_BILLING_MIN_HCP
+        const rowList = (rows ?? []) as Array<{ key: string; value_text: string | null; value_num: number | null }>
+        for (const row of rowList) {
+          const r = row
+          if (r.key === APP_SETTINGS_KEY_QUICKFILL_HIDDEN) {
+            hidden = parseHiddenSectionIdsFromValueText(r.value_text)
+          } else if (r.key === APP_SETTINGS_KEY_QUICKFILL_MIN_HCP && r.value_num != null) {
+            const n = Number(r.value_num)
+            if (Number.isFinite(n) && n >= 0) minHcp = Math.floor(n)
+          }
+        }
+        setHiddenSectionIds(hidden)
+        setJobsBillingMinHcp(minHcp)
+      } catch (e) {
+        console.error(e)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
-    saveJobsBillingMinHcpToStorage(jobsBillingMinHcp)
-  }, [jobsBillingMinHcp])
+    const channel = supabase
+      .channel('quickfill-app-settings')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'app_settings' },
+        (payload) => {
+          const row = payload.new as { key?: string; value_text?: string | null; value_num?: number | null } | null
+          if (!row?.key) return
+          if (row.key === APP_SETTINGS_KEY_QUICKFILL_HIDDEN) {
+            setHiddenSectionIds(parseHiddenSectionIdsFromValueText(row.value_text))
+          } else if (row.key === APP_SETTINGS_KEY_QUICKFILL_MIN_HCP && row.value_num != null) {
+            const n = Number(row.value_num)
+            if (Number.isFinite(n) && n >= 0) setJobsBillingMinHcp(Math.floor(n))
+          }
+        },
+      )
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
 
   function isSectionVisible(sectionId: string): boolean {
     return !hiddenSectionIds.has(sectionId)
   }
 
-  function setSectionVisible(sectionId: string, visible: boolean): void {
+  function devSetSectionVisible(sectionId: string, visible: boolean): void {
     setHiddenSectionIds((prev) => {
       const next = new Set(prev)
       if (visible) next.delete(sectionId)
       else next.add(sectionId)
+      if (role === 'dev') {
+        queueMicrotask(() => {
+          void persistHiddenSectionIds(next)
+        })
+      }
       return next
     })
   }
@@ -263,7 +322,15 @@ export default function Quickfill() {
             background: '#f9fafb',
           }}
         >
-          All Quickfill sections are hidden. Use <strong>Active sections</strong> below to show one or more sections again.
+          {role === 'dev' ? (
+            <>
+              All Quickfill sections are hidden. Use <strong>Active sections (Dev Only)</strong> below to show one or more sections again.
+            </>
+          ) : (
+            <>
+              All Quickfill sections are hidden. Ask a developer to restore sections on Quickfill (<strong>Active sections (Dev Only)</strong>).
+            </>
+          )}
         </p>
       )}
       {isSectionVisible('hours') && (
@@ -392,6 +459,7 @@ export default function Quickfill() {
         <JobsBillingReminderSection minHcpNumber={jobsBillingMinHcp} />
       </QuickfillSectionWrapper>
       )}
+      {role === 'dev' && (
       <div
         style={{
           marginTop: '2rem',
@@ -420,12 +488,12 @@ export default function Quickfill() {
           }}
         >
           <span style={{ fontSize: '0.75rem' }}>{activeSectionsPanelOpen ? '▼' : '▶'}</span>
-          Active sections
+          Active sections (Dev Only)
         </button>
         {activeSectionsPanelOpen && (
           <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
             <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
-              Uncheck a section to hide it from this page and from the jump buttons above. Preferences are saved in this browser.
+              Uncheck a section to hide it from this page and from the jump buttons above for everyone. Settings are stored in the database.
             </p>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {SECTIONS.map(({ sectionId, label }) => (
@@ -435,7 +503,7 @@ export default function Quickfill() {
                       <input
                         type="checkbox"
                         checked={isSectionVisible(sectionId)}
-                        onChange={(e) => setSectionVisible(sectionId, e.target.checked)}
+                        onChange={(e) => devSetSectionVisible(sectionId, e.target.checked)}
                       />
                       <span>{label}</span>
                     </label>
@@ -457,9 +525,9 @@ export default function Quickfill() {
                           value={jobsBillingMinHcp}
                           onChange={(e) => {
                             const v = parseInt(e.target.value, 10)
-                            setJobsBillingMinHcp(
-                              Number.isFinite(v) && v >= 0 ? v : DEFAULT_JOBS_BILLING_MIN_HCP,
-                            )
+                            const n = Number.isFinite(v) && v >= 0 ? v : DEFAULT_JOBS_BILLING_MIN_HCP
+                            setJobsBillingMinHcp(n)
+                            void persistJobsBillingMinHcp(n)
                           }}
                           style={{
                             width: '4.5rem',
@@ -478,6 +546,7 @@ export default function Quickfill() {
           </div>
         )}
       </div>
+      )}
     </div>
   )
 }

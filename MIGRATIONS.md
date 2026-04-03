@@ -110,6 +110,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Removing salaried template / switching to hourly + `sync_salary_clock_sessions_for_user_day` clears orphan auto sessions for processed dates; dashboard strip + Pay People cleanup align with `people_pay_config.is_salary`
 - **Category**: People / Hours / Dashboard
 
+**`20270403170000_quickfill_layout_app_settings.sql`**
+- **Purpose**: Default **`app_settings`** rows for Quickfill section visibility (**`quickfill_hidden_section_ids`** JSON array in **`value_text`**) and Jobs Billing **Min HCP** (**`quickfill_jobs_billing_min_hcp`** in **`value_num`**, default 406)
+- **Changes**: `INSERT ... ON CONFLICT (key) DO NOTHING` only; existing **`app_settings`** RLS (authenticated read, dev write) unchanged
+- **Impact**: `/quickfill` loads shared layout from the database; dev-only **Active sections** panel updates these keys (replaces per-browser `localStorage`)
+- **Category**: Quickfill / Settings
+
 ### March 2027
 
 #### March 31, 2027
