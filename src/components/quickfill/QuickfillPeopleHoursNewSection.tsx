@@ -14,20 +14,18 @@ import { syncSalaryClockSessionsForUserDay } from '../../lib/salaryScheduleSync'
 import { recordNotComingInForUserAsStaff } from '../../lib/notComingInTimeOff'
 import type { ClockSessionRow, DashboardStripSession } from '../../types/clockSessions'
 
-const DASHBOARD_CLOCK_STRIP_SCOPE_KEY = 'dashboard_clock_strip_scope'
+const QUICKFILL_CLOCK_STRIP_SCOPE_KEY = 'quickfill_clock_strip_scope'
 
-function readClockStripScope(): 'team' | 'everyone' {
+function readQuickfillClockStripScope(): 'team' | 'everyone' {
   try {
-    if (
-      typeof localStorage !== 'undefined' &&
-      localStorage.getItem(DASHBOARD_CLOCK_STRIP_SCOPE_KEY) === 'everyone'
-    ) {
-      return 'everyone'
+    if (typeof localStorage !== 'undefined') {
+      const v = localStorage.getItem(QUICKFILL_CLOCK_STRIP_SCOPE_KEY)
+      if (v === 'everyone' || v === 'team') return v
     }
   } catch {
     /* ignore */
   }
-  return 'team'
+  return 'everyone'
 }
 
 /** Pure Gregorian YYYY-MM-DD ± n days (civil dates). */
@@ -70,7 +68,7 @@ export function QuickfillPeopleHoursNewSection() {
   const { user: authUser, role } = useAuth()
   const { showToast } = useToastContext()
   const [selectedYmd, setSelectedYmd] = useState(() => denverCalendarDayKey(Date.now()))
-  const [clockStripScope, setClockStripScope] = useState<'team' | 'everyone'>(readClockStripScope)
+  const [clockStripScope, setClockStripScope] = useState<'team' | 'everyone'>(readQuickfillClockStripScope)
   const [stripMyTimeEditor, setStripMyTimeEditor] = useState<{
     subjectUserId: string
     displayName: string
@@ -79,7 +77,7 @@ export function QuickfillPeopleHoursNewSection() {
   const setClockStripScopePersist = useCallback((next: 'team' | 'everyone') => {
     setClockStripScope(next)
     try {
-      localStorage.setItem(DASHBOARD_CLOCK_STRIP_SCOPE_KEY, next)
+      localStorage.setItem(QUICKFILL_CLOCK_STRIP_SCOPE_KEY, next)
     } catch {
       /* ignore */
     }
