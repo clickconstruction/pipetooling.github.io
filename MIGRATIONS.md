@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-03-31
+last_updated: 2026-04-02
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -150,6 +150,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Purpose**: Avoid a **second** auto **`salary_schedule`** row at **`t_start`** after a **continuous** session was **split** into rows with **`salary_segment_index` 1..N** (no **`NULL`** index row remains for sync to find)
 - **Changes**: **`salary_sync_one_user_clock_sessions`** — in **`v_mode = 'continuous'`**, when no pending **`salary_segment_index IS NULL`** row exists, **skip** INSERTs if **`EXISTS`** pending **`salary_schedule`** rows with **non-null** **`salary_segment_index`** (same non-final guards as elsewhere); updated function **`COMMENT`** + **`REVOKE ALL`**
 - **Impact**: **`sync_salary_clock_sessions_for_user_day`**, cron **`sync-salary-sessions`**, and client **`syncSalaryClockSessionsForUserDay`** no longer recreate a duplicate overlapping session after split + sync
+- **History hygiene**: Three mistaken **empty** files (`20260403062347`, `20260403062432`, `20260403062639`, duplicate slug) were removed from the repo and those version rows **reverted** on the linked DB via **`supabase migration repair --status reverted`**. This file is the single canonical migration for the behavior above.
 - **Category**: People / Hours / Dashboard
 
 **`20270331140000_salary_schedule_and_clock_origin.sql`**

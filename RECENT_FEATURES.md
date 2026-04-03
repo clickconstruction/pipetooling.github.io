@@ -7,16 +7,19 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-10
+last_updated: 2026-04-02
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.227 → v2.4"
+version_range: "v2.228 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.228)"
+    line: ~663
+    description: "Settings Salaried workday: Day end / session end labels (formatSalaryBlockEndDisplay); split layout default first block; salary_sync_one_user_clock_sessions continuous INSERT guard (20270402100000); migration history cleanup"
   - name: "Latest Version (v2.227)"
-    line: ~660
+    line: ~675
     description: "Mercury ledger Realtime (mercury_transactions publication); Banking + Quickfill debounced refetch; mercury-webhook ops checklist in EDGE_FUNCTIONS"
   - name: "Latest Version (v2.226)"
     line: ~672
@@ -658,6 +661,19 @@ when_to_read:
 147. [Email Templates](#email-templates)
 148. [Financial Tracking](#financial-tracking)
 149. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.228)
+
+**Date**: 2026-04-02
+
+### Settings — Salaried workday clarity and salary sync after split
+
+- **Computed end times** ([`SalaryWorkScheduleSettings.tsx`](src/components/SalaryWorkScheduleSettings.tsx), [`salaryScheduleEndTimeDisplay.ts`](src/lib/salaryScheduleEndTimeDisplay.ts)): **Day end** (continuous 8h), **First Session End**, and **Second Session End** show the wall-clock end in the template timezone with **`(+1 day)`** when the block crosses midnight relative to the anchor work date (company calendar day for overrides).
+- **Split layout default**: Switching **8 hours straight** → **Two sessions** coerces the first block to **4 h** when it was still a full **8 h**, so the first segment end label is not stuck at “8h from start” until the user changes the dropdown (`SPLIT_FIRST_BLOCK_DEFAULT_MINUTES`; same behavior on **Custom schedule for this date** when Straight → Split).
+- **Database**: [`20270402100000_salary_sync_continuous_skip_insert_when_split_segments_exist.sql`](supabase/migrations/20270402100000_salary_sync_continuous_skip_insert_when_split_segments_exist.sql) — **`salary_sync_one_user_clock_sessions`** skips the **continuous** auto-INSERT path when pending **`salary_schedule`** rows already exist with **`salary_segment_index IS NOT NULL`** (after a continuous row was split into segments), preventing a duplicate session at the day start on sync.
+- **Migration history**: Three accidental **empty** CLI-generated files (`20260403062347`, `20260403062432`, `20260403062639`, same slug) were **reverted** on the linked project via **`supabase migration repair --status reverted`** and **removed** from the repo; the canonical migration is **`20270402100000`** (see [`MIGRATIONS.md`](MIGRATIONS.md)).
+
 ---
 
 ## Latest Updates (v2.227)
