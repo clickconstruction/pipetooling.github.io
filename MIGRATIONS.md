@@ -146,6 +146,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: People **Writeups** tab; template builder + list/filter by subject; **Discussed with subject** / **Withheld from subject** on submit
 - **Category**: People / RLS
 
+**`20270402100000_salary_sync_continuous_skip_insert_when_split_segments_exist.sql`**
+- **Purpose**: Avoid a **second** auto **`salary_schedule`** row at **`t_start`** after a **continuous** session was **split** into rows with **`salary_segment_index` 1..N** (no **`NULL`** index row remains for sync to find)
+- **Changes**: **`salary_sync_one_user_clock_sessions`** — in **`v_mode = 'continuous'`**, when no pending **`salary_segment_index IS NULL`** row exists, **skip** INSERTs if **`EXISTS`** pending **`salary_schedule`** rows with **non-null** **`salary_segment_index`** (same non-final guards as elsewhere); updated function **`COMMENT`** + **`REVOKE ALL`**
+- **Impact**: **`sync_salary_clock_sessions_for_user_day`**, cron **`sync-salary-sessions`**, and client **`syncSalaryClockSessionsForUserDay`** no longer recreate a duplicate overlapping session after split + sync
+- **Category**: People / Hours / Dashboard
+
 **`20270331140000_salary_schedule_and_clock_origin.sql`**
 - **Purpose**: Salaried 8h schedule templates, optional day overrides, `clock_sessions.origin` / `salary_segment_index`, and sync RPCs for auto open/close salary sessions
 - **Changes**: Tables `salary_work_schedule_templates`, `salary_work_schedule_day_overrides`; unique partial indexes on salary sessions; restrict client INSERT to `user_punch`; `sync_salary_clock_sessions_for_day` (service_role), `sync_salary_clock_sessions_for_user_day` (authenticated); internal `salary_sync_one_user_clock_sessions`
@@ -642,6 +648,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Changes**: `CREATE OR REPLACE FUNCTION can_edit_clock_sessions_for_user` with additional `EXISTS (... profiles.role IN (...))` branches; comment + **`GRANT EXECUTE`**
 - **Impact**: Master / assistant / superintendent can merge or split another person’s day in **Edit time** without being that user; documented in **`RECENT_FEATURES.md`** v2.216 and **`ACCESS_CONTROL.md`**
 - **Category**: Clock Sessions / People Hours / Access control
+
+#### April 3, 2026
+
+**`20260403051729_mercury_transactions_supabase_realtime.sql`**
+- **Purpose**: **Realtime** for **`mercury_transactions`** so **Banking** / **Quickfill Banking sorting** refetch when the ledger changes (e.g. **`mercury-webhook`** upsert or **`sync-mercury-transactions`**)
+- **Changes**: Conditional **`ALTER PUBLICATION supabase_realtime ADD TABLE public.mercury_transactions`** when not already published
+- **Impact**: [`Banking.tsx`](src/pages/Banking.tsx) and [`BankingSortingSnapshotSection.tsx`](src/components/quickfill/BankingSortingSnapshotSection.tsx) **`postgres_changes`** subscriptions (debounced **`loadRows`** / **`loadMercurySnapshot`**)
+- **Category**: Banking / Integrations / Realtime
 
 #### April 25, 2026
 

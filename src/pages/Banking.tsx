@@ -694,6 +694,7 @@ export default function Banking() {
   const [jobLabelByIdBanking, setJobLabelByIdBanking] = useState<Record<string, string>>({})
   const [usersSelectOptions, setUsersSelectOptions] = useState<SearchableSelectOption[]>([])
   const [allocModalTx, setAllocModalTx] = useState<MercuryTxRow | null>(null)
+  const bankingMercuryDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const isDevBanking = myRole === 'dev'
   const canAccessBanking = myRole === 'dev' || myRole === 'assistant' || myRole === 'master_technician'
@@ -782,10 +783,13 @@ export default function Banking() {
     )
   }, [myRole, searchParams, setSearchParams])
 
-  const loadRows = useCallback(async () => {
+  const loadRows = useCallback(async (options?: { silent?: boolean }) => {
     if (myRole !== 'dev' && myRole !== 'assistant' && myRole !== 'master_technician') return
-    setError(null)
-    setLoading(true)
+    const silent = options?.silent === true
+    if (!silent) {
+      setError(null)
+      setLoading(true)
+    }
     try {
       const data = await withSupabaseRetry(async () => {
         return supabase
@@ -796,12 +800,16 @@ export default function Banking() {
       }, 'load mercury_transactions')
       setRows((data as MercuryTxRow[]) ?? [])
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load transactions')
-      setRows([])
+      if (silent) {
+        showToast(e instanceof Error ? e.message : 'Failed to refresh Mercury transactions.', 'error')
+      } else {
+        setError(e instanceof Error ? e.message : 'Failed to load transactions')
+        setRows([])
+      }
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
-  }, [myRole])
+  }, [myRole, showToast])
 
   const loadNicknames = useCallback(async () => {
     if (myRole !== 'dev' && myRole !== 'assistant' && myRole !== 'master_technician') return
@@ -840,6 +848,35 @@ export default function Banking() {
     if (myRole !== 'dev' && myRole !== 'assistant' && myRole !== 'master_technician') return
     void Promise.all([loadRows(), loadNicknames(), loadDebitCardNicknames()])
   }, [myRole, loadRows, loadNicknames, loadDebitCardNicknames])
+
+  useEffect(() => {
+    if (!canAccessBanking || !user?.id) return
+
+    const scheduleRefetch = () => {
+      if (bankingMercuryDebounceRef.current) clearTimeout(bankingMercuryDebounceRef.current)
+      bankingMercuryDebounceRef.current = setTimeout(() => {
+        bankingMercuryDebounceRef.current = null
+        void loadRows({ silent: true })
+      }, 800)
+    }
+
+    const channel = supabase
+      .channel(`banking-mercury-transactions-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'mercury_transactions' },
+        scheduleRefetch,
+      )
+      .subscribe()
+
+    return () => {
+      if (bankingMercuryDebounceRef.current) {
+        clearTimeout(bankingMercuryDebounceRef.current)
+        bankingMercuryDebounceRef.current = null
+      }
+      void supabase.removeChannel(channel)
+    }
+  }, [canAccessBanking, user?.id, loadRows])
 
   const loadMercuryAllocations = useCallback(async () => {
     if (!canAccessBanking || rows.length === 0) {

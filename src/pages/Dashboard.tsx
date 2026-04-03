@@ -630,11 +630,42 @@ export default function Dashboard() {
   const hasSupplyHousesAPPin = visiblePins.some((p) => p.path === '/materials' && p.tab === 'supply-houses')
   const hasSubLaborDuePin = visiblePins.some((p) => p.path === '/jobs' && p.tab === 'sub_sheet_ledger')
   const [financialRefreshKey, setFinancialRefreshKey] = useState(0)
+  const [tallyUnlinkedCount, setTallyUnlinkedCount] = useState<number | null>(null)
   const { total: costMatrixTotal } = useCostMatrixTotal(hasCostMatrixPin)
   const { count: billedCount, total: billedTotal } = useBilledTotal(hasBilledPin, financialRefreshKey)
   const { count: hoursAwaitingCount } = useHoursAwaitingApprovalCount(isDev, financialRefreshKey)
   const { total: supplyHousesAPTotal } = useSupplyHousesAPTotal(hasSupplyHousesAPPin, financialRefreshKey)
   const { total: subLaborDueTotal } = useSubLaborDueTotal(hasSubLaborDuePin, financialRefreshKey)
+
+  const loadTallyUnlinkedCount = useCallback(async () => {
+    if (!authUser?.id || role == null) return
+    try {
+      const n = await withSupabaseRetry(
+        async () => await supabase.rpc('count_unlinked_mercury_transactions_for_tally'),
+        'count unlinked tally transactions',
+      )
+      setTallyUnlinkedCount(typeof n === 'number' && Number.isFinite(n) ? n : 0)
+    } catch {
+      setTallyUnlinkedCount(null)
+    }
+  }, [authUser?.id, role])
+
+  useEffect(() => {
+    if (!authUser?.id || role == null) {
+      setTallyUnlinkedCount(null)
+      return
+    }
+    void loadTallyUnlinkedCount()
+  }, [authUser?.id, role, loadTallyUnlinkedCount])
+
+  useEffect(() => {
+    if (!authUser?.id || role == null) return
+    const onFocus = () => {
+      void loadTallyUnlinkedCount()
+    }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [authUser?.id, role, loadTallyUnlinkedCount])
 
   // Load users for Forward modal (all users, for Outstanding Forward)
   useEffect(() => {
@@ -3257,31 +3288,65 @@ export default function Dashboard() {
   const showPinnedRowWithQuickActions =
     pinsToShow.length > 0 || isDev || (quickButtonsPlacement === 'with_pins' && showDashboardQuickButtons)
 
+  const tallyLinkAccessibleName =
+    typeof tallyUnlinkedCount === 'number' && tallyUnlinkedCount > 0
+      ? `Job Parts Tally, ${tallyUnlinkedCount} unlinked transaction${tallyUnlinkedCount === 1 ? '' : 's'}`
+      : 'Job Parts Tally'
+
   const tallyAndPinnedBlock = (
     <>
       {role != null && (
         <div style={{ display: 'flex', alignItems: 'stretch', gap: '0.5rem', marginBottom: '1rem' }}>
-          <Link
-            to="/tally"
-            title="Job Parts Tally"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 48,
-              height: 48,
-              flexShrink: 0,
-              background: '#3b82f6',
-              color: 'white',
-              borderRadius: 8,
-              textDecoration: 'none',
-              boxSizing: 'border-box',
-            }}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={28} height={28} fill="currentColor" style={{ display: 'block' }}>
-              <path d="M541.4 162.6C549 155 561.7 156.9 565.5 166.9C572.3 184.6 576 203.9 576 224C576 312.4 504.4 384 416 384C398.5 384 381.6 381.2 365.8 376L178.9 562.9C150.8 591 105.2 591 77.1 562.9C49 534.8 49 489.2 77.1 461.1L264 274.2C258.8 258.4 256 241.6 256 224C256 135.6 327.6 64 416 64C436.1 64 455.4 67.7 473.1 74.5C483.1 78.3 484.9 91 477.4 98.6L388.7 187.3C385.7 190.3 384 194.4 384 198.6L384 240C384 248.8 391.2 256 400 256L441.4 256C445.6 256 449.7 254.3 452.7 251.3L541.4 162.6z" />
-            </svg>
-          </Link>
+          <div style={{ position: 'relative', width: 48, height: 48, flexShrink: 0 }}>
+            <Link
+              to="/tally"
+              title={tallyLinkAccessibleName}
+              aria-label={tallyLinkAccessibleName}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 48,
+                height: 48,
+                background: '#3b82f6',
+                color: 'white',
+                borderRadius: 8,
+                textDecoration: 'none',
+                boxSizing: 'border-box',
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={28} height={28} fill="currentColor" style={{ display: 'block' }} aria-hidden>
+                <path d="M541.4 162.6C549 155 561.7 156.9 565.5 166.9C572.3 184.6 576 203.9 576 224C576 312.4 504.4 384 416 384C398.5 384 381.6 381.2 365.8 376L178.9 562.9C150.8 591 105.2 591 77.1 562.9C49 534.8 49 489.2 77.1 461.1L264 274.2C258.8 258.4 256 241.6 256 224C256 135.6 327.6 64 416 64C436.1 64 455.4 67.7 473.1 74.5C483.1 78.3 484.9 91 477.4 98.6L388.7 187.3C385.7 190.3 384 194.4 384 198.6L384 240C384 248.8 391.2 256 400 256L441.4 256C445.6 256 449.7 254.3 452.7 251.3L541.4 162.6z" />
+              </svg>
+            </Link>
+            {typeof tallyUnlinkedCount === 'number' && tallyUnlinkedCount > 0 ? (
+              <span
+                aria-hidden
+                style={{
+                  position: 'absolute',
+                  top: -4,
+                  right: -4,
+                  minWidth: 18,
+                  padding: '0 5px',
+                  height: 18,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: 9999,
+                  background: '#f59e0b',
+                  color: '#1c1917',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  fontVariantNumeric: 'tabular-nums',
+                  lineHeight: 1,
+                  boxSizing: 'border-box',
+                  pointerEvents: 'none',
+                }}
+              >
+                {tallyUnlinkedCount > 99 ? '99+' : tallyUnlinkedCount}
+              </span>
+            ) : null}
+          </div>
           <button
             type="button"
             onClick={() => setNewReportModalOpen(true)}

@@ -729,9 +729,27 @@ export default function JobTally() {
                   }}
                 >
                   <span style={{ fontWeight: 600, color: '#374151' }}>Transactions to sort:</span>
-                  {tallyUnlinkedCountInScope === 1
-                    ? ' 1 unlinked'
-                    : ` ${tallyUnlinkedCountInScope} unlinked`}
+                  {tallyUnlinkedCountInScope > 0 ? (
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        marginLeft: '0.35rem',
+                        padding: '0.125rem 0.5rem',
+                        borderRadius: 9999,
+                        background: '#f59e0b',
+                        color: '#1c1917',
+                        fontWeight: 600,
+                        fontVariantNumeric: 'tabular-nums',
+                      }}
+                    >
+                      {tallyUnlinkedCountInScope === 1
+                        ? '1 unlinked'
+                        : `${tallyUnlinkedCountInScope} unlinked`}
+                    </span>
+                  ) : (
+                    <span>{` ${tallyUnlinkedCountInScope} unlinked`}</span>
+                  )}
                   {tallyTxSearchQuery.trim() !== '' ? (
                     <span style={{ color: '#64748b' }}>
                       {' '}

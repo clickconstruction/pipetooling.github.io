@@ -7257,6 +7257,10 @@ export type Database = {
         Args: { p_insert_after_sequence: number; p_step_id: string }
         Returns: Json
       }
+      count_unlinked_mercury_transactions_for_tally: {
+        Args: never
+        Returns: number
+      }
       create_po_from_job_tally: {
         Args: { p_entries: Json; p_job_id: string }
         Returns: Json

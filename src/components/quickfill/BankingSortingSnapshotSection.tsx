@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties, type MouseEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useToastContext } from '../../contexts/ToastContext'
 import { loadBankingSortingConfig } from '../../lib/bankingSortingConfig'
@@ -182,8 +182,68 @@ export function BankingSortingSnapshotSection() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(0)
+  const mercurySnapshotDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const canAccessBanking = role === 'dev' || role === 'master_technician' || role === 'assistant'
+
+  const loadMercurySnapshot = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!canAccessBanking || !authUser?.id) return
+      const silent = options?.silent === true
+      if (!silent) {
+        setLoading(true)
+        setError(null)
+      }
+      try {
+        const data = await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('mercury_transactions')
+              .select('*')
+              .order('posted_at', { ascending: false, nullsFirst: false })
+              .limit(5000),
+          'quickfill mercury_transactions snapshot',
+        )
+        const rows = (data as MercuryTxRow[]) ?? []
+
+        if (rows.length === 0) {
+          setMercuryRows([])
+          setPersonIdByTxId(new Map())
+          setUserIdByTxId(new Map())
+          setAllocationsByTxId(new Map())
+          setJobLabelById({})
+          setPersonNameById({})
+          setNicknameByAccount({})
+          setNicknameByDebitCard({})
+          return
+        }
+
+        const ids = rows.map((r) => r.id)
+        const [rel, { nicknameByAccount: accountNick, nicknameByDebitCard: debitNick }] = await Promise.all([
+          fetchMercuryRelationsState(ids, 'quickfill'),
+          fetchMercuryNicknameMaps('quickfill'),
+        ])
+
+        setMercuryRows(rows)
+        setAllocationsByTxId(rel.allocMap)
+        setPersonIdByTxId(rel.personMap)
+        setUserIdByTxId(rel.userMap)
+        setJobLabelById(rel.jobLabelById)
+        setPersonNameById(rel.personNameById)
+        setNicknameByAccount(accountNick)
+        setNicknameByDebitCard(debitNick)
+      } catch (e) {
+        if (silent) {
+          showToast(e instanceof Error ? e.message : 'Banking snapshot refresh failed.', 'error')
+        } else {
+          setError(e instanceof Error ? e.message : 'Failed to load banking snapshot')
+        }
+      } finally {
+        if (!silent) setLoading(false)
+      }
+    },
+    [authUser?.id, canAccessBanking, showToast],
+  )
 
   const reloadMercuryRelations = useCallback(async () => {
     const ids = mercuryRows.map((r) => r.id)
@@ -235,65 +295,37 @@ export function BankingSortingSnapshotSection() {
       setError(null)
       return
     }
+    void loadMercurySnapshot()
+  }, [authUser?.id, canAccessBanking, loadMercurySnapshot])
 
-    let cancelled = false
+  useEffect(() => {
+    if (!canAccessBanking || !authUser?.id) return
 
-    async function load() {
-      setLoading(true)
-      setError(null)
-      try {
-        const data = await withSupabaseRetry(
-          async () =>
-            supabase
-              .from('mercury_transactions')
-              .select('*')
-              .order('posted_at', { ascending: false, nullsFirst: false })
-              .limit(5000),
-          'quickfill mercury_transactions snapshot',
-        )
-        if (cancelled) return
-        const rows = (data as MercuryTxRow[]) ?? []
-
-        if (rows.length === 0) {
-          setMercuryRows([])
-          setPersonIdByTxId(new Map())
-          setUserIdByTxId(new Map())
-          setAllocationsByTxId(new Map())
-          setJobLabelById({})
-          setPersonNameById({})
-          setNicknameByAccount({})
-          setNicknameByDebitCard({})
-          setLoading(false)
-          return
-        }
-
-        const ids = rows.map((r) => r.id)
-        const [rel, { nicknameByAccount: accountNick, nicknameByDebitCard: debitNick }] = await Promise.all([
-          fetchMercuryRelationsState(ids, 'quickfill'),
-          fetchMercuryNicknameMaps('quickfill'),
-        ])
-        if (cancelled) return
-
-        setMercuryRows(rows)
-        setAllocationsByTxId(rel.allocMap)
-        setPersonIdByTxId(rel.personMap)
-        setUserIdByTxId(rel.userMap)
-        setJobLabelById(rel.jobLabelById)
-        setPersonNameById(rel.personNameById)
-        setNicknameByAccount(accountNick)
-        setNicknameByDebitCard(debitNick)
-      } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load banking snapshot')
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
+    const scheduleRefetch = () => {
+      if (mercurySnapshotDebounceRef.current) clearTimeout(mercurySnapshotDebounceRef.current)
+      mercurySnapshotDebounceRef.current = setTimeout(() => {
+        mercurySnapshotDebounceRef.current = null
+        void loadMercurySnapshot({ silent: true })
+      }, 800)
     }
 
-    void load()
+    const channel = supabase
+      .channel(`quickfill-banking-sorting-snapshot-${authUser.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'mercury_transactions' },
+        scheduleRefetch,
+      )
+      .subscribe()
+
     return () => {
-      cancelled = true
+      if (mercurySnapshotDebounceRef.current) {
+        clearTimeout(mercurySnapshotDebounceRef.current)
+        mercurySnapshotDebounceRef.current = null
+      }
+      void supabase.removeChannel(channel)
     }
-  }, [authUser?.id, canAccessBanking])
+  }, [authUser?.id, canAccessBanking, loadMercurySnapshot])
 
   useEffect(() => {
     if (!canAccessBanking) return

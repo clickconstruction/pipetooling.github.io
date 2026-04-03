@@ -1348,6 +1348,13 @@ If **`stripe_invoice_id`** and **`hosted_invoice_url`** are already set, returns
 
 **Gateway JWT**: **`verify_jwt = false`** in [`supabase/config.toml`](supabase/config.toml). Deploy with **`--no-verify-jwt`**.
 
+**Enable checklist (production)**:
+
+1. **Deploy** (from repo): `supabase functions deploy mercury-webhook --no-verify-jwt` (use linked project or pass `--project-ref`).
+2. **Secrets** (Dashboard → Edge Functions → Secrets, or `supabase secrets set`): `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `MERCURY_API_KEY`, `MERCURY_WEBHOOK_SECRET` (must match Mercury’s webhook signing secret).
+3. **Mercury dashboard**: Create webhook → URL `https://<project-ref>.supabase.co/functions/v1/mercury-webhook` → subscribe to **transaction** events so POST JSON includes `resourceType: "transaction"` and `resourceId`.
+4. **Verify**: Edge logs show `200` with `received: true`; new rows appear in `mercury_transactions`. **UI**: After migration adding `mercury_transactions` to `supabase_realtime`, Banking Sorting and Quickfill Banking sorting **debounced-refetch** on `postgres_changes` (no manual Refresh required for DB-driven updates).
+
 ---
 
 ## Error Handling
