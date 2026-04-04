@@ -1,4 +1,4 @@
-import { denverCalendarDayKey } from '../utils/dateUtils'
+import { denverCalendarDayKey, ymdAddDays } from '../utils/dateUtils'
 
 export const BANKING_SORTING_CONFIG_VERSION = 1 as const
 
@@ -15,20 +15,6 @@ export type BankingSortingConfigV1 = {
 }
 
 const STORAGE_PREFIX = 'banking_sorting_config_v1_'
-
-function ymdAddDays(ymd: string, deltaDays: number): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd.trim())
-  if (!m) return ymd
-  const y = Number(m[1])
-  const mo = Number(m[2]) - 1
-  const d = Number(m[3])
-  const base = new Date(Date.UTC(y, mo, d))
-  base.setUTCDate(base.getUTCDate() + deltaDays)
-  const yy = base.getUTCFullYear()
-  const mm = String(base.getUTCMonth() + 1).padStart(2, '0')
-  const dd = String(base.getUTCDate()).padStart(2, '0')
-  return `${yy}-${mm}-${dd}`
-}
 
 export function defaultBankingSortingConfig(): BankingSortingConfigV1 {
   const todayChicago = denverCalendarDayKey(Date.now())

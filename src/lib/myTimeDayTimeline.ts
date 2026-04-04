@@ -9,6 +9,9 @@ export type DayEditorSession = {
   approved_at: string | null
 }
 
+/** Minimal row shape for interval overlap checks (strip sessions + editor clusters). */
+export type ClockIntervalRow = Pick<DayEditorSession, 'clocked_in_at' | 'clocked_out_at'>
+
 export const MIN_SEGMENT_MS = 0.01 * 3600 * 1000
 
 /** Same ε as gap detection in the day timeline (ms). */
@@ -156,10 +159,31 @@ export function clusterIsHomogeneousJobBid(c: DayEditorSession[]): boolean {
 }
 
 /** Inclusive row interval in ms (open end uses nowMs). */
-export function sessionRowIntervalMs(s: DayEditorSession, nowMs: number): { lo: number; hi: number } {
+export function sessionRowIntervalMs(s: ClockIntervalRow, nowMs: number): { lo: number; hi: number } {
   const lo = new Date(s.clocked_in_at).getTime()
   const hi = s.clocked_out_at ? new Date(s.clocked_out_at).getTime() : nowMs
   return { lo, hi }
+}
+
+/**
+ * True if some pair of sessions has a positive interval intersection strictly longer than
+ * `CLUSTER_CONTIGUITY_EPS_MS` (1s), matching the contiguous-cluster ε so point-touch and sub-second noise do not warn.
+ */
+export function hasPairwiseClockIntervalOverlap(
+  rows: readonly ClockIntervalRow[],
+  nowMs: number,
+): boolean {
+  if (rows.length < 2) return false
+  const n = rows.length
+  for (let i = 0; i < n; i++) {
+    const { lo: loA, hi: hiA } = sessionRowIntervalMs(rows[i]!, nowMs)
+    for (let j = i + 1; j < n; j++) {
+      const { lo: loB, hi: hiB } = sessionRowIntervalMs(rows[j]!, nowMs)
+      const overlapMs = Math.min(hiA, hiB) - Math.max(loA, loB)
+      if (overlapMs > CLUSTER_CONTIGUITY_EPS_MS) return true
+    }
+  }
+  return false
 }
 
 /** True if [segLo, segHi] is fully inside [rowLo, rowHi] (modulo ε). */

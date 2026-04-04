@@ -17,6 +17,7 @@ export function buildTallyLinkedMercuryRowSearchHaystack(
   const parts: string[] = []
   pushPart(parts, row.counterparty_name)
   pushPart(parts, row.note)
+  pushPart(parts, row.tally_user_note)
   pushPart(parts, row.jobs_summary)
   pushPart(parts, row.mercury_transaction_id)
   if (typeof row.amount === 'number' && Number.isFinite(row.amount)) parts.push(String(row.amount))

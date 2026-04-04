@@ -116,7 +116,7 @@ pipetooling.github.io/
 │   ├── migrations/        # Database migrations (append-only)
 │   └── functions/         # Edge Functions (Deno/TypeScript)
 ├── public/                # Static assets
-└── [documentation].md     # 13+ markdown documentation files
+└── [documentation].md     # 14+ markdown documentation files (incl. SALARY_CLOCK_SESSIONS.md)
 ```
 
 ---
@@ -147,6 +147,7 @@ pipetooling.github.io/
 - **`README.md`** - Quick start and documentation index
 - **`AI_CONTEXT.md`** - This file (quick overview)
 - **`PROJECT_DOCUMENTATION.md`** - Complete technical reference (3000+ lines)
+- **`SALARY_CLOCK_SESSIONS.md`** - Salaried **`salary_schedule`** materialization, split RPCs, sync overlap guards, migrations (no-Docker CLI notes)
 - **`BIDS_SYSTEM.md`** - Bids system documentation (all tabs)
 - **`ACCESS_CONTROL.md`** - Complete role permissions matrix
 - **`ADDING_A_NEW_ROLE.md`** - Step-by-step guide for adding new roles
@@ -167,7 +168,7 @@ pipetooling.github.io/
 3. **Apply locally**: `supabase migration up`
 4. **Update types**: `npm run gen-types:local` (or `--linked` variant if no local DB; see **`AGENTS.md`**)
 5. **Test RLS**: Verify policies work for all 6 roles
-6. **Document**: Add to `PROJECT_DOCUMENTATION.md` and `MIGRATIONS.md`
+6. **Document**: Add to `PROJECT_DOCUMENTATION.md` and `MIGRATIONS.md`; salaried auto-session / sync / split behavior → also **`SALARY_CLOCK_SESSIONS.md`**
 
 ### Adding a New Page/Route
 
@@ -215,7 +216,7 @@ AI agents or automated tests can sign in without a password using the dev-login 
 | User role permissions | `ACCESS_CONTROL.md` → Page/Feature access matrices |
 | Adding a new role | `ADDING_A_NEW_ROLE.md` → Step-by-step guide |
 | Term definitions | `GLOSSARY.md` → All domain terms and concepts |
-| Recent changes and features | `RECENT_FEATURES.md` → Chronological updates (e.g. v2.228 Salaried workday session-end labels + salary sync split guard) |
+| Recent changes and features | `RECENT_FEATURES.md` → Chronological updates (e.g. v2.229 salary indexed-slot split + overlap guard; v2.228 Salaried workday UI + continuous sync guard) |
 | Bids system | `BIDS_SYSTEM.md` → Complete workflow documentation |
 | Edge Functions API | `EDGE_FUNCTIONS.md` → All 10 functions with examples |
 | Migration history | `MIGRATIONS.md` → All migrations by date and category |
@@ -227,7 +228,7 @@ AI agents or automated tests can sign in without a password using the dev-login 
 | Dashboard "Currently clocked in" strip (Today column, My team/Everyone; scope overlay chrome v2.206); supply house website in Materials | `RECENT_FEATURES.md` → v2.163, v2.206; `PROJECT_DOCUMENTATION.md` → Dashboard, Materials; `src/hooks/useDashboardMyTeamSectionState.ts`; `src/components/DashboardTeamActiveClockStrip.tsx` |
 | Dashboard **My Time** / **Edit time** (this-week-only, Form/Visual, merge + job override, `myTimeDayTimeline`) | `RECENT_FEATURES.md` → v2.193, v2.192, v2.179; `PROJECT_DOCUMENTATION.md` → Dashboard **My Time**; `src/components/DashboardMyTimeSection.tsx`; `src/components/DashboardMyTimeDayEditorModal.tsx`; `src/components/my-time-day-editor/`; `src/lib/myTimeDayTimeline.ts`; `src/lib/myTimeDaySavePlan.ts` |
 | Dashboard **Clock In** / **Update Focus**: assigned jobs auto-load; **no assigned jobs** toast once per modal (v2.191); field borders / focus | `RECENT_FEATURES.md` → v2.182, v2.191; `PROJECT_DOCUMENTATION.md` → Dashboard **Clock In/Out**; `src/components/ClockInOutButton.tsx`; `src/contexts/ToastContext.tsx` |
-| Settings **Salaried workday**: **Day end** / **First** and **Second Session End** hints (`formatSalaryBlockEndDisplay`); split-mode first-block default; sync avoids duplicate **`salary_schedule`** row after split | `RECENT_FEATURES.md` → v2.228; `PROJECT_DOCUMENTATION.md` → `clock_sessions` salary scheduling; `MIGRATIONS.md` → `20270402100000`; `SalaryWorkScheduleSettings.tsx`; `salaryScheduleEndTimeDisplay.ts` |
+| Settings **Salaried workday** + auto **`salary_schedule`** sessions: UI hints (`formatSalaryBlockEndDisplay`); continuous duplicate INSERT guard (`20270402100000`); indexed-slot split → **`user_punch`** + split overlap guard (`20270403180000`) | **`SALARY_CLOCK_SESSIONS.md`**; `RECENT_FEATURES.md` → v2.229, v2.228; `PROJECT_DOCUMENTATION.md` → `clock_sessions`; `MIGRATIONS.md` → `20270402100000`, `20270403180000`; `SalaryWorkScheduleSettings.tsx`; `salaryScheduleEndTimeDisplay.ts` |
 | Job Parts Tally **(/tally)**: Materials estimate + **Transactions** (Mercury card search, note icon, `tallyJobSplits`, `TallyJobTransactionsModal`) | `RECENT_FEATURES.md` → v2.225; `PROJECT_DOCUMENTATION.md` → Jobs §6a; `src/pages/JobTally.tsx`; `src/lib/tallyTransactionSearch.ts`; `src/components/icons/MercuryTransactionNoteIcon.tsx` |
 | Jobs **Stages** + Workflow linked jobs: **thread notes**, **Last activity** preview, composer **Enter** / **Shift+Enter**; `jobs_ledger.stage_notes` removed | `RECENT_FEATURES.md` → v2.183–v2.185; `PROJECT_DOCUMENTATION.md` → Jobs §6, Workflow; `MIGRATIONS.md` → `20260330023918`; `src/components/JobThreadNotesPanel.tsx`; `src/hooks/useJobThreadNotes.ts`; `src/pages/Jobs.tsx` |
 | Ready to Bill **customer gate** + **Edit Job** billing highlight; **`get_jobs_ledger_by_status.customer_id`**; RTB **Job: Send Job Back** / **Delete draft bill**; Edit Job **Open invoices** order + **Record Payment** | `RECENT_FEATURES.md` → v2.190; `PROJECT_DOCUMENTATION.md` → Jobs §6, Dashboard; `MIGRATIONS.md` → `20260330065236`; `EDGE_FUNCTIONS.md` → **create-stripe-invoice**; `src/pages/Jobs.tsx`; `src/pages/Dashboard.tsx`; `src/components/jobs/SendRecordInvoiceModal.tsx` |

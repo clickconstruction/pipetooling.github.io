@@ -58,7 +58,7 @@ function companyWeekdaySunday0(ms: number): number {
 }
 
 /** Pure Gregorian YYYY-MM-DD ± n days (civil dates, not instants). */
-function addCalendarDaysYmd(ymd: string, deltaDays: number): string {
+export function ymdAddDays(ymd: string, deltaDays: number): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd.trim())
   if (!m) return ymd
   const y = Number(m[1])
@@ -77,16 +77,16 @@ export function getDefaultWeekRange(): { start: string; end: string } {
   const ms = Date.now()
   const todayKey = denverCalendarDayKey(ms)
   const dow = companyWeekdaySunday0(ms)
-  const start = addCalendarDaysYmd(todayKey, -dow)
-  const end = addCalendarDaysYmd(start, 6)
+  const start = ymdAddDays(todayKey, -dow)
+  const end = ymdAddDays(start, 6)
   return { start, end }
 }
 
 /** Week range: Sunday–Saturday for the previous week (America/Chicago). */
 export function getLastWeekRange(): { start: string; end: string } {
   const { start: thisSun } = getDefaultWeekRange()
-  const lastSun = addCalendarDaysYmd(thisSun, -7)
-  const lastSat = addCalendarDaysYmd(lastSun, 6)
+  const lastSun = ymdAddDays(thisSun, -7)
+  const lastSat = ymdAddDays(lastSun, 6)
   return { start: lastSun, end: lastSat }
 }
 

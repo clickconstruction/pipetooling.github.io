@@ -757,6 +757,8 @@ export default function Layout() {
             <button
               type="button"
               onClick={handleBackToMyAccount}
+              title="Back to my account"
+              aria-label="Back to your original signed-in account"
               style={{
                 padding: '0.35rem 0.75rem',
                 background: '#fef3c7',
@@ -766,7 +768,7 @@ export default function Layout() {
                 fontWeight: 600,
               }}
             >
-              Back to my account
+              Back
             </button>
           )}
         </span>

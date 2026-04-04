@@ -3247,6 +3247,38 @@ export type Database = {
           },
         ]
       }
+      mercury_tally_transaction_notes: {
+        Row: {
+          body: string
+          id: string
+          mercury_transaction_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body?: string
+          id?: string
+          mercury_transaction_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          id?: string
+          mercury_transaction_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mercury_tally_transaction_notes_mercury_transaction_id_fkey"
+            columns: ["mercury_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "mercury_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mercury_transaction_attributions: {
         Row: {
           mercury_transaction_id: string
@@ -7634,6 +7666,7 @@ export type Database = {
           person_label: string
           posted_at: string
           raw: Json
+          tally_user_note: string
         }[]
       }
       list_my_reports: {
@@ -7929,6 +7962,10 @@ export type Database = {
       }
       update_step_private_notes: {
         Args: { p_private_notes: string; p_step_id: string }
+        Returns: undefined
+      }
+      upsert_mercury_tally_transaction_note: {
+        Args: { p_body: string; p_mercury_transaction_id: string }
         Returns: undefined
       }
       user_assigned_to_project_as_superintendent: {

@@ -7,6 +7,10 @@ import type { Database } from '../types/database'
 import { MercuryTransactionNoteIcon } from '../components/icons/MercuryTransactionNoteIcon'
 import { MercuryTransactionAllocationsModal } from '../components/MercuryTransactionAllocationsModal'
 import { TallyJobTransactionsModal } from '../components/tally/TallyJobTransactionsModal'
+import { TallyClockWindowAllocateModal } from '../components/tally/TallyClockWindowAllocateModal'
+import { APP_CALENDAR_TZ } from '../utils/dateUtils'
+import { APP_SETTINGS_KEY_JOB_TALLY_MIN_POSTED_YMD, normalizeJobTallyMinPostedYmd } from '../lib/appSettingsKeys'
+import { mercuryRowPassesSortingStartDate } from '../lib/bankingSortingConfig'
 import { parseTallyJobSplitsJson } from '../lib/tallyJobSplits'
 import { filterTallyLinkedMercuryRowsBySearchQuery } from '../lib/tallyTransactionSearch'
 
@@ -90,12 +94,62 @@ function formatTallyPostedParts(iso: string | null): { date: string; weekday: st
     const d = new Date(iso)
     if (Number.isNaN(d.getTime())) return null
     return {
-      date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      weekday: d.toLocaleDateString('en-US', { weekday: 'long' }),
+      date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: APP_CALENDAR_TZ }),
+      weekday: d.toLocaleDateString('en-US', { weekday: 'long', timeZone: APP_CALENDAR_TZ }),
     }
   } catch {
     return null
   }
+}
+
+function TallyPostedDateOpenButton({
+  posted,
+  onOpen,
+}: {
+  posted: { date: string; weekday: string }
+  onOpen: () => void
+}) {
+  const [hover, setHover] = useState(false)
+  const [focus, setFocus] = useState(false)
+  const active = hover || focus
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      title="Split this transaction across jobs from your clock: posted day, previous day, and next day (Chicago calendar)."
+      aria-label={`Open clock jobs for ${posted.date} ${posted.weekday}`}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      onFocus={() => setFocus(true)}
+      onBlur={() => setFocus(false)}
+      style={{
+        display: 'block',
+        margin: 0,
+        padding: '0.35rem 0.4rem',
+        minHeight: TOUCH_MIN,
+        width: '100%',
+        textAlign: 'left',
+        font: 'inherit',
+        cursor: 'pointer',
+        borderRadius: 6,
+        border: focus ? '1px solid #1d4ed8' : hover ? '1px solid #93c5fd' : '1px solid #e5e7eb',
+        background: active ? '#eff6ff' : '#f8fafc',
+        boxShadow: focus ? '0 0 0 2px rgba(29, 78, 216, 0.2)' : 'none',
+      }}
+    >
+      <div
+        style={{
+          color: '#1d4ed8',
+          fontWeight: 600,
+          textDecoration: 'underline',
+          textUnderlineOffset: 3,
+        }}
+      >
+        {posted.date}
+      </div>
+      <div style={{ color: '#64748b', fontSize: '0.75rem', marginTop: 2 }}>{posted.weekday}</div>
+    </button>
+  )
 }
 
 function formatLinkedCardDisplayLabel(card: TallyLinkedDebitCardRow): string {
@@ -153,8 +207,10 @@ function sortTallyRowsStable(
       const nb = Number(b.amount)
       cmp = na === nb ? 0 : na < nb ? -1 : 1
     } else if (key === 'counterparty_name') {
-      const sa = `${a.counterparty_name ?? ''} ${a.note ?? ''}`.toLowerCase().trim()
-      const sb = `${b.counterparty_name ?? ''} ${b.note ?? ''}`.toLowerCase().trim()
+      const sa =
+        `${a.counterparty_name ?? ''} ${a.note ?? ''} ${a.tally_user_note ?? ''}`.toLowerCase().trim()
+      const sb =
+        `${b.counterparty_name ?? ''} ${b.note ?? ''} ${b.tally_user_note ?? ''}`.toLowerCase().trim()
       cmp = sa === sb ? 0 : sa < sb ? -1 : 1
     }
     if (cmp !== 0) return cmp * mult
@@ -243,11 +299,17 @@ export default function JobTally() {
     dir: 'desc',
   })
   const [tallyAllocModalRow, setTallyAllocModalRow] = useState<TallyLinkedMercuryRow | null>(null)
+  const [tallyClockAllocateRow, setTallyClockAllocateRow] = useState<TallyLinkedMercuryRow | null>(null)
   const [tallyJobDrilldown, setTallyJobDrilldown] = useState<{ jobId: string; label: string } | null>(null)
   const [tallyDebitCardFilterId, setTallyDebitCardFilterId] = useState<string | null>(null)
   const [tallyTxScope, setTallyTxScope] = useState<TallyTxScope>('unlinked')
   const [tallyTxSearchQuery, setTallyTxSearchQuery] = useState('')
   const [tallyOpenNoteTxId, setTallyOpenNoteTxId] = useState<string | null>(null)
+  const [tallyOpenUserNoteTxId, setTallyOpenUserNoteTxId] = useState<string | null>(null)
+  const [tallyUserNoteDraft, setTallyUserNoteDraft] = useState('')
+  const [tallyUserNoteSaving, setTallyUserNoteSaving] = useState(false)
+  const [tallyUserNoteError, setTallyUserNoteError] = useState<string | null>(null)
+  const [tallyGlobalMinPostedYmd, setTallyGlobalMinPostedYmd] = useState<string | null>(null)
 
   const loadTallyTransactions = useCallback(async () => {
     if (!authUser?.id) return
@@ -275,12 +337,17 @@ export default function JobTally() {
     }
   }, [authUser?.id])
 
+  const tallyTxRowsGlobalFiltered = useMemo(() => {
+    if (!tallyGlobalMinPostedYmd) return tallyTxRows
+    return tallyTxRows.filter((r) => mercuryRowPassesSortingStartDate(r.posted_at, tallyGlobalMinPostedYmd))
+  }, [tallyTxRows, tallyGlobalMinPostedYmd])
+
   const tallyJobLabelById = useMemo(() => {
     const m: Record<string, string> = {}
     for (const j of jobs) {
       m[j.id] = `${j.hcp_number} · ${j.job_name}`.trim() || j.id
     }
-    for (const row of tallyTxRows) {
+    for (const row of tallyTxRowsGlobalFiltered) {
       const splits = row.job_splits
       if (!Array.isArray(splits)) continue
       for (const item of splits) {
@@ -294,7 +361,7 @@ export default function JobTally() {
       }
     }
     return m
-  }, [jobs, tallyTxRows])
+  }, [jobs, tallyTxRowsGlobalFiltered])
 
   const tallyNicknameByDebitCard = useMemo(() => {
     const m: Record<string, string> = {}
@@ -308,7 +375,7 @@ export default function JobTally() {
 
   const tallyNicknameByAccount = useMemo(() => {
     const m: Record<string, string> = {}
-    for (const row of tallyTxRows) {
+    for (const row of tallyTxRowsGlobalFiltered) {
       const aid = row.mercury_account_id
       if (!aid) continue
       const nick =
@@ -317,7 +384,7 @@ export default function JobTally() {
       m[aid] = nick
     }
     return m
-  }, [tallyTxRows])
+  }, [tallyTxRowsGlobalFiltered])
 
   const setTallyTxSortForColumn = useCallback((key: TallyTxSortKey) => {
     setTallyTxSort((s) =>
@@ -326,9 +393,9 @@ export default function JobTally() {
   }, [])
 
   const tallyTxRowsFiltered = useMemo(() => {
-    if (!tallyDebitCardFilterId) return tallyTxRows
-    return tallyTxRows.filter((r) => r.mercury_debit_card_id === tallyDebitCardFilterId)
-  }, [tallyTxRows, tallyDebitCardFilterId])
+    if (!tallyDebitCardFilterId) return tallyTxRowsGlobalFiltered
+    return tallyTxRowsGlobalFiltered.filter((r) => r.mercury_debit_card_id === tallyDebitCardFilterId)
+  }, [tallyTxRowsGlobalFiltered, tallyDebitCardFilterId])
 
   const tallyUnlinkedCountInScope = useMemo(
     () => tallyTxRowsFiltered.filter((r) => !tallyRowHasJobAllocations(r)).length,
@@ -365,13 +432,16 @@ export default function JobTally() {
   }, [activeTab, authUser?.id, loadTallyTransactions])
 
   useEffect(() => {
-    if (tallyOpenNoteTxId === null) return
+    if (tallyOpenNoteTxId === null && tallyOpenUserNoteTxId === null) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setTallyOpenNoteTxId(null)
+      if (e.key !== 'Escape') return
+      setTallyOpenNoteTxId(null)
+      setTallyOpenUserNoteTxId(null)
+      setTallyUserNoteError(null)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [tallyOpenNoteTxId])
+  }, [tallyOpenNoteTxId, tallyOpenUserNoteTxId])
 
   useEffect(() => {
     if (!authUser?.id) return
@@ -380,6 +450,57 @@ export default function JobTally() {
       setRole(r)
     })
   }, [authUser?.id])
+
+  useEffect(() => {
+    if (!authUser?.id) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const data = await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('app_settings')
+              .select('value_text')
+              .eq('key', APP_SETTINGS_KEY_JOB_TALLY_MIN_POSTED_YMD)
+              .maybeSingle(),
+          'load job tally min posted for tally page',
+        )
+        if (cancelled) return
+        const row = data as { value_text: string | null } | null
+        setTallyGlobalMinPostedYmd(normalizeJobTallyMinPostedYmd(row?.value_text ?? null))
+      } catch {
+        if (!cancelled) setTallyGlobalMinPostedYmd(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [authUser?.id])
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('job-tally-app-settings')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'app_settings' },
+        (payload) => {
+          const keyFromNew = (payload.new as { key?: string } | null)?.key
+          const keyFromOld = (payload.old as { key?: string } | null)?.key
+          const key = keyFromNew ?? keyFromOld
+          if (key !== APP_SETTINGS_KEY_JOB_TALLY_MIN_POSTED_YMD) return
+          if (payload.eventType === 'DELETE') {
+            setTallyGlobalMinPostedYmd(null)
+            return
+          }
+          const vt = (payload.new as { value_text?: string | null }).value_text
+          setTallyGlobalMinPostedYmd(normalizeJobTallyMinPostedYmd(vt ?? null))
+        },
+      )
+      .subscribe()
+    return () => {
+      void supabase.removeChannel(channel)
+    }
+  }, [])
 
   useEffect(() => {
     const t = searchParams.get('tab')
@@ -718,7 +839,7 @@ export default function JobTally() {
                 paddingRight: '0.25rem',
               }}
             >
-              {!tallyTxLoading && tallyTxRows.length > 0 ? (
+              {!tallyTxLoading && tallyTxRowsGlobalFiltered.length > 0 ? (
                 <span
                   aria-live="polite"
                   style={{
@@ -915,6 +1036,12 @@ export default function JobTally() {
             <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0, lineHeight: 1.5 }}>
               No card transactions to show yet. Once your debit card is linked to your user, purchases will appear here.
             </p>
+          ) : tallyTxRowsGlobalFiltered.length === 0 ? (
+            <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0, lineHeight: 1.5 }}>
+              Every loaded transaction is before the org minimum posted date (
+              <strong>{tallyGlobalMinPostedYmd ?? '—'}</strong>). A dev can change or clear this under Settings, Templates
+              &amp; testing, Job Parts Tally.
+            </p>
           ) : tallyDebitCardFilterId && tallyTxRowsFiltered.length === 0 ? (
             <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0, lineHeight: 1.5 }}>
               No transactions for this card.{' '}
@@ -963,7 +1090,7 @@ export default function JobTally() {
             </p>
           ) : (
             <>
-              {!tallyTxLoading && tallyTxRows.length > 0 ? (
+              {!tallyTxLoading && tallyTxRowsGlobalFiltered.length > 0 ? (
                 <div
                   style={{
                     marginBottom: '0.65rem',
@@ -987,7 +1114,7 @@ export default function JobTally() {
                       type="search"
                       value={tallyTxSearchQuery}
                       onChange={(e) => setTallyTxSearchQuery(e.target.value)}
-                      placeholder="Counterparty, note, job, amount…"
+                      placeholder="Counterparty, Mercury memo, personal memo, job, amount…"
                       autoComplete="off"
                       aria-label="Search transactions"
                       style={{
@@ -1065,20 +1192,84 @@ export default function JobTally() {
                   </tr>
                 </thead>
                 <tbody>
-                  {tallyTxSorted.map((row) => (
-                    <Fragment key={row.mercury_transaction_id}>
+                  {tallyTxSorted.map((row) => {
+                    const txId = row.mercury_transaction_id
+                    const noteText = row.note?.trim() ?? ''
+                    const hasNote = noteText.length > 0
+                    const noteOpen = tallyOpenNoteTxId === txId
+                    const notePanelId = `tally-tx-note-${txId}`
+                    const userNoteText = row.tally_user_note?.trim() ?? ''
+                    const hasUserNote = userNoteText.length > 0
+                    const userNoteOpen = tallyOpenUserNoteTxId === txId
+                    const userNotePanelId = `tally-tx-my-note-${txId}`
+                    const iconBtnBase: CSSProperties = {
+                      flexShrink: 0,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '0.35rem',
+                      minWidth: 32,
+                      minHeight: 32,
+                      margin: 0,
+                      borderRadius: 6,
+                      cursor: 'pointer',
+                    }
+                    const saveMyNote = async () => {
+                      setTallyUserNoteSaving(true)
+                      setTallyUserNoteError(null)
+                      try {
+                        await withSupabaseRetry(
+                          async () =>
+                            supabase.rpc('upsert_mercury_tally_transaction_note', {
+                              p_mercury_transaction_id: txId,
+                              p_body: tallyUserNoteDraft,
+                            }),
+                          'save tally my note',
+                        )
+                        const t = tallyUserNoteDraft.trim()
+                        setTallyTxRows((prev) =>
+                          prev.map((r) => (r.mercury_transaction_id === txId ? { ...r, tally_user_note: t } : r)),
+                        )
+                      } catch (err) {
+                        setTallyUserNoteError(err instanceof Error ? err.message : 'Could not save note.')
+                      } finally {
+                        setTallyUserNoteSaving(false)
+                      }
+                    }
+                    const clearMyNote = async () => {
+                      setTallyUserNoteSaving(true)
+                      setTallyUserNoteError(null)
+                      try {
+                        await withSupabaseRetry(
+                          async () =>
+                            supabase.rpc('upsert_mercury_tally_transaction_note', {
+                              p_mercury_transaction_id: txId,
+                              p_body: '',
+                            }),
+                          'clear tally my note',
+                        )
+                        setTallyUserNoteDraft('')
+                        setTallyTxRows((prev) =>
+                          prev.map((r) => (r.mercury_transaction_id === txId ? { ...r, tally_user_note: '' } : r)),
+                        )
+                      } catch (err) {
+                        setTallyUserNoteError(err instanceof Error ? err.message : 'Could not clear note.')
+                      } finally {
+                        setTallyUserNoteSaving(false)
+                      }
+                    }
+                    return (
+                    <Fragment key={txId}>
                       <tr style={{ borderTop: '1px solid #f3f4f6' }}>
                         <td style={{ padding: '0.45rem 0.6rem', verticalAlign: 'top' }}>
                           {(() => {
                             const posted = formatTallyPostedParts(row.posted_at)
                             if (!posted) return '—'
                             return (
-                              <>
-                                <div style={{ color: '#111827' }}>{posted.date}</div>
-                                <div style={{ color: '#64748b', fontSize: '0.75rem', marginTop: 2 }}>
-                                  {posted.weekday}
-                                </div>
-                              </>
+                              <TallyPostedDateOpenButton
+                                posted={posted}
+                                onOpen={() => setTallyClockAllocateRow(row)}
+                              />
                             )
                           })()}
                         </td>
@@ -1092,74 +1283,89 @@ export default function JobTally() {
                         >
                           {formatTallyCurrency(Number(row.amount))}
                         </td>
-                        <td style={{ padding: '0.45rem 0.6rem', verticalAlign: 'top', maxWidth: 200 }}>
-                          {(() => {
-                            const noteText = row.note?.trim() ?? ''
-                            const hasNote = noteText.length > 0
-                            const noteOpen = tallyOpenNoteTxId === row.mercury_transaction_id
-                            const notePanelId = `tally-tx-note-${row.mercury_transaction_id}`
-                            return (
-                              <>
+                        <td style={{ padding: '0.45rem 0.6rem', verticalAlign: 'top', maxWidth: 220 }}>
+                          <>
+                                <div
+                                  style={{
+                                    fontWeight: 500,
+                                    color: '#111827',
+                                    wordBreak: 'break-word',
+                                    marginBottom: 4,
+                                  }}
+                                >
+                                  {row.counterparty_name?.trim() || '—'}
+                                </div>
                                 <div
                                   style={{
                                     display: 'flex',
-                                    alignItems: 'flex-start',
+                                    flexWrap: 'wrap',
+                                    alignItems: 'center',
+                                    justifyContent: 'flex-end',
                                     gap: '0.35rem',
-                                    justifyContent: 'space-between',
                                   }}
                                 >
-                                  <div
-                                    style={{
-                                      fontWeight: 500,
-                                      color: '#111827',
-                                      flex: '1 1 auto',
-                                      minWidth: 0,
-                                      wordBreak: 'break-word',
-                                    }}
-                                  >
-                                    {row.counterparty_name?.trim() || '—'}
-                                  </div>
                                   {hasNote ? (
                                     <button
                                       type="button"
-                                      title="Note"
+                                      title="Mercury memo"
                                       onClick={() =>
-                                        setTallyOpenNoteTxId(
-                                          noteOpen ? null : row.mercury_transaction_id,
-                                        )
+                                        setTallyOpenNoteTxId(noteOpen ? null : txId)
                                       }
                                       aria-expanded={noteOpen}
                                       aria-controls={notePanelId}
                                       aria-label={
                                         noteOpen
-                                          ? 'Hide Mercury transaction note'
-                                          : 'Show Mercury transaction note'
+                                          ? 'Hide Mercury memo from Mercury'
+                                          : 'Show Mercury memo from Mercury'
                                       }
                                       style={{
-                                        flexShrink: 0,
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        padding: '0.35rem',
-                                        minWidth: 32,
-                                        minHeight: 32,
-                                        margin: 0,
+                                        ...iconBtnBase,
                                         border: '1px solid #e5e7eb',
-                                        borderRadius: 6,
                                         background: '#f9fafb',
                                         color: '#4b5563',
-                                        cursor: 'pointer',
                                       }}
                                     >
                                       <MercuryTransactionNoteIcon />
                                     </button>
                                   ) : null}
+                                  <button
+                                    type="button"
+                                    title="Add or edit personal memo"
+                                    onClick={() => {
+                                      setTallyUserNoteError(null)
+                                      if (userNoteOpen) {
+                                        setTallyOpenUserNoteTxId(null)
+                                      } else {
+                                        setTallyUserNoteDraft(row.tally_user_note?.trim() ?? '')
+                                        setTallyOpenUserNoteTxId(txId)
+                                      }
+                                    }}
+                                    aria-expanded={userNoteOpen}
+                                    aria-controls={userNotePanelId}
+                                    aria-label={
+                                      userNoteOpen
+                                        ? 'Hide personal memo'
+                                        : 'Add or edit personal memo'
+                                    }
+                                    style={{
+                                      ...iconBtnBase,
+                                      border: hasUserNote ? '1px solid #93c5fd' : '1px solid #e5e7eb',
+                                      background: hasUserNote ? '#eff6ff' : '#f9fafb',
+                                      color: '#1d4ed8',
+                                      fontSize: '0.6875rem',
+                                      fontWeight: 600,
+                                      padding: '0.25rem 0.4rem',
+                                      minWidth: 0,
+                                    }}
+                                  >
+                                    + memo
+                                  </button>
                                 </div>
                                 {hasNote ? (
                                   <div
                                     id={notePanelId}
                                     role="region"
-                                    aria-label="Transaction note"
+                                    aria-label="Mercury memo"
                                     hidden={!noteOpen}
                                     style={{
                                       color: '#64748b',
@@ -1171,11 +1377,122 @@ export default function JobTally() {
                                     {noteText}
                                   </div>
                                 ) : null}
-                              </>
-                            )
-                          })()}
+                          </>
                         </td>
                       </tr>
+                      {userNoteOpen ? (
+                        <tr>
+                          <td
+                            colSpan={3}
+                            style={{
+                              padding: '0.35rem 0.6rem 0.5rem',
+                              verticalAlign: 'top',
+                              background: '#fafafa',
+                              borderTop: '1px solid #f3f4f6',
+                            }}
+                          >
+                            <div
+                              id={userNotePanelId}
+                              role="region"
+                              aria-label="Personal memo"
+                              style={{
+                                padding: '0.5rem 0.55rem',
+                                borderRadius: 6,
+                                border: '1px solid #e5e7eb',
+                                background: '#fff',
+                              }}
+                            >
+                              <div
+                                style={{
+                                  fontSize: '0.6875rem',
+                                  color: '#6b7280',
+                                  marginBottom: 6,
+                                }}
+                              >
+                                Transaction details that will help sorting:{' '}
+                                <span style={{ color: '#9ca3af' }}>· max 2000 chars</span>
+                              </div>
+                              <textarea
+                                value={tallyUserNoteDraft}
+                                onChange={(e) => setTallyUserNoteDraft(e.target.value)}
+                                maxLength={2000}
+                                rows={3}
+                                style={{
+                                  width: '100%',
+                                  boxSizing: 'border-box',
+                                  font: 'inherit',
+                                  fontSize: '0.8125rem',
+                                  padding: '0.35rem 0.45rem',
+                                  borderRadius: 4,
+                                  border: '1px solid #d1d5db',
+                                  resize: 'vertical',
+                                  minHeight: 64,
+                                }}
+                                disabled={tallyUserNoteSaving}
+                              />
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  flexWrap: 'wrap',
+                                  gap: '0.35rem',
+                                  marginTop: 8,
+                                  alignItems: 'center',
+                                }}
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => void saveMyNote()}
+                                  disabled={tallyUserNoteSaving}
+                                  style={{
+                                    fontSize: '0.75rem',
+                                    fontWeight: 600,
+                                    padding: '0.25rem 0.55rem',
+                                    borderRadius: 4,
+                                    border: '1px solid #2563eb',
+                                    background: '#2563eb',
+                                    color: '#fff',
+                                    cursor: tallyUserNoteSaving ? 'wait' : 'pointer',
+                                    opacity: tallyUserNoteSaving ? 0.75 : 1,
+                                  }}
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => void clearMyNote()}
+                                  disabled={
+                                    tallyUserNoteSaving ||
+                                    (tallyUserNoteDraft.trim() === '' && !hasUserNote)
+                                  }
+                                  style={{
+                                    fontSize: '0.75rem',
+                                    fontWeight: 500,
+                                    padding: '0.25rem 0.55rem',
+                                    borderRadius: 4,
+                                    border: '1px solid #e5e7eb',
+                                    background: '#fff',
+                                    color: '#374151',
+                                    cursor: tallyUserNoteSaving ? 'wait' : 'pointer',
+                                  }}
+                                >
+                                  Clear
+                                </button>
+                              </div>
+                              {tallyUserNoteError ? (
+                                <p
+                                  style={{
+                                    color: '#b91c1c',
+                                    fontSize: '0.75rem',
+                                    margin: '6px 0 0',
+                                  }}
+                                >
+                                  {tallyUserNoteError}
+                                </p>
+                              ) : null}
+                            </div>
+                          </td>
+                        </tr>
+                      ) : null}
                       <tr>
                         <td
                           colSpan={3}
@@ -1284,7 +1601,8 @@ export default function JobTally() {
                         </td>
                       </tr>
                     </Fragment>
-                  ))}
+                    )
+                  })}
                 </tbody>
               </table>
                 </div>
@@ -1762,7 +2080,22 @@ export default function JobTally() {
         onClose={() => setTallyJobDrilldown(null)}
         jobId={tallyJobDrilldown?.jobId ?? null}
         jobLabel={tallyJobDrilldown?.label ?? ''}
-        rows={tallyTxRows}
+        rows={tallyTxRowsGlobalFiltered}
+      />
+
+      <TallyClockWindowAllocateModal
+        open={tallyClockAllocateRow !== null}
+        onClose={() => setTallyClockAllocateRow(null)}
+        userId={authUser?.id ?? null}
+        transactionId={tallyClockAllocateRow?.mercury_transaction_id ?? null}
+        postedAtIso={tallyClockAllocateRow?.posted_at ?? null}
+        transactionAmount={
+          tallyClockAllocateRow != null ? Number(tallyClockAllocateRow.amount) : 0
+        }
+        onSaved={() => {
+          setTallyClockAllocateRow(null)
+          void loadTallyTransactions()
+        }}
       />
 
       <MercuryTransactionAllocationsModal

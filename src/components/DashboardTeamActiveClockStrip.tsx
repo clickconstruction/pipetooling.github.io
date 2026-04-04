@@ -190,6 +190,32 @@ function formatElapsedOpen(clockedInAt: string, nowMs: number): string {
   return formatDurationFromSeconds(sessionDurationSeconds(clockedInAt, null, nowMs))
 }
 
+const STRIP_CLOCK_OVERLAP_TITLE =
+  'Clock intervals overlap today — open Edit time to fix'
+
+function StripClockOverlapBadge() {
+  return (
+    <span
+      role="status"
+      title={STRIP_CLOCK_OVERLAP_TITLE}
+      aria-label="Clock intervals overlap today; open Edit time to fix"
+      style={{
+        fontSize: '0.6rem',
+        fontWeight: 700,
+        color: '#92400e',
+        background: '#fffbeb',
+        border: '1px solid #f59e0b',
+        borderRadius: 3,
+        padding: '1px 4px',
+        lineHeight: 1.2,
+        flexShrink: 0,
+      }}
+    >
+      Overlap
+    </span>
+  )
+}
+
 const srOnly: CSSProperties = {
   position: 'absolute',
   width: 1,
@@ -710,6 +736,13 @@ export function DashboardTeamActiveClockStrip({
     if (clockedInTodayExpandMode === 'unassignedPeek') return clockedInTodayUnassignedRows
     return clockedInTodayVisible
   }, [clockedInTodayExpandMode, clockedInTodayUnassignedRows, clockedInTodayVisible])
+  const clockStripOverlapByUserId = useMemo(() => {
+    const m = new Map<string, boolean>()
+    for (const r of clockedInTodayRows) {
+      m.set(r.userId, r.hasIntervalOverlapToday)
+    }
+    return m
+  }, [clockedInTodayRows])
   const showClockedInTodayToggle =
     clockedInTodayExpandMode === 'full' &&
     clockedInTodayRows.length > 0 &&
@@ -1178,7 +1211,19 @@ export function DashboardTeamActiveClockStrip({
                             </button>
                           ) : null}
                         </td>
-                        <td style={clockedInTodayRowTd}>{row.displayName}</td>
+                        <td style={clockedInTodayRowTd}>
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.35rem',
+                              flexWrap: 'wrap',
+                            }}
+                          >
+                            {row.displayName}
+                            {row.hasIntervalOverlapToday ? <StripClockOverlapBadge /> : null}
+                          </span>
+                        </td>
                         <td
                           style={{
                             ...clockedInTodayRowTd,
@@ -1715,7 +1760,19 @@ export function DashboardTeamActiveClockStrip({
                                         return (
                                           <tr key={s.id || `${s.user_id}-${idx}`}>
                                             <td style={clockedInTodayDetailCell}>
-                                              {stripPersonDisplayName(s)}
+                                              <span
+                                                style={{
+                                                  display: 'inline-flex',
+                                                  alignItems: 'center',
+                                                  gap: '0.35rem',
+                                                  flexWrap: 'wrap',
+                                                }}
+                                              >
+                                                {stripPersonDisplayName(s)}
+                                                {clockStripOverlapByUserId.get(s.user_id) ? (
+                                                  <StripClockOverlapBadge />
+                                                ) : null}
+                                              </span>
                                             </td>
                                             <td
                                               style={{
@@ -1735,7 +1792,35 @@ export function DashboardTeamActiveClockStrip({
                                                 color: '#1d4ed8',
                                               }}
                                             >
-                                              {dur}
+                                              {onOpenStripMyTimeEditor ? (
+                                                <button
+                                                  type="button"
+                                                  onClick={() =>
+                                                    onOpenStripMyTimeEditor({
+                                                      subjectUserId: s.user_id,
+                                                      displayName: stripPersonDisplayName(s),
+                                                    })
+                                                  }
+                                                  title="Edit today's time"
+                                                  aria-label={`Edit today's time for ${stripPersonDisplayName(s)}`}
+                                                  style={{
+                                                    border: 'none',
+                                                    background: 'none',
+                                                    padding: 0,
+                                                    margin: 0,
+                                                    cursor: 'pointer',
+                                                    font: 'inherit',
+                                                    fontSize: 'inherit',
+                                                    fontWeight: 600,
+                                                    color: '#1d4ed8',
+                                                    whiteSpace: 'nowrap',
+                                                  }}
+                                                >
+                                                  {dur}
+                                                </button>
+                                              ) : (
+                                                <span style={{ fontWeight: 600, color: '#1d4ed8' }}>{dur}</span>
+                                              )}
                                             </td>
                                           </tr>
                                         )

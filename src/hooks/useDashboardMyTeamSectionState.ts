@@ -18,6 +18,7 @@ import {
   fetchSalariedUserIdSetFromUserIds,
   filterSessionsToSalariedSalaryOrigin,
 } from '../lib/salaryPayConfigGate'
+import { hasPairwiseClockIntervalOverlap } from '../lib/myTimeDayTimeline'
 
 function optimisticPatchClockSessionRow(row: ClockSessionRow, patch: AssignSessionJobSavedPatch): ClockSessionRow {
   if (row.id !== patch.sessionId) return row
@@ -159,6 +160,8 @@ export type ClockedInTodayStripRow = {
   hoursToday: number
   /** Non-rejected, non-revoked sessions for today (work_date), sorted by clock-in ascending. */
   todaySessions: TodaySessionStripRow[]
+  /** Two+ sessions with clock intervals overlapping by more than CLUSTER_CONTIGUITY_EPS_MS. */
+  hasIntervalOverlapToday: boolean
 }
 
 /** One row per job for the dashboard "Jobs worked today" subsection (job-linked sessions only). */
@@ -961,12 +964,14 @@ export function useDashboardMyTeamSectionState(
       if (!displayName) {
         displayName = `User (${userId.slice(-6)})`
       }
+      const todaySessions = sessionsByUser.get(userId) ?? []
       rows.push({
         userId,
         displayName,
         firstClockedInAt: firstIn,
         hoursToday: hoursMap[userId] ?? 0,
-        todaySessions: sessionsByUser.get(userId) ?? [],
+        todaySessions,
+        hasIntervalOverlapToday: hasPairwiseClockIntervalOverlap(todaySessions, todayHoursNowMs),
       })
     }
     rows.sort((a, b) => {
@@ -981,6 +986,7 @@ export function useDashboardMyTeamSectionState(
     hoursTodayByUserIdOrg,
     hoursTodayByUserId,
     teamMemberRoster,
+    todayHoursNowMs,
   ])
 
   const jobsWorkedTodayStripRows = useMemo((): JobsWorkedTodayStripRow[] => {

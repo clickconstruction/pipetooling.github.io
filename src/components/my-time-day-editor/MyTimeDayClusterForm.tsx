@@ -508,29 +508,60 @@ export function MyTimeDayClusterForm({
                           </button>
                         </>
                       ) : multiAlloc ? (
-                        <>
-                          {allocLabels.map((label, li) => (
-                            <span
-                              key={`${clusterId}-${segIdx}-alloc-${li}`}
-                              title={label}
-                              style={{
-                                fontSize: '0.68rem',
-                                lineHeight: 1.2,
-                                padding: '2px 6px',
-                                borderRadius: 4,
-                                border: '1px solid #f59e0b',
-                                background: '#fffbeb',
-                                color: '#92400e',
-                                maxWidth: '100%',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              {label}
-                            </span>
-                          ))}
-                        </>
+                        <div
+                          role="group"
+                          aria-label="Multiple distinct job or bid assignments overlap this time range"
+                          style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: 4,
+                            width: '100%',
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: '0.62rem',
+                              fontWeight: 600,
+                              color: '#92400e',
+                              lineHeight: 1.2,
+                              textAlign: 'center',
+                            }}
+                          >
+                            Multiple jobs/bids in this span
+                          </span>
+                          <div
+                            style={{
+                              display: 'flex',
+                              flexWrap: 'wrap',
+                              gap: 4,
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            {allocLabels.map((label, li) => (
+                              <span
+                                key={`${clusterId}-${segIdx}-alloc-${li}`}
+                                title={label}
+                                style={{
+                                  fontSize: '0.68rem',
+                                  lineHeight: 1.2,
+                                  padding: '2px 6px',
+                                  borderRadius: 4,
+                                  border: '1px solid #f59e0b',
+                                  background: '#fffbeb',
+                                  color: '#92400e',
+                                  maxWidth: '100%',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                {label}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
                       ) : changeAssignTargetRow ? (
                         <div
                           style={{

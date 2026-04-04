@@ -7,16 +7,22 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-02
+last_updated: 2026-04-03
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.228 → v2.4"
+version_range: "v2.230 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.230)"
+    line: ~669
+    description: "People Users tab: Subcontractors with accounts first; roster-only subs under External Subcontractors; pay roster label aligned; People.tsx renderUsersTabRosterListItem"
+  - name: "Latest Version (v2.229)"
+    line: ~681
+    description: "Salaried sessions: indexed-slot split RPCs → user_punch children; salary_sync split-mode overlap guard (20270403180000); SALARY_CLOCK_SESSIONS.md runbook"
   - name: "Latest Version (v2.228)"
-    line: ~663
+    line: ~680
     description: "Settings Salaried workday: Day end / session end labels (formatSalaryBlockEndDisplay); split layout default first block; salary_sync_one_user_clock_sessions continuous INSERT guard (20270402100000); migration history cleanup"
   - name: "Latest Version (v2.227)"
     line: ~675
@@ -661,6 +667,29 @@ when_to_read:
 147. [Email Templates](#email-templates)
 148. [Financial Tracking](#financial-tracking)
 149. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.230)
+
+**Date**: 2026-04-03
+
+### People — Users tab: External Subcontractors
+
+- **Users tab**: **Subcontractors** lists accounts **(with account)** first; roster-only subcontractor rows (**no** matching login email) appear under **External Subcontractors** ([`People.tsx`](src/pages/People.tsx) **`renderUsersTabRosterListItem`**, **`byKind('sub')`** partition).
+- **Pay config roster**: label **Subcontractors (roster only)** renamed to **External Subcontractors** for consistency.
+
+---
+
+## Latest Updates (v2.229)
+
+**Date**: 2026-04-03
+
+### Salaried sessions — split indexed slots + sync overlap guard
+
+- **Database**: [`20270403180000_salary_split_indexed_segments_overlap_sync_guard.sql`](supabase/migrations/20270403180000_salary_split_indexed_segments_overlap_sync_guard.sql) — **`split_own_clock_session_segments`**, **`split_own_clock_session_cluster`**, **`leader_split_clock_session_segments`**, **`leader_split_clock_session_cluster`**: when the parent row is **`salary_schedule`** with **`salary_segment_index` 1 or 2** (an auto split slot), replacement segments are **`user_punch`** with **`salary_segment_index` null** so cron sync does not treat them as canonical template rows. A **continuous** `salary_schedule` parent (`NULL` index) still yields indexed **`salary_schedule`** children when split into multiple parts.
+- **`salary_sync_one_user_clock_sessions`**: in **split** template mode, before INSERT for canonical slot **1** or **2**, skip INSERT if **any** non-rejected/non-revoked session for that user/day **overlaps** the template window **`[t_start,t_end)`** or **`[t_start2,t_end2)`** (same half-open overlap test used for both slots).
+- **Documentation**: **[`SALARY_CLOCK_SESSIONS.md`](SALARY_CLOCK_SESSIONS.md)** — operator/AI runbook (tables, RPCs, guards, migrations, **`db push`** without Docker vs **`db pull`** shadow DB). Updates in [`PROJECT_DOCUMENTATION.md`](PROJECT_DOCUMENTATION.md) (`clock_sessions`), [`GLOSSARY.md`](GLOSSARY.md), [`MIGRATIONS.md`](MIGRATIONS.md), [`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md) (**sync-salary-sessions**).
+
 ---
 
 ## Latest Updates (v2.228)

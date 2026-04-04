@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   leaderReplaceClockSessionClusterMixed,
   leaderSplitClockSessionCluster,
@@ -30,6 +30,7 @@ import {
   clusterIsHomogeneousJobBid,
   daySpanMs,
   groupTimeContiguousSessionClusters,
+  hasPairwiseClockIntervalOverlap,
   initialClusterSplitState,
   internalRowJoinMs,
   MIN_SEGMENT_MS,
@@ -1809,73 +1810,96 @@ export function DashboardMyTimeDayEditorModal({
                   const t1 = item.endMs
                   const span = Math.max(1, t1 - t0)
                   const flexW = (item.endMs - item.startMs) / totalDur
+                  const clusterIntervalOverlap = hasPairwiseClockIntervalOverlap(c, nowTick)
 
-                  return layoutMode === 'visual' ? (
-                    <MyTimeDayClusterVisual
-                      key={clusterId}
-                      clusterId={clusterId}
-                      c={c}
-                      lastS={lastS}
-                      split={split}
-                      t0={t0}
-                      t1={t1}
-                      span={span}
-                      flexW={flexW}
-                      nowTick={nowTick}
-                      saving={saving}
-                      jobLabels={mergedJobLabels}
-                      bidLabels={mergedBidLabels}
-                      setStripEl={(el) => {
-                        stripRefs.current[clusterId] = el
-                      }}
-                      onStripPointerDown={(e) => handleStripPointerDown(clusterId, c, e)}
-                      onStripKeyDown={(e) => handleStripKeyDown(clusterId, e)}
-                      onStartDrag={(index, ev, undo) => startDrag(clusterId, index, ev, undo)}
-                      onFocusHandle={(index) => setFocusedHandle({ clusterId, index })}
-                      patchClusterAction={(action) => patchCluster(clusterId, action)}
-                      setAssignBulk={setAssignBulk}
-                      onAssignJobSaved={onAssignJobSaved}
-                      resolveAssignSession={(segIdx) =>
-                        resolveAssignSessionForSegment(clusterId, segIdx)
-                      }
-                      onRequestMergeJobChoice={(payload) =>
-                        openMergeJobChoiceForCluster(clusterId, payload)
-                      }
-                      onForceClockOut={editable && !saving ? openForceClockOut : undefined}
-                      onAdjustTimes={editable && !saving ? openAdjustTimes : undefined}
-                      onRejectSession={editable && !saving ? handleRejectSession : undefined}
-                      rejectSessionBusyId={rejectSessionBusyId}
-                    />
-                  ) : (
-                    <MyTimeDayClusterForm
-                      key={clusterId}
-                      clusterId={clusterId}
-                      c={c}
-                      lastS={lastS}
-                      split={split}
-                      t0={t0}
-                      t1={t1}
-                      span={span}
-                      flexW={flexW}
-                      nowTick={nowTick}
-                      saving={saving}
-                      jobLabels={mergedJobLabels}
-                      bidLabels={mergedBidLabels}
-                      patchClusterAction={(action) => patchCluster(clusterId, action)}
-                      onCommitInnerBoundary={(boundaryIndex, ms) => commitInnerBoundary(clusterId, boundaryIndex, ms)}
-                      setAssignBulk={setAssignBulk}
-                      onAssignJobSaved={onAssignJobSaved}
-                      resolveAssignSession={(segIdx) =>
-                        resolveAssignSessionForSegment(clusterId, segIdx)
-                      }
-                      onRequestMergeJobChoice={(payload) =>
-                        openMergeJobChoiceForCluster(clusterId, payload)
-                      }
-                      onForceClockOut={editable && !saving ? openForceClockOut : undefined}
-                      onAdjustTimes={editable && !saving ? openAdjustTimes : undefined}
-                      onRejectSession={editable && !saving ? handleRejectSession : undefined}
-                      rejectSessionBusyId={rejectSessionBusyId}
-                    />
+                  return (
+                    <Fragment key={clusterId}>
+                      {clusterIntervalOverlap ? (
+                        <div
+                          role="status"
+                          style={{
+                            fontSize: '0.8125rem',
+                            color: '#92400e',
+                            background: '#fffbeb',
+                            border: '1px solid #f59e0b',
+                            borderRadius: 6,
+                            padding: '0.45rem 0.6rem',
+                            marginBottom: 2,
+                          }}
+                        >
+                          <strong style={{ fontWeight: 600 }}>Overlapping clock times</strong>
+                          {' — '}
+                          adjust boundaries or close one session.
+                        </div>
+                      ) : null}
+                      {layoutMode === 'visual' ? (
+                        <MyTimeDayClusterVisual
+                          clusterId={clusterId}
+                          c={c}
+                          lastS={lastS}
+                          split={split}
+                          t0={t0}
+                          t1={t1}
+                          span={span}
+                          flexW={flexW}
+                          nowTick={nowTick}
+                          saving={saving}
+                          jobLabels={mergedJobLabels}
+                          bidLabels={mergedBidLabels}
+                          setStripEl={(el) => {
+                            stripRefs.current[clusterId] = el
+                          }}
+                          onStripPointerDown={(e) => handleStripPointerDown(clusterId, c, e)}
+                          onStripKeyDown={(e) => handleStripKeyDown(clusterId, e)}
+                          onStartDrag={(index, ev, undo) => startDrag(clusterId, index, ev, undo)}
+                          onFocusHandle={(index) => setFocusedHandle({ clusterId, index })}
+                          patchClusterAction={(action) => patchCluster(clusterId, action)}
+                          setAssignBulk={setAssignBulk}
+                          onAssignJobSaved={onAssignJobSaved}
+                          resolveAssignSession={(segIdx) =>
+                            resolveAssignSessionForSegment(clusterId, segIdx)
+                          }
+                          onRequestMergeJobChoice={(payload) =>
+                            openMergeJobChoiceForCluster(clusterId, payload)
+                          }
+                          onForceClockOut={editable && !saving ? openForceClockOut : undefined}
+                          onAdjustTimes={editable && !saving ? openAdjustTimes : undefined}
+                          onRejectSession={editable && !saving ? handleRejectSession : undefined}
+                          rejectSessionBusyId={rejectSessionBusyId}
+                        />
+                      ) : (
+                        <MyTimeDayClusterForm
+                          clusterId={clusterId}
+                          c={c}
+                          lastS={lastS}
+                          split={split}
+                          t0={t0}
+                          t1={t1}
+                          span={span}
+                          flexW={flexW}
+                          nowTick={nowTick}
+                          saving={saving}
+                          jobLabels={mergedJobLabels}
+                          bidLabels={mergedBidLabels}
+                          patchClusterAction={(action) => patchCluster(clusterId, action)}
+                          onCommitInnerBoundary={(boundaryIndex, ms) =>
+                            commitInnerBoundary(clusterId, boundaryIndex, ms)
+                          }
+                          setAssignBulk={setAssignBulk}
+                          onAssignJobSaved={onAssignJobSaved}
+                          resolveAssignSession={(segIdx) =>
+                            resolveAssignSessionForSegment(clusterId, segIdx)
+                          }
+                          onRequestMergeJobChoice={(payload) =>
+                            openMergeJobChoiceForCluster(clusterId, payload)
+                          }
+                          onForceClockOut={editable && !saving ? openForceClockOut : undefined}
+                          onAdjustTimes={editable && !saving ? openAdjustTimes : undefined}
+                          onRejectSession={editable && !saving ? handleRejectSession : undefined}
+                          rejectSessionBusyId={rejectSessionBusyId}
+                        />
+                      )}
+                    </Fragment>
                   )
                 })
               )}

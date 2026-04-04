@@ -176,6 +176,8 @@ User clock-in/clock-out records from the Dashboard. Each session has `clocked_in
 
 **Database**: `clock_sessions`
 
+**Salaried auto-sessions**: For users with a salary workday template, **`origin = 'salary_schedule'`** rows are opened/closed by **`salary_sync_one_user_clock_sessions`** (cron via Edge **sync-salary-sessions**, or after saving Settings). **`salary_segment_index`** is null for a **continuous** day or **1** / **2** for split-template slots; splitting an indexed slot turns new segments into **`user_punch`**. Sync uses a **boundary** model: at each template block end it sets **`clocked_out_at`** on **every** still-open session for that user/**`work_date`** (including **`user_punch`**); it opens canonical **`salary_schedule`** rows only when **nothing** is open that day. See **[`SALARY_CLOCK_SESSIONS.md`](SALARY_CLOCK_SESSIONS.md)**.
+
 ### My Roles Goals / Daily goals gate
 Per-user checklist lines (**`user_dashboard_goals`**) edited by dev, master, or assistant in Settings. After the **first successful clock-in of a calendar day**, if the user has at least one goal, a full-screen overlay titled **“My Roles Goals”** appears; **Continue** writes **`user_daily_goals_ack`** for that local date so the gate stays off until the next calendar day.
 

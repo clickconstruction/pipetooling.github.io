@@ -116,6 +116,13 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: `/quickfill` loads shared layout from the database; dev-only **Active sections** panel updates these keys (replaces per-browser `localStorage`)
 - **Category**: Quickfill / Settings
 
+**`20270403180000_salary_split_indexed_segments_overlap_sync_guard.sql`**
+- **Purpose**: Correct **My Time / People Hours** behavior when splitting **indexed** `salary_schedule` rows (slots 1–2), and prevent **split-template** sync from INSERTing canonical rows on top of material time that already overlaps each template window
+- **Changes**: `CREATE OR REPLACE` **`split_own_clock_session_segments`**, **`split_own_clock_session_cluster`**, **`leader_split_clock_session_segments`**, **`leader_split_clock_session_cluster`** — when parent is `salary_schedule` with **`salary_segment_index IS NOT NULL`**, new segments use **`origin = 'user_punch'`** and **`salary_segment_index NULL`**; continuous parent (`NULL` index) still materializes children as indexed **`salary_schedule`** when `N ≥ 2`; **`salary_sync_one_user_clock_sessions`** — before INSERT for split slot 1 or 2, **`NOT EXISTS`** overlap with any non-rejected/non-revoked session on that day for **`[t_start,t_end)`** and **`[t_start2,t_end2)`**; updated **`COMMENT`** on sync function
+- **Impact**: No double **`salary_schedule`** row after splitting an auto segment; cron / per-user sync respects **`user_punch`** (and other) time that already fills the scheduled block
+- **Docs**: [`SALARY_CLOCK_SESSIONS.md`](SALARY_CLOCK_SESSIONS.md)
+- **Category**: People / Hours / Dashboard
+
 ### March 2027
 
 #### March 31, 2027
@@ -673,6 +680,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Changes**: Conditional **`ALTER PUBLICATION supabase_realtime ADD TABLE public.mercury_transactions`** when not already published
 - **Impact**: [`Banking.tsx`](src/pages/Banking.tsx) and [`BankingSortingSnapshotSection.tsx`](src/components/quickfill/BankingSortingSnapshotSection.tsx) **`postgres_changes`** subscriptions (debounced **`loadRows`** / **`loadMercurySnapshot`**)
 - **Category**: Banking / Integrations / Realtime
+
+#### April 4, 2026
+
+**`20260404050204_salary_sync_boundary_open_close.sql`**
+- **Purpose**: **`salary_sync_one_user_clock_sessions`** — replace per-slot canonical `UPDATE`/overlap INSERT logic with **boundary** open/ close: at each template block end set **`clocked_out_at`** on **all** still-open **`clock_sessions`** for that user/**`work_date`** to that instant (every `origin`; **`approved_at`** does not block); inside each block insert/reopen canonical **`salary_schedule`** only when **no** open exists that day; catch-up closed rows when missing; PTO / no-template / excluded-weekend paths **close remaining opens** at **`p_now`** after deleting non-final **`salary_schedule`** rows; **split** mode deletes orphan NULL-index **`salary_schedule`** rows only; **continuous** skips NULL-index catch-up/open when pending indexed **`salary_schedule`** segments exist (preserves **`20270402100000`** intent)
+- **Changes**: `CREATE OR REPLACE` **`salary_sync_one_user_clock_sessions`**; updated **`COMMENT`**; **`REVOKE ALL`** (unchanged surface area)
+- **Impact**: Cron **`sync-salary-sessions`** and **`sync_salary_clock_sessions_for_user_day`**; removes split-template **half-open overlap** INSERT guard from sync (see [`SALARY_CLOCK_SESSIONS.md`](SALARY_CLOCK_SESSIONS.md))
+- **Category**: People / Hours / Dashboard
 
 #### April 25, 2026
 

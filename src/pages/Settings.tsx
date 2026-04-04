@@ -24,6 +24,7 @@ import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import TeamFeedbackDevSettingsBlock from '../components/team-feedback/TeamFeedbackDevSettingsBlock'
 import TeamFeedbackMasterAggregates from '../components/team-feedback/TeamFeedbackMasterAggregates'
 import type { Database } from '../types/database'
+import { APP_SETTINGS_KEY_JOB_TALLY_MIN_POSTED_YMD, isValidYmd } from '../lib/appSettingsKeys'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { formatNotificationDatetime } from '../utils/formatNotificationDatetime'
 
@@ -747,6 +748,9 @@ export default function Settings() {
   const [workflowFnTestSending, setWorkflowFnTestSending] = useState(false)
   const [workflowFnTestError, setWorkflowFnTestError] = useState<string | null>(null)
   const [workflowFnTestSuccess, setWorkflowFnTestSuccess] = useState<string | null>(null)
+  const [jobTallyMinPostedYmdInput, setJobTallyMinPostedYmdInput] = useState('')
+  const [jobTallyMinPostedYmdSaving, setJobTallyMinPostedYmdSaving] = useState(false)
+  const [jobTallyMinPostedYmdError, setJobTallyMinPostedYmdError] = useState<string | null>(null)
   const [editingNonUserPerson, setEditingNonUserPerson] = useState<PersonRow | null>(null)
   const [editPersonName, setEditPersonName] = useState('')
   const [editPersonEmail, setEditPersonEmail] = useState('')
@@ -4123,6 +4127,32 @@ export default function Settings() {
   }, [myRole, users, authUser?.id])
 
   useEffect(() => {
+    if (myRole !== 'dev') return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const data = await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('app_settings')
+              .select('value_text')
+              .eq('key', APP_SETTINGS_KEY_JOB_TALLY_MIN_POSTED_YMD)
+              .maybeSingle(),
+          'load job tally min posted app setting',
+        )
+        if (cancelled) return
+        const vt = (data as { value_text: string | null } | null)?.value_text
+        setJobTallyMinPostedYmdInput(vt?.trim() ?? '')
+      } catch {
+        if (!cancelled) setJobTallyMinPostedYmdInput('')
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [myRole])
+
+  useEffect(() => {
     if (deleteReassignUserId) {
       loadCustomerCount(deleteReassignUserId)
     }
@@ -5068,6 +5098,8 @@ export default function Settings() {
           <button
             type="button"
             onClick={handleBackToMyAccount}
+            title="Back to my Account"
+            aria-label="Back to your original signed-in account"
             style={{
               padding: '0.35rem 0.75rem',
               background: '#fef3c7',
@@ -5078,7 +5110,7 @@ export default function Settings() {
               cursor: 'pointer',
             }}
           >
-            Back to my account
+            Back to my Account
           </button>
         </div>
       )}
@@ -10476,6 +10508,78 @@ export default function Settings() {
       <SettingsGroup id="settings-templates" title="Templates & testing">
       {myRole === 'dev' && (
         <>
+          <div
+            style={{
+              marginBottom: '1.5rem',
+              padding: '1rem',
+              border: '1px solid #e5e7eb',
+              borderRadius: 8,
+              background: '#fafafa',
+            }}
+          >
+            <h3 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 600 }}>Job Parts Tally</h3>
+            <p style={{ margin: '0 0 0.75rem', color: '#6b7280', fontSize: '0.875rem', lineHeight: 1.5 }}>
+              Org-wide minimum posted date (Chicago calendar day). Transactions before this day are hidden on Job Parts Tally
+              for everyone. Leave empty to show all.
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
+              <label htmlFor="job-tally-min-posted-ymd" style={{ fontWeight: 500, fontSize: '0.875rem' }}>
+                Minimum posted date
+              </label>
+              <input
+                id="job-tally-min-posted-ymd"
+                type="date"
+                value={jobTallyMinPostedYmdInput}
+                onChange={(e) => {
+                  setJobTallyMinPostedYmdInput(e.target.value)
+                  setJobTallyMinPostedYmdError(null)
+                }}
+                style={{ padding: '0.35rem 0.5rem', fontSize: '0.875rem' }}
+              />
+              <button
+                type="button"
+                disabled={jobTallyMinPostedYmdSaving}
+                onClick={() => {
+                  void (async () => {
+                    const trimmed = jobTallyMinPostedYmdInput.trim()
+                    if (trimmed !== '' && !isValidYmd(trimmed)) {
+                      setJobTallyMinPostedYmdError('Use YYYY-MM-DD or clear the field.')
+                      return
+                    }
+                    setJobTallyMinPostedYmdError(null)
+                    setJobTallyMinPostedYmdSaving(true)
+                    try {
+                      await withSupabaseRetry(
+                        async () =>
+                          supabase.from('app_settings').upsert(
+                            { key: APP_SETTINGS_KEY_JOB_TALLY_MIN_POSTED_YMD, value_text: trimmed },
+                            { onConflict: 'key' },
+                          ),
+                        'save job tally min posted app setting',
+                      )
+                      showToast('Job Tally minimum posted date saved.', 'success')
+                    } catch (e) {
+                      showToast(formatErrorMessage(e), 'error')
+                    } finally {
+                      setJobTallyMinPostedYmdSaving(false)
+                    }
+                  })()
+                }}
+                style={{
+                  padding: '0.35rem 0.75rem',
+                  fontSize: '0.875rem',
+                  cursor: jobTallyMinPostedYmdSaving ? 'wait' : 'pointer',
+                }}
+              >
+                {jobTallyMinPostedYmdSaving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+            {jobTallyMinPostedYmdError ? (
+              <p style={{ margin: '0.5rem 0 0', color: '#b91c1c', fontSize: '0.8125rem' }}>
+                {jobTallyMinPostedYmdError}
+              </p>
+            ) : null}
+          </div>
           <p style={{ marginTop: '2rem', marginBottom: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
             Choose who receives <strong>notification</strong> and <strong>email</strong> template tests (push goes to their devices; email goes to their account email).
           </p>

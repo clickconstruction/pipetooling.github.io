@@ -82,6 +82,7 @@ A web application for Master Plumbers to track plumbing work across multiple pro
 - **[EMAIL_TESTING.md](./EMAIL_TESTING.md)** - Email testing and integration status
 
 🔧 **Database & Technical Documentation**:
+- **[SALARY_CLOCK_SESSIONS.md](./SALARY_CLOCK_SESSIONS.md)** - Salaried **`salary_schedule`** clock sessions (sync, split RPCs, overlap guards, migrations)
 - **[DATABASE_IMPROVEMENTS_SUMMARY.md](./DATABASE_IMPROVEMENTS_SUMMARY.md)** - Database layer improvements (triggers, constraints, transactions)
 - **[DATABASE_FIXES_TEST_PLAN.md](./DATABASE_FIXES_TEST_PLAN.md)** - Comprehensive testing plan for database improvements
 

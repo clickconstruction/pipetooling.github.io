@@ -924,6 +924,8 @@ No body required. Validates via `X-Cron-Secret` header or `{"cron_secret": "..."
 
 **Success**: `{ "success": true, "work_date": "YYYY-MM-DD" }`
 
+**Database behavior**: Invokes **`sync_salary_clock_sessions_for_day`**, which runs **`salary_sync_one_user_clock_sessions`** per templated user. That function uses **template block boundaries**: mass-close all opens for the user/**`work_date`** at each block end; open canonical **`salary_schedule`** rows only when no session is open that day. See **[`SALARY_CLOCK_SESSIONS.md`](SALARY_CLOCK_SESSIONS.md)**.
+
 ---
 
 ### set-user-password

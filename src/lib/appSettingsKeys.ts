@@ -1,0 +1,15 @@
+/** `app_settings.key` — org-wide Job Parts Tally floor on Mercury `posted_at` (YYYY-MM-DD, Chicago day). Empty = no filter. */
+export const APP_SETTINGS_KEY_JOB_TALLY_MIN_POSTED_YMD = 'job_tally_min_posted_ymd' as const
+
+export function isValidYmd(s: string): boolean {
+  return /^(\d{4})-(\d{2})-(\d{2})$/.test(s.trim())
+}
+
+/** Returns trimmed YYYY-MM-DD or null if empty/invalid/missing (caller treats null as no filter). */
+export function normalizeJobTallyMinPostedYmd(value: string | null | undefined): string | null {
+  if (value == null) return null
+  const t = value.trim()
+  if (t === '') return null
+  if (!isValidYmd(t)) return null
+  return t
+}
