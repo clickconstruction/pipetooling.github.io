@@ -21,6 +21,8 @@ export type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontracto
 interface UseAuthReturn {
   user: User | null
   role: UserRole | null
+  /** Display name from public.users.name for the current session user. */
+  profileName: string | null
   /** True only when role is estimator and users.estimator_prospects_access is set. */
   estimatorProspectsAccess: boolean
   loading: boolean
@@ -33,6 +35,7 @@ const AuthContext = createContext<UseAuthReturn | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [role, setRole] = useState<UserRole | null>(null)
+  const [profileName, setProfileName] = useState<string | null>(null)
   const [estimatorProspectsAccess, setEstimatorProspectsAccess] = useState(false)
   const [loading, setLoading] = useState(true)
   const [sessionExpiresAt, setSessionExpiresAt] = useState<number | null>(null)
@@ -50,6 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await supabase.auth.signOut()
       setUser(null)
       setRole(null)
+      setProfileName(null)
       setEstimatorProspectsAccess(false)
       setSessionExpiresAt(null)
       return false
@@ -101,17 +105,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (session?.user?.id) {
       supabase
         .from('users')
-        .select('role, estimator_prospects_access')
+        .select('name, role, estimator_prospects_access')
         .eq('id', session.user.id)
         .single()
-        .then(({ data }) => {
-          const row = data as { role: UserRole; estimator_prospects_access?: boolean | null } | null
+        .then(({ data, error: rowError }) => {
+          if (rowError || !data) {
+            setRole(null)
+            setEstimatorProspectsAccess(false)
+            setProfileName(null)
+            return
+          }
+          const row = data as { name: string; role: UserRole; estimator_prospects_access?: boolean | null }
+          const trimmed = row.name?.trim() ?? ''
+          setProfileName(trimmed.length > 0 ? trimmed : null)
           const r = row?.role ?? null
           setRole(r)
           setEstimatorProspectsAccess(r === 'estimator' && !!row?.estimator_prospects_access)
         })
     } else {
       setRole(null)
+      setProfileName(null)
       setEstimatorProspectsAccess(false)
     }
   }
@@ -127,6 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }).catch(() => {
       setUser(null)
       setRole(null)
+      setProfileName(null)
       setSessionExpiresAt(null)
       setLoading(false)
     })
@@ -200,6 +214,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value: UseAuthReturn = {
     user,
     role,
+    profileName,
     estimatorProspectsAccess,
     loading,
     checkSession,

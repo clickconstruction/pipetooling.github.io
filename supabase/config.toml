@@ -382,6 +382,18 @@ verify_jwt = false
 [functions.mercury-webhook]
 verify_jwt = false
 
+[functions.get-estimate-for-customer]
+verify_jwt = false
+
+[functions.get-estimate-public-terms]
+verify_jwt = false
+
+[functions.accept-estimate]
+verify_jwt = false
+
+[functions.send-estimate-to-customer]
+verify_jwt = false
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.

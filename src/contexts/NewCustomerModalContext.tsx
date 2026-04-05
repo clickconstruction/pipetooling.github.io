@@ -21,7 +21,7 @@ export function NewCustomerModalProvider({ children }: { children: React.ReactNo
   const [onCreated, setOnCreated] = useState<((customer: CustomerRow) => void) | null>(null)
 
   const openNewCustomerModal = useCallback((options?: NewCustomerModalOptions) => {
-    setOnCreated(options?.onCreated ?? null)
+    setOnCreated(() => options?.onCreated ?? null)
     setIsOpen(true)
   }, [])
 

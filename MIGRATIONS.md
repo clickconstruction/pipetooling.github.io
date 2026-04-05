@@ -90,6 +90,40 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ## Recent Migrations
 
+### April 2026
+
+#### April 5, 2026
+
+**`20260405072854_estimate_create_job_rpc.sql`**
+- **Purpose**: Staff create a **`jobs_ledger`** row from a **`customer_accepted`** estimate and set **`estimates.job_ledger_id`** in one transaction; idempotent when already linked
+- **Changes**: Partial unique index **`estimates_job_ledger_id_unique`** on **`estimates(job_ledger_id)`**; **`create_job_from_estimate`** (`SECURITY DEFINER`, `GRANT EXECUTE` to **`authenticated`**) — enforces **`user_can_access_estimate`** / **`superintendent_can_access_estimate`**, mirrors Jobs owner resolution (project **`master_user_id`** or **`job_owner_override_*`**), optional **`p_customer_id`** and field overrides
+- **Impact**: [`Estimates.tsx`](src/pages/Estimates.tsx) **Create job from estimate**; [`Jobs.tsx`](src/pages/Jobs.tsx) **Source estimate** strip + **[`CustomerAcceptanceRecordModal`](src/components/estimates/CustomerAcceptanceRecordModal.tsx)**; [`jobLedgerCustomer.ts`](src/lib/jobLedgerCustomer.ts), [`resolveEffectiveJobMasterUserId.ts`](src/lib/resolveEffectiveJobMasterUserId.ts)
+- **Category**: Estimates / Jobs
+
+#### April 8, 2026
+
+**`20260405010252_estimate_customer_experience_defaults_snapshot.sql`**
+- **Purpose**: Dev-editable estimate customer copy defaults in **`app_settings`**; per-estimate **`customer_experience_overrides`**; frozen **`customer_experience_sent`** written when **send-estimate-to-customer** sets **`sent`**
+- **Changes**: `customer_experience_overrides` / `customer_experience_sent` **`jsonb`** on **`public.estimates`** (object check); **`INSERT`** default **`estimate_*`** `app_settings` keys; extend **`estimates_protect_after_accept`** to freeze both json columns after **`customer_accepted`**
+- **Impact**: [`Settings.tsx`](src/pages/Settings.tsx) defaults; [`Estimates.tsx`](src/pages/Estimates.tsx) overrides + previews; [`EstimateAccept.tsx`](src/pages/EstimateAccept.tsx); Edge [`get-estimate-for-customer`](supabase/functions/get-estimate-for-customer/index.ts) / [`send-estimate-to-customer`](supabase/functions/send-estimate-to-customer/index.ts); [`src/lib/estimateCustomerExperience.ts`](src/lib/estimateCustomerExperience.ts)
+- **Category**: Estimates / Edge / Settings
+
+#### April 7, 2026
+
+**`20260405003103_estimates_global_estimate_number.sql`**
+- **Purpose**: Global sequential **Quote #** on **`public.estimates`** (`estimate_number`), immutable after assignment
+- **Changes**: `estimate_number` column + unique index; `estimates_estimate_number_seq` owned by column; `BEFORE INSERT` assigns number; `BEFORE UPDATE` rejects changes to `estimate_number`; backfill existing rows by `created_at`; extend post-accept immutability trigger to treat `estimate_number` like other frozen columns
+- **Impact**: Staff URLs **`/estimates/{estimate_number}`** (UUID path still works); list/detail **Quote #** in [`Estimates.tsx`](src/pages/Estimates.tsx)
+- **Category**: Estimates
+
+#### April 4, 2026
+
+**`20260404212052_estimates_approach_a.sql`**
+- **Purpose**: **`public.estimates`** — simple customer proposals with public token accept flow (Approach A); distinct from bid **`cost_estimates`**
+- **Changes**: `estimate_status` enum; `estimates` table (snapshots, token hash, acceptance audit); `user_can_access_estimate` / `superintendent_can_access_estimate`; RLS for staff; triggers for `updated_at` and post-accept immutability; draft-only updates from authenticated clients
+- **Impact**: [`Estimates.tsx`](src/pages/Estimates.tsx), Edge [`get-estimate-for-customer`](supabase/functions/get-estimate-for-customer/index.ts), [`accept-estimate`](supabase/functions/accept-estimate/index.ts), [`send-estimate-to-customer`](supabase/functions/send-estimate-to-customer/index.ts)
+- **Category**: Estimates / Edge
+
 ### July 2026
 
 #### July 1, 2026

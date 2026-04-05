@@ -8300,7 +8300,12 @@ export default function Bids() {
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation()
-                            editCustomerModal?.openEditCustomerModal(customer.id, { onSaved: loadCustomers, onDeleted: (id) => setCustomers((prev) => prev.filter((c) => c.id !== id)) })
+                            editCustomerModal?.openEditCustomerModal(customer.id, {
+                              onSaved: loadCustomers,
+                              onDeleted: (id) => setCustomers((prev) => prev.filter((c) => c.id !== id)),
+                              onMerged: ({ removedId }) =>
+                                queueMicrotask(() => setCustomers((prev) => prev.filter((c) => c.id !== removedId))),
+                            })
                           }}
                           style={{
                             padding: '0.35rem 0.75rem',

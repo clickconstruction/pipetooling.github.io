@@ -464,6 +464,7 @@ const response = await supabase.functions.invoke('login-as-user', {
    - Redirects to magic link
    - `AuthHandler` component processes tokens
    - User impersonated successfully
+   - **Exit UI**: [`Layout`](src/components/Layout.tsx) shows mobile **Back**; on desktop a short **Back** control with **`title`/`aria-label`** carrying the full “stop impersonating …” phrase. [`Settings`](src/pages/Settings.tsx) uses **Back to my Account** on mobile and the same desktop pattern. See **`RECENT_FEATURES.md`** v2.231 and **`PROJECT_DOCUMENTATION.md`** Impersonation flow.
 
 **Use Cases**:
 - Debugging user-specific issues
@@ -641,6 +642,80 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 - [WORKFLOW_EMAIL_TESTING.md](./WORKFLOW_EMAIL_TESTING.md)
 
 **Deployment**: [`supabase/functions/send-workflow-notification/DEPLOY.md`](supabase/functions/send-workflow-notification/DEPLOY.md)
+
+---
+
+### get-estimate-for-customer
+
+**Purpose**: Public read of a **sent** estimate for the customer acceptance page (no JWT).
+
+**Endpoint**: `GET /functions/v1/get-estimate-for-customer?token=<opaque>`
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+
+**Gateway**: `verify_jwt = false` in [`supabase/config.toml`](supabase/config.toml).
+
+**Behavior**: SHA-256 hash of `token`; load row by `public_token_hash` where `status = sent`; enforce `public_token_expires_at` and `valid_until`. Returns estimate fields plus **`customer_experience`**: public UI strings (accept, thank-you, document labels — omits email subject/body). Uses **`customer_experience_sent`** when set, else merges **`app_settings`** + **`customer_experience_overrides`**. If **`status = customer_accepted`**, responds **409** with `code: already_accepted` and **`customer_experience`** for the thank-you page.
+
+**200 response**: Includes **`for_line`** (`string | null`): staff **For:** line — trimmed **`for_address`** if set, else trimmed linked **`customers.address`**, else `null` (UI may show em dash).
+
+---
+
+### get-estimate-public-terms
+
+**Purpose**: Public read of dev-editable **global** Terms and Conditions body for **`/estimate/terms`** (no JWT). Anonymous users cannot SELECT `app_settings`; this function uses the service role.
+
+**Endpoint**: `GET /functions/v1/get-estimate-public-terms`
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+
+**Gateway**: `verify_jwt = false` in [`supabase/config.toml`](supabase/config.toml).
+
+**200 response**: `{ "body": string }` — plain text from **`app_settings`** key **`estimate_public_terms_body`** (empty string if missing).
+
+**Example**:
+
+```bash
+curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
+  -H "apikey: ${ANON_KEY}" \
+  -H "Authorization: Bearer ${ANON_KEY}"
+```
+
+---
+
+### accept-estimate
+
+**Purpose**: Record Approach A acceptance (typed name + `agreedTerms: true`); sets `customer_accepted` and audit fields.
+
+**Endpoint**: `POST /functions/v1/accept-estimate`
+
+**Body**: `{ "token": string, "printedName": string, "agreedTerms": true }`
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+
+**Gateway**: `verify_jwt = false`
+
+**Behavior**: Idempotent if already `customer_accepted`. Captures `acceptor_ip` from `x-forwarded-for` and `user-agent`.
+
+**Related (Postgres, not Edge)**: Staff create **`jobs_ledger`** and set **`estimates.job_ledger_id`** via authenticated RPC **`create_job_from_estimate`** — see [`20260405072854_estimate_create_job_rpc.sql`](supabase/migrations/20260405072854_estimate_create_job_rpc.sql) and [`Estimates.tsx`](src/pages/Estimates.tsx).
+
+---
+
+### send-estimate-to-customer
+
+**Purpose**: Verify JWT, ensure caller can read draft estimate, generate token hash, set `sent`, persist resolved **`customer_experience_sent`**, email Resend link to `{public_origin}/estimate/accept?t=…`.
+
+**Endpoint**: `POST /functions/v1/send-estimate-to-customer`
+
+**Body**: `{ "estimate_id": string, "customer_email": string, "public_origin"?: string }` (`public_origin` should be `window.location.origin` from the app.)
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` (optional; returns `accept_url` if missing)
+
+**Gateway**: `verify_jwt = false`; JWT validated with `auth.getUser` in function.
+
+**Optional**: `ESTIMATE_PUBLIC_ORIGIN` if link base should not come from the client.
+
+**Copy**: Subject and body come from **`resolveEstimateCustomerExperience`** (`supabase/functions/_shared/estimateCustomerExperience.ts`, keep in sync with `src/lib/estimateCustomerExperience.ts`) using **`app_settings`** + row **`customer_experience_overrides`** and template vars **`{{accept_url}}`**, **`{{title}}`**, **`{{estimate_number}}`**. The same resolved object is stored as **`customer_experience_sent`** on **`sent`**. Staff previews use the client module.
 
 ---
 

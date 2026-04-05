@@ -1652,6 +1652,219 @@ export type Database = {
         }
         Relationships: []
       }
+      estimate_catalog_item_events: {
+        Row: {
+          action: string
+          edited_at: string
+          editor_user_id: string
+          id: string
+          item_id: string
+          new_amount_cents: number | null
+          new_description: string | null
+          prev_amount_cents: number | null
+          prev_description: string | null
+        }
+        Insert: {
+          action: string
+          edited_at?: string
+          editor_user_id: string
+          id?: string
+          item_id: string
+          new_amount_cents?: number | null
+          new_description?: string | null
+          prev_amount_cents?: number | null
+          prev_description?: string | null
+        }
+        Update: {
+          action?: string
+          edited_at?: string
+          editor_user_id?: string
+          id?: string
+          item_id?: string
+          new_amount_cents?: number | null
+          new_description?: string | null
+          prev_amount_cents?: number | null
+          prev_description?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estimate_catalog_item_events_editor_user_id_fkey"
+            columns: ["editor_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estimate_catalog_item_events_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "estimate_catalog_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      estimate_catalog_items: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          deleted_at: string | null
+          description: string
+          id: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          deleted_at?: string | null
+          description: string
+          id?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          deleted_at?: string | null
+          description?: string
+          id?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      estimates: {
+        Row: {
+          accept_header_brand: string | null
+          acceptor_consented_at: string | null
+          acceptor_ip: string | null
+          acceptor_printed_name: string | null
+          acceptor_signature_storage_path: string | null
+          acceptor_user_agent: string | null
+          created_at: string
+          created_by: string
+          customer_email: string | null
+          customer_experience_overrides: Json | null
+          customer_experience_sent: Json | null
+          customer_id: string | null
+          estimate_number: number
+          for_address: string | null
+          id: string
+          internal_notes: string | null
+          job_ledger_id: string | null
+          line_items_snapshot: Json
+          master_user_id: string
+          project_id: string | null
+          public_token_expires_at: string | null
+          public_token_hash: string | null
+          sent_at: string | null
+          status: Database["public"]["Enums"]["estimate_status"]
+          terms_snapshot: string
+          title: string
+          total_cents: number
+          updated_at: string
+          valid_until: string | null
+        }
+        Insert: {
+          accept_header_brand?: string | null
+          acceptor_consented_at?: string | null
+          acceptor_ip?: string | null
+          acceptor_printed_name?: string | null
+          acceptor_signature_storage_path?: string | null
+          acceptor_user_agent?: string | null
+          created_at?: string
+          created_by: string
+          customer_email?: string | null
+          customer_experience_overrides?: Json | null
+          customer_experience_sent?: Json | null
+          customer_id?: string | null
+          estimate_number?: number
+          for_address?: string | null
+          id?: string
+          internal_notes?: string | null
+          job_ledger_id?: string | null
+          line_items_snapshot?: Json
+          master_user_id: string
+          project_id?: string | null
+          public_token_expires_at?: string | null
+          public_token_hash?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["estimate_status"]
+          terms_snapshot?: string
+          title?: string
+          total_cents?: number
+          updated_at?: string
+          valid_until?: string | null
+        }
+        Update: {
+          accept_header_brand?: string | null
+          acceptor_consented_at?: string | null
+          acceptor_ip?: string | null
+          acceptor_printed_name?: string | null
+          acceptor_signature_storage_path?: string | null
+          acceptor_user_agent?: string | null
+          created_at?: string
+          created_by?: string
+          customer_email?: string | null
+          customer_experience_overrides?: Json | null
+          customer_experience_sent?: Json | null
+          customer_id?: string | null
+          estimate_number?: number
+          for_address?: string | null
+          id?: string
+          internal_notes?: string | null
+          job_ledger_id?: string | null
+          line_items_snapshot?: Json
+          master_user_id?: string
+          project_id?: string | null
+          public_token_expires_at?: string | null
+          public_token_hash?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["estimate_status"]
+          terms_snapshot?: string
+          title?: string
+          total_cents?: number
+          updated_at?: string
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estimates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estimates_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estimates_job_ledger_id_fkey"
+            columns: ["job_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estimates_master_user_id_fkey"
+            columns: ["master_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estimates_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       estimator_group_members: {
         Row: {
           user_id: string
@@ -7232,10 +7445,18 @@ export type Database = {
           error_message: string
         }[]
       }
+      assert_caller_can_merge_customer_pair: {
+        Args: {
+          p_survivor_master_user_id: string
+          p_victim_master_user_id: string
+        }
+        Returns: undefined
+      }
       assistants_share_master: {
         Args: { assistant_a: string; assistant_b: string }
         Returns: boolean
       }
+      auth_user_can_merge_customers: { Args: never; Returns: boolean }
       bump_user_app_activity: {
         Args: { p_seconds?: number }
         Returns: undefined
@@ -7292,6 +7513,17 @@ export type Database = {
       count_unlinked_mercury_transactions_for_tally: {
         Args: never
         Returns: number
+      }
+      create_job_from_estimate: {
+        Args: {
+          p_customer_id?: string
+          p_estimate_id: string
+          p_hcp_number: string
+          p_job_address?: string
+          p_job_name?: string
+          p_revenue?: number
+        }
+        Returns: string
       }
       create_po_from_job_tally: {
         Args: { p_entries: Json; p_job_id: string }
@@ -7775,6 +8007,10 @@ export type Database = {
         Returns: boolean
       }
       mercury_debit_card_id_from_raw: { Args: { p_raw: Json }; Returns: string }
+      merge_customers: {
+        Args: { p_field_choices: Json; p_survivor: string; p_victim: string }
+        Returns: Json
+      }
       notify_dispatch_license_expiry_if_needed: {
         Args: { p_license_id: string; p_link: string }
         Returns: string
@@ -7788,6 +8024,10 @@ export type Database = {
         }
         Returns: Json
       }
+      preview_merge_customers: {
+        Args: { p_survivor: string; p_victim: string }
+        Returns: Json
+      }
       record_ncns_and_reject_sessions_for_day: {
         Args: {
           p_details?: string
@@ -7799,6 +8039,10 @@ export type Database = {
           had_approved_sessions: boolean
           rejected_count: number
         }[]
+      }
+      replace_estimate_catalog_payload: {
+        Args: { p_payload: Json }
+        Returns: undefined
       }
       replace_mercury_job_splits_for_my_linked_card: {
         Args: { p_mercury_transaction_id: string; p_rows: Json }
@@ -7908,6 +8152,10 @@ export type Database = {
         Args: { b: Database["public"]["Tables"]["bids"]["Row"] }
         Returns: boolean
       }
+      superintendent_can_access_estimate: {
+        Args: { e: Database["public"]["Tables"]["estimates"]["Row"] }
+        Returns: boolean
+      }
       sync_crew_bids_from_clock: {
         Args: { p_person_name: string; p_work_date: string }
         Returns: undefined
@@ -7972,6 +8220,11 @@ export type Database = {
         Args: { project_id_param: string }
         Returns: boolean
       }
+      user_can_access_estimate: {
+        Args: { e: Database["public"]["Tables"]["estimates"]["Row"] }
+        Returns: boolean
+      }
+      user_can_manage_estimate_catalog: { Args: never; Returns: boolean }
       user_can_read_labels_for_master: {
         Args: { p_master_user_id: string }
         Returns: boolean
@@ -7991,6 +8244,12 @@ export type Database = {
       }
     }
     Enums: {
+      estimate_status:
+        | "draft"
+        | "sent"
+        | "customer_accepted"
+        | "declined"
+        | "superseded"
       project_status: "active" | "completed" | "on_hold" | "awaiting_start"
       step_status:
         | "pending"
@@ -8142,6 +8401,13 @@ export const Constants = {
   },
   public: {
     Enums: {
+      estimate_status: [
+        "draft",
+        "sent",
+        "customer_accepted",
+        "declined",
+        "superseded",
+      ],
       project_status: ["active", "completed", "on_hold", "awaiting_start"],
       step_status: [
         "pending",

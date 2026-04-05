@@ -6,6 +6,11 @@ import { cascadePersonNameInPayTables, getPersonNamesForUser } from '../lib/casc
 import { findPersonUserDuplicates, findNameSimilarDuplicates, mergePersonIntoUser } from '../lib/mergePersonUserDuplicates'
 import type { PayConfigRowForMerge } from '../lib/mergePersonUserDuplicates'
 import { useAuth } from '../hooks/useAuth'
+import {
+  impersonationExitDisplayLabel,
+  impersonationExitTitle,
+  impersonationSignedInAsDescription,
+} from '../lib/impersonationUiLabels'
 import { addPinForUser, clearPinned, clearPinnedInSupabase, deletePinForPathAndTab, getMergedFilteredPins, getUsersWithPin, removePin, type PinnedItem } from '../lib/pinnedTabs'
 import { useCostMatrixTotal } from '../hooks/useCostMatrixTotal'
 import { fetchSubLaborDueTotal } from '../hooks/useSubLaborDueTotal'
@@ -26,6 +31,15 @@ import TeamFeedbackMasterAggregates from '../components/team-feedback/TeamFeedba
 import type { Database } from '../types/database'
 import { APP_SETTINGS_KEY_JOB_TALLY_MIN_POSTED_YMD, isValidYmd } from '../lib/appSettingsKeys'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import {
+  builtinEstimateExperience,
+  ESTIMATE_APP_SETTING_LABELS,
+  ESTIMATE_EXPERIENCE_APP_KEY_LIST,
+  ESTIMATE_EXPERIENCE_FIELD_MAX_LEN,
+} from '../lib/estimateCustomerExperience'
+import { ESTIMATE_PUBLIC_TERMS_BODY_APP_KEY } from '../lib/estimatePublicTerms'
+import type { EstimateCatalogLineItem } from '../lib/estimateLineItemCatalog'
+import { catalogDbRowsToLineItems, fetchEstimateCatalogLive, replaceEstimateCatalogFromPayload } from '../lib/estimateCatalogApi'
 import { formatNotificationDatetime } from '../utils/formatNotificationDatetime'
 
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator' | 'primary' | 'superintendent'
@@ -325,7 +339,19 @@ function wholeDaysSince(iso: string): number | null {
 }
 
 export default function Settings() {
-  const { user: authUser } = useAuth()
+  const { user: authUser, profileName } = useAuth()
+  const settingsImpersonationBannerLine = useMemo(
+    () => impersonationSignedInAsDescription(profileName, authUser?.email ?? null),
+    [profileName, authUser?.email],
+  )
+  const settingsImpersonationExitLabel = useMemo(
+    () => impersonationExitDisplayLabel(profileName, authUser?.email ?? null),
+    [profileName, authUser?.email],
+  )
+  const settingsImpersonationExitTitle = useMemo(
+    () => impersonationExitTitle(profileName, authUser?.email ?? null),
+    [profileName, authUser?.email],
+  )
   const pushNotifications = usePushNotifications(authUser?.id)
   const { showToast } = useToastContext()
   const allSalariedDevNarrowViewport = useNarrowViewport640()
@@ -477,6 +503,18 @@ export default function Settings() {
   const [prospectCopyJustCheckingInSubject, setProspectCopyJustCheckingInSubject] = useState('')
   const [prospectCopySaving, setProspectCopySaving] = useState(false)
   const [prospectCopySectionOpen, setProspectCopySectionOpen] = useState(false)
+  const [estimateCxSectionOpen, setEstimateCxSectionOpen] = useState(false)
+  const [estimateCxSaving, setEstimateCxSaving] = useState(false)
+  const [estimatePublicTermsSaving, setEstimatePublicTermsSaving] = useState(false)
+  const [estimatePublicTermsBody, setEstimatePublicTermsBody] = useState('')
+  const [estimateLineItemCatalogSectionOpen, setEstimateLineItemCatalogSectionOpen] = useState(false)
+  const [estimateLineItemCatalogSaving, setEstimateLineItemCatalogSaving] = useState(false)
+  const [estimateLineItemCatalogRows, setEstimateLineItemCatalogRows] = useState<EstimateCatalogLineItem[]>([])
+  const [estimateCxByKey, setEstimateCxByKey] = useState<Record<string, string>>(() => {
+    const o: Record<string, string> = {}
+    for (const k of ESTIMATE_EXPERIENCE_APP_KEY_LIST) o[k] = ''
+    return o
+  })
   const [dashboardButtons, setDashboardButtons] = useState<Record<string, boolean>>({
     job: true,
     job_labor: true,
@@ -1714,6 +1752,33 @@ export default function Settings() {
       setProspectCopyNoResponseSubject(prospectCopyByKey.get('prospect_copy_no_response_email_subject') ?? '')
       setProspectCopyPhoneFollowupSubject(prospectCopyByKey.get('prospect_copy_phone_followup_email_subject') ?? '')
       setProspectCopyJustCheckingInSubject(prospectCopyByKey.get('prospect_copy_just_checking_in_email_subject') ?? '')
+      const estimateCxSettingKeys = [...ESTIMATE_EXPERIENCE_APP_KEY_LIST, ESTIMATE_PUBLIC_TERMS_BODY_APP_KEY]
+      const { data: estimateCxRows } = await supabase
+        .from('app_settings')
+        .select('key, value_text')
+        .in('key', estimateCxSettingKeys)
+      setEstimateCxByKey((prev) => {
+        const next = { ...prev }
+        for (const k of ESTIMATE_EXPERIENCE_APP_KEY_LIST) next[k] = next[k] ?? ''
+        for (const r of estimateCxRows ?? []) {
+          const row = r as { key: string; value_text: string | null }
+          if (ESTIMATE_EXPERIENCE_APP_KEY_LIST.includes(row.key as (typeof ESTIMATE_EXPERIENCE_APP_KEY_LIST)[number]))
+            next[row.key] = row.value_text ?? ''
+        }
+        const footerAppKey = 'estimate_accept_page_footer'
+        if (!(next[footerAppKey]?.trim())) next[footerAppKey] = builtinEstimateExperience().accept_page_footer
+        return next
+      })
+      const publicTermsRow = (estimateCxRows ?? []).find(
+        (r: { key: string }) => r.key === ESTIMATE_PUBLIC_TERMS_BODY_APP_KEY,
+      ) as { value_text: string | null } | undefined
+      setEstimatePublicTermsBody(publicTermsRow?.value_text ?? '')
+      try {
+        const ecRows = await fetchEstimateCatalogLive(supabase)
+        setEstimateLineItemCatalogRows(catalogDbRowsToLineItems(ecRows))
+      } catch {
+        setEstimateLineItemCatalogRows([])
+      }
       const { data: reportSettings } = await supabase.from('app_settings').select('key, value_num').in('key', ['report_edit_window_days', 'report_sub_visibility_months'])
       const byKey = new Map((reportSettings ?? []).map((r: { key: string; value_num: number | null }) => [r.key, r.value_num ?? 0]))
       setReportEditWindowDays(String(byKey.get('report_edit_window_days') ?? 2))
@@ -1880,6 +1945,54 @@ export default function Settings() {
     setProspectCopySaving(false)
     if (error) setError(error.message)
     else showToast('Prospect copy defaults saved.', 'success')
+  }
+
+  async function saveEstimateCustomerCopyDefaults(e: React.FormEvent) {
+    e.preventDefault()
+    if (myRole !== 'dev') return
+    setEstimateCxSaving(true)
+    const { error } = await supabase.from('app_settings').upsert(
+      ESTIMATE_EXPERIENCE_APP_KEY_LIST.map((key) => ({
+        key,
+        value_text: (estimateCxByKey[key] ?? '').slice(0, ESTIMATE_EXPERIENCE_FIELD_MAX_LEN),
+      })),
+      { onConflict: 'key' },
+    )
+    setEstimateCxSaving(false)
+    if (error) setError(error.message)
+    else showToast('Estimate customer copy defaults saved.', 'success')
+  }
+
+  async function saveEstimatePublicTerms(e: React.FormEvent) {
+    e.preventDefault()
+    if (myRole !== 'dev') return
+    setEstimatePublicTermsSaving(true)
+    const { error } = await supabase.from('app_settings').upsert(
+      {
+        key: ESTIMATE_PUBLIC_TERMS_BODY_APP_KEY,
+        value_text: estimatePublicTermsBody.slice(0, ESTIMATE_EXPERIENCE_FIELD_MAX_LEN),
+      },
+      { onConflict: 'key' },
+    )
+    setEstimatePublicTermsSaving(false)
+    if (error) setError(error.message)
+    else showToast('Public terms page saved.', 'success')
+  }
+
+  async function saveEstimateLineItemCatalog(e: React.FormEvent) {
+    e.preventDefault()
+    if (myRole !== 'dev') return
+    setEstimateLineItemCatalogSaving(true)
+    try {
+      await replaceEstimateCatalogFromPayload(supabase, estimateLineItemCatalogRows)
+      const ecRows = await fetchEstimateCatalogLive(supabase)
+      setEstimateLineItemCatalogRows(catalogDbRowsToLineItems(ecRows))
+      showToast('Estimate line item catalog saved.', 'success')
+    } catch (err) {
+      setError(formatErrorMessage(err, 'Could not save catalog'))
+    } finally {
+      setEstimateLineItemCatalogSaving(false)
+    }
   }
 
   async function saveMyProfile(e: React.FormEvent) {
@@ -5094,11 +5207,13 @@ export default function Settings() {
             gap: '0.5rem',
           }}
         >
-          <span style={{ color: '#92400e', fontWeight: 500 }}>Signed in as another user</span>
+          <span style={{ color: '#92400e', fontWeight: 500 }}>
+            Signed in as {settingsImpersonationBannerLine}
+          </span>
           <button
             type="button"
             onClick={handleBackToMyAccount}
-            title="Back to my Account"
+            title={settingsImpersonationExitTitle}
             aria-label="Back to your original signed-in account"
             style={{
               padding: '0.35rem 0.75rem',
@@ -5108,9 +5223,13 @@ export default function Settings() {
               borderRadius: 4,
               fontWeight: 600,
               cursor: 'pointer',
+              maxWidth: '14rem',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
             }}
           >
-            Back to my Account
+            {settingsImpersonationExitLabel === 'Back' ? 'Back to my Account' : settingsImpersonationExitLabel}
           </button>
         </div>
       )}
@@ -9079,6 +9198,247 @@ export default function Settings() {
                 </form>
               </div>
             )}
+          </div>
+
+          <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+            <button
+              type="button"
+              onClick={() => setEstimateCxSectionOpen((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                padding: '1rem',
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                fontWeight: 600,
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: '0.75rem' }}>{estimateCxSectionOpen ? '▼' : '▶'}</span>
+              Estimate customer experience defaults (dev)
+            </button>
+            {estimateCxSectionOpen && (
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+                <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+                  Defaults for estimate emails, public acceptance page, and thank-you. Staff can override per draft estimate on the estimate detail page. Sent estimates freeze copy at send time. Email templates:
+                  <code>{' {{accept_url}}'}</code>,<code>{' {{title}}'}</code>,<code>{' {{estimate_number}}'}</code>.
+                </p>
+                <form onSubmit={saveEstimateCustomerCopyDefaults}>
+                  {ESTIMATE_EXPERIENCE_APP_KEY_LIST.map((appKey) => (
+                    <div key={appKey} style={{ marginBottom: '1rem' }}>
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>
+                        {ESTIMATE_APP_SETTING_LABELS[appKey] ?? appKey}
+                      </label>
+                      <textarea
+                        value={estimateCxByKey[appKey] ?? ''}
+                        onChange={(e) =>
+                          setEstimateCxByKey((prev) => ({
+                            ...prev,
+                            [appKey]: e.target.value.slice(0, ESTIMATE_EXPERIENCE_FIELD_MAX_LEN),
+                          }))
+                        }
+                        rows={appKey.includes('email_body') || appKey.includes('thank_you_body') ? 5 : 2}
+                        style={{
+                          width: '100%',
+                          padding: '0.5rem',
+                          border: '1px solid #d1d5db',
+                          borderRadius: 4,
+                          fontSize: '0.875rem',
+                          fontFamily: 'inherit',
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                    </div>
+                  ))}
+                  <button
+                    type="submit"
+                    disabled={estimateCxSaving}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      background: '#3b82f6',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 4,
+                      cursor: estimateCxSaving ? 'not-allowed' : 'pointer',
+                      fontWeight: 500,
+                    }}
+                  >
+                    {estimateCxSaving ? 'Saving…' : 'Save'}
+                  </button>
+                </form>
+              </div>
+            )}
+          </div>
+
+          <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+            <button
+              type="button"
+              onClick={() => setEstimateLineItemCatalogSectionOpen((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                padding: '1rem',
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                fontWeight: 600,
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: '0.75rem' }}>{estimateLineItemCatalogSectionOpen ? '▼' : '▶'}</span>
+              Estimate line item catalog (dev)
+            </button>
+            {estimateLineItemCatalogSectionOpen && (
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+                <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+                  Preset descriptions and amounts for draft estimates. Staff pick from the book icon next to Line items.
+                </p>
+                <form onSubmit={saveEstimateLineItemCatalog}>
+                  {estimateLineItemCatalogRows.map((r, idx) => (
+                    <div
+                      key={r.id && r.id.trim() !== '' ? r.id : `new-row-${idx}`}
+                      style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '0.5rem',
+                        alignItems: 'center',
+                        marginBottom: '0.5rem',
+                      }}
+                    >
+                      <input
+                        value={r.description}
+                        onChange={(e) => {
+                          const v = e.target.value
+                          setEstimateLineItemCatalogRows((prev) => {
+                            const next = [...prev]
+                            const cur = next[idx]
+                            if (!cur) return prev
+                            next[idx] = { id: cur.id, description: v, amount_cents: cur.amount_cents }
+                            return next
+                          })
+                        }}
+                        placeholder="Description"
+                        style={{ flex: '1 1 200px', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      />
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={r.amount_cents ? r.amount_cents / 100 : ''}
+                        onChange={(e) => {
+                          const n = Math.round(Number(e.target.value || '0') * 100)
+                          setEstimateLineItemCatalogRows((prev) => {
+                            const next = [...prev]
+                            const cur = next[idx]
+                            if (!cur) return prev
+                            next[idx] = { id: cur.id, description: cur.description, amount_cents: Math.max(0, n) }
+                            return next
+                          })
+                        }}
+                        placeholder="Amount (USD)"
+                        style={{ width: 120, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEstimateLineItemCatalogRows((prev) => prev.filter((_, j) => j !== idx))
+                        }
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEstimateLineItemCatalogRows((prev) => [
+                          ...prev,
+                          { id: '', description: '', amount_cents: 0 },
+                        ])
+                      }
+                    >
+                      Add row
+                    </button>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={estimateLineItemCatalogSaving}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      background: '#3b82f6',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 4,
+                      cursor: estimateLineItemCatalogSaving ? 'not-allowed' : 'pointer',
+                      fontWeight: 500,
+                    }}
+                  >
+                    {estimateLineItemCatalogSaving ? 'Saving…' : 'Save catalog'}
+                  </button>
+                </form>
+              </div>
+            )}
+          </div>
+
+          <div
+            style={{
+              marginTop: '2rem',
+              marginBottom: '2rem',
+              border: '1px solid #e5e7eb',
+              borderRadius: 8,
+              padding: '1rem',
+            }}
+          >
+            <h3 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 600 }}>
+              Public estimate Terms and Conditions (plain text)
+            </h3>
+            <p style={{ margin: '0 0 1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+              Shown at <code>/estimate/terms</code> to anyone (no login). Linked from the estimate acceptance page.
+            </p>
+            <form onSubmit={saveEstimatePublicTerms}>
+              <textarea
+                value={estimatePublicTermsBody}
+                onChange={(e) =>
+                  setEstimatePublicTermsBody(e.target.value.slice(0, ESTIMATE_EXPERIENCE_FIELD_MAX_LEN))
+                }
+                rows={8}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  fontSize: '0.875rem',
+                  fontFamily: 'inherit',
+                  boxSizing: 'border-box',
+                }}
+              />
+              <button
+                type="submit"
+                disabled={estimatePublicTermsSaving}
+                style={{
+                  marginTop: '0.75rem',
+                  padding: '0.5rem 1rem',
+                  background: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: estimatePublicTermsSaving ? 'not-allowed' : 'pointer',
+                  fontWeight: 500,
+                }}
+              >
+                {estimatePublicTermsSaving ? 'Saving…' : 'Save'}
+              </button>
+            </form>
           </div>
         </>
       )}

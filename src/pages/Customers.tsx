@@ -4,6 +4,7 @@ import { NO_CUSTOMER_TYPE_LABEL } from '../constants/customerTypeLabels'
 import { supabase } from '../lib/supabase'
 import { useNewCustomerModal } from '../contexts/NewCustomerModalContext'
 import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
+import { CustomerNotesTable } from '../components/customerNotes/CustomerNotesTable'
 import type { Database } from '../types/database'
 import type { Json } from '../types/database'
 
@@ -59,8 +60,36 @@ export default function Customers() {
   const [viewingBidsForCustomer, setViewingBidsForCustomer] = useState<string | null>(null)
   const [bidsForCustomer, setBidsForCustomer] = useState<BidRow[]>([])
   const [loadingBids, setLoadingBids] = useState(false)
-  const [countsByCustomerId, setCountsByCustomerId] = useState<Record<string, { projects: number; jobs: number; bids: number }>>({})
+  const [countsByCustomerId, setCountsByCustomerId] = useState<
+    Record<string, { projects: number; jobs: number; bids: number; notes: number }>
+  >({})
+  const [expandedNotesCustomerId, setExpandedNotesCustomerId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+
+  async function refreshNoteCountsForCustomers(ids: string[]) {
+    if (ids.length === 0) return
+    const { data, error: err } = await supabase.from('customer_contacts').select('customer_id').in('customer_id', ids)
+    if (err) {
+      setError(err.message)
+      return
+    }
+    const nextNotes: Record<string, number> = {}
+    for (const id of ids) nextNotes[id] = 0
+    for (const r of data ?? []) {
+      const cid = r.customer_id
+      if (cid != null && cid in nextNotes) {
+        nextNotes[cid] = (nextNotes[cid] ?? 0) + 1
+      }
+    }
+    setCountsByCustomerId((prev) => {
+      const merged = { ...prev }
+      for (const id of ids) {
+        const base = merged[id] ?? { projects: 0, jobs: 0, bids: 0, notes: 0 }
+        merged[id] = { ...base, notes: nextNotes[id] ?? 0 }
+      }
+      return merged
+    })
+  }
 
   async function fetchCustomers() {
     const { data, error: err } = await supabase
@@ -80,13 +109,14 @@ export default function Customers() {
     setCustomers(customersWithMasters)
     const customerIds = customersWithMasters.map((c) => c.id)
     if (customerIds.length > 0) {
-      const [projectsRes, jobsRes, bidsRes] = await Promise.all([
+      const [projectsRes, jobsRes, bidsRes, contactsRes] = await Promise.all([
         supabase.from('projects').select('customer_id').in('customer_id', customerIds),
         supabase.from('jobs_ledger').select('customer_id').in('customer_id', customerIds),
         supabase.from('bids').select('customer_id').in('customer_id', customerIds),
+        supabase.from('customer_contacts').select('customer_id').in('customer_id', customerIds),
       ])
-      const counts: Record<string, { projects: number; jobs: number; bids: number }> = {}
-      for (const id of customerIds) counts[id] = { projects: 0, jobs: 0, bids: 0 }
+      const counts: Record<string, { projects: number; jobs: number; bids: number; notes: number }> = {}
+      for (const id of customerIds) counts[id] = { projects: 0, jobs: 0, bids: 0, notes: 0 }
       for (const r of (projectsRes.data ?? [])) {
         const entry = r.customer_id ? counts[r.customer_id] : undefined
         if (entry) entry.projects++
@@ -98,6 +128,10 @@ export default function Customers() {
       for (const r of (bidsRes.data ?? [])) {
         const entry = r.customer_id ? counts[r.customer_id] : undefined
         if (entry) entry.bids++
+      }
+      for (const r of (contactsRes.data ?? [])) {
+        const entry = r.customer_id ? counts[r.customer_id] : undefined
+        if (entry) entry.notes++
       }
       setCountsByCustomerId(counts)
     }
@@ -140,7 +174,12 @@ export default function Customers() {
   useEffect(() => {
     const editId = location.state?.openEditCustomer
     if (typeof editId === 'string' && editId && editCustomerModal) {
-      editCustomerModal.openEditCustomerModal(editId, { onSaved: fetchCustomers, onDeleted: (id) => setCustomers((prev) => prev.filter((c) => c.id !== id)) })
+      editCustomerModal.openEditCustomerModal(editId, {
+        onSaved: fetchCustomers,
+        onDeleted: (id) => setCustomers((prev) => prev.filter((c) => c.id !== id)),
+        onMerged: ({ removedId }) =>
+          queueMicrotask(() => setCustomers((prev) => prev.filter((c) => c.id !== removedId))),
+      })
       navigate('/customers', { replace: true, state: {} })
     }
   }, [location.state?.openEditCustomer, editCustomerModal, navigate])
@@ -280,10 +319,18 @@ export default function Customers() {
                 padding: '0.75rem 0',
                 borderBottom: '1px solid #e5e7eb',
                 display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
+                flexDirection: 'column',
+                alignItems: 'stretch',
               }}
             >
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  width: '100%',
+                }}
+              >
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
                   <button
@@ -297,6 +344,8 @@ export default function Customers() {
                       editCustomerModal?.openEditCustomerModal(c.id, {
                         onSaved: fetchCustomers,
                         onDeleted: (id) => setCustomers((prev) => prev.filter((x) => x.id !== id)),
+                        onMerged: ({ removedId }) =>
+                          queueMicrotask(() => setCustomers((prev) => prev.filter((x) => x.id !== removedId))),
                       })
                     }
                     style={{
@@ -411,9 +460,28 @@ export default function Customers() {
               </div>
               <span className="customers-projects-bids-links" style={{ display: 'flex', gap: '0.5rem' }}>
                 {(() => {
-                  const counts = countsByCustomerId[c.id] ?? { projects: 0, jobs: 0, bids: 0 }
+                  const counts = countsByCustomerId[c.id] ?? { projects: 0, jobs: 0, bids: 0, notes: 0 }
                   return (
                     <>
+                      <button
+                        type="button"
+                        aria-expanded={expandedNotesCustomerId === c.id}
+                        aria-label="Customer notes"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setExpandedNotesCustomerId((prev) => (prev === c.id ? null : c.id))
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#2563eb',
+                          cursor: 'pointer',
+                          padding: 0,
+                          font: 'inherit',
+                        }}
+                      >
+                        Notes ({counts.notes})
+                      </button>
                       <Link to={`/projects?customer=${c.id}`}>Projects ({counts.projects})</Link>
                       <Link to={`/jobs?customer=${c.id}`}>Jobs ({counts.jobs})</Link>
                       <button
@@ -436,6 +504,32 @@ export default function Customers() {
                   )
                 })()}
               </span>
+              </div>
+              {expandedNotesCustomerId === c.id ? (
+                <div
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    borderTop: '1px solid #e5e7eb',
+                    marginTop: '0.75rem',
+                    paddingTop: '0.75rem',
+                    background: '#f9fafb',
+                    maxHeight: 'min(70vh, 480px)',
+                    overflow: 'auto',
+                  }}
+                >
+                  <CustomerNotesTable
+                    customerId={c.id}
+                    customerName={c.name}
+                    onLoadError={(m) => setError(m)}
+                    title=""
+                    hasBidsAbove={false}
+                    onMutated={() => {
+                      void refreshNoteCountsForCustomers([c.id])
+                    }}
+                  />
+                </div>
+              ) : null}
             </li>
           ))}
         </ul>

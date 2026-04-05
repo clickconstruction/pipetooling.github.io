@@ -26,6 +26,10 @@ const Prospects = lazy(() => import('./pages/Prospects'))
 const Duplicates = lazy(() => import('./pages/Duplicates'))
 const Checklist = lazy(() => import('./pages/Checklist'))
 const JobTally = lazy(() => import('./pages/JobTally'))
+const Estimates = lazy(() => import('./pages/Estimates'))
+const EstimateAcceptStaffPreview = lazy(() => import('./pages/EstimateAcceptStaffPreview'))
+import EstimateAccept from './pages/EstimateAccept'
+import EstimatePublicTerms from './pages/EstimatePublicTerms'
 import { ToastProvider, useToastContext } from './contexts/ToastContext'
 import { registerSW } from 'virtual:pwa-register'
 import { ForceReloadProvider } from './contexts/ForceReloadContext'
@@ -130,6 +134,16 @@ function AppContent() {
         <Route path="/sign-up" element={<SignUp />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/reset-password-confirm" element={<ResetPasswordConfirm />} />
+        <Route path="/estimate/accept" element={<EstimateAccept />} />
+        <Route path="/estimate/terms" element={<EstimatePublicTerms />} />
+        <Route
+          path="/estimate/customer-accept-preview/:id"
+          element={
+            <ProtectedRoute>
+              <EstimateAcceptStaffPreview />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/"
           element={
@@ -168,6 +182,8 @@ function AppContent() {
           <Route path="calendar" element={<Calendar />} />
           <Route path="templates" element={<Templates />} />
           <Route path="materials" element={<Materials />} />
+          <Route path="estimates" element={<Estimates />} />
+          <Route path="estimates/:id" element={<Estimates />} />
           <Route path="duplicates" element={<Duplicates />} />
           <Route path="bids" element={<Bids />} />
           <Route path="prospects" element={<Prospects />} />

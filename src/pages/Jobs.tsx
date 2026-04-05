@@ -22,14 +22,18 @@ import NewReportModal from '../components/NewReportModal'
 import JobReportsModal from '../components/JobReportsModal'
 import AddInspectionModal from '../components/AddInspectionModal'
 import { ErrorBoundary } from '../components/ErrorBoundary'
+import CustomerAcceptanceRecordModal from '../components/estimates/CustomerAcceptanceRecordModal'
 import SendRecordInvoiceModal, { type JobBillingContext } from '../components/jobs/SendRecordInvoiceModal'
 import { JobThreadNotesPanel } from '../components/JobThreadNotesPanel'
 import { useJobThreadNotes } from '../hooks/useJobThreadNotes'
 import { CrewJobsBlock } from '../components/CrewJobsBlock'
 import { MoneyDecimalAmountInput } from '../components/MoneyDecimalAmountInput'
 import type { Database } from '../types/database'
+import { resolveCustomerIdForJobPayload } from '../lib/jobLedgerCustomer'
+import { resolveEffectiveJobMasterUserId } from '../lib/resolveEffectiveJobMasterUserId'
 
 type JobsLedgerRow = Database['public']['Tables']['jobs_ledger']['Row']
+type EstimatesRow = Database['public']['Tables']['estimates']['Row']
 type CustomerRow = Database['public']['Tables']['customers']['Row']
 type JobsLedgerMaterial = Database['public']['Tables']['jobs_ledger_materials']['Row']
 type JobsLedgerFixture = Database['public']['Tables']['jobs_ledger_fixtures']['Row']
@@ -442,6 +446,9 @@ export default function Jobs() {
   const [billingSortAsc, setBillingSortAsc] = useState(false) // false = highest HCP first (desc, largest to smallest)
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<JobWithDetails | null>(null)
+  const [sourceEstimateForJob, setSourceEstimateForJob] = useState<EstimatesRow | null>(null)
+  const [sourceEstimateLoading, setSourceEstimateLoading] = useState(false)
+  const [contractModalEstimateId, setContractModalEstimateId] = useState<string | null>(null)
   const [hcpNumber, setHcpNumber] = useState('')
   const [jobName, setJobName] = useState('')
   const [jobAddress, setJobAddress] = useState('')
@@ -809,18 +816,6 @@ export default function Jobs() {
     if (t === 'residential' || t === 'commercial') return t.charAt(0).toUpperCase() + t.slice(1)
     if (t == null || t === '') return NO_CUSTOMER_TYPE_LABEL
     return t
-  }
-
-  /** When saving, link job to the single customer row for this master with the same name (case-insensitive). */
-  function resolveCustomerIdForPayload(explicitId: string | null, jobMasterUserId: string, nameTrimmed: string): string | null {
-    if (explicitId) return explicitId
-    const nameKey = nameTrimmed.trim().toLowerCase()
-    if (!nameKey) return null
-    const matches = customers.filter(
-      (c) => c.master_user_id === jobMasterUserId && (c.name ?? '').trim().toLowerCase() === nameKey,
-    )
-    const only = matches.length === 1 ? matches[0] : null
-    return only?.id ?? null
   }
 
   async function loadJobs() {
@@ -2828,6 +2823,35 @@ export default function Jobs() {
     }
   }, [editJobId, jobs, loading])
 
+  useEffect(() => {
+    const jobId = editing?.id ?? null
+    if (!jobId) {
+      setSourceEstimateForJob(null)
+      setSourceEstimateLoading(false)
+      return
+    }
+    let cancelled = false
+    setSourceEstimateLoading(true)
+    void (async () => {
+      try {
+        const est = await withSupabaseRetry(
+          async () =>
+            await supabase.from('estimates').select('*').eq('job_ledger_id', jobId).maybeSingle(),
+          'load source estimate for job',
+        )
+        if (cancelled) return
+        setSourceEstimateForJob((est ?? null) as EstimatesRow | null)
+      } catch {
+        if (!cancelled) setSourceEstimateForJob(null)
+      } finally {
+        if (!cancelled) setSourceEstimateLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [editing?.id])
+
   // When editLabor=hcp is in URL and labor jobs are loaded, open edit or new labor modal
   const editLaborHcp = searchParams.get('editLabor')
   useEffect(() => {
@@ -3463,6 +3487,7 @@ export default function Jobs() {
     setNewInvoiceAmount('')
     setCreateCustomerFromJobModalOpen(false)
     setBillingCustomerHighlight(false)
+    setContractModalEstimateId(null)
   }
 
   function getEditJobBillableRemaining(): number {
@@ -3629,7 +3654,12 @@ export default function Jobs() {
       if (editing) {
         const proj = projectId ? projects.find((p) => p.id === projectId) : null
         const jobMasterForCustomer = projectId && proj ? proj.master_user_id : editing.master_user_id
-        const resolvedCustomerId = resolveCustomerIdForPayload(customerId, jobMasterForCustomer, customerName.trim())
+        const resolvedCustomerId = resolveCustomerIdForJobPayload(
+          customerId,
+          jobMasterForCustomer,
+          customerName.trim(),
+          customers,
+        )
         const updatePayload = {
           hcp_number: hcpNumber.trim(),
           job_name: jobName.trim(),
@@ -3691,30 +3721,14 @@ export default function Jobs() {
           await supabase.from('jobs_ledger_team_members').delete().eq('job_id', editing.id).eq('user_id', uid)
         }
       } else {
-        // Resolve job owner (override for users who create jobs on behalf of others, or project owner when linking to project)
-        let effectiveMasterId = authUser.id
-        if (projectId) {
-          const proj = projects.find((p) => p.id === projectId)
-          if (proj) effectiveMasterId = proj.master_user_id
-        }
-        if (!projectId) {
-          const override = await withSupabaseRetry(
-            async () => {
-              const result = await supabase
-                .from('app_settings')
-                .select('value_text')
-                .eq('key', `job_owner_override_${authUser.id}`)
-                .maybeSingle()
-              return { data: result.data, error: result.error }
-            },
-            'fetch job owner override'
-          )
-          if (override?.value_text) {
-            effectiveMasterId = override.value_text
-          }
-        }
+        const effectiveMasterId = await resolveEffectiveJobMasterUserId(supabase, authUser.id, projectId || null)
 
-        const resolvedCustomerIdNew = resolveCustomerIdForPayload(customerId, effectiveMasterId, customerName.trim())
+        const resolvedCustomerIdNew = resolveCustomerIdForJobPayload(
+          customerId,
+          effectiveMasterId,
+          customerName.trim(),
+          customers,
+        )
         const { data: inserted, error: insertErr } = await supabase
           .from('jobs_ledger')
           .insert({
@@ -8710,6 +8724,50 @@ export default function Jobs() {
                 })()
               )}
             </div>
+            {editing && sourceEstimateLoading ? (
+              <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>Checking for linked estimate…</p>
+            ) : null}
+            {editing && !sourceEstimateLoading && sourceEstimateForJob ? (
+              <div
+                style={{
+                  marginBottom: '0.75rem',
+                  padding: '0.6rem 0.75rem',
+                  background: '#f0fdf4',
+                  border: '1px solid #bbf7d0',
+                  borderRadius: 6,
+                  fontSize: '0.875rem',
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '0.5rem',
+                  alignItems: 'center',
+                }}
+              >
+                <span>
+                  <strong>Source estimate:</strong>{' '}
+                  <Link
+                    to={`/estimates/${sourceEstimateForJob.estimate_number}`}
+                    style={{ color: '#15803d', fontWeight: 600 }}
+                  >
+                    #{sourceEstimateForJob.estimate_number}
+                  </Link>
+                  {sourceEstimateForJob.title?.trim() ? ` · ${sourceEstimateForJob.title.trim()}` : null}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setContractModalEstimateId(sourceEstimateForJob.id)}
+                  style={{
+                    padding: '0.35rem 0.65rem',
+                    fontSize: '0.8rem',
+                    background: 'white',
+                    border: '1px solid #86efac',
+                    borderRadius: 4,
+                    cursor: 'pointer',
+                  }}
+                >
+                  View contract &amp; acceptance
+                </button>
+              </div>
+            ) : null}
             {error && <p style={{ color: '#b91c1c', marginBottom: '0.75rem', fontSize: '0.875rem' }}>{error}</p>}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
@@ -10131,6 +10189,11 @@ export default function Jobs() {
           </div>
         </div>
       )}
+      <CustomerAcceptanceRecordModal
+        open={contractModalEstimateId != null}
+        estimateId={contractModalEstimateId}
+        onClose={() => setContractModalEstimateId(null)}
+      />
     </div>
   )
 }

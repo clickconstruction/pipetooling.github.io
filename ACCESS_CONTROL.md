@@ -485,6 +485,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 Mercury **Person** attribution (job splits modal): staff use **`list_users_for_banking_attribution`** (**SECURITY DEFINER**, same dev/master/assistant gate as **`replace_mercury_transaction_splits`**) for the user picker; **`mercury_transaction_attributions`** may store **`user_id`** or legacy **`person_id`** (not both).
 | **Calendar** | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
 | **Bids** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited |
+| **Estimates** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited (project-linked super visibility) |
 | **Materials** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited |
 | **Templates** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Settings** | ✅ | ✅ limited | ✅ limited | ❌ | ✅ limited | ✅ limited | ✅ limited |
@@ -493,11 +494,11 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 
 **Subcontractors**: Any page except Dashboard/Checklist/Settings/Tally → `/dashboard`; Calendar hidden from nav
 
-**Estimators**: Any page except Dashboard/Materials/Bids/Calendar/Checklist/Settings → `/bids`
+**Estimators**: Any page except Dashboard/Materials/Estimates/Bids/Calendar/Checklist/Settings → `/bids`
 
-**Primary**: Any page except Dashboard/Materials/Jobs/Bids/Prospects/Calendar/Checklist/Settings → `/dashboard`; Jobs shows Reports and Billing tabs only; Bids full access (all tabs); Projects hidden
+**Primary**: Any page except Dashboard/Materials/Estimates/Jobs/Bids/Prospects/Calendar/Checklist/Settings → `/dashboard`; Jobs shows Reports and Billing tabs only; Bids full access (all tabs); Projects hidden
 
-**Superintendent**: Any page except Dashboard/Projects/Workflow/Jobs/Bids/Materials/Calendar/Checklist/Settings/Tally → `/dashboard`; Jobs shows Reports, Sub Sheet Ledger; Bids shows draft tabs only (no Pricing, Cover Letter, Submission); Materials shows Price book and Assembly book; People and Customers pages blocked
+**Superintendent**: Any page except Dashboard/Projects/Workflow/Jobs/Bids/Materials/Estimates/Calendar/Checklist/Settings/Tally → `/dashboard`; Jobs shows Reports, Sub Sheet Ledger; Bids shows draft tabs only (no Pricing, Cover Letter, Submission); Materials shows Price book and Assembly book; People and Customers pages blocked
 
 **Assistants**: Can access most pages but see filtered data
 

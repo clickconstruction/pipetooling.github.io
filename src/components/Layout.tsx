@@ -24,6 +24,7 @@ import { useDailyGoalsGate } from '../contexts/DailyGoalsGateContext'
 import { useAppActivityHeartbeat } from '../hooks/useAppActivityHeartbeat'
 import { hardReloadFromRoot } from '../lib/hardReload'
 import { prefetchDashboardPhase1 } from '../lib/dashboardPrefetch'
+import { impersonationExitDisplayLabel, impersonationExitTitle } from '../lib/impersonationUiLabels'
 
 const navStyle = ({ isActive }: { isActive: boolean }) => ({
   fontWeight: isActive ? 600 : undefined,
@@ -42,8 +43,8 @@ const dropdownLinkStyle = ({ isActive }: { isActive: boolean }) => ({
 const IMPERSONATION_KEY = 'impersonation_original'
 
 const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/checklist', '/settings', '/tally']
-const PRIMARY_PATHS = ['/dashboard', '/materials', '/jobs', '/bids', '/calendar', '/checklist', '/settings', '/tally']
-const SUPERINTENDENT_PATHS = ['/dashboard', '/projects', '/workflows', '/jobs', '/bids', '/materials', '/calendar', '/checklist', '/settings', '/tally']
+const PRIMARY_PATHS = ['/dashboard', '/materials', '/estimates', '/jobs', '/bids', '/calendar', '/checklist', '/settings', '/tally']
+const SUPERINTENDENT_PATHS = ['/dashboard', '/projects', '/workflows', '/jobs', '/bids', '/materials', '/estimates', '/calendar', '/checklist', '/settings', '/tally']
 
 const HEADER_ACTION_BUTTON_HEIGHT = 'calc(1rem + 1.25em)'
 
@@ -61,11 +62,11 @@ const headerActionButtonBase = {
 export default function Layout() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { user: authUser, role, estimatorProspectsAccess } = useAuth()
+  const { user: authUser, role, profileName, estimatorProspectsAccess } = useAuth()
   useAppActivityHeartbeat(authUser?.id)
   const estimatorAllowedPaths = useMemo(
     () =>
-      ['/dashboard', '/materials', '/bids', ...(estimatorProspectsAccess ? ['/prospects'] : []), '/calendar', '/checklist', '/people', '/settings', '/tally'],
+      ['/dashboard', '/materials', '/estimates', '/bids', ...(estimatorProspectsAccess ? ['/prospects'] : []), '/calendar', '/checklist', '/people', '/settings', '/tally'],
     [estimatorProspectsAccess],
   )
   const { gateOpen: dailyGoalsGateOpen } = useDailyGoalsGate()
@@ -200,6 +201,15 @@ export default function Layout() {
     }
   }
 
+  const impersonationExitLabel = useMemo(
+    () => impersonationExitDisplayLabel(profileName, authUser?.email ?? null),
+    [profileName, authUser?.email],
+  )
+  const impersonationTooltipTitle = useMemo(
+    () => impersonationExitTitle(profileName, authUser?.email ?? null),
+    [profileName, authUser?.email],
+  )
+
   const dashboardIcon = (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1em" height="1em" fill="currentColor" aria-hidden="true" style={{ verticalAlign: 'middle' }}>
       <path d="M298.2 72.6C310.5 61.2 329.5 61.2 341.7 72.6L432 156.3L432 144C432 126.3 446.3 112 464 112L496 112C513.7 112 528 126.3 528 144L528 245.5L565.8 280.6C575.4 289.6 578.6 303.5 573.8 315.7C569 327.9 557.2 336 544 336L528 336L528 512C528 547.3 499.3 576 464 576L176 576C140.7 576 112 547.3 112 512L112 336L96 336C82.8 336 71 327.9 66.2 315.7C61.4 303.5 64.6 289.5 74.2 280.6L298.2 72.6zM304 384C277.5 384 256 405.5 256 432L256 528L384 528L384 432C384 405.5 362.5 384 336 384L304 384z" />
@@ -271,6 +281,7 @@ export default function Layout() {
             </NavLink>
           )}
           <NavLink to="/materials" style={linkStyle} onClick={onNavClick}>Materials</NavLink>
+          <NavLink to="/estimates" style={linkStyle} onClick={onNavClick}>Estimates</NavLink>
           <NavLink to="/bids" style={linkStyle} onClick={onNavClick}>Bids</NavLink>
           {estimatorProspectsAccess && (
             <NavLink to="/prospects" style={linkStyle} onClick={onNavClick}>Prospects</NavLink>
@@ -297,6 +308,7 @@ export default function Layout() {
             </NavLink>
           )}
           <NavLink to="/materials" style={linkStyle} onClick={onNavClick}>Materials</NavLink>
+          <NavLink to="/estimates" style={linkStyle} onClick={onNavClick}>Estimates</NavLink>
           <NavLink to="/jobs" style={linkStyle} onClick={onNavClick}>Jobs</NavLink>
           <NavLink to="/bids" style={linkStyle} onClick={onNavClick}>Bids</NavLink>
         </>
@@ -341,6 +353,7 @@ export default function Layout() {
             {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
               <>
                 <NavLink to="/materials" style={linkStyle} onClick={onNavClick}>Materials</NavLink>
+                <NavLink to="/estimates" style={linkStyle} onClick={onNavClick}>Estimates</NavLink>
                 <NavLink to="/bids" style={linkStyle} onClick={onNavClick}>Bids</NavLink>
                 <NavLink to="/prospects" style={linkStyle} onClick={onNavClick}>Prospects</NavLink>
               </>
@@ -753,11 +766,11 @@ export default function Layout() {
             )}
           </div>
           </span>
-          {impersonating && !isMobile && (
+          {impersonating && (
             <button
               type="button"
               onClick={handleBackToMyAccount}
-              title="Back to my account"
+              title={impersonationTooltipTitle}
               aria-label="Back to your original signed-in account"
               style={{
                 padding: '0.35rem 0.75rem',
@@ -766,9 +779,13 @@ export default function Layout() {
                 border: '1px solid #f59e0b',
                 borderRadius: 4,
                 fontWeight: 600,
+                maxWidth: isMobile ? '6.5rem' : '14rem',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
               }}
             >
-              Back
+              {impersonationExitLabel}
             </button>
           )}
         </span>
