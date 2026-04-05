@@ -394,6 +394,10 @@ verify_jwt = false
 [functions.send-estimate-to-customer]
 verify_jwt = false
 
+# Same as test-email: JWT validated in function (getUser + users.role); gateway returned Invalid JWT for browser sessions.
+[functions.login-as-user]
+verify_jwt = false
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.

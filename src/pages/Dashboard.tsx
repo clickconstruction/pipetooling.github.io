@@ -29,6 +29,7 @@ import DashboardMyTimeSection from '../components/DashboardMyTimeSection'
 import { DashboardMyTimeDayEditorModal } from '../components/DashboardMyTimeDayEditorModal'
 import DashboardDevRejectedNotification from '../components/DashboardDevRejectedNotification'
 import DashboardMyTeamPendingBanner from '../components/DashboardMyTeamPendingBanner'
+import DashboardTallyStaleBanner from '../components/DashboardTallyStaleBanner'
 import { DashboardTeamActiveClockStrip } from '../components/DashboardTeamActiveClockStrip'
 import { useDashboardMyTeamSectionState } from '../hooks/useDashboardMyTeamSectionState'
 import {
@@ -67,6 +68,7 @@ import type { Database } from '../types/database'
 import type { ClockSessionRow, DashboardStripSession } from '../types/clockSessions'
 
 const DASHBOARD_CLOCK_STRIP_SCOPE_KEY = 'dashboard_clock_strip_scope'
+const TALLY_STALE_MIN_AGE_DAYS = 2
 
 function readClockStripScope(): 'team' | 'everyone' {
   try {
@@ -631,6 +633,7 @@ export default function Dashboard() {
   const hasSubLaborDuePin = visiblePins.some((p) => p.path === '/jobs' && p.tab === 'sub_sheet_ledger')
   const [financialRefreshKey, setFinancialRefreshKey] = useState(0)
   const [tallyUnlinkedCount, setTallyUnlinkedCount] = useState<number | null>(null)
+  const [tallyStaleUnlinkedCount, setTallyStaleUnlinkedCount] = useState<number | null>(null)
   const { total: costMatrixTotal } = useCostMatrixTotal(hasCostMatrixPin)
   const { count: billedCount, total: billedTotal } = useBilledTotal(hasBilledPin, financialRefreshKey)
   const { count: hoursAwaitingCount } = useHoursAwaitingApprovalCount(isDev, financialRefreshKey)
@@ -650,22 +653,41 @@ export default function Dashboard() {
     }
   }, [authUser?.id, role])
 
+  const loadTallyStaleUnlinkedCount = useCallback(async () => {
+    if (!authUser?.id || role == null) return
+    try {
+      const n = await withSupabaseRetry(
+        async () =>
+          await supabase.rpc('count_unlinked_mercury_transactions_for_tally_stale', {
+            min_age_days: TALLY_STALE_MIN_AGE_DAYS,
+          }),
+        'count stale unlinked tally transactions',
+      )
+      setTallyStaleUnlinkedCount(typeof n === 'number' && Number.isFinite(n) ? n : 0)
+    } catch {
+      setTallyStaleUnlinkedCount(null)
+    }
+  }, [authUser?.id, role])
+
   useEffect(() => {
     if (!authUser?.id || role == null) {
       setTallyUnlinkedCount(null)
+      setTallyStaleUnlinkedCount(null)
       return
     }
     void loadTallyUnlinkedCount()
-  }, [authUser?.id, role, loadTallyUnlinkedCount])
+    void loadTallyStaleUnlinkedCount()
+  }, [authUser?.id, role, loadTallyUnlinkedCount, loadTallyStaleUnlinkedCount])
 
   useEffect(() => {
     if (!authUser?.id || role == null) return
     const onFocus = () => {
       void loadTallyUnlinkedCount()
+      void loadTallyStaleUnlinkedCount()
     }
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
-  }, [authUser?.id, role, loadTallyUnlinkedCount])
+  }, [authUser?.id, role, loadTallyUnlinkedCount, loadTallyStaleUnlinkedCount])
 
   // Load users for Forward modal (all users, for Outstanding Forward)
   useEffect(() => {
@@ -3295,6 +3317,14 @@ export default function Dashboard() {
 
   const tallyAndPinnedBlock = (
     <>
+      {role != null && (
+        <DashboardTallyStaleBanner
+          staleCount={typeof tallyStaleUnlinkedCount === 'number' ? tallyStaleUnlinkedCount : 0}
+          loading={tallyStaleUnlinkedCount === null}
+          minAgeDays={TALLY_STALE_MIN_AGE_DAYS}
+          onGoToTally={() => navigate('/tally?tab=transactions')}
+        />
+      )}
       {role != null && (
         <div style={{ display: 'flex', alignItems: 'stretch', gap: '0.5rem', marginBottom: '1rem' }}>
           <div style={{ position: 'relative', width: 48, height: 48, flexShrink: 0 }}>

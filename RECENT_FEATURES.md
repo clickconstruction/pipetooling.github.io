@@ -12,32 +12,41 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.237 → v2.4"
+version_range: "v2.240 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.240)"
+    line: ~710
+    description: "Dashboard stale tally banner: count_unlinked_mercury_transactions_for_tally_stale; DashboardTallyStaleBanner above Job Parts Tally row; Chicago calendar age > min_age_days"
+  - name: "Latest Version (v2.239)"
+    line: ~721
+    description: "Estimates: Unlink job (clear job_ledger_id) + confirm modal; sent — Copy/Open customer link under waiting copy; EstimateCustomerAcceptLinkButtons DRY; no duplicate link buttons in Customer experience when sent"
+  - name: "Latest Version (v2.238)"
+    line: ~732
+    description: "Estimates → Jobs: create_job_from_estimate RPC; Create job from estimate modal; Jobs Source estimate + CustomerAcceptanceRecordModal"
   - name: "Latest Version (v2.237)"
-    line: ~698
+    line: ~744
     description: "Estimates accept UX: modal omit accept_instructions + centered submit; EstimateCustomerDocument total right-aligned; Estimates detail # inline in h1; inline Customer acceptance disclosure + agreement checkbox"
   - name: "Latest Version (v2.236)"
-    line: ~722
+    line: ~757
     description: "Estimates Line item catalog modal: Insert from catalog + Edit book in one header row (title, tabs, ×); Estimates.tsx"
   - name: "Latest Version (v2.235)"
-    line: ~701
+    line: ~767
     description: "Estimates Preview as customer: staff snapshot in localStorage + TTL + parse-then-remove (cross-tab); estimateStaffAcceptPreview.ts"
   - name: "Latest Version (v2.234)"
-    line: ~712
+    line: ~778
     description: "Estimates: customer_experience app_settings defaults (Settings dev), per-draft overrides + customer_experience_sent at send; estimateCustomerExperience shared lib + Edge; customer_experience on get-estimate"
   - name: "Latest Version (v2.233)"
-    line: ~725
+    line: ~791
     description: "Estimates global Quote # (estimate_number), staff /estimates/{n} URLs, Customer experience previews (Email / Acceptance / Thank you), shared estimateCustomerEmail + EstimateCustomerDocument / EstimateCustomerThankYou"
   - name: "Latest Version (v2.232)"
-    line: ~740
+    line: ~806
     description: "Estimates Approach A — ship: estimates table, Edge get/accept/send, Estimates + EstimateAccept routes, docs cross-links"
   - name: "Latest Version (v2.231)"
-    line: ~752
+    line: ~819
     description: "Dashboard Jobs worked today → My Time; clock interval Overlap badges + day-editor callout + multiAlloc label; impersonation Back (Layout) / Back to my Account (Settings)"
   - name: "Latest Version (v2.230)"
-    line: ~734
+    line: ~831
     description: "People Users tab: Subcontractors with accounts first; roster-only subs under External Subcontractors; pay roster label aligned; People.tsx renderUsersTabRosterListItem"
   - name: "Latest Version (v2.229)"
     line: ~681
@@ -538,161 +547,186 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.237)](#latest-updates-v2237) — **Estimates**: **Approve** modal layout (**`accept_instructions`** hidden; centered **Submit acceptance**); **Total** right-aligned on quote document; staff detail **`# n` + title** one **`h1`** line; inline **Customer acceptance** shows signature disclosure + checked disabled agreement before **Full name**.
-2. [Latest Updates (v2.236)](#latest-updates-v2236) — **Estimates**: **Line item catalog** modal — **Insert from catalog** and **Edit book** in one header row between the title and **×** (close uses **`marginLeft: 'auto'`**); [`Estimates.tsx`](src/pages/Estimates.tsx).
-3. [Latest Updates (v2.233)](#latest-updates-v2233) — **Estimates**: global **Quote #** ([`20260405003103_estimates_global_estimate_number.sql`](supabase/migrations/20260405003103_estimates_global_estimate_number.sql)); staff **`/estimates/{estimate_number}`** (UUID legacy **`replace`**); **Customer experience** tab (**Email** / **Acceptance** / **Thank you**); [`estimateCustomerEmail.ts`](src/lib/estimateCustomerEmail.ts) + [`EstimateCustomerDocument.tsx`](src/components/estimates/EstimateCustomerDocument.tsx) / [`EstimateCustomerThankYou.tsx`](src/components/estimates/EstimateCustomerThankYou.tsx); **`accept_url`** after send when returned.
-4. [Latest Updates (v2.232)](#latest-updates-v2232) — **Estimates (Approach A)**: `public.estimates`, Edge **get/accept/send**, [`Estimates.tsx`](src/pages/Estimates.tsx) + [`EstimateAccept.tsx`](src/pages/EstimateAccept.tsx), routing + docs ([`20260404212052_estimates_approach_a.sql`](supabase/migrations/20260404212052_estimates_approach_a.sql)).
-5. [Latest Updates (v2.231)](#latest-updates-v2231) — **Jobs worked today** duration → **Edit time**; **Overlap** badges + My Time **Overlapping clock times** / **Multiple jobs/bids in this span**; impersonation **Back** ([`Layout.tsx`](src/components/Layout.tsx)) vs **Back to my Account** ([`Settings.tsx`](src/pages/Settings.tsx)); [`hasPairwiseClockIntervalOverlap`](src/lib/myTimeDayTimeline.ts).
-6. [Latest Updates (v2.226)](#latest-updates-v2226) — **Dashboard** **Job Parts Tally** icon: amber **unlinked** count badge when the caller has linked-card Mercury transactions with no **`mercury_transaction_job_allocations`** (matches **Show unlinked** on Job Tally); RPC **`count_unlinked_mercury_transactions_for_tally`** ([`20260403044517_count_unlinked_mercury_transactions_for_tally.sql`](supabase/migrations/20260403044517_count_unlinked_mercury_transactions_for_tally.sql)); **`window` `focus`** refresh; accessible **`title`** / **`aria-label`** on the tally link ([`Dashboard.tsx`](src/pages/Dashboard.tsx)).
-7. [Latest Updates (v2.225)](#latest-updates-v2225) — **Job Parts Tally** **Transactions**: client-side **search** ([`tallyTransactionSearch.ts`](src/lib/tallyTransactionSearch.ts)); **Mercury note** icon toggle ([`MercuryTransactionNoteIcon.tsx`](src/components/icons/MercuryTransactionNoteIcon.tsx)); **`parseTallyJobSplitsJson`** ([`tallyJobSplits.ts`](src/lib/tallyJobSplits.ts)) + [`TallyJobTransactionsModal.tsx`](src/components/tally/TallyJobTransactionsModal.tsx); search UI above **Posted** / **Amount** / **Counterparty**; **Escape** closes an expanded note. [`JobTally.tsx`](src/pages/JobTally.tsx).
-8. [Latest Updates (v2.224)](#latest-updates-v2224) — **Quickfill** UX: **`QuickfillSectionWrapper`** left **`h2`** titles (**`1.5rem` / 700**, same weight as Banking **h1**); **`firstVisibleSectionId`** + **`withTopDivider`** (**`2px`** **`#94a3b8`**) between blocks; **People Hours (Old)** wrapper label; duplicate titles dropped (**[`BankingSortingSnapshotSection`](src/components/quickfill/BankingSortingSnapshotSection.tsx)**, **[`HoursSection`](src/components/quickfill/HoursSection.tsx)**, **[`BilledAwaitingPaymentSection`](src/components/quickfill/BilledAwaitingPaymentSection.tsx)**; **[`CrewJobsSection`](src/components/quickfill/CrewJobsSection.tsx)** / **[`SupplyHousesSection`](src/components/quickfill/SupplyHousesSection.tsx)** **`showTitle={false}`**). **Banking sorting** snapshot: **Link…** in **Person** / **Jobs** cells when missing (no Link column); **safety yellow** buttons. **People Hours (new)**: amber notice *Assistance only makes sure hours are correct…* under day nav ([`QuickfillPeopleHoursNewSection.tsx`](src/components/quickfill/QuickfillPeopleHoursNewSection.tsx)). **Jobs Billing** reminder: **Min HCP** filter + **`JobsBillingReminderSection`** **`minHcpNumber`**. [`Quickfill.tsx`](src/pages/Quickfill.tsx).
-9. [Latest Updates (v2.223)](#latest-updates-v2223) — **Crew Jobs / Bids** live refresh: Supabase **`postgres_changes`** on **`people_crew_jobs`** / **`people_crew_bids`** (filter by selected **`work_date`**) + Team Job Labor reload in **`CrewJobsBlock`**; migration **`20260402120000_clock_sessions_sync_crew_assignments_trigger.sql`** adds **`clock_sessions_sync_crew_assignments_tr`** (resync from **`sync_crew_*_from_clock`** when **`job_ledger_id`** / **`bid_id`** changes on approved sessions) and **`supabase_realtime`** publication entries for crew tables if missing ([`CrewJobsBlock.tsx`](src/components/CrewJobsBlock.tsx)).
-10. [Latest Updates (v2.222)](#latest-updates-v2222) — **Quickfill** **Banking sorting** snapshot: parallel **`Promise.all`** (**`fetchMercuryRelationsState`** + **`fetchMercuryNicknameMaps`**); summary line **Total available** (transactions matching sorting filters); [`BankingSortingSnapshotSection.tsx`](src/components/quickfill/BankingSortingSnapshotSection.tsx)
-11. [Latest Updates (v2.221)](#latest-updates-v2221) — **Banking** **Mercury** **Link to jobs**: auto **equal %** on **add/remove** ([`MercuryTransactionAllocationsModal.tsx`](src/components/MercuryTransactionAllocationsModal.tsx) **`redistributeEqualSplit`**); existing saved splits still load from DB unchanged.
-12. [Latest Updates (v2.220)](#latest-updates-v2220) — **Jobs** **Parts**: **`mercuryCardChargesByJobId`** uses **`Math.abs`** per allocation ([`Jobs.tsx`](src/pages/Jobs.tsx)).
-13. [Latest Updates (v2.219)](#latest-updates-v2219) — **Banking** **Link to jobs & person**: positive **charge** UI; **$** / **%**; **`note`** on allocations ([`20260402003356_mercury_job_allocation_note.sql`](supabase/migrations/20260402003356_mercury_job_allocation_note.sql)); [`MercuryTransactionAllocationsModal.tsx`](src/components/MercuryTransactionAllocationsModal.tsx), [`Banking.tsx`](src/pages/Banking.tsx).
-14. [Latest Updates (v2.218)](#latest-updates-v2218) — **Banking** Mercury **Person**: optional **`user_id`** on **`mercury_transaction_attributions`**; **`list_users_for_banking_attribution`**, **`replace_mercury_transaction_splits`** **`p_user_id`** ([`20260402001226_mercury_attribution_user_id.sql`](supabase/migrations/20260402001226_mercury_attribution_user_id.sql)); [`Banking.tsx`](src/pages/Banking.tsx), [`MercuryTransactionAllocationsModal.tsx`](src/components/MercuryTransactionAllocationsModal.tsx).
-15. [Latest Updates (v2.217)](#latest-updates-v2217) — **Banking**: sort **Posted** / **Account** / **Mercury ID**; **`mercury_account_nicknames`** ([`20260401195701_mercury_account_nicknames.sql`](supabase/migrations/20260401195701_mercury_account_nicknames.sql)); filter labels + **Account nicknames** editor ([`Banking.tsx`](src/pages/Banking.tsx))
-16. [Latest Updates (v2.216)](#latest-updates-v2216) — **Auth** **`AuthProvider`** + **`useAuth`**; **Bids** workflow tabs **`B{num}`** + **`bidDisplayName`**; **My Time** **`can_edit_clock_sessions_for_user`** for **master / assistant / superintendent** ([**`20260401190823`**](supabase/migrations/20260401190823_can_edit_clock_sessions_option_a_roles.sql)); **merge up/down** reducer fix ([`myTimeDayTimeline.ts`](src/lib/myTimeDayTimeline.ts))
-17. [Latest Updates (v2.215)](#latest-updates-v2215) - **Banking** (dev-only): **`mercury_transactions`** ledger; **`sync-mercury-transactions`** + **`mercury-webhook`**; nav between **Jobs** and **Materials** ([`Banking.tsx`](src/pages/Banking.tsx), [`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md))
-18. [Latest Updates (v2.214)](#latest-updates-v2214) - **Layout** header shared **height** (dispatch icons + **Bid**); **Dashboard** strip **Assign** **optimistic** job/bid + **`Promise.all`** in **`loadPending`**; **Calendar** bottom chips **centered** ([`Layout.tsx`](src/components/Layout.tsx), [`AssignSessionJobPopover.tsx`](src/components/clock-sessions/AssignSessionJobPopover.tsx), [`useDashboardMyTeamSectionState.ts`](src/hooks/useDashboardMyTeamSectionState.ts), [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx), [`Calendar.tsx`](src/pages/Calendar.tsx))
-19. [Latest Updates (v2.207)](#latest-updates-v2207) - People **Salaried workdays** bulk modal: **Bulk unpaid time off** (`pay_staff_bulk_insert_user_time_off`, [`payStaffBulkTimeOff.ts`](src/lib/payStaffBulkTimeOff.ts)); [`SalariedWorkdaysBulkModal.tsx`](src/components/people/SalariedWorkdaysBulkModal.tsx), [`People.tsx`](src/pages/People.tsx), [`20270331192000_pay_staff_bulk_insert_user_time_off.sql`](supabase/migrations/20270331192000_pay_staff_bulk_insert_user_time_off.sql)
-20. [Latest Updates (v2.206)](#latest-updates-v2206) - **Salaried workday** collapsible in Settings; **`people_pay_config`** self-read SELECT RLS; Dashboard **Currently In** corner toggles: removed **`stripScopeOverlay`** wrapper; [`Settings.tsx`](src/pages/Settings.tsx), [`20270331160000_users_read_own_people_pay_config.sql`](supabase/migrations/20270331160000_users_read_own_people_pay_config.sql), [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)
-21. [Latest Updates (v2.203)](#latest-updates-v2203) - Dashboard **Jobs worked today**: two-column table; **job link** + inline **`[ hours • people ]`** on line 1, **address** line 2; [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)
-22. [Latest Updates (v2.202)](#latest-updates-v2202) - Dashboard **Jobs worked today**: strip subsection by **`job_ledger_id`**; total hours + people; **`jobsWorkedTodayStripRows`**; [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx), [`useDashboardMyTeamSectionState.ts`](src/hooks/useDashboardMyTeamSectionState.ts)
-23. [Latest Updates (v2.200)](#latest-updates-v2200) - Dashboard **Clocked in today**: **optimistic** approved checkmark after successful **`approve_clock_sessions`** (before **`loadPending`**); [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)
-24. [Latest Updates (v2.199)](#latest-updates-v2199) - **Session actions** modal: **Current assignment** line, **Open job** / **Open bid**, **Change assignment** + collapsed search, **Clear assignment**; [`ClockSessionStripActionsModal.tsx`](src/components/ClockSessionStripActionsModal.tsx), [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)
-25. [Latest Updates (v2.198)](#latest-updates-v2198) - Dashboard **Clocked in today**: **Session actions** modal (**long-press** / **Shift+click** / SR) — **Approve**, **Reject…** (then confirm), **Edit** memo + job/bid, **Revoke approval**; [`ClockSessionStripActionsModal.tsx`](src/components/ClockSessionStripActionsModal.tsx), [`ClockSessionStripApproveControl.tsx`](src/components/ClockSessionStripApproveControl.tsx), [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)
-26. [Latest Updates (v2.197)](#latest-updates-v2197) - Dashboard **Clocked in today**: per-session **approve** (click) + **reject** (long-press or **Shift+click**, then **in-app confirm modal**); [`ClockSessionStripApproveControl.tsx`](src/components/ClockSessionStripApproveControl.tsx), [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)
-27. [Latest Updates (v2.196)](#latest-updates-v2196) - Dashboard **Clocked in today**: **Show all** vs **Show missing** (sessions with no job and no bid); [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)
-28. [Latest Updates (v2.195)](#latest-updates-v2195) - Dashboard **Currently clocked in** strip: **Clocked in today** unified **thead** row + collapse (`dashboard_clock_strip_clocked_in_today_collapsed`)
-29. [Latest Updates (v2.194)](#latest-updates-v2194) - **My Time** Visual: **split boundary** drag **ends on release over handle** (removed `pointerup` `stopPropagation`); **slimmer** handle + **`grabbing`** via `body.my-time-boundary-dragging`; coarse-pointer sizing ([`index.css`](src/index.css) `.myTimeBoundaryHandle`)
-30. [Latest Updates (v2.193)](#latest-updates-v2193) - **My Time**: merge **job-choice modal** when allocations differ (`MyTimeMergeSegmentsModal`, `segmentJobOverrides`, `setSegmentJobOverride`, `mergeAllocChoiceRequired`)
-31. [Latest Updates (v2.192)](#latest-updates-v2192) - Dashboard **My Time** / **Edit time**: **Merge up** / **Merge down** (remove a segment by merging with neighbor; notes + optional job/bid confirm); [`splitReducer`](src/lib/myTimeDayTimeline.ts) `removeSegmentMergeWithPrev` / `removeSegmentMergeWithNext`
-32. [Latest Updates (v2.191)](#latest-updates-v2191) - **Hard Reload** / force reload: document loads **`/`** then restores route (`hardReload.ts`, `index.html`); **Clock In**: single “no assigned jobs” info toast (`ToastContext`, `ClockInOutButton`)
-33. [Latest Updates (v2.186)](#latest-updates-v2186) - Settings **Templates & testing** (dev): collapsible **Workflow email (Edge Function)** one-shot test invoking `send-workflow-notification` (DB template + Resend; no `notification_history`); [`supabase/config.toml`](supabase/config.toml) `verify_jwt = false` for `test-email` and `send-workflow-notification`
-34. [Latest Updates (v2.185)](#latest-updates-v2185) - Jobs **Stages** **Last activity** column (latest thread note preview, Central Time); remove `jobs_ledger.stage_notes`; [`jobs_ledger_thread_note_stats`](supabase/migrations/20260330023918_extend_thread_note_stats_drop_stage_notes.sql) `last_note_body` / `last_note_author_name`
-35. [Latest Updates (v2.184)](#latest-updates-v2184) - Job thread notes: **Enter** submits note; **Shift+Enter** new line ([`JobThreadNotesPanel`](src/components/JobThreadNotesPanel.tsx))
-36. [Latest Updates (v2.183)](#latest-updates-v2183) - Jobs **Stages** + **Workflow** linked jobs: **thread notes** column (`jobs_ledger_thread_notes`, Dispatch-style panel); `jobs_ledger_thread_note_stats`; [`useJobThreadNotes`](src/hooks/useJobThreadNotes.ts)
-37. [Latest Updates (v2.182)](#latest-updates-v2182) - Dashboard **Clock In** / **Update Focus**: assigned jobs **auto-load** (`list_assigned_jobs_for_dashboard`); no **Choose from my jobs** control; **Filtering by** line hidden when a single service type; stronger notes/search **borders** and **focus** styles
-38. [Latest Updates (v2.181)](#latest-updates-v2181) - Jobs **Edit Job** billing: **comma** thousands on Job Total/Bid and payment amounts; Workflow **line items** optional **item_date** + **clipboard** bulk import (Add mode)
-39. [Latest Updates (v2.180)](#latest-updates-v2180) - Bids **New/Edit** modal: **SearchableSelect**, layout + mobile grid, Distance + Plan Pages row; estimator **Bid** header
-40. [Latest Updates (v2.179)](#latest-updates-v2179) - Dashboard **My Time** / **Edit time** (this-week-only editor, Form/Visual defaults, timeline UX)
-41. [Latest Updates (v2.178)](#latest-updates-v2178) - People **Primary** / **Superintendent** on `people` roster + Pay/Hours (`20260329042321`)
-42. [Latest Updates (v2.177)](#latest-updates-v2177) - People **Housing** tab + pay report **Housing** block (`20270329180000`)
-43. [Latest Updates (v2.176)](#latest-updates-v2176) - People Pay History: Ledger **open count** + **total remaining** (filtered rows)
-44. [Latest Updates (v2.175)](#latest-updates-v2175) - People Pay History: **Draft Payroll** (renamed from Run Payroll); bulk modal copy only
-45. [Latest Updates (v2.172)](#latest-updates-v2172) - Pay History: partial payments (`pay_stub_payments`), ledger balance, Run Payroll Partial
-46. [Latest Updates (v2.171)](#latest-updates-v2171) - People Hours: audit modal edit, job highlight on grid, shared clock edit modal
-47. [Latest Updates (v2.170)](#latest-updates-v2170) - People Pay History: ledger search, actions UX, bulk modal layout
-48. [Latest Updates (v2.164)](#latest-updates-v2164) - Settings (dev): Ignored task types list under Dashboard & alerts
-49. [Latest Updates (v2.163)](#latest-updates-v2163) - Dashboard clock strip; supply house website in expanded row
-50. [Latest Updates (v2.162)](#latest-updates-v2162) - Team feedback: dev eligibility reset, submissions RLS, raw submission names
-51. [Latest Updates (v2.153)](#latest-updates-v2153) - Dashboard My Team layout; pending banner jump UX
-52. [Latest Updates (v2.152)](#latest-updates-v2152) - My Team: People you lead hours table (Pending/Approved/Total)
-53. [Latest Updates (v2.151)](#latest-updates-v2151) - My Team clock notify + ledger; Edge Function
-54. [Latest Updates (v2.150)](#latest-updates-v2150) - Dashboard My Team: People you lead roster
-55. [Latest Updates (v2.149)](#latest-updates-v2149) - Clock sessions UX; daily goals gate; goals tables
-56. [Latest Updates (v2.148)](#latest-updates-v2148) - Bid Board All notes; customer notes UX; contact_method
-57. [Latest Updates (v2.145)](#latest-updates-v2145) - Master tech mobile nav Quickfill and Review in hamburger
-58. [Latest Updates (v2.144)](#latest-updates-v2144) - Assistant billing sections at top of Dashboard
-59. [Latest Updates (v2.143)](#latest-updates-v2143) - Assistant Dashboard section reorder
-60. [Latest Updates (v2.142)](#latest-updates-v2142) - Dashboard Assigned Jobs and Superintendent Jobs UX
-61. [Latest Updates (v2.139)](#latest-updates-v2139) - Fix cost_estimates RLS for assistants
-62. [Latest Updates (v2.138)](#latest-updates-v2138) - Revoke superintendent Jobs Billing access
-63. [Latest Updates (v2.135)](#latest-updates-v2135) - Workflow: Collapse old stages toggle, breadcrumb below buttons, no-wrap scroll
-64. [Latest Updates (v2.126)](#latest-updates-v2126) - Split clock session in Edit modal
-65. [Latest Updates (v2.121)](#latest-updates-v2121) - Stages ClickTooling icon, Billing UX refactor, Report count styling
-66. [Latest Updates (v2.97)](#latest-updates-v297) - Bids Counts: Save & Add, Cancel styling; Bids Pricing: Price book centered
-67. [Latest Updates (v2.94)](#latest-updates-v294) - Bid Board Counts icon, Cover Letter inclusions fix, Apply buttons hidden when synced
-68. [Latest Updates (v2.93)](#latest-updates-v293) - Primaries full Bids access (all tabs, create/edit/delete)
-69. [Latest Updates (v2.88)](#latest-updates-v288) - People Review: Total Labor fix, Rest of Teams Labor, Sub Labor label, User on Job Rev/hr Profit/hr
-70. [Latest Updates (v2.86)](#latest-updates-v286) - People Review: Profit labels, Formula B, sub labor fix; Crew Jobs Hours
-71. [Latest Updates (v2.85)](#latest-updates-v285) - People Review: Team Summary, Only Count Paid in Full, exclude labor
-72. [Latest Updates (v2.84)](#latest-updates-v284) - Team Summary removed, Jobs tab order, Review Profit, SECURITY DEFINER RPCs
-73. [Latest Updates (v2.83)](#latest-updates-v283) - Sync to Testing script, Archive/Restore user flow
-74. [Latest Updates (v2.82)](#latest-updates-v282) - Person/User duplicate merge, Pay tab detection, cascade pay_stubs
-75. [Latest Updates (v2.81)](#latest-updates-v281) - Bids Counts Import from /Tooling, Pricing partial-fill, Inspections, Reports
-76. [Latest Updates (v2.80)](#latest-updates-v280) - Prospects Address field, Follow Up quick notes
-77. [Latest Updates (v2.79)](#latest-updates-v279) - Quickfill feedback loop, section nav, Prospects Team tab, label updates
-78. [Latest Updates (v2.78)](#latest-updates-v278) - AR removed, Billed Awaiting Payment, Quickfill Billed section, Total by Name modal
-79. [Latest Updates (v2.77)](#latest-updates-v277) - Settings Data backup top, Maintenance minimizable, Fixture type badges, Bids Counts Import
-80. [Latest Updates (v2.76)](#latest-updates-v276) - Prospects copy templates, mail icon, subject line, email sent tracking; Settings My Profile
-81. [Latest Updates (v2.75)](#latest-updates-v275) - Jobs default tab, tab labels, Prospects Option D
-82. [Latest Updates (v2.74)](#latest-updates-v274) - Create Partial Invoice modal, Ready to Bill, Paid in Full
-83. [Latest Updates (v2.73)](#latest-updates-v273) - Checkbox modals, unified stages, invoice buttons
-84. [Latest Updates (v2.72)](#latest-updates-v272) - Whole Jobs Through Stages
-85. [Latest Updates (v2.71)](#latest-updates-v271) - Partial Invoices (Option A)
-86. [Latest Updates (v2.70)](#latest-updates-v270) - Payments Made, Remaining, Stages enhancements
-87. [Latest Updates (v2.69)](#latest-updates-v269) - Prospects timer enhancements, my time modal, Prospect List time
-88. [Latest Updates (v2.68)](#latest-updates-v268) - Primary Bids RFI/Change Order/Lien Release, Projects hidden
-89. [Latest Updates (v2.67)](#latest-updates-v267) - Team Costs, Crew Jobs in Quickfill, Fixture Send to Office, Show my jobs only
-90. [Latest Updates (v2.66)](#latest-updates-v266) - RFI tab, Bids submitted_to, placeholder updates
-91. [Latest Updates (v2.65)](#latest-updates-v265) - Job Bill Details actions, Jobs/Dashboard button labels, Edit Parts
-92. [Latest Updates (v2.64)](#latest-updates-v264) - Dashboard layout, Jobs/Prospects/Bids/People, RLS
-93. [Latest Updates (v2.63)](#latest-updates-v263) - Jobs Labor Distance inline edit
-94. [Latest Updates (v2.62)](#latest-updates-v262) - Prospects enhancements
-95. [Latest Updates (v2.61)](#latest-updates-v261) - User notes on People page, Add button styling
-96. [Latest Updates (v2.59)](#latest-updates-v259) - Workflow collapsible sections, notify defaults, line items total
-97. [Latest Updates (v2.58)](#latest-updates-v258) - Subcontractor Job Tally Submit for Review RLS fix
-98. [Latest Updates (v2.57)](#latest-updates-v257) - Dashboard reports modal, icons, hide, delete dev-only; Settings save confirmation; ToastContext
-99. [Latest Updates (v2.56)](#latest-updates-v256) - Job Tally quantity, Materials abbreviations, Primary role
-100. [Latest Updates (v2.55)](#latest-updates-v255) - Dashboard and Jobs UI label updates
-101. [Latest Updates (v2.54)](#latest-updates-v254) - Quickfill page, nav icon, section order
-102. [Latest Updates (v2.53)](#latest-updates-v253) - Supply Houses & External Subs, Jobs Receivables, Dashboard pins
-103. [Latest Updates (v2.52)](#latest-updates-v252) - People Pay layout, Cost matrix mobile, Builder Review PIA
-104. [Latest Updates (v2.51)](#latest-updates-v251) - Fix app, Cost matrix pins, Builder Review, People Pay
-105. [Latest Updates (v2.50)](#latest-updates-v250) - Jobs tab order, Labor user lists, HCP row alignment
-106. [Latest Updates (v2.49)](#latest-updates-v249) - Labor and Sub Sheet Ledger moved to Jobs
-107. [Latest Updates (v2.48)](#latest-updates-v248) - Checklist FWD, Estimator Dashboard, iOS Safe Area
-108. [Latest Updates (v2.47)](#latest-updates-v247) - Hours Update Pay Sync (Realtime)
-109. [Latest Updates (v2.46)](#latest-updates-v246) - Supabase Disk IO Optimizations
-110. [Latest Updates (v2.45)](#latest-updates-v245) - Impersonation Fix, Teams Compact, Yesterday Label
-111. [Latest Updates (v2.44)](#latest-updates-v244) - Share Cost Matrix and Teams, Green Dot, Cost Matrix Nav
-112. [Latest Updates (v2.43)](#latest-updates-v243) - Navigation, Settings, Global Reload
-113. [Latest Updates (v2.42)](#latest-updates-v242) - Checklist, Dashboard, Settings, PipeTooling
-114. [Latest Updates (v2.41)](#latest-updates-v241) - People Pay/Hours Tabs, Cost Matrix, Hours Totals
-115. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
-116. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
-117. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
-118. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
-119. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
-120. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
-121. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
-122. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
-123. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
-124. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
-125. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
-126. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
-127. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
-128. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
-129. [Latest Updates (v2.26)](#latest-updates-v226)
-130. [Latest Updates (v2.25)](#latest-updates-v225)
-131. [Latest Updates (v2.24)](#latest-updates-v224)
-132. [Latest Updates (v2.23)](#latest-updates-v223)
-133. [Latest Updates (v2.22)](#latest-updates-v222)
-134. [Latest Updates (v2.21)](#latest-updates-v221)
-135. [Latest Updates (v2.20)](#latest-updates-v220)
-136. [Latest Updates (v2.19)](#latest-updates-v219)
-137. [Latest Updates (v2.18)](#latest-updates-v218)
-138. [Latest Updates (v2.17)](#latest-updates-v217)
-139. [Latest Updates (v2.16)](#latest-updates-v216)
-140. [Latest Updates (v2.15)](#latest-updates-v215)
-141. [Latest Updates (v2.14)](#latest-updates-v214)
-142. [Latest Updates (v2.13)](#latest-updates-v213)
-143. [Latest Updates (v2.12)](#latest-updates-v212)
-144. [Latest Updates (v2.11)](#latest-updates-v211)
-145. [Latest Updates (v2.10)](#latest-updates-v210)
-146. [Latest Updates (v2.9)](#latest-updates-v29)
-147. [Latest Updates (v2.8)](#latest-updates-v28)
-148. [Latest Updates (v2.7)](#latest-updates-v27)
-149. [Latest Updates (v2.6)](#latest-updates-v26)
+**New:** [v2.240 — Dashboard stale tally banner](#latest-updates-v2240)
+1. [Latest Updates (v2.239)](#latest-updates-v2239) — **Estimates**: **Unlink job** clears **`job_ledger_id`** (confirm **modal**); **sent** — **Copy customer link** / **Open customer link** under waiting message; [`EstimateCustomerAcceptLinkButtons.tsx`](src/components/estimates/EstimateCustomerAcceptLinkButtons.tsx); no duplicate link row in **Customer experience** when **`sent`**. [`Estimates.tsx`](src/pages/Estimates.tsx).
+2. [Latest Updates (v2.238)](#latest-updates-v2238) — **Estimates → Jobs**: **`create_job_from_estimate`** RPC; **Create job from estimate** modal; **Jobs** **Source estimate** + **View contract & acceptance** ([`CustomerAcceptanceRecordModal`](src/components/estimates/CustomerAcceptanceRecordModal.tsx)).
+3. [Latest Updates (v2.237)](#latest-updates-v2237) — **Estimates**: **Approve** modal layout (**`accept_instructions`** hidden; centered **Submit acceptance**); **Total** right-aligned on quote document; staff detail **`# n` + title** one **`h1`** line; inline **Customer acceptance** shows signature disclosure + checked disabled agreement before **Full name**.
+4. [Latest Updates (v2.236)](#latest-updates-v2236) — **Estimates**: **Line item catalog** modal — **Insert from catalog** and **Edit book** in one header row between the title and **×** (close uses **`marginLeft: 'auto'`**); [`Estimates.tsx`](src/pages/Estimates.tsx).
+5. [Latest Updates (v2.233)](#latest-updates-v2233) — **Estimates**: global **Quote #** ([`20260405003103_estimates_global_estimate_number.sql`](supabase/migrations/20260405003103_estimates_global_estimate_number.sql)); staff **`/estimates/{estimate_number}`** (UUID legacy **`replace`**); **Customer experience** tab (**Email** / **Acceptance** / **Thank you**); [`estimateCustomerEmail.ts`](src/lib/estimateCustomerEmail.ts) + [`EstimateCustomerDocument.tsx`](src/components/estimates/EstimateCustomerDocument.tsx) / [`EstimateCustomerThankYou.tsx`](src/components/estimates/EstimateCustomerThankYou.tsx); **`accept_url`** after send when returned.
+6. [Latest Updates (v2.232)](#latest-updates-v2232) — **Estimates (Approach A)**: `public.estimates`, Edge **get/accept/send**, [`Estimates.tsx`](src/pages/Estimates.tsx) + [`EstimateAccept.tsx`](src/pages/EstimateAccept.tsx), routing + docs ([`20260404212052_estimates_approach_a.sql`](supabase/migrations/20260404212052_estimates_approach_a.sql)).
+7. [Latest Updates (v2.231)](#latest-updates-v2231) — **Jobs worked today** duration → **Edit time**; **Overlap** badges + My Time **Overlapping clock times** / **Multiple jobs/bids in this span**; impersonation **Back** ([`Layout.tsx`](src/components/Layout.tsx)) vs **Back to my Account** ([`Settings.tsx`](src/pages/Settings.tsx)); [`hasPairwiseClockIntervalOverlap`](src/lib/myTimeDayTimeline.ts).
+8. [Latest Updates (v2.226)](#latest-updates-v2226) — **Dashboard** **Job Parts Tally** icon: amber **unlinked** count badge when the caller has linked-card Mercury transactions with no **`mercury_transaction_job_allocations`** (matches **Show unlinked** on Job Tally); RPC **`count_unlinked_mercury_transactions_for_tally`** ([`20260403044517_count_unlinked_mercury_transactions_for_tally.sql`](supabase/migrations/20260403044517_count_unlinked_mercury_transactions_for_tally.sql)); **`window` `focus`** refresh; accessible **`title`** / **`aria-label`** on the tally link ([`Dashboard.tsx`](src/pages/Dashboard.tsx)).
+9. [Latest Updates (v2.225)](#latest-updates-v2225) — **Job Parts Tally** **Transactions**: client-side **search** ([`tallyTransactionSearch.ts`](src/lib/tallyTransactionSearch.ts)); **Mercury note** icon toggle ([`MercuryTransactionNoteIcon.tsx`](src/components/icons/MercuryTransactionNoteIcon.tsx)); **`parseTallyJobSplitsJson`** ([`tallyJobSplits.ts`](src/lib/tallyJobSplits.ts)) + [`TallyJobTransactionsModal.tsx`](src/components/tally/TallyJobTransactionsModal.tsx); search UI above **Posted** / **Amount** / **Counterparty**; **Escape** closes an expanded note. [`JobTally.tsx`](src/pages/JobTally.tsx).
+10. [Latest Updates (v2.224)](#latest-updates-v2224) — **Quickfill** UX: **`QuickfillSectionWrapper`** left **`h2`** titles (**`1.5rem` / 700**, same weight as Banking **h1**); **`firstVisibleSectionId`** + **`withTopDivider`** (**`2px`** **`#94a3b8`**) between blocks; **People Hours (Old)** wrapper label; duplicate titles dropped (**[`BankingSortingSnapshotSection`](src/components/quickfill/BankingSortingSnapshotSection.tsx)**, **[`HoursSection`](src/components/quickfill/HoursSection.tsx)**, **[`BilledAwaitingPaymentSection`](src/components/quickfill/BilledAwaitingPaymentSection.tsx)**; **[`CrewJobsSection`](src/components/quickfill/CrewJobsSection.tsx)** / **[`SupplyHousesSection`](src/components/quickfill/SupplyHousesSection.tsx)** **`showTitle={false}`**). **Banking sorting** snapshot: **Link…** in **Person** / **Jobs** cells when missing (no Link column); **safety yellow** buttons. **People Hours (new)**: amber notice *Assistance only makes sure hours are correct…* under day nav ([`QuickfillPeopleHoursNewSection.tsx`](src/components/quickfill/QuickfillPeopleHoursNewSection.tsx)). **Jobs Billing** reminder: **Min HCP** filter + **`JobsBillingReminderSection`** **`minHcpNumber`**. [`Quickfill.tsx`](src/pages/Quickfill.tsx).
+11. [Latest Updates (v2.223)](#latest-updates-v2223) — **Crew Jobs / Bids** live refresh: Supabase **`postgres_changes`** on **`people_crew_jobs`** / **`people_crew_bids`** (filter by selected **`work_date`**) + Team Job Labor reload in **`CrewJobsBlock`**; migration **`20260402120000_clock_sessions_sync_crew_assignments_trigger.sql`** adds **`clock_sessions_sync_crew_assignments_tr`** (resync from **`sync_crew_*_from_clock`** when **`job_ledger_id`** / **`bid_id`** changes on approved sessions) and **`supabase_realtime`** publication entries for crew tables if missing ([`CrewJobsBlock.tsx`](src/components/CrewJobsBlock.tsx)).
+12. [Latest Updates (v2.222)](#latest-updates-v2222) — **Quickfill** **Banking sorting** snapshot: parallel **`Promise.all`** (**`fetchMercuryRelationsState`** + **`fetchMercuryNicknameMaps`**); summary line **Total available** (transactions matching sorting filters); [`BankingSortingSnapshotSection.tsx`](src/components/quickfill/BankingSortingSnapshotSection.tsx)
+13. [Latest Updates (v2.221)](#latest-updates-v2221) — **Banking** **Mercury** **Link to jobs**: auto **equal %** on **add/remove** ([`MercuryTransactionAllocationsModal.tsx`](src/components/MercuryTransactionAllocationsModal.tsx) **`redistributeEqualSplit`**); existing saved splits still load from DB unchanged.
+14. [Latest Updates (v2.220)](#latest-updates-v2220) — **Jobs** **Parts**: **`mercuryCardChargesByJobId`** uses **`Math.abs`** per allocation ([`Jobs.tsx`](src/pages/Jobs.tsx)).
+15. [Latest Updates (v2.219)](#latest-updates-v2219) — **Banking** **Link to jobs & person**: positive **charge** UI; **$** / **%**; **`note`** on allocations ([`20260402003356_mercury_job_allocation_note.sql`](supabase/migrations/20260402003356_mercury_job_allocation_note.sql)); [`MercuryTransactionAllocationsModal.tsx`](src/components/MercuryTransactionAllocationsModal.tsx), [`Banking.tsx`](src/pages/Banking.tsx).
+16. [Latest Updates (v2.218)](#latest-updates-v2218) — **Banking** Mercury **Person**: optional **`user_id`** on **`mercury_transaction_attributions`**; **`list_users_for_banking_attribution`**, **`replace_mercury_transaction_splits`** **`p_user_id`** ([`20260402001226_mercury_attribution_user_id.sql`](supabase/migrations/20260402001226_mercury_attribution_user_id.sql)); [`Banking.tsx`](src/pages/Banking.tsx), [`MercuryTransactionAllocationsModal.tsx`](src/components/MercuryTransactionAllocationsModal.tsx).
+17. [Latest Updates (v2.217)](#latest-updates-v2217) — **Banking**: sort **Posted** / **Account** / **Mercury ID**; **`mercury_account_nicknames`** ([`20260401195701_mercury_account_nicknames.sql`](supabase/migrations/20260401195701_mercury_account_nicknames.sql)); filter labels + **Account nicknames** editor ([`Banking.tsx`](src/pages/Banking.tsx))
+18. [Latest Updates (v2.216)](#latest-updates-v2216) — **Auth** **`AuthProvider`** + **`useAuth`**; **Bids** workflow tabs **`B{num}`** + **`bidDisplayName`**; **My Time** **`can_edit_clock_sessions_for_user`** for **master / assistant / superintendent** ([**`20260401190823`**](supabase/migrations/20260401190823_can_edit_clock_sessions_option_a_roles.sql)); **merge up/down** reducer fix ([`myTimeDayTimeline.ts`](src/lib/myTimeDayTimeline.ts))
+19. [Latest Updates (v2.215)](#latest-updates-v2215) - **Banking** (dev-only): **`mercury_transactions`** ledger; **`sync-mercury-transactions`** + **`mercury-webhook`**; nav between **Jobs** and **Materials** ([`Banking.tsx`](src/pages/Banking.tsx), [`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md))
+20. [Latest Updates (v2.214)](#latest-updates-v2214) - **Layout** header shared **height** (dispatch icons + **Bid**); **Dashboard** strip **Assign** **optimistic** job/bid + **`Promise.all`** in **`loadPending`**; **Calendar** bottom chips **centered** ([`Layout.tsx`](src/components/Layout.tsx), [`AssignSessionJobPopover.tsx`](src/components/clock-sessions/AssignSessionJobPopover.tsx), [`useDashboardMyTeamSectionState.ts`](src/hooks/useDashboardMyTeamSectionState.ts), [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx), [`Calendar.tsx`](src/pages/Calendar.tsx))
+21. [Latest Updates (v2.207)](#latest-updates-v2207) - People **Salaried workdays** bulk modal: **Bulk unpaid time off** (`pay_staff_bulk_insert_user_time_off`, [`payStaffBulkTimeOff.ts`](src/lib/payStaffBulkTimeOff.ts)); [`SalariedWorkdaysBulkModal.tsx`](src/components/people/SalariedWorkdaysBulkModal.tsx), [`People.tsx`](src/pages/People.tsx), [`20270331192000_pay_staff_bulk_insert_user_time_off.sql`](supabase/migrations/20270331192000_pay_staff_bulk_insert_user_time_off.sql)
+22. [Latest Updates (v2.206)](#latest-updates-v2206) - **Salaried workday** collapsible in Settings; **`people_pay_config`** self-read SELECT RLS; Dashboard **Currently In** corner toggles: removed **`stripScopeOverlay`** wrapper; [`Settings.tsx`](src/pages/Settings.tsx), [`20270331160000_users_read_own_people_pay_config.sql`](supabase/migrations/20270331160000_users_read_own_people_pay_config.sql), [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)
+23. [Latest Updates (v2.203)](#latest-updates-v2203) - Dashboard **Jobs worked today**: two-column table; **job link** + inline **`[ hours • people ]`** on line 1, **address** line 2; [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)
+24. [Latest Updates (v2.202)](#latest-updates-v2202) - Dashboard **Jobs worked today**: strip subsection by **`job_ledger_id`**; total hours + people; **`jobsWorkedTodayStripRows`**; [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx), [`useDashboardMyTeamSectionState.ts`](src/hooks/useDashboardMyTeamSectionState.ts)
+25. [Latest Updates (v2.200)](#latest-updates-v2200) - Dashboard **Clocked in today**: **optimistic** approved checkmark after successful **`approve_clock_sessions`** (before **`loadPending`**); [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)
+26. [Latest Updates (v2.199)](#latest-updates-v2199) - **Session actions** modal: **Current assignment** line, **Open job** / **Open bid**, **Change assignment** + collapsed search, **Clear assignment**; [`ClockSessionStripActionsModal.tsx`](src/components/ClockSessionStripActionsModal.tsx), [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)
+27. [Latest Updates (v2.198)](#latest-updates-v2198) - Dashboard **Clocked in today**: **Session actions** modal (**long-press** / **Shift+click** / SR) — **Approve**, **Reject…** (then confirm), **Edit** memo + job/bid, **Revoke approval**; [`ClockSessionStripActionsModal.tsx`](src/components/ClockSessionStripActionsModal.tsx), [`ClockSessionStripApproveControl.tsx`](src/components/ClockSessionStripApproveControl.tsx), [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)
+28. [Latest Updates (v2.197)](#latest-updates-v2197) - Dashboard **Clocked in today**: per-session **approve** (click) + **reject** (long-press or **Shift+click**, then **in-app confirm modal**); [`ClockSessionStripApproveControl.tsx`](src/components/ClockSessionStripApproveControl.tsx), [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)
+29. [Latest Updates (v2.196)](#latest-updates-v2196) - Dashboard **Clocked in today**: **Show all** vs **Show missing** (sessions with no job and no bid); [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)
+30. [Latest Updates (v2.195)](#latest-updates-v2195) - Dashboard **Currently clocked in** strip: **Clocked in today** unified **thead** row + collapse (`dashboard_clock_strip_clocked_in_today_collapsed`)
+31. [Latest Updates (v2.194)](#latest-updates-v2194) - **My Time** Visual: **split boundary** drag **ends on release over handle** (removed `pointerup` `stopPropagation`); **slimmer** handle + **`grabbing`** via `body.my-time-boundary-dragging`; coarse-pointer sizing ([`index.css`](src/index.css) `.myTimeBoundaryHandle`)
+32. [Latest Updates (v2.193)](#latest-updates-v2193) - **My Time**: merge **job-choice modal** when allocations differ (`MyTimeMergeSegmentsModal`, `segmentJobOverrides`, `setSegmentJobOverride`, `mergeAllocChoiceRequired`)
+33. [Latest Updates (v2.192)](#latest-updates-v2192) - Dashboard **My Time** / **Edit time**: **Merge up** / **Merge down** (remove a segment by merging with neighbor; notes + optional job/bid confirm); [`splitReducer`](src/lib/myTimeDayTimeline.ts) `removeSegmentMergeWithPrev` / `removeSegmentMergeWithNext`
+34. [Latest Updates (v2.191)](#latest-updates-v2191) - **Hard Reload** / force reload: document loads **`/`** then restores route (`hardReload.ts`, `index.html`); **Clock In**: single “no assigned jobs” info toast (`ToastContext`, `ClockInOutButton`)
+35. [Latest Updates (v2.186)](#latest-updates-v2186) - Settings **Templates & testing** (dev): collapsible **Workflow email (Edge Function)** one-shot test invoking `send-workflow-notification` (DB template + Resend; no `notification_history`); [`supabase/config.toml`](supabase/config.toml) `verify_jwt = false` for `test-email` and `send-workflow-notification`
+36. [Latest Updates (v2.185)](#latest-updates-v2185) - Jobs **Stages** **Last activity** column (latest thread note preview, Central Time); remove `jobs_ledger.stage_notes`; [`jobs_ledger_thread_note_stats`](supabase/migrations/20260330023918_extend_thread_note_stats_drop_stage_notes.sql) `last_note_body` / `last_note_author_name`
+37. [Latest Updates (v2.184)](#latest-updates-v2184) - Job thread notes: **Enter** submits note; **Shift+Enter** new line ([`JobThreadNotesPanel`](src/components/JobThreadNotesPanel.tsx))
+38. [Latest Updates (v2.183)](#latest-updates-v2183) - Jobs **Stages** + **Workflow** linked jobs: **thread notes** column (`jobs_ledger_thread_notes`, Dispatch-style panel); `jobs_ledger_thread_note_stats`; [`useJobThreadNotes`](src/hooks/useJobThreadNotes.ts)
+39. [Latest Updates (v2.182)](#latest-updates-v2182) - Dashboard **Clock In** / **Update Focus**: assigned jobs **auto-load** (`list_assigned_jobs_for_dashboard`); no **Choose from my jobs** control; **Filtering by** line hidden when a single service type; stronger notes/search **borders** and **focus** styles
+40. [Latest Updates (v2.181)](#latest-updates-v2181) - Jobs **Edit Job** billing: **comma** thousands on Job Total/Bid and payment amounts; Workflow **line items** optional **item_date** + **clipboard** bulk import (Add mode)
+41. [Latest Updates (v2.180)](#latest-updates-v2180) - Bids **New/Edit** modal: **SearchableSelect**, layout + mobile grid, Distance + Plan Pages row; estimator **Bid** header
+42. [Latest Updates (v2.179)](#latest-updates-v2179) - Dashboard **My Time** / **Edit time** (this-week-only editor, Form/Visual defaults, timeline UX)
+43. [Latest Updates (v2.178)](#latest-updates-v2178) - People **Primary** / **Superintendent** on `people` roster + Pay/Hours (`20260329042321`)
+44. [Latest Updates (v2.177)](#latest-updates-v2177) - People **Housing** tab + pay report **Housing** block (`20270329180000`)
+45. [Latest Updates (v2.176)](#latest-updates-v2176) - People Pay History: Ledger **open count** + **total remaining** (filtered rows)
+46. [Latest Updates (v2.175)](#latest-updates-v2175) - People Pay History: **Draft Payroll** (renamed from Run Payroll); bulk modal copy only
+47. [Latest Updates (v2.172)](#latest-updates-v2172) - Pay History: partial payments (`pay_stub_payments`), ledger balance, Run Payroll Partial
+48. [Latest Updates (v2.171)](#latest-updates-v2171) - People Hours: audit modal edit, job highlight on grid, shared clock edit modal
+49. [Latest Updates (v2.170)](#latest-updates-v2170) - People Pay History: ledger search, actions UX, bulk modal layout
+50. [Latest Updates (v2.164)](#latest-updates-v2164) - Settings (dev): Ignored task types list under Dashboard & alerts
+51. [Latest Updates (v2.163)](#latest-updates-v2163) - Dashboard clock strip; supply house website in expanded row
+52. [Latest Updates (v2.162)](#latest-updates-v2162) - Team feedback: dev eligibility reset, submissions RLS, raw submission names
+53. [Latest Updates (v2.153)](#latest-updates-v2153) - Dashboard My Team layout; pending banner jump UX
+54. [Latest Updates (v2.152)](#latest-updates-v2152) - My Team: People you lead hours table (Pending/Approved/Total)
+55. [Latest Updates (v2.151)](#latest-updates-v2151) - My Team clock notify + ledger; Edge Function
+56. [Latest Updates (v2.150)](#latest-updates-v2150) - Dashboard My Team: People you lead roster
+57. [Latest Updates (v2.149)](#latest-updates-v2149) - Clock sessions UX; daily goals gate; goals tables
+58. [Latest Updates (v2.148)](#latest-updates-v2148) - Bid Board All notes; customer notes UX; contact_method
+59. [Latest Updates (v2.145)](#latest-updates-v2145) - Master tech mobile nav Quickfill and Review in hamburger
+60. [Latest Updates (v2.144)](#latest-updates-v2144) - Assistant billing sections at top of Dashboard
+61. [Latest Updates (v2.143)](#latest-updates-v2143) - Assistant Dashboard section reorder
+62. [Latest Updates (v2.142)](#latest-updates-v2142) - Dashboard Assigned Jobs and Superintendent Jobs UX
+63. [Latest Updates (v2.139)](#latest-updates-v2139) - Fix cost_estimates RLS for assistants
+64. [Latest Updates (v2.138)](#latest-updates-v2138) - Revoke superintendent Jobs Billing access
+65. [Latest Updates (v2.135)](#latest-updates-v2135) - Workflow: Collapse old stages toggle, breadcrumb below buttons, no-wrap scroll
+66. [Latest Updates (v2.126)](#latest-updates-v2126) - Split clock session in Edit modal
+67. [Latest Updates (v2.121)](#latest-updates-v2121) - Stages ClickTooling icon, Billing UX refactor, Report count styling
+68. [Latest Updates (v2.97)](#latest-updates-v297) - Bids Counts: Save & Add, Cancel styling; Bids Pricing: Price book centered
+69. [Latest Updates (v2.94)](#latest-updates-v294) - Bid Board Counts icon, Cover Letter inclusions fix, Apply buttons hidden when synced
+70. [Latest Updates (v2.93)](#latest-updates-v293) - Primaries full Bids access (all tabs, create/edit/delete)
+71. [Latest Updates (v2.88)](#latest-updates-v288) - People Review: Total Labor fix, Rest of Teams Labor, Sub Labor label, User on Job Rev/hr Profit/hr
+72. [Latest Updates (v2.86)](#latest-updates-v286) - People Review: Profit labels, Formula B, sub labor fix; Crew Jobs Hours
+73. [Latest Updates (v2.85)](#latest-updates-v285) - People Review: Team Summary, Only Count Paid in Full, exclude labor
+74. [Latest Updates (v2.84)](#latest-updates-v284) - Team Summary removed, Jobs tab order, Review Profit, SECURITY DEFINER RPCs
+75. [Latest Updates (v2.83)](#latest-updates-v283) - Sync to Testing script, Archive/Restore user flow
+76. [Latest Updates (v2.82)](#latest-updates-v282) - Person/User duplicate merge, Pay tab detection, cascade pay_stubs
+77. [Latest Updates (v2.81)](#latest-updates-v281) - Bids Counts Import from /Tooling, Pricing partial-fill, Inspections, Reports
+78. [Latest Updates (v2.80)](#latest-updates-v280) - Prospects Address field, Follow Up quick notes
+79. [Latest Updates (v2.79)](#latest-updates-v279) - Quickfill feedback loop, section nav, Prospects Team tab, label updates
+80. [Latest Updates (v2.78)](#latest-updates-v278) - AR removed, Billed Awaiting Payment, Quickfill Billed section, Total by Name modal
+81. [Latest Updates (v2.77)](#latest-updates-v277) - Settings Data backup top, Maintenance minimizable, Fixture type badges, Bids Counts Import
+82. [Latest Updates (v2.76)](#latest-updates-v276) - Prospects copy templates, mail icon, subject line, email sent tracking; Settings My Profile
+83. [Latest Updates (v2.75)](#latest-updates-v275) - Jobs default tab, tab labels, Prospects Option D
+84. [Latest Updates (v2.74)](#latest-updates-v274) - Create Partial Invoice modal, Ready to Bill, Paid in Full
+85. [Latest Updates (v2.73)](#latest-updates-v273) - Checkbox modals, unified stages, invoice buttons
+86. [Latest Updates (v2.72)](#latest-updates-v272) - Whole Jobs Through Stages
+87. [Latest Updates (v2.71)](#latest-updates-v271) - Partial Invoices (Option A)
+88. [Latest Updates (v2.70)](#latest-updates-v270) - Payments Made, Remaining, Stages enhancements
+89. [Latest Updates (v2.69)](#latest-updates-v269) - Prospects timer enhancements, my time modal, Prospect List time
+90. [Latest Updates (v2.68)](#latest-updates-v268) - Primary Bids RFI/Change Order/Lien Release, Projects hidden
+91. [Latest Updates (v2.67)](#latest-updates-v267) - Team Costs, Crew Jobs in Quickfill, Fixture Send to Office, Show my jobs only
+92. [Latest Updates (v2.66)](#latest-updates-v266) - RFI tab, Bids submitted_to, placeholder updates
+93. [Latest Updates (v2.65)](#latest-updates-v265) - Job Bill Details actions, Jobs/Dashboard button labels, Edit Parts
+94. [Latest Updates (v2.64)](#latest-updates-v264) - Dashboard layout, Jobs/Prospects/Bids/People, RLS
+95. [Latest Updates (v2.63)](#latest-updates-v263) - Jobs Labor Distance inline edit
+96. [Latest Updates (v2.62)](#latest-updates-v262) - Prospects enhancements
+97. [Latest Updates (v2.61)](#latest-updates-v261) - User notes on People page, Add button styling
+98. [Latest Updates (v2.59)](#latest-updates-v259) - Workflow collapsible sections, notify defaults, line items total
+99. [Latest Updates (v2.58)](#latest-updates-v258) - Subcontractor Job Tally Submit for Review RLS fix
+100. [Latest Updates (v2.57)](#latest-updates-v257) - Dashboard reports modal, icons, hide, delete dev-only; Settings save confirmation; ToastContext
+101. [Latest Updates (v2.56)](#latest-updates-v256) - Job Tally quantity, Materials abbreviations, Primary role
+102. [Latest Updates (v2.55)](#latest-updates-v255) - Dashboard and Jobs UI label updates
+103. [Latest Updates (v2.54)](#latest-updates-v254) - Quickfill page, nav icon, section order
+104. [Latest Updates (v2.53)](#latest-updates-v253) - Supply Houses & External Subs, Jobs Receivables, Dashboard pins
+105. [Latest Updates (v2.52)](#latest-updates-v252) - People Pay layout, Cost matrix mobile, Builder Review PIA
+106. [Latest Updates (v2.51)](#latest-updates-v251) - Fix app, Cost matrix pins, Builder Review, People Pay
+107. [Latest Updates (v2.50)](#latest-updates-v250) - Jobs tab order, Labor user lists, HCP row alignment
+108. [Latest Updates (v2.49)](#latest-updates-v249) - Labor and Sub Sheet Ledger moved to Jobs
+109. [Latest Updates (v2.48)](#latest-updates-v248) - Checklist FWD, Estimator Dashboard, iOS Safe Area
+110. [Latest Updates (v2.47)](#latest-updates-v247) - Hours Update Pay Sync (Realtime)
+111. [Latest Updates (v2.46)](#latest-updates-v246) - Supabase Disk IO Optimizations
+112. [Latest Updates (v2.45)](#latest-updates-v245) - Impersonation Fix, Teams Compact, Yesterday Label
+113. [Latest Updates (v2.44)](#latest-updates-v244) - Share Cost Matrix and Teams, Green Dot, Cost Matrix Nav
+114. [Latest Updates (v2.43)](#latest-updates-v243) - Navigation, Settings, Global Reload
+115. [Latest Updates (v2.42)](#latest-updates-v242) - Checklist, Dashboard, Settings, PipeTooling
+116. [Latest Updates (v2.41)](#latest-updates-v241) - People Pay/Hours Tabs, Cost Matrix, Hours Totals
+117. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
+118. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
+119. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
+120. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
+121. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
+122. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
+123. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
+124. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
+125. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
+126. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
+127. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
+128. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
+129. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
+130. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
+131. [Latest Updates (v2.26)](#latest-updates-v226)
+132. [Latest Updates (v2.25)](#latest-updates-v225)
+133. [Latest Updates (v2.24)](#latest-updates-v224)
+134. [Latest Updates (v2.23)](#latest-updates-v223)
+135. [Latest Updates (v2.22)](#latest-updates-v222)
+136. [Latest Updates (v2.21)](#latest-updates-v221)
+137. [Latest Updates (v2.20)](#latest-updates-v220)
+138. [Latest Updates (v2.19)](#latest-updates-v219)
+139. [Latest Updates (v2.18)](#latest-updates-v218)
+140. [Latest Updates (v2.17)](#latest-updates-v217)
+141. [Latest Updates (v2.16)](#latest-updates-v216)
+142. [Latest Updates (v2.15)](#latest-updates-v215)
+143. [Latest Updates (v2.14)](#latest-updates-v214)
+144. [Latest Updates (v2.13)](#latest-updates-v213)
+145. [Latest Updates (v2.12)](#latest-updates-v212)
+146. [Latest Updates (v2.11)](#latest-updates-v211)
+147. [Latest Updates (v2.10)](#latest-updates-v210)
+148. [Latest Updates (v2.9)](#latest-updates-v29)
+149. [Latest Updates (v2.8)](#latest-updates-v28)
+150. [Latest Updates (v2.7)](#latest-updates-v27)
+151. [Latest Updates (v2.6)](#latest-updates-v26)
 150. [Workflow Features](#workflow-features)
 151. [Calendar Updates](#calendar-updates)
 152. [Access Control](#access-control)
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.240)
+
+**Date**: 2026-04-05
+
+### Dashboard — stale Job Parts Tally transactions banner
+
+- **Database**: [`20260405101849_count_unlinked_tally_stale_by_age.sql`](supabase/migrations/20260405101849_count_unlinked_tally_stale_by_age.sql) — **`count_unlinked_mercury_transactions_for_tally_stale(min_age_days)`** (default **2**); same scope as **`count_unlinked_mercury_transactions_for_tally`** (**`job_tally_min_posted_ymd`**, linked card, no **`mercury_transaction_job_allocations`**), plus **`posted_at`** Chicago calendar-day age **strictly greater than** **`min_age_days`**
+- **UI**: **[`DashboardTallyStaleBanner.tsx`](src/components/DashboardTallyStaleBanner.tsx)** above the tally + Job Report row when count **> 0** (full-width button, count chip, navigates **`/tally?tab=transactions`**); **[`Dashboard.tsx`](src/pages/Dashboard.tsx)** loads with **`withSupabaseRetry`** and refreshes on **`window` `focus`** alongside the existing unlinked tally badge count
+
+---
+
+## Latest Updates (v2.239)
+
+**Date**: 2026-04-11
+
+### Estimates — unlink job, sent customer links, confirm modal
+
+- **Unlink job** ([`Estimates.tsx`](src/pages/Estimates.tsx)): on **customer_accepted** detail, when **`job_ledger_id`** is set, **Unlink job** clears only the estimate’s link (**`job_ledger_id` → null**); the **Jobs** row is unchanged. Confirmation uses an in-app **modal** (title **Unlink job**; **Cancel** / **Unlink**; overlay **`zIndex` 1002**), not **`window.confirm`**.
+- **Sent** — **Copy customer link** / **Open customer link** appear **below** the amber *Waiting for customer…* paragraph. Shared control: [`EstimateCustomerAcceptLinkButtons.tsx`](src/components/estimates/EstimateCustomerAcceptLinkButtons.tsx). When status is **`sent`**, that pair is **not** repeated at the top of the **Customer experience** `<details>` ( **`draft`** and **`customer_accepted`** unchanged).
+
 ---
 
 ## Latest Updates (v2.238)

@@ -7514,6 +7514,10 @@ export type Database = {
         Args: never
         Returns: number
       }
+      count_unlinked_mercury_transactions_for_tally_stale: {
+        Args: { min_age_days?: number }
+        Returns: number
+      }
       create_job_from_estimate: {
         Args: {
           p_customer_id?: string

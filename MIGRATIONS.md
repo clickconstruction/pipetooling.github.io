@@ -100,6 +100,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: [`Estimates.tsx`](src/pages/Estimates.tsx) **Create job from estimate**; [`Jobs.tsx`](src/pages/Jobs.tsx) **Source estimate** strip + **[`CustomerAcceptanceRecordModal`](src/components/estimates/CustomerAcceptanceRecordModal.tsx)**; [`jobLedgerCustomer.ts`](src/lib/jobLedgerCustomer.ts), [`resolveEffectiveJobMasterUserId.ts`](src/lib/resolveEffectiveJobMasterUserId.ts)
 - **Category**: Estimates / Jobs
 
+**`20260405101849_count_unlinked_tally_stale_by_age.sql`**
+- **Purpose**: Dashboard **stale tally** callout — count unlinked linked-card Mercury rows whose **`posted_at`** Chicago calendar date is **more than `min_age_days`** before today (default **2**), with the same scope as **`count_unlinked_mercury_transactions_for_tally`** (**`job_tally_min_posted_ymd`** floor, no **`mercury_transaction_job_allocations`**)
+- **Changes**: **`count_unlinked_mercury_transactions_for_tally_stale(min_age_days integer DEFAULT 2)`** — `SECURITY DEFINER`, `GRANT EXECUTE` to **`authenticated`**
+- **Impact**: [`DashboardTallyStaleBanner.tsx`](src/components/DashboardTallyStaleBanner.tsx), [`Dashboard.tsx`](src/pages/Dashboard.tsx) (focus refresh with tally unlinked count)
+- **Category**: Dashboard / Job Parts Tally
+
 #### April 8, 2026
 
 **`20260405010252_estimate_customer_experience_defaults_snapshot.sql`**
