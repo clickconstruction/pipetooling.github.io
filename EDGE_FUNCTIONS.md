@@ -725,6 +725,28 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ---
 
+### resolve-ip-geolocation
+
+**Purpose**: Resolve a **public** IPv4/IPv6 address to approximate **lat/lng** (via **ipinfo.io**) so staff can open **Google Maps**. Used from **Estimates** customer activity and acceptance IP lines ([`IpAddressMapButton`](src/components/estimates/IpAddressMapButton.tsx)).
+
+**Endpoint**: `GET /functions/v1/resolve-ip-geolocation?ip=<address>`
+
+**Headers**: `Authorization: Bearer <user_jwt>`, `apikey: <anon_key>` (same pattern as other staff `fetch` calls to Edge).
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, **`IPINFO_TOKEN`** (ipinfo.io API token). If **`IPINFO_TOKEN`** is unset, returns **503** `Geolocation not configured`.
+
+**Gateway**: `verify_jwt = false`; **`auth.getUser()`** with the Bearer on the Supabase client.
+
+**Validation**: Private/link-local/loopback/CGNAT IPv4 and common non-global IPv6 prefixes return **400** without calling ipinfo. Malformed IP returns **400**.
+
+**Success** (**200** JSON): `{ "lat": number, "lng": number, "label": string | null }` (`label` may combine city/region when present).
+
+**Errors**: **401** if not signed in; **404** if provider has no `loc`; **502** if provider HTTP error or invalid coordinates.
+
+**Note**: Geo-IP is **approximate** (often city/ISP). Respect ipinfo rate limits; the client caches results per IP in **`sessionStorage`** for 24 hours.
+
+---
+
 ### send-checklist-notification
 
 **Purpose**: Send Web Push notifications for checklist events (completion, test)

@@ -394,6 +394,10 @@ verify_jwt = false
 [functions.send-estimate-to-customer]
 verify_jwt = false
 
+# Staff: JWT validated in function (getUser). Requires IPINFO_TOKEN secret for ipinfo.io.
+[functions.resolve-ip-geolocation]
+verify_jwt = false
+
 # Same as test-email: JWT validated in function (getUser + users.role); gateway returned Invalid JWT for browser sessions.
 [functions.login-as-user]
 verify_jwt = false

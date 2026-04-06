@@ -52,6 +52,7 @@ import CreateJobFromEstimateModal, {
   type LinkedCustomerPrefill,
 } from '../components/estimates/CreateJobFromEstimateModal'
 import EstimateCustomerAcceptLinkButtons from '../components/estimates/EstimateCustomerAcceptLinkButtons'
+import IpAddressMapButton from '../components/estimates/IpAddressMapButton'
 import {
   estimateLineItemRecentsStorageKey,
   loadRecentCatalogIds,
@@ -2427,12 +2428,17 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                       ev.event_type === 'public_accept_submitted' && meta && meta.had_signature === true
                         ? ' (with signature)'
                         : ''
-                    const clientIpSuffix = ev.client_ip?.trim() ? ` · ${ev.client_ip.trim()}` : ''
                     return (
                       <li key={ev.id} style={{ marginBottom: '0.35rem' }}>
                         {estimateCustomerEventLabel(ev.event_type)}
                         {sig}
-                        {clientIpSuffix} — {formatNotificationDatetime(ev.occurred_at)}
+                        {ev.client_ip?.trim() ? (
+                          <>
+                            {' · '}
+                            <IpAddressMapButton ip={ev.client_ip} />
+                          </>
+                        ) : null}{' '}
+                        — {formatNotificationDatetime(ev.occurred_at)}
                       </li>
                     )
                   })}
@@ -2446,7 +2452,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               <ul style={{ fontSize: '0.9rem', color: '#374151' }}>
                 <li>Name: {row.acceptor_printed_name || '—'}</li>
                 <li>At: {row.acceptor_consented_at ? new Date(row.acceptor_consented_at).toLocaleString() : '—'}</li>
-                <li>IP: {row.acceptor_ip || '—'}</li>
+                <li>
+                  IP: <IpAddressMapButton ip={row.acceptor_ip} />
+                </li>
                 {acceptorSignatureSignedUrl ? (
                   <li style={{ marginTop: '0.75rem', listStyle: 'none', marginLeft: '-1rem' }}>
                     <div style={{ fontWeight: 600, marginBottom: '0.35rem' }}>Signature</div>
