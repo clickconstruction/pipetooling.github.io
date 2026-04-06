@@ -148,6 +148,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: [`get-estimate-for-customer`](supabase/functions/get-estimate-for-customer/index.ts) on each successful public **GET** **200**
 - **Category**: Estimates / Edge / Audit
 
+**`20260406173212_stale_tally_staff_job_search_scope.sql`**
+- **Purpose**: Stale tally **Assign to jobs** — **`search_jobs_for_tally_mercury_assign_as_user`** uses **`jobs_ledger_row_visible_for_tally_assign(jl.id, auth.uid())`** (staff invoker ledger scope) for **non-subcontractor** card owners; **subcontractor** targets keep **`p_for_user_id`** (team-only) so results stay aligned with **`replace_mercury_job_splits_for_linked_card_as_staff`**
+- **Changes**: **`CREATE OR REPLACE`** **`search_jobs_for_tally_mercury_assign_as_user`** — **`CASE`** on whether **`p_for_user_id`** is a subcontractor; updated **`COMMENT`**; **`REVOKE`/`GRANT EXECUTE`**
+- **Impact**: [`MercuryTransactionAllocationsModal.tsx`](src/components/MercuryTransactionAllocationsModal.tsx) (unchanged client); [`DashboardStaleTallyStaffFollowUpModal.tsx`](src/components/DashboardStaleTallyStaffFollowUpModal.tsx)
+- **Category**: Dashboard / Job Parts Tally
+
 #### April 8, 2026
 
 **`20260405010252_estimate_customer_experience_defaults_snapshot.sql`**

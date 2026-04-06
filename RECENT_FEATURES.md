@@ -7,14 +7,17 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2027-04-09
+last_updated: 2026-04-06
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.246 → v2.4"
+version_range: "v2.247 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.247)"
+    line: ~726
+    description: "Stale tally Assign to jobs: search_jobs_for_tally_mercury_assign_as_user uses staff invoker job visibility except subcontractor targets (team-only)"
   - name: "Latest Version (v2.246)"
     line: ~726
     description: "Stale tally follow-up: assistant scope = adopted masters job teams (Option A staff_can_view_user_for_tally_followup)"
@@ -565,6 +568,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.247 — Stale tally Assign: staff-scoped job search (hybrid)](#latest-updates-v2247)
 **New:** [v2.246 — Stale tally follow-up: assistants adopted masters job teams](#latest-updates-v2246)
 **New:** [v2.245 — Stale tally follow-up: assistants see all targets](#latest-updates-v2245)
 **New:** [v2.244 — Estimates customer activity audit + timeline IP](#latest-updates-v2244)
@@ -725,6 +729,18 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.247)
+
+**Date**: 2026-04-06
+
+### Dashboard / Quickfill — stale tally Assign to jobs: staff job search
+
+- **Database**: [`20260406173212_stale_tally_staff_job_search_scope.sql`](supabase/migrations/20260406173212_stale_tally_staff_job_search_scope.sql) — **`search_jobs_for_tally_mercury_assign_as_user`**: for **non-subcontractor** **`p_for_user_id`**, **`jobs_ledger_row_visible_for_tally_assign`** uses **`auth.uid()`** (staff invoker); **subcontractor** targets still use **`p_for_user_id`** (team-only, save-safe with **`replace_mercury_job_splits_for_linked_card_as_staff`**)
+- **Impact**: [`MercuryTransactionAllocationsModal.tsx`](src/components/MercuryTransactionAllocationsModal.tsx) (**`tallyActAsUserId`** path unchanged)
+- **Docs**: [`MIGRATIONS.md`](MIGRATIONS.md)
+
 ---
 
 ## Latest Updates (v2.246)
