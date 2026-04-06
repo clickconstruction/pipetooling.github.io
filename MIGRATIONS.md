@@ -205,6 +205,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Docs**: [`SALARY_CLOCK_SESSIONS.md`](SALARY_CLOCK_SESSIONS.md)
 - **Category**: People / Hours / Dashboard
 
+#### April 8, 2027
+
+**`20270408150000_tally_staff_followup_assistant_any_target.sql`**
+- **Purpose**: Dashboard / Quickfill **stale tally staff follow-up** — **assistant** role sees **all** target users for Mercury stale-unlinked list and staff assign flows (same scope as **dev** via **`staff_can_view_user_for_tally_followup`**)
+- **Changes**: **`CREATE OR REPLACE`** **`staff_can_view_user_for_tally_followup`** — treat **`v_role = 'assistant'`** like dev (**`RETURN true`** for any **`p_target`**); remove previous **`assistants_share_master`** / adopting-master-only branch; updated **`COMMENT`**
+- **Impact**: [`useStaleTallyStaffFollowUp.ts`](src/hooks/useStaleTallyStaffFollowUp.ts), [`DashboardStaleTallyStaffFollowUpModal.tsx`](src/components/DashboardStaleTallyStaffFollowUpModal.tsx) (`list_stale_*`, `search_jobs_for_tally_mercury_assign_as_user`, `replace_mercury_job_splits_for_linked_card_as_staff`); [`ACCESS_CONTROL.md`](ACCESS_CONTROL.md) stale tally row
+- **Category**: Dashboard / Job Parts Tally / Access
+
 ### March 2027
 
 #### March 31, 2027

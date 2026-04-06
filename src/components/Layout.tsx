@@ -358,6 +358,13 @@ export default function Layout() {
                 <NavLink to="/prospects" style={linkStyle} onClick={onNavClick}>Prospects</NavLink>
               </>
             )}
+            {role === 'master_technician' && (
+              <>
+                <NavLink to="/checklist" style={linkStyle} onClick={onNavClick}>Checklist</NavLink>
+                <NavLink to="/customers" style={linkStyle} onClick={onNavClick}>Customers</NavLink>
+                <NavLink to="/people" style={linkStyle} onClick={onNavClick}>People</NavLink>
+              </>
+            )}
           </>
         )}
       </>
@@ -585,7 +592,7 @@ export default function Layout() {
               </svg>
             </NavLink>
           )}
-          {!(role === 'estimator' && isMobile) && (
+          {!(role === 'estimator' && isMobile) && role !== 'master_technician' && (
           <NavLink
             to="/checklist"
             style={({ isActive }) => ({
@@ -606,7 +613,7 @@ export default function Layout() {
           )}
           {role != null && role !== 'subcontractor' && role !== 'primary' && (
             <>
-              {!(isMobile && role === 'dev') && (
+              {!(isMobile && role === 'dev') && role !== 'master_technician' && (
                 <NavLink
                   to="/customers"
                   style={({ isActive }) => ({
@@ -625,7 +632,7 @@ export default function Layout() {
                   </svg>
                 </NavLink>
               )}
-              {!(role === 'estimator' && isMobile) && (
+              {!(role === 'estimator' && isMobile) && role !== 'master_technician' && (
               <NavLink
               to="/people"
               style={({ isActive }) => ({
