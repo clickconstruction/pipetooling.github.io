@@ -90,6 +90,13 @@ export function getLastWeekRange(): { start: string; end: string } {
   return { start: lastSun, end: lastSat }
 }
 
+/** Inclusive Sunday (prior week) through Saturday (current week), America/Chicago. Matches leader split week gate. */
+export function getThisAndLastWeekRange(): { start: string; end: string } {
+  const { start: lastSun } = getLastWeekRange()
+  const { end: thisSat } = getDefaultWeekRange()
+  return { start: lastSun, end: thisSat }
+}
+
 /** YYYY-MM-DD in company calendar (America/Chicago) for an instant (en-CA). */
 export function denverCalendarDayKey(ms: number): string {
   return new Intl.DateTimeFormat('en-CA', {

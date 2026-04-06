@@ -63,6 +63,7 @@ import {
   formatDenverTimeOnly,
   formatWorkDateYmdWeekdayLongFriendly,
   getDefaultWeekRange,
+  getThisAndLastWeekRange,
 } from '../utils/dateUtils'
 
 export type { DayEditorSession }
@@ -197,7 +198,10 @@ type Props = {
   /** When set, edits that user's clock sessions (team lead / pay access). Empty sessions triggers a fetch for dateStr. */
   subjectUserId?: string | null
   subjectDisplayName?: string | null
-  /** Inclusive YYYY-MM-DD range allowed for edit/save (defaults to current calendar week). */
+  /**
+   * Legacy prop; ignored for gating. The modal uses America/Chicago **this week + last week** for save/edit
+   * (`getThisAndLastWeekRange()`), with a prior-week acknowledgment step for days outside the current week.
+   */
   editableRange?: { start: string; end: string }
   jobLabels?: Record<string, string>
   bidLabels?: Record<string, string>
@@ -221,7 +225,7 @@ export function DashboardMyTimeDayEditorModal({
   sessions: sessionsProp,
   subjectUserId: subjectUserIdProp,
   subjectDisplayName,
-  editableRange: editableRangeProp,
+  editableRange: _editableRangeProp,
   jobLabels = {},
   bidLabels = {},
   onClose,
@@ -232,8 +236,18 @@ export function DashboardMyTimeDayEditorModal({
   onMarkNotComingIn,
 }: Props) {
   const { showToast } = useToastContext()
-  const { start, end } = editableRangeProp ?? getDefaultWeekRange()
-  const editable = dateStr >= start && dateStr <= end
+  void _editableRangeProp
+  const saveableRange = getThisAndLastWeekRange()
+  const currentWeekRange = getDefaultWeekRange()
+  const inSaveableRange = dateStr >= saveableRange.start && dateStr <= saveableRange.end
+  const inCurrentWeek =
+    dateStr >= currentWeekRange.start && dateStr <= currentWeekRange.end
+  const needsPriorWeekAck = inSaveableRange && !inCurrentWeek
+  const [priorWeekAck, setPriorWeekAck] = useState(false)
+  useEffect(() => {
+    setPriorWeekAck(false)
+  }, [dateStr])
+  const effectiveEditable = inSaveableRange && (inCurrentWeek || priorWeekAck)
 
   const showNotComingInControl =
     showMarkNotComingIn === true && Boolean(subjectUserIdProp?.trim())
@@ -423,6 +437,14 @@ export function DashboardMyTimeDayEditorModal({
         cancelled = true
       }
     }
+    if (!inSaveableRange) {
+      setFetchedSessions([])
+      setSessionsFetchError(null)
+      setSessionsLoading(false)
+      return () => {
+        cancelled = true
+      }
+    }
     if (!effectiveSubjectUserId || !dateStr) {
       setFetchedSessions([])
       setSessionsFetchError(null)
@@ -460,7 +482,7 @@ export function DashboardMyTimeDayEditorModal({
     return () => {
       cancelled = true
     }
-  }, [sessionsProp.length, effectiveSubjectUserId, dateStr, sessionsFetchNonce])
+  }, [sessionsProp.length, inSaveableRange, effectiveSubjectUserId, dateStr, sessionsFetchNonce])
 
   const fetchDaySessionsForEditor = useCallback(async (): Promise<DayEditorSession[]> => {
     if (!effectiveSubjectUserId || !dateStr) return []
@@ -491,7 +513,7 @@ export function DashboardMyTimeDayEditorModal({
   const ncnsClickAllowed =
     allowNcnsFromMyTime &&
     !editingSelf &&
-    editable &&
+    effectiveEditable &&
     !!effectiveSubjectUserId &&
     sortedSessions.length > 0 &&
     !sessionsLoading &&
@@ -505,7 +527,7 @@ export function DashboardMyTimeDayEditorModal({
 
   const ncnsButtonTitle = useMemo(() => {
     if (!allowNcnsFromMyTime || editingSelf) return ''
-    if (!editable) return ''
+    if (!effectiveEditable) return ''
     if (sessionsLoading || pendingAuthForFetch) return 'Loading…'
     if (sortedSessions.length === 0) return 'No sessions to reject for this day'
     if (ncnsHasOpenSession) return 'Click to clock out open sessions at current time, then record NCNS'
@@ -513,7 +535,7 @@ export function DashboardMyTimeDayEditorModal({
   }, [
     allowNcnsFromMyTime,
     editingSelf,
-    editable,
+    effectiveEditable,
     sessionsLoading,
     pendingAuthForFetch,
     sortedSessions.length,
@@ -1047,7 +1069,7 @@ export function DashboardMyTimeDayEditorModal({
   /** Persist UI splits to DB when needed so job/bid assign targets only one segment (single-row + virtual splits). */
   const resolveAssignSessionForSegment = useCallback(
     async (clusterId: string, segIdx: number) => {
-      if (!editable) return null
+      if (!effectiveEditable) return null
       const c = sessionClustersRef.current.find((x) => sessionClusterId(x) === clusterId)
       const split = splitByClusterRef.current[clusterId]
       if (!c?.length || !split) return null
@@ -1104,7 +1126,7 @@ export function DashboardMyTimeDayEditorModal({
         setSaving(false)
       }
     },
-    [editable, editingSelf, onLinkedSessionsUpdated]
+    [effectiveEditable, editingSelf, onLinkedSessionsUpdated]
   )
 
   const endBoundaryDragListeners = useCallback(() => {
@@ -1471,7 +1493,7 @@ export function DashboardMyTimeDayEditorModal({
       setAdjustTimesSession(null)
       return
     }
-    if (!editable || !authUserId) {
+    if (!effectiveEditable || !authUserId) {
       onClose()
       return
     }
@@ -1517,7 +1539,7 @@ export function DashboardMyTimeDayEditorModal({
     assignBulk,
     forceClockOutSession,
     adjustTimesSession,
-    editable,
+    effectiveEditable,
     authUserId,
     sessionClusters,
     initialSnapshot,
@@ -1645,7 +1667,13 @@ export function DashboardMyTimeDayEditorModal({
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
             }}
-            aria-describedby={sessionsSpanDenverSubtitle ? 'dashboard-my-time-editor-subtitle' : undefined}
+            aria-describedby={
+              needsPriorWeekAck && !priorWeekAck
+                ? 'dashboard-my-time-prior-week-notice-desc'
+                : sessionsSpanDenverSubtitle
+                  ? 'dashboard-my-time-editor-subtitle'
+                  : undefined
+            }
           >
             {modalTitleText}
           </h3>
@@ -1658,7 +1686,7 @@ export function DashboardMyTimeDayEditorModal({
               gap: 8,
             }}
           >
-            {editable && resolvedSessions.length > 0 ? (
+            {effectiveEditable && resolvedSessions.length > 0 ? (
               <>
                 <span style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 500 }}>Edit layout</span>
                 <div
@@ -1718,10 +1746,55 @@ export function DashboardMyTimeDayEditorModal({
             {sessionsSpanDenverSubtitle}
           </p>
         ) : null}
-        {!editable ? (
+        {!inSaveableRange ? (
           <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
-            Only this week can be edited from the dashboard (server uses America/Chicago week boundaries).
+            Only this week and last week can be edited from the dashboard (America/Chicago week boundaries). For older
+            days, use People → Hours.
           </p>
+        ) : needsPriorWeekAck && !priorWeekAck ? (
+          <div
+            id="dashboard-my-time-prior-week-notice-desc"
+            style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: 420 }}
+          >
+            <p style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#111827' }}>Editing a prior week</p>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}>
+              You are about to change hours for{' '}
+              <strong>{formatWorkDateYmdWeekdayLongFriendly(dateStr)}</strong> (last week). Changes can affect payroll and
+              approval status; use People → Hours if you need a different audit path.
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={onClose}
+                style={{
+                  padding: '0.45rem 0.85rem',
+                  borderRadius: 6,
+                  border: '1px solid #d1d5db',
+                  background: 'white',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => setPriorWeekAck(true)}
+                style={{
+                  padding: '0.45rem 0.85rem',
+                  borderRadius: 6,
+                  border: '1px solid #2563eb',
+                  background: '#2563eb',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                }}
+              >
+                Continue editing
+              </button>
+            </div>
+          </div>
         ) : sessionsFetchError ? (
           <p style={{ margin: 0, fontSize: '0.875rem', color: '#b91c1c' }}>{sessionsFetchError}</p>
         ) : pendingAuthForFetch || (sessionsProp.length === 0 && sessionsLoading) ? (
@@ -1862,9 +1935,9 @@ export function DashboardMyTimeDayEditorModal({
                           onRequestMergeJobChoice={(payload) =>
                             openMergeJobChoiceForCluster(clusterId, payload)
                           }
-                          onForceClockOut={editable && !saving ? openForceClockOut : undefined}
-                          onAdjustTimes={editable && !saving ? openAdjustTimes : undefined}
-                          onRejectSession={editable && !saving ? handleRejectSession : undefined}
+                          onForceClockOut={effectiveEditable && !saving ? openForceClockOut : undefined}
+                          onAdjustTimes={effectiveEditable && !saving ? openAdjustTimes : undefined}
+                          onRejectSession={effectiveEditable && !saving ? handleRejectSession : undefined}
                           rejectSessionBusyId={rejectSessionBusyId}
                         />
                       ) : (
@@ -1893,9 +1966,9 @@ export function DashboardMyTimeDayEditorModal({
                           onRequestMergeJobChoice={(payload) =>
                             openMergeJobChoiceForCluster(clusterId, payload)
                           }
-                          onForceClockOut={editable && !saving ? openForceClockOut : undefined}
-                          onAdjustTimes={editable && !saving ? openAdjustTimes : undefined}
-                          onRejectSession={editable && !saving ? handleRejectSession : undefined}
+                          onForceClockOut={effectiveEditable && !saving ? openForceClockOut : undefined}
+                          onAdjustTimes={effectiveEditable && !saving ? openAdjustTimes : undefined}
+                          onRejectSession={effectiveEditable && !saving ? handleRejectSession : undefined}
                           rejectSessionBusyId={rejectSessionBusyId}
                         />
                       )}
@@ -1946,7 +2019,7 @@ export function DashboardMyTimeDayEditorModal({
                     {markNotComingInBusy ? '…' : 'Not coming in'}
                   </button>
                 ) : null}
-                {allowNcnsFromMyTime && !editingSelf && editable ? (
+                {allowNcnsFromMyTime && !editingSelf && effectiveEditable ? (
                   <button
                     type="button"
                     onClick={() => void handleNcnsHeaderClick()}
@@ -1993,7 +2066,7 @@ export function DashboardMyTimeDayEditorModal({
             </div>
           </>
         )}
-        {!editable || resolvedSessions.length === 0 ? (
+        {!effectiveEditable || resolvedSessions.length === 0 ? (
           <div
             style={{
               display: 'flex',
@@ -2033,7 +2106,7 @@ export function DashboardMyTimeDayEditorModal({
                   {markNotComingInBusy ? '…' : 'Not coming in'}
                 </button>
               ) : null}
-              {allowNcnsFromMyTime && !editingSelf && editable ? (
+              {allowNcnsFromMyTime && !editingSelf && effectiveEditable ? (
                 <button
                   type="button"
                   onClick={() => void handleNcnsHeaderClick()}

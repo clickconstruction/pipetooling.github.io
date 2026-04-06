@@ -7148,6 +7148,64 @@ export default function Bids() {
     return 'pending'
   }
 
+  const submissionFollowupNav = useMemo(() => {
+    if (!selectedBidForSubmission) {
+      return {
+        list: [] as BidWithBuilder[],
+        currentIndex: -1,
+        total: 0,
+        canPrev: false,
+        canNext: false,
+        inList: false,
+      }
+    }
+    const sectionKey = getSubmissionSectionKey(selectedBidForSubmission)
+    if (!sectionKey) {
+      return {
+        list: [] as BidWithBuilder[],
+        currentIndex: -1,
+        total: 0,
+        canPrev: false,
+        canNext: false,
+        inList: false,
+      }
+    }
+    const list: BidWithBuilder[] =
+      sectionKey === 'unsent'
+        ? submissionUnsent
+        : sectionKey === 'pending'
+          ? submissionPending
+          : sectionKey === 'won'
+            ? submissionWon
+            : sectionKey === 'startedOrComplete'
+              ? submissionStartedOrComplete
+              : submissionLost
+    const currentIndex = list.findIndex((b) => b.id === selectedBidForSubmission.id)
+    const total = list.length
+    const inList = currentIndex >= 0
+    return {
+      list,
+      currentIndex,
+      total,
+      canPrev: inList && currentIndex > 0,
+      canNext: inList && currentIndex < total - 1,
+      inList,
+    }
+  }, [
+    selectedBidForSubmission,
+    submissionUnsent,
+    submissionPending,
+    submissionWon,
+    submissionStartedOrComplete,
+    submissionLost,
+  ])
+
+  function navigateSubmissionFollowup(delta: -1 | 1) {
+    if (!submissionFollowupNav.inList) return
+    const next = submissionFollowupNav.list[submissionFollowupNav.currentIndex + delta]
+    if (next) selectBidAndSyncUrl(next, 'submission-followup')
+  }
+
   const bidBoardBuckets = useMemo(() => {
     const buckets: Record<keyof typeof submissionSectionOpen, BidWithBuilder[]> = {
       unsent: [],
@@ -12150,58 +12208,118 @@ export default function Bids() {
       {/* Submission & Followup Tab */}
       {activeTab === 'submission-followup' && (
         <div>
-          {/* Print Followup Sheet UI */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-            <label htmlFor="account-manager-print" style={{ fontWeight: 500 }}>
-              Followup sheet for:
-            </label>
-            <select
-              id="account-manager-print"
-              value={selectedAccountManagerForPrint}
-              onChange={(e) => setSelectedAccountManagerForPrint(e.target.value)}
-              style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '180px' }}
-            >
-              <option value="">Select...</option>
-              <option value="ALL">ALL ({totalBidsCount})</option>
-              <option value="UNASSIGNED">UNASSIGNED ({unassignedBidsCount})</option>
-              {uniqueAccountManagers.map((manager) => (
-                <option key={manager.id} value={manager.id}>
-                  {manager.name} ({manager.count})
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={() => printFollowupSheet(selectedAccountManagerForPrint)}
-              disabled={!selectedAccountManagerForPrint}
-              style={{ 
-                padding: '0.5rem 1rem', 
-                background: selectedAccountManagerForPrint ? '#3b82f6' : '#d1d5db', 
-                color: 'white', 
-                border: 'none', 
-                borderRadius: 4, 
-                cursor: selectedAccountManagerForPrint ? 'pointer' : 'not-allowed',
-                fontWeight: 500
-              }}
-            >
-              Print
-            </button>
-            <button
-              type="button"
-              onClick={() => void downloadFollowupSheetPdf(selectedAccountManagerForPrint)}
-              disabled={!selectedAccountManagerForPrint}
-              style={{ 
-                padding: '0.5rem 1rem', 
-                background: selectedAccountManagerForPrint ? '#10b981' : '#d1d5db', 
-                color: 'white', 
-                border: 'none', 
-                borderRadius: 4, 
-                cursor: selectedAccountManagerForPrint ? 'pointer' : 'not-allowed',
-                fontWeight: 500
-              }}
-            >
-              PDF
-            </button>
+          {/* Print Followup Sheet UI + list nav when a bid summary is open */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem', width: '100%', boxSizing: 'border-box' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0, flexShrink: 0 }}>
+              {selectedBidForSubmission && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => navigateSubmissionFollowup(-1)}
+                    disabled={!submissionFollowupNav.canPrev}
+                    aria-label="Previous bid in this submission list"
+                    title="Previous bid in this list"
+                    style={{
+                      padding: '0.35rem 0.6rem',
+                      background: submissionFollowupNav.canPrev ? '#f3f4f6' : '#f9fafb',
+                      border: '1px solid #d1d5db',
+                      borderRadius: 4,
+                      cursor: submissionFollowupNav.canPrev ? 'pointer' : 'not-allowed',
+                      fontSize: '1rem',
+                      lineHeight: 1,
+                      color: submissionFollowupNav.canPrev ? '#111827' : '#9ca3af',
+                    }}
+                  >
+                    ←
+                  </button>
+                  <span
+                    aria-live="polite"
+                    style={{
+                      fontSize: '0.875rem',
+                      fontWeight: 600,
+                      color: submissionFollowupNav.inList ? '#374151' : '#9ca3af',
+                      minWidth: '3.5rem',
+                      textAlign: 'center',
+                    }}
+                  >
+                    {submissionFollowupNav.inList
+                      ? `[${submissionFollowupNav.currentIndex + 1}/${submissionFollowupNav.total}]`
+                      : '—'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => navigateSubmissionFollowup(1)}
+                    disabled={!submissionFollowupNav.canNext}
+                    aria-label="Next bid in this submission list"
+                    title="Next bid in this list"
+                    style={{
+                      padding: '0.35rem 0.6rem',
+                      background: submissionFollowupNav.canNext ? '#f3f4f6' : '#f9fafb',
+                      border: '1px solid #d1d5db',
+                      borderRadius: 4,
+                      cursor: submissionFollowupNav.canNext ? 'pointer' : 'not-allowed',
+                      fontSize: '1rem',
+                      lineHeight: 1,
+                      color: submissionFollowupNav.canNext ? '#111827' : '#9ca3af',
+                    }}
+                  >
+                    →
+                  </button>
+                </>
+              )}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <label htmlFor="account-manager-print" style={{ fontWeight: 500 }}>
+                Followup sheet for:
+              </label>
+              <select
+                id="account-manager-print"
+                value={selectedAccountManagerForPrint}
+                onChange={(e) => setSelectedAccountManagerForPrint(e.target.value)}
+                style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '180px' }}
+              >
+                <option value="">Select...</option>
+                <option value="ALL">ALL ({totalBidsCount})</option>
+                <option value="UNASSIGNED">UNASSIGNED ({unassignedBidsCount})</option>
+                {uniqueAccountManagers.map((manager) => (
+                  <option key={manager.id} value={manager.id}>
+                    {manager.name} ({manager.count})
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => printFollowupSheet(selectedAccountManagerForPrint)}
+                disabled={!selectedAccountManagerForPrint}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: selectedAccountManagerForPrint ? '#3b82f6' : '#d1d5db',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: selectedAccountManagerForPrint ? 'pointer' : 'not-allowed',
+                  fontWeight: 500,
+                }}
+              >
+                Print
+              </button>
+              <button
+                type="button"
+                onClick={() => void downloadFollowupSheetPdf(selectedAccountManagerForPrint)}
+                disabled={!selectedAccountManagerForPrint}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: selectedAccountManagerForPrint ? '#10b981' : '#d1d5db',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: selectedAccountManagerForPrint ? 'pointer' : 'not-allowed',
+                  fontWeight: 500,
+                }}
+              >
+                PDF
+              </button>
+            </div>
           </div>
 
           {selectedBidForSubmission && (
@@ -12496,7 +12614,7 @@ export default function Bids() {
                       <tr
                         key={bid.id}
                         id={`submission-row-${bid.id}`}
-                        onClick={() => setSharedBid(bid)}
+                        onClick={() => selectBidAndSyncUrl(bid, 'submission-followup')}
                         style={{
                           borderBottom: '1px solid #e5e7eb',
                           cursor: 'pointer',
@@ -12548,7 +12666,7 @@ export default function Bids() {
                                 aria-label="Go to summary"
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  setSharedBid(bid)
+                                  selectBidAndSyncUrl(bid, 'submission-followup')
                                   setTimeout(() => submissionSummaryCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0)
                                 }}
                                 style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
@@ -12609,7 +12727,7 @@ export default function Bids() {
                       <tr
                         key={bid.id}
                         id={`submission-row-${bid.id}`}
-                        onClick={() => setSharedBid(bid)}
+                        onClick={() => selectBidAndSyncUrl(bid, 'submission-followup')}
                         style={{
                           borderBottom: '1px solid #e5e7eb',
                           cursor: 'pointer',
@@ -12688,7 +12806,7 @@ export default function Bids() {
                                 aria-label="Go to summary"
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  setSharedBid(bid)
+                                  selectBidAndSyncUrl(bid, 'submission-followup')
                                   setTimeout(() => submissionSummaryCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0)
                                 }}
                                 style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
@@ -12750,7 +12868,7 @@ export default function Bids() {
                       <tr
                         key={bid.id}
                         id={`submission-row-${bid.id}`}
-                        onClick={() => setSharedBid(bid)}
+                        onClick={() => selectBidAndSyncUrl(bid, 'submission-followup')}
                         style={{
                           borderBottom: '1px solid #e5e7eb',
                           cursor: 'pointer',
@@ -12827,7 +12945,7 @@ export default function Bids() {
                                 aria-label="Go to summary"
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  setSharedBid(bid)
+                                  selectBidAndSyncUrl(bid, 'submission-followup')
                                   setTimeout(() => submissionSummaryCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0)
                                 }}
                                 style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
@@ -12885,7 +13003,7 @@ export default function Bids() {
                       <tr
                         key={bid.id}
                         id={`submission-row-${bid.id}`}
-                        onClick={() => setSharedBid(bid)}
+                        onClick={() => selectBidAndSyncUrl(bid, 'submission-followup')}
                         style={{
                           borderBottom: '1px solid #e5e7eb',
                           cursor: 'pointer',
@@ -12924,7 +13042,7 @@ export default function Bids() {
                                 aria-label="Go to summary"
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  setSharedBid(bid)
+                                  selectBidAndSyncUrl(bid, 'submission-followup')
                                   setTimeout(() => submissionSummaryCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0)
                                 }}
                                 style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
@@ -12981,7 +13099,7 @@ export default function Bids() {
                     <tr
                       key={bid.id}
                       id={`submission-row-${bid.id}`}
-                      onClick={() => setSharedBid(bid)}
+                      onClick={() => selectBidAndSyncUrl(bid, 'submission-followup')}
                       style={{
                         borderBottom: '1px solid #e5e7eb',
                         cursor: 'pointer',
@@ -13000,7 +13118,7 @@ export default function Bids() {
                                 aria-label="Go to summary"
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  setSharedBid(bid)
+                                  selectBidAndSyncUrl(bid, 'submission-followup')
                                   setTimeout(() => submissionSummaryCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0)
                                 }}
                                 style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}

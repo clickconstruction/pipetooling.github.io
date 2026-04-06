@@ -1757,22 +1757,75 @@ export function DashboardTeamActiveClockStrip({
                                         const range = open
                                           ? `${tIn} – Open`
                                           : `${tIn} – ${new Date(s.clocked_out_at!).toLocaleTimeString(undefined, timeOpts)}`
+                                        const stripApproveStatus = stripApproveStatusForSession(
+                                          s,
+                                          optimisticStripApprovedIds,
+                                        )
+                                        const timeRangeLabel = open
+                                          ? `${tIn} – Open`
+                                          : `${tIn} – ${new Date(s.clocked_out_at!).toLocaleTimeString(undefined, timeOpts)}`
+                                        const personName = stripPersonDisplayName(s)
                                         return (
                                           <tr key={s.id || `${s.user_id}-${idx}`}>
                                             <td style={clockedInTodayDetailCell}>
-                                              <span
-                                                style={{
-                                                  display: 'inline-flex',
-                                                  alignItems: 'center',
-                                                  gap: '0.35rem',
-                                                  flexWrap: 'wrap',
-                                                }}
-                                              >
-                                                {stripPersonDisplayName(s)}
-                                                {clockStripOverlapByUserId.get(s.user_id) ? (
-                                                  <StripClockOverlapBadge />
-                                                ) : null}
-                                              </span>
+                                              <div style={clockedInTodaySessionBlock}>
+                                                <div
+                                                  style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    flexWrap: 'wrap',
+                                                    gap: '0.35rem',
+                                                    minWidth: 0,
+                                                  }}
+                                                >
+                                                  {s.id ? (
+                                                    <ClockSessionStripApproveControl
+                                                      sessionId={s.id}
+                                                      status={stripApproveStatus}
+                                                      interactive={
+                                                        canApproveClockSessions === true &&
+                                                        stripApproveStatus === 'pending'
+                                                      }
+                                                      actionsEligible={
+                                                        canApproveClockSessions === true &&
+                                                        (stripApproveStatus === 'pending' ||
+                                                          stripApproveStatus === 'approved')
+                                                      }
+                                                      busy={stripApproveBusy.has(s.id)}
+                                                      onOpenActions={() => {
+                                                        if (stripApproveStatus === 'open') return
+                                                        setStripActionsSession(
+                                                          stripActionsPayloadFromSession(
+                                                            s,
+                                                            personName,
+                                                            timeRangeLabel,
+                                                            stripApproveStatus === 'approved'
+                                                              ? 'approved'
+                                                              : 'pending',
+                                                          ),
+                                                        )
+                                                      }}
+                                                      onApprove={async () => {
+                                                        await handleStripSessionApprove(s.id)
+                                                      }}
+                                                      onReject={async () => {}}
+                                                    />
+                                                  ) : null}
+                                                  <span
+                                                    style={{
+                                                      display: 'inline-flex',
+                                                      alignItems: 'center',
+                                                      gap: '0.35rem',
+                                                      flexWrap: 'wrap',
+                                                    }}
+                                                  >
+                                                    {personName}
+                                                    {clockStripOverlapByUserId.get(s.user_id) ? (
+                                                      <StripClockOverlapBadge />
+                                                    ) : null}
+                                                  </span>
+                                                </div>
+                                              </div>
                                             </td>
                                             <td
                                               style={{

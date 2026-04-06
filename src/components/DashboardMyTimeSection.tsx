@@ -685,7 +685,6 @@ export default function DashboardMyTimeSection({ userId }: Props) {
         <DashboardMyTimeDayEditorModal
           dateStr={editorDate}
           sessions={myTimeModalSessions}
-          editableRange={getDefaultWeekRange()}
           jobLabels={myTimeJobLabels}
           bidLabels={myTimeBidLabels}
           onClose={() => setEditorDate(null)}

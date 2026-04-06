@@ -50,7 +50,7 @@ import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
 import AssignedStageCard from '../components/AssignedStageCard'
 import SendRecordInvoiceModal, { type JobBillingContext } from '../components/jobs/SendRecordInvoiceModal'
 import { getNextDisplayOrders } from '../utils/checklistOrder'
-import { denverCalendarDayKey, getDefaultWeekRange } from '../utils/dateUtils'
+import { denverCalendarDayKey } from '../utils/dateUtils'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { fetchDashboardPhase1 } from '../lib/dashboardBootQueries'
 import { readDashboardBootCache, writeDashboardBootCache } from '../lib/dashboardBootCache'
@@ -3944,7 +3944,6 @@ export default function Dashboard() {
           sessions={[]}
           subjectUserId={stripMyTimeEditor.subjectUserId}
           subjectDisplayName={stripMyTimeEditor.displayName}
-          editableRange={getDefaultWeekRange()}
           jobLabels={{}}
           bidLabels={{}}
           allowNcnsFromMyTime={showClockStripScopeToggle}

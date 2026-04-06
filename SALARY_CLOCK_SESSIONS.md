@@ -62,6 +62,8 @@ Resolution order for calendar display: **time off → weekend exclusion (when te
 - **Catch-up** closed rows for slot 1 / 2 if missing after the respective end.
 - **Opens** when inside each window and **no** session is open on that day; uses `salary_segment_index` **1** or **2** and segment B job/bid when `use_split_focus`.
 
+Split-mode **NOT EXISTS** overlap checks for canonical slots **1** / **2** treat a session as on the sync day when **`work_date`** matches **`p_work_date`** **or** the **clock-in** civil date in the effective template timezone matches **`p_work_date`** (`20270408153000` — avoids a duplicate empty slot **1** when **`work_date`** and sync day disagree at a boundary).
+
 There is **no** half-open overlap guard before INSERT (`20270403180000` sync guard superseded): a **manual or split `user_punch` that is still open** blocks auto-open because **`has_open`** is true. Closed segments do **not** block insert; payroll/reporting should not double-count the same wall time (operational caveat).
 
 Orphan **NULL-index** `salary_schedule` rows are **deleted** when the effective template for that day is **split** (non-final only).
@@ -124,11 +126,12 @@ Week editability uses **America/Chicago** (current week for single session; this
 | `20270403101000` | No template: delete non-final salary rows for day |
 | `20270402100000` | Continuous: conceptually “no duplicate NULL row when indexed split children exist” — behavior kept in `20260404050204` via `v_skip_continuous_null_inserts` |
 | `20270403180000` | Split RPCs: indexed parent → `user_punch` children; **sync** overlap guard later **replaced** by boundary model (`20260404050204`) |
+| `20270408153000` | Split sync: slot **1** / **2** overlap **NOT EXISTS** uses **`work_date`** **or** **clock-in date in template `tz`** vs `p_work_date` |
 | `20260404050204` | **Boundary sync**: mass-close all opens at block end; open only when no open day-wide; PTO/no-template/weekend close opens at `p_now` |
 
 ---
 
 ## See also
 
-- [`RECENT_FEATURES.md`](./RECENT_FEATURES.md) — historical v2.228 / v2.229 notes
+- [`RECENT_FEATURES.md`](./RECENT_FEATURES.md) — v2.249 split overlap TZ; historical v2.228 / v2.229 notes
 - [`GLOSSARY.md`](./GLOSSARY.md) — Clock Sessions

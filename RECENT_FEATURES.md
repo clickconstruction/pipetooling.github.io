@@ -12,11 +12,17 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.248 → v2.4"
+version_range: "v2.250 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.250)"
+    line: ~742
+    description: "My Time day editor: prior-week acknowledgment + this+last week save window (getThisAndLastWeekRange); editableRange prop ignored"
+  - name: "Latest Version (v2.249)"
+    line: ~768
+    description: "Salary split sync: overlap guard uses work_date or clock-in civil date in template TZ (20270408153000); avoids duplicate empty canonical slot 1"
   - name: "Latest Version (v2.248)"
-    line: ~726
+    line: ~754
     description: "Stale tally Assign: dev/master_technician/assistant search all jobs_ledger for non-sub targets (LIMIT 50); sub targets team-only"
   - name: "Latest Version (v2.247)"
     line: ~726
@@ -571,6 +577,8 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.250 — My Time: prior-week acknowledgment + two-week edit window](#latest-updates-v2250)
+**New:** [v2.249 — Salary split sync: overlap guard (work_date + clock-in TZ date)](#latest-updates-v2249)
 **New:** [v2.248 — Stale tally Assign: all jobs in search (dev / master / assistant)](#latest-updates-v2248)
 **New:** [v2.247 — Stale tally Assign: staff-scoped job search (hybrid)](#latest-updates-v2247)
 **New:** [v2.246 — Stale tally follow-up: assistants adopted masters job teams](#latest-updates-v2246)
@@ -733,6 +741,29 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.250)
+
+**Date**: 2026-04-06
+
+### Dashboard / Quickfill — My Time: prior-week acknowledgment + two-week edit window
+
+- **UI**: [`DashboardMyTimeDayEditorModal.tsx`](src/components/DashboardMyTimeDayEditorModal.tsx) — save/edit window is **America/Chicago** **this week + last week** via [`getThisAndLastWeekRange()`](src/utils/dateUtils.ts). Days in **last week** show an **Editing a prior week** step (**Continue editing** / **Cancel**) before the timeline; days **older** than last week stay read-only with copy pointing to **People → Hours**. **`editableRange`** prop is **ignored** for gating (callers no longer pass it).
+- **Docs**: [`PROJECT_DOCUMENTATION.md`](PROJECT_DOCUMENTATION.md) Dashboard **My Time**
+
+---
+
+## Latest Updates (v2.249)
+
+**Date**: 2026-04-08
+
+### Salary split sync: overlap guard uses `work_date` or clock-in civil date (template TZ)
+
+- **Database**: [`20270408153000_salary_sync_split_overlap_clock_in_tz_date.sql`](supabase/migrations/20270408153000_salary_sync_split_overlap_clock_in_tz_date.sql) — **`salary_sync_one_user_clock_sessions`**: in **split** template mode, the **NOT EXISTS** overlap checks for canonical slots **1** and **2** treat a session as on the sync day when **`cs.work_date = p_work_date`** **or** **`(cs.clocked_in_at AT TIME ZONE tz)::date = p_work_date`** ( **`tz`** from effective template or day override), not **`work_date` alone**.
+- **Why**: avoids a duplicate empty canonical **`salary_segment_index = 1`** row when a **`user_punch`** segment’s **`work_date`** differs from **`p_work_date`** but clock-in civil date in template TZ matches the sync day (overnight / boundary cases).
+- **Docs**: [`SALARY_CLOCK_SESSIONS.md`](SALARY_CLOCK_SESSIONS.md), [`MIGRATIONS.md`](MIGRATIONS.md)
+
 ---
 
 ## Latest Updates (v2.248)
@@ -1556,7 +1587,7 @@ when_to_read:
 
 ### Dashboard — My Time / Edit time
 
-- **Edit scope**: The day editor’s `editableRange` matches the Dashboard **this week** (Denver Sunday–Saturday from [`getDefaultWeekRange()`](src/utils/dateUtils.ts), passed from [`DashboardMyTimeSection.tsx`](src/components/DashboardMyTimeSection.tsx)). **Only this week** can open **Edit time** and save; **last week** shows a read-only hours grid (copy: “Only this week can be edited…” in [`DashboardMyTimeDayEditorModal.tsx`](src/components/DashboardMyTimeDayEditorModal.tsx)). For sessions outside that window, use **People → Hours** (and related audit/edit flows).
+- **Edit scope** (superseded in **v2.250**): Previously the modal used a narrow `editableRange` (**this week** only). As of **v2.250**, [`DashboardMyTimeDayEditorModal.tsx`](src/components/DashboardMyTimeDayEditorModal.tsx) uses [`getThisAndLastWeekRange()`](src/utils/dateUtils.ts) with a **prior-week confirmation** for **last week**; the **My Time** grid still limits cell clicks to **this week** — see **v2.250** and [`PROJECT_DOCUMENTATION.md`](PROJECT_DOCUMENTATION.md) Dashboard **My Time**.
 - **Visual vs Form**: On mount, **Form** when `matchMedia('(max-width: 560px)')`, otherwise **Visual** — aligned with [`.myTimeDayClusterFormGrid`](src/index.css). Toggle remains available. Modal width uses `min(920px, 96vw)`.
 - **Form layout**: Two-column grid — **times** (**Span**, **Split**, **Ends at**) on the **left**; **duration**, job/bid, and **notes** on the **right**; **block header** (weekday / date / range) at the **top-left** of the grid; soft segment divider ([`.myTimeDayClusterFormSegmentDivider`](src/index.css)). **Duration** styling matches **Span**.
 - **Boundaries & splits**: Inner boundaries adjust via **Ends at** on the **earlier** segment only; **Split** is per segment ([`addSplitMidInSegment`](src/lib/myTimeDayTimeline.ts)). Cluster-level “Add split at” time picker removed; reducer keeps ends deduped.

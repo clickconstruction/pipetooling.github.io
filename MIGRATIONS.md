@@ -231,6 +231,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Same RPCs as **`20270408150000`**; [`ACCESS_CONTROL.md`](ACCESS_CONTROL.md) stale tally row
 - **Category**: Dashboard / Job Parts Tally / Access
 
+**`20270408153000_salary_sync_split_overlap_clock_in_tz_date.sql`**
+- **Purpose**: **Split** template mode — **`salary_sync_one_user_clock_sessions`** overlap **NOT EXISTS** for canonical slots **1** / **2** should count sessions whose **clock-in** civil date in the template (or override) **timezone** matches **`p_work_date`**, not only **`work_date`**, so sync does not insert a duplicate empty **`salary_segment_index = 1`** row when **`work_date`** and sync day disagree at a boundary.
+- **Changes**: **`CREATE OR REPLACE`** **`salary_sync_one_user_clock_sessions`** — in split-mode slot **1** / **2** overlap predicates, add **`OR (cs.clocked_in_at AT TIME ZONE tz)::date = p_work_date`** alongside **`cs.work_date = p_work_date`**; **`COMMENT`** + **`REVOKE ALL … FROM PUBLIC`**
+- **Impact**: [`SALARY_CLOCK_SESSIONS.md`](SALARY_CLOCK_SESSIONS.md); [`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.249
+- **Category**: People / Hours / Salary sync
+
 ### March 2027
 
 #### March 31, 2027

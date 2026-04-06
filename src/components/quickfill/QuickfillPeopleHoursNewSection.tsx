@@ -7,7 +7,6 @@ import { useToastContext } from '../../contexts/ToastContext'
 import {
   denverCalendarDayKey,
   formatDenverCalendarDayWithYear,
-  getDefaultWeekRange,
   referenceDateForWorkDateYmd,
 } from '../../utils/dateUtils'
 import { syncSalaryClockSessionsForUserDay } from '../../lib/salaryScheduleSync'
@@ -254,7 +253,6 @@ export function QuickfillPeopleHoursNewSection() {
           sessions={[]}
           subjectUserId={stripMyTimeEditor.subjectUserId}
           subjectDisplayName={stripMyTimeEditor.displayName}
-          editableRange={getDefaultWeekRange()}
           jobLabels={{}}
           bidLabels={{}}
           allowNcnsFromMyTime={showClockStripScopeToggle}
