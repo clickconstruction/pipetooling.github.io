@@ -7855,6 +7855,10 @@ export type Database = {
         Args: { p_person_name: string }
         Returns: boolean
       }
+      jobs_ledger_row_visible_for_tally_assign: {
+        Args: { p_job_id: string; p_user_id: string }
+        Returns: boolean
+      }
       jobs_ledger_thread_note_stats: {
         Args: { p_job_ids: string[] }
         Returns: {

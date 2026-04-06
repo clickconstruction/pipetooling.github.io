@@ -287,7 +287,8 @@ export function MercuryTransactionAllocationsModal({
     if (!open) return
     const t = setTimeout(() => {
       const q = jobSearch.trim()
-      if (q.length < 2) {
+      const staffTallyAsUser = Boolean(tallySelfService && tallyActAsUserId)
+      if (q.length < 2 && !staffTallyAsUser) {
         setJobResults([])
         setJobSearchLoading(false)
         return

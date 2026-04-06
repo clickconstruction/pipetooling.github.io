@@ -8,6 +8,7 @@ import { parseTallyJobSplitsJson } from '../lib/tallyJobSplits'
 import { useToastContext } from '../contexts/ToastContext'
 import { fetchOffsetPersonNameOptions } from '../lib/offsetPersonNameOptions'
 import { useAuth } from '../hooks/useAuth'
+import { useMercuryLedgerNicknames } from '../hooks/useMercuryLedgerNicknames'
 import { APP_CALENDAR_TZ, denverCalendarDayKey } from '../utils/dateUtils'
 
 type StaleStaffRow = Database['public']['Functions']['list_stale_unlinked_mercury_transactions_for_tally_staff']['Returns'][number]
@@ -97,6 +98,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
 }: DashboardStaleTallyStaffFollowUpModalProps) {
   const { showToast } = useToastContext()
   const { user: authUser } = useAuth()
+  const { nicknameByAccount, nicknameByDebitCard } = useMercuryLedgerNicknames({ enabled: open })
   const [loading, setLoading] = useState(false)
   const [rows, setRows] = useState<StaleStaffRow[]>([])
   const [allocRow, setAllocRow] = useState<StaleStaffRow | null>(null)
@@ -481,6 +483,8 @@ export function DashboardStaleTallyStaffFollowUpModal({
         usersOptions={[]}
         tallySelfService
         tallyActAsUserId={allocRow?.target_user_id ?? null}
+        nicknameByDebitCard={nicknameByDebitCard}
+        nicknameByAccount={nicknameByAccount}
         recentPersonPicksStorageKey={null}
         onSaved={() => {
           setAllocRow(null)
