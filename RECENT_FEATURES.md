@@ -12,11 +12,14 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.250 → v2.4"
+version_range: "v2.251 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.251)"
+    line: ~746
+    description: "Dashboard strip Jobs worked today: ClockSessionStripApproveControl parity with Clocked in today detail rows"
   - name: "Latest Version (v2.250)"
-    line: ~742
+    line: ~762
     description: "My Time day editor: prior-week acknowledgment + this+last week save window (getThisAndLastWeekRange); editableRange prop ignored"
   - name: "Latest Version (v2.249)"
     line: ~768
@@ -577,6 +580,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.251 — Jobs worked today: approve controls (Clocked in today parity)](#latest-updates-v2251)
 **New:** [v2.250 — My Time: prior-week acknowledgment + two-week edit window](#latest-updates-v2250)
 **New:** [v2.249 — Salary split sync: overlap guard (work_date + clock-in TZ date)](#latest-updates-v2249)
 **New:** [v2.248 — Stale tally Assign: all jobs in search (dev / master / assistant)](#latest-updates-v2248)
@@ -741,6 +745,17 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.251)
+
+**Date**: 2026-04-06
+
+### Dashboard — Jobs worked today: approve controls (parity with Clocked in today)
+
+- **UI**: [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx) — expanded **Jobs worked today** per-session rows include **`ClockSessionStripApproveControl`** (short approve, long-press actions modal) with the same wiring as **Clocked in today** detail lines.
+- **Docs**: [`PROJECT_DOCUMENTATION.md`](PROJECT_DOCUMENTATION.md) Dashboard **Currently clocked in** / **Jobs worked today**
+
 ---
 
 ## Latest Updates (v2.250)

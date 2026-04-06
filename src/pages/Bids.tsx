@@ -13,6 +13,7 @@ import { addExpandedPartsToPO, expandTemplate, getTemplatePartsPreview } from '.
 import { decimalHoursToHhMm } from '../lib/format'
 import { loadTeamLaborDataForBids, type TeamLaborBidRow } from '../utils/teamLabor'
 import { useAuth } from '../hooks/useAuth'
+import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useToastContext } from '../contexts/ToastContext'
 import { useNewCustomerModal } from '../contexts/NewCustomerModalContext'
 import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
@@ -937,6 +938,7 @@ export default function Bids() {
   const location = useLocation()
   const navigate = useNavigate()
   const [, setSearchParams] = useSearchParams()
+  const narrowViewport640 = useNarrowViewport640()
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -1024,6 +1026,7 @@ export default function Bids() {
   const [expandedBidBoardBidId, setExpandedBidBoardBidId] = useState<string | null>(null)
   const [bidBoardNotesTab, setBidBoardNotesTab] = useState<'bid' | 'customer' | 'all'>('all')
   const [bidFormOpen, setBidFormOpen] = useState(false)
+  const [pendingBidFormFocus, setPendingBidFormFocus] = useState<'projectName' | 'gcBuilder' | null>(null)
   const [editingBid, setEditingBid] = useState<BidWithBuilder | null>(null)
   const [viewingCustomer, setViewingCustomer] = useState<Customer | null>(null)
   const [viewingGcBuilder, setViewingGcBuilder] = useState<GcBuilder | null>(null)
@@ -1427,6 +1430,21 @@ export default function Bids() {
       }
     })()
   }, [activeTab, selectedBidForSubmission?.id, authUser?.id])
+
+  useEffect(() => {
+    if (!bidFormOpen || !pendingBidFormFocus) return
+    const which = pendingBidFormFocus
+    const timeoutId = window.setTimeout(() => {
+      const elId = which === 'projectName' ? 'bid-form-project-name' : 'bid-form-gc-builder'
+      const el = document.getElementById(elId)
+      if (el instanceof HTMLElement) {
+        el.focus()
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+      setPendingBidFormFocus(null)
+    }, 50)
+    return () => window.clearTimeout(timeoutId)
+  }, [bidFormOpen, pendingBidFormFocus])
 
   useEffect(() => {
     if (!clearAllCountsOpen) return
@@ -6499,6 +6517,7 @@ export default function Bids() {
     setNotes('')
     setFormServiceTypeId(selectedServiceTypeId)
     setProjectContactExpanded(true)
+    setPendingBidFormFocus(null)
     setBidFormOpen(true)
     setError(null)
   }
@@ -6536,11 +6555,12 @@ export default function Bids() {
     setNotes('')
     setFormServiceTypeId(selectedServiceTypeId)
     setProjectContactExpanded(true)
+    setPendingBidFormFocus(null)
     setBidFormOpen(true)
     setError(null)
   }
 
-  function openEditBid(bid: BidWithBuilder) {
+  function openEditBid(bid: BidWithBuilder, opts?: { focus?: 'projectName' | 'gcBuilder' }) {
     clearBidDateSentAttestationFlow()
     setEditingBid(bid)
     setDriveLink(bid.drive_link ?? '')
@@ -6583,6 +6603,7 @@ export default function Bids() {
     setFormServiceTypeId((bid as any).service_type_id ?? selectedServiceTypeId)
     setDeleteConfirmProjectName('')
     setProjectContactExpanded(true)
+    setPendingBidFormFocus(opts?.focus ?? null)
     setBidFormOpen(true)
     setError(null)
   }
@@ -6602,6 +6623,7 @@ export default function Bids() {
 
   function closeBidForm() {
     setBidFormOpen(false)
+    setPendingBidFormFocus(null)
     setEditingBid(null)
     setDeleteConfirmProjectName('')
     setDeletingBid(false)
@@ -7266,6 +7288,78 @@ export default function Bids() {
     setTimeout(() => {
       document.getElementById(`submission-row-${selectedBidForSubmission.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }, 0)
+  }
+
+  function submissionFollowupUrlRow(label: string, url: string | null | undefined) {
+    const trimmed = (url ?? '').trim()
+    if (!trimmed) {
+      return (
+        <p style={{ margin: '0.25rem 0' }}>
+          <strong>{label}</strong> —
+        </p>
+      )
+    }
+    return (
+      <div
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '0.35rem',
+          flexWrap: 'wrap',
+          margin: '0.25rem 0',
+        }}
+      >
+        <a
+          href={trimmed}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`Open ${label}`}
+          onClick={(e) => {
+            e.preventDefault()
+            openInExternalBrowser(trimmed)
+          }}
+          style={{ color: '#3b82f6' }}
+        >
+          {label}
+        </a>
+        <button
+          type="button"
+          aria-label={`Copy ${label} URL`}
+          title="Copy URL"
+          onClick={() => {
+            void (async () => {
+              try {
+                if (!navigator.clipboard?.writeText) {
+                  showToast('Could not copy URL', 'error')
+                  return
+                }
+                await navigator.clipboard.writeText(trimmed)
+                showToast('Copied', 'success')
+              } catch {
+                showToast('Could not copy URL', 'error')
+              }
+            })()
+          }}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 3,
+            background: 'transparent',
+            border: 'none',
+            borderRadius: 4,
+            cursor: 'pointer',
+            color: '#6b7280',
+            flexShrink: 0,
+            lineHeight: 1,
+          }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} fill="currentColor" aria-hidden="true">
+            <path d="M480 400L288 400C279.2 400 272 392.8 272 384L272 128C272 119.2 279.2 112 288 112L421.5 112C425.7 112 429.8 113.7 432.8 116.7L491.3 175.2C494.3 178.2 496 182.3 496 186.5L496 384C496 392.8 488.8 400 480 400zM288 448L480 448C515.3 448 544 419.3 544 384L544 186.5C544 169.5 537.3 153.2 525.3 141.2L466.7 82.7C454.7 70.7 438.5 64 421.5 64L288 64C252.7 64 224 92.7 224 128L224 384C224 419.3 252.7 448 288 448zM160 192C124.7 192 96 220.7 96 256L96 512C96 547.3 124.7 576 160 576L352 576C387.3 576 416 547.3 416 512L416 496L368 496L368 512C368 520.8 360.8 528 352 528L160 528C151.2 528 144 520.8 144 512L144 256C144 247.2 151.2 240 160 240L176 240L176 192L160 192z" />
+          </svg>
+        </button>
+      </div>
+    )
   }
 
   // Builder Review: customers sorted by last contact (oldest or newest first, nulls last)
@@ -12324,9 +12418,61 @@ export default function Bids() {
 
           {selectedBidForSubmission && (
             <div ref={submissionSummaryCardRef} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.5rem 2rem', background: 'white', marginBottom: '1.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: narrowViewport640 ? 'column' : 'row',
+                  justifyContent: 'space-between',
+                  alignItems: narrowViewport640 ? 'stretch' : 'center',
+                  gap: narrowViewport640 ? '0.75rem' : 0,
+                  marginBottom: '1rem',
+                }}
+              >
                 <h2 style={{ margin: 0 }}>{bidWorkflowTabHeading(selectedBidForSubmission)}</h2>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    ...(narrowViewport640 ? { justifyContent: 'flex-end', flexWrap: 'wrap' } : {}),
+                  }}
+                >
+                  {/* Share copies ?bidId=&tab=submission-followup; superintendent role is redirected off that tab by URL effect */}
+                  <button
+                    type="button"
+                    title="Copy link to this bid on Submission & Followup"
+                    aria-label="Copy link to this bid on Submission & Followup"
+                    onClick={() => {
+                      void (async () => {
+                        try {
+                          const base = typeof window !== 'undefined' ? window.location.origin : ''
+                          const url = `${base}/bids?bidId=${encodeURIComponent(selectedBidForSubmission.id)}&tab=submission-followup`
+                          if (!navigator.clipboard?.writeText) {
+                            showToast('Could not copy link', 'error')
+                            return
+                          }
+                          await navigator.clipboard.writeText(url)
+                          showToast('Link copied', 'success')
+                        } catch {
+                          showToast('Could not copy link', 'error')
+                        }
+                      })()
+                    }}
+                    style={{
+                      padding: '0.5rem',
+                      background: '#f3f4f6',
+                      border: '1px solid #d1d5db',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
+                    </svg>
+                  </button>
                   <button
                     type="button"
                     onClick={() => openEditBid(selectedBidForSubmission)}
@@ -12356,75 +12502,133 @@ export default function Bids() {
               <div style={{ marginBottom: '1rem', fontSize: '0.875rem' }}>
                 <p style={{ margin: '0.25rem 0' }}><strong>Bid Size</strong> {formatCompactCurrency(selectedBidForSubmission.bid_value != null ? Number(selectedBidForSubmission.bid_value) : null)}</p>
                 <p style={{ margin: '1.5rem 0' }} />
-                <p style={{ margin: '0.25rem 0' }}>
-                  <strong>Builder:</strong>{' '}
-                  {(selectedBidForSubmission.customers || selectedBidForSubmission.bids_gc_builders) ? (
+                {(selectedBidForSubmission.customers || selectedBidForSubmission.bids_gc_builders) ? (
+                  <>
+                    <p style={{ margin: '0.25rem 0' }}>
+                      <strong>Builder:</strong>{' '}
+                      <button
+                        type="button"
+                        onClick={() => openGcBuilderOrCustomerModal(selectedBidForSubmission)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#3b82f6',
+                          cursor: 'pointer',
+                          textDecoration: 'underline',
+                          padding: 0,
+                          textAlign: 'left',
+                        }}
+                      >
+                        {selectedBidForSubmission.customers?.name ?? selectedBidForSubmission.bids_gc_builders?.name}
+                      </button>
+                    </p>
+                    {(() => {
+                      const addr = selectedBidForSubmission.customers?.address ?? selectedBidForSubmission.bids_gc_builders?.address
+                      if (!addr?.trim()) return null
+                      return <p style={{ margin: '0.25rem 0' }}>{addr}</p>
+                    })()}
+                    {(() => {
+                      const phone = selectedBidForSubmission.customers
+                        ? extractContactInfo(selectedBidForSubmission.customers.contact_info ?? null).phone
+                        : selectedBidForSubmission.bids_gc_builders?.contact_number
+                      if (!phone?.trim()) return null
+                      return <p style={{ margin: '0.25rem 0' }}>{phone}</p>
+                    })()}
+                    {(() => {
+                      const email = selectedBidForSubmission.customers
+                        ? extractContactInfo(selectedBidForSubmission.customers.contact_info ?? null).email
+                        : selectedBidForSubmission.bids_gc_builders?.email
+                      if (!email?.trim()) return null
+                      return <p style={{ margin: '0.25rem 0' }}>{email}</p>
+                    })()}
+                  </>
+                ) : (
+                  <p style={{ margin: '0.25rem 0' }}>
                     <button
                       type="button"
-                      onClick={() => openGcBuilderOrCustomerModal(selectedBidForSubmission)}
+                      onClick={() => openEditBid(selectedBidForSubmission, { focus: 'gcBuilder' })}
+                      aria-label="Add builder for this bid"
                       style={{
-                        background: 'none',
-                        border: 'none',
-                        color: '#3b82f6',
+                        padding: '0.375rem 0.75rem',
+                        fontSize: '0.875rem',
+                        background: '#f3f4f6',
+                        border: '1px solid #d1d5db',
+                        borderRadius: 4,
                         cursor: 'pointer',
-                        textDecoration: 'underline',
-                        padding: 0,
-                        textAlign: 'left',
+                        color: '#374151',
+                        fontWeight: 500,
                       }}
                     >
-                      {selectedBidForSubmission.customers?.name ?? selectedBidForSubmission.bids_gc_builders?.name}
+                      Add Builder
                     </button>
-                  ) : (
-                    '—'
-                  )}
-                </p>
-                <p style={{ margin: '0.25rem 0' }}>{selectedBidForSubmission.customers?.address ?? selectedBidForSubmission.bids_gc_builders?.address ?? '—'}</p>
-                <p style={{ margin: '0.25rem 0' }}>
-                  {selectedBidForSubmission.customers
-                    ? extractContactInfo(selectedBidForSubmission.customers.contact_info ?? null).phone || '—'
-                    : (selectedBidForSubmission.bids_gc_builders?.contact_number ?? '—')}
-                </p>
-                <p style={{ margin: '0.25rem 0' }}>
-                  {selectedBidForSubmission.customers
-                    ? extractContactInfo(selectedBidForSubmission.customers.contact_info ?? null).email || '—'
-                    : (selectedBidForSubmission.bids_gc_builders?.email ?? '—')}
-                </p>
+                  </p>
+                )}
                 <p style={{ margin: '1.5rem 0' }} />
-                <p style={{ margin: '0.25rem 0' }}>
-                  <strong>Project:</strong> {selectedBidForSubmission.project_name ?? '—'}
-                </p>
-                <p style={{ margin: '0.25rem 0' }}>{selectedBidForSubmission.address ?? '—'}</p>
+                {selectedBidForSubmission.project_name?.trim() ? (
+                  <>
+                    <p style={{ margin: '0.25rem 0' }}>
+                      <strong>Project:</strong> {selectedBidForSubmission.project_name}
+                    </p>
+                    {selectedBidForSubmission.address?.trim() ? (
+                      <p style={{ margin: '0.25rem 0' }}>{selectedBidForSubmission.address}</p>
+                    ) : null}
+                  </>
+                ) : (
+                  <p style={{ margin: '0.25rem 0' }}>
+                    <button
+                      type="button"
+                      onClick={() => openEditBid(selectedBidForSubmission, { focus: 'projectName' })}
+                      aria-label="Add project name for this bid"
+                      style={{
+                        padding: '0.375rem 0.75rem',
+                        fontSize: '0.875rem',
+                        background: '#f3f4f6',
+                        border: '1px solid #d1d5db',
+                        borderRadius: 4,
+                        cursor: 'pointer',
+                        color: '#374151',
+                        fontWeight: 500,
+                      }}
+                    >
+                      Add Project
+                    </button>
+                  </p>
+                )}
                 <p style={{ margin: '1.5rem 0' }} />
-                <p style={{ margin: '0.25rem 0' }}>
-                  <strong>Project Contact:</strong> {selectedBidForSubmission.gc_contact_name ?? '—'}
-                </p>
-                <p style={{ margin: '0.25rem 0' }}>{selectedBidForSubmission.gc_contact_phone ?? '—'}</p>
-                <p style={{ margin: '0.25rem 0' }}>{selectedBidForSubmission.gc_contact_email ?? '—'}</p>
+                {[selectedBidForSubmission.gc_contact_name, selectedBidForSubmission.gc_contact_phone, selectedBidForSubmission.gc_contact_email].some((v) => (v ?? '').trim() !== '') ? (
+                  <>
+                    <p style={{ margin: '0.25rem 0' }}>
+                      <strong>Project Contact:</strong> {selectedBidForSubmission.gc_contact_name ?? '—'}
+                    </p>
+                    <p style={{ margin: '0.25rem 0' }}>{selectedBidForSubmission.gc_contact_phone ?? '—'}</p>
+                    <p style={{ margin: '0.25rem 0' }}>{selectedBidForSubmission.gc_contact_email ?? '—'}</p>
+                  </>
+                ) : (
+                  <p style={{ margin: '0.25rem 0' }}>
+                    <button
+                      type="button"
+                      onClick={() => openEditBid(selectedBidForSubmission)}
+                      aria-label="Add project contact for this bid"
+                      style={{
+                        padding: '0.375rem 0.75rem',
+                        fontSize: '0.875rem',
+                        background: '#f3f4f6',
+                        border: '1px solid #d1d5db',
+                        borderRadius: 4,
+                        cursor: 'pointer',
+                        color: '#374151',
+                        fontWeight: 500,
+                      }}
+                    >
+                      Add project contact
+                    </button>
+                  </p>
+                )}
                 <p style={{ margin: '1.5rem 0' }} />
-                <p style={{ margin: '0.25rem 0' }}>
-                  <strong>Project Folder</strong>{' '}
-                  {selectedBidForSubmission.drive_link?.trim() ? (
-                    <a href={selectedBidForSubmission.drive_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(selectedBidForSubmission.drive_link!.trim()) }} style={{ color: '#3b82f6' }}>{selectedBidForSubmission.drive_link}</a>
-                  ) : '—'}
-                </p>
-                <p style={{ margin: '0.25rem 0' }}>
-                  <strong>Job Plans</strong>{' '}
-                  {selectedBidForSubmission.plans_link?.trim() ? (
-                    <a href={selectedBidForSubmission.plans_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(selectedBidForSubmission.plans_link!.trim()) }} style={{ color: '#3b82f6' }}>{selectedBidForSubmission.plans_link}</a>
-                  ) : '—'}
-                </p>
-                <p style={{ margin: '0.25rem 0' }}>
-                  <strong>Marked Up Plans or Cover Page</strong>{' '}
-                  {selectedBidForSubmission.count_tooling_link?.trim() ? (
-                    <a href={selectedBidForSubmission.count_tooling_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(selectedBidForSubmission.count_tooling_link!.trim()) }} style={{ color: '#3b82f6' }}>{selectedBidForSubmission.count_tooling_link}</a>
-                  ) : '—'}
-                </p>
-                <p style={{ margin: '0.25rem 0' }}>
-                  <strong>Bid Submission</strong>{' '}
-                  {selectedBidForSubmission.bid_submission_link?.trim() ? (
-                    <a href={selectedBidForSubmission.bid_submission_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(selectedBidForSubmission.bid_submission_link!.trim()) }} style={{ color: '#3b82f6' }}>{selectedBidForSubmission.bid_submission_link}</a>
-                  ) : '—'}
-                </p>
+                {submissionFollowupUrlRow('Project Folder', selectedBidForSubmission.drive_link)}
+                {submissionFollowupUrlRow('Job Plans', selectedBidForSubmission.plans_link)}
+                {submissionFollowupUrlRow('Marked Up Plans or Cover Page', selectedBidForSubmission.count_tooling_link)}
+                {submissionFollowupUrlRow('Bid Submission', selectedBidForSubmission.bid_submission_link)}
               </div>
               <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem' }}>
                 <button
@@ -14063,8 +14267,18 @@ export default function Bids() {
                   />
                 </div>
                 <div style={{ gridArea: 'proj' }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Project Name *</label>
-                  <input type="text" value={projectName} onChange={(e) => { setProjectName(e.target.value); setError(null) }} required style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  <label htmlFor="bid-form-project-name" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Project Name *</label>
+                  <input
+                    id="bid-form-project-name"
+                    type="text"
+                    value={projectName}
+                    onChange={(e) => {
+                      setProjectName(e.target.value)
+                      setError(null)
+                    }}
+                    required
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  />
                 </div>
               </div>
               <div className="bid-form-service-outcome-sent-row" style={{ marginBottom: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
@@ -14312,8 +14526,9 @@ export default function Bids() {
                 </div>
               </div>
               <div style={{ marginBottom: '1rem', position: 'relative' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>GC/Builder (customer)</label>
+                <label htmlFor="bid-form-gc-builder" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>GC/Builder (customer)</label>
                 <input
+                  id="bid-form-gc-builder"
                   type="text"
                   value={gcCustomerSearch}
                   onChange={(e) => {
