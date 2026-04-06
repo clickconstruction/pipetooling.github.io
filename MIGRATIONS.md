@@ -154,6 +154,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: [`MercuryTransactionAllocationsModal.tsx`](src/components/MercuryTransactionAllocationsModal.tsx) (unchanged client); [`DashboardStaleTallyStaffFollowUpModal.tsx`](src/components/DashboardStaleTallyStaffFollowUpModal.tsx)
 - **Category**: Dashboard / Job Parts Tally
 
+**`20260406175808_tally_assign_search_all_jobs_staff.sql`**
+- **Purpose**: Stale tally **Assign to jobs** — **`dev` / `master_technician` / `assistant`** invokers can list **any** **`jobs_ledger`** row matching **`search_text`** (still **`LIMIT 50`**) for **non-subcontractor** targets, alongside **`staff_can_view_user_for_tally_followup`**; **subcontractor** targets unchanged (team-only via **`jobs_ledger_row_visible_for_tally_assign`**); other invokers fall back to invoker ledger visibility
+- **Changes**: **`CREATE OR REPLACE`** **`search_jobs_for_tally_mercury_assign_as_user`** — three-branch **`OR`** on visibility; updated **`COMMENT`**; **`REVOKE`/`GRANT EXECUTE`**
+- **Impact**: [`MercuryTransactionAllocationsModal.tsx`](src/components/MercuryTransactionAllocationsModal.tsx); [`DashboardStaleTallyStaffFollowUpModal.tsx`](src/components/DashboardStaleTallyStaffFollowUpModal.tsx)
+- **Category**: Dashboard / Job Parts Tally
+
 #### April 8, 2026
 
 **`20260405010252_estimate_customer_experience_defaults_snapshot.sql`**

@@ -12,9 +12,12 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.247 → v2.4"
+version_range: "v2.248 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.248)"
+    line: ~726
+    description: "Stale tally Assign: dev/master_technician/assistant search all jobs_ledger for non-sub targets (LIMIT 50); sub targets team-only"
   - name: "Latest Version (v2.247)"
     line: ~726
     description: "Stale tally Assign to jobs: search_jobs_for_tally_mercury_assign_as_user uses staff invoker job visibility except subcontractor targets (team-only)"
@@ -568,6 +571,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.248 — Stale tally Assign: all jobs in search (dev / master / assistant)](#latest-updates-v2248)
 **New:** [v2.247 — Stale tally Assign: staff-scoped job search (hybrid)](#latest-updates-v2247)
 **New:** [v2.246 — Stale tally follow-up: assistants adopted masters job teams](#latest-updates-v2246)
 **New:** [v2.245 — Stale tally follow-up: assistants see all targets](#latest-updates-v2245)
@@ -729,6 +733,18 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.248)
+
+**Date**: 2026-04-06
+
+### Dashboard / Quickfill — stale tally Assign to jobs: full ledger search for staff
+
+- **Database**: [`20260406175808_tally_assign_search_all_jobs_staff.sql`](supabase/migrations/20260406175808_tally_assign_search_all_jobs_staff.sql) — **`search_jobs_for_tally_mercury_assign_as_user`**: **non-subcontractor** targets + invoker **`dev`** / **`master_technician`** / **`assistant`** → no **`jobs_ledger_row_visible_for_tally_assign`** row filter (all **`jobs_ledger`** matches **`search_text`**, **`LIMIT 50`** per query); **subcontractor** targets unchanged (team-only); other invokers use **`jobs_ledger_row_visible_for_tally_assign(jl.id, auth.uid())`**
+- **Impact**: [`MercuryTransactionAllocationsModal.tsx`](src/components/MercuryTransactionAllocationsModal.tsx) (**`tallyActAsUserId`** path unchanged)
+- **Docs**: [`MIGRATIONS.md`](MIGRATIONS.md)
+
 ---
 
 ## Latest Updates (v2.247)
