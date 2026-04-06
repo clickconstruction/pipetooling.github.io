@@ -7,19 +7,22 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2027-04-08
+last_updated: 2027-04-09
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.245 → v2.4"
+version_range: "v2.246 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.246)"
+    line: ~726
+    description: "Stale tally follow-up: assistant scope = adopted masters job teams (Option A staff_can_view_user_for_tally_followup)"
   - name: "Latest Version (v2.245)"
-    line: ~722
+    line: ~738
     description: "Stale tally staff follow-up: assistant same target scope as dev (staff_can_view_user_for_tally_followup)"
   - name: "Latest Version (v2.244)"
-    line: ~730
+    line: ~746
     description: "Estimates Customer activity: DB trigger + record_estimate_public_link_view RPC; timeline IP for link + accept; accept-estimate alreadyAccepted audit"
   - name: "Latest Version (v2.243)"
     line: ~732
@@ -562,6 +565,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.246 — Stale tally follow-up: assistants adopted masters job teams](#latest-updates-v2246)
 **New:** [v2.245 — Stale tally follow-up: assistants see all targets](#latest-updates-v2245)
 **New:** [v2.244 — Estimates customer activity audit + timeline IP](#latest-updates-v2244)
 1. [Latest Updates (v2.239)](#latest-updates-v2239) — **Estimates**: **Unlink job** clears **`job_ledger_id`** (confirm **modal**); **sent** — **Copy customer link** / **Open customer link** under waiting message; [`EstimateCustomerAcceptLinkButtons.tsx`](src/components/estimates/EstimateCustomerAcceptLinkButtons.tsx); no duplicate link row in **Customer experience** when **`sent`**. [`Estimates.tsx`](src/pages/Estimates.tsx).
@@ -721,6 +725,17 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.246)
+
+**Date**: 2027-04-09
+
+### Dashboard / Quickfill — stale tally follow-up: assistant scope (Option A)
+
+- **Database**: [`20270408151000_tally_staff_followup_assistant_adopted_masters_job_team.sql`](supabase/migrations/20270408151000_tally_staff_followup_assistant_adopted_masters_job_team.sql) — **`staff_can_view_user_for_tally_followup`**: **assistant** limited to **`assistants_share_master`**, adopting **master**, or **`jobs_ledger`** team members on jobs for any adopted master (reverts Option B / **`20270408150000`** company-wide behavior)
+- **Docs**: [`ACCESS_CONTROL.md`](ACCESS_CONTROL.md), [`MIGRATIONS.md`](MIGRATIONS.md)
+
 ---
 
 ## Latest Updates (v2.245)

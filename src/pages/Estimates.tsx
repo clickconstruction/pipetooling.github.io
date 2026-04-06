@@ -74,7 +74,10 @@ import {
   type EstimateAcceptHeaderBrand,
 } from '../lib/estimateAcceptHeaderBrand'
 import { buildEstimateEmailHtml } from '../lib/estimateEmailHtmlPreview'
-import { formatEstimateListUpdatedLines } from '../lib/formatEstimateListUpdated'
+import {
+  formatEstimateListUpdatedLines,
+  formatEstimateUpdatedRelativeCompact,
+} from '../lib/formatEstimateListUpdated'
 import { formatNotificationDatetime } from '../utils/formatNotificationDatetime'
 
 const ESTIMATE_CATALOG_EDITOR_ROLES = new Set<UserRole>([
@@ -2439,6 +2442,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                           </>
                         ) : null}{' '}
                         — {formatNotificationDatetime(ev.occurred_at)}
+                        {ev.occurred_at?.trim()
+                          ? ` ${formatEstimateUpdatedRelativeCompact(ev.occurred_at)}`
+                          : ''}
                       </li>
                     )
                   })}
@@ -2451,7 +2457,17 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               <h2 style={{ fontSize: '1rem', marginTop: '1.5rem' }}>Customer acceptance</h2>
               <ul style={{ fontSize: '0.9rem', color: '#374151' }}>
                 <li>Name: {row.acceptor_printed_name || '—'}</li>
-                <li>At: {row.acceptor_consented_at ? new Date(row.acceptor_consented_at).toLocaleString() : '—'}</li>
+                <li>
+                  At:{' '}
+                  {row.acceptor_consented_at?.trim() ? (
+                    <>
+                      {new Date(row.acceptor_consented_at).toLocaleString()}
+                      {` ${formatEstimateUpdatedRelativeCompact(row.acceptor_consented_at)}`}
+                    </>
+                  ) : (
+                    '—'
+                  )}
+                </li>
                 <li>
                   IP: <IpAddressMapButton ip={row.acceptor_ip} />
                 </li>

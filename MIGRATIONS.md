@@ -213,6 +213,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: [`useStaleTallyStaffFollowUp.ts`](src/hooks/useStaleTallyStaffFollowUp.ts), [`DashboardStaleTallyStaffFollowUpModal.tsx`](src/components/DashboardStaleTallyStaffFollowUpModal.tsx) (`list_stale_*`, `search_jobs_for_tally_mercury_assign_as_user`, `replace_mercury_job_splits_for_linked_card_as_staff`); [`ACCESS_CONTROL.md`](ACCESS_CONTROL.md) stale tally row
 - **Category**: Dashboard / Job Parts Tally / Access
 
+**`20270408151000_tally_staff_followup_assistant_adopted_masters_job_team.sql`**
+- **Purpose**: Narrow **assistant** stale tally follow-up from company-wide (Option B) to **adopted masters’ job context** (Option A)
+- **Changes**: **`CREATE OR REPLACE`** **`staff_can_view_user_for_tally_followup`** — **`dev`** / **`is_dev()`** only for global targets; **assistant** = **`assistants_share_master`** OR adopting **master** OR **`jobs_ledger`** team member on jobs whose **`master_user_id IN (SELECT master_id FROM master_assistants WHERE assistant_id = p_viewer)`**; updated **`COMMENT`**
+- **Impact**: Same RPCs as **`20270408150000`**; [`ACCESS_CONTROL.md`](ACCESS_CONTROL.md) stale tally row
+- **Category**: Dashboard / Job Parts Tally / Access
+
 ### March 2027
 
 #### March 31, 2027
