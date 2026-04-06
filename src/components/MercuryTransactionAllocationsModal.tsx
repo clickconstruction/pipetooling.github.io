@@ -47,6 +47,11 @@ export type MercuryTransactionAllocationsModalProps = {
   recentPersonPicksStorageKey: string | null
   /** Job Tally linked-card flow: hide attribution, save via replace_mercury_job_splits_for_my_linked_card, scoped job search. */
   tallySelfService?: boolean
+  /**
+   * When set with tallySelfService, job search and save use staff RPCs on behalf of this user
+   * (linked card must belong to them).
+   */
+  tallyActAsUserId?: string | null
 }
 
 type SplitMode = 'dollars' | 'percent'
@@ -242,6 +247,7 @@ export function MercuryTransactionAllocationsModal({
   nicknameByAccount = {},
   recentPersonPicksStorageKey,
   tallySelfService = false,
+  tallyActAsUserId = null,
 }: MercuryTransactionAllocationsModalProps) {
   const { showToast } = useToastContext()
   const [lines, setLines] = useState<SplitLine[]>([])
@@ -287,9 +293,19 @@ export function MercuryTransactionAllocationsModal({
         return
       }
       setJobSearchLoading(true)
-      const rpcName = tallySelfService ? 'search_jobs_for_tally_mercury_assign' : 'search_jobs_ledger'
+      const rpcName = !tallySelfService
+        ? 'search_jobs_ledger'
+        : tallyActAsUserId
+          ? 'search_jobs_for_tally_mercury_assign_as_user'
+          : 'search_jobs_for_tally_mercury_assign'
       void withSupabaseRetry(
-        async () => supabase.rpc(rpcName, { search_text: q }),
+        async () =>
+          tallySelfService && tallyActAsUserId
+            ? supabase.rpc('search_jobs_for_tally_mercury_assign_as_user', {
+                p_for_user_id: tallyActAsUserId,
+                search_text: q,
+              })
+            : supabase.rpc(rpcName, { search_text: q }),
         'mercury allocations job search',
       )
         .then((data) => {
@@ -302,7 +318,7 @@ export function MercuryTransactionAllocationsModal({
         })
     }, 300)
     return () => clearTimeout(t)
-  }, [open, jobSearch, tallySelfService])
+  }, [open, jobSearch, tallySelfService, tallyActAsUserId])
 
   useEffect(() => {
     if (!open || !recentPersonPicksStorageKey) {
@@ -437,14 +453,26 @@ export function MercuryTransactionAllocationsModal({
         p_person_id = null
       }
       if (tallySelfService) {
-        await withSupabaseRetry(
-          async () =>
-            supabase.rpc('replace_mercury_job_splits_for_my_linked_card', {
-              p_mercury_transaction_id: transaction.id,
-              p_rows: p_rows as unknown as Json,
-            }),
-          'replace_mercury_job_splits_for_my_linked_card',
-        )
+        if (tallyActAsUserId) {
+          await withSupabaseRetry(
+            async () =>
+              supabase.rpc('replace_mercury_job_splits_for_linked_card_as_staff', {
+                p_for_user_id: tallyActAsUserId,
+                p_mercury_transaction_id: transaction.id,
+                p_rows: p_rows as unknown as Json,
+              }),
+            'replace_mercury_job_splits_for_linked_card_as_staff',
+          )
+        } else {
+          await withSupabaseRetry(
+            async () =>
+              supabase.rpc('replace_mercury_job_splits_for_my_linked_card', {
+                p_mercury_transaction_id: transaction.id,
+                p_rows: p_rows as unknown as Json,
+              }),
+            'replace_mercury_job_splits_for_my_linked_card',
+          )
+        }
       } else {
         await withSupabaseRetry(
           async () =>
@@ -468,7 +496,7 @@ export function MercuryTransactionAllocationsModal({
       showToast('Saved allocations.', 'success')
       onSaved({
         mercuryTransactionId: transaction.id,
-        userId: tallySelfService ? null : p_user_id,
+        userId: tallySelfService ? tallyActAsUserId ?? null : p_user_id,
         personId: tallySelfService ? null : p_person_id,
         allocations: savedAllocations,
       })

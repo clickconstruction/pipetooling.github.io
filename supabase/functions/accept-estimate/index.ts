@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { clientIpFromRequest, insertEstimateCustomerEvent } from '../_shared/logEstimateCustomerEvent.ts'
 
 const SIGNATURE_BUCKET = 'estimate-acceptor-signatures'
 const MAX_SIGNATURE_BYTES = 524288 // 512 KiB (matches bucket file_size_limit)
@@ -46,12 +47,6 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-function clientIp(req: Request): string | null {
-  const fwd = req.headers.get('x-forwarded-for')
-  if (fwd) return fwd.split(',')[0]?.trim() ?? null
-  return null
 }
 
 serve(async (req) => {
@@ -105,7 +100,9 @@ serve(async (req) => {
       })
     }
 
-    const admin = createClient(supabaseUrl, serviceKey)
+    const admin = createClient(supabaseUrl, serviceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    })
     const tokenHash = await sha256HexFromString(raw)
 
     const { data: row, error: fetchErr } = await admin
@@ -122,6 +119,15 @@ serve(async (req) => {
     }
 
     if (row.status === 'customer_accepted') {
+      // Same HTTP contract as before (200 + alreadyAccepted), but record audit: repeat POST
+      // commonly happens during QA and previously skipped insertEstimateCustomerEvent entirely.
+      await insertEstimateCustomerEvent(admin, {
+        estimateId: row.id,
+        eventType: 'public_accept_submitted',
+        source: 'accept-estimate',
+        req,
+        metadata: { repeat_after_accepted: true },
+      })
       return new Response(JSON.stringify({ ok: true, alreadyAccepted: true }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -177,7 +183,7 @@ serve(async (req) => {
     }
 
     const ua = req.headers.get('user-agent') ?? null
-    const ipRaw = clientIp(req)
+    const ipRaw = clientIpFromRequest(req)
     const nowIso = new Date().toISOString()
 
     const baseUpdate = {
@@ -243,6 +249,8 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
+
+    // sent -> customer_accepted audit: DB trigger estimates_audit_customer_accepted_trigger (same txn as UPDATE).
 
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,

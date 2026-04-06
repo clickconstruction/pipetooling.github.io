@@ -75,58 +75,7 @@ export async function submitCreateJobFromEstimate(
     }
 
     const jobId = await withSupabaseRetry(
-      async () => {
-        // #region agent log
-        fetch('http://127.0.0.1:7692/ingest/99b8dd03-6772-47ea-b15c-a5ccda00f274', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'fae955' },
-          body: JSON.stringify({
-            sessionId: 'fae955',
-            hypothesisId: 'H4',
-            location: 'createJobFromEstimateSubmit.ts:preRpc',
-            message: 'create_job_from_estimate context',
-            data: {
-              estimateIdSuffix: estimate.id.slice(-8),
-              estimateStatus: estimate.status,
-              hasProjectId: estimate.project_id != null,
-              hasEstimateCustomerId: estimate.customer_id != null,
-              customerIdForPayloadSet: customerIdForPayload != null,
-              customersArrayLen: customers.length,
-              resolvedCustomerIdSet: resolvedCustomerId != null,
-              effectiveMasterSuffix: effectiveMaster.slice(-8),
-              hcpLen: hcp.length,
-              rpcKeys: Object.keys(rpcArgs),
-            },
-            timestamp: Date.now(),
-            runId: 'post-migration-verify',
-          }),
-        }).catch(() => {})
-        // #endregion
-        const result = await supabase.rpc('create_job_from_estimate', rpcArgs)
-        const err = result.error as { message?: string; code?: string; details?: string; hint?: string } | null
-        // #region agent log
-        fetch('http://127.0.0.1:7692/ingest/99b8dd03-6772-47ea-b15c-a5ccda00f274', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'fae955' },
-          body: JSON.stringify({
-            sessionId: 'fae955',
-            hypothesisId: 'H1-H3',
-            location: 'createJobFromEstimateSubmit.ts:postRpc',
-            message: 'create_job_from_estimate raw',
-            data: {
-              hasData: result.data != null,
-              errMessage: err?.message ?? null,
-              errCode: err?.code ?? null,
-              errDetails: err?.details ?? null,
-              errHint: err?.hint ?? null,
-            },
-            timestamp: Date.now(),
-            runId: 'post-migration-verify',
-          }),
-        }).catch(() => {})
-        // #endregion
-        return result
-      },
+      async () => await supabase.rpc('create_job_from_estimate', rpcArgs),
       'create job from estimate',
     )
 

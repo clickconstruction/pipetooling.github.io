@@ -659,6 +659,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **200 response**: Includes **`for_line`** (`string | null`): staff **For:** line — trimmed **`for_address`** if set, else trimmed linked **`customers.address`**, else `null` (UI may show em dash).
 
+**Audit**: On each successful **200** for **`status = sent`**, calls Postgres **`record_estimate_public_link_view`** via **`service_role`** **`rpc`** to append **`estimate_customer_events`** with **`event_type = public_link_view`** and **`client_ip` / `user_agent`** from the request ( **`SECURITY DEFINER`** in-db insert; failures are **`console.error`**’d and do not change the response). See migration [`20260406034514_record_estimate_public_link_view_rpc.sql`](supabase/migrations/20260406034514_record_estimate_public_link_view_rpc.sql).
+
 ---
 
 ### get-estimate-public-terms
@@ -695,7 +697,11 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Gateway**: `verify_jwt = false`
 
-**Behavior**: Idempotent if already `customer_accepted`. Captures `acceptor_ip` from `x-forwarded-for` and `user-agent`.
+**Behavior**: Idempotent if already `customer_accepted` (returns **`200`** + **`alreadyAccepted: true`**). Captures **`acceptor_ip`** from **`x-forwarded-for`** (first hop) and **`user-agent`** on the real **`sent` → `customer_accepted`** update.
+
+**Audit**:
+- **First acceptance** (**`sent` → `customer_accepted`**): the **`estimate_customer_events`** row (**`public_accept_submitted`**, IP/UA, **`metadata.had_signature`**) is written by the **database trigger** [`estimates_audit_customer_accepted_trigger`](supabase/migrations/20260406033952_estimates_audit_customer_accepted_trigger.sql) in the **same transaction** as the **`estimates`** update (Edge does not insert that row on the success path).
+- **`alreadyAccepted: true`** (repeat **POST** while already accepted): best-effort **`insertEstimateCustomerEvent`** via **`log_estimate_customer_event`** / insert fallback in [`_shared/logEstimateCustomerEvent.ts`](supabase/functions/_shared/logEstimateCustomerEvent.ts), with **`metadata.repeat_after_accepted`** (does not change **`200`** success).
 
 **Related (Postgres, not Edge)**: Staff create **`jobs_ledger`** and set **`estimates.job_ledger_id`** via authenticated RPC **`create_job_from_estimate`** — see [`20260405072854_estimate_create_job_rpc.sql`](supabase/migrations/20260405072854_estimate_create_job_rpc.sql) and [`Estimates.tsx`](src/pages/Estimates.tsx).
 

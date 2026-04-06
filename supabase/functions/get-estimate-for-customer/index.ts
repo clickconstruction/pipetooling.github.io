@@ -6,6 +6,7 @@ import {
   resolveEstimateCustomerExperience,
   toClientCustomerExperience,
 } from '../_shared/estimateCustomerExperience.ts'
+import { clientIpFromRequest } from '../_shared/logEstimateCustomerEvent.ts'
 
 async function sha256HexFromString(value: string): Promise<string> {
   const data = new TextEncoder().encode(value)
@@ -94,7 +95,9 @@ serve(async (req) => {
       })
     }
 
-    const admin = createClient(supabaseUrl, serviceKey)
+    const admin = createClient(supabaseUrl, serviceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    })
     const tokenHash = await sha256HexFromString(raw)
 
     const { data: row, error } = await admin
@@ -164,6 +167,13 @@ serve(async (req) => {
     const for_line = await resolveEstimateForLine(admin, est.for_address, est.customer_id)
     const ab = est.accept_header_brand
     const accept_header_brand = ab === 'elec' || ab === 'plum' ? ab : null
+
+    const { error: viewErr } = await admin.rpc('record_estimate_public_link_view', {
+      p_estimate_id: est.id,
+      p_client_ip: clientIpFromRequest(req) ?? '',
+      p_user_agent: req.headers.get('user-agent') ?? '',
+    })
+    if (viewErr) console.error('record_estimate_public_link_view', viewErr)
 
     return new Response(
       JSON.stringify({

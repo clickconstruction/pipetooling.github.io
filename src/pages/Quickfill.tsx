@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import DashboardTallyStaleStaffBanner from '../components/DashboardTallyStaleStaffBanner'
+import { DashboardStaleTallyStaffFollowUpModal } from '../components/DashboardStaleTallyStaffFollowUpModal'
 import { BilledAwaitingPaymentSection } from '../components/quickfill/BilledAwaitingPaymentSection'
 import { CantReachSection } from '../components/quickfill/CantReachSection'
 import { CrewJobsSection } from '../components/quickfill/CrewJobsSection'
@@ -11,9 +13,12 @@ import { QuickfillPeopleHoursNewSection } from '../components/quickfill/Quickfil
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useUnpricedFixturesCount } from '../hooks/useUnpricedFixturesCount'
+import { useStaleTallyStaffFollowUp } from '../hooks/useStaleTallyStaffFollowUp'
+import { TALLY_STALE_MIN_AGE_DAYS } from '../lib/tallyStaleMinAgeDays'
 import { withSupabaseRetry } from '../utils/errorHandling'
 
 const SECTIONS: { id: string; sectionId: string; label: string }[] = [
+  { id: 'quickfill-warnings', sectionId: 'warnings', label: 'Warnings' },
   { id: 'quickfill-hours', sectionId: 'hours', label: 'People Hours (Old)' },
   { id: 'quickfill-people-hours-new', sectionId: 'people-hours-new', label: 'People Hours (new)' },
   { id: 'quickfill-banking-sorting', sectionId: 'banking-sorting', label: 'Banking sorting' },
@@ -96,6 +101,12 @@ function hoursUntilExpand(markedAt: string): number {
 export default function Quickfill() {
   const { user: authUser, role } = useAuth()
   const unpricedFixturesCount = useUnpricedFixturesCount()
+  const {
+    peopleCount: staleTallyStaffPeopleCount,
+    transactionCount: staleTallyStaffTxCount,
+    refetch: refetchStaleTallyStaffFollowUp,
+  } = useStaleTallyStaffFollowUp(TALLY_STALE_MIN_AGE_DAYS)
+  const [warningsModalOpen, setWarningsModalOpen] = useState(false)
   const [sectionMarks, setSectionMarks] = useState<Record<string, { marked_at: string; marked_by?: string; marked_by_name?: string | null }>>({})
   const [forceExpandedSections, setForceExpandedSections] = useState<Set<string>>(new Set(['cant-reach']))
   const [hiddenSectionIds, setHiddenSectionIds] = useState<Set<string>>(() => new Set())
@@ -209,23 +220,33 @@ export default function Quickfill() {
     })
   }
 
+  const warningsSectionOnPage = useMemo(() => {
+    if (role !== 'dev' && role !== 'master_technician' && role !== 'assistant') return false
+    if (!isSectionVisible('warnings')) return false
+    if (staleTallyStaffPeopleCount === null || staleTallyStaffTxCount === null) return false
+    return staleTallyStaffPeopleCount > 0 && staleTallyStaffTxCount > 0
+  }, [role, hiddenSectionIds, staleTallyStaffPeopleCount, staleTallyStaffTxCount])
+
   /** True if this section would render a Quickfill block (visibility + unpriced count rule). */
-  function sectionWouldRenderOnPage(sectionId: string): boolean {
-    if (!isSectionVisible(sectionId)) return false
-    if (sectionId === 'unpriced-fixtures') return unpricedFixturesCount > 0
-    return true
-  }
+  const sectionWouldRenderOnPage = useCallback(
+    (sectionId: string): boolean => {
+      if (!isSectionVisible(sectionId)) return false
+      if (sectionId === 'warnings') return warningsSectionOnPage
+      if (sectionId === 'unpriced-fixtures') return unpricedFixturesCount > 0
+      return true
+    },
+    [hiddenSectionIds, warningsSectionOnPage, unpricedFixturesCount],
+  )
 
   const hasAnyVisibleSection = SECTIONS.some(({ sectionId }) => sectionWouldRenderOnPage(sectionId))
 
   const firstVisibleSectionId = useMemo(() => {
     for (const { sectionId } of SECTIONS) {
-      if (hiddenSectionIds.has(sectionId)) continue
-      if (sectionId === 'unpriced-fixtures' && unpricedFixturesCount <= 0) continue
+      if (!sectionWouldRenderOnPage(sectionId)) continue
       return sectionId
     }
     return null
-  }, [hiddenSectionIds, unpricedFixturesCount])
+  }, [sectionWouldRenderOnPage])
 
   async function loadSectionMarks() {
     const { data } = await supabase
@@ -273,9 +294,7 @@ export default function Quickfill() {
     <div style={{ padding: '1.5rem', maxWidth: 1200, margin: '0 auto' }}>
       <h1 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '1.5rem', textAlign: 'center' }}>Quickfill</h1>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'center', marginBottom: '1.5rem' }}>
-        {SECTIONS.filter(({ sectionId }) => sectionId !== 'unpriced-fixtures' || unpricedFixturesCount > 0)
-          .filter(({ sectionId }) => isSectionVisible(sectionId))
-          .map(({ id, sectionId, label }) => {
+        {SECTIONS.filter(({ sectionId }) => sectionWouldRenderOnPage(sectionId)).map(({ id, sectionId, label }) => {
           const mark = sectionMarks[sectionId]
           const color = getButtonColor(mark?.marked_at ?? null)
           return (
@@ -332,6 +351,34 @@ export default function Quickfill() {
             </>
           )}
         </p>
+      )}
+      {warningsSectionOnPage && (
+        <QuickfillSectionWrapper
+          id="quickfill-warnings"
+          label="Warnings"
+          withTopDivider={firstVisibleSectionId !== null && firstVisibleSectionId !== 'warnings'}
+          color={getButtonColor(sectionMarks['warnings']?.marked_at ?? null)}
+          collapsed={isCollapsed('warnings') && !forceExpandedSections.has('warnings')}
+          mark={sectionMarks['warnings']}
+          onMarkUpToDate={() => markSectionUpToDate('warnings')}
+          onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'warnings']))}
+        >
+          <DashboardTallyStaleStaffBanner
+            peopleCount={typeof staleTallyStaffPeopleCount === 'number' ? staleTallyStaffPeopleCount : 0}
+            transactionCount={typeof staleTallyStaffTxCount === 'number' ? staleTallyStaffTxCount : 0}
+            loading={
+              staleTallyStaffPeopleCount === null || staleTallyStaffTxCount === null
+            }
+            minAgeDays={TALLY_STALE_MIN_AGE_DAYS}
+            onOpen={() => setWarningsModalOpen(true)}
+          />
+          <DashboardStaleTallyStaffFollowUpModal
+            open={warningsModalOpen}
+            onClose={() => setWarningsModalOpen(false)}
+            minAgeDays={TALLY_STALE_MIN_AGE_DAYS}
+            onDataChanged={() => void refetchStaleTallyStaffFollowUp()}
+          />
+        </QuickfillSectionWrapper>
       )}
       {isSectionVisible('hours') && (
       <QuickfillSectionWrapper

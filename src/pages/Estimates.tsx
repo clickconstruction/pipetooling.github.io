@@ -74,6 +74,7 @@ import {
 } from '../lib/estimateAcceptHeaderBrand'
 import { buildEstimateEmailHtml } from '../lib/estimateEmailHtmlPreview'
 import { formatEstimateListUpdatedLines } from '../lib/formatEstimateListUpdated'
+import { formatNotificationDatetime } from '../utils/formatNotificationDatetime'
 
 const ESTIMATE_CATALOG_EDITOR_ROLES = new Set<UserRole>([
   'dev',
@@ -91,6 +92,17 @@ const ESTIMATE_EMAIL_FROM_LABEL = 'PipeTooling <team@noreply.pipetooling.com>'
 const PREVIEW_EMAIL_ACCEPT_URL = 'https://example.com/estimate/accept?t=preview'
 
 const ESTIMATE_ACCEPT_URL_SESSION_PREFIX = 'estimate_accept_url:'
+
+function estimateCustomerEventLabel(eventType: string): string {
+  switch (eventType) {
+    case 'public_link_view':
+      return 'Customer opened quote link'
+    case 'public_accept_submitted':
+      return 'Customer accepted estimate'
+    default:
+      return eventType
+  }
+}
 
 function isUsableCustomerAcceptUrl(url: string): boolean {
   const t = url.trim()
@@ -577,6 +589,8 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   const [catalogIconHovered, setCatalogIconHovered] = useState(false)
   const canManageEstimateCatalog = Boolean(role && ESTIMATE_CATALOG_EDITOR_ROLES.has(role))
   const [lineItemRecentIds, setLineItemRecentIds] = useState<string[]>([])
+  const [estimateCustomerEvents, setEstimateCustomerEvents] = useState<Tables<'estimate_customer_events'>[]>([])
+  const [estimateCustomerEventsLoading, setEstimateCustomerEventsLoading] = useState(false)
   const [cxOverrideFields, setCxOverrideFields] = useState<
     Partial<Record<EstimateExperienceOverrideKey, string>>
   >({})
@@ -691,6 +705,45 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [catalogModalOpen])
+
+  const loadEstimateCustomerEvents = useCallback(async () => {
+    const id = row?.id
+    const st = row?.status
+    if (!id || (st !== 'sent' && st !== 'customer_accepted')) {
+      setEstimateCustomerEvents([])
+      setEstimateCustomerEventsLoading(false)
+      return
+    }
+    setEstimateCustomerEventsLoading(true)
+    try {
+      const data = await withSupabaseRetry(
+        async () =>
+          await supabase
+            .from('estimate_customer_events')
+            .select('id, estimate_id, occurred_at, event_type, source, client_ip, user_agent, metadata')
+            .eq('estimate_id', id)
+            .order('occurred_at', { ascending: false }),
+        'load estimate customer events',
+      )
+      const rows = (data ?? []) as Tables<'estimate_customer_events'>[]
+      setEstimateCustomerEvents(rows)
+    } catch (e) {
+      setEstimateCustomerEvents([])
+    } finally {
+      setEstimateCustomerEventsLoading(false)
+    }
+  }, [row?.id, row?.status])
+
+  useEffect(() => {
+    void loadEstimateCustomerEvents()
+  }, [loadEstimateCustomerEvents])
+
+  useEffect(() => {
+    if (row?.status !== 'sent' && row?.status !== 'customer_accepted') return
+    const onFocus = () => void loadEstimateCustomerEvents()
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [row?.status, loadEstimateCustomerEvents])
 
   useEffect(() => {
     if (catalogModalOpen) setCatalogFilter('')
@@ -2345,6 +2398,45 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 <p style={{ margin: '0.25rem 0' }}>
                   <strong>Email used for link:</strong> {row.customer_email}
                 </p>
+              )}
+            </div>
+          )}
+          {(row.status === 'sent' || row.status === 'customer_accepted') && (
+            <div style={{ marginTop: '1rem' }}>
+              <h2 style={{ fontSize: '1rem', margin: 0 }}>Customer activity</h2>
+              {estimateCustomerEventsLoading ? (
+                <p style={{ fontSize: '0.9rem', color: '#6b7280', marginTop: '0.5rem' }}>Loading…</p>
+              ) : estimateCustomerEvents.length === 0 ? (
+                <p style={{ fontSize: '0.9rem', color: '#6b7280', marginTop: '0.5rem' }}>
+                  No link views or acceptance events recorded yet.
+                </p>
+              ) : (
+                <ul
+                  style={{
+                    margin: '0.5rem 0 0',
+                    paddingLeft: '1.25rem',
+                    fontSize: '0.9rem',
+                    color: '#374151',
+                  }}
+                >
+                  {estimateCustomerEvents.map((ev) => {
+                    const meta = ev.metadata && typeof ev.metadata === 'object' && !Array.isArray(ev.metadata)
+                      ? (ev.metadata as Record<string, unknown>)
+                      : null
+                    const sig =
+                      ev.event_type === 'public_accept_submitted' && meta && meta.had_signature === true
+                        ? ' (with signature)'
+                        : ''
+                    const clientIpSuffix = ev.client_ip?.trim() ? ` · ${ev.client_ip.trim()}` : ''
+                    return (
+                      <li key={ev.id} style={{ marginBottom: '0.35rem' }}>
+                        {estimateCustomerEventLabel(ev.event_type)}
+                        {sig}
+                        {clientIpSuffix} — {formatNotificationDatetime(ev.occurred_at)}
+                      </li>
+                    )
+                  })}
+                </ul>
               )}
             </div>
           )}

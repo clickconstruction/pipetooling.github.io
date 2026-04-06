@@ -44,6 +44,8 @@ import { formatNotificationDatetime } from '../utils/formatNotificationDatetime'
 
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator' | 'primary' | 'superintendent'
 type NotificationHistoryRow = Database['public']['Tables']['notification_history']['Row']
+type JobCountByMasterRow =
+  Database['public']['Functions']['list_job_counts_by_master_for_dev_settings']['Returns'][number]
 
 type UserRow = {
   id: string
@@ -1595,10 +1597,12 @@ export default function Settings() {
 
     // Load assistants, primaries, superintendents, and adoptions for masters and devs
     if (role === 'master_technician' || role === 'dev') {
-      await loadAssistantsAndAdoptions(authUser.id)
-      await loadPrimariesAndAdoptions(authUser.id)
-      await loadSuperintendentsAndAdoptions(authUser.id)
-      await loadMastersAndShares(authUser.id)
+      await Promise.all([
+        loadAssistantsAndAdoptions(authUser.id),
+        loadPrimariesAndAdoptions(authUser.id),
+        loadSuperintendentsAndAdoptions(authUser.id),
+        loadMastersAndShares(authUser.id),
+      ])
     }
     
     // Load dashboard button visibility for dev, master, assistant
@@ -1735,77 +1739,125 @@ export default function Settings() {
       await loadServiceTypes()
     }
     if (role === 'dev') {
-      await loadNotificationTemplates()
-      await loadEmailTemplates()
-      await loadPayApprovedMasters()
-      const { data: appSettings } = await supabase.from('app_settings').select('key, value_num').eq('key', 'default_labor_rate').maybeSingle()
-      const val = (appSettings as { value_num: number | null } | null)?.value_num
-      setDefaultLaborRate(val != null ? String(val) : '')
-      const { data: prospectCopyRows } = await supabase.from('app_settings').select('key, value_text').in('key', [
-        'prospect_copy_no_response_email', 'prospect_copy_phone_followup_email', 'prospect_copy_just_checking_in_email',
-        'prospect_copy_no_response_email_subject', 'prospect_copy_phone_followup_email_subject', 'prospect_copy_just_checking_in_email_subject',
-      ])
-      const prospectCopyByKey = new Map((prospectCopyRows ?? []).map((r: { key: string; value_text: string | null }) => [r.key, r.value_text ?? '']))
+      await Promise.all([loadNotificationTemplates(), loadEmailTemplates(), loadPayApprovedMasters()])
+
+      const prospectCopySettingKeys = [
+        'prospect_copy_no_response_email',
+        'prospect_copy_phone_followup_email',
+        'prospect_copy_just_checking_in_email',
+        'prospect_copy_no_response_email_subject',
+        'prospect_copy_phone_followup_email_subject',
+        'prospect_copy_just_checking_in_email_subject',
+      ] as const
+      const estimateCxSettingKeys = [...ESTIMATE_EXPERIENCE_APP_KEY_LIST, ESTIMATE_PUBLIC_TERMS_BODY_APP_KEY]
+      const settingsBatchKeys = [
+        'default_labor_rate',
+        ...prospectCopySettingKeys,
+        ...estimateCxSettingKeys,
+        'report_edit_window_days',
+        'report_sub_visibility_months',
+      ]
+
+      const { data: settingsBatchRows } = await supabase
+        .from('app_settings')
+        .select('key, value_text, value_num')
+        .in('key', settingsBatchKeys)
+
+      const settingsByKey = new Map(
+        (settingsBatchRows ?? []).map((r) => [r.key, r] as [string, { value_text: string | null; value_num: number | null }]),
+      )
+      const laborRow = settingsByKey.get('default_labor_rate')
+      const laborVal = laborRow?.value_num
+      setDefaultLaborRate(laborVal != null ? String(laborVal) : '')
+
+      const prospectCopyByKey = new Map(
+        prospectCopySettingKeys.map((k) => [k, settingsByKey.get(k)?.value_text ?? ''] as const),
+      )
       setProspectCopyNoResponse(prospectCopyByKey.get('prospect_copy_no_response_email') ?? '')
       setProspectCopyPhoneFollowup(prospectCopyByKey.get('prospect_copy_phone_followup_email') ?? '')
       setProspectCopyJustCheckingIn(prospectCopyByKey.get('prospect_copy_just_checking_in_email') ?? '')
       setProspectCopyNoResponseSubject(prospectCopyByKey.get('prospect_copy_no_response_email_subject') ?? '')
       setProspectCopyPhoneFollowupSubject(prospectCopyByKey.get('prospect_copy_phone_followup_email_subject') ?? '')
       setProspectCopyJustCheckingInSubject(prospectCopyByKey.get('prospect_copy_just_checking_in_email_subject') ?? '')
-      const estimateCxSettingKeys = [...ESTIMATE_EXPERIENCE_APP_KEY_LIST, ESTIMATE_PUBLIC_TERMS_BODY_APP_KEY]
-      const { data: estimateCxRows } = await supabase
-        .from('app_settings')
-        .select('key, value_text')
-        .in('key', estimateCxSettingKeys)
+
+      const estimateCxRows = estimateCxSettingKeys
+        .map((k) => {
+          const row = settingsByKey.get(k)
+          return row ? { key: k, value_text: row.value_text } : null
+        })
+        .filter((r): r is { key: string; value_text: string | null } => r != null)
+
       setEstimateCxByKey((prev) => {
         const next = { ...prev }
         for (const k of ESTIMATE_EXPERIENCE_APP_KEY_LIST) next[k] = next[k] ?? ''
-        for (const r of estimateCxRows ?? []) {
-          const row = r as { key: string; value_text: string | null }
-          if (ESTIMATE_EXPERIENCE_APP_KEY_LIST.includes(row.key as (typeof ESTIMATE_EXPERIENCE_APP_KEY_LIST)[number]))
-            next[row.key] = row.value_text ?? ''
+        for (const r of estimateCxRows) {
+          if (ESTIMATE_EXPERIENCE_APP_KEY_LIST.includes(r.key as (typeof ESTIMATE_EXPERIENCE_APP_KEY_LIST)[number]))
+            next[r.key] = r.value_text ?? ''
         }
         const footerAppKey = 'estimate_accept_page_footer'
         if (!(next[footerAppKey]?.trim())) next[footerAppKey] = builtinEstimateExperience().accept_page_footer
         return next
       })
-      const publicTermsRow = (estimateCxRows ?? []).find(
-        (r: { key: string }) => r.key === ESTIMATE_PUBLIC_TERMS_BODY_APP_KEY,
-      ) as { value_text: string | null } | undefined
+      const publicTermsRow = estimateCxRows.find((r) => r.key === ESTIMATE_PUBLIC_TERMS_BODY_APP_KEY)
       setEstimatePublicTermsBody(publicTermsRow?.value_text ?? '')
-      try {
-        const ecRows = await fetchEstimateCatalogLive(supabase)
-        setEstimateLineItemCatalogRows(catalogDbRowsToLineItems(ecRows))
-      } catch {
-        setEstimateLineItemCatalogRows([])
-      }
-      const { data: reportSettings } = await supabase.from('app_settings').select('key, value_num').in('key', ['report_edit_window_days', 'report_sub_visibility_months'])
-      const byKey = new Map((reportSettings ?? []).map((r: { key: string; value_num: number | null }) => [r.key, r.value_num ?? 0]))
-      setReportEditWindowDays(String(byKey.get('report_edit_window_days') ?? 2))
-      setReportSubVisibilityMonths(String(byKey.get('report_sub_visibility_months') ?? 3))
-      const { data: enabled } = await supabase.from('report_enabled_users').select('user_id')
-      setReportEnabledUserIds(new Set((enabled ?? []).map((r: { user_id: string }) => r.user_id)))
-      const { data: dgm, error: dgmErr } = await supabase.from('dispatch_group_members').select('user_id')
-      if (dgmErr) setError(dgmErr.message)
-      else setDispatchMemberIds(new Set((dgm ?? []).map((r: { user_id: string }) => r.user_id)))
-      const { data: egm, error: egmErr } = await supabase.from('estimator_group_members').select('user_id')
-      if (egmErr) setError(egmErr.message)
-      else setEstimatorMemberIds(new Set((egm ?? []).map((r: { user_id: string }) => r.user_id)))
-      const { data: jobOwnerOverrides } = await supabase.from('app_settings').select('key, value_text').like('key', 'job_owner_override_%')
+
+      setReportEditWindowDays(String(settingsByKey.get('report_edit_window_days')?.value_num ?? 2))
+      setReportSubVisibilityMonths(String(settingsByKey.get('report_sub_visibility_months')?.value_num ?? 3))
+
+      const [
+        ,
+        jobOwnerResult,
+        jobCountsResult,
+        ,
+        enabledRes,
+        dgmRes,
+        egmRes,
+      ] = await Promise.all([
+        (async () => {
+          try {
+            const ecRows = await fetchEstimateCatalogLive(supabase)
+            setEstimateLineItemCatalogRows(catalogDbRowsToLineItems(ecRows))
+          } catch {
+            setEstimateLineItemCatalogRows([])
+          }
+        })(),
+        supabase.from('app_settings').select('key, value_text').like('key', 'job_owner_override_%'),
+        (async (): Promise<JobCountByMasterRow[]> => {
+          try {
+            const rows = await withSupabaseRetry(
+              async () => supabase.rpc('list_job_counts_by_master_for_dev_settings'),
+              'list_job_counts_by_master_for_dev_settings',
+            )
+            return rows ?? []
+          } catch {
+            return []
+          }
+        })(),
+        loadArchivedUsers(),
+        supabase.from('report_enabled_users').select('user_id'),
+        supabase.from('dispatch_group_members').select('user_id'),
+        supabase.from('estimator_group_members').select('user_id'),
+      ])
+
       const overrides: Record<string, string> = {}
-      for (const row of jobOwnerOverrides ?? []) {
+      for (const row of jobOwnerResult.data ?? []) {
         const userId = row.key.replace(/^job_owner_override_/, '')
         if (userId && row.value_text) overrides[userId] = row.value_text
       }
       setJobOwnerOverrideByUserId(overrides)
-      const { data: jobCountRows } = await supabase.from('jobs_ledger').select('master_user_id')
+
+      const jcRows = jobCountsResult
       const counts: Record<string, number> = {}
-      for (const row of jobCountRows ?? []) {
-        const id = (row as { master_user_id: string }).master_user_id
-        if (id) counts[id] = (counts[id] ?? 0) + 1
+      for (const row of jcRows) {
+        if (row.master_user_id) counts[row.master_user_id] = Number(row.job_count)
       }
       setJobCountByUserId(counts)
-      await loadArchivedUsers()
+
+      setReportEnabledUserIds(new Set((enabledRes.data ?? []).map((r: { user_id: string }) => r.user_id)))
+      if (dgmRes.error) setError(dgmRes.error.message)
+      else setDispatchMemberIds(new Set((dgmRes.data ?? []).map((r: { user_id: string }) => r.user_id)))
+      if (egmRes.error) setError(egmRes.error.message)
+      else setEstimatorMemberIds(new Set((egmRes.data ?? []).map((r: { user_id: string }) => r.user_id)))
     }
     
     setLoading(false)

@@ -7,16 +7,28 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-11
+last_updated: 2026-04-06
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.240 → v2.4"
+version_range: "v2.244 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.244)"
+    line: ~718
+    description: "Estimates Customer activity: DB trigger + record_estimate_public_link_view RPC; timeline IP for link + accept; accept-estimate alreadyAccepted audit"
+  - name: "Latest Version (v2.243)"
+    line: ~732
+    description: "Settings (dev): list_job_counts_by_master_for_dev_settings RPC replaces full jobs_ledger scan; batched app_settings keys; parallel adoption + dev template loaders"
+  - name: "Latest Version (v2.242)"
+    line: ~728
+    description: "Quickfill Warnings section (first in SECTIONS): stale tally staff banner + modal when RPC has rows; useStaleTallyStaffFollowUp + tallyStaleMinAgeDays; Dashboard refactored to same hook"
+  - name: "Latest Version (v2.241)"
+    line: ~740
+    description: "Dashboard stale tally staff follow-up: list_stale_unlinked_mercury_transactions_for_tally_staff; blue banner + modal; replace_mercury_job_splits_for_linked_card_as_staff + search_jobs_for_tally_mercury_assign_as_user via MercuryTransactionAllocationsModal tallyActAsUserId"
   - name: "Latest Version (v2.240)"
-    line: ~710
+    line: ~736
     description: "Dashboard stale tally banner: count_unlinked_mercury_transactions_for_tally_stale; DashboardTallyStaleBanner above Job Parts Tally row; Chicago calendar age > min_age_days"
   - name: "Latest Version (v2.239)"
     line: ~721
@@ -547,7 +559,7 @@ when_to_read:
 ---
 
 ## Table of Contents
-**New:** [v2.240 — Dashboard stale tally banner](#latest-updates-v2240)
+**New:** [v2.244 — Estimates customer activity audit + timeline IP](#latest-updates-v2244)
 1. [Latest Updates (v2.239)](#latest-updates-v2239) — **Estimates**: **Unlink job** clears **`job_ledger_id`** (confirm **modal**); **sent** — **Copy customer link** / **Open customer link** under waiting message; [`EstimateCustomerAcceptLinkButtons.tsx`](src/components/estimates/EstimateCustomerAcceptLinkButtons.tsx); no duplicate link row in **Customer experience** when **`sent`**. [`Estimates.tsx`](src/pages/Estimates.tsx).
 2. [Latest Updates (v2.238)](#latest-updates-v2238) — **Estimates → Jobs**: **`create_job_from_estimate`** RPC; **Create job from estimate** modal; **Jobs** **Source estimate** + **View contract & acceptance** ([`CustomerAcceptanceRecordModal`](src/components/estimates/CustomerAcceptanceRecordModal.tsx)).
 3. [Latest Updates (v2.237)](#latest-updates-v2237) — **Estimates**: **Approve** modal layout (**`accept_instructions`** hidden; centered **Submit acceptance**); **Total** right-aligned on quote document; staff detail **`# n` + title** one **`h1`** line; inline **Customer acceptance** shows signature disclosure + checked disabled agreement before **Full name**.
@@ -705,6 +717,52 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.244)
+
+**Date**: 2026-04-06
+
+### Estimates — Customer activity audit and timeline IP
+
+- **Database**: [`20260406033952_estimates_audit_customer_accepted_trigger.sql`](supabase/migrations/20260406033952_estimates_audit_customer_accepted_trigger.sql) — **`AFTER UPDATE OF status`** on **`estimates`**: on **`sent` → `customer_accepted`**, inserts **`estimate_customer_events`** (**`public_accept_submitted`**) with **`client_ip` / `user_agent` / metadata** aligned with **`acceptor_*`** columns; [`20260406034514_record_estimate_public_link_view_rpc.sql`](supabase/migrations/20260406034514_record_estimate_public_link_view_rpc.sql) — **`record_estimate_public_link_view`** ( **`service_role`** only) appends **`public_link_view`** while the quote is still **`sent`**
+- **Edge**: [`get-estimate-for-customer`](supabase/functions/get-estimate-for-customer/index.ts) — **`rpc('record_estimate_public_link_view', …)`** before **200**; [`accept-estimate`](supabase/functions/accept-estimate/index.ts) — first accept relies on trigger only; **`alreadyAccepted`** path calls [`insertEstimateCustomerEvent`](supabase/functions/_shared/logEstimateCustomerEvent.ts) (**`log_estimate_customer_event`** + insert fallback, **`metadata.repeat_after_accepted`**)
+- **UI**: [`Estimates.tsx`](src/pages/Estimates.tsx) **Customer activity** — same **` · {ip}`** treatment for **link** and **accept** lines when **`client_ip`** is present
+
+---
+
+## Latest Updates (v2.243)
+
+**Date**: 2026-04-05
+
+### Settings (dev) — faster initial load
+
+- **Database**: [`20260405213504_settings_job_counts_by_master.sql`](supabase/migrations/20260405213504_settings_job_counts_by_master.sql) — **`list_job_counts_by_master_for_dev_settings()`** (`SECURITY DEFINER`, **`is_dev()`** only) returns **`jobs_ledger`** counts grouped by **`master_user_id`** (non-null), replacing a full-table **`master_user_id`** select on the client
+- **UI**: [`Settings.tsx`](src/pages/Settings.tsx) **`loadData`** — dev-only RPC via **`withSupabaseRetry`** (failure yields empty counts, page still finishes loading); **`Promise.all`** for master/dev adoption loaders and for dev notification/email/pay-approved loaders; single **`app_settings`** **`in('key', …)`** batch for labor rate, prospect copy, estimate experience keys, report window settings; parallel batch for catalog fetch, job-owner overrides, archived users, report/dispatch/estimator membership
+
+---
+
+## Latest Updates (v2.242)
+
+**Date**: 2026-04-13
+
+### Quickfill — Warnings (stale tally staff follow-up)
+
+- **Shared**: [`useStaleTallyStaffFollowUp.ts`](src/hooks/useStaleTallyStaffFollowUp.ts), [`tallyStaleMinAgeDays.ts`](src/lib/tallyStaleMinAgeDays.ts) — Dashboard and Quickfill use the same RPC refresh (mount + **`window` `focus`** + post-assign **`refetch`**)
+- **Quickfill**: [`Quickfill.tsx`](src/pages/Quickfill.tsx) — **`warnings`** first in **`SECTIONS`**; section + jump chip only when follow-up rows exist (Option A); **`QuickfillSectionWrapper`** with mark/collapse like other sections
+- **Dashboard**: [`Dashboard.tsx`](src/pages/Dashboard.tsx) — removed duplicate staff follow-up loader/effects in favor of the hook
+
+---
+
+## Latest Updates (v2.241)
+
+**Date**: 2026-04-12
+
+### Dashboard — stale tally staff follow-up (banner + modal)
+
+- **Database**: [`20260405211552_tally_stale_staff_followup.sql`](supabase/migrations/20260405211552_tally_stale_staff_followup.sql) — **`staff_can_view_user_for_tally_followup`**, **`list_stale_unlinked_mercury_transactions_for_tally_staff`**, **`search_jobs_for_tally_mercury_assign_as_user`**, **`replace_mercury_job_splits_for_linked_card_as_staff`**
+- **UI**: **[`DashboardTallyStaleStaffBanner.tsx`](src/components/DashboardTallyStaleStaffBanner.tsx)** (dev / master_technician / assistant only) below the orange personal stale banner; opens **[`DashboardStaleTallyStaffFollowUpModal.tsx`](src/components/DashboardStaleTallyStaffFollowUpModal.tsx)** with per-person contact links (**mailto** / **tel**) and **Assign** → **[`MercuryTransactionAllocationsModal`](src/components/MercuryTransactionAllocationsModal.tsx)** with **`tallyActAsUserId`**. **[`Dashboard.tsx`](src/pages/Dashboard.tsx)** refreshes list counts on mount, **`window` `focus`**, and after save
+
 ---
 
 ## Latest Updates (v2.240)

@@ -106,6 +106,42 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: [`DashboardTallyStaleBanner.tsx`](src/components/DashboardTallyStaleBanner.tsx), [`Dashboard.tsx`](src/pages/Dashboard.tsx) (focus refresh with tally unlinked count)
 - **Category**: Dashboard / Job Parts Tally
 
+**`20260405211552_tally_stale_staff_followup.sql`**
+- **Purpose**: **Dev / master_technician / assistant** Dashboard follow-up for **other people’s** stale unlinked linked-card Mercury transactions (same age/floor/unlinked rules as **`count_unlinked_mercury_transactions_for_tally_stale`**); staff assign splits on behalf of the card owner
+- **Changes**: **`staff_can_view_user_for_tally_followup(viewer, target)`** (internal definer helper, not granted to **`authenticated`**); **`list_stale_unlinked_mercury_transactions_for_tally_staff(min_age_days)`** (flat rows with contact + tx fields, **`LIMIT 500`**); **`search_jobs_for_tally_mercury_assign_as_user(p_for_user_id, search_text)`**; **`replace_mercury_job_splits_for_linked_card_as_staff(p_for_user_id, p_mercury_transaction_id, p_rows)`** — `SECURITY DEFINER`, grants where applicable
+- **Impact**: [`DashboardTallyStaleStaffBanner.tsx`](src/components/DashboardTallyStaleStaffBanner.tsx), [`DashboardStaleTallyStaffFollowUpModal.tsx`](src/components/DashboardStaleTallyStaffFollowUpModal.tsx), **`tallyActAsUserId`** on [`MercuryTransactionAllocationsModal.tsx`](src/components/MercuryTransactionAllocationsModal.tsx), [`Dashboard.tsx`](src/pages/Dashboard.tsx)
+- **Category**: Dashboard / Job Parts Tally
+
+**`20260405213504_settings_job_counts_by_master.sql`**
+- **Purpose**: Dev **Settings → People & accounts** job counts per master without scanning every **`jobs_ledger`** row on the client
+- **Changes**: **`list_job_counts_by_master_for_dev_settings()`** — `RETURNS TABLE (master_user_id uuid, job_count bigint)`; **`SECURITY DEFINER`**, **`STABLE`**, **`is_dev()`** gate; `GROUP BY` on non-null **`master_user_id`**; **`REVOKE ALL`**, **`GRANT EXECUTE`** to **`authenticated`**
+- **Impact**: [`Settings.tsx`](src/pages/Settings.tsx) **`loadData`** (dev-only **`withSupabaseRetry`** RPC + parallel dev loaders)
+- **Category**: Settings / Performance
+
+#### April 6, 2026
+
+**`20260406024629_estimate_customer_events.sql`**
+- **Purpose**: Append-only **customer activity** for Approach A estimates — public link views and successful accept submits
+- **Changes**: **`estimate_customer_events`** (`estimate_id`, `occurred_at`, `event_type`, `source`, `client_ip`, `user_agent`, `metadata` **`jsonb`**); **`CHECK`** on **`event_type`** (`public_link_view`, `public_accept_submitted`) and **`source`**; index **`(estimate_id, occurred_at DESC)`**; **RLS** **`SELECT`** aligned with **`estimates`** visibility; **`GRANT SELECT`** to **`authenticated`**; rows appended only via **`service_role`** Edge calls and **`SECURITY DEFINER`** Postgres (see later migrations: trigger + RPCs), not **`authenticated`** direct **`INSERT`**
+- **Impact**: [`get-estimate-for-customer`](supabase/functions/get-estimate-for-customer/index.ts), [`accept-estimate`](supabase/functions/accept-estimate/index.ts), [`logEstimateCustomerEvent.ts`](supabase/functions/_shared/logEstimateCustomerEvent.ts); **Customer activity** on [`Estimates.tsx`](src/pages/Estimates.tsx) detail
+- **Category**: Estimates / Edge / Audit
+
+**`20260406025757_log_estimate_customer_event_rpc.sql`**
+- **Purpose**: **`log_estimate_customer_event`** — **`SECURITY DEFINER`** insert into **`estimate_customer_events`**; **`GRANT EXECUTE`** to **`service_role`** only (Edge **`rpc`** + optional insert fallback from [`logEstimateCustomerEvent.ts`](supabase/functions/_shared/logEstimateCustomerEvent.ts))
+- **Impact**: [`logEstimateCustomerEvent.ts`](supabase/functions/_shared/logEstimateCustomerEvent.ts); repeat **`accept-estimate`** (**`alreadyAccepted`**) audit
+- **Category**: Estimates / Edge / Audit
+
+**`20260406033952_estimates_audit_customer_accepted_trigger.sql`**
+- **Purpose**: Reliable **`public_accept_submitted`** audit when **`estimates.status`** transitions **`sent` → `customer_accepted`** (same transaction as **`accept-estimate`** update)
+- **Changes**: **`estimates_audit_customer_accepted_row`** + **`estimates_audit_customer_accepted_trigger`** (`AFTER UPDATE OF status`); copies **`acceptor_ip`**, **`acceptor_user_agent`**, and signature presence into **`estimate_customer_events`**
+- **Impact**: [`accept-estimate`](supabase/functions/accept-estimate/index.ts) (main path relies on trigger, no duplicate Edge insert); **Customer activity** on [`Estimates.tsx`](src/pages/Estimates.tsx)
+- **Category**: Estimates / Audit
+
+**`20260406034514_record_estimate_public_link_view_rpc.sql`**
+- **Purpose**: **`record_estimate_public_link_view`** — **`SECURITY DEFINER`** append **`public_link_view`** while the row is still **`sent`**; **`GRANT EXECUTE`** to **`service_role`**
+- **Impact**: [`get-estimate-for-customer`](supabase/functions/get-estimate-for-customer/index.ts) on each successful public **GET** **200**
+- **Category**: Estimates / Edge / Audit
+
 #### April 8, 2026
 
 **`20260405010252_estimate_customer_experience_defaults_snapshot.sql`**

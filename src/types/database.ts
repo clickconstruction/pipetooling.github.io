@@ -1733,6 +1733,47 @@ export type Database = {
         }
         Relationships: []
       }
+      estimate_customer_events: {
+        Row: {
+          client_ip: string | null
+          estimate_id: string
+          event_type: string
+          id: string
+          metadata: Json
+          occurred_at: string
+          source: string
+          user_agent: string | null
+        }
+        Insert: {
+          client_ip?: string | null
+          estimate_id: string
+          event_type: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          source: string
+          user_agent?: string | null
+        }
+        Update: {
+          client_ip?: string | null
+          estimate_id?: string
+          event_type?: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          source?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estimate_customer_events_estimate_id_fkey"
+            columns: ["estimate_id"]
+            isOneToOne: false
+            referencedRelation: "estimates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       estimates: {
         Row: {
           accept_header_brand: string | null
@@ -7869,6 +7910,13 @@ export type Database = {
           shared_tag_count: number
         }[]
       }
+      list_job_counts_by_master_for_dev_settings: {
+        Args: never
+        Returns: {
+          job_count: number
+          master_user_id: string
+        }[]
+      }
       list_jobs_for_tally: {
         Args: never
         Returns: {
@@ -7950,6 +7998,25 @@ export type Database = {
           updated_at: string
         }[]
       }
+      list_stale_unlinked_mercury_transactions_for_tally_staff: {
+        Args: { min_age_days?: number }
+        Returns: {
+          amount: number
+          counterparty_name: string
+          currency: string
+          job_splits: Json
+          mercury_account_id: string
+          mercury_id: string
+          mercury_transaction_id: string
+          note: string
+          posted_at: string
+          raw: Json
+          target_email: string
+          target_name: string
+          target_phone: string
+          target_user_id: string
+        }[]
+      }
       list_superintendent_jobs_for_dashboard: {
         Args: never
         Returns: {
@@ -7996,6 +8063,17 @@ export type Database = {
           name: string
         }[]
       }
+      log_estimate_customer_event: {
+        Args: {
+          p_client_ip: string
+          p_estimate_id: string
+          p_event_type: string
+          p_metadata?: Json
+          p_source: string
+          p_user_agent: string
+        }
+        Returns: string
+      }
       mark_invoice_paid: { Args: { p_invoice_id: string }; Returns: Json }
       mark_invoice_paid_from_stripe: {
         Args: { p_invoice_id: string }
@@ -8032,6 +8110,14 @@ export type Database = {
         Args: { p_survivor: string; p_victim: string }
         Returns: Json
       }
+      record_estimate_public_link_view: {
+        Args: {
+          p_client_ip?: string
+          p_estimate_id: string
+          p_user_agent?: string
+        }
+        Returns: undefined
+      }
       record_ncns_and_reject_sessions_for_day: {
         Args: {
           p_details?: string
@@ -8046,6 +8132,14 @@ export type Database = {
       }
       replace_estimate_catalog_payload: {
         Args: { p_payload: Json }
+        Returns: undefined
+      }
+      replace_mercury_job_splits_for_linked_card_as_staff: {
+        Args: {
+          p_for_user_id: string
+          p_mercury_transaction_id: string
+          p_rows: Json
+        }
         Returns: undefined
       }
       replace_mercury_job_splits_for_my_linked_card: {
@@ -8129,6 +8223,15 @@ export type Database = {
           job_name: string
         }[]
       }
+      search_jobs_for_tally_mercury_assign_as_user: {
+        Args: { p_for_user_id: string; search_text?: string }
+        Returns: {
+          hcp_number: string
+          id: string
+          job_address: string
+          job_name: string
+        }[]
+      }
       search_jobs_ledger: {
         Args: { search_text?: string }
         Returns: {
@@ -8151,6 +8254,10 @@ export type Database = {
           error_message: string
           inserted_ids: string[]
         }[]
+      }
+      staff_can_view_user_for_tally_followup: {
+        Args: { p_target: string; p_viewer: string }
+        Returns: boolean
       }
       superintendent_can_access_bid: {
         Args: { b: Database["public"]["Tables"]["bids"]["Row"] }

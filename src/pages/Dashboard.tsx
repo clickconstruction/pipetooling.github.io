@@ -30,6 +30,10 @@ import { DashboardMyTimeDayEditorModal } from '../components/DashboardMyTimeDayE
 import DashboardDevRejectedNotification from '../components/DashboardDevRejectedNotification'
 import DashboardMyTeamPendingBanner from '../components/DashboardMyTeamPendingBanner'
 import DashboardTallyStaleBanner from '../components/DashboardTallyStaleBanner'
+import DashboardTallyStaleStaffBanner from '../components/DashboardTallyStaleStaffBanner'
+import { DashboardStaleTallyStaffFollowUpModal } from '../components/DashboardStaleTallyStaffFollowUpModal'
+import { useStaleTallyStaffFollowUp } from '../hooks/useStaleTallyStaffFollowUp'
+import { TALLY_STALE_MIN_AGE_DAYS } from '../lib/tallyStaleMinAgeDays'
 import { DashboardTeamActiveClockStrip } from '../components/DashboardTeamActiveClockStrip'
 import { useDashboardMyTeamSectionState } from '../hooks/useDashboardMyTeamSectionState'
 import {
@@ -68,7 +72,6 @@ import type { Database } from '../types/database'
 import type { ClockSessionRow, DashboardStripSession } from '../types/clockSessions'
 
 const DASHBOARD_CLOCK_STRIP_SCOPE_KEY = 'dashboard_clock_strip_scope'
-const TALLY_STALE_MIN_AGE_DAYS = 2
 
 function readClockStripScope(): 'team' | 'everyone' {
   try {
@@ -634,6 +637,12 @@ export default function Dashboard() {
   const [financialRefreshKey, setFinancialRefreshKey] = useState(0)
   const [tallyUnlinkedCount, setTallyUnlinkedCount] = useState<number | null>(null)
   const [tallyStaleUnlinkedCount, setTallyStaleUnlinkedCount] = useState<number | null>(null)
+  const [tallyStaffFollowUpModalOpen, setTallyStaffFollowUpModalOpen] = useState(false)
+  const {
+    peopleCount: tallyStaffStalePeopleCount,
+    transactionCount: tallyStaffStaleTxCount,
+    refetch: refetchStaleTallyStaffFollowUp,
+  } = useStaleTallyStaffFollowUp(TALLY_STALE_MIN_AGE_DAYS)
   const { total: costMatrixTotal } = useCostMatrixTotal(hasCostMatrixPin)
   const { count: billedCount, total: billedTotal } = useBilledTotal(hasBilledPin, financialRefreshKey)
   const { count: hoursAwaitingCount } = useHoursAwaitingApprovalCount(isDev, financialRefreshKey)
@@ -3323,6 +3332,15 @@ export default function Dashboard() {
           loading={tallyStaleUnlinkedCount === null}
           minAgeDays={TALLY_STALE_MIN_AGE_DAYS}
           onGoToTally={() => navigate('/tally?tab=transactions')}
+        />
+      )}
+      {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
+        <DashboardTallyStaleStaffBanner
+          peopleCount={typeof tallyStaffStalePeopleCount === 'number' ? tallyStaffStalePeopleCount : 0}
+          transactionCount={typeof tallyStaffStaleTxCount === 'number' ? tallyStaffStaleTxCount : 0}
+          loading={tallyStaffStalePeopleCount === null || tallyStaffStaleTxCount === null}
+          minAgeDays={TALLY_STALE_MIN_AGE_DAYS}
+          onOpen={() => setTallyStaffFollowUpModalOpen(true)}
         />
       )}
       {role != null && (
@@ -6404,6 +6422,14 @@ export default function Dashboard() {
         authUserId={authUser?.id ?? null}
         userRole={role}
       />
+      {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
+        <DashboardStaleTallyStaffFollowUpModal
+          open={tallyStaffFollowUpModalOpen}
+          onClose={() => setTallyStaffFollowUpModalOpen(false)}
+          minAgeDays={TALLY_STALE_MIN_AGE_DAYS}
+          onDataChanged={() => void refetchStaleTallyStaffFollowUp()}
+        />
+      )}
       <ReportEditModal
         open={editReportModalOpen}
         report={reportForEdit}
