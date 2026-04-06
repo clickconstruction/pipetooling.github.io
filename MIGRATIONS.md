@@ -120,6 +120,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### April 6, 2026
 
+**`20260406155949_tally_staff_list_include_all_unlinked.sql`**
+- **Purpose**: Stale tally **staff follow-up** modal — optional **Show all** list (all unlinked linked-card rows) without Chicago calendar **min_age_days** filter; banner/hook still use stale-only
+- **Changes**: **`DROP`** single-arg **`list_stale_unlinked_mercury_transactions_for_tally_staff(integer)`**; **`CREATE`** **`(min_age_days integer DEFAULT 2, include_all_unlinked boolean DEFAULT false)`** — when **`include_all_unlinked`**, skip age predicate; **`REVOKE`/`GRANT EXECUTE`** on new signature
+- **Impact**: [`DashboardStaleTallyStaffFollowUpModal.tsx`](src/components/DashboardStaleTallyStaffFollowUpModal.tsx), [`useStaleTallyStaffFollowUp.ts`](src/hooks/useStaleTallyStaffFollowUp.ts) (**`include_all_unlinked: false`** for counts)
+- **Category**: Dashboard / Job Parts Tally
+
 **`20260406024629_estimate_customer_events.sql`**
 - **Purpose**: Append-only **customer activity** for Approach A estimates — public link views and successful accept submits
 - **Changes**: **`estimate_customer_events`** (`estimate_id`, `occurred_at`, `event_type`, `source`, `client_ip`, `user_agent`, `metadata` **`jsonb`**); **`CHECK`** on **`event_type`** (`public_link_view`, `public_accept_submitted`) and **`source`**; index **`(estimate_id, occurred_at DESC)`**; **RLS** **`SELECT`** aligned with **`estimates`** visibility; **`GRANT SELECT`** to **`authenticated`**; rows appended only via **`service_role`** Edge calls and **`SECURITY DEFINER`** Postgres (see later migrations: trigger + RPCs), not **`authenticated`** direct **`INSERT`**

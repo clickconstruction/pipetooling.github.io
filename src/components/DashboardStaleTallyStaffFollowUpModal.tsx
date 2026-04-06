@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
-import type { Database } from '../types/database'
+import type { Database, Json } from '../types/database'
 import { MercuryTransactionAllocationsModal } from './MercuryTransactionAllocationsModal'
+import { PersonOffsetFormModal, type PersonOffsetInitialDraft } from './pay/PersonOffsetFormModal'
 import { parseTallyJobSplitsJson } from '../lib/tallyJobSplits'
 import { useToastContext } from '../contexts/ToastContext'
-import { APP_CALENDAR_TZ } from '../utils/dateUtils'
+import { fetchOffsetPersonNameOptions } from '../lib/offsetPersonNameOptions'
+import { useAuth } from '../hooks/useAuth'
+import { APP_CALENDAR_TZ, denverCalendarDayKey } from '../utils/dateUtils'
 
 type StaleStaffRow = Database['public']['Functions']['list_stale_unlinked_mercury_transactions_for_tally_staff']['Returns'][number]
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
@@ -73,6 +76,19 @@ type Group = {
   rows: StaleStaffRow[]
 }
 
+function buildBackchargeDraftFromStaleRow(g: Group, r: StaleStaffRow): PersonOffsetInitialDraft {
+  const cp = (r.counterparty_name ?? '').trim() || 'Unknown'
+  const postedMs = r.posted_at ? new Date(r.posted_at).getTime() : NaN
+  const ymd = Number.isFinite(postedMs) ? denverCalendarDayKey(postedMs) : denverCalendarDayKey(Date.now())
+  return {
+    personName: g.target_name,
+    type: 'backcharge',
+    amount: String(Math.abs(Number(r.amount))),
+    description: `Personal charge on company card: ${cp}`,
+    occurredDate: ymd,
+  }
+}
+
 export function DashboardStaleTallyStaffFollowUpModal({
   open,
   onClose,
@@ -80,9 +96,15 @@ export function DashboardStaleTallyStaffFollowUpModal({
   onDataChanged,
 }: DashboardStaleTallyStaffFollowUpModalProps) {
   const { showToast } = useToastContext()
+  const { user: authUser } = useAuth()
   const [loading, setLoading] = useState(false)
   const [rows, setRows] = useState<StaleStaffRow[]>([])
   const [allocRow, setAllocRow] = useState<StaleStaffRow | null>(null)
+  const [personOffsetFormOpen, setPersonOffsetFormOpen] = useState(false)
+  const [personOffsetNameOptions, setPersonOffsetNameOptions] = useState<string[] | null>(null)
+  const [personOffsetCreateDraft, setPersonOffsetCreateDraft] = useState<PersonOffsetInitialDraft | null>(null)
+  const [backchargeBusyTxId, setBackchargeBusyTxId] = useState<string | null>(null)
+  const [showAllUnlinked, setShowAllUnlinked] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -91,6 +113,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
         async () =>
           supabase.rpc('list_stale_unlinked_mercury_transactions_for_tally_staff', {
             min_age_days: minAgeDays,
+            include_all_unlinked: showAllUnlinked,
           }),
         'list stale unlinked mercury transactions for tally staff',
       )
@@ -101,15 +124,72 @@ export function DashboardStaleTallyStaffFollowUpModal({
     } finally {
       setLoading(false)
     }
-  }, [minAgeDays, showToast])
+  }, [minAgeDays, showAllUnlinked, showToast])
 
   useEffect(() => {
     if (!open) {
       setAllocRow(null)
+      setPersonOffsetFormOpen(false)
+      setPersonOffsetNameOptions(null)
+      setPersonOffsetCreateDraft(null)
+      setBackchargeBusyTxId(null)
+      setShowAllUnlinked(false)
       return
     }
     void load()
   }, [open, load])
+
+  const closePersonOffsetForm = useCallback(() => {
+    setPersonOffsetFormOpen(false)
+    setPersonOffsetCreateDraft(null)
+    setPersonOffsetNameOptions(null)
+  }, [])
+
+  const openBackcharge = useCallback(
+    async (g: Group, r: StaleStaffRow) => {
+      const uid = authUser?.id
+      if (!uid) {
+        showToast('Sign in required', 'error')
+        return
+      }
+      setBackchargeBusyTxId(r.mercury_transaction_id)
+      try {
+        const officeRows = await withSupabaseRetry(
+          async () => supabase.rpc('get_jobs_ledger_office'),
+          'get jobs ledger office',
+        )
+        const officeId = Array.isArray(officeRows) && officeRows.length > 0 ? officeRows[0]?.id : null
+        if (!officeId) {
+          showToast('Office job not found (HCP 000 or name containing Office).', 'error')
+          return
+        }
+        const txAmount = Number(r.amount)
+        const p_rows = [{ job_id: officeId, amount: txAmount }] as unknown as Json
+        await withSupabaseRetry(
+          async () =>
+            supabase.rpc('replace_mercury_job_splits_for_linked_card_as_staff', {
+              p_for_user_id: r.target_user_id,
+              p_mercury_transaction_id: r.mercury_transaction_id,
+              p_rows,
+            }),
+          'replace mercury job splits office backcharge',
+        )
+        showToast('Transaction assigned to Office job.', 'success')
+        void load()
+        onDataChanged?.()
+
+        const names = await fetchOffsetPersonNameOptions({ authUserId: uid, ensureNames: [g.target_name] })
+        setPersonOffsetNameOptions(names)
+        setPersonOffsetCreateDraft(buildBackchargeDraftFromStaleRow(g, r))
+        setPersonOffsetFormOpen(true)
+      } catch (e) {
+        showToast(e instanceof Error ? e.message : 'Could not complete backcharge', 'error')
+      } finally {
+        setBackchargeBusyTxId(null)
+      }
+    },
+    [authUser?.id, showToast, load, onDataChanged],
+  )
 
   const groups = useMemo(() => {
     const map = new Map<string, Group>()
@@ -138,14 +218,15 @@ export function DashboardStaleTallyStaffFollowUpModal({
   useEffect(() => {
     if (!open) return
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape' && !allocRow) {
-        e.preventDefault()
-        onClose()
-      }
+      if (e.key !== 'Escape') return
+      if (personOffsetFormOpen) return
+      if (allocRow) return
+      e.preventDefault()
+      onClose()
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [open, onClose, allocRow])
+  }, [open, onClose, allocRow, personOffsetFormOpen])
 
   if (!open) return null
 
@@ -202,9 +283,37 @@ export function DashboardStaleTallyStaffFollowUpModal({
               Close
             </button>
           </div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.5rem' }}>
+            <button
+              type="button"
+              onClick={() => setShowAllUnlinked((v) => !v)}
+              style={{
+                padding: '0.4rem 0.9rem',
+                border: '1px solid #94a3b8',
+                background: showAllUnlinked ? '#f1f5f9' : 'white',
+                borderRadius: 6,
+                cursor: 'pointer',
+                fontSize: '0.8125rem',
+                fontWeight: 600,
+                color: '#334155',
+                fontFamily: 'inherit',
+              }}
+            >
+              {showAllUnlinked ? 'Show stale only' : 'Show all'}
+            </button>
+          </div>
           <p style={{ margin: '0.75rem 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
-            Unlinked Mercury transactions (card linked to each person, {minAgeDays}+ calendar days old in {APP_CALENDAR_TZ}
-            ). Open <strong>Assign</strong> to split to jobs using their card and job visibility.
+            {showAllUnlinked ? (
+              <>
+                All unlinked Mercury transactions linked via debit card to persons. Open <strong>Assign</strong> to split to
+                jobs. Use <strong>Backcharge</strong> to record a pending person offset.
+              </>
+            ) : (
+              <>
+                Unlinked Mercury transactions, by person, more than {minAgeDays} calendar days old. Open <strong>Assign</strong>{' '}
+                to split to jobs. Use <strong>Backcharge</strong> to assign the full amount to record an offset.
+              </>
+            )}
           </p>
           {loading ? (
             <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>Loading…</div>
@@ -310,23 +419,44 @@ export function DashboardStaleTallyStaffFollowUpModal({
                               {r.note?.trim() ? r.note : '—'}
                             </td>
                             <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                              <button
-                                type="button"
-                                onClick={() => setAllocRow(r)}
-                                style={{
-                                  padding: '0.35rem 0.65rem',
-                                  borderRadius: 6,
-                                  border: '1px solid #2563eb',
-                                  background: '#fff',
-                                  color: '#1d4ed8',
-                                  fontWeight: 600,
-                                  fontSize: '0.8125rem',
-                                  cursor: 'pointer',
-                                  fontFamily: 'inherit',
-                                }}
+                              <div style={{ display: 'inline-flex', gap: '0.35rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => setAllocRow(r)}
+                                  style={{
+                                    padding: '0.35rem 0.65rem',
+                                    borderRadius: 6,
+                                    border: '1px solid #2563eb',
+                                    background: '#fff',
+                                    color: '#1d4ed8',
+                                    fontWeight: 600,
+                                    fontSize: '0.8125rem',
+                                    cursor: 'pointer',
+                                    fontFamily: 'inherit',
+                                  }}
                                 >
-                                Assign
-                              </button>
+                                  Assign
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={backchargeBusyTxId === r.mercury_transaction_id}
+                                  onClick={() => void openBackcharge(g, r)}
+                                  style={{
+                                    padding: '0.35rem 0.65rem',
+                                    borderRadius: 6,
+                                    border: '1px solid #b45309',
+                                    background: '#fff',
+                                    color: '#b45309',
+                                    fontWeight: 600,
+                                    fontSize: '0.8125rem',
+                                    cursor: backchargeBusyTxId === r.mercury_transaction_id ? 'wait' : 'pointer',
+                                    fontFamily: 'inherit',
+                                    opacity: backchargeBusyTxId === r.mercury_transaction_id ? 0.7 : 1,
+                                  }}
+                                >
+                                  {backchargeBusyTxId === r.mercury_transaction_id ? '…' : 'Backcharge'}
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -357,6 +487,21 @@ export function DashboardStaleTallyStaffFollowUpModal({
           void load()
           onDataChanged?.()
         }}
+      />
+
+      <PersonOffsetFormModal
+        open={personOffsetFormOpen}
+        onClose={closePersonOffsetForm}
+        zIndex={1150}
+        editingOffset={null}
+        initialCreateDraft={personOffsetCreateDraft}
+        personNameOptions={personOffsetNameOptions ?? []}
+        onSaved={() => {
+          showToast('Offset saved', 'success')
+          void load()
+          onDataChanged?.()
+        }}
+        onError={(msg) => showToast(msg, 'error')}
       />
     </>
   )

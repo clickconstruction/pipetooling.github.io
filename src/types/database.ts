@@ -7999,7 +7999,7 @@ export type Database = {
         }[]
       }
       list_stale_unlinked_mercury_transactions_for_tally_staff: {
-        Args: { min_age_days?: number }
+        Args: { include_all_unlinked?: boolean; min_age_days?: number }
         Returns: {
           amount: number
           counterparty_name: string

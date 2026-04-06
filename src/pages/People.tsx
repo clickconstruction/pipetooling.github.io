@@ -34,6 +34,7 @@ import {
 } from '../lib/payStubPayments'
 import { PayStubAdditionalModal } from '../components/pay/PayStubAdditionalModal'
 import { PayStubLessModal } from '../components/pay/PayStubLessModal'
+import { PersonOffsetFormModal } from '../components/pay/PersonOffsetFormModal'
 import {
   type PayStubAdditionalLineRow,
   type PayStubDeductionRow,
@@ -233,6 +234,13 @@ export default function People() {
   const usersRef = useRef<UserRow[]>([])
   usersRef.current = users
   const [people, setPeople] = useState<Person[]>([])
+  const offsetPersonNameOptions = useMemo(
+    () =>
+      [...new Set([...people.map((p) => p.name), ...users.map((u) => u.name)])]
+        .filter((n): n is string => Boolean(n?.trim()))
+        .sort((a, b) => a.localeCompare(b)),
+    [people, users],
+  )
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [formOpen, setFormOpen] = useState(false)
@@ -534,11 +542,6 @@ export default function People() {
   const [offsetsError, setOffsetsError] = useState<string | null>(null)
   const [offsetFormOpen, setOffsetFormOpen] = useState(false)
   const [editingOffset, setEditingOffset] = useState<PersonOffset | null>(null)
-  const [offsetPersonName, setOffsetPersonName] = useState('')
-  const [offsetType, setOffsetType] = useState<'backcharge' | 'damage'>('backcharge')
-  const [offsetAmount, setOffsetAmount] = useState('')
-  const [offsetDescription, setOffsetDescription] = useState('')
-  const [offsetOccurredDate, setOffsetOccurredDate] = useState(() => new Date().toLocaleDateString('en-CA'))
   const [offsetApplyModalOpen, setOffsetApplyModalOpen] = useState(false)
   const [offsetToApply, setOffsetToApply] = useState<PersonOffset | null>(null)
   const [offsetApplyPayStubId, setOffsetApplyPayStubId] = useState('')
@@ -3938,49 +3941,13 @@ export default function People() {
 
   function openOffsetForm(o?: PersonOffset) {
     setEditingOffset(o ?? null)
-    setOffsetPersonName(o?.person_name ?? '')
-    setOffsetType((o?.type as 'backcharge' | 'damage') ?? 'backcharge')
-    setOffsetAmount(o?.amount?.toString() ?? '')
-    setOffsetDescription(o?.description ?? '')
-    setOffsetOccurredDate(o?.occurred_date ?? new Date().toLocaleDateString('en-CA'))
     setOffsetFormOpen(true)
   }
 
   function closeOffsetForm() {
     setOffsetFormOpen(false)
     setEditingOffset(null)
-    setOffsetPersonName('')
-    setOffsetType('backcharge')
-    setOffsetAmount('')
-    setOffsetDescription('')
-    setOffsetOccurredDate(new Date().toLocaleDateString('en-CA'))
-  }
-
-  async function upsertOffset() {
-    const amt = parseFloat(offsetAmount)
-    if (isNaN(amt) || amt <= 0) {
-      setOffsetsError('Amount must be a positive number')
-      return
-    }
-    if (!offsetPersonName.trim()) {
-      setOffsetsError('Select a person')
-      return
-    }
-    if (editingOffset) {
-      const { error: err } = await supabase.from('person_offsets').update({ person_name: offsetPersonName.trim(), type: offsetType, amount: amt, description: offsetDescription.trim() || null, occurred_date: offsetOccurredDate }).eq('id', editingOffset.id)
-      if (err) setOffsetsError(err.message)
-      else {
-        closeOffsetForm()
-        loadOffsets()
-      }
-    } else {
-      const { error: err } = await supabase.from('person_offsets').insert({ person_name: offsetPersonName.trim(), type: offsetType, amount: amt, description: offsetDescription.trim() || null, occurred_date: offsetOccurredDate })
-      if (err) setOffsetsError(err.message)
-      else {
-        closeOffsetForm()
-        loadOffsets()
-      }
-    }
+    setOffsetsError(null)
   }
 
   async function deleteOffset(o: PersonOffset) {
@@ -11409,45 +11376,15 @@ export default function People() {
         </div>
       )}
 
-      {offsetFormOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
-            <h2 style={{ marginTop: 0 }}>{editingOffset ? 'Edit offset' : 'Add offset'}</h2>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: 4 }}>Person *</label>
-              <select value={offsetPersonName} onChange={(e) => setOffsetPersonName(e.target.value)} style={{ width: '100%', padding: '0.5rem' }}>
-                <option value="">— Select —</option>
-                {[...new Set([...people.map((p) => p.name), ...users.map((u) => u.name)])].filter(Boolean).sort((a, b) => (a ?? '').localeCompare(b ?? '')).map((n) => (
-                  <option key={n} value={n}>{n}</option>
-                ))}
-              </select>
-            </div>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: 4 }}>Type *</label>
-              <select value={offsetType} onChange={(e) => setOffsetType(e.target.value as 'backcharge' | 'damage')} style={{ width: '100%', padding: '0.5rem' }}>
-                <option value="backcharge">Backcharge</option>
-                <option value="damage">Damage</option>
-              </select>
-            </div>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: 4 }}>Amount ($) *</label>
-              <input type="number" min={0} step={0.01} value={offsetAmount} onChange={(e) => setOffsetAmount(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
-            </div>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: 4 }}>Description</label>
-              <input type="text" value={offsetDescription} onChange={(e) => setOffsetDescription(e.target.value)} placeholder="Optional" style={{ width: '100%', padding: '0.5rem' }} />
-            </div>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: 4 }}>Occurred date *</label>
-              <input type="date" value={offsetOccurredDate} onChange={(e) => setOffsetOccurredDate(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" onClick={upsertOffset} style={{ padding: '0.5rem 1rem' }}>Save</button>
-              <button type="button" onClick={closeOffsetForm} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <PersonOffsetFormModal
+        open={offsetFormOpen}
+        onClose={closeOffsetForm}
+        editingOffset={editingOffset}
+        initialCreateDraft={null}
+        personNameOptions={offsetPersonNameOptions}
+        onSaved={() => void loadOffsets()}
+        onError={setOffsetsError}
+      />
 
       {offsetApplyModalOpen && offsetToApply && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>

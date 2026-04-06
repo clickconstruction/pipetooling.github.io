@@ -33,6 +33,7 @@ export function useStaleTallyStaffFollowUp(minAgeDays: number): {
         async () =>
           await supabase.rpc('list_stale_unlinked_mercury_transactions_for_tally_staff', {
             min_age_days: minAgeDays,
+            include_all_unlinked: false,
           }),
         'list stale unlinked mercury transactions for tally staff',
       )
