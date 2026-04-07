@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import type { Database } from '../types/database'
 import { withSupabaseRetry } from '../utils/errorHandling'
+import { APP_CALENDAR_TZ } from '../utils/dateUtils'
 import { aggregateCalendarClockedHoursByDate } from '../lib/calendarClockedHoursByDate'
 import { CLOCK_SESSION_CALENDAR_SELECT } from '../lib/clockSessionSelect'
 import {
@@ -119,7 +120,7 @@ function getCentralDateFromUTC(utcString: string | null): string | null {
   const utcDate = new Date(utcString)
   // Use Intl.DateTimeFormat to get date components in Central Time
   const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Chicago',
+    timeZone: APP_CALENDAR_TZ,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -137,7 +138,7 @@ function getCentralDateFromUTC(utcString: string | null): string | null {
 function getCentralDate(date: Date): Date {
   // Get current date in Central Time
   const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Chicago',
+    timeZone: APP_CALENDAR_TZ,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -718,7 +719,7 @@ export default function Calendar() {
   if (error) return <p style={{ color: '#b91c1c' }}>{error}</p>
 
   const days = getDaysInMonth(currentMonth)
-  const monthName = currentMonth.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'America/Chicago' })
+  const monthName = currentMonth.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: APP_CALENDAR_TZ })
   const now = new Date()
   const centralNow = getCentralDate(now)
   const todayKey = formatDateKey(centralNow)

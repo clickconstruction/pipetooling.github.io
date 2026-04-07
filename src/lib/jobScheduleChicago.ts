@@ -1,6 +1,9 @@
 /** America/Chicago wall clock for job schedule work_date and time_start/time_end. */
 
-export const JOB_SCHEDULE_TIMEZONE = 'America/Chicago'
+import { APP_CALENDAR_TZ } from '../utils/dateUtils'
+
+/** Re-export of company IANA zone (CST/CDT via DST). Same as `APP_CALENDAR_TZ`. */
+export const JOB_SCHEDULE_TIMEZONE = APP_CALENDAR_TZ
 
 /** YYYY-MM-DD in Chicago for "now". */
 export function scheduleTodayDateKey(now: Date = new Date()): string {

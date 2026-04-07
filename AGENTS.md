@@ -23,6 +23,7 @@
 | Edge Functions API | `EDGE_FUNCTIONS.md` → All Edge Functions with examples |
 | Migration history | `MIGRATIONS.md` → All migrations by date and category |
 | **Linked** DB: local vs remote migration history mismatch, **`repair`**, **`db push --include-all`** | [Migration history drift (linked project)](#migration-history-drift-linked-project) below |
+| Company calendar / Central time (`America/Chicago`), instants vs naive wall time | [`TIME_AND_ZONES.md`](./TIME_AND_ZONES.md); canonical constant **`APP_CALENDAR_TZ`** in `src/utils/dateUtils.ts`; `npm run check:timezone` |
 | Apply migrations / run SQL on linked Supabase (when Docker local unavailable) | Cursor **Supabase MCP** — read tool descriptors in `.cursor/.../mcps/` first; `apply_migration` for new files, `execute_sql` for ad-hoc queries; see [Supabase MCP](#supabase-mcp-cursor) below |
 | Workflow features | `WORKFLOW_FEATURES.md` → Stage management, financials |
 | Clock In/Out, pending sessions, Revoke, accountability, Quickfill Hours, Crew Jobs / Bids, unified job/bid search, Pay Report Jobs/Bids | `RECENT_FEATURES.md` → v2.100, v2.105, v2.114, v2.120; `PROJECT_DOCUMENTATION.md` → Dashboard, Hours, Quickfill, People; `GLOSSARY.md` → Clock Sessions |
@@ -85,6 +86,7 @@
 4. **No `any` types** — TypeScript strict mode. Use proper types or `unknown`.
 5. **Wrap Supabase calls** — Use `withSupabaseRetry()` from `@/utils/errorHandling`
 6. **Test all 7 roles** — dev, master, assistant, subcontractor, estimator, primary, superintendent
+7. **Company time zone** — Use **`APP_CALENDAR_TZ`** from [`src/utils/dateUtils.ts`](./src/utils/dateUtils.ts) (or Edge [`_shared/appTimeZone.ts`](./supabase/functions/_shared/appTimeZone.ts)); do not introduce new `'America/Chicago'` string literals in app/Edge TS (see [`TIME_AND_ZONES.md`](./TIME_AND_ZONES.md), `npm run check:timezone`).
 
 ---
 

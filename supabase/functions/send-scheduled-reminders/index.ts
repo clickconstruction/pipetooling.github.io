@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
+import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,7 +12,7 @@ const corsHeaders = {
 // Get current time in America/Chicago, rounded to 15-minute boundary (e.g. 9:07 -> 9:00)
 function getCstTimeRounded(): string {
   const formatter = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Chicago',
+    timeZone: APP_CALENDAR_TZ,
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
@@ -27,7 +28,7 @@ function getCstTimeRounded(): string {
 // Get today's date in America/Chicago as YYYY-MM-DD
 function getTodayCst(): string {
   const formatter = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Chicago',
+    timeZone: APP_CALENDAR_TZ,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',

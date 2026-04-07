@@ -3,8 +3,7 @@ import {
   formatClockSessionJobOrBidLabelFromEmbeds,
   shortJobOrBidLabelFromEmbeds,
 } from '../types/clockSessions'
-
-const CHICAGO = 'America/Chicago'
+import { APP_CALENDAR_TZ } from '../utils/dateUtils'
 
 /** PostgREST row shape for CLOCK_SESSION_CALENDAR_SELECT. */
 export type CalendarClockSessionRaw = {
@@ -78,7 +77,7 @@ export function groupActiveClockSessionsByWorkDate(
 }
 
 const timeOnlyFormatter = new Intl.DateTimeFormat('en-US', {
-  timeZone: CHICAGO,
+  timeZone: APP_CALENDAR_TZ,
   hour: 'numeric',
   minute: '2-digit',
 })

@@ -14,7 +14,8 @@
     "preview": "vite preview",
     "gen-types:local": "supabase gen types typescript --local > src/types/database.ts 2>/dev/null",
     "gen-types:linked": "supabase gen types typescript --linked > src/types/database.ts 2>/dev/null",
-    "gen-debit-card-nickname-sql": "node scripts/generate-debit-card-nickname-sql.mjs"
+    "gen-debit-card-nickname-sql": "node scripts/generate-debit-card-nickname-sql.mjs",
+    "check:timezone": "node scripts/check-app-calendar-tz.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",

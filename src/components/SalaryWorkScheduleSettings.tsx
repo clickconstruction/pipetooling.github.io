@@ -56,7 +56,7 @@ function toPgTime(hhmm: string): string {
 
 const US_CONTINENTAL_TIMEZONES = [
   { iana: 'America/New_York', label: 'Eastern' },
-  { iana: 'America/Chicago', label: 'Central' },
+  { iana: APP_CALENDAR_TZ, label: 'Central' },
   { iana: 'America/Denver', label: 'Mountain' },
   { iana: 'America/Los_Angeles', label: 'Pacific' },
 ] as const

@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,7 +10,7 @@ const corsHeaders = {
 
 function todayCompanyCalendarYmd(): string {
   return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Chicago',
+    timeZone: APP_CALENDAR_TZ,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',

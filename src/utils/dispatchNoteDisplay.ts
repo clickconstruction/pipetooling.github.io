@@ -1,11 +1,11 @@
 /** Display timestamps for dispatch thread notes in America/Chicago. */
 
-const CHICAGO_TZ = 'America/Chicago'
+import { APP_CALENDAR_TZ } from './dateUtils'
 
 /** YYYY-MM-DD in Chicago for a given instant */
 function calendarDayInChicago(isoUtc: string, now: Date = new Date()): { note: string; today: string } {
   const dtf = new Intl.DateTimeFormat('en-CA', {
-    timeZone: CHICAGO_TZ,
+    timeZone: APP_CALENDAR_TZ,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -42,7 +42,7 @@ export function formatDispatchNoteDaysAgoLabel(isoUtc: string, now: Date = new D
 /** e.g. "Monday, 3:45 PM" in America/Chicago */
 export function formatDispatchNoteWeekdayTimeChicago(isoUtc: string): string {
   return new Intl.DateTimeFormat('en-US', {
-    timeZone: CHICAGO_TZ,
+    timeZone: APP_CALENDAR_TZ,
     weekday: 'long',
     hour: 'numeric',
     minute: '2-digit',

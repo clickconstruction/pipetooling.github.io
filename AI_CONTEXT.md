@@ -149,6 +149,7 @@ pipetooling.github.io/
 - **`AI_CONTEXT.md`** - This file (quick overview)
 - **`PROJECT_DOCUMENTATION.md`** - Complete technical reference (3000+ lines)
 - **`SALARY_CLOCK_SESSIONS.md`** - Salaried **`salary_schedule`** materialization, split RPCs, sync overlap guards, migrations (no-Docker CLI notes)
+- **`TIME_AND_ZONES.md`** - Company **`America/Chicago`** constant (`APP_CALENDAR_TZ`), instants vs naive wall-clock storage, `check:timezone` guardrail
 - **`BIDS_SYSTEM.md`** - Bids system documentation (all tabs)
 - **`ACCESS_CONTROL.md`** - Complete role permissions matrix
 - **`ADDING_A_NEW_ROLE.md`** - Step-by-step guide for adding new roles
