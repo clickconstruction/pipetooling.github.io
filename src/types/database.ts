@@ -7771,6 +7771,19 @@ export type Database = {
           job_id: string
         }[]
       }
+      get_invoice_allocation_lines_for_jobs: {
+        Args: { p_job_ids: string[] }
+        Returns: {
+          allocated_amount: number
+          invoice_date: string
+          invoice_id: string
+          invoice_number: string
+          invoice_total_amount: number
+          job_id: string
+          pct: number
+          supply_house_name: string
+        }[]
+      }
       get_job_display_for_report: {
         Args: { p_id: string; p_source: string }
         Returns: {
@@ -8227,9 +8240,9 @@ export type Database = {
       replace_mercury_transaction_splits: {
         Args: {
           p_mercury_transaction_id: string
-          p_person_id: string
+          p_person_id: string | null
           p_rows: Json
-          p_user_id?: string
+          p_user_id?: string | null
         }
         Returns: undefined
       }
