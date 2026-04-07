@@ -304,7 +304,7 @@ type ChecklistInstance = {
 }
 
 // Paths each role can access (for filtering pinned items). When role is null, treat as primary to prevent flash.
-const SUBCONTRACTOR_PATHS = new Set(['/', '/dashboard', '/checklist', '/settings', '/tally'])
+const SUBCONTRACTOR_PATHS = new Set(['/', '/dashboard', '/calendar', '/checklist', '/settings', '/tally'])
 const PRIMARY_PATHS = new Set(['/dashboard', '/materials', '/jobs', '/bids', '/calendar', '/checklist', '/settings', '/tally'])
 const SUPERINTENDENT_PATHS = new Set(['/dashboard', '/projects', '/workflows', '/jobs', '/bids', '/materials', '/calendar', '/checklist', '/settings', '/tally'])
 

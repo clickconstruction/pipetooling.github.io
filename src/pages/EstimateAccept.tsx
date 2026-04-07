@@ -9,6 +9,7 @@ import {
 } from '../lib/estimateCustomerExperience'
 import type { EstimateAcceptHeaderBrand } from '../lib/estimateAcceptHeaderBrand'
 import { parseAcceptHeaderBrand } from '../lib/estimateAcceptHeaderBrand'
+import type { CustomerAttachmentPayload } from '../lib/estimateCustomerAttachment'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
@@ -21,6 +22,7 @@ type PublicEstimate = {
   terms_snapshot: string
   total_cents: number
   valid_until: string | null
+  customer_attachment: CustomerAttachmentPayload | null
 }
 
 export default function EstimateAccept() {
@@ -59,6 +61,7 @@ export default function EstimateAccept() {
           error?: string
           code?: string
           customer_experience?: unknown
+          customer_attachment?: CustomerAttachmentPayload | null
         } & Partial<PublicEstimate>
         if (cancelled) return
         if (!res.ok) {
@@ -82,6 +85,17 @@ export default function EstimateAccept() {
           setExperience(cx)
           const fl = json.for_line
           setHeaderBrand(parseAcceptHeaderBrand((json as { accept_header_brand?: unknown }).accept_header_brand))
+          const att = json.customer_attachment
+          const customer_attachment: CustomerAttachmentPayload | null =
+            att &&
+            typeof att === 'object' &&
+            typeof att.url === 'string' &&
+            att.url.startsWith('https://')
+              ? {
+                  url: att.url,
+                  label: typeof att.label === 'string' ? att.label : null,
+                }
+              : null
           setEstimate({
             id: String(json.id),
             title: String(json.title ?? ''),
@@ -90,6 +104,7 @@ export default function EstimateAccept() {
             terms_snapshot: String(json.terms_snapshot ?? ''),
             total_cents: Number(json.total_cents ?? 0),
             valid_until: json.valid_until ?? null,
+            customer_attachment,
           })
         }
       } catch {
@@ -190,6 +205,7 @@ export default function EstimateAccept() {
         submitting={submitting}
         onSubmit={(p) => void submitAccept(p)}
         headerBrand={headerBrand}
+        customerAttachment={estimate.customer_attachment}
       />
     </div>
   )

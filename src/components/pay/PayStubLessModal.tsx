@@ -27,7 +27,8 @@ type PendingOffsetRow = {
 }
 
 function offsetSnapshotDescription(type: string, description: string | null): string {
-  const label = type === 'backcharge' ? 'Backcharge' : 'Damage'
+  const label =
+    type === 'backcharge' ? 'Backcharge' : type === 'damage' ? 'Damage' : type === 'employee_credit' ? 'Employee credit' : 'Offset'
   const d = description?.trim()
   return d ? `${label}: ${d}` : label
 }
@@ -161,6 +162,10 @@ export function PayStubLessModal({
   }
 
   async function attachOffset(row: PendingOffsetRow) {
+    if (row.type === 'employee_credit') {
+      showToast('Employee credit cannot be applied from Less (use Offsets or a future flow to add to Net Pay).', 'warning')
+      return
+    }
     if (!authUserId) {
       showToast('You must be signed in.', 'error')
       return
@@ -355,29 +360,36 @@ export function PayStubLessModal({
             <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>No pending offsets for this person.</p>
           ) : (
             <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.8125rem' }}>
-              {pendingOffsets.map((o) => (
+              {pendingOffsets.map((o) => {
+                const typeLabel =
+                  o.type === 'backcharge' ? 'Backcharge' : o.type === 'damage' ? 'Damage' : o.type === 'employee_credit' ? 'Employee credit' : o.type
+                const creditBlocked = o.type === 'employee_credit'
+                return (
                 <li key={o.id} style={{ marginBottom: '0.45rem' }}>
-                  ${formatCurrency(o.amount)} · {o.type === 'backcharge' ? 'Backcharge' : 'Damage'}
+                  ${formatCurrency(o.amount)} · {typeLabel}
                   {o.description?.trim() ? ` — ${o.description.trim()}` : ''}
                   <button
                     type="button"
-                    disabled={deductionsLocked || attachingOffsetId !== null}
+                    disabled={deductionsLocked || attachingOffsetId !== null || creditBlocked}
+                    title={creditBlocked ? 'Applying employee credit to Net Pay is not wired from here yet.' : undefined}
                     onClick={() => void attachOffset(o)}
                     style={{
                       marginLeft: '0.5rem',
                       padding: '1px 8px',
                       fontSize: '0.75rem',
-                      background: deductionsLocked || attachingOffsetId !== null ? '#9ca3af' : '#059669',
+                      background:
+                        deductionsLocked || attachingOffsetId !== null || creditBlocked ? '#9ca3af' : '#059669',
                       color: 'white',
                       border: 'none',
                       borderRadius: 4,
-                      cursor: deductionsLocked || attachingOffsetId !== null ? 'not-allowed' : 'pointer',
+                      cursor:
+                        deductionsLocked || attachingOffsetId !== null || creditBlocked ? 'not-allowed' : 'pointer',
                     }}
                   >
                     {attachingOffsetId === o.id ? '…' : 'Apply'}
                   </button>
                 </li>
-              ))}
+              )})}
             </ul>
           )}
         </div>

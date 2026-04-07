@@ -155,7 +155,7 @@ const PAGE_ACCESS: Array<{ page: string; dev: string; master: string; assistant:
   { page: 'Workflow', dev: 'yes', master: 'yes', assistant: 'yes limited', sub: 'no', estimator: 'no', primary: 'no', superintendent: 'yes limited' },
   { page: 'People', dev: 'yes', master: 'yes', assistant: 'yes limited', sub: 'no', estimator: 'no', primary: 'no', superintendent: 'no' },
   { page: 'Jobs', dev: 'yes', master: 'yes', assistant: 'yes limited', sub: 'no', estimator: 'no', primary: 'yes Reports only', superintendent: 'yes Stages Reports Billing Sub Ledger' },
-  { page: 'Calendar', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', estimator: 'no', primary: 'yes', superintendent: 'yes' },
+  { page: 'Calendar', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'yes', estimator: 'no', primary: 'yes', superintendent: 'yes' },
   { page: 'Bids', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', estimator: 'yes', primary: 'yes Bid Board, RFI, Change Order, Lien Release', superintendent: 'yes draft only' },
   { page: 'Materials', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', estimator: 'yes', primary: 'yes', superintendent: 'yes' },
   { page: 'Templates', dev: 'yes', master: 'no', assistant: 'no', sub: 'no', estimator: 'no', primary: 'no', superintendent: 'no' },

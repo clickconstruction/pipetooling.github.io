@@ -7,6 +7,7 @@ import {
   toClientCustomerExperience,
 } from '../_shared/estimateCustomerExperience.ts'
 import { clientIpFromRequest } from '../_shared/logEstimateCustomerEvent.ts'
+import { parseCustomerAttachmentSent } from '../_shared/estimateCustomerAttachment.ts'
 
 async function sha256HexFromString(value: string): Promise<string> {
   const data = new TextEncoder().encode(value)
@@ -38,6 +39,7 @@ type EstRow = {
   for_address: string | null
   customer_id: string | null
   accept_header_brand: string | null
+  customer_attachment_sent: unknown
 }
 
 async function resolveEstimateForLine(
@@ -103,7 +105,7 @@ serve(async (req) => {
     const { data: row, error } = await admin
       .from('estimates')
       .select(
-        'id, title, line_items_snapshot, terms_snapshot, total_cents, valid_until, status, public_token_expires_at, sent_at, estimate_number, customer_experience_sent, customer_experience_overrides, for_address, customer_id, accept_header_brand',
+        'id, title, line_items_snapshot, terms_snapshot, total_cents, valid_until, status, public_token_expires_at, sent_at, estimate_number, customer_experience_sent, customer_experience_overrides, for_address, customer_id, accept_header_brand, customer_attachment_sent',
       )
       .eq('public_token_hash', tokenHash)
       .maybeSingle()
@@ -167,6 +169,7 @@ serve(async (req) => {
     const for_line = await resolveEstimateForLine(admin, est.for_address, est.customer_id)
     const ab = est.accept_header_brand
     const accept_header_brand = ab === 'elec' || ab === 'plum' ? ab : null
+    const customer_attachment = parseCustomerAttachmentSent(est.customer_attachment_sent)
 
     const { error: viewErr } = await admin.rpc('record_estimate_public_link_view', {
       p_estimate_id: est.id,
@@ -186,6 +189,7 @@ serve(async (req) => {
         for_line,
         customer_experience,
         accept_header_brand,
+        customer_attachment,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )

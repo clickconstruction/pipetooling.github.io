@@ -1,0 +1,108 @@
+import type { CSSProperties } from 'react'
+import { useMemo } from 'react'
+import { getScheduleDispatchWeekNavParts, ymdAddDays } from '../../utils/dateUtils'
+
+const btnNeutral: CSSProperties = {
+  padding: '0.4rem 0.75rem',
+  border: '1px solid #d1d5db',
+  borderRadius: 4,
+  background: '#fff',
+  cursor: 'pointer',
+}
+
+const btnPrimary: CSSProperties = {
+  ...btnNeutral,
+  border: '1px solid #2563eb',
+  color: '#2563eb',
+}
+
+type ScheduleDispatchWeekNavProps = {
+  weekStart: string
+  onWeekShift: (deltaWeeks: number) => void
+  onThisWeek: () => void
+  /** When set (e.g. Mon–Fri only), replaces the default Sun–Sat range line. */
+  dateRangeOverride?: string
+  hideWeekend?: boolean
+  onHideWeekendChange?: (hide: boolean) => void
+}
+
+export function ScheduleDispatchWeekNav({
+  weekStart,
+  onWeekShift,
+  onThisWeek,
+  dateRangeOverride,
+  hideWeekend = false,
+  onHideWeekendChange,
+}: ScheduleDispatchWeekNavProps) {
+  const weekEnd = useMemo(() => ymdAddDays(weekStart, 6), [weekStart])
+  const { weekTitle, dateRange } = useMemo(
+    () => getScheduleDispatchWeekNavParts(weekStart, weekEnd),
+    [weekStart, weekEnd],
+  )
+  const displayDateRange = dateRangeOverride ?? dateRange
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '0.35rem',
+        marginBottom: '0.75rem',
+      }}
+    >
+      <button type="button" onClick={() => onWeekShift(-1)} style={btnNeutral} aria-label="Previous week">
+        ← Week
+      </button>
+      <span
+        aria-live="polite"
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          textAlign: 'center',
+          fontSize: '0.875rem',
+          color: '#374151',
+          padding: '0 0.25rem',
+          lineHeight: 1.25,
+        }}
+      >
+        {weekTitle !== null ? (
+          <>
+            <span style={{ fontWeight: 600 }}>{weekTitle}</span>
+            <span style={{ fontWeight: 500, color: '#6b7280' }}>{displayDateRange}</span>
+          </>
+        ) : (
+          <span style={{ fontWeight: 600 }}>{displayDateRange}</span>
+        )}
+      </span>
+      <button type="button" onClick={() => onWeekShift(1)} style={btnNeutral} aria-label="Next week">
+        Week →
+      </button>
+      <button type="button" onClick={onThisWeek} style={btnPrimary}>
+        This week
+      </button>
+      {onHideWeekendChange ? (
+        <label
+          style={{
+            fontSize: '0.8125rem',
+            color: '#374151',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            cursor: 'pointer',
+            marginLeft: 2,
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={hideWeekend}
+            onChange={(e) => onHideWeekendChange(e.target.checked)}
+            aria-label="Hide Saturday and Sunday columns"
+          />
+          Hide weekend
+        </label>
+      ) : null}
+    </div>
+  )
+}

@@ -9,6 +9,8 @@ import {
 } from 'react'
 import SignaturePad from 'signature_pad'
 import EstimateCustomerDocument from './EstimateCustomerDocument'
+import EstimateCustomerAttachmentCard from './EstimateCustomerAttachmentCard'
+import type { CustomerAttachmentPayload } from '@/lib/estimateCustomerAttachment'
 import EstimateTermsHeaderNotice from './EstimateTermsHeaderNotice'
 import type { EstimateCustomerExperienceClient } from '@/lib/estimateCustomerExperience'
 import type { EstimateAcceptHeaderBrand } from '@/lib/estimateAcceptHeaderBrand'
@@ -81,6 +83,8 @@ export type EstimateAcceptBodyProps = {
   previewBanner?: ReactNode
   /** When set with staffPreview, shows archival acceptance under the document and hides Approve. */
   staffAcceptedRecord?: EstimateAcceptStaffAcceptedRecord | null
+  /** Frozen supporting document (e.g. Drive PDF); shown after quote body, before accept UI. */
+  customerAttachment?: CustomerAttachmentPayload | null
 }
 
 const FOCUSABLE_SELECTOR =
@@ -112,6 +116,7 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
     headerBrand = null,
     previewBanner,
     staffAcceptedRecord = null,
+    customerAttachment = null,
   } = props
 
   const readOnly = variant === 'staffPreview'
@@ -280,6 +285,8 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
         totalLabel={cx.docTotalLabel}
         headerBrand={headerBrand}
       />
+
+      {customerAttachment ? <EstimateCustomerAttachmentCard attachment={customerAttachment} /> : null}
 
       {showStaffAcceptedInline && staffAcceptedRecord ? (
         <section

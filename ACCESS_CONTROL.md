@@ -267,8 +267,8 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 - Configurable in Settings → Manual Add User (when role is subcontractor) or Edit User (when editing a subcontractor)
 
 **Access**:
-- Dashboard, Checklist, Settings, Tally
-- **Blocked**: Calendar, Customers, Projects, People, Jobs, Bids, Materials, Templates
+- Dashboard, Calendar, Checklist, Settings, Tally
+- **Blocked**: Customers, Projects, People, Jobs, Bids, Materials, Templates
 
 **Permissions**:
 
@@ -276,7 +276,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 - Can only see stages where `assigned_to_name` matches their name
 - Cannot see stages they're not assigned to
 - Cannot access any management pages
-- Navigation: Dashboard, Checklist, Settings, Tally (Calendar hidden)
+- Navigation: Dashboard, Calendar, Checklist, Settings, Tally
 - In Settings: Cannot edit own name; dev-only People & accounts tools (Pay Approved Masters, team feedback admin, Additional People) not shown
 
 **Dashboard**:
@@ -480,10 +480,11 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 | **Workflow** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ | ✅ limited |
 | **People** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ | ❌ |
 | **Jobs** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ✅ Reports + Billing | ✅ Reports + Sub Ledger |
+| **Dispatch** (`/schedule-dispatch`) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ week grid (same `job_schedule_blocks` mutate rules as office roles) |
 | **Banking** | ✅ full Mercury (Ledger + Sorting + Configuration + sync); RLS SELECT on **`mercury_transactions`** + nicknames | ❌ | ✅ **Sorting** (default slice, no Configuration / no sync); read **`mercury_transactions`** + nicknames; **edit `mercury_debit_card_nicknames`** only (RLS) | ❌ | ❌ | ❌ | ❌ |
 
 Mercury **Person** attribution (job splits modal): staff use **`list_users_for_banking_attribution`** (**SECURITY DEFINER**, same dev/master/assistant gate as **`replace_mercury_transaction_splits`**) for the user picker; **`mercury_transaction_attributions`** may store **`user_id`** or legacy **`person_id`** (not both).
-| **Calendar** | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| **Calendar** | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 | **Bids** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited |
 | **Estimates** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited (project-linked super visibility) |
 | **Materials** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited |
@@ -492,13 +493,13 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 
 ### Redirection Rules
 
-**Subcontractors**: Any page except Dashboard/Checklist/Settings/Tally → `/dashboard`; Calendar hidden from nav
+**Subcontractors**: Any page except Dashboard/Calendar/Checklist/Settings/Tally → `/dashboard`
 
 **Estimators**: Any page except Dashboard/Materials/Estimates/Bids/Calendar/Checklist/Settings → `/bids`
 
 **Primary**: Any page except Dashboard/Materials/Estimates/Jobs/Bids/Prospects/Calendar/Checklist/Settings → `/dashboard`; Jobs shows Reports and Billing tabs only; Bids full access (all tabs); Projects hidden
 
-**Superintendent**: Any page except Dashboard/Projects/Workflow/Jobs/Bids/Materials/Estimates/Calendar/Checklist/Settings/Tally → `/dashboard`; Jobs shows Reports, Sub Sheet Ledger; Bids shows draft tabs only (no Pricing, Cover Letter, Submission); Materials shows Price book and Assembly book; People and Customers pages blocked
+**Superintendent**: Any page except Dashboard/Projects/Workflow/Jobs/Dispatch/Bids/Materials/Estimates/Calendar/Checklist/Settings/Tally → `/dashboard`; Jobs shows Reports, Sub Sheet Ledger; Bids shows draft tabs only (no Pricing, Cover Letter, Submission); Materials shows Price book and Assembly book; People and Customers pages blocked
 
 **Assistants**: Can access most pages but see filtered data
 
@@ -524,9 +525,9 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 
 | Feature | dev | master | assistant | sub | estimator | primary | superintendent |
 |---------|-----|--------|-----------|-----|-----------|---------|----------------|
-| **NCNS** on own days: read **`attendance_incidents`** where **`subject_user_id = self`** (Calendar badge / day modal); policy `"Attendance incidents subject select own"` | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| **NCNS** on own days: read **`attendance_incidents`** where **`subject_user_id = self`** (Calendar badge / day modal); policy `"Attendance incidents subject select own"` | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 | **Salary schedule (green)**: **`scheduled`** chips / modal workday only when **`work_date` > today**; **unpaid time off (`time_off`)** purple chip **all dates** | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
-| **Recorded time** on Calendar: aggregate own **`clock_sessions`** in visible month (toggle) | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| **Recorded time** on Calendar: aggregate own **`clock_sessions`** in visible month (toggle) | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 
 ### Settings (selected)
 
@@ -655,6 +656,14 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 ---
 
 ## Data Access Patterns
+
+### Job schedule blocks (`job_schedule_blocks`)
+
+**SELECT**: Users who are the **assignee**, or who can see the parent **`jobs_ledger`** row via the same visibility family as **`jobs_ledger_thread_notes`** (master, dev, primary, adoption, superintendent/project access, **team** membership).
+
+**INSERT / UPDATE / DELETE**: **`dev`**, **`master_technician`**, **`assistant`**, **`superintendent`** only, with **job manage** access matching office/superintendent rules (not subcontractors, not team-only).
+
+**Calendar / Preview**: Assignees see their blocks; **`list_assigned_jobs_for_dashboard`** includes **`project_id`** for mapping workflow context to team jobs on the Preview modal.
 
 ### Master-Assistant Adoption
 

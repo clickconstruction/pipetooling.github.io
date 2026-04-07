@@ -79,6 +79,12 @@ import {
   formatEstimateUpdatedRelativeCompact,
 } from '../lib/formatEstimateListUpdated'
 import { formatNotificationDatetime } from '../utils/formatNotificationDatetime'
+import {
+  normalizeCustomerAttachmentDraftForDb,
+  normalizeCustomerAttachmentUrl,
+  parseCustomerAttachmentSent,
+  type CustomerAttachmentPayload,
+} from '../lib/estimateCustomerAttachment'
 
 const ESTIMATE_CATALOG_EDITOR_ROLES = new Set<UserRole>([
   'dev',
@@ -90,6 +96,9 @@ const ESTIMATE_CATALOG_EDITOR_ROLES = new Set<UserRole>([
 ])
 
 const SEND_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+const ESTIMATE_ATTACHMENT_LIKELY_OK_HTML_COPY =
+  'Works! — you should open the link in a private or incognito window to be sure.'
 
 const ESTIMATE_EMAIL_FROM_LABEL = 'PipeTooling <team@noreply.pipetooling.com>'
 
@@ -570,6 +579,12 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   const [validUntilPreset, setValidUntilPreset] = useState<ValidUntilPresetDays | null>(null)
   const [forAddress, setForAddress] = useState('')
   const [internalNotes, setInternalNotes] = useState('')
+  const [customerAttachmentUrl, setCustomerAttachmentUrl] = useState('')
+  const [customerAttachmentLabel, setCustomerAttachmentLabel] = useState('')
+  const [attachmentCheckStatus, setAttachmentCheckStatus] = useState<
+    'idle' | 'loading' | 'success' | 'warn' | 'error'
+  >('idle')
+  const [attachmentCheckMessage, setAttachmentCheckMessage] = useState('')
   const [acceptHeaderBrand, setAcceptHeaderBrand] = useState<EstimateAcceptHeaderBrand | null>(null)
   const [acceptorSignatureSignedUrl, setAcceptorSignatureSignedUrl] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -614,8 +629,17 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     setLastAcceptUrl(null)
     setDraftTitleEditing(false)
     setValidUntilPreset(null)
+    setCustomerAttachmentUrl('')
+    setCustomerAttachmentLabel('')
+    setAttachmentCheckStatus('idle')
+    setAttachmentCheckMessage('')
     prevCustomerIdForAutosave.current = undefined
   }, [routeSegment])
+
+  useEffect(() => {
+    setAttachmentCheckStatus('idle')
+    setAttachmentCheckMessage('')
+  }, [customerAttachmentUrl])
 
   useEffect(() => {
     if (loading) return
@@ -836,6 +860,14 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       }
       setForAddress(r.for_address ?? '')
       setInternalNotes(r.internal_notes ?? '')
+      if (r.status === 'draft') {
+        setCustomerAttachmentUrl(r.customer_attachment_url ?? '')
+        setCustomerAttachmentLabel(r.customer_attachment_label ?? '')
+      } else {
+        const attFrozen = parseCustomerAttachmentSent(r.customer_attachment_sent)
+        setCustomerAttachmentUrl(attFrozen?.url ?? '')
+        setCustomerAttachmentLabel(attFrozen?.label ?? '')
+      }
       if (r.status === 'sent' || r.status === 'customer_accepted') {
         try {
           if (typeof sessionStorage !== 'undefined') {
@@ -930,6 +962,20 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   )
 
   const isDraft = row?.status === 'draft'
+  const customerAttachmentPreview = useMemo((): CustomerAttachmentPayload | null => {
+    if (isDraft) {
+      const a = normalizeCustomerAttachmentDraftForDb(customerAttachmentUrl, customerAttachmentLabel)
+      if (!a.url) return null
+      return { url: a.url, label: a.label }
+    }
+    if (!row) return null
+    return parseCustomerAttachmentSent(row.customer_attachment_sent)
+  }, [
+    isDraft,
+    row,
+    customerAttachmentUrl,
+    customerAttachmentLabel,
+  ])
   const totalCents = sumLineItems(lines)
   const selectedCustomer = customerId ? customers.find((c) => c.id === customerId) : undefined
 
@@ -1017,6 +1063,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
           forLineEffective,
           cxOverrideFields,
           acceptHeaderBrand,
+          customerAttachment: customerAttachmentPreview,
         }),
       )
     }
@@ -1257,6 +1304,11 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   async function saveDraft(options?: { quiet?: boolean }): Promise<boolean> {
     if (!row || !isDraft || saving) return false
     const quiet = options?.quiet ?? false
+    const attDb = normalizeCustomerAttachmentDraftForDb(customerAttachmentUrl, customerAttachmentLabel)
+    if (customerAttachmentUrl.trim() && !attDb.url) {
+      showToast('Supporting document URL must be a valid https link.', 'error')
+      return false
+    }
     setSaving(true)
     try {
       await withSupabaseRetry(
@@ -1275,6 +1327,8 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               customer_email: resolveCustomerEmailForPersist(),
               customer_experience_overrides: buildCustomerExperienceOverridesPayload(),
               accept_header_brand: acceptHeaderBrand,
+              customer_attachment_url: attDb.url,
+              customer_attachment_label: attDb.label,
             })
             .eq('id', row.id)
             .eq('status', 'draft'),
@@ -1407,6 +1461,80 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       setSending(false)
     }
   }
+
+  const checkCustomerAttachmentUrl = useCallback(async () => {
+    const u = normalizeCustomerAttachmentUrl(customerAttachmentUrl)
+    if (!u) {
+      showToast('Enter a valid https URL first.', 'error')
+      return
+    }
+    setAttachmentCheckStatus('loading')
+    setAttachmentCheckMessage('')
+    try {
+      const { data: sess } = await supabase.auth.getSession()
+      const jwt = sess.session?.access_token
+      if (!jwt) {
+        showToast('Not signed in', 'error')
+        setAttachmentCheckStatus('error')
+        setAttachmentCheckMessage('Not signed in.')
+        return
+      }
+      const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/check-estimate-attachment-url`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${jwt}`,
+            apikey: anon,
+          },
+          body: JSON.stringify({ url: u }),
+        },
+      )
+      const json = (await res.json()) as {
+        ok?: boolean
+        result?: 'likely_public' | 'likely_ok_html' | 'likely_restricted' | 'unknown'
+        message?: string
+        error?: string
+      }
+      if (!res.ok) {
+        setAttachmentCheckStatus('error')
+        setAttachmentCheckMessage(json.error || `Check failed (${res.status}).`)
+        return
+      }
+      if (!json.ok) {
+        setAttachmentCheckStatus('error')
+        setAttachmentCheckMessage(json.error || 'Check failed.')
+        return
+      }
+      const r = json.result
+      const extra =
+        ' This check is a best-effort hint only — open the link in a private or incognito window to be sure.'
+      if (r === 'likely_public' || r === 'likely_ok_html') {
+        setAttachmentCheckStatus('success')
+        if (r === 'likely_ok_html') {
+          const m = json.message?.trim()
+          setAttachmentCheckMessage(m || ESTIMATE_ATTACHMENT_LIKELY_OK_HTML_COPY)
+        } else {
+          setAttachmentCheckMessage(
+            (json.message ? json.message : 'Likely viewable without signing in.') + extra,
+          )
+        }
+      } else {
+        setAttachmentCheckStatus('warn')
+        setAttachmentCheckMessage(
+          (json.message ||
+            (r === 'likely_restricted'
+              ? 'This link may require sign-in or permission.'
+              : 'Could not tell from the response — verify sharing.')) + extra,
+        )
+      }
+    } catch (e) {
+      setAttachmentCheckStatus('error')
+      setAttachmentCheckMessage(formatErrorMessage(e, 'Check failed'))
+    }
+  }, [customerAttachmentUrl, showToast])
 
   function openCreateJobModal() {
     if (!row || row.status !== 'customer_accepted' || row.job_ledger_id) return
@@ -1942,6 +2070,152 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 </label>
               ))}
             </div>
+          </fieldset>
+          <fieldset
+            style={{
+              marginTop: '1rem',
+              border: '1px solid #e5e7eb',
+              borderRadius: 8,
+              padding: '0.75rem',
+              maxWidth: 560,
+            }}
+          >
+            <legend style={{ fontWeight: 500, padding: '0 0.35rem' }}>Supporting document (customer)</legend>
+            <p style={{ margin: '0 0 0.65rem', fontSize: '0.85rem', color: '#6b7280' }}>
+              Optional https link (e.g. Google Drive PDF). Shown on the acceptance page. Frozen when the estimate is
+              sent.
+            </p>
+            <details style={{ margin: '0 0 0.65rem', fontSize: '0.85rem', color: '#374151' }}>
+              <summary style={{ cursor: 'pointer', fontWeight: 500, color: '#1f2937' }}>
+                How to share a file in Google Drive
+              </summary>
+              <ol style={{ margin: '0.5rem 0 0', paddingLeft: '1.25rem', lineHeight: 1.45 }}>
+                <li>Open the file in Drive, then choose Share.</li>
+                <li>
+                  Set access to <strong>Anyone with the link</strong> and role <strong>Viewer</strong> (or your org’s
+                  equivalent for external viewers).
+                </li>
+                <li>Copy the link and paste it below.</li>
+              </ol>
+              <p style={{ margin: '0.5rem 0 0', lineHeight: 1.45 }}>
+                Some <strong>Google Workspace</strong> policies prevent “anyone with the link” for people outside your
+                org. If that applies, customers may still see a sign-in wall even when the steps above are correct.
+              </p>
+              <p style={{ margin: '0.5rem 0 0', lineHeight: 1.45 }}>
+                Official help:{' '}
+                <a
+                  href="https://support.google.com/drive/answer/2494822"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Share files from Google Drive
+                </a>
+                .
+              </p>
+              <ul style={{ margin: '0.5rem 0 0', paddingLeft: '1.25rem', lineHeight: 1.45 }}>
+                <li>
+                  If you are unsure the customer can open it, open the link in a <strong>private or incognito</strong>{' '}
+                  window (signed out) to double-check.
+                </li>
+              </ul>
+            </details>
+            {isDraft ? (
+              <>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500 }}>
+                  Label
+                  <input
+                    type="text"
+                    value={customerAttachmentLabel}
+                    onChange={(e) => setCustomerAttachmentLabel(e.target.value)}
+                    placeholder="e.g. Floor plan, Scope PDF"
+                    maxLength={200}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      marginTop: '0.25rem',
+                      boxSizing: 'border-box',
+                      font: 'inherit',
+                    }}
+                  />
+                </label>
+                <label style={{ display: 'block', marginTop: '0.65rem', fontSize: '0.85rem', fontWeight: 500 }}>
+                  Document URL (https only)
+                  <input
+                    type="url"
+                    inputMode="url"
+                    value={customerAttachmentUrl}
+                    onChange={(e) => setCustomerAttachmentUrl(e.target.value)}
+                    placeholder="https://drive.google.com/file/d/…"
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      marginTop: '0.25rem',
+                      boxSizing: 'border-box',
+                      font: 'inherit',
+                    }}
+                  />
+                </label>
+                <div style={{ marginTop: '0.5rem', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => void checkCustomerAttachmentUrl()}
+                    disabled={
+                      attachmentCheckStatus === 'loading' || !normalizeCustomerAttachmentUrl(customerAttachmentUrl)
+                    }
+                    style={{
+                      padding: '0.35rem 0.65rem',
+                      fontSize: '0.85rem',
+                      cursor:
+                        attachmentCheckStatus === 'loading' || !normalizeCustomerAttachmentUrl(customerAttachmentUrl)
+                          ? 'not-allowed'
+                          : 'pointer',
+                    }}
+                  >
+                    {attachmentCheckStatus === 'loading' ? 'Checking…' : 'Check link'}
+                  </button>
+                  <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>
+                    Drive or Docs URLs only. Does not block sending — hints only.
+                  </span>
+                </div>
+                {attachmentCheckStatus === 'success' && attachmentCheckMessage ? (
+                  <p
+                    role="status"
+                    style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: '#15803d', lineHeight: 1.45 }}
+                  >
+                    {attachmentCheckMessage}
+                  </p>
+                ) : null}
+                {attachmentCheckStatus === 'warn' && attachmentCheckMessage ? (
+                  <p
+                    role="status"
+                    style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: '#b45309', lineHeight: 1.45 }}
+                  >
+                    {attachmentCheckMessage}
+                  </p>
+                ) : null}
+                {attachmentCheckStatus === 'error' && attachmentCheckMessage ? (
+                  <p role="alert" style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: '#b91c1c', lineHeight: 1.45 }}>
+                    {attachmentCheckMessage}
+                  </p>
+                ) : null}
+              </>
+            ) : customerAttachmentPreview ? (
+              <div style={{ fontSize: '0.9rem' }}>
+                <p style={{ margin: '0 0 0.35rem', fontWeight: 600 }}>
+                  {customerAttachmentPreview.label?.trim() || 'Supporting document'}
+                </p>
+                <a
+                  href={customerAttachmentPreview.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ wordBreak: 'break-all' }}
+                >
+                  {customerAttachmentPreview.url}
+                </a>
+              </div>
+            ) : (
+              <p style={{ margin: 0, fontSize: '0.85rem', color: '#9ca3af' }}>No supporting document for this quote.</p>
+            )}
           </fieldset>
           <section style={{ marginTop: '1rem' }}>
             <div
@@ -2747,6 +3021,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                   submitting={false}
                   onSubmit={() => undefined}
                   headerBrand={acceptanceDocHeaderBrand}
+                  customerAttachment={customerAttachmentPreview}
                   staffAcceptedRecord={
                     !isDraft && row.status === 'customer_accepted'
                       ? {

@@ -291,6 +291,28 @@ const clockedInTodaySessionBlock: CSSProperties = {
   paddingBottom: '0.2rem',
 }
 
+/** Jobs worked today: one flex row per session; underline width matches that row’s content. */
+const jobsWorkedTodaySessionRowShell: CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  alignItems: 'center',
+  gap: '0.5rem',
+  width: 'fit-content',
+  maxWidth: '100%',
+  boxSizing: 'border-box',
+  borderBottom: '1px solid #e5e7eb',
+  paddingBottom: '0.2rem',
+  fontSize: '0.68rem',
+  color: '#6b7280',
+}
+
+const jobsWorkedTodaySessionList: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '0.45rem',
+  alignItems: 'flex-start',
+}
+
 const clockedInTodayDetailLink: CSSProperties = {
   color: '#2563eb',
   textDecoration: 'none',
@@ -1732,154 +1754,136 @@ export function DashboardTeamActiveClockStrip({
                                     paddingLeft: '0.45rem',
                                   }}
                                 >
-                                  <table
-                                    style={{
-                                      borderCollapse: 'collapse',
-                                      fontSize: '0.68rem',
-                                      color: '#6b7280',
-                                      width: 'auto',
-                                    }}
-                                  >
-                                    <caption style={srOnly}>{`Sessions on ${job.label}`}</caption>
-                                    <tbody>
-                                      {job.sessions.map((s, idx) => {
-                                        const tIn = new Date(s.clocked_in_at).toLocaleTimeString(
-                                          undefined,
-                                          timeOpts,
-                                        )
-                                        const open = s.clocked_out_at == null
-                                        const sec = sessionDurationSeconds(
-                                          s.clocked_in_at,
-                                          s.clocked_out_at,
-                                          nowMs,
-                                        )
-                                        const dur = formatDurationFromSeconds(sec)
-                                        const range = open
-                                          ? `${tIn} – Open`
-                                          : `${tIn} – ${new Date(s.clocked_out_at!).toLocaleTimeString(undefined, timeOpts)}`
-                                        const stripApproveStatus = stripApproveStatusForSession(
-                                          s,
-                                          optimisticStripApprovedIds,
-                                        )
-                                        const timeRangeLabel = open
-                                          ? `${tIn} – Open`
-                                          : `${tIn} – ${new Date(s.clocked_out_at!).toLocaleTimeString(undefined, timeOpts)}`
-                                        const personName = stripPersonDisplayName(s)
-                                        return (
-                                          <tr key={s.id || `${s.user_id}-${idx}`}>
-                                            <td style={clockedInTodayDetailCell}>
-                                              <div style={clockedInTodaySessionBlock}>
-                                                <div
-                                                  style={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    flexWrap: 'wrap',
-                                                    gap: '0.35rem',
-                                                    minWidth: 0,
-                                                  }}
-                                                >
-                                                  {s.id ? (
-                                                    <ClockSessionStripApproveControl
-                                                      sessionId={s.id}
-                                                      status={stripApproveStatus}
-                                                      interactive={
-                                                        canApproveClockSessions === true &&
-                                                        stripApproveStatus === 'pending'
-                                                      }
-                                                      actionsEligible={
-                                                        canApproveClockSessions === true &&
-                                                        (stripApproveStatus === 'pending' ||
-                                                          stripApproveStatus === 'approved')
-                                                      }
-                                                      busy={stripApproveBusy.has(s.id)}
-                                                      onOpenActions={() => {
-                                                        if (stripApproveStatus === 'open') return
-                                                        setStripActionsSession(
-                                                          stripActionsPayloadFromSession(
-                                                            s,
-                                                            personName,
-                                                            timeRangeLabel,
-                                                            stripApproveStatus === 'approved'
-                                                              ? 'approved'
-                                                              : 'pending',
-                                                          ),
-                                                        )
-                                                      }}
-                                                      onApprove={async () => {
-                                                        await handleStripSessionApprove(s.id)
-                                                      }}
-                                                      onReject={async () => {}}
-                                                    />
-                                                  ) : null}
-                                                  <span
-                                                    style={{
-                                                      display: 'inline-flex',
-                                                      alignItems: 'center',
-                                                      gap: '0.35rem',
-                                                      flexWrap: 'wrap',
-                                                    }}
-                                                  >
-                                                    {personName}
-                                                    {clockStripOverlapByUserId.get(s.user_id) ? (
-                                                      <StripClockOverlapBadge />
-                                                    ) : null}
-                                                  </span>
-                                                </div>
-                                              </div>
-                                            </td>
-                                            <td
+                                  <span style={srOnly}>{`Sessions on ${job.label}`}</span>
+                                  <div style={jobsWorkedTodaySessionList}>
+                                    {job.sessions.map((s, idx) => {
+                                      const tIn = new Date(s.clocked_in_at).toLocaleTimeString(
+                                        undefined,
+                                        timeOpts,
+                                      )
+                                      const open = s.clocked_out_at == null
+                                      const sec = sessionDurationSeconds(
+                                        s.clocked_in_at,
+                                        s.clocked_out_at,
+                                        nowMs,
+                                      )
+                                      const dur = formatDurationFromSeconds(sec)
+                                      const range = open
+                                        ? `${tIn} – Open`
+                                        : `${tIn} – ${new Date(s.clocked_out_at!).toLocaleTimeString(undefined, timeOpts)}`
+                                      const stripApproveStatus = stripApproveStatusForSession(
+                                        s,
+                                        optimisticStripApprovedIds,
+                                      )
+                                      const timeRangeLabel = open
+                                        ? `${tIn} – Open`
+                                        : `${tIn} – ${new Date(s.clocked_out_at!).toLocaleTimeString(undefined, timeOpts)}`
+                                      const personName = stripPersonDisplayName(s)
+                                      return (
+                                        <div
+                                          key={s.id || `${s.user_id}-${idx}`}
+                                          style={jobsWorkedTodaySessionRowShell}
+                                        >
+                                          <div
+                                            style={{
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              flexWrap: 'wrap',
+                                              gap: '0.35rem',
+                                              minWidth: 0,
+                                            }}
+                                          >
+                                            {s.id ? (
+                                              <ClockSessionStripApproveControl
+                                                sessionId={s.id}
+                                                status={stripApproveStatus}
+                                                interactive={
+                                                  canApproveClockSessions === true &&
+                                                  stripApproveStatus === 'pending'
+                                                }
+                                                actionsEligible={
+                                                  canApproveClockSessions === true &&
+                                                  (stripApproveStatus === 'pending' ||
+                                                    stripApproveStatus === 'approved')
+                                                }
+                                                busy={stripApproveBusy.has(s.id)}
+                                                onOpenActions={() => {
+                                                  if (stripApproveStatus === 'open') return
+                                                  setStripActionsSession(
+                                                    stripActionsPayloadFromSession(
+                                                      s,
+                                                      personName,
+                                                      timeRangeLabel,
+                                                      stripApproveStatus === 'approved'
+                                                        ? 'approved'
+                                                        : 'pending',
+                                                    ),
+                                                  )
+                                                }}
+                                                onApprove={async () => {
+                                                  await handleStripSessionApprove(s.id)
+                                                }}
+                                                onReject={async () => {}}
+                                              />
+                                            ) : null}
+                                            <span
                                               style={{
-                                                ...clockedInTodayDetailCell,
-                                                whiteSpace: 'nowrap',
-                                                paddingLeft: '0.5rem',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '0.35rem',
+                                                flexWrap: 'wrap',
                                               }}
                                             >
-                                              {range}
-                                            </td>
-                                            <td
+                                              {personName}
+                                              {clockStripOverlapByUserId.get(s.user_id) ? (
+                                                <StripClockOverlapBadge />
+                                              ) : null}
+                                            </span>
+                                          </div>
+                                          <span style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>{range}</span>
+                                          {onOpenStripMyTimeEditor ? (
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                onOpenStripMyTimeEditor({
+                                                  subjectUserId: s.user_id,
+                                                  displayName: stripPersonDisplayName(s),
+                                                })
+                                              }
+                                              title="Edit today's time"
+                                              aria-label={`Edit today's time for ${stripPersonDisplayName(s)}`}
                                               style={{
-                                                ...clockedInTodayDetailCell,
-                                                whiteSpace: 'nowrap',
-                                                paddingLeft: '0.5rem',
+                                                border: 'none',
+                                                background: 'none',
+                                                padding: 0,
+                                                margin: 0,
+                                                cursor: 'pointer',
+                                                font: 'inherit',
+                                                fontSize: 'inherit',
                                                 fontWeight: 600,
                                                 color: '#1d4ed8',
+                                                whiteSpace: 'nowrap',
+                                                flexShrink: 0,
                                               }}
                                             >
-                                              {onOpenStripMyTimeEditor ? (
-                                                <button
-                                                  type="button"
-                                                  onClick={() =>
-                                                    onOpenStripMyTimeEditor({
-                                                      subjectUserId: s.user_id,
-                                                      displayName: stripPersonDisplayName(s),
-                                                    })
-                                                  }
-                                                  title="Edit today's time"
-                                                  aria-label={`Edit today's time for ${stripPersonDisplayName(s)}`}
-                                                  style={{
-                                                    border: 'none',
-                                                    background: 'none',
-                                                    padding: 0,
-                                                    margin: 0,
-                                                    cursor: 'pointer',
-                                                    font: 'inherit',
-                                                    fontSize: 'inherit',
-                                                    fontWeight: 600,
-                                                    color: '#1d4ed8',
-                                                    whiteSpace: 'nowrap',
-                                                  }}
-                                                >
-                                                  {dur}
-                                                </button>
-                                              ) : (
-                                                <span style={{ fontWeight: 600, color: '#1d4ed8' }}>{dur}</span>
-                                              )}
-                                            </td>
-                                          </tr>
-                                        )
-                                      })}
-                                    </tbody>
-                                  </table>
+                                              {dur}
+                                            </button>
+                                          ) : (
+                                            <span
+                                              style={{
+                                                fontWeight: 600,
+                                                color: '#1d4ed8',
+                                                whiteSpace: 'nowrap',
+                                                flexShrink: 0,
+                                              }}
+                                            >
+                                              {dur}
+                                            </span>
+                                          )}
+                                        </div>
+                                      )
+                                    })}
+                                  </div>
                                 </div>
                               </div>
                             </td>

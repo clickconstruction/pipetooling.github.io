@@ -38,6 +38,10 @@ import {
   type MercuryJobSplit,
 } from '../components/MercuryTransactionAllocationsModal'
 import type { SearchableSelectOption } from '../components/SearchableSelect'
+import {
+  buildMercuryTxSearchHaystack,
+  mercuryTxMatchesSearchQuery,
+} from '../lib/bankingMercurySearch'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 const DEBIT_CARD_RECENT_TX_CAP = 50
@@ -671,6 +675,7 @@ export default function Banking() {
   const [error, setError] = useState<string | null>(null)
   const [accountFilter, setAccountFilter] = useState<string>('')
   const [kindFilter, setKindFilter] = useState<string>('')
+  const [bankingSearchText, setBankingSearchText] = useState<string>('')
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null)
   const [nicknameByAccount, setNicknameByAccount] = useState<Record<string, string>>({})
   const [nicknameDrafts, setNicknameDrafts] = useState<Record<string, string>>({})
@@ -1014,14 +1019,25 @@ export default function Banking() {
     return Array.from(set).sort()
   }, [rows])
 
+  const searchQueryNorm = useMemo(() => bankingSearchText.trim(), [bankingSearchText])
+
+  const nicknameCtx = useMemo(
+    () => ({ nicknameByAccount, nicknameByDebitCard }),
+    [nicknameByAccount, nicknameByDebitCard],
+  )
+
   const filteredSorted = useMemo(() => {
     const list = rows.filter((r) => {
       if (accountFilter && r.mercury_account_id !== accountFilter) return false
       if (kindFilter && r.kind !== kindFilter) return false
+      if (searchQueryNorm !== '') {
+        const haystack = buildMercuryTxSearchHaystack(r, nicknameCtx)
+        if (!mercuryTxMatchesSearchQuery(haystack, searchQueryNorm)) return false
+      }
       return true
     })
     return sortMercuryRowsStable(list, sort)
-  }, [rows, accountFilter, kindFilter, sort])
+  }, [rows, accountFilter, kindFilter, sort, searchQueryNorm, nicknameCtx])
 
   const nicknameManageIds = useMemo(() => {
     const ids = new Set<string>([...accountOptions, ...Object.keys(nicknameByAccount)])
@@ -1050,7 +1066,18 @@ export default function Banking() {
 
   const sortingFiltered = useMemo(() => filterMercuryRowsForSorting(rows, sortingConfig), [rows, sortingConfig])
 
-  const sortingFilteredSorted = useMemo(() => sortMercuryRowsStable(sortingFiltered, sortingSort), [sortingFiltered, sortingSort])
+  const sortingAfterSearch = useMemo(() => {
+    if (searchQueryNorm === '') return sortingFiltered
+    return sortingFiltered.filter((r) => {
+      const haystack = buildMercuryTxSearchHaystack(r, nicknameCtx)
+      return mercuryTxMatchesSearchQuery(haystack, searchQueryNorm)
+    })
+  }, [sortingFiltered, searchQueryNorm, nicknameCtx])
+
+  const sortingFilteredSorted = useMemo(
+    () => sortMercuryRowsStable(sortingAfterSearch, sortingSort),
+    [sortingAfterSearch, sortingSort],
+  )
 
   const totalAmount = useMemo(() => filteredSorted.reduce((s, r) => s + Number(r.amount), 0), [filteredSorted])
   const sortingTotalAmount = useMemo(
@@ -1059,8 +1086,8 @@ export default function Banking() {
   )
 
   const sortingUnmatchedCounts = useMemo(
-    () => countSortingUnmatched(sortingFiltered, personIdByTxId, userIdByTxId, allocationsByTxId),
-    [sortingFiltered, personIdByTxId, userIdByTxId, allocationsByTxId],
+    () => countSortingUnmatched(sortingAfterSearch, personIdByTxId, userIdByTxId, allocationsByTxId),
+    [sortingAfterSearch, personIdByTxId, userIdByTxId, allocationsByTxId],
   )
 
   const setSortingSortForColumn = useCallback((key: SortKey) => {
@@ -1343,6 +1370,18 @@ export default function Banking() {
                 >
                   Reload table
                 </button>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
+                  <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Search transactions</span>
+                  <input
+                    type="search"
+                    value={bankingSearchText}
+                    onChange={(e) => setBankingSearchText(e.target.value)}
+                    autoComplete="off"
+                    placeholder="Counterparty, id, memo…"
+                    aria-label="Search transactions"
+                    style={{ minWidth: 280, padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  />
+                </label>
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexShrink: 0 }}>
@@ -1448,9 +1487,11 @@ export default function Banking() {
               nicknameByAccount={nicknameByAccount}
               nicknameByDebitCard={nicknameByDebitCard}
               emptyMessage={
-                isDevBanking
-                  ? 'No rows match your sorting configuration. Adjust Configuration or sync from Mercury.'
-                  : 'No rows match the default sorting slice. A developer can change filters on Banking Ledger (Configuration).'
+                rows.length > 0 && searchQueryNorm !== ''
+                  ? 'No transactions match your search.'
+                  : isDevBanking
+                    ? 'No rows match your sorting configuration. Adjust Configuration or sync from Mercury.'
+                    : 'No rows match the default sorting slice. A developer can change filters on Banking Ledger (Configuration).'
               }
               showAllocations={canAccessBanking}
               allocationsByTxId={allocationsByTxId}
@@ -1573,6 +1614,18 @@ export default function Banking() {
                 ))}
               </select>
             </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Search transactions</span>
+              <input
+                type="search"
+                value={bankingSearchText}
+                onChange={(e) => setBankingSearchText(e.target.value)}
+                autoComplete="off"
+                placeholder="Counterparty, id, memo…"
+                aria-label="Search transactions"
+                style={{ minWidth: 280, padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 4 }}
+              />
+            </label>
             <div style={{ marginLeft: 'auto', fontWeight: 600 }}>
               Filtered total: {formatCurrency(totalAmount)} ({filteredSorted.length} of {rows.length} loaded)
             </div>
@@ -1589,7 +1642,11 @@ export default function Banking() {
               setExpandedRowId={setExpandedRowId}
               nicknameByAccount={nicknameByAccount}
               nicknameByDebitCard={nicknameByDebitCard}
-              emptyMessage="No rows yet. Run Refresh from Mercury."
+              emptyMessage={
+                rows.length > 0 && searchQueryNorm !== ''
+                  ? 'No transactions match your search.'
+                  : 'No rows yet. Run Refresh from Mercury.'
+              }
               showAllocations={canAccessBanking}
               allocationsByTxId={allocationsByTxId}
               personIdByTxId={personIdByTxId}
@@ -1691,6 +1748,8 @@ export default function Banking() {
           nicknameByDebitCard={nicknameByDebitCard}
           usersOptions={usersSelectOptions}
           authUserId={user?.id ?? null}
+          onOpenRecentTransactions={(id) => setRecentTxDebitCardId(id)}
+          recentPreviewOpen={recentTxDebitCardId !== null}
         />
       ) : null}
     </div>

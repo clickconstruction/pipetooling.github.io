@@ -74,6 +74,11 @@ export default function ClockInOutButton({ userId, userName }: Props) {
   const [updateFocusError, setUpdateFocusError] = useState<string | null>(null)
   const [updateFocusLoading, setUpdateFocusLoading] = useState(false)
   const updateFocusNotesRef = useRef<HTMLTextAreaElement>(null)
+  const [clockOutReviewOpen, setClockOutReviewOpen] = useState(false)
+  const [clockOutReviewNotes, setClockOutReviewNotes] = useState('')
+  const [clockOutReviewError, setClockOutReviewError] = useState<string | null>(null)
+  const [clockOutSaving, setClockOutSaving] = useState(false)
+  const clockOutNotesRef = useRef<HTMLTextAreaElement>(null)
   const [unifiedSearchText, setUnifiedSearchText] = useState('')
   const [unifiedSearchResults, setUnifiedSearchResults] = useState<UnifiedSearchResult[]>([])
   const [selectedAssociation, setSelectedAssociation] = useState<UnifiedSearchResult | null>(null)
@@ -319,7 +324,7 @@ export default function ClockInOutButton({ userId, userName }: Props) {
   }, [updateFocusModalOpen])
 
   useEffect(() => {
-    if (!clockInModalOpen && !updateFocusModalOpen) {
+    if (!clockInModalOpen && !updateFocusModalOpen && !clockOutReviewOpen) {
       setAssignedJobsListLoading(false)
       noAssignedJobsInfoToastShownRef.current = false
       return
@@ -364,11 +369,11 @@ export default function ClockInOutButton({ userId, userName }: Props) {
       assignedJobsFetchGenRef.current++
     }
     // showToast via ref only — including showToast here caused a loop when any toast updated ToastProvider and gave consumers a new reference chain in some builds.
-  }, [clockInModalOpen, updateFocusModalOpen])
+  }, [clockInModalOpen, updateFocusModalOpen, clockOutReviewOpen])
 
   useEffect(() => {
     const t = setTimeout(() => {
-      if (!(clockInModalOpen || updateFocusModalOpen)) return
+      if (!(clockInModalOpen || updateFocusModalOpen || clockOutReviewOpen)) return
       if (!unifiedSearchText.trim()) {
         if (assignedJobsShownRef.current) {
           assignedJobsShownRef.current = false
@@ -398,10 +403,10 @@ export default function ClockInOutButton({ userId, userName }: Props) {
       })
     }, 300)
     return () => clearTimeout(t)
-  }, [clockInModalOpen, updateFocusModalOpen, unifiedSearchText, selectedBidServiceTypeId, subcontractorServiceTypeIds])
+  }, [clockInModalOpen, updateFocusModalOpen, clockOutReviewOpen, unifiedSearchText, selectedBidServiceTypeId, subcontractorServiceTypeIds])
 
   useEffect(() => {
-    if (!(clockInModalOpen || updateFocusModalOpen)) return
+    if (!(clockInModalOpen || updateFocusModalOpen || clockOutReviewOpen)) return
     const load = async () => {
       const { data: stData } = await supabase.from('service_types').select('id, name').order('sequence_order', { ascending: true })
       const types = (stData ?? []) as Array<{ id: string; name: string }>
@@ -433,7 +438,7 @@ export default function ClockInOutButton({ userId, userName }: Props) {
       }
     }
     void load()
-  }, [clockInModalOpen, updateFocusModalOpen, authUser?.id])
+  }, [clockInModalOpen, updateFocusModalOpen, clockOutReviewOpen, authUser?.id])
 
   useEffect(() => {
     if (updateFocusModalOpen) {
@@ -443,30 +448,137 @@ export default function ClockInOutButton({ userId, userName }: Props) {
   }, [updateFocusModalOpen])
 
   useEffect(() => {
-    if (updateFocusModalOpen) {
-      const scrollY = window.scrollY
-      const prevOverflow = document.body.style.overflow
-      const prevPosition = document.body.style.position
-      const prevTop = document.body.style.top
-      const prevLeft = document.body.style.left
-      const prevRight = document.body.style.right
+    if (clockOutReviewOpen) {
+      const id = setTimeout(() => clockOutNotesRef.current?.focus(), 0)
+      return () => clearTimeout(id)
+    }
+  }, [clockOutReviewOpen])
 
-      document.body.style.overflow = 'hidden'
-      document.body.style.position = 'fixed'
-      document.body.style.top = `-${scrollY}px`
-      document.body.style.left = '0'
-      document.body.style.right = '0'
-
-      return () => {
-        document.body.style.overflow = prevOverflow
-        document.body.style.position = prevPosition
-        document.body.style.top = prevTop
-        document.body.style.left = prevLeft
-        document.body.style.right = prevRight
-        window.scrollTo(0, scrollY)
+  useEffect(() => {
+    if (!clockOutReviewOpen) return
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape' && !clockOutSaving) {
+        e.preventDefault()
+        setClockOutReviewOpen(false)
       }
     }
-  }, [updateFocusModalOpen])
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [clockOutReviewOpen, clockOutSaving])
+
+  useEffect(() => {
+    if (!clockOutReviewOpen || !openSession) return
+    let cancelled = false
+    if (!openSession.job_ledger_id && !openSession.bid_id) {
+      setSelectedAssociation(null)
+      return
+    }
+    void (async () => {
+      const jobLedgerId = openSession.job_ledger_id
+      const bidId = openSession.bid_id
+      try {
+        if (jobLedgerId) {
+          const row = await withSupabaseRetry(
+            async () =>
+              supabase
+                .from('jobs_ledger')
+                .select('id, hcp_number, job_name, job_address')
+                .eq('id', jobLedgerId)
+                .maybeSingle(),
+            'hydrate clock-out job',
+          )
+          if (cancelled) return
+          const job = row as JobSearchResult | null
+          if (!job) {
+            setSelectedAssociation(null)
+            return
+          }
+          setSelectedAssociation({
+            source: 'job',
+            id: job.id,
+            hcp_number: job.hcp_number ?? '',
+            job_name: job.job_name ?? '',
+            job_address: job.job_address ?? '',
+          })
+          return
+        }
+        if (bidId) {
+          type BidHydrate = {
+            id: string
+            bid_number: string | null
+            project_name: string | null
+            address: string | null
+            customer_id: string | null
+            service_type: { name: string } | null
+          }
+          const bid = await withSupabaseRetry(
+            async () =>
+              supabase
+                .from('bids')
+                .select('id, bid_number, project_name, address, customer_id, service_type:service_types(name)')
+                .eq('id', bidId)
+                .maybeSingle(),
+            'hydrate clock-out bid',
+          )
+          if (cancelled) return
+          if (!bid) {
+            setSelectedAssociation(null)
+            return
+          }
+          const b = bid as BidHydrate
+          let customer_name = ''
+          if (b.customer_id) {
+            const cid = b.customer_id
+            const custRow = await withSupabaseRetry(
+              async () => supabase.from('customers').select('name').eq('id', cid).maybeSingle(),
+              'hydrate clock-out customer',
+            )
+            const cname = custRow as { name: string } | null
+            customer_name = cname?.name?.trim() ?? ''
+          }
+          setSelectedAssociation({
+            source: 'bid',
+            id: b.id,
+            bid_number: b.bid_number ?? '',
+            project_name: b.project_name ?? '',
+            address: b.address ?? '',
+            customer_name,
+            service_type_name: b.service_type?.name ?? null,
+          })
+        }
+      } catch {
+        if (!cancelled) setSelectedAssociation(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [clockOutReviewOpen, openSession?.id, openSession?.job_ledger_id, openSession?.bid_id])
+
+  useEffect(() => {
+    if (!(updateFocusModalOpen || clockOutReviewOpen)) return
+    const scrollY = window.scrollY
+    const prevOverflow = document.body.style.overflow
+    const prevPosition = document.body.style.position
+    const prevTop = document.body.style.top
+    const prevLeft = document.body.style.left
+    const prevRight = document.body.style.right
+
+    document.body.style.overflow = 'hidden'
+    document.body.style.position = 'fixed'
+    document.body.style.top = `-${scrollY}px`
+    document.body.style.left = '0'
+    document.body.style.right = '0'
+
+    return () => {
+      document.body.style.overflow = prevOverflow
+      document.body.style.position = prevPosition
+      document.body.style.top = prevTop
+      document.body.style.left = prevLeft
+      document.body.style.right = prevRight
+      window.scrollTo(0, scrollY)
+    }
+  }, [updateFocusModalOpen, clockOutReviewOpen])
 
   function handleOpenClockInModal() {
     if (!userId || !userName?.trim() || openSession) return
@@ -527,10 +639,27 @@ export default function ClockInOutButton({ userId, userName }: Props) {
     }
   }
 
-  async function handleClockOut() {
+  function handleOpenClockOutReview() {
     if (salaryUiActive) return
     if (!openSession) return
-    setActionLoading(true)
+    setSelectedAssociation(null)
+    setClockOutReviewNotes(openSession.notes?.trim() ?? '')
+    setClockOutReviewError(null)
+    setUnifiedSearchText('')
+    setUnifiedSearchResults([])
+    setClockOutReviewOpen(true)
+  }
+
+  async function handleCompleteClockOutReview() {
+    if (salaryUiActive) return
+    if (!openSession) return
+    if (!clockOutReviewNotes.trim()) {
+      showToast('Please describe what you intend to accomplish today', 'error')
+      return
+    }
+
+    setClockOutSaving(true)
+    setClockOutReviewError(null)
     setError(null)
     try {
       let clockOutLat: number | null = null
@@ -550,23 +679,36 @@ export default function ClockInOutButton({ userId, userName }: Props) {
           // Proceed without location (permission denied, timeout, or unavailable)
         }
       }
+      const notesTrim = clockOutReviewNotes.trim()
+      const jobId = selectedAssociation?.source === 'job' ? selectedAssociation.id : null
+      const bidId = selectedAssociation?.source === 'bid' ? selectedAssociation.id : null
       const { error: err } = await supabase
         .from('clock_sessions')
         .update({
+          notes: notesTrim,
+          job_ledger_id: jobId,
+          bid_id: bidId,
           clocked_out_at: new Date().toISOString(),
           ...(clockOutLat != null &&
             clockOutLng != null && { clock_out_lat: clockOutLat, clock_out_lng: clockOutLng }),
         })
         .eq('id', openSession.id)
       if (err) throw err
+      if (selectedAssociation && userId && typeof localStorage !== 'undefined') {
+        localStorage.setItem(`clock_in_last_job_bid_${userId}`, JSON.stringify(selectedAssociation))
+        setLastSelectedJobBid(selectedAssociation)
+      }
+      setClockOutReviewOpen(false)
       setOpenSession(null)
       await fetchSessions()
       const elig = await getTeamFeedbackEligibility(userId)
       if (elig.eligible) setTeamFeedbackOpen(true)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to clock out')
+      const msg = e instanceof Error ? e.message : 'Failed to clock out'
+      setClockOutReviewError(msg)
+      setError(msg)
     } finally {
-      setActionLoading(false)
+      setClockOutSaving(false)
     }
   }
 
@@ -694,8 +836,8 @@ export default function ClockInOutButton({ userId, userName }: Props) {
           ) : (
           <button
             type="button"
-            onClick={handleClockOut}
-            disabled={actionLoading || updateFocusLoading}
+            onClick={handleOpenClockOutReview}
+            disabled={actionLoading || updateFocusLoading || clockOutSaving}
             title="Clock out"
             style={{
               padding: '0.5rem 1rem',
@@ -705,7 +847,7 @@ export default function ClockInOutButton({ userId, userName }: Props) {
               borderRadius: 8,
               background: '#dc2626',
               color: 'white',
-              cursor: (actionLoading || updateFocusLoading) ? 'not-allowed' : 'pointer',
+              cursor: (actionLoading || updateFocusLoading || clockOutSaving) ? 'not-allowed' : 'pointer',
               fontVariantNumeric: 'tabular-nums',
             }}
           >
@@ -715,7 +857,7 @@ export default function ClockInOutButton({ userId, userName }: Props) {
           <button
             type="button"
             onClick={handleOpenUpdateFocusModal}
-            disabled={actionLoading || updateFocusLoading}
+            disabled={actionLoading || updateFocusLoading || clockOutSaving}
             title={
               salaryUiActive
                 ? 'Change job or bid focus for this shift'
@@ -731,7 +873,7 @@ export default function ClockInOutButton({ userId, userName }: Props) {
               borderRadius: 8,
               background: '#3b82f6',
               color: 'white',
-              cursor: (actionLoading || updateFocusLoading) ? 'not-allowed' : 'pointer',
+              cursor: (actionLoading || updateFocusLoading || clockOutSaving) ? 'not-allowed' : 'pointer',
             }}
           >
             Update Focus
@@ -1069,6 +1211,175 @@ export default function ClockInOutButton({ userId, userName }: Props) {
                 }}
               >
                 {updateFocusLoading ? (salaryUiActive ? 'Saving…' : 'Switching…') : salaryUiActive ? 'Save focus' : 'Switch Focus'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {clockOutReviewOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="clock-out-review-modal-title"
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+          onClick={() => !clockOutSaving && setClockOutReviewOpen(false)}
+        >
+          <div
+            id="clock-out-review-modal"
+            style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 480, width: '90%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <style>{`#clock-out-review-modal textarea:focus,#clock-out-review-modal input[type=text]:focus,#clock-out-review-modal input[type=text]:focus-visible{outline:2px solid #dc2626;outline-offset:2px}`}</style>
+            <h3 id="clock-out-review-modal-title" style={{ marginTop: 0, marginBottom: '0.5rem', textAlign: 'center' }}>Review before clock out</h3>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+              Confirm or update what you worked on for this session. This is saved on the same time entry when you clock out.
+            </p>
+            <label style={{ display: 'block', marginBottom: '0.5rem' }}>
+              <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>What did you work on?</span>
+              <textarea
+                ref={clockOutNotesRef}
+                value={clockOutReviewNotes}
+                onChange={(e) => setClockOutReviewNotes(e.target.value)}
+                placeholder="e.g. Trim set at 456 Oak Ave"
+                rows={3}
+                disabled={clockOutSaving}
+                style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box', border: '2px solid #64748b', borderRadius: 6, background: '#fff' }}
+              />
+            </label>
+            <div style={{ marginBottom: '0.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
+                <span style={{ fontWeight: 500 }}>Job or Bid (optional)</span>
+                {lastSelectedJobBid && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedAssociation(lastSelectedJobBid)}
+                    disabled={clockOutSaving}
+                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: clockOutSaving ? 'not-allowed' : 'pointer' }}
+                  >
+                    Use last: {formatUnifiedResult(lastSelectedJobBid)}
+                  </button>
+                )}
+              </div>
+              {selectedAssociation && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <span style={{ flex: 1, padding: '0.5rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    {selectedAssociation.source === 'bid' && (() => {
+                      const t = getBidServiceTypeTag(selectedAssociation.service_type_name)
+                      return t ? (
+                        <span style={{ padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: t.color, color: '#fff', borderRadius: 4 }}>
+                          [{t.tag}]
+                        </span>
+                      ) : null
+                    })()}
+                    {formatUnifiedResult(selectedAssociation)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedAssociation(null)}
+                    disabled={clockOutSaving}
+                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: clockOutSaving ? 'not-allowed' : 'pointer' }}
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+              <input
+                type="text"
+                value={unifiedSearchText}
+                onChange={(e) => {
+                  setUnifiedSearchText(e.target.value)
+                  setSelectedAssociation(null)
+                  assignedJobsShownRef.current = false
+                }}
+                placeholder="Search by HCP #, bid #, project name, or address"
+                disabled={clockOutSaving}
+                style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box', border: '2px solid #64748b', borderRadius: 6, background: '#fff' }}
+              />
+              {serviceTypes.length === 1 ? null : serviceTypes.length > 1 ? (
+                <select
+                  value={selectedBidServiceTypeId}
+                  onChange={(e) => {
+                    setSelectedBidServiceTypeId(e.target.value)
+                    setUnifiedSearchResults([])
+                  }}
+                  disabled={clockOutSaving}
+                  style={{ width: '100%', padding: '0.5rem', marginTop: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                >
+                  <option value="">Show all types ({serviceTypes.map((st) => st.name).join(', ')})</option>
+                  {serviceTypes.map((st) => (
+                    <option key={st.id} value={st.id}>{st.name}</option>
+                  ))}
+                </select>
+              ) : null}
+              {(unifiedSearchResults.length > 0 || (assignedJobsListLoading && !unifiedSearchText.trim())) && (
+                <div style={{ maxHeight: 160, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4, marginTop: '0.25rem' }}>
+                  {assignedJobsListLoading && unifiedSearchResults.length === 0 && !unifiedSearchText.trim() ? (
+                    <div style={{ padding: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>Loading…</div>
+                  ) : (
+                    unifiedSearchResults.map((r) => (
+                      <button
+                        key={`${r.source}-${r.id}`}
+                        type="button"
+                        onClick={() => {
+                          setSelectedAssociation(r)
+                          setUnifiedSearchResults([])
+                          setUnifiedSearchText('')
+                        }}
+                        style={{
+                          display: 'block',
+                          width: '100%',
+                          padding: '0.5rem 0.75rem',
+                          textAlign: 'left',
+                          border: 'none',
+                          background: selectedAssociation && selectedAssociation.source === r.source && selectedAssociation.id === r.id ? '#eff6ff' : 'white',
+                          cursor: 'pointer',
+                          borderBottom: '1px solid #e5e7eb',
+                          fontSize: '0.875rem',
+                        }}
+                      >
+                        {r.source === 'bid' && (() => {
+                          const t = getBidServiceTypeTag(r.service_type_name)
+                          return t ? (
+                            <span style={{ marginRight: '0.35rem', padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: t.color, color: '#fff', borderRadius: 4 }}>
+                              [{t.tag}]
+                            </span>
+                          ) : null
+                        })()}
+                        {formatUnifiedResult(r)}
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+            {clockOutReviewError && (
+              <p style={{ color: '#dc2626', fontSize: '0.875rem', margin: '0 0 0.75rem 0' }}>{clockOutReviewError}</p>
+            )}
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', justifyContent: 'space-between' }}>
+              <button
+                type="button"
+                onClick={() => !clockOutSaving && setClockOutReviewOpen(false)}
+                disabled={clockOutSaving}
+                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: clockOutSaving ? 'not-allowed' : 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void handleCompleteClockOutReview()
+                }}
+                disabled={!clockOutReviewNotes.trim() || clockOutSaving}
+                style={{
+                  padding: '0.5rem 1rem',
+                  border: '1px solid #dc2626',
+                  borderRadius: 4,
+                  background: '#dc2626',
+                  color: 'white',
+                  cursor: clockOutReviewNotes.trim() && !clockOutSaving ? 'pointer' : 'not-allowed',
+                }}
+              >
+                {clockOutSaving ? 'Clocking out…' : 'Complete clock out'}
               </button>
             </div>
           </div>

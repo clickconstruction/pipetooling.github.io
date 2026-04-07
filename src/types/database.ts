@@ -1784,6 +1784,9 @@ export type Database = {
           acceptor_user_agent: string | null
           created_at: string
           created_by: string
+          customer_attachment_label: string | null
+          customer_attachment_sent: Json | null
+          customer_attachment_url: string | null
           customer_email: string | null
           customer_experience_overrides: Json | null
           customer_experience_sent: Json | null
@@ -1815,6 +1818,9 @@ export type Database = {
           acceptor_user_agent?: string | null
           created_at?: string
           created_by: string
+          customer_attachment_label?: string | null
+          customer_attachment_sent?: Json | null
+          customer_attachment_url?: string | null
           customer_email?: string | null
           customer_experience_overrides?: Json | null
           customer_experience_sent?: Json | null
@@ -1846,6 +1852,9 @@ export type Database = {
           acceptor_user_agent?: string | null
           created_at?: string
           created_by?: string
+          customer_attachment_label?: string | null
+          customer_attachment_sent?: Json | null
+          customer_attachment_url?: string | null
           customer_email?: string | null
           customer_experience_overrides?: Json | null
           customer_experience_sent?: Json | null
@@ -2439,6 +2448,70 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "inspection_types"
             referencedColumns: ["name"]
+          },
+        ]
+      }
+      job_schedule_blocks: {
+        Row: {
+          assignee_user_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          job_id: string
+          note: string | null
+          shared_block_group_id: string | null
+          time_end: string
+          time_start: string
+          updated_at: string
+          work_date: string
+        }
+        Insert: {
+          assignee_user_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_id: string
+          note?: string | null
+          shared_block_group_id?: string | null
+          time_end: string
+          time_start: string
+          updated_at?: string
+          work_date: string
+        }
+        Update: {
+          assignee_user_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_id?: string
+          note?: string | null
+          shared_block_group_id?: string | null
+          time_end?: string
+          time_start?: string
+          updated_at?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_schedule_blocks_assignee_user_id_fkey"
+            columns: ["assignee_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_schedule_blocks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_schedule_blocks_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -7902,6 +7975,7 @@ export type Database = {
           job_plans_link: string
           last_report_at: string
           master_user_id: string
+          project_id: string
           revenue: number
         }[]
       }

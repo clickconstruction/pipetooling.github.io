@@ -6,9 +6,35 @@ import { useAuth } from '../hooks/useAuth'
 import type { Database } from '../types/database'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { aggregateCalendarClockedHoursByDate } from '../lib/calendarClockedHoursByDate'
+import { CLOCK_SESSION_CALENDAR_SELECT } from '../lib/clockSessionSelect'
+import {
+  calendarRawToClockSessionRow,
+  calendarSessionChipLabel,
+  calendarSessionChipTooltip,
+  CALENDAR_SESSION_CHIP_CAP,
+  formatCalendarSessionDurationCompact,
+  formatSessionRangeCentral,
+  groupActiveClockSessionsByWorkDate,
+  isCalendarClockSessionActive,
+  type CalendarClockSessionRaw,
+} from '../lib/calendarClockSessionDisplay'
 import { resolveCalendarWorkday, UNPAID_TIME_OFF_LABEL } from '../lib/resolveCalendarWorkday'
+import type { ClockSessionRow } from '../types/clockSessions'
+import { PreviewJobModal } from '../components/calendar/PreviewJobModal'
+import { scheduleFormatWindow } from '../lib/jobScheduleChicago'
 
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator'
+
+const CALENDAR_PLAN_CHIP_CAP = 3
+
+type PlannedBlockRow = {
+  id: string
+  job_id: string
+  work_date: string
+  time_start: string
+  time_end: string
+  jobs_ledger: { hcp_number: string; job_name: string } | null
+}
 
 type CalendarStep = {
   id: string
@@ -183,7 +209,8 @@ function formatCalendarRecordedLine(rec: { hours: number; openCount: number } | 
   text: string
   title: string
 } {
-  const titleBase = 'Sum of closed clock sessions (not rejected, not revoked).'
+  const titleBase =
+    'Sum of closed clock sessions (not rejected, not revoked). Day chips list each session with job and notes when “Show recorded time” is on.'
   if (!rec || (rec.hours < 1e-6 && rec.openCount === 0)) {
     return { text: 'Recorded —', title: titleBase }
   }
@@ -204,7 +231,7 @@ function calendarRecordedHasVisibleSummary(rec: { hours: number; openCount: numb
 }
 
 export default function Calendar() {
-  const { user: authUser } = useAuth()
+  const { user: authUser, role: authRole } = useAuth()
   const [userName, setUserName] = useState<string | null>(null)
   const [steps, setSteps] = useState<CalendarStep[]>([])
   const [bids, setBids] = useState<CalendarBid[]>([])
@@ -222,6 +249,13 @@ export default function Calendar() {
   const [recordedByWorkDate, setRecordedByWorkDate] = useState<
     Record<string, { hours: number; openCount: number }>
   >({})
+  const [sessionsByWorkDate, setSessionsByWorkDate] = useState<Record<string, ClockSessionRow[]>>({})
+  const [plannedByWorkDate, setPlannedByWorkDate] = useState<Record<string, PlannedBlockRow[]>>({})
+  const [previewJobModal, setPreviewJobModal] = useState<{
+    projectId: string
+    stepId: string
+    dateKey: string
+  } | null>(null)
   // Initialize currentMonth in Central Time
   const [currentMonth, setCurrentMonth] = useState(() => {
     const now = new Date()
@@ -253,6 +287,8 @@ export default function Calendar() {
     if (!uid) {
       setNcnsByWorkDate(new Map())
       setRecordedByWorkDate({})
+      setSessionsByWorkDate({})
+      setPlannedByWorkDate({})
       return
     }
     const { gridStart, gridEnd } = getVisibleGridDateRange(currentMonth)
@@ -276,7 +312,7 @@ export default function Calendar() {
             async () =>
               await supabase
                 .from('clock_sessions')
-                .select('work_date, clocked_in_at, clocked_out_at, rejected_at, revoked_at')
+                .select(CLOCK_SESSION_CALENDAR_SELECT)
                 .eq('user_id', uid)
                 .gte('work_date', gridStart)
                 .lte('work_date', gridEnd),
@@ -296,11 +332,52 @@ export default function Calendar() {
           }
         }
         setNcnsByWorkDate(nextNcns)
-        setRecordedByWorkDate(aggregateCalendarClockedHoursByDate(clockRows ?? []))
+        const mapped = (clockRows ?? []).map((raw) =>
+          calendarRawToClockSessionRow(raw as CalendarClockSessionRaw),
+        )
+        const activeForAgg = mapped.filter(isCalendarClockSessionActive)
+        setRecordedByWorkDate(
+          aggregateCalendarClockedHoursByDate(
+            activeForAgg.map((r) => ({
+              work_date: r.work_date,
+              clocked_in_at: r.clocked_in_at,
+              clocked_out_at: r.clocked_out_at,
+              rejected_at: r.rejected_at,
+              revoked_at: r.revoked_at,
+            })),
+          ),
+        )
+        setSessionsByWorkDate(groupActiveClockSessionsByWorkDate(mapped))
+        const plannedMap: Record<string, PlannedBlockRow[]> = {}
+        try {
+          const plannedRows = await withSupabaseRetry(
+            async () =>
+              await supabase
+                .from('job_schedule_blocks')
+                .select('id, job_id, work_date, time_start, time_end, jobs_ledger(hcp_number, job_name)')
+                .eq('assignee_user_id', uid)
+                .gte('work_date', gridStart)
+                .lte('work_date', gridEnd)
+                .order('work_date', { ascending: true })
+                .order('time_start', { ascending: true }),
+            'calendar job_schedule_blocks month',
+          )
+          for (const raw of plannedRows ?? []) {
+            const row = raw as PlannedBlockRow
+            const k = row.work_date
+            if (!plannedMap[k]) plannedMap[k] = []
+            plannedMap[k].push(row)
+          }
+        } catch {
+          /* table may not exist until migration applied */
+        }
+        setPlannedByWorkDate(plannedMap)
       } catch {
         if (!cancelled) {
           setNcnsByWorkDate(new Map())
           setRecordedByWorkDate({})
+          setSessionsByWorkDate({})
+          setPlannedByWorkDate({})
         }
       }
     })()
@@ -692,7 +769,10 @@ export default function Calendar() {
                 </label>
               ) : null}
               {authUser?.id ? (
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', cursor: 'pointer', userSelect: 'none' }}>
+                <label
+                  title="Daily total plus per-session chips for your clock time (not rejected or revoked), with job/bid label and focus notes. Times in Central."
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', cursor: 'pointer', userSelect: 'none' }}
+                >
                   <input
                     type="checkbox"
                     checked={showRecordedTime}
@@ -764,22 +844,48 @@ export default function Calendar() {
                   <div style={{ display: 'flex', flexDirection: 'column', overflow: 'auto', flex: 1, minHeight: 0 }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {daySteps.map((step) => (
-                      <Link
+                      <div
                         key={step.id}
-                        to={`/workflows/${step.project_id}`}
-                        onClick={(e) => e.stopPropagation()}
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setPreviewJobModal({
+                            projectId: step.project_id,
+                            stepId: step.id,
+                            dateKey: formatDateKey(day),
+                          })
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            setPreviewJobModal({
+                              projectId: step.project_id,
+                              stepId: step.id,
+                              dateKey: formatDateKey(day),
+                            })
+                          }
+                        }}
                         style={{
                           fontSize: '0.75rem',
                           padding: '2px 4px',
-                          background: step.status === 'completed' || step.status === 'approved' ? '#f0fdf4' : step.status === 'skipped' ? '#f3f4f6' : step.status === 'rejected' ? '#fef2f2' : CALENDAR_DAY_HOVER_BG,
+                          background:
+                            step.status === 'completed' || step.status === 'approved'
+                              ? '#f0fdf4'
+                              : step.status === 'skipped'
+                                ? '#f3f4f6'
+                                : step.status === 'rejected'
+                                  ? '#fef2f2'
+                                  : CALENDAR_DAY_HOVER_BG,
                           color: '#111827',
-                          textDecoration: 'none',
                           borderRadius: 3,
                           overflow: 'hidden',
                           display: 'flex',
                           flexDirection: 'column',
+                          cursor: 'pointer',
                         }}
-                        title={`${step.name} - ${step.project_name}`}
+                        title={`${step.name} - ${step.project_name} — click for job preview`}
                       >
                         <div style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {step.name}
@@ -787,7 +893,19 @@ export default function Calendar() {
                         <div style={{ fontSize: '0.6875rem', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {step.project_name}
                         </div>
-                      </Link>
+                        <Link
+                          to={`/workflows/${step.project_id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          style={{
+                            fontSize: '0.625rem',
+                            color: '#2563eb',
+                            marginTop: 2,
+                            textDecoration: 'underline',
+                          }}
+                        >
+                          Workflow
+                        </Link>
+                      </div>
                     ))}
                     {dayBids.map((bid) => {
                       const status = getBidSubmissionStatus(bid)
@@ -956,6 +1074,146 @@ export default function Calendar() {
                           )
                         })()
                       : null}
+                    {showRecordedTime
+                      ? (() => {
+                          const dk = formatDateKey(day)
+                          const daySessions = sessionsByWorkDate[dk] ?? []
+                          if (daySessions.length === 0) return null
+                          const cap = CALENDAR_SESSION_CHIP_CAP
+                          const visible = daySessions.slice(0, cap)
+                          const more = daySessions.length - visible.length
+                          const nowMs = Date.now()
+                          return (
+                            <>
+                              {visible.map((s) => (
+                                <span
+                                  key={s.id}
+                                  role="note"
+                                  onClick={(e) => e.stopPropagation()}
+                                  style={{
+                                    fontSize: '0.625rem',
+                                    padding: '2px 4px',
+                                    background: '#f3f4f6',
+                                    color: '#374151',
+                                    borderRadius: 3,
+                                    border: '1px solid #e5e7eb',
+                                    lineHeight: 1.25,
+                                    display: 'block',
+                                    overflow: 'hidden',
+                                  }}
+                                  title={`${calendarSessionChipTooltip(s)} | ${formatSessionRangeCentral(s.clocked_in_at, s.clocked_out_at)} · ${formatCalendarSessionDurationCompact(s, nowMs)}`}
+                                >
+                                  <span
+                                    style={{
+                                      fontWeight: 600,
+                                      display: 'block',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap',
+                                    }}
+                                  >
+                                    {calendarSessionChipLabel(s)}
+                                  </span>
+                                  <span
+                                    style={{
+                                      display: 'block',
+                                      color: '#6b7280',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap',
+                                    }}
+                                  >
+                                    {formatSessionRangeCentral(s.clocked_in_at, s.clocked_out_at)}
+                                  </span>
+                                </span>
+                              ))}
+                              {more > 0 ? (
+                                <span
+                                  role="note"
+                                  onClick={(e) => e.stopPropagation()}
+                                  style={{
+                                    fontSize: '0.6875rem',
+                                    padding: '2px 4px',
+                                    color: '#4b5563',
+                                    fontWeight: 600,
+                                  }}
+                                  title={`${more} more clock session(s) — open day for full list`}
+                                >
+                                  +{more}
+                                </span>
+                              ) : null}
+                            </>
+                          )
+                        })()
+                      : null}
+                    {(() => {
+                      const dk = formatDateKey(day)
+                      const dayPlanned = plannedByWorkDate[dk] ?? []
+                      if (dayPlanned.length === 0) return null
+                      const cap = CALENDAR_PLAN_CHIP_CAP
+                      const visible = dayPlanned.slice(0, cap)
+                      const more = dayPlanned.length - visible.length
+                      return (
+                        <>
+                          {visible.map((p) => {
+                            const jl = p.jobs_ledger
+                            const label =
+                              jl && ((jl.hcp_number ?? '').trim() || (jl.job_name ?? '').trim())
+                                ? `${(jl.hcp_number ?? '').trim() || '—'} · ${(jl.job_name ?? '').trim()}`
+                                : 'Planned'
+                            return (
+                              <span
+                                key={p.id}
+                                role="note"
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                  fontSize: '0.625rem',
+                                  padding: '2px 4px',
+                                  background: '#eef2ff',
+                                  color: '#3730a3',
+                                  borderRadius: 3,
+                                  border: '1px solid #c7d2fe',
+                                  lineHeight: 1.25,
+                                  display: 'block',
+                                  overflow: 'hidden',
+                                }}
+                                title={`${label} · ${scheduleFormatWindow(p.time_start, p.time_end)} (Central)`}
+                              >
+                                <span
+                                  style={{
+                                    fontWeight: 600,
+                                    display: 'block',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                >
+                                  {label}
+                                </span>
+                                <span style={{ display: 'block', color: '#4f46e5' }}>
+                                  {scheduleFormatWindow(p.time_start, p.time_end)}
+                                </span>
+                              </span>
+                            )
+                          })}
+                          {more > 0 ? (
+                            <span
+                              role="note"
+                              onClick={(e) => e.stopPropagation()}
+                              style={{
+                                fontSize: '0.6875rem',
+                                padding: '2px 4px',
+                                color: '#4f46e5',
+                                fontWeight: 600,
+                              }}
+                              title={`${more} more planned block(s) — open day for list`}
+                            >
+                              +{more}
+                            </span>
+                          ) : null}
+                        </>
+                      )
+                    })()}
                     </div>
                   </div>
                 </div>
@@ -978,13 +1236,17 @@ export default function Calendar() {
             const modalRec = recordedByWorkDate[modalDayKey]
             const modalRecordedVisible = calendarRecordedHasVisibleSummary(modalRec)
             const modalRecordedFmt = formatCalendarRecordedLine(modalRec)
+            const modalSessions = sessionsByWorkDate[modalDayKey] ?? []
+            const modalPlanned = plannedByWorkDate[modalDayKey] ?? []
             const hasItems =
               modalSteps.length > 0 ||
               modalBids.length > 0 ||
               modalCallbacks.length > 0 ||
               modalHasVisibleSalarySection ||
               modalNcns != null ||
-              (showRecordedTime && modalRecordedVisible)
+              (showRecordedTime && modalRecordedVisible) ||
+              (showRecordedTime && modalSessions.length > 0) ||
+              modalPlanned.length > 0
             return (
               <div
                 style={{
@@ -1003,7 +1265,7 @@ export default function Calendar() {
                     background: 'white',
                     borderRadius: 8,
                     padding: '1.5rem',
-                    maxWidth: 400,
+                    maxWidth: 480,
                     width: '90%',
                     maxHeight: '80vh',
                     overflow: 'auto',
@@ -1092,6 +1354,82 @@ export default function Calendar() {
                           </div>
                         </li>
                       ) : null}
+                      {modalPlanned.length > 0 ? (
+                        <li style={{ marginBottom: '0.5rem' }}>
+                          <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.35rem' }}>
+                            Planned work
+                          </div>
+                          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                            {modalPlanned.map((p) => {
+                              const jl = p.jobs_ledger
+                              const label =
+                                jl && ((jl.hcp_number ?? '').trim() || (jl.job_name ?? '').trim())
+                                  ? `${(jl.hcp_number ?? '').trim() || '—'} · ${(jl.job_name ?? '').trim()}`
+                                  : 'Job'
+                              return (
+                                <li
+                                  key={p.id}
+                                  style={{
+                                    fontSize: '0.875rem',
+                                    padding: '0.5rem 0.75rem',
+                                    background: '#eef2ff',
+                                    border: '1px solid #c7d2fe',
+                                    borderRadius: 4,
+                                    color: '#312e81',
+                                  }}
+                                >
+                                  <strong>{label}</strong>
+                                  <div style={{ marginTop: 4 }}>{scheduleFormatWindow(p.time_start, p.time_end)} Central</div>
+                                </li>
+                              )
+                            })}
+                          </ul>
+                        </li>
+                      ) : null}
+                      {showRecordedTime && modalSessions.length > 0 ? (
+                        <li style={{ marginBottom: '0.5rem' }}>
+                          <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.35rem' }}>
+                            Clock sessions
+                          </div>
+                          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            {modalSessions.map((s) => {
+                              const nowMs = Date.now()
+                              return (
+                                <li
+                                  key={s.id}
+                                  style={{
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: 4,
+                                    padding: '0.5rem 0.75rem',
+                                    background: '#fafafa',
+                                  }}
+                                >
+                                  <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{calendarSessionChipLabel(s)}</div>
+                                  <div style={{ fontSize: '0.8125rem', color: '#4b5563', marginTop: 4 }}>
+                                    {formatSessionRangeCentral(s.clocked_in_at, s.clocked_out_at)}
+                                    {' · '}
+                                    {formatCalendarSessionDurationCompact(s, nowMs)}
+                                  </div>
+                                  {s.origin === 'salary_schedule' ? (
+                                    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 4 }}>Scheduled</div>
+                                  ) : null}
+                                  <div
+                                    style={{
+                                      fontSize: '0.875rem',
+                                      marginTop: 8,
+                                      whiteSpace: 'pre-wrap',
+                                      wordBreak: 'break-word',
+                                      color: '#374151',
+                                    }}
+                                  >
+                                    {(s.notes ?? '').trim() || '—'}
+                                  </div>
+                                </li>
+                              )
+                            })}
+                          </ul>
+                        </li>
+                      ) : null}
                       {showRecordedTime && modalRecordedVisible ? (
                         <li style={{ marginBottom: '0.5rem' }}>
                           <div
@@ -1112,22 +1450,64 @@ export default function Calendar() {
                       ) : null}
                       {modalSteps.map((step) => (
                         <li key={step.id} style={{ marginBottom: '0.5rem' }}>
-                          <Link
-                            to={`/workflows/${step.project_id}`}
-                            onClick={() => setSelectedDayForModal(null)}
+                          <div
                             style={{
-                              display: 'block',
                               padding: '0.5rem 0.75rem',
-                              background: step.status === 'completed' || step.status === 'approved' ? '#f0fdf4' : step.status === 'skipped' ? '#f3f4f6' : step.status === 'rejected' ? '#fef2f2' : CALENDAR_DAY_HOVER_BG,
+                              background:
+                                step.status === 'completed' || step.status === 'approved'
+                                  ? '#f0fdf4'
+                                  : step.status === 'skipped'
+                                    ? '#f3f4f6'
+                                    : step.status === 'rejected'
+                                      ? '#fef2f2'
+                                      : CALENDAR_DAY_HOVER_BG,
                               color: '#111827',
-                              textDecoration: 'none',
                               borderRadius: 4,
                               border: '1px solid #e5e7eb',
                             }}
                           >
                             <div style={{ fontWeight: 500 }}>{step.name}</div>
                             <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{step.project_name}</div>
-                          </Link>
+                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: 8, flexWrap: 'wrap' }}>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setPreviewJobModal({
+                                    projectId: step.project_id,
+                                    stepId: step.id,
+                                    dateKey: modalDayKey,
+                                  })
+                                }
+                                style={{
+                                  padding: '0.25rem 0.5rem',
+                                  fontSize: '0.8125rem',
+                                  background: '#fff',
+                                  border: '1px solid #c7d2fe',
+                                  borderRadius: 4,
+                                  cursor: 'pointer',
+                                  color: '#3730a3',
+                                }}
+                              >
+                                Job preview
+                              </button>
+                              <Link
+                                to={`/workflows/${step.project_id}`}
+                                onClick={() => setSelectedDayForModal(null)}
+                                style={{
+                                  padding: '0.25rem 0.5rem',
+                                  fontSize: '0.8125rem',
+                                  background: '#fff',
+                                  border: '1px solid #e5e7eb',
+                                  borderRadius: 4,
+                                  color: '#2563eb',
+                                  textDecoration: 'none',
+                                  display: 'inline-block',
+                                }}
+                              >
+                                Workflow
+                              </Link>
+                            </div>
+                          </div>
                         </li>
                       ))}
                       {modalBids.map((bid) => {
@@ -1325,6 +1705,18 @@ export default function Calendar() {
           </section>
         </>
       )}
+      {previewJobModal ? (
+        <PreviewJobModal
+          open
+          onClose={() => setPreviewJobModal(null)}
+          projectId={previewJobModal.projectId}
+          stepId={previewJobModal.stepId}
+          contextDateKey={previewJobModal.dateKey}
+          steps={steps}
+          authUserId={authUser?.id}
+          showJobsDeepLink={authRole !== 'subcontractor'}
+        />
+      ) : null}
     </div>
   )
 }

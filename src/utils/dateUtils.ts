@@ -72,6 +72,101 @@ export function ymdAddDays(ymd: string, deltaDays: number): string {
   return `${yy}-${mm}-${dd}`
 }
 
+/** ISO 8601 week number (1–53) for the Gregorian calendar day `YYYY-MM-DD` (UTC civil parts). Null if invalid. */
+export function isoWeekNumberFromGregorianYmd(ymd: string): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd.trim())
+  if (!m) return null
+  const y = Number(m[1])
+  const mo = Number(m[2])
+  const d = Number(m[3])
+  if (!Number.isFinite(y) || !Number.isFinite(mo) || !Number.isFinite(d)) return null
+  const date = new Date(Date.UTC(y, mo - 1, d))
+  if (date.getUTCFullYear() !== y || date.getUTCMonth() !== mo - 1 || date.getUTCDate() !== d) {
+    return null
+  }
+  const day = date.getUTCDay() || 7
+  date.setUTCDate(date.getUTCDate() + 4 - day)
+  const yearStart = Date.UTC(date.getUTCFullYear(), 0, 1)
+  return Math.ceil(((date.getTime() - yearStart) / 86400000 + 1) / 7)
+}
+
+/** E.g. `04/05` for one work-date key, in `APP_CALENDAR_TZ`. */
+export function formatMmDdSlash(ymd: string): string {
+  const inst = referenceDateForWorkDateYmd(ymd)
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: APP_CALENDAR_TZ,
+    month: '2-digit',
+    day: '2-digit',
+  }).format(inst)
+}
+
+export type ScheduleDispatchWeekNavParts = {
+  /** E.g. `Week 15`, or null if ISO week cannot be computed. */
+  weekTitle: string | null
+  /** E.g. `04/05–04/11` (en dash). */
+  dateRange: string
+}
+
+/** ISO week from Thursday (`weekStart` + 4 days). `weekTitle` null ⇒ UI shows only `dateRange`. */
+export function getScheduleDispatchWeekNavParts(weekStart: string, weekEnd: string): ScheduleDispatchWeekNavParts {
+  const thu = ymdAddDays(weekStart, 4)
+  const n = isoWeekNumberFromGregorianYmd(thu)
+  const start = formatMmDdSlash(weekStart)
+  const end = formatMmDdSlash(weekEnd)
+  const dateRange = `${start}\u2013${end}`
+  return { weekTitle: n === null ? null : `Week ${n}`, dateRange }
+}
+
+const dispatchWeekdayShortChicago = new Intl.DateTimeFormat('en-US', {
+  weekday: 'short',
+  timeZone: APP_CALENDAR_TZ,
+})
+
+function workDateYmdIsWeekendChicago(ymd: string): boolean {
+  const d = referenceDateForWorkDateYmd(ymd)
+  const s = dispatchWeekdayShortChicago.format(d)
+  return s === 'Sat' || s === 'Sun'
+}
+
+/** Drop Saturday/Sunday in `APP_CALENDAR_TZ` (matches Schedule Dispatch column headers). */
+export function filterWorkDateYmdsHideWeekend(ymds: string[]): string[] {
+  return ymds.filter((ymd) => !workDateYmdIsWeekendChicago(ymd))
+}
+
+/** Sunday-start company week: full 7 days or Mon–Fri only when `hideWeekend`. */
+export function getScheduleDispatchVisibleDayKeys(weekStart: string, hideWeekend: boolean): string[] {
+  const all = Array.from({ length: 7 }, (_, i) => ymdAddDays(weekStart, i))
+  return hideWeekend ? filterWorkDateYmdsHideWeekend(all) : all
+}
+
+/** `04/05–04/11` style from first/last visible work_date keys (en dash). */
+export function formatScheduleDispatchVisibleDateRange(visibleDayKeys: string[]): string {
+  const first = visibleDayKeys[0]
+  const last = visibleDayKeys[visibleDayKeys.length - 1]
+  if (first === undefined || last === undefined) return ''
+  return `${formatMmDdSlash(first)}\u2013${formatMmDdSlash(last)}`
+}
+
+/**
+ * One-line summary for accessibility or logs. Prefer `getScheduleDispatchWeekNavParts` for layout.
+ */
+export function formatScheduleDispatchWeekNavLabel(weekStart: string, weekEnd: string): string {
+  const { weekTitle, dateRange } = getScheduleDispatchWeekNavParts(weekStart, weekEnd)
+  return weekTitle === null ? dateRange : `${weekTitle} ${dateRange}`
+}
+
+/**
+ * Snap YYYY-MM-DD to the Sunday that starts the America/Chicago week containing that civil date.
+ * Use for `week` query normalization (Schedule Dispatch, etc.). `APP_CALENDAR_TZ` matches job schedule Chicago dates.
+ */
+export function companyWeekStartSundayContaining(ymd: string): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd.trim())
+  if (!m) return null
+  const ms = referenceDateForWorkDateYmd(ymd).getTime()
+  const dow = companyWeekdaySunday0(ms)
+  return ymdAddDays(ymd, -dow)
+}
+
 /** Week range: Sunday–Saturday for the current week (America/Chicago). */
 export function getDefaultWeekRange(): { start: string; end: string } {
   const ms = Date.now()
@@ -120,6 +215,17 @@ export function formatDenverCalendarDayShort(ms: number): string {
 export function formatDenverCalendarDayWithYear(ms: number): string {
   return new Intl.DateTimeFormat('en-US', {
     timeZone: APP_CALENDAR_TZ,
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(new Date(ms))
+}
+
+/** e.g. Monday, Mar 24, 2026 */
+export function formatDenverCalendarDayWithWeekdayAndYear(ms: number): string {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: APP_CALENDAR_TZ,
+    weekday: 'long',
     month: 'short',
     day: 'numeric',
     year: 'numeric',

@@ -11,6 +11,7 @@ import {
   toClientCustomerExperience,
 } from '../../lib/estimateCustomerExperience'
 import { parseAcceptHeaderBrand } from '../../lib/estimateAcceptHeaderBrand'
+import { parseCustomerAttachmentSent } from '../../lib/estimateCustomerAttachment'
 
 const PREVIEW_EMAIL_ACCEPT_URL = 'https://example.com/estimate/accept?t=preview'
 
@@ -141,6 +142,11 @@ export default function CustomerAcceptanceRecordModal({
         })
     return toClientCustomerExperience(resolved)
   }, [row, appCxSettings])
+
+  const recordCustomerAttachment = useMemo(() => {
+    if (!row) return null
+    return parseCustomerAttachmentSent(row.customer_attachment_sent)
+  }, [row])
 
   if (!open) return null
 
@@ -274,6 +280,7 @@ export default function CustomerAcceptanceRecordModal({
                   drawSignatureLoading:
                     !!(row.acceptor_signature_storage_path?.trim()) && !signedUrl,
                 }}
+                customerAttachment={recordCustomerAttachment}
               />
             </div>
           ) : null}

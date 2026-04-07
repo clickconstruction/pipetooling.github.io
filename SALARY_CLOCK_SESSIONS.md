@@ -64,7 +64,15 @@ Resolution order for calendar display: **time off → weekend exclusion (when te
 
 Split-mode **NOT EXISTS** overlap checks for canonical slots **1** / **2** treat a session as on the sync day when **`work_date`** matches **`p_work_date`** **or** the **clock-in** civil date in the effective template timezone matches **`p_work_date`** (`20270408153000` — avoids a duplicate empty slot **1** when **`work_date`** and sync day disagree at a boundary).
 
-There is **no** half-open overlap guard before INSERT (`20270403180000` sync guard superseded): a **manual or split `user_punch` that is still open** blocks auto-open because **`has_open`** is true. Closed segments do **not** block insert; payroll/reporting should not double-count the same wall time (operational caveat).
+### Half-open intervals (split overlap)
+
+Canonical INSERT is skipped when **any** non-rejected/non-revoked row **overlaps** the slot window in **half-open** form (`20270408162000` documents this explicitly in SQL):
+
+- Template slot: **`[t_open, t_close)`** (inclusive open, exclusive close).
+- Session (for overlap only): **`[clocked_in_at, s_out_eff)`** with **`s_out_eff = COALESCE(clocked_out_at, p_now)`**.
+- Overlap test: **`clocked_in_at < t_close AND t_open < s_out_eff`** (slot 1 uses `t_start`/`t_end`; slot 2 uses `t_start2`/`t_end2`).
+
+So a session that ends exactly when the next block begins (**`clocked_out_at = t_end`** and **`t_start2 = t_end`**) does **not** block slot 2. A session **still open** at **`p_now`** blocks canonical slot 2 when **`t_start2 < p_now`** (effective end is **`p_now`**) and **`clocked_in_at < t_end2`** — e.g. a punch that runs past the afternoon block start. A morning-only open session at 11:00 with slot 2 starting at 13:00 does **not** overlap **`[t_start2,t_end2)`** because **`t_start2 < p_now`** is false.
 
 Orphan **NULL-index** `salary_schedule` rows are **deleted** when the effective template for that day is **split** (non-final only).
 
@@ -127,6 +135,7 @@ Week editability uses **America/Chicago** (current week for single session; this
 | `20270402100000` | Continuous: conceptually “no duplicate NULL row when indexed split children exist” — behavior kept in `20260404050204` via `v_skip_continuous_null_inserts` |
 | `20270403180000` | Split RPCs: indexed parent → `user_punch` children; **sync** overlap guard later **replaced** by boundary model (`20260404050204`) |
 | `20270408153000` | Split sync: slot **1** / **2** overlap **NOT EXISTS** uses **`work_date`** **or** **clock-in date in template `tz`** vs `p_work_date` |
+| `20270408162000` | Same split overlap math, documented as **half-open** (`clocked_in_at < t_close AND t_open < coalesce(out, now)`); boundary matrix in SQL |
 | `20260404050204` | **Boundary sync**: mass-close all opens at block end; open only when no open day-wide; PTO/no-template/weekend close opens at `p_now` |
 
 ---

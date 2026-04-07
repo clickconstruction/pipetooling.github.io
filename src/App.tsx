@@ -26,6 +26,7 @@ const Prospects = lazy(() => import('./pages/Prospects'))
 const Duplicates = lazy(() => import('./pages/Duplicates'))
 const Checklist = lazy(() => import('./pages/Checklist'))
 const JobTally = lazy(() => import('./pages/JobTally'))
+const ScheduleDispatch = lazy(() => import('./pages/ScheduleDispatch'))
 const Estimates = lazy(() => import('./pages/Estimates'))
 const EstimateAcceptStaffPreview = lazy(() => import('./pages/EstimateAcceptStaffPreview'))
 import EstimateAccept from './pages/EstimateAccept'
@@ -176,6 +177,7 @@ function AppContent() {
           <Route path="projects/:id/edit" element={<ProjectForm />} />
           <Route path="workflows/:projectId" element={<Workflow />} />
           <Route path="jobs" element={<Jobs />} />
+          <Route path="schedule-dispatch" element={<ScheduleDispatch />} />
           <Route path="banking" element={<Banking />} />
           <Route path="quickfill" element={<ErrorBoundary><Quickfill /></ErrorBoundary>} />
           <Route path="people" element={<People />} />

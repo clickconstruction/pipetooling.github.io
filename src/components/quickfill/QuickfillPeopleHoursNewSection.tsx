@@ -6,7 +6,7 @@ import { useDashboardMyTeamSectionState } from '../../hooks/useDashboardMyTeamSe
 import { useToastContext } from '../../contexts/ToastContext'
 import {
   denverCalendarDayKey,
-  formatDenverCalendarDayWithYear,
+  formatDenverCalendarDayWithWeekdayAndYear,
   referenceDateForWorkDateYmd,
 } from '../../utils/dateUtils'
 import { syncSalaryClockSessionsForUserDay } from '../../lib/salaryScheduleSync'
@@ -180,7 +180,7 @@ export function QuickfillPeopleHoursNewSection() {
     )
   }
 
-  const dateLabel = formatDenverCalendarDayWithYear(referenceDateForWorkDateYmd(selectedYmd).getTime())
+  const dateLabel = formatDenverCalendarDayWithWeekdayAndYear(referenceDateForWorkDateYmd(selectedYmd).getTime())
 
   return (
     <section style={{ marginBottom: '2rem' }}>

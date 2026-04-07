@@ -7,11 +7,11 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-03-28
+last_updated: 2026-04-08
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
-total_terms: ~124
+total_terms: ~125
 categories: 9
 
 key_sections:
@@ -650,6 +650,11 @@ Physical installment rows against a generated pay stub: amount sent, optional se
 **Client helpers**: `src/lib/payStubPayments.ts` (e.g. sum, remaining, fully paid).
 
 **See also**: `RECENT_FEATURES.md` → v2.172, v2.173, v2.174; `PROJECT_DOCUMENTATION.md` → People (Pay History).
+
+### person_offsets
+Per-person **backcharges**, **damages**, and **employee credits** (`person_offsets.type`, migration **`20270408163000`**). Pending rows (`pay_stub_id` null) surface on printed pay reports; applied rows link to a pay stub. **Employee credit** records money owed *to* the employee (for example a payment overage captured as a pending offset). **Less** in `src/components/pay/PayStubLessModal.tsx` does not **Apply** employee credits as deductions.
+
+**See also**: `RECENT_FEATURES.md` → v2.252; `PROJECT_DOCUMENTATION.md` → People (Offsets, Pay History).
 
 ### pay_stub_deductions
 **Less** lines on a pay stub: amounts subtracted from **gross_pay** as part of **Net Pay**. Each row is either **manual** (description + amount) or **offset** (linked to **`person_offsets`**). Sum of deductions cannot exceed gross; changing deductions is blocked if existing installments would exceed the new Net Pay (which also includes **Additional**).

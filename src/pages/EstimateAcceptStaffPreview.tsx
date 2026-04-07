@@ -15,6 +15,10 @@ import type { EstimateAcceptHeaderBrand } from '../lib/estimateAcceptHeaderBrand
 import { parseAcceptHeaderBrand } from '../lib/estimateAcceptHeaderBrand'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import type { Tables } from '../types/database'
+import {
+  parseCustomerAttachmentSent,
+  type CustomerAttachmentPayload,
+} from '../lib/estimateCustomerAttachment'
 
 const PREVIEW_EMAIL_ACCEPT_URL = 'https://example.com/estimate/accept?t=preview'
 
@@ -33,6 +37,7 @@ export default function EstimateAcceptStaffPreview() {
   const [totalCents, setTotalCents] = useState(0)
   const [docForLine, setDocForLine] = useState<string | null>(null)
   const [previewHeaderBrand, setPreviewHeaderBrand] = useState<EstimateAcceptHeaderBrand | null>(null)
+  const [customerAttachment, setCustomerAttachment] = useState<CustomerAttachmentPayload | null>(null)
 
   const load = useCallback(async () => {
     if (!segment?.trim()) {
@@ -157,6 +162,10 @@ export default function EstimateAcceptStaffPreview() {
         headerBrand = ab === 'elec' || ab === 'plum' ? ab : null
       }
       setPreviewHeaderBrand(headerBrand)
+
+      const snapAtt = staffSnapshot?.customer_attachment
+      const rowAtt = parseCustomerAttachmentSent(data.customer_attachment_sent)
+      setCustomerAttachment(snapAtt ?? rowAtt ?? null)
     } catch (e) {
       setError(formatErrorMessage(e, 'Could not load estimate'))
     } finally {
@@ -217,6 +226,7 @@ export default function EstimateAcceptStaffPreview() {
         submitting={false}
         onSubmit={() => undefined}
         headerBrand={previewHeaderBrand}
+        customerAttachment={customerAttachment}
       />
     </div>
   )

@@ -11,6 +11,7 @@ import {
   buildEstimateEmailHtml,
   parseAcceptHeaderBrandForEmail,
 } from '../_shared/estimateEmailBrandImage.ts'
+import { buildCustomerAttachmentSentPayload } from '../_shared/estimateCustomerAttachment.ts'
 
 async function sha256HexFromString(value: string): Promise<string> {
   const data = new TextEncoder().encode(value)
@@ -132,7 +133,7 @@ serve(async (req) => {
     const { data: est, error: selErr } = await userClient
       .from('estimates')
       .select(
-        'id, title, status, line_items_snapshot, terms_snapshot, total_cents, estimate_number, customer_experience_overrides, accept_header_brand',
+        'id, title, status, line_items_snapshot, terms_snapshot, total_cents, estimate_number, customer_experience_overrides, accept_header_brand, customer_attachment_url, customer_attachment_label',
       )
       .eq('id', estimate_id)
       .single()
@@ -176,6 +177,14 @@ serve(async (req) => {
       },
     )
     const sentPayload = serializableSnapshot(resolved)
+    const estRow = est as {
+      customer_attachment_url?: string | null
+      customer_attachment_label?: string | null
+    }
+    const customer_attachment_sent = buildCustomerAttachmentSentPayload(
+      estRow.customer_attachment_url,
+      estRow.customer_attachment_label,
+    )
 
     const { error: upErr } = await admin
       .from('estimates')
@@ -189,6 +198,7 @@ serve(async (req) => {
         terms_snapshot: est.terms_snapshot,
         total_cents: est.total_cents,
         customer_experience_sent: sentPayload,
+        customer_attachment_sent,
       })
       .eq('id', estimate_id)
       .eq('status', 'draft')

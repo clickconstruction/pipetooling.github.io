@@ -479,9 +479,9 @@ export function MercuryTransactionAllocationsModal({
           async () =>
             supabase.rpc('replace_mercury_transaction_splits', {
               p_mercury_transaction_id: transaction.id,
-              p_rows,
-              p_person_id: p_person_id ?? '',
-              p_user_id: p_user_id ?? undefined,
+              p_rows: p_rows as unknown as Json,
+              p_person_id: p_person_id ?? null,
+              p_user_id: p_user_id ?? null,
             }),
           'replace_mercury_transaction_splits',
         )

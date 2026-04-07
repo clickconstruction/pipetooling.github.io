@@ -254,7 +254,7 @@ export function pathToLabel(path: string): string {
   return PATH_TO_LABEL[path] ?? (path.slice(1) || 'Dashboard')
 }
 
-const SUBCONTRACTOR_PATHS = new Set(['/', '/dashboard', '/checklist', '/settings', '/tally'])
+const SUBCONTRACTOR_PATHS = new Set(['/', '/dashboard', '/calendar', '/checklist', '/settings', '/tally'])
 const PRIMARY_PATHS = new Set(['/dashboard', '/materials', '/jobs', '/bids', '/calendar', '/checklist', '/settings', '/tally'])
 const SUPERINTENDENT_PATHS = new Set(['/dashboard', '/projects', '/workflows', '/jobs', '/bids', '/materials', '/calendar', '/checklist', '/settings', '/tally'])
 

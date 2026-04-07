@@ -13,6 +13,7 @@ import { supabase } from '../lib/supabase'
 import { pageUnderlineTabStyle } from '../lib/pageUnderlineTabStyle'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { useAuth } from '../hooks/useAuth'
+import { useMercuryLedgerNicknames } from '../hooks/useMercuryLedgerNicknames'
 import { useToastContext } from '../contexts/ToastContext'
 import { parseCustomerImport } from '../utils/parseCustomerImport'
 import { nameSimilarity } from '../utils/nameSimilarity'
@@ -25,12 +26,17 @@ import { ErrorBoundary } from '../components/ErrorBoundary'
 import CustomerAcceptanceRecordModal from '../components/estimates/CustomerAcceptanceRecordModal'
 import SendRecordInvoiceModal, { type JobBillingContext } from '../components/jobs/SendRecordInvoiceModal'
 import { JobThreadNotesPanel } from '../components/JobThreadNotesPanel'
+import { ScheduleJobModal } from '../components/jobs/ScheduleJobModal'
 import { useJobThreadNotes } from '../hooks/useJobThreadNotes'
 import { CrewJobsBlock } from '../components/CrewJobsBlock'
 import { MoneyDecimalAmountInput } from '../components/MoneyDecimalAmountInput'
 import type { Database } from '../types/database'
 import { resolveCustomerIdForJobPayload } from '../lib/jobLedgerCustomer'
 import { resolveEffectiveJobMasterUserId } from '../lib/resolveEffectiveJobMasterUserId'
+import { CLOCK_SESSION_LIST_SELECT } from '../lib/clockSessionSelect'
+import { APP_CALENDAR_TZ, formatWorkDateYmdWeekdayLongFriendly, getDefaultWeekRange } from '../utils/dateUtils'
+import { fetchAttributionsByMercuryTxIds } from '../lib/fetchMercuryRelationsByTxIds'
+import { formatMercuryDebitCardIdCompact, mercuryDebitCardIdFromRaw } from '../lib/mercuryRawDebitCard'
 
 type JobsLedgerRow = Database['public']['Tables']['jobs_ledger']['Row']
 type EstimatesRow = Database['public']['Tables']['estimates']['Row']
@@ -162,10 +168,152 @@ type LaborJobPayment = { id: string; amount: number; memo: string | null; create
 type LaborJob = { id: string; assigned_to_name: string; address: string; job_number: string | null; labor_rate: number | null; job_date: string | null; created_at: string | null; distance_miles?: number | null; paid_at?: string | null; items?: Array<{ fixture: string; count: number; hrs_per_unit: number; is_fixed?: boolean; labor_rate?: number | null }>; payments?: LaborJobPayment[] }
 type CrewJobAssignment = { job_id: string; pct: number }
 type CrewJobRow = { crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }
-type TeamLaborRow = { jobId: string; hcpNumber: string; jobName: string; jobAddress: string; people: string[]; manHours: number; jobCost: number; breakdown: Array<{ personName: string; hours: number; cost: number }> }
+type TeamLaborBreakdownEntry = {
+  personName: string
+  hours: number
+  cost: number
+  byWorkDate: Array<{ workDate: string; hours: number; cost: number }>
+}
+type TeamLaborRow = {
+  jobId: string
+  hcpNumber: string
+  jobName: string
+  jobAddress: string
+  people: string[]
+  manHours: number
+  jobCost: number
+  breakdown: TeamLaborBreakdownEntry[]
+}
+
+type JobSummaryClockSessionRow = {
+  id: string
+  user_id: string
+  clocked_in_at: string | null
+  clocked_out_at: string | null
+  work_date: string | null
+  revoked_at: string | null
+  users: { name: string } | null
+}
+
+type JobSummaryInvoiceAllocationLine = {
+  job_id: string
+  invoice_id: string
+  allocated_amount: number
+  invoice_number: string
+  invoice_date: string
+  invoice_total_amount: number
+  supply_house_name: string
+  pct: number
+}
+
+type JobSummaryMercuryAllocationRow = {
+  id: string
+  amount: number
+  note: string | null
+  attributionDisplayName: string | null
+  mercury_transactions: {
+    posted_at: string | null
+    counterparty_name: string | null
+    amount: number
+    note: string | null
+    external_memo: string | null
+    raw: Database['public']['Tables']['mercury_transactions']['Row']['raw']
+  } | null
+}
+
+function normalizePersonNameKey(name: string): string {
+  return name.trim().toLowerCase()
+}
+
+function formatJobSummaryInvoiceDate(iso: string): string {
+  try {
+    return new Date(iso.includes('T') ? iso : `${iso}T12:00:00`).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    })
+  } catch {
+    return iso
+  }
+}
+
+/** Mercury posted_at in Job Summary Card charges: weekday + date in company calendar TZ (Chicago). */
+function formatJobSummaryMercuryPostedAt(iso: string): string {
+  try {
+    const d = new Date(iso.includes('T') ? iso : `${iso}T12:00:00`)
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone: APP_CALENDAR_TZ,
+      weekday: 'long',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    }).format(d)
+  } catch {
+    return iso
+  }
+}
+
+function formatJobSummarySessionDateTime(iso: string | null): string {
+  if (!iso) return '—'
+  try {
+    return new Date(iso).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' })
+  } catch {
+    return '—'
+  }
+}
+
+function formatJobSummaryDurationMinutes(ms: number): string {
+  if (!Number.isFinite(ms) || ms <= 0) return '—'
+  const m = Math.round(ms / 60000)
+  const h = Math.floor(m / 60)
+  const min = m % 60
+  if (h > 0) return `${h}h ${min}m`
+  return `${min}m`
+}
 
 function formatCurrency(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+function jobSummaryPartsCostIsZero(n: number): boolean {
+  const x = Number(n)
+  return Number.isFinite(x) && Math.abs(x) < 1e-6
+}
+
+const jobSummaryPartsCostDetailsBoxStyle: CSSProperties = {
+  border: '1px solid #e5e7eb',
+  borderRadius: 6,
+  padding: '0.35rem 0.5rem',
+  background: 'white',
+}
+
+const jobSummaryPartsCostFlatRowStyle: CSSProperties = {
+  fontWeight: 600,
+  fontSize: '0.8125rem',
+  color: '#374151',
+}
+
+/** Indents Job Summary cost breakdown section bodies under their headings. */
+const jobSummaryCostSectionBodyStyle: CSSProperties = {
+  paddingLeft: '0.75rem',
+  borderLeft: '2px solid #e5e7eb',
+}
+
+/** Sub labor book row cost (hours × rate + drive); matches jobSummaryData / laborCostByHcp aggregation. */
+function laborJobSubCost(lj: LaborJob, mileageCost: number, timePerMile: number): number {
+  const totalHrs = (lj.items ?? []).reduce((s, i) => {
+    const hrs = Number(i.hrs_per_unit) || 0
+    return s + ((i.is_fixed ?? false) ? hrs : (Number(i.count) || 0) * hrs)
+  }, 0)
+  const rate = lj.labor_rate ?? 0
+  const miles = Number(lj.distance_miles) || 0
+  const driveCost =
+    miles > 0 && rate > 0
+      ? miles * mileageCost + miles * timePerMile * rate
+      : miles > 0
+        ? miles * mileageCost
+        : 0
+  return totalHrs * rate + driveCost
 }
 
 function formatCurrencyNoCents(n: number): string {
@@ -435,6 +583,15 @@ export default function Jobs() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { user: authUser, role: authRole, loading: authLoading } = useAuth()
+  const canOpenJobScheduleModal = useMemo(
+    () =>
+      authRole === 'dev' ||
+      authRole === 'master_technician' ||
+      authRole === 'assistant' ||
+      authRole === 'superintendent',
+    [authRole],
+  )
+  const { nicknameByDebitCard } = useMercuryLedgerNicknames()
   const { showToast } = useToastContext()
   const [activeTab, setActiveTab] = useState<JobsTab>('stages')
   const [jobs, setJobs] = useState<JobWithDetails[]>([])
@@ -493,6 +650,7 @@ export default function Jobs() {
   const [newInvoiceAmount, setNewInvoiceAmount] = useState('')
   const [creatingInvoice, setCreatingInvoice] = useState(false)
   const [createPartialInvoiceJob, setCreatePartialInvoiceJob] = useState<JobWithDetails | null>(null)
+  const [scheduleModalJob, setScheduleModalJob] = useState<JobWithDetails | null>(null)
   const [createPartialInvoiceAmount, setCreatePartialInvoiceAmount] = useState('')
   const [creatingPartialInvoiceFromModal, setCreatingPartialInvoiceFromModal] = useState(false)
 
@@ -639,6 +797,19 @@ export default function Jobs() {
   const [deletingTallyPartId, setDeletingTallyPartId] = useState<string | null>(null)
   const [updatingFixtureCostId, setUpdatingFixtureCostId] = useState<string | null>(null)
   const [expandedPartsJobIds, setExpandedPartsJobIds] = useState<Set<string>>(new Set())
+  const [expandedJobSummaryJobIds, setExpandedJobSummaryJobIds] = useState<Set<string>>(new Set())
+  /** Job Summary Team Labor: user opened "Allocation by work date and clock punches" (drives deferred clock_sessions fetch). */
+  const [teamLaborDetailExpandedJobIds, setTeamLaborDetailExpandedJobIds] = useState<Set<string>>(() => new Set())
+  const jobSummaryClockSessionsLoadedRef = useRef<Set<string>>(new Set())
+  const [jobSummaryClockSessionsByJobId, setJobSummaryClockSessionsByJobId] = useState<Map<string, JobSummaryClockSessionRow[]>>(() => new Map())
+  const jobSummaryInvoiceLinesLoadedRef = useRef<Set<string>>(new Set())
+  const [jobSummaryInvoiceLinesByJobId, setJobSummaryInvoiceLinesByJobId] = useState<
+    Map<string, JobSummaryInvoiceAllocationLine[]>
+  >(() => new Map())
+  const jobSummaryMercuryAllocationsLoadedRef = useRef<Set<string>>(new Set())
+  const [jobSummaryMercuryAllocationsByJobId, setJobSummaryMercuryAllocationsByJobId] = useState<
+    Map<string, JobSummaryMercuryAllocationRow[]>
+  >(() => new Map())
   const [mercuryCardChargesByJobId, setMercuryCardChargesByJobId] = useState<Map<string, number>>(() => new Map())
   const [pendingScrollToPartsJobId, setPendingScrollToPartsJobId] = useState<string | null>(null)
   const [reportTemplatesModalOpen, setReportTemplatesModalOpen] = useState(false)
@@ -1648,6 +1819,7 @@ export default function Jobs() {
       return row.job_assignments
     }
     const jobAgg: Record<string, { people: Set<string>; hoursByPerson: Record<string, number>; costByPerson: Record<string, number> }> = {}
+    const jobDetailByPersonDate: Record<string, Record<string, Record<string, { hours: number; cost: number }>>> = {}
     for (const r of crewRows) {
       const assignments = getEffectiveAssignments(r.person_name, r.work_date)
       const cfg = configMap[r.person_name]
@@ -1659,8 +1831,15 @@ export default function Jobs() {
         const agg = jobAgg[a.job_id]!
         agg.people.add(r.person_name)
         const pctHrs = hours * (a.pct / 100)
+        const costPart = pctHrs * rate
         agg.hoursByPerson[r.person_name] = (agg.hoursByPerson[r.person_name] ?? 0) + pctHrs
-        agg.costByPerson[r.person_name] = (agg.costByPerson[r.person_name] ?? 0) + pctHrs * rate
+        agg.costByPerson[r.person_name] = (agg.costByPerson[r.person_name] ?? 0) + costPart
+        if (!jobDetailByPersonDate[a.job_id]) jobDetailByPersonDate[a.job_id] = {}
+        const byPerson = jobDetailByPersonDate[a.job_id]!
+        if (!byPerson[r.person_name]) byPerson[r.person_name] = {}
+        const byDate = byPerson[r.person_name]!
+        const prev = byDate[r.work_date] ?? { hours: 0, cost: 0 }
+        byDate[r.work_date] = { hours: prev.hours + pctHrs, cost: prev.cost + costPart }
       }
     }
     const jobIds = Object.keys(jobAgg)
@@ -1679,7 +1858,16 @@ export default function Jobs() {
       const people = [...agg.people]
       const manHours = Object.values(agg.hoursByPerson).reduce((s, h) => s + h, 0)
       const jobCost = Object.values(agg.costByPerson).reduce((s, c) => s + c, 0)
-      const breakdown = people.map((p) => ({ personName: p, hours: agg.hoursByPerson[p] ?? 0, cost: agg.costByPerson[p] ?? 0 }))
+      const byPersonDate = jobDetailByPersonDate[jobId] ?? {}
+      const breakdown: TeamLaborBreakdownEntry[] = people.map((p) => {
+        const h = agg.hoursByPerson[p] ?? 0
+        const c = agg.costByPerson[p] ?? 0
+        const dateMap = byPersonDate[p] ?? {}
+        const byWorkDate = Object.keys(dateMap)
+          .sort()
+          .map((wd) => ({ workDate: wd, hours: dateMap[wd]!.hours, cost: dateMap[wd]!.cost }))
+        return { personName: p, hours: h, cost: c, byWorkDate }
+      })
       return { jobId, hcpNumber: info.hcp_number, jobName: info.job_name, jobAddress: info.job_address, people, manHours, jobCost, breakdown }
     })
     setTeamLaborData(rows)
@@ -2416,6 +2604,336 @@ export default function Jobs() {
     win.onafterprint = () => win.close()
   }
 
+  async function printJobSummaryCostBreakdown(opts: {
+    job: JobWithDetails
+    teamLaborRow: TeamLaborRow | null
+    teamLaborCost: number
+    subLaborJobs: LaborJob[]
+    partsFromTally: number
+    billedMaterialsSum: number
+    invoicesFromSupplyHouses: number
+    cardCharges: number
+    totalBill: number
+    profit: number
+    tallyPartsForJob: TallyPartRow[]
+    mileageCost: number
+    timePerMile: number
+  }) {
+    const escapeHtml = (s: string) =>
+      (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    const {
+      job,
+      teamLaborRow,
+      teamLaborCost,
+      subLaborJobs,
+      partsFromTally,
+      billedMaterialsSum,
+      invoicesFromSupplyHouses,
+      cardCharges,
+      totalBill,
+      profit,
+      tallyPartsForJob,
+      mileageCost,
+      timePerMile,
+    } = opts
+    const jobId = job.id
+    const generated = new Date().toLocaleString()
+    const headerTitle = `${job.hcp_number ?? '—'} — ${job.job_name ?? '—'} — ${job.job_address ?? '—'}`
+
+    let invoiceRows: JobSummaryInvoiceAllocationLine[] = []
+    let invoiceNote = ''
+    if (jobSummaryInvoiceLinesByJobId.has(jobId)) {
+      invoiceRows = jobSummaryInvoiceLinesByJobId.get(jobId) ?? []
+    } else {
+      try {
+        const data = await withSupabaseRetry(
+          async () =>
+            await supabase.rpc('get_invoice_allocation_lines_for_jobs', { p_job_ids: [jobId] }),
+          'job summary print invoice lines',
+        )
+        invoiceRows = (data ?? []) as JobSummaryInvoiceAllocationLine[]
+      } catch {
+        invoiceNote = '<p class="muted">Invoice line detail unavailable.</p>'
+        invoiceRows = []
+      }
+    }
+
+    let mRows: JobSummaryMercuryAllocationRow[] = []
+    let mercuryNote = ''
+    if (jobSummaryMercuryAllocationsByJobId.has(jobId)) {
+      mRows = jobSummaryMercuryAllocationsByJobId.get(jobId) ?? []
+    } else {
+      try {
+        const data = await withSupabaseRetry(
+          async () =>
+            await supabase
+              .from('mercury_transaction_job_allocations')
+              .select(
+                'id, amount, note, mercury_transaction_id, mercury_transactions(posted_at, counterparty_name, amount, note, external_memo, raw)',
+              )
+              .eq('job_id', jobId)
+              .order('created_at', { ascending: true }),
+          'job summary print mercury allocations',
+        )
+        const rawRows = (data ?? []) as Array<
+          Omit<JobSummaryMercuryAllocationRow, 'attributionDisplayName'> & { mercury_transaction_id: string }
+        >
+        const attrByTxId = new Map<string, { person_id: string | null; user_id: string | null }>()
+        const personNameById = new Map<string, string>()
+        const userNameById = new Map<string, string>()
+        try {
+          const txIds = [...new Set(rawRows.map((r) => r.mercury_transaction_id))]
+          if (txIds.length > 0) {
+            const attrRows = await fetchAttributionsByMercuryTxIds(txIds, 'job summary print mercury')
+            for (const a of attrRows) {
+              attrByTxId.set(a.mercury_transaction_id, {
+                person_id: a.person_id,
+                user_id: a.user_id,
+              })
+            }
+            const personIds = new Set<string>()
+            const userIds = new Set<string>()
+            for (const a of attrRows) {
+              if (a.person_id) personIds.add(a.person_id)
+              if (a.user_id) userIds.add(a.user_id)
+            }
+            if (personIds.size > 0) {
+              const peopleData = await withSupabaseRetry(
+                async () => supabase.from('people').select('id, name').in('id', [...personIds]),
+                'job summary print mercury attribution people',
+              )
+              for (const p of peopleData ?? []) {
+                const row = p as { id: string; name: string }
+                personNameById.set(row.id, row.name)
+              }
+            }
+            if (userIds.size > 0) {
+              const usersData = await withSupabaseRetry(
+                async () => supabase.from('users').select('id, name').in('id', [...userIds]),
+                'job summary print mercury attribution users',
+              )
+              for (const u of usersData ?? []) {
+                const row = u as { id: string; name: string }
+                userNameById.set(row.id, row.name)
+              }
+            }
+          }
+        } catch {
+          /* attribution optional */
+        }
+        mRows = rawRows.map((r) => {
+          const attr = attrByTxId.get(r.mercury_transaction_id)
+          let attributionDisplayName: string | null = null
+          if (attr) {
+            if (attr.person_id) attributionDisplayName = personNameById.get(attr.person_id) ?? null
+            else if (attr.user_id) attributionDisplayName = userNameById.get(attr.user_id) ?? null
+          }
+          return {
+            id: r.id,
+            amount: r.amount,
+            note: r.note,
+            mercury_transactions: r.mercury_transactions,
+            attributionDisplayName,
+          }
+        })
+      } catch {
+        mercuryNote = '<p class="muted">Card charge line detail unavailable.</p>'
+        mRows = []
+      }
+    }
+
+    const clockSessions = jobSummaryClockSessionsByJobId.get(jobId) ?? []
+    const clockLoaded = jobSummaryClockSessionsByJobId.has(jobId)
+
+    let teamLaborHtml = ''
+    if (teamLaborRow && teamLaborRow.breakdown.length > 0) {
+      const bodyRows = teamLaborRow.breakdown
+        .map(
+          (b) =>
+            `<tr><td>${escapeHtml(b.personName)}</td><td style="text-align:right">${formatCurrency(b.hours)}</td></tr>`,
+        )
+        .join('')
+      teamLaborHtml = `<h2>Team Labor</h2><table><thead><tr><th>Person</th><th style="text-align:right">Hours</th></tr></thead><tbody>${bodyRows}<tr style="font-weight:600"><td>Total</td><td style="text-align:right">${formatCurrency(teamLaborRow.manHours)}</td></tr></tbody></table>`
+      if (clockLoaded && teamLaborRow) {
+        for (const b of teamLaborRow.breakdown) {
+          const sessionsForPerson = clockSessions.filter(
+            (s) => normalizePersonNameKey(s.users?.name ?? '') === normalizePersonNameKey(b.personName),
+          )
+          teamLaborHtml += `<h3 style="font-size:1rem;margin:0.75rem 0 0.35rem">${escapeHtml(b.personName)} · ${formatCurrency(b.hours)} h · $${formatCurrency(b.cost)}</h3>`
+          if (b.byWorkDate.length > 0) {
+            const wd = b.byWorkDate
+              .map(
+                ( d ) =>
+                  `<tr><td>${escapeHtml(formatWorkDateYmdWeekdayLongFriendly(d.workDate))}</td><td style="text-align:right">${formatCurrency(d.hours)}</td><td style="text-align:right">$${formatCurrency(d.cost)}</td></tr>`,
+              )
+              .join('')
+            teamLaborHtml += `<p style="margin:0.25rem 0;font-size:0.85rem;font-weight:600;color:#555">Allocated by work date</p><table><thead><tr><th>Work date</th><th style="text-align:right">Hours</th><th style="text-align:right">Cost</th></tr></thead><tbody>${wd}</tbody></table>`
+          }
+          teamLaborHtml += `<p style="margin:0.35rem 0 0;font-size:0.85rem;font-weight:600;color:#555">Clock sessions (punch times)</p>`
+          if (sessionsForPerson.length > 0) {
+            const sr = sessionsForPerson
+              .map((s) => {
+                const dur =
+                  s.clocked_in_at && s.clocked_out_at
+                    ? formatJobSummaryDurationMinutes(
+                        new Date(s.clocked_out_at).getTime() - new Date(s.clocked_in_at).getTime(),
+                      )
+                    : '—'
+                return `<tr><td>${escapeHtml(s.work_date ? formatWorkDateYmdWeekdayLongFriendly(s.work_date) : '—')}</td><td>${escapeHtml(formatJobSummarySessionDateTime(s.clocked_in_at))}</td><td>${escapeHtml(formatJobSummarySessionDateTime(s.clocked_out_at))}</td><td style="text-align:right">${escapeHtml(dur)}</td></tr>`
+              })
+              .join('')
+            teamLaborHtml += `<table><thead><tr><th>Work date</th><th>In</th><th>Out</th><th style="text-align:right">Duration</th></tr></thead><tbody>${sr}</tbody></table>`
+          } else {
+            teamLaborHtml += `<p class="muted">No matching clock sessions.</p>`
+          }
+        }
+        const nameKeys = new Set(teamLaborRow.breakdown.map((x) => normalizePersonNameKey(x.personName)))
+        const orphan = clockSessions.filter((s) => {
+          const kn = normalizePersonNameKey(s.users?.name ?? '')
+          if (!kn) return true
+          return !nameKeys.has(kn)
+        })
+        if (orphan.length > 0) {
+          const or = orphan
+            .map(
+              (s) =>
+                `<tr><td>${escapeHtml(s.users?.name ?? '—')}</td><td>${escapeHtml(s.work_date ? formatWorkDateYmdWeekdayLongFriendly(s.work_date) : '—')}</td><td>${escapeHtml(formatJobSummarySessionDateTime(s.clocked_in_at))}</td><td>${escapeHtml(formatJobSummarySessionDateTime(s.clocked_out_at))}</td></tr>`,
+            )
+            .join('')
+          teamLaborHtml += `<h3 style="font-size:0.95rem;margin:0.75rem 0 0.35rem">Sessions not matched to a name above</h3><table><thead><tr><th>User</th><th>Work date</th><th>In</th><th>Out</th></tr></thead><tbody>${or}</tbody></table>`
+        }
+      }
+    } else if (teamLaborCost === 0) {
+      teamLaborHtml = `<h2>Team Labor</h2><p class="muted">No team labor for this job.</p>`
+    } else {
+      teamLaborHtml = `<h2>Team Labor</h2><p class="muted">Team labor total $${formatCurrency(teamLaborCost)} (no per-person breakdown).</p>`
+    }
+
+    let subLaborHtml = '<h2>Sub Labor</h2>'
+    if (subLaborJobs.length > 0) {
+      subLaborHtml += '<ul style="margin:0.35rem 0;padding-left:1.25rem">'
+      for (const lj of subLaborJobs) {
+        const c = laborJobSubCost(lj, mileageCost, timePerMile)
+        subLaborHtml += `<li>${escapeHtml(lj.assigned_to_name ?? 'Contractor')}${lj.job_date ? ` · ${escapeHtml(lj.job_date)}` : ''}: $${formatCurrency(c)}</li>`
+      }
+      subLaborHtml += '</ul>'
+    } else {
+      subLaborHtml += '<p class="muted">No sub labor for this HCP.</p>'
+    }
+
+    let partsHtml = '<h2>Parts Cost</h2>'
+    if (jobSummaryPartsCostIsZero(partsFromTally)) {
+      partsHtml += `<p><strong>Parts from Tally</strong> $${formatCurrency(partsFromTally)}</p>`
+    } else {
+      partsHtml += `<h3 style="font-size:1rem">Parts from Tally — $${formatCurrency(partsFromTally)}</h3>`
+      if (tallyPartsForJob.length > 0) {
+        const tr = tallyPartsForJob
+          .map((r) => {
+            const lineCost =
+              r.part_id == null
+                ? Number(r.fixture_cost ?? 0) * Number(r.quantity)
+                : Number(r.price_at_time ?? 0) * Number(r.quantity)
+            const label =
+              r.part_id == null
+                ? r.fixture_name || 'Fixture'
+                : [r.part_name, r.fixture_name].filter(Boolean).join(' · ') || 'Part'
+            return `<tr><td>${escapeHtml(label)}</td><td style="text-align:right">${r.quantity}</td><td style="text-align:right">$${formatCurrency(lineCost)}</td></tr>`
+          })
+          .join('')
+        partsHtml += `<table><thead><tr><th>Fixture / Part</th><th style="text-align:right">Qty</th><th style="text-align:right">Line cost</th></tr></thead><tbody>${tr}</tbody></table>`
+      } else {
+        partsHtml += `<p class="muted">${partsFromTally > 0 ? 'Total reflects tally data; no line rows in view.' : 'No tally parts.'}</p>`
+      }
+    }
+    if (jobSummaryPartsCostIsZero(billedMaterialsSum)) {
+      partsHtml += `<p><strong>Billed Materials</strong> $${formatCurrency(billedMaterialsSum)}</p>`
+    } else {
+      partsHtml += `<h3 style="font-size:1rem">Billed Materials — $${formatCurrency(billedMaterialsSum)}</h3>`
+      const matRows = [...(job.materials ?? [])].sort((a, b) => a.sequence_order - b.sequence_order)
+      if (matRows.length > 0) {
+        const mr = matRows
+          .map(
+            (m) =>
+              `<tr><td>${escapeHtml(m.description?.trim() || '—')}</td><td style="text-align:right">$${formatCurrency(Number(m.amount ?? 0))}</td></tr>`,
+          )
+          .join('')
+        partsHtml += `<table><thead><tr><th>Description</th><th style="text-align:right">Amount</th></tr></thead><tbody>${mr}</tbody></table>`
+      } else {
+        partsHtml += `<p class="muted">${billedMaterialsSum > 0 ? 'No material line items on file.' : 'No billed materials.'}</p>`
+      }
+    }
+    if (jobSummaryPartsCostIsZero(invoicesFromSupplyHouses)) {
+      partsHtml += `<p><strong>Invoices from Supply Houses</strong> $${formatCurrency(invoicesFromSupplyHouses)}</p>`
+    } else {
+      partsHtml += `<h3 style="font-size:1rem">Invoices from Supply Houses — $${formatCurrency(invoicesFromSupplyHouses)}</h3>${invoiceNote}`
+      if (invoiceRows.length > 0) {
+        const ir = invoiceRows
+          .map(
+            (row) =>
+              `<tr><td>${escapeHtml(row.supply_house_name || '—')}</td><td>${escapeHtml(row.invoice_number)}</td><td>${escapeHtml(formatJobSummaryInvoiceDate(row.invoice_date))}</td><td style="text-align:right">$${formatCurrency(row.allocated_amount)}</td></tr>`,
+          )
+          .join('')
+        partsHtml += `<table><thead><tr><th>Supply house</th><th>Invoice</th><th>Date</th><th style="text-align:right">Allocated</th></tr></thead><tbody>${ir}</tbody></table>`
+      } else {
+        partsHtml += `<p class="muted">${invoicesFromSupplyHouses > 0 ? 'No invoice allocation lines returned.' : 'No allocated supply house invoices.'}</p>`
+      }
+    }
+    if (jobSummaryPartsCostIsZero(cardCharges)) {
+      partsHtml += `<p><strong>Card charges</strong> $${formatCurrency(cardCharges)}</p>`
+    } else {
+      partsHtml += `<h3 style="font-size:1rem">Card charges — $${formatCurrency(cardCharges)}</h3>${mercuryNote}`
+      if (mRows.length > 0) {
+        const cr = mRows
+          .map((row) => {
+            const tx = row.mercury_transactions
+            const posted = tx?.posted_at ? formatJobSummaryMercuryPostedAt(tx.posted_at) : '—'
+            const allocAbs = Math.abs(Number(row.amount ?? 0))
+            const debitCardId = mercuryDebitCardIdFromRaw(tx?.raw ?? null)
+            const debitCardDisplay =
+              debitCardId != null
+                ? nicknameByDebitCard[debitCardId] ?? formatMercuryDebitCardIdCompact(debitCardId)
+                : '—'
+            const note = [row.note, tx?.note, tx?.external_memo].filter(Boolean).join(' · ') || '—'
+            return `<tr><td>${escapeHtml(posted)}</td><td>${escapeHtml(tx?.counterparty_name ?? '—')}</td><td>${escapeHtml(row.attributionDisplayName ?? '—')}</td><td>${escapeHtml(debitCardDisplay)}</td><td style="text-align:right">$${formatCurrency(allocAbs)}</td><td>${escapeHtml(note)}</td></tr>`
+          })
+          .join('')
+        partsHtml += `<table><thead><tr><th>Posted</th><th>Counterparty</th><th>User</th><th>Debit Card</th><th style="text-align:right">Allocated</th><th>Note</th></tr></thead><tbody>${cr}</tbody></table>`
+      } else {
+        partsHtml += `<p class="muted">${cardCharges > 0 ? 'No card allocation rows returned.' : 'No Mercury card allocations.'}</p>`
+      }
+    }
+
+    const totalsHtml = `<h2>Total Bill &amp; Revenue before Overhead</h2><p><strong>Revenue (billing):</strong> ${totalBill === 0 ? '—' : `$${formatCurrency(totalBill)}`}</p><p><strong>Revenue before overhead:</strong> $${formatCurrency(profit)}</p>`
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(headerTitle)} — Cost breakdown</title><style>
+body { font-family: sans-serif; margin: 1in; font-size: 0.875rem; }
+h1 { font-size: 1.2rem; margin-bottom: 0.25rem; }
+h2 { font-size: 1.05rem; margin: 1rem 0 0.35rem; }
+.muted { color: #6b7280; margin: 0.35rem 0; }
+table { width: 100%; border-collapse: collapse; margin: 0.35rem 0 0.75rem; font-size: 0.8125rem; }
+th, td { border: 1px solid #ccc; padding: 0.35rem 0.5rem; text-align: left; vertical-align: top; }
+th { background: #f5f5f5; }
+@media print { body { margin: 0.5in; } }
+</style></head><body>
+<h1>${escapeHtml(headerTitle)}</h1>
+<p class="muted" style="margin-top:0">Cost breakdown · ${escapeHtml(generated)}</p>
+${teamLaborHtml}
+${subLaborHtml}
+${partsHtml}
+${totalsHtml}
+</body></html>`
+    const win = window.open('', '_blank')
+    if (!win) {
+      showToast('Allow pop-ups to print the cost breakdown.', 'error')
+      return
+    }
+    win.document.write(html)
+    win.document.close()
+    win.focus()
+    win.print()
+    win.onafterprint = () => win.close()
+  }
+
   function printBilledAwaitingPaymentReport(rows: StageRow[], opts?: { searchFilter?: string }) {
     if (rows.length === 0) {
       showToast('Nothing to print in Billed Awaiting Payment.', 'warning')
@@ -2952,6 +3470,42 @@ export default function Jobs() {
   }, [activeTab, authUser?.id])
 
   useEffect(() => {
+    if (activeTab !== 'job-summary' || !authUser?.id) return
+    for (const jobId of expandedJobSummaryJobIds) {
+      if (!teamLaborDetailExpandedJobIds.has(jobId)) continue
+      if (jobSummaryClockSessionsLoadedRef.current.has(jobId)) continue
+      void (async () => {
+        try {
+          const data = await withSupabaseRetry(
+            async () =>
+              supabase
+                .from('clock_sessions')
+                .select(CLOCK_SESSION_LIST_SELECT)
+                .eq('job_ledger_id', jobId)
+                .order('clocked_in_at', { ascending: true }),
+            'job summary clock sessions',
+          )
+          const raw = (data ?? []) as JobSummaryClockSessionRow[]
+          const filtered = raw.filter((s) => !s.revoked_at)
+          setJobSummaryClockSessionsByJobId((prev) => {
+            const next = new Map(prev)
+            next.set(jobId, filtered)
+            return next
+          })
+        } catch {
+          setJobSummaryClockSessionsByJobId((prev) => {
+            const next = new Map(prev)
+            next.set(jobId, [])
+            return next
+          })
+        } finally {
+          jobSummaryClockSessionsLoadedRef.current.add(jobId)
+        }
+      })()
+    }
+  }, [activeTab, authUser?.id, expandedJobSummaryJobIds, teamLaborDetailExpandedJobIds])
+
+  useEffect(() => {
     if ((activeTab === 'parts' || activeTab === 'job-summary') && authUser?.id) {
       const t = setTimeout(() => loadTallyParts(), 80)
       return () => clearTimeout(t)
@@ -3231,16 +3785,7 @@ export default function Jobs() {
     for (const job of laborJobs) {
       const hcp = (job.job_number ?? '').trim().toLowerCase()
       if (!hcp) continue
-      const totalHrs = (job.items ?? []).reduce((s, i) => {
-        const hrs = Number(i.hrs_per_unit) || 0
-        return s + ((i.is_fixed ?? false) ? hrs : (Number(i.count) || 0) * hrs)
-      }, 0)
-      const rate = job.labor_rate ?? 0
-      const miles = Number(job.distance_miles) || 0
-      const driveCost = miles > 0 && rate > 0
-        ? miles * mileageCost + miles * timePerMile * rate
-        : miles > 0 ? miles * mileageCost : 0
-      const laborCost = totalHrs * rate + driveCost
+      const laborCost = laborJobSubCost(job, mileageCost, timePerMile)
       laborCostByHcp.set(hcp, (laborCostByHcp.get(hcp) ?? 0) + laborCost)
     }
     const teamLaborCostByJobId = new Map<string, number>()
@@ -3259,6 +3804,9 @@ export default function Jobs() {
       const partsCost = partsFromTally + invoicesFromSupplyHouses + billedMaterialsSum + cardCharges
       const totalBill = job.revenue != null ? Number(job.revenue) : 0
       const profit = totalBill - partsCost - laborCost
+      const teamLaborRow = teamLaborData.find((r) => r.jobId === job.id)
+      const subLaborJobs = hcp ? laborJobs.filter((lj) => (lj.job_number ?? '').trim().toLowerCase() === hcp) : []
+      const tallyPartsForJob = tallyParts.filter((r) => r.job_id === job.id)
       return {
         job,
         subLaborCost,
@@ -3266,6 +3814,13 @@ export default function Jobs() {
         partsCost,
         totalBill,
         profit,
+        partsFromTally,
+        invoicesFromSupplyHouses,
+        billedMaterialsSum,
+        cardCharges,
+        teamLaborRow,
+        subLaborJobs,
+        tallyPartsForJob,
       }
     })
   }, [jobs, laborJobs, tallyParts, teamLaborData, driveMileageCost, driveTimePerMile, invoiceAmountByJob, mercuryCardChargesByJobId])
@@ -5206,6 +5761,27 @@ export default function Jobs() {
                                   submitting={jobThreadSubmittingId === j.id}
                                   onDraftChange={setJobThreadDraft}
                                   onSubmit={() => void submitJobThreadNote(j.id)}
+                                  scheduleAction={
+                                    canOpenJobScheduleModal
+                                      ? {
+                                          onClick: () => setScheduleModalJob(j),
+                                          disabled: (j.team_members?.length ?? 0) === 0,
+                                        }
+                                      : undefined
+                                  }
+                                  scheduleDispatchAction={
+                                    canOpenJobScheduleModal
+                                      ? {
+                                          onClick: () => {
+                                            const week = getDefaultWeekRange().start
+                                            navigate(
+                                              `/schedule-dispatch?jobId=${encodeURIComponent(j.id)}&week=${encodeURIComponent(week)}`,
+                                            )
+                                          },
+                                          disabled: (j.team_members?.length ?? 0) === 0,
+                                        }
+                                      : undefined
+                                  }
                                 />
                               </td>
                             </tr>
@@ -5682,6 +6258,27 @@ export default function Jobs() {
                                       submitting={jobThreadSubmittingId === j.id}
                                       onDraftChange={setJobThreadDraft}
                                       onSubmit={() => void submitJobThreadNote(j.id)}
+                                      scheduleAction={
+                                        canOpenJobScheduleModal
+                                          ? {
+                                              onClick: () => setScheduleModalJob(j),
+                                              disabled: (j.team_members?.length ?? 0) === 0,
+                                            }
+                                          : undefined
+                                      }
+                                      scheduleDispatchAction={
+                                        canOpenJobScheduleModal
+                                          ? {
+                                              onClick: () => {
+                                                const week = getDefaultWeekRange().start
+                                                navigate(
+                                                  `/schedule-dispatch?jobId=${encodeURIComponent(j.id)}&week=${encodeURIComponent(week)}`,
+                                                )
+                                              },
+                                              disabled: (j.team_members?.length ?? 0) === 0,
+                                            }
+                                          : undefined
+                                      }
                                     />
                                   </td>
                                 </tr>
@@ -5973,6 +6570,27 @@ export default function Jobs() {
                                       submitting={jobThreadSubmittingId === job.id}
                                       onDraftChange={setJobThreadDraft}
                                       onSubmit={() => void submitJobThreadNote(job.id)}
+                                      scheduleAction={
+                                        canOpenJobScheduleModal
+                                          ? {
+                                              onClick: () => setScheduleModalJob(job),
+                                              disabled: (job.team_members?.length ?? 0) === 0,
+                                            }
+                                          : undefined
+                                      }
+                                      scheduleDispatchAction={
+                                        canOpenJobScheduleModal
+                                          ? {
+                                              onClick: () => {
+                                                const week = getDefaultWeekRange().start
+                                                navigate(
+                                                  `/schedule-dispatch?jobId=${encodeURIComponent(job.id)}&week=${encodeURIComponent(week)}`,
+                                                )
+                                              },
+                                              disabled: (job.team_members?.length ?? 0) === 0,
+                                            }
+                                          : undefined
+                                      }
                                     />
                                   </td>
                                 </tr>
@@ -7478,20 +8096,863 @@ export default function Jobs() {
                       const addr = (job.job_address ?? '').toLowerCase()
                       return hcp.includes(q) || name.includes(q) || addr.includes(q)
                     })
-                    .map(({ job, subLaborCost, teamLaborCost, partsCost, totalBill, profit }) => (
-                    <tr key={job.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                      <td style={{ padding: '0.75rem' }}>{job.hcp_number ?? '—'}</td>
-                      <td style={{ padding: '0.75rem' }}>{job.job_name ?? '—'}</td>
-                      <td style={{ padding: '0.75rem' }}>{job.job_address ?? '—'}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>{teamLaborCost === 0 ? '—' : `$${formatCurrency(teamLaborCost)}`}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>{subLaborCost === 0 ? '—' : `$${formatCurrency(subLaborCost)}`}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>{partsCost === 0 ? '—' : `$${formatCurrency(partsCost)}`}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>{totalBill === 0 ? '—' : `$${formatCurrency(totalBill)}`}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 500, color: profit >= 0 ? undefined : '#b91c1c' }}>
-                        ${formatCurrency(profit)}
-                      </td>
-                    </tr>
-                  ))}
+                    .flatMap(
+                      ({
+                        job,
+                        subLaborCost,
+                        teamLaborCost,
+                        partsCost,
+                        totalBill,
+                        profit,
+                        partsFromTally,
+                        invoicesFromSupplyHouses,
+                        billedMaterialsSum,
+                        cardCharges,
+                        teamLaborRow,
+                        subLaborJobs,
+                        tallyPartsForJob,
+                      }) => {
+                        const expanded = expandedJobSummaryJobIds.has(job.id)
+                        const mileageCost = driveMileageCost ?? 0.7
+                        const timePerMile = driveTimePerMile ?? 0.02
+                        const toggle = () => {
+                          setExpandedJobSummaryJobIds((prev) => {
+                            const next = new Set(prev)
+                            if (next.has(job.id)) {
+                              next.delete(job.id)
+                              setTeamLaborDetailExpandedJobIds((s) => {
+                                const n = new Set(s)
+                                n.delete(job.id)
+                                return n
+                              })
+                            } else next.add(job.id)
+                            return next
+                          })
+                        }
+                        const mainRow = (
+                          <tr
+                            key={job.id}
+                            role="button"
+                            tabIndex={0}
+                            aria-expanded={expanded}
+                            onClick={toggle}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault()
+                                toggle()
+                              }
+                            }}
+                            style={{
+                              borderBottom: '1px solid #e5e7eb',
+                              cursor: 'pointer',
+                              background: expanded ? '#f9fafb' : undefined,
+                            }}
+                          >
+                            <td style={{ padding: '0.75rem' }}>
+                              <span style={{ marginRight: '0.35rem', color: '#6b7280', userSelect: 'none' }} aria-hidden>
+                                {expanded ? '▼' : '▶'}
+                              </span>
+                              {job.hcp_number ?? '—'}
+                            </td>
+                            <td style={{ padding: '0.75rem' }}>{job.job_name ?? '—'}</td>
+                            <td style={{ padding: '0.75rem' }}>{job.job_address ?? '—'}</td>
+                            <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                              {teamLaborCost === 0 ? '—' : `$${formatCurrency(teamLaborCost)}`}
+                            </td>
+                            <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                              {subLaborCost === 0 ? '—' : `$${formatCurrency(subLaborCost)}`}
+                            </td>
+                            <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                              {partsCost === 0 ? '—' : `$${formatCurrency(partsCost)}`}
+                            </td>
+                            <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                              {totalBill === 0 ? '—' : `$${formatCurrency(totalBill)}`}
+                            </td>
+                            <td
+                              style={{
+                                padding: '0.75rem',
+                                textAlign: 'right',
+                                fontWeight: 500,
+                                color: profit >= 0 ? undefined : '#b91c1c',
+                              }}
+                            >
+                              ${formatCurrency(profit)}
+                            </td>
+                          </tr>
+                        )
+                        if (!expanded) return [mainRow]
+                        const detailRow = (
+                          <tr key={`${job.id}-summary-detail`}>
+                            <td colSpan={8} style={{ padding: 0, borderBottom: '1px solid #e5e7eb', background: '#fafafa' }}>
+                              <div style={{ padding: '0.75rem 1rem', fontSize: '0.8125rem' }}>
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    marginBottom: '0.5rem',
+                                  }}
+                                >
+                                  <div style={{ fontWeight: 600, color: '#374151' }}>Cost breakdown</div>
+                                  <button
+                                    type="button"
+                                    aria-label="Print cost breakdown (Save as PDF from the print dialog)"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      void printJobSummaryCostBreakdown({
+                                        job,
+                                        teamLaborRow: teamLaborRow ?? null,
+                                        teamLaborCost,
+                                        subLaborJobs,
+                                        partsFromTally,
+                                        billedMaterialsSum,
+                                        invoicesFromSupplyHouses,
+                                        cardCharges,
+                                        totalBill,
+                                        profit,
+                                        tallyPartsForJob,
+                                        mileageCost,
+                                        timePerMile,
+                                      })
+                                    }}
+                                    style={{
+                                      fontSize: '0.8125rem',
+                                      padding: '0.25rem 0.6rem',
+                                      border: '1px solid #d1d5db',
+                                      borderRadius: 4,
+                                      background: '#fff',
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    Print
+                                  </button>
+                                </div>
+                                <div style={{ display: 'grid', gap: '1rem' }}>
+                                  <section>
+                                    <div style={{ fontWeight: 600, marginBottom: '0.35rem', color: '#111827' }}>Team Labor</div>
+                                    <div style={jobSummaryCostSectionBodyStyle}>
+                                    {teamLaborRow && teamLaborRow.breakdown.length > 0 ? (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', width: '100%', maxWidth: 560 }}>
+                                        <table
+                                          style={{
+                                            width: '100%',
+                                            borderCollapse: 'collapse',
+                                            fontSize: '0.8125rem',
+                                          }}
+                                        >
+                                          <thead>
+                                            <tr style={{ background: '#f3f4f6' }}>
+                                              <th style={{ padding: '0.35rem 0.5rem', textAlign: 'left' }}>Person</th>
+                                              <th style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>Hours</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {teamLaborRow.breakdown.map((b, i) => (
+                                              <tr key={`${b.personName}-${i}`} style={{ borderTop: '1px solid #e5e7eb' }}>
+                                                <td style={{ padding: '0.35rem 0.5rem' }}>{b.personName}</td>
+                                                <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>{formatCurrency(b.hours)}</td>
+                                              </tr>
+                                            ))}
+                                            <tr style={{ borderTop: '1px solid #d1d5db', fontWeight: 600 }}>
+                                              <td style={{ padding: '0.35rem 0.5rem' }}>Total</td>
+                                              <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>{formatCurrency(teamLaborRow.manHours)}</td>
+                                            </tr>
+                                          </tbody>
+                                        </table>
+                                        <details
+                                          style={{
+                                            border: '1px solid #e5e7eb',
+                                            borderRadius: 6,
+                                            padding: '0.35rem 0.5rem',
+                                            background: 'white',
+                                          }}
+                                          onToggle={(e) => {
+                                            const open = e.currentTarget.open
+                                            setTeamLaborDetailExpandedJobIds((prev) => {
+                                              const next = new Set(prev)
+                                              if (open) next.add(job.id)
+                                              else next.delete(job.id)
+                                              return next
+                                            })
+                                          }}
+                                        >
+                                          <summary
+                                            style={{
+                                              cursor: 'pointer',
+                                              fontWeight: 600,
+                                              fontSize: '0.8125rem',
+                                              color: '#374151',
+                                              userSelect: 'none',
+                                            }}
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                            }}
+                                          >
+                                            Allocation by work date and clock punches
+                                          </summary>
+                                          <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                            <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280', lineHeight: 1.45 }}>
+                                              Allocated hours use crew job splits by work day. Clock punch durations below may differ when
+                                              multiple jobs share a day.
+                                            </p>
+                                            {(() => {
+                                              const clockSessions = jobSummaryClockSessionsByJobId.get(job.id)
+                                              const clockLoaded = jobSummaryClockSessionsByJobId.has(job.id)
+                                              return teamLaborRow.breakdown.map((b, i) => {
+                                                const sessionsForPerson =
+                                                  clockLoaded && clockSessions
+                                                    ? clockSessions.filter(
+                                                        (s) =>
+                                                          normalizePersonNameKey(s.users?.name ?? '') ===
+                                                          normalizePersonNameKey(b.personName),
+                                                      )
+                                                    : []
+                                                return (
+                                                  <div
+                                                    key={`${b.personName}-${i}`}
+                                                    style={{
+                                                      border: '1px solid #e5e7eb',
+                                                      borderRadius: 6,
+                                                      padding: '0.5rem 0.75rem',
+                                                      background: 'white',
+                                                    }}
+                                                  >
+                                                    <div style={{ fontWeight: 600, marginBottom: '0.35rem' }}>
+                                                      {b.personName}{' '}
+                                                      <span style={{ fontWeight: 400, color: '#374151' }}>
+                                                        {formatCurrency(b.hours)} h · ${formatCurrency(b.cost)}
+                                                      </span>
+                                                    </div>
+                                                    {b.byWorkDate.length > 0 ? (
+                                                      <div style={{ marginBottom: '0.5rem' }}>
+                                                        <div
+                                                          style={{
+                                                            fontSize: '0.75rem',
+                                                            fontWeight: 600,
+                                                            color: '#6b7280',
+                                                            marginBottom: '0.25rem',
+                                                          }}
+                                                        >
+                                                          Allocated by work date
+                                                        </div>
+                                                        <table
+                                                          style={{
+                                                            width: '100%',
+                                                            maxWidth: 420,
+                                                            borderCollapse: 'collapse',
+                                                            fontSize: '0.75rem',
+                                                          }}
+                                                        >
+                                                          <thead>
+                                                            <tr style={{ background: '#f3f4f6' }}>
+                                                              <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Work date</th>
+                                                              <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Hours</th>
+                                                              <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Cost</th>
+                                                            </tr>
+                                                          </thead>
+                                                          <tbody>
+                                                            {b.byWorkDate.map((d) => (
+                                                              <tr key={d.workDate} style={{ borderTop: '1px solid #e5e7eb' }}>
+                                                                <td style={{ padding: '0.25rem 0.4rem' }}>
+                                                                  {formatWorkDateYmdWeekdayLongFriendly(d.workDate)}
+                                                                </td>
+                                                                <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
+                                                                  {formatCurrency(d.hours)}
+                                                                </td>
+                                                                <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
+                                                                  ${formatCurrency(d.cost)}
+                                                                </td>
+                                                              </tr>
+                                                            ))}
+                                                          </tbody>
+                                                        </table>
+                                                      </div>
+                                                    ) : null}
+                                                    <div
+                                                      style={{
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: 600,
+                                                        color: '#6b7280',
+                                                        marginBottom: '0.25rem',
+                                                      }}
+                                                    >
+                                                      Clock sessions (punch times)
+                                                    </div>
+                                                    {!clockLoaded ? (
+                                                      <p style={{ margin: 0, color: '#6b7280', fontSize: '0.75rem' }}>Loading…</p>
+                                                    ) : sessionsForPerson.length > 0 ? (
+                                                      <table
+                                                        style={{
+                                                          width: '100%',
+                                                          maxWidth: 560,
+                                                          borderCollapse: 'collapse',
+                                                          fontSize: '0.75rem',
+                                                        }}
+                                                      >
+                                                        <thead>
+                                                          <tr style={{ background: '#f3f4f6' }}>
+                                                            <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Work date</th>
+                                                            <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>In</th>
+                                                            <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Out</th>
+                                                            <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Duration</th>
+                                                          </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                          {sessionsForPerson.map((s) => {
+                                                            const dur =
+                                                              s.clocked_in_at && s.clocked_out_at
+                                                                ? formatJobSummaryDurationMinutes(
+                                                                    new Date(s.clocked_out_at).getTime() -
+                                                                      new Date(s.clocked_in_at).getTime(),
+                                                                  )
+                                                                : '—'
+                                                            return (
+                                                              <tr key={s.id} style={{ borderTop: '1px solid #e5e7eb' }}>
+                                                                <td style={{ padding: '0.25rem 0.4rem' }}>
+                                                                  {s.work_date
+                                                                    ? formatWorkDateYmdWeekdayLongFriendly(s.work_date)
+                                                                    : '—'}
+                                                                </td>
+                                                                <td style={{ padding: '0.25rem 0.4rem' }}>
+                                                                  {formatJobSummarySessionDateTime(s.clocked_in_at)}
+                                                                </td>
+                                                                <td style={{ padding: '0.25rem 0.4rem' }}>
+                                                                  {formatJobSummarySessionDateTime(s.clocked_out_at)}
+                                                                </td>
+                                                                <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>{dur}</td>
+                                                              </tr>
+                                                            )
+                                                          })}
+                                                        </tbody>
+                                                      </table>
+                                                    ) : (
+                                                      <p style={{ margin: 0, color: '#6b7280', fontSize: '0.75rem' }}>
+                                                        No matching clock sessions.
+                                                      </p>
+                                                    )}
+                                                  </div>
+                                                )
+                                              })
+                                            })()}
+                                            {(() => {
+                                              const clockSessions = jobSummaryClockSessionsByJobId.get(job.id) ?? []
+                                              const clockLoaded = jobSummaryClockSessionsByJobId.has(job.id)
+                                              if (!clockLoaded || teamLaborRow.breakdown.length === 0) return null
+                                              const nameKeys = new Set(teamLaborRow.breakdown.map((x) => normalizePersonNameKey(x.personName)))
+                                              const orphan = clockSessions.filter((s) => {
+                                                const kn = normalizePersonNameKey(s.users?.name ?? '')
+                                                if (!kn) return true
+                                                return !nameKeys.has(kn)
+                                              })
+                                              if (orphan.length === 0) return null
+                                              return (
+                                                <div
+                                                  style={{
+                                                    border: '1px solid #fde68a',
+                                                    borderRadius: 6,
+                                                    padding: '0.5rem 0.75rem',
+                                                    background: '#fffbeb',
+                                                  }}
+                                                >
+                                                  <div style={{ fontWeight: 600, marginBottom: '0.35rem', fontSize: '0.8125rem' }}>
+                                                    Sessions not matched to a name above
+                                                  </div>
+                                                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
+                                                    <thead>
+                                                      <tr style={{ background: '#fef3c7' }}>
+                                                        <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>User</th>
+                                                        <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Work date</th>
+                                                        <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>In</th>
+                                                        <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Out</th>
+                                                      </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                      {orphan.map((s) => (
+                                                        <tr key={s.id} style={{ borderTop: '1px solid #fde68a' }}>
+                                                          <td style={{ padding: '0.25rem 0.4rem' }}>{s.users?.name ?? '—'}</td>
+                                                          <td style={{ padding: '0.25rem 0.4rem' }}>
+                                                            {s.work_date
+                                                              ? formatWorkDateYmdWeekdayLongFriendly(s.work_date)
+                                                              : '—'}
+                                                          </td>
+                                                          <td style={{ padding: '0.25rem 0.4rem' }}>
+                                                            {formatJobSummarySessionDateTime(s.clocked_in_at)}
+                                                          </td>
+                                                          <td style={{ padding: '0.25rem 0.4rem' }}>
+                                                            {formatJobSummarySessionDateTime(s.clocked_out_at)}
+                                                          </td>
+                                                        </tr>
+                                                      ))}
+                                                    </tbody>
+                                                  </table>
+                                                </div>
+                                              )
+                                            })()}
+                                          </div>
+                                        </details>
+                                      </div>
+                                    ) : teamLaborCost === 0 ? (
+                                      <p style={{ margin: 0, color: '#6b7280' }}>No team labor for this job.</p>
+                                    ) : (
+                                      <p style={{ margin: 0, color: '#6b7280' }}>Team labor total ${formatCurrency(teamLaborCost)} (no per-person breakdown).</p>
+                                    )}
+                                    </div>
+                                  </section>
+                                  <section>
+                                    <div style={{ fontWeight: 600, marginBottom: '0.35rem', color: '#111827' }}>Sub Labor</div>
+                                    <div style={jobSummaryCostSectionBodyStyle}>
+                                    {subLaborJobs.length > 0 ? (
+                                      <ul style={{ margin: 0, paddingLeft: '1.1rem', color: '#374151' }}>
+                                        {subLaborJobs.map((lj) => {
+                                          const c = laborJobSubCost(lj, mileageCost, timePerMile)
+                                          return (
+                                            <li key={lj.id} style={{ marginBottom: '0.25rem' }}>
+                                              {lj.assigned_to_name ?? 'Contractor'}
+                                              {lj.job_date ? ` · ${lj.job_date}` : ''}
+                                              : ${formatCurrency(c)}
+                                            </li>
+                                          )
+                                        })}
+                                      </ul>
+                                    ) : (
+                                      <p style={{ margin: 0, color: '#6b7280' }}>No sub labor for this HCP.</p>
+                                    )}
+                                    </div>
+                                  </section>
+                                  <section>
+                                    <div style={{ fontWeight: 600, marginBottom: '0.35rem', color: '#111827' }}>Parts Cost</div>
+                                    <div style={jobSummaryCostSectionBodyStyle}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                                      {jobSummaryPartsCostIsZero(partsFromTally) ? (
+                                        <div style={jobSummaryPartsCostFlatRowStyle}>
+                                          Parts from Tally{' '}
+                                          <span style={{ fontWeight: 400 }}>${formatCurrency(partsFromTally)}</span>
+                                        </div>
+                                      ) : (
+                                        <details style={jobSummaryPartsCostDetailsBoxStyle}>
+                                          <summary
+                                            style={{
+                                              cursor: 'pointer',
+                                              fontWeight: 600,
+                                              fontSize: '0.8125rem',
+                                              color: '#374151',
+                                              userSelect: 'none',
+                                            }}
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            Parts from Tally{' '}
+                                            <span style={{ fontWeight: 400 }}>${formatCurrency(partsFromTally)}</span>
+                                          </summary>
+                                          <div style={{ marginTop: '0.5rem' }}>
+                                            {tallyPartsForJob.length > 0 ? (
+                                              <table style={{ width: '100%', maxWidth: 560, borderCollapse: 'collapse', fontSize: '0.75rem' }}>
+                                                <thead>
+                                                  <tr style={{ background: '#f3f4f6' }}>
+                                                    <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Fixture / Part</th>
+                                                    <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Qty</th>
+                                                    <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Line cost</th>
+                                                  </tr>
+                                                </thead>
+                                                <tbody>
+                                                  {tallyPartsForJob.map((r) => {
+                                                    const lineCost =
+                                                      r.part_id == null
+                                                        ? Number(r.fixture_cost ?? 0) * Number(r.quantity)
+                                                        : Number(r.price_at_time ?? 0) * Number(r.quantity)
+                                                    const label =
+                                                      r.part_id == null
+                                                        ? r.fixture_name || 'Fixture'
+                                                        : [r.part_name, r.fixture_name].filter(Boolean).join(' · ') || 'Part'
+                                                    return (
+                                                      <tr key={r.id} style={{ borderTop: '1px solid #e5e7eb' }}>
+                                                        <td style={{ padding: '0.25rem 0.4rem' }}>{label}</td>
+                                                        <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>{r.quantity}</td>
+                                                        <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>${formatCurrency(lineCost)}</td>
+                                                      </tr>
+                                                    )
+                                                  })}
+                                                </tbody>
+                                              </table>
+                                            ) : partsFromTally > 0 ? (
+                                              <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>
+                                                Total reflects tally data; no line rows for this job in the current view.
+                                              </p>
+                                            ) : (
+                                              <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>No tally parts.</p>
+                                            )}
+                                          </div>
+                                        </details>
+                                      )}
+                                      {jobSummaryPartsCostIsZero(billedMaterialsSum) ? (
+                                        <div style={jobSummaryPartsCostFlatRowStyle}>
+                                          Billed Materials{' '}
+                                          <span style={{ fontWeight: 400 }}>${formatCurrency(billedMaterialsSum)}</span>
+                                        </div>
+                                      ) : (
+                                      <details style={jobSummaryPartsCostDetailsBoxStyle}>
+                                        <summary
+                                          style={{
+                                            cursor: 'pointer',
+                                            fontWeight: 600,
+                                            fontSize: '0.8125rem',
+                                            color: '#374151',
+                                            userSelect: 'none',
+                                          }}
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          Billed Materials{' '}
+                                          <span style={{ fontWeight: 400 }}>${formatCurrency(billedMaterialsSum)}</span>
+                                        </summary>
+                                        <div style={{ marginTop: '0.5rem' }}>
+                                          {(() => {
+                                            const matRows = [...(job.materials ?? [])].sort(
+                                              (a, b) => a.sequence_order - b.sequence_order,
+                                            )
+                                            if (matRows.length > 0) {
+                                              return matRows.map((m) => (
+                                                <div
+                                                  key={m.id}
+                                                  style={{
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    gap: '0.5rem',
+                                                    fontSize: '0.75rem',
+                                                    padding: '0.25rem 0',
+                                                    borderTop: '1px solid #f3f4f6',
+                                                  }}
+                                                >
+                                                  <span style={{ color: '#374151' }}>{m.description?.trim() || '—'}</span>
+                                                  <span style={{ whiteSpace: 'nowrap' }}>${formatCurrency(Number(m.amount ?? 0))}</span>
+                                                </div>
+                                              ))
+                                            }
+                                            if (billedMaterialsSum > 0) {
+                                              return (
+                                                <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>
+                                                  No material line items on file for this job.
+                                                </p>
+                                              )
+                                            }
+                                            return (
+                                              <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>No billed materials.</p>
+                                            )
+                                          })()}
+                                        </div>
+                                      </details>
+                                      )}
+                                      {jobSummaryPartsCostIsZero(invoicesFromSupplyHouses) ? (
+                                        <div style={jobSummaryPartsCostFlatRowStyle}>
+                                          Invoices from Supply Houses{' '}
+                                          <span style={{ fontWeight: 400 }}>${formatCurrency(invoicesFromSupplyHouses)}</span>
+                                        </div>
+                                      ) : (
+                                      <details
+                                        style={jobSummaryPartsCostDetailsBoxStyle}
+                                        onToggle={(e) => {
+                                          if (!e.currentTarget.open) return
+                                          const jobId = job.id
+                                          if (jobSummaryInvoiceLinesLoadedRef.current.has(jobId)) return
+                                          void (async () => {
+                                            try {
+                                              const data = await withSupabaseRetry(
+                                                async () =>
+                                                  await supabase.rpc('get_invoice_allocation_lines_for_jobs', {
+                                                    p_job_ids: [jobId],
+                                                  }),
+                                                'job summary invoice lines',
+                                              )
+                                              const rows = (data ?? []) as JobSummaryInvoiceAllocationLine[]
+                                              setJobSummaryInvoiceLinesByJobId((prev) => {
+                                                const next = new Map(prev)
+                                                next.set(jobId, rows)
+                                                return next
+                                              })
+                                            } catch {
+                                              setJobSummaryInvoiceLinesByJobId((prev) => {
+                                                const next = new Map(prev)
+                                                next.set(jobId, [])
+                                                return next
+                                              })
+                                            } finally {
+                                              jobSummaryInvoiceLinesLoadedRef.current.add(jobId)
+                                            }
+                                          })()
+                                        }}
+                                      >
+                                        <summary
+                                          style={{
+                                            cursor: 'pointer',
+                                            fontWeight: 600,
+                                            fontSize: '0.8125rem',
+                                            color: '#374151',
+                                            userSelect: 'none',
+                                          }}
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          Invoices from Supply Houses{' '}
+                                          <span style={{ fontWeight: 400 }}>${formatCurrency(invoicesFromSupplyHouses)}</span>
+                                        </summary>
+                                        <div style={{ marginTop: '0.5rem' }}>
+                                          {(() => {
+                                            const invoiceLoaded = jobSummaryInvoiceLinesByJobId.has(job.id)
+                                            const invoiceRows = jobSummaryInvoiceLinesByJobId.get(job.id) ?? []
+                                            if (!invoiceLoaded) {
+                                              return (
+                                                <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>Loading…</p>
+                                              )
+                                            }
+                                            if (invoiceRows.length === 0) {
+                                              return (
+                                                <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>
+                                                  {invoicesFromSupplyHouses > 0
+                                                    ? 'No invoice allocation lines returned for this job.'
+                                                    : 'No allocated supply house invoices.'}
+                                                </p>
+                                              )
+                                            }
+                                            return (
+                                              <table style={{ width: '100%', maxWidth: 560, borderCollapse: 'collapse', fontSize: '0.75rem' }}>
+                                                <thead>
+                                                  <tr style={{ background: '#f3f4f6' }}>
+                                                    <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Supply house</th>
+                                                    <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Invoice</th>
+                                                    <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Date</th>
+                                                    <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Allocated</th>
+                                                  </tr>
+                                                </thead>
+                                                <tbody>
+                                                  {invoiceRows.map((row) => (
+                                                    <tr key={`${row.invoice_id}-${row.job_id}`} style={{ borderTop: '1px solid #e5e7eb' }}>
+                                                      <td style={{ padding: '0.25rem 0.4rem' }}>{row.supply_house_name || '—'}</td>
+                                                      <td style={{ padding: '0.25rem 0.4rem' }}>{row.invoice_number}</td>
+                                                      <td style={{ padding: '0.25rem 0.4rem' }}>{formatJobSummaryInvoiceDate(row.invoice_date)}</td>
+                                                      <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
+                                                        ${formatCurrency(row.allocated_amount)}
+                                                      </td>
+                                                    </tr>
+                                                  ))}
+                                                </tbody>
+                                              </table>
+                                            )
+                                          })()}
+                                        </div>
+                                      </details>
+                                      )}
+                                      {jobSummaryPartsCostIsZero(cardCharges) ? (
+                                        <div style={jobSummaryPartsCostFlatRowStyle}>
+                                          Card charges{' '}
+                                          <span style={{ fontWeight: 400 }}>${formatCurrency(cardCharges)}</span>
+                                        </div>
+                                      ) : (
+                                      <details
+                                        style={jobSummaryPartsCostDetailsBoxStyle}
+                                        onToggle={(e) => {
+                                          if (!e.currentTarget.open) return
+                                          const jobId = job.id
+                                          if (jobSummaryMercuryAllocationsLoadedRef.current.has(jobId)) return
+                                          void (async () => {
+                                            try {
+                                              const data = await withSupabaseRetry(
+                                                async () =>
+                                                  await supabase
+                                                    .from('mercury_transaction_job_allocations')
+                                                    .select(
+                                                      'id, amount, note, mercury_transaction_id, mercury_transactions(posted_at, counterparty_name, amount, note, external_memo, raw)',
+                                                    )
+                                                    .eq('job_id', jobId)
+                                                    .order('created_at', { ascending: true }),
+                                                'job summary mercury allocations',
+                                              )
+                                              const rawRows =
+                                                (data ?? []) as Array<
+                                                  Omit<JobSummaryMercuryAllocationRow, 'attributionDisplayName'> & {
+                                                    mercury_transaction_id: string
+                                                  }
+                                                >
+                                              const attrByTxId = new Map<
+                                                string,
+                                                { person_id: string | null; user_id: string | null }
+                                              >()
+                                              const personNameById = new Map<string, string>()
+                                              const userNameById = new Map<string, string>()
+                                              try {
+                                                const txIds = [...new Set(rawRows.map((r) => r.mercury_transaction_id))]
+                                                if (txIds.length > 0) {
+                                                  const attrRows = await fetchAttributionsByMercuryTxIds(
+                                                    txIds,
+                                                    'job summary mercury',
+                                                  )
+                                                  for (const a of attrRows) {
+                                                    attrByTxId.set(a.mercury_transaction_id, {
+                                                      person_id: a.person_id,
+                                                      user_id: a.user_id,
+                                                    })
+                                                  }
+                                                  const personIds = new Set<string>()
+                                                  const userIds = new Set<string>()
+                                                  for (const a of attrRows) {
+                                                    if (a.person_id) personIds.add(a.person_id)
+                                                    if (a.user_id) userIds.add(a.user_id)
+                                                  }
+                                                  if (personIds.size > 0) {
+                                                    const peopleData = await withSupabaseRetry(
+                                                      async () =>
+                                                        supabase.from('people').select('id, name').in('id', [...personIds]),
+                                                      'job summary mercury attribution people',
+                                                    )
+                                                    for (const p of peopleData ?? []) {
+                                                      const row = p as { id: string; name: string }
+                                                      personNameById.set(row.id, row.name)
+                                                    }
+                                                  }
+                                                  if (userIds.size > 0) {
+                                                    const usersData = await withSupabaseRetry(
+                                                      async () =>
+                                                        supabase.from('users').select('id, name').in('id', [...userIds]),
+                                                      'job summary mercury attribution users',
+                                                    )
+                                                    for (const u of usersData ?? []) {
+                                                      const row = u as { id: string; name: string }
+                                                      userNameById.set(row.id, row.name)
+                                                    }
+                                                  }
+                                                }
+                                              } catch {
+                                                /* attribution / names unavailable; show allocations with — User */
+                                              }
+                                              const rows: JobSummaryMercuryAllocationRow[] = rawRows.map((r) => {
+                                                const attr = attrByTxId.get(r.mercury_transaction_id)
+                                                let attributionDisplayName: string | null = null
+                                                if (attr) {
+                                                  if (attr.person_id) {
+                                                    attributionDisplayName = personNameById.get(attr.person_id) ?? null
+                                                  } else if (attr.user_id) {
+                                                    attributionDisplayName = userNameById.get(attr.user_id) ?? null
+                                                  }
+                                                }
+                                                return {
+                                                  id: r.id,
+                                                  amount: r.amount,
+                                                  note: r.note,
+                                                  mercury_transactions: r.mercury_transactions,
+                                                  attributionDisplayName,
+                                                }
+                                              })
+                                              setJobSummaryMercuryAllocationsByJobId((prev) => {
+                                                const next = new Map(prev)
+                                                next.set(jobId, rows)
+                                                return next
+                                              })
+                                            } catch {
+                                              setJobSummaryMercuryAllocationsByJobId((prev) => {
+                                                const next = new Map(prev)
+                                                next.set(jobId, [])
+                                                return next
+                                              })
+                                            } finally {
+                                              jobSummaryMercuryAllocationsLoadedRef.current.add(jobId)
+                                            }
+                                          })()
+                                        }}
+                                      >
+                                        <summary
+                                          style={{
+                                            cursor: 'pointer',
+                                            fontWeight: 600,
+                                            fontSize: '0.8125rem',
+                                            color: '#374151',
+                                            userSelect: 'none',
+                                          }}
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          Card charges <span style={{ fontWeight: 400 }}>${formatCurrency(cardCharges)}</span>
+                                        </summary>
+                                        <div style={{ marginTop: '0.5rem' }}>
+                                          {(() => {
+                                            const mLoaded = jobSummaryMercuryAllocationsByJobId.has(job.id)
+                                            const mRows = jobSummaryMercuryAllocationsByJobId.get(job.id) ?? []
+                                            if (!mLoaded) {
+                                              return (
+                                                <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>Loading…</p>
+                                              )
+                                            }
+                                            if (mRows.length === 0) {
+                                              return (
+                                                <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>
+                                                  {cardCharges > 0
+                                                    ? 'No card allocation rows returned (check access).'
+                                                    : 'No Mercury card allocations for this job.'}
+                                                </p>
+                                              )
+                                            }
+                                            return (
+                                              <table style={{ width: '100%', maxWidth: 760, borderCollapse: 'collapse', fontSize: '0.75rem' }}>
+                                                <thead>
+                                                  <tr style={{ background: '#f3f4f6' }}>
+                                                    <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Posted</th>
+                                                    <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Counterparty</th>
+                                                    <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>User</th>
+                                                    <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Debit Card</th>
+                                                    <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Allocated</th>
+                                                    <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Note</th>
+                                                  </tr>
+                                                </thead>
+                                                <tbody>
+                                                  {mRows.map((row) => {
+                                                    const tx = row.mercury_transactions
+                                                    const posted = tx?.posted_at
+                                                      ? formatJobSummaryMercuryPostedAt(tx.posted_at)
+                                                      : '—'
+                                                    const allocAbs = Math.abs(Number(row.amount ?? 0))
+                                                    const debitCardId = mercuryDebitCardIdFromRaw(tx?.raw ?? null)
+                                                    const debitCardLabel =
+                                                      debitCardId != null
+                                                        ? nicknameByDebitCard[debitCardId] ??
+                                                          formatMercuryDebitCardIdCompact(debitCardId)
+                                                        : '—'
+                                                    return (
+                                                      <tr key={row.id} style={{ borderTop: '1px solid #e5e7eb' }}>
+                                                        <td style={{ padding: '0.25rem 0.4rem' }}>{posted}</td>
+                                                        <td style={{ padding: '0.25rem 0.4rem' }}>{tx?.counterparty_name ?? '—'}</td>
+                                                        <td style={{ padding: '0.25rem 0.4rem' }}>
+                                                          {row.attributionDisplayName ?? '—'}
+                                                        </td>
+                                                        <td style={{ padding: '0.25rem 0.4rem' }}>{debitCardLabel}</td>
+                                                        <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
+                                                          ${formatCurrency(allocAbs)}
+                                                        </td>
+                                                        <td style={{ padding: '0.25rem 0.4rem', color: '#4b5563' }}>
+                                                          {[row.note, tx?.note, tx?.external_memo].filter(Boolean).join(' · ') || '—'}
+                                                        </td>
+                                                      </tr>
+                                                    )
+                                                  })}
+                                                </tbody>
+                                              </table>
+                                            )
+                                          })()}
+                                        </div>
+                                      </details>
+                                      )}
+                                    </div>
+                                    </div>
+                                  </section>
+                                  <section>
+                                    <div style={{ fontWeight: 600, marginBottom: '0.35rem', color: '#111827' }}>Total Bill</div>
+                                    <div style={jobSummaryCostSectionBodyStyle}>
+                                    <p style={{ margin: 0, color: '#374151' }}>
+                                      Revenue (billing):{' '}
+                                      {totalBill === 0 ? '—' : `$${formatCurrency(totalBill)}`}
+                                    </p>
+                                    </div>
+                                  </section>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                        return [mainRow, detailRow]
+                      })}
                 </tbody>
               </table>
             </div>
@@ -10194,6 +11655,19 @@ export default function Jobs() {
         estimateId={contractModalEstimateId}
         onClose={() => setContractModalEstimateId(null)}
       />
+      {scheduleModalJob ? (
+        <ScheduleJobModal
+          key={scheduleModalJob.id}
+          open
+          onClose={() => setScheduleModalJob(null)}
+          jobId={scheduleModalJob.id}
+          jobTitle={`${(scheduleModalJob.hcp_number ?? '').trim() || '—'} · ${(scheduleModalJob.job_name ?? '').trim() || 'Job'}`}
+          teamMembers={(scheduleModalJob.team_members ?? []).map((tm) => ({
+            user_id: tm.user_id,
+            name: tm.users?.name ?? null,
+          }))}
+        />
+      ) : null}
     </div>
   )
 }

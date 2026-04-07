@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-04-02
+last_updated: 2026-04-08
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -91,6 +91,20 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ## Recent Migrations
 
 ### April 2026
+
+#### April 7, 2026
+
+**`20260407033913_job_schedule_blocks.sql`**
+- **Purpose**: Planned per-job work windows (assignee, **`work_date`**, **`time_start`** / **`time_end`** in America/Chicago wall time, **4:00–20:00**) for Jobs **Schedule** modal and Calendar preview/chips
+- **Changes**: **`job_schedule_blocks`** (`REFERENCES jobs_ledger`, **`users`** for assignee and **`created_by`**); **`updated_at`** trigger; **`created_by`** default from **`auth.uid()`**; **RLS** aligned with job visibility / team / assignee read; **INSERT/UPDATE/DELETE** for **`dev`**, **`master_technician`**, **`assistant`**, **`superintendent`** with job manage access only
+- **Impact**: [`ScheduleJobModal.tsx`](src/components/jobs/ScheduleJobModal.tsx), [`PreviewJobModal.tsx`](src/components/calendar/PreviewJobModal.tsx), [`Calendar.tsx`](src/pages/Calendar.tsx), [`jobScheduleBlocks.ts`](src/lib/jobScheduleBlocks.ts)
+- **Category**: Jobs / Calendar
+
+**`20260407034037_list_assigned_jobs_project_id.sql`**
+- **Purpose**: **`list_assigned_jobs_for_dashboard`** adds **`project_id`** so Calendar **Job preview** can map workflow **`project_id`** to team jobs without broad **`jobs_ledger`** reads
+- **Changes**: **`DROP`/`CREATE`** same RPC with extra **`project_id`** column in **`RETURNS TABLE`** and **`SELECT`**
+- **Impact**: [`PreviewJobModal.tsx`](src/components/calendar/PreviewJobModal.tsx); types in [`database.ts`](src/types/database.ts)
+- **Category**: Jobs / Calendar
 
 #### April 5, 2026
 
@@ -236,6 +250,30 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Changes**: **`CREATE OR REPLACE`** **`salary_sync_one_user_clock_sessions`** — in split-mode slot **1** / **2** overlap predicates, add **`OR (cs.clocked_in_at AT TIME ZONE tz)::date = p_work_date`** alongside **`cs.work_date = p_work_date`**; **`COMMENT`** + **`REVOKE ALL … FROM PUBLIC`**
 - **Impact**: [`SALARY_CLOCK_SESSIONS.md`](SALARY_CLOCK_SESSIONS.md); [`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.249
 - **Category**: People / Hours / Salary sync
+
+**`20270408162000_salary_sync_split_half_open_overlap_semantics.sql`**
+- **Purpose**: Document and pin **strict half-open** split-mode overlap for canonical slots **1** / **2** — same predicate shape as **`20270408153000`** (`clocked_in_at < t_close AND t_open < COALESCE(clocked_out_at, p_now)`), with file-level boundary matrix and **`COMMENT ON FUNCTION`** mentioning half-open semantics (adjacent blocks, **`approved_at`** open-row follow-up noted in SQL comments only).
+- **Changes**: **`CREATE OR REPLACE`** **`salary_sync_one_user_clock_sessions`** + **`COMMENT`** + **`REVOKE ALL … FROM PUBLIC`**
+- **Impact**: [`SALARY_CLOCK_SESSIONS.md`](SALARY_CLOCK_SESSIONS.md) **Half-open intervals** subsection
+- **Category**: People / Hours / Salary sync
+
+**`20270408160000_invoice_allocation_lines_for_job_summary.sql`**
+- **Purpose**: **Job Summary** tab **Parts Cost** — per-invoice supply-house lines allocated to jobs (not only rolled-up totals)
+- **Changes**: **`get_invoice_allocation_lines_for_jobs(p_job_ids uuid[])`** — `RETURNS TABLE` (**`job_id`**, **`invoice_id`**, **`allocated_amount`**, invoice metadata, **`supply_house_name`**, **`pct`**); **`STABLE`**, **`SECURITY DEFINER`**, job visibility matches **`get_invoice_amounts_for_jobs`**; **`GRANT EXECUTE`** to **`authenticated`**
+- **Impact**: [`Jobs.tsx`](src/pages/Jobs.tsx) Job Summary **Parts Cost**
+- **Category**: Jobs / Materials / Invoices
+
+**`20270408161000_tally_staff_split_save_align_subcontractor_targets.sql`**
+- **Purpose**: **Stale tally staff follow-up** — when **dev** / **master_technician** / **assistant** saves Mercury **job splits** for a **subcontractor’s** linked card, allow any **`jobs_ledger`** row the staff search could return (align with **`search_jobs_for_tally_mercury_assign_as_user`**), instead of requiring **`jobs_ledger_team_members`** per job
+- **Changes**: **`CREATE OR REPLACE`** **`replace_mercury_job_splits_for_linked_card_as_staff`**
+- **Impact**: [`MercuryTransactionAllocationsModal.tsx`](src/components/MercuryTransactionAllocationsModal.tsx) **`tallyActAsUserId`** save path
+- **Category**: Dashboard / Job Parts Tally
+
+**`20270408163000_person_offsets_employee_credit_type.sql`**
+- **Purpose**: **`person_offsets`** — **`employee_credit`** type for amounts **owed to** the person (e.g. overpayment held as a pending offset); distinct from **backcharge** / **damage** deductions
+- **Changes**: Replace **`person_offsets_type_check`** — **`CHECK (type IN ('backcharge', 'damage', 'employee_credit'))`**; **`COMMENT ON TABLE`**
+- **Impact**: [`PersonOffsetFormModal.tsx`](src/components/pay/PersonOffsetFormModal.tsx), [`People.tsx`](src/pages/People.tsx) **Offsets** + pay HTML, [`PayStubLessModal.tsx`](src/components/pay/PayStubLessModal.tsx) (**Employee credit** listed, **Apply** disabled); [`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.252
+- **Category**: People / Pay
 
 ### March 2027
 

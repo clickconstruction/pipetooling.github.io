@@ -7,61 +7,76 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-06
+last_updated: 2026-04-07
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.251 → v2.4"
+version_range: "v2.256 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.256)"
+    line: ~766
+    description: "Schedule dispatch hub: People | Jobs tabs, fetchJobScheduleBlocksForHubDateRange; Week overview link on detail"
+  - name: "Latest Version (v2.255)"
+    line: ~784
+    description: "Schedule dispatch week grid: rows = team, columns = Central week days; DnD reassign same day; fetchJobScheduleBlocksForJobDateRange; Jobs Week dispatch link"
+  - name: "Latest Version (v2.254)"
+    line: ~770
+    description: "job_schedule_blocks + Schedule modal (Jobs Stages thread); list_assigned_jobs project_id; Calendar Job preview + planned chips; PreviewJobModal, ScheduleJobModal, jobScheduleBlocks lib"
+  - name: "Latest Version (v2.253)"
+    line: ~775
+    description: "Calendar month: enriched clock_sessions fetch (job/bid embeds); non-rejected/non-revoked per-session chips (cap +N, Central time) + Clock sessions list in day modal; recorded hours aggregate unchanged; calendarClockSessionDisplay + CLOCK_SESSION_CALENDAR_SELECT"
+  - name: "Latest Version (v2.252)"
+    line: ~788
+    description: "Pay History: Draft Payroll prior Sun–Sat week + crew merge; person_offsets employee_credit; Record payment min(amount, remaining) + optional credit; Job Summary get_invoice_allocation_lines_for_jobs; tally staff split save align"
   - name: "Latest Version (v2.251)"
-    line: ~746
+    line: ~786
     description: "Dashboard strip Jobs worked today: ClockSessionStripApproveControl parity with Clocked in today detail rows"
   - name: "Latest Version (v2.250)"
-    line: ~762
+    line: ~797
     description: "My Time day editor: prior-week acknowledgment + this+last week save window (getThisAndLastWeekRange); editableRange prop ignored"
   - name: "Latest Version (v2.249)"
-    line: ~768
+    line: ~808
     description: "Salary split sync: overlap guard uses work_date or clock-in civil date in template TZ (20270408153000); avoids duplicate empty canonical slot 1"
   - name: "Latest Version (v2.248)"
-    line: ~754
+    line: ~820
     description: "Stale tally Assign: dev/master_technician/assistant search all jobs_ledger for non-sub targets (LIMIT 50); sub targets team-only"
   - name: "Latest Version (v2.247)"
-    line: ~726
+    line: ~832
     description: "Stale tally Assign to jobs: search_jobs_for_tally_mercury_assign_as_user uses staff invoker job visibility except subcontractor targets (team-only)"
   - name: "Latest Version (v2.246)"
-    line: ~726
+    line: ~844
     description: "Stale tally follow-up: assistant scope = adopted masters job teams (Option A staff_can_view_user_for_tally_followup)"
   - name: "Latest Version (v2.245)"
-    line: ~738
+    line: ~855
     description: "Stale tally staff follow-up: assistant same target scope as dev (staff_can_view_user_for_tally_followup)"
   - name: "Latest Version (v2.244)"
-    line: ~746
+    line: ~867
     description: "Estimates Customer activity: DB trigger + record_estimate_public_link_view RPC; timeline IP for link + accept; accept-estimate alreadyAccepted audit"
   - name: "Latest Version (v2.243)"
-    line: ~732
+    line: ~879
     description: "Settings (dev): list_job_counts_by_master_for_dev_settings RPC replaces full jobs_ledger scan; batched app_settings keys; parallel adoption + dev template loaders"
   - name: "Latest Version (v2.242)"
-    line: ~728
+    line: ~890
     description: "Quickfill Warnings section (first in SECTIONS): stale tally staff banner + modal when RPC has rows; useStaleTallyStaffFollowUp + tallyStaleMinAgeDays; Dashboard refactored to same hook"
   - name: "Latest Version (v2.241)"
-    line: ~740
+    line: ~902
     description: "Dashboard stale tally staff follow-up: list_stale_unlinked_mercury_transactions_for_tally_staff; blue banner + modal; replace_mercury_job_splits_for_linked_card_as_staff + search_jobs_for_tally_mercury_assign_as_user via MercuryTransactionAllocationsModal tallyActAsUserId"
   - name: "Latest Version (v2.240)"
-    line: ~736
+    line: ~913
     description: "Dashboard stale tally banner: count_unlinked_mercury_transactions_for_tally_stale; DashboardTallyStaleBanner above Job Parts Tally row; Chicago calendar age > min_age_days"
   - name: "Latest Version (v2.239)"
-    line: ~721
+    line: ~924
     description: "Estimates: Unlink job (clear job_ledger_id) + confirm modal; sent — Copy/Open customer link under waiting copy; EstimateCustomerAcceptLinkButtons DRY; no duplicate link buttons in Customer experience when sent"
   - name: "Latest Version (v2.238)"
-    line: ~732
+    line: ~935
     description: "Estimates → Jobs: create_job_from_estimate RPC; Create job from estimate modal; Jobs Source estimate + CustomerAcceptanceRecordModal"
   - name: "Latest Version (v2.237)"
-    line: ~744
+    line: ~947
     description: "Estimates accept UX: modal omit accept_instructions + centered submit; EstimateCustomerDocument total right-aligned; Estimates detail # inline in h1; inline Customer acceptance disclosure + agreement checkbox"
   - name: "Latest Version (v2.236)"
-    line: ~757
+    line: ~960
     description: "Estimates Line item catalog modal: Insert from catalog + Edit book in one header row (title, tabs, ×); Estimates.tsx"
   - name: "Latest Version (v2.235)"
     line: ~767
@@ -580,6 +595,11 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.256 — Schedule dispatch hub: all jobs + week counts (Scope B)](#latest-updates-v2256)
+**New:** [v2.255 — Schedule dispatch: people × week grid + drag reassign](#latest-updates-v2255)
+**New:** [v2.254 — Jobs Schedule modal + Calendar Job preview & planned chips](#latest-updates-v2254)
+**New:** [v2.253 — Calendar: per-session chips + day modal clock sessions](#latest-updates-v2253)
+**New:** [v2.252 — Pay History: Draft Payroll week + crew merge + employee credit + Record payment](#latest-updates-v2252)
 **New:** [v2.251 — Jobs worked today: approve controls (Clocked in today parity)](#latest-updates-v2251)
 **New:** [v2.250 — My Time: prior-week acknowledgment + two-week edit window](#latest-updates-v2250)
 **New:** [v2.249 — Salary split sync: overlap guard (work_date + clock-in TZ date)](#latest-updates-v2249)
@@ -745,6 +765,73 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.256)
+
+**Date**: 2026-04-07
+
+### Schedule dispatch — Week hub (all visible jobs, Scope B)
+
+- **Landing** (`/schedule-dispatch` without **`jobId`**): **[`ScheduleDispatchHub.tsx`](src/components/schedule/ScheduleDispatchHub.tsx)** — **People** (default) | **Jobs** tabs; URL **`hubTab=jobs`** preserved with **`week`** when Jobs is selected; week nav; **`jobs_ledger`** + one week-wide blocks fetch ([`fetchJobsLedgerForScheduleDispatchHub`](src/lib/scheduleDispatchHub.ts), [`fetchJobScheduleBlocksForHubDateRange`](src/lib/jobScheduleBlocks.ts)); derive per-job counts via [`blocksToJobWeekSummaries`](src/lib/scheduleDispatchHub.ts) + [`aggregateWeekSummariesByJob`](src/lib/scheduleDispatchHub.ts). **Jobs** tab: per-job **total** and **Sun–Sat** columns; search; **Only jobs with blocks this week** (on by default); sort by block count then HCP. **People** tab: roster = hub job team members ([`fetchTeamMemberUserIdsForJobIds`](src/lib/scheduleDispatchHub.ts)) plus block assignees, names via [`fetchUserNamesForIds`](src/lib/scheduleDispatchHub.ts); **Only people with blocks this week** (on by default); uncheck to show full roster with empty cells; muted **· Salary** suffix from [`fetchSalariedUserIdSetFromUserIds`](src/lib/salaryPayConfigGate.ts) (`people_pay_config.is_salary` by user name); Sun–Sat stacked chips open **`jobId`** + **`week`** grid.
+- **Detail**: **Week overview (all jobs)** link returns to hub with same **`week`**. **`week`** in URL normalized when hub or detail loads ([`ScheduleDispatch.tsx`](src/pages/ScheduleDispatch.tsx)).
+- **Errors**: schedule summary fetch failure → toast + **0** counts; jobs fetch failure → inline error.
+
+---
+
+## Latest Updates (v2.255)
+
+**Date**: 2026-04-07
+
+### Schedule dispatch — Week grid (team rows × day columns)
+
+- **Route**: [`/schedule-dispatch`](src/pages/ScheduleDispatch.tsx) with **`jobId`** (required for grid) and optional **`week`** (Sunday `YYYY-MM-DD`, normalized to Chicago week start via [`companyWeekStartSundayContaining`](src/utils/dateUtils.ts)).
+- **UI**: [`ScheduleDispatchGrid.tsx`](src/components/schedule/ScheduleDispatchGrid.tsx) — sticky name column; **Add block** per cell; **Remove** on cards; **@dnd-kit** drag to another person **same day only** (overlap checked vs all blocks for that assignee that day); cross-day drop shows toast (not supported yet).
+- **Data**: [`fetchJobScheduleBlocksForJobDateRange`](src/lib/jobScheduleBlocks.ts); add/save uses same overlap rules as [`ScheduleJobModal`](src/components/jobs/ScheduleJobModal.tsx) ([`fetchScheduleBlocksForAssigneesOnDay`](src/lib/jobScheduleBlocks.ts)).
+- **Nav**: **Dispatch** link (dev / master / assistant / superintendent); superintendent [`SUPERINTENDENT_PATHS`](src/components/Layout.tsx). **Jobs** thread panel: **Week dispatch** next to **Schedule** ([`JobThreadNotesPanel`](src/components/JobThreadNotesPanel.tsx)); **Schedule** + **Week dispatch** also for superintendent when the job has team members.
+- **Docs**: [ACCESS_CONTROL.md](ACCESS_CONTROL.md) page matrix.
+
+---
+
+## Latest Updates (v2.254)
+
+**Date**: 2026-04-07
+
+### Jobs & Calendar — Schedule modal, Job preview, planned work chips
+
+- **Database**: **`job_schedule_blocks`** ([`20260407033913_job_schedule_blocks.sql`](supabase/migrations/20260407033913_job_schedule_blocks.sql)) — assignee, **`work_date`**, Central **4:00–20:00** window, note; RLS read like job thread / team; write for dev / master_technician / assistant / superintendent with job access. **`list_assigned_jobs_for_dashboard`** + **`project_id`** ([`20260407034037_list_assigned_jobs_project_id.sql`](supabase/migrations/20260407034037_list_assigned_jobs_project_id.sql)).
+- **Jobs Stages**: **[`JobThreadNotesPanel`](src/components/JobThreadNotesPanel.tsx)** header **Schedule** (dev / master / assistant) → **[`ScheduleJobModal`](src/components/jobs/ScheduleJobModal.tsx)** (day pager, team timeline, add/remove blocks). **[`Jobs.tsx`](src/pages/Jobs.tsx)**.
+- **Calendar**: Workflow chips open **[`PreviewJobModal`](src/components/calendar/PreviewJobModal.tsx)** (stages, team jobs, your schedule rows; subs no **Open in Jobs**); indigo **planned** chips + day modal **Planned work**. **[`Calendar.tsx`](src/pages/Calendar.tsx)**.
+- **Lib**: [`jobScheduleBlocks.ts`](src/lib/jobScheduleBlocks.ts), [`jobScheduleChicago.ts`](src/lib/jobScheduleChicago.ts), [`jobScheduleOverlap.ts`](src/lib/jobScheduleOverlap.ts), [`ScheduleDayTimeline.tsx`](src/components/jobs/ScheduleDayTimeline.tsx)
+
+---
+
+## Latest Updates (v2.253)
+
+**Date**: 2026-04-06
+
+### Calendar — Per-session chips and day modal detail
+
+- **Data**: Single month fetch uses **`CLOCK_SESSION_CALENDAR_SELECT`** ([`clockSessionSelect.ts`](src/lib/clockSessionSelect.ts)) with **`jobs_ledger`** / **`bids`** embeds; **`rejected_at`** / **`revoked_at`** null only (same semantics as recorded-hour totals via [`aggregateCalendarClockedHoursByDate`](src/lib/calendarClockedHoursByDate.ts)).
+- **Grid** (when **Show recorded time** is on): existing **Recorded Xh** summary chip unchanged; added capped per-session chips (**America/Chicago** range + job/bid label; tooltips with notes) via [`calendarClockSessionDisplay.ts`](src/lib/calendarClockSessionDisplay.ts).
+- **Day modal**: **Clock sessions** section lists all sessions for that day (job line, duration, **Scheduled** when **`origin === 'salary_schedule'`**, notes).
+- **Page**: [`Calendar.tsx`](src/pages/Calendar.tsx)
+
+---
+
+## Latest Updates (v2.252)
+
+**Date**: 2026-04-08
+
+### People — Pay History: Draft Payroll, crew data, employee credits, Record payment
+
+- **Draft Payroll**: Opening **Draft Payroll** seeds the pay period with the **prior** Sunday–Saturday week (**`en-CA`**) via **`getPriorWeekPayStubRangeEnCa()`** in **[`People.tsx`](src/pages/People.tsx)**.
+- **Crew data for review**: While Draft Payroll is open, **`mergeCrewJobsForDateRange`** loads **`people_crew_jobs`** / **`people_crew_bids`** for that period and merges into **`crewJobsByDatePerson`**; **`draftPayrollCrewMergeFetchIdRef`** ignores stale async results.
+- **`employee_credit` on `person_offsets`**: Migration **[`20270408163000_person_offsets_employee_credit_type.sql`](supabase/migrations/20270408163000_person_offsets_employee_credit_type.sql)** extends **`person_offsets.type`** with **`employee_credit`** (amount owed *to* the person, e.g. overpayment stored as a pending offset). **[`PersonOffsetFormModal.tsx`](src/components/pay/PersonOffsetFormModal.tsx)**; **Offsets** tab + pay stub HTML in **[`People.tsx`](src/pages/People.tsx)**; **[`PayStubLessModal.tsx`](src/components/pay/PayStubLessModal.tsx)** lists **Employee credit** but does **not** offer **Apply** (credits are not **Less** deductions).
+- **Record payment**: One **Amount paid** field; **Confirm** records **`min(parsed, remaining)`** (no error when the typed amount exceeds balance). When over, an optional block explains the excess and offers **Record employee credit…** into a pending **`person_offsets`** row.
+- **Jobs — Job Summary**: RPC **`get_invoice_allocation_lines_for_jobs`** (**[`20270408160000_invoice_allocation_lines_for_job_summary.sql`](supabase/migrations/20270408160000_invoice_allocation_lines_for_job_summary.sql)**) returns per-invoice supply-house allocation lines for **Parts Cost** (visibility aligned with **`get_invoice_amounts_for_jobs`**); **[`Jobs.tsx`](src/pages/Jobs.tsx)**.
+- **Stale tally (staff split save)**: **`replace_mercury_job_splits_for_linked_card_as_staff`** (**[`20270408161000_tally_staff_split_save_align_subcontractor_targets.sql`](supabase/migrations/20270408161000_tally_staff_split_save_align_subcontractor_targets.sql)**) aligns saved splits with staff job search for subcontractor targets (full **`jobs_ledger`** visibility where search allows it, not **`jobs_ledger_team_members`** per row).
+
 ---
 
 ## Latest Updates (v2.251)

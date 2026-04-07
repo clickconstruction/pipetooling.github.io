@@ -16,6 +16,64 @@ type JobThreadNotesPanelProps = {
   onSubmit: () => void
   submitting: boolean
   emptyLabel?: string
+  /** Jobs Stages: open Schedule modal (planner roles only). */
+  scheduleAction?: { onClick: () => void; disabled?: boolean }
+  /** Week grid: navigate to Schedule dispatch (same roles + superintendent when job has team). */
+  scheduleDispatchAction?: { onClick: () => void; disabled?: boolean }
+}
+
+function JobThreadScheduleButton({
+  action,
+}: {
+  action: NonNullable<JobThreadNotesPanelProps['scheduleAction']>
+}) {
+  return (
+    <button
+      type="button"
+      onClick={action.onClick}
+      disabled={action.disabled}
+      style={{
+        padding: '0.3rem 0.65rem',
+        fontSize: '0.75rem',
+        fontWeight: 600,
+        background: action.disabled ? '#e5e7eb' : '#15803d',
+        color: action.disabled ? '#6b7280' : '#ffffff',
+        border: `1px solid ${action.disabled ? '#d1d5db' : '#166534'}`,
+        borderRadius: 4,
+        cursor: action.disabled ? 'not-allowed' : 'pointer',
+        flexShrink: 0,
+      }}
+    >
+      Schedule
+    </button>
+  )
+}
+
+function JobThreadWeekDispatchButton({
+  action,
+}: {
+  action: NonNullable<JobThreadNotesPanelProps['scheduleDispatchAction']>
+}) {
+  return (
+    <button
+      type="button"
+      onClick={action.onClick}
+      disabled={action.disabled}
+      style={{
+        padding: '0.3rem 0.65rem',
+        fontSize: '0.75rem',
+        fontWeight: 600,
+        background: action.disabled ? '#e5e7eb' : '#ffffff',
+        color: action.disabled ? '#6b7280' : '#1d4ed8',
+        border: `1px solid ${action.disabled ? '#d1d5db' : '#2563eb'}`,
+        borderRadius: 4,
+        cursor: action.disabled ? 'not-allowed' : 'pointer',
+        flexShrink: 0,
+      }}
+    >
+      Week dispatch
+    </button>
+  )
 }
 
 export function JobThreadNotesPanel({
@@ -27,6 +85,8 @@ export function JobThreadNotesPanel({
   onSubmit,
   submitting,
   emptyLabel = 'No thread notes yet.',
+  scheduleAction,
+  scheduleDispatchAction,
 }: JobThreadNotesPanelProps) {
   return (
     <div
@@ -37,8 +97,10 @@ export function JobThreadNotesPanel({
         borderRadius: 6,
       }}
     >
-      <div style={{ fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.5rem', color: '#374151' }}>
-        Job activity / notes (Central Time)
+      <div style={{ marginBottom: '0.5rem' }}>
+        <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151' }}>
+          Job activity / notes (Central Time)
+        </div>
       </div>
       {loading ? (
         <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: '0 0 0.75rem 0' }}>Loading notes…</p>
@@ -72,6 +134,20 @@ export function JobThreadNotesPanel({
           )}
         </ul>
       )}
+      {!canPost && (scheduleAction || scheduleDispatchAction) ? (
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            flexWrap: 'wrap',
+            gap: '0.35rem',
+            marginTop: '0.5rem',
+          }}
+        >
+          {scheduleAction ? <JobThreadScheduleButton action={scheduleAction} /> : null}
+          {scheduleDispatchAction ? <JobThreadWeekDispatchButton action={scheduleDispatchAction} /> : null}
+        </div>
+      ) : null}
       {canPost && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
           <label htmlFor="job-thread-note-body" style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block' }}>
@@ -101,23 +177,53 @@ export function JobThreadNotesPanel({
               resize: 'vertical',
             }}
           />
-          <button
-            type="button"
-            onClick={onSubmit}
-            disabled={submitting || draft.trim().length === 0}
-            style={{
-              alignSelf: 'flex-start',
-              padding: '0.35rem 0.75rem',
-              fontSize: '0.8125rem',
-              background: submitting || draft.trim().length === 0 ? '#e5e7eb' : '#3b82f6',
-              color: submitting || draft.trim().length === 0 ? '#6b7280' : 'white',
-              border: 'none',
-              borderRadius: 4,
-              cursor: submitting || draft.trim().length === 0 ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {submitting ? 'Posting…' : 'Post note'}
-          </button>
+          {scheduleAction || scheduleDispatchAction ? (
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                gap: '0.5rem',
+              }}
+            >
+              <button
+                type="button"
+                onClick={onSubmit}
+                disabled={submitting || draft.trim().length === 0}
+                style={{
+                  padding: '0.35rem 0.75rem',
+                  fontSize: '0.8125rem',
+                  background: submitting || draft.trim().length === 0 ? '#e5e7eb' : '#3b82f6',
+                  color: submitting || draft.trim().length === 0 ? '#6b7280' : 'white',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: submitting || draft.trim().length === 0 ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {submitting ? 'Posting…' : 'Post note'}
+              </button>
+              {scheduleAction ? <JobThreadScheduleButton action={scheduleAction} /> : null}
+              {scheduleDispatchAction ? <JobThreadWeekDispatchButton action={scheduleDispatchAction} /> : null}
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={onSubmit}
+              disabled={submitting || draft.trim().length === 0}
+              style={{
+                alignSelf: 'flex-start',
+                padding: '0.35rem 0.75rem',
+                fontSize: '0.8125rem',
+                background: submitting || draft.trim().length === 0 ? '#e5e7eb' : '#3b82f6',
+                color: submitting || draft.trim().length === 0 ? '#6b7280' : 'white',
+                border: 'none',
+                borderRadius: 4,
+                cursor: submitting || draft.trim().length === 0 ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {submitting ? 'Posting…' : 'Post note'}
+            </button>
+          )}
         </div>
       )}
     </div>

@@ -3,6 +3,14 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 export type CrewJobAssignment = { job_id: string; pct: number }
 export type CrewJobRow = { crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }
 
+export type TeamLaborBreakdownEntry = {
+  personName: string
+  hours: number
+  cost: number
+  /** Allocated crew hours/cost per calendar work date (same math as totals). */
+  byWorkDate: Array<{ workDate: string; hours: number; cost: number }>
+}
+
 export type TeamLaborRow = {
   jobId: string
   hcpNumber: string
@@ -11,7 +19,7 @@ export type TeamLaborRow = {
   people: string[]
   manHours: number
   jobCost: number
-  breakdown: Array<{ personName: string; hours: number; cost: number }>
+  breakdown: TeamLaborBreakdownEntry[]
 }
 
 export type CrewBidAssignment = { bid_id: string; pct: number }
@@ -80,6 +88,8 @@ export async function loadTeamLaborData(
     string,
     { people: Set<string>; hoursByPerson: Record<string, number>; costByPerson: Record<string, number> }
   > = {}
+  /** jobId -> personName -> workDate -> allocated hours/cost for that day */
+  const jobDetailByPersonDate: Record<string, Record<string, Record<string, { hours: number; cost: number }>>> = {}
   for (const r of crewRows) {
     const assignments = getEffectiveAssignments(r.person_name, r.work_date)
     const cfg = configMap[r.person_name]
@@ -91,8 +101,15 @@ export async function loadTeamLaborData(
       const agg = jobAgg[a.job_id]!
       agg.people.add(r.person_name)
       const pctHrs = hours * (a.pct / 100)
+      const costPart = pctHrs * rate
       agg.hoursByPerson[r.person_name] = (agg.hoursByPerson[r.person_name] ?? 0) + pctHrs
-      agg.costByPerson[r.person_name] = (agg.costByPerson[r.person_name] ?? 0) + pctHrs * rate
+      agg.costByPerson[r.person_name] = (agg.costByPerson[r.person_name] ?? 0) + costPart
+      if (!jobDetailByPersonDate[a.job_id]) jobDetailByPersonDate[a.job_id] = {}
+      const byPerson = jobDetailByPersonDate[a.job_id]!
+      if (!byPerson[r.person_name]) byPerson[r.person_name] = {}
+      const byDate = byPerson[r.person_name]!
+      const prev = byDate[r.work_date] ?? { hours: 0, cost: 0 }
+      byDate[r.work_date] = { hours: prev.hours + pctHrs, cost: prev.cost + costPart }
     }
   }
   const jobIds = Object.keys(jobAgg)
@@ -113,11 +130,20 @@ export async function loadTeamLaborData(
     const people = [...agg.people]
     const manHours = Object.values(agg.hoursByPerson).reduce((s, h) => s + h, 0)
     const jobCost = Object.values(agg.costByPerson).reduce((s, c) => s + c, 0)
-    const breakdown = people.map((p) => ({
-      personName: p,
-      hours: agg.hoursByPerson[p] ?? 0,
-      cost: agg.costByPerson[p] ?? 0,
-    }))
+    const byPersonDate = jobDetailByPersonDate[jobId] ?? {}
+    const breakdown: TeamLaborBreakdownEntry[] = people.map((p) => {
+      const hours = agg.hoursByPerson[p] ?? 0
+      const cost = agg.costByPerson[p] ?? 0
+      const dateMap = byPersonDate[p] ?? {}
+      const byWorkDate = Object.keys(dateMap)
+        .sort()
+        .map((wd) => ({
+          workDate: wd,
+          hours: dateMap[wd]!.hours,
+          cost: dateMap[wd]!.cost,
+        }))
+      return { personName: p, hours, cost, byWorkDate }
+    })
     return {
       jobId,
       hcpNumber: info.hcp_number,

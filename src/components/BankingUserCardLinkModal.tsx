@@ -13,6 +13,9 @@ export type BankingUserCardLinkModalProps = {
   usersOptions: SearchableSelectOption[]
   authUserId: string | null
   onSaved?: () => void
+  onOpenRecentTransactions?: (mercuryDebitCardId: string) => void
+  /** When true, Escape should close the stacked recent-tx preview first, not this modal. */
+  recentPreviewOpen?: boolean
 }
 
 export function BankingUserCardLinkModal({
@@ -23,6 +26,8 @@ export function BankingUserCardLinkModal({
   usersOptions,
   authUserId,
   onSaved,
+  onOpenRecentTransactions,
+  recentPreviewOpen = false,
 }: BankingUserCardLinkModalProps) {
   const { showToast } = useToastContext()
   const [userIdByCard, setUserIdByCard] = useState<Record<string, string>>({})
@@ -71,13 +76,14 @@ export function BankingUserCardLinkModal({
     if (!open) return
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        if (recentPreviewOpen) return
         e.preventDefault()
         onClose()
       }
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [open, onClose])
+  }, [open, onClose, recentPreviewOpen])
 
   async function saveCard(mercuryDebitCardId: string) {
     const userId = userIdByCard[mercuryDebitCardId] ?? ''
@@ -225,12 +231,28 @@ export function BankingUserCardLinkModal({
                   }}
                 >
                   <div style={{ flex: '0 1 12rem', minWidth: 0 }}>
-                    <div
+                    <button
+                      type="button"
                       title={cardId}
-                      style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: '#0f172a', fontWeight: 600 }}
+                      aria-label="View recent transactions for this card"
+                      disabled={!onOpenRecentTransactions}
+                      onClick={() => onOpenRecentTransactions?.(cardId)}
+                      style={{
+                        fontFamily: 'monospace',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        display: 'block',
+                        padding: 0,
+                        border: 'none',
+                        background: 'none',
+                        color: onOpenRecentTransactions ? '#1d4ed8' : '#0f172a',
+                        cursor: onOpenRecentTransactions ? 'pointer' : 'default',
+                        textDecoration: onOpenRecentTransactions ? 'underline' : 'none',
+                        textAlign: 'left',
+                      }}
                     >
                       {formatMercuryDebitCardIdCompact(cardId)}
-                    </div>
+                    </button>
                     {nick ? (
                       <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 2 }}>{nick}</div>
                     ) : null}

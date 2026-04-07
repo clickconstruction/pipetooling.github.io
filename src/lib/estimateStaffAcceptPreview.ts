@@ -1,5 +1,6 @@
 import type { EstimateExperienceOverrideKey } from './estimateCustomerExperience'
 import { parseEstimateExperienceOverrides } from './estimateCustomerExperience'
+import type { CustomerAttachmentPayload } from './estimateCustomerAttachment'
 
 /** localStorage key prefix — shared across tabs (same origin) for staff “Preview as customer” in a new window. */
 export const STAFF_ACCEPT_PREVIEW_STORAGE_PREFIX = 'estimate_staff_accept_preview:'
@@ -23,6 +24,8 @@ export type StaffAcceptPreviewSnapshotV1 = {
   overrides: Record<string, string> | null
   /** Acceptance page header logo; optional for snapshots written before this field existed */
   accept_header_brand?: 'elec' | 'plum' | null
+  /** Supporting document for customer page preview; optional for older snapshots */
+  customer_attachment?: CustomerAttachmentPayload | null
 }
 
 type StaffAcceptPreviewStorageEnvelopeV2 = {
@@ -77,6 +80,20 @@ function parseSnapshotV1FromRecord(
     else if (ab === 'elec' || ab === 'plum') accept_header_brand = ab
     else accept_header_brand = null
   }
+  let customer_attachment: CustomerAttachmentPayload | null | undefined = undefined
+  if ('customer_attachment' in o && o.customer_attachment != null) {
+    const ca = o.customer_attachment as Record<string, unknown>
+    const url = typeof ca.url === 'string' && ca.url.startsWith('https://') ? ca.url.trim() : ''
+    if (url) {
+      const label =
+        ca.label === null ? null : typeof ca.label === 'string' ? ca.label.trim() || null : null
+      customer_attachment = { url, label }
+    } else {
+      customer_attachment = null
+    }
+  } else if ('customer_attachment' in o && o.customer_attachment === null) {
+    customer_attachment = null
+  }
   return {
     v: 1,
     estimateId,
@@ -88,6 +105,7 @@ function parseSnapshotV1FromRecord(
     ...(for_line !== undefined ? { for_line } : {}),
     overrides,
     ...(accept_header_brand !== undefined ? { accept_header_brand } : {}),
+    ...(customer_attachment !== undefined ? { customer_attachment } : {}),
   }
 }
 
@@ -178,6 +196,7 @@ export function buildStaffAcceptPreviewSnapshot(input: {
   forLineEffective: string
   cxOverrideFields: Partial<Record<EstimateExperienceOverrideKey, string>>
   acceptHeaderBrand?: 'elec' | 'plum' | null
+  customerAttachment?: CustomerAttachmentPayload | null
 }): StaffAcceptPreviewSnapshotV1 {
   const parsed = parseEstimateExperienceOverrides(input.cxOverrideFields)
   const overridesKeys = Object.keys(parsed)
@@ -193,5 +212,6 @@ export function buildStaffAcceptPreviewSnapshot(input: {
     for_line: fl || null,
     overrides: overridesKeys.length > 0 ? (parsed as Record<string, string>) : null,
     accept_header_brand: input.acceptHeaderBrand ?? null,
+    ...(input.customerAttachment != null ? { customer_attachment: input.customerAttachment } : {}),
   }
 }

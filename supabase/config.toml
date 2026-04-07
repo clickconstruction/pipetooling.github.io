@@ -394,6 +394,10 @@ verify_jwt = false
 [functions.send-estimate-to-customer]
 verify_jwt = false
 
+# Staff: JWT validated in function (getUser). Heuristic probe for Google Drive/Docs attachment URLs.
+[functions.check-estimate-attachment-url]
+verify_jwt = false
+
 # Staff: JWT validated in function (getUser). Requires IPINFO_TOKEN secret for ipinfo.io.
 [functions.resolve-ip-geolocation]
 verify_jwt = false

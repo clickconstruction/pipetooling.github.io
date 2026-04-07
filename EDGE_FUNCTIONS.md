@@ -725,6 +725,30 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ---
 
+### check-estimate-attachment-url
+
+**Purpose**: Authenticated **heuristic** probe for a pasted **Google Drive** or **Google Docs** HTTPS URL (draft “supporting document” field). Classifies responses as **`likely_public`**, **`likely_ok_html`** (2xx HTML without restricted markers — e.g. typical viewer), **`likely_restricted`**, or **`unknown`** for staff guidance only; **does not** enforce access or block sending estimates.
+
+**Endpoint**: `POST /functions/v1/check-estimate-attachment-url`
+
+**Headers**: `Authorization: Bearer <user_jwt>`, `apikey: <anon_key>`, `Content-Type: application/json`
+
+**Body**: `{ "url": string }` (must normalize to HTTPS per shared **`normalizeCustomerAttachmentUrl`**; hostname must be **`drive.google.com`**, **`docs.google.com`**, or **`*.drive.google.com`**)
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`
+
+**Gateway**: `verify_jwt = false`; JWT validated with **`auth.getUser`** in the function (same pattern as **`send-estimate-to-customer`**).
+
+**Success** (**200** JSON): `{ "ok": true, "result": "likely_public" | "likely_ok_html" | "likely_restricted" | "unknown", "message"?: string, "httpStatus"?: number }`
+
+**Client errors**: **400** invalid URL or non‑Drive/Docs host; **401** missing/invalid session.
+
+**Note**: Results are **best-effort** (HTML viewer pages, Workspace policies, timeouts). Staff should still verify in a private/incognito window when unsure.
+
+**Implementation**: [`supabase/functions/check-estimate-attachment-url/index.ts`](supabase/functions/check-estimate-attachment-url/index.ts); UI: draft **Check link** in [`Estimates.tsx`](src/pages/Estimates.tsx).
+
+---
+
 ### resolve-ip-geolocation
 
 **Purpose**: Resolve a **public** IPv4/IPv6 address to approximate **lat/lng** (via **ipinfo.io**) so staff can open **Google Maps**. Used from **Estimates** customer activity and acceptance IP lines ([`IpAddressMapButton`](src/components/estimates/IpAddressMapButton.tsx)).

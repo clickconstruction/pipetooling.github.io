@@ -14,7 +14,7 @@ import {
 import { HOURS_GRID_FIRST_COL_LABEL } from '../constants/hoursGridFirstCol'
 import { formatCurrency } from '../lib/format'
 import { buildPayReportDocumentTitle } from '../lib/payReportDocumentTitle'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { buildCrewMapFromJobsAndBidRows, type MergedCrewMapRow } from '../utils/crewAssignments'
 import { formatDateRangeLabel } from '../utils/dateRangeLabel'
 import { CLOCK_SESSION_LIST_SELECT } from '../lib/clockSessionSelect'
@@ -28,13 +28,14 @@ import {
 } from '../lib/salaryScheduleSync'
 import {
   isPayStubFullyPaid,
+  PAY_STUB_PAY_FULLY_TOLERANCE,
   remainingPayStubBalance,
   sumPayStubPaymentAmounts,
   type PayStubPaymentRow,
 } from '../lib/payStubPayments'
 import { PayStubAdditionalModal } from '../components/pay/PayStubAdditionalModal'
 import { PayStubLessModal } from '../components/pay/PayStubLessModal'
-import { PersonOffsetFormModal } from '../components/pay/PersonOffsetFormModal'
+import { type PersonOffsetInitialDraft, PersonOffsetFormModal } from '../components/pay/PersonOffsetFormModal'
 import {
   type PayStubAdditionalLineRow,
   type PayStubDeductionRow,
@@ -148,6 +149,8 @@ const SHOW_USERS_TAB_TAG_ORG_SIGNALS_KEY = 'people.usersTab.showTagOrgSignals'
 /** Pay History overlays: base layer; nested dialogs (e.g. Record payment from Draft Payroll) must be higher. */
 const Z_PEOPLE_PAY_MODAL = 1100
 const Z_PEOPLE_PAY_MODAL_NESTED = 1200
+/** Above Record payment / nested pay dialogs when opening PersonOffsetFormModal from Pay History. */
+const Z_PEOPLE_OFFSET_FORM = 1210
 
 /** Display order for People → Users tab sections (master roster + user-only roles + devs last). */
 type UsersTabSection = { type: 'personKind'; kind: PersonKind } | { type: 'dev' }
@@ -475,6 +478,16 @@ export default function People() {
   const [generatingPayStubPerson, setGeneratingPayStubPerson] = useState<string | null>(null)
   const [bulkGeneratingPayStubs, setBulkGeneratingPayStubs] = useState(false)
   const [draftPayrollModalOpen, setDraftPayrollModalOpen] = useState(false)
+  const [draftPayrollPendingApprovalCount, setDraftPayrollPendingApprovalCount] = useState<number | null>(null)
+  const [draftPayrollPendingApprovalLoading, setDraftPayrollPendingApprovalLoading] = useState(false)
+  const [draftPayrollPendingApprovalError, setDraftPayrollPendingApprovalError] = useState<string | null>(null)
+  const draftPayrollRealtimeSnapRef = useRef({
+    draftOpen: false,
+    activeTab: '' as string,
+    canAccessPay: false,
+    periodStart: '',
+    periodEnd: '',
+  })
   const [runPayrollReviewDaysDetail, setRunPayrollReviewDaysDetail] = useState<{
     personName: string
     items: Array<{ workDate: string; issue: 'not_correct' | 'missing_job' }>
@@ -541,6 +554,7 @@ export default function People() {
   const [offsetsLoading, setOffsetsLoading] = useState(false)
   const [offsetsError, setOffsetsError] = useState<string | null>(null)
   const [offsetFormOpen, setOffsetFormOpen] = useState(false)
+  const [offsetFormInitialCreateDraft, setOffsetFormInitialCreateDraft] = useState<PersonOffsetInitialDraft | null>(null)
   const [editingOffset, setEditingOffset] = useState<PersonOffset | null>(null)
   const [offsetApplyModalOpen, setOffsetApplyModalOpen] = useState(false)
   const [offsetToApply, setOffsetToApply] = useState<PersonOffset | null>(null)
@@ -2322,6 +2336,45 @@ export default function People() {
     setPendingClockSessions((data ?? []) as unknown as ClockSessionRow[])
   }
 
+  const draftPayrollPendingFetchIdRef = useRef(0)
+  const draftPayrollCrewMergeFetchIdRef = useRef(0)
+  const loadDraftPayrollPendingApprovalsRef = useRef<(periodStart: string, periodEnd: string) => void>(() => {})
+
+  const loadDraftPayrollPendingApprovals = useCallback(async (periodStart: string, periodEnd: string) => {
+    if (!canAccessPay || periodStart > periodEnd) return
+    const fetchId = ++draftPayrollPendingFetchIdRef.current
+    setDraftPayrollPendingApprovalLoading(true)
+    setDraftPayrollPendingApprovalError(null)
+    try {
+      const count = await withSupabaseRetry(
+        async () => {
+          const result = await supabase
+            .from('clock_sessions')
+            .select('*', { count: 'exact', head: true })
+            .is('approved_at', null)
+            .is('rejected_at', null)
+            .gte('work_date', periodStart)
+            .lte('work_date', periodEnd)
+          if (result.error) return { data: null as number | null, error: result.error }
+          return { data: result.count ?? 0, error: null }
+        },
+        'draft payroll pending approvals count',
+      )
+      if (fetchId !== draftPayrollPendingFetchIdRef.current) return
+      setDraftPayrollPendingApprovalCount(count)
+    } catch (e) {
+      if (fetchId !== draftPayrollPendingFetchIdRef.current) return
+      setDraftPayrollPendingApprovalError(formatErrorMessage(e, 'Could not load pending approvals'))
+      setDraftPayrollPendingApprovalCount(null)
+    } finally {
+      if (fetchId === draftPayrollPendingFetchIdRef.current) {
+        setDraftPayrollPendingApprovalLoading(false)
+      }
+    }
+  }, [canAccessPay])
+
+  loadDraftPayrollPendingApprovalsRef.current = loadDraftPayrollPendingApprovals
+
   async function loadApprovedClockSessions(start: string, end: string) {
     if (!canAccessHours && !canAccessPay) return
     const { data, error } = await supabase
@@ -2767,7 +2820,9 @@ export default function People() {
         if (pending.length > 0) {
           block += '<div style="margin-top: 0.75rem;"><strong>Pending Offsets (not yet on a pay report):</strong></div>'
           for (const o of pending) {
-            block += `<div class="meta">- ${escapeHtml(o.type === 'backcharge' ? 'Backcharge' : 'Damage')}${o.description ? ` (${escapeHtml(o.description)})` : ''}: $${formatCurrency(o.amount)}</div>`
+            const pendingTypeLabel =
+              o.type === 'backcharge' ? 'Backcharge' : o.type === 'damage' ? 'Damage' : o.type === 'employee_credit' ? 'Employee credit' : o.type
+            block += `<div class="meta">- ${escapeHtml(pendingTypeLabel)}${o.description ? ` (${escapeHtml(o.description)})` : ''}: $${formatCurrency(o.amount)}</div>`
           }
         }
         return block
@@ -3284,6 +3339,33 @@ export default function People() {
     setPayStubMarkPaidNote('')
   }
 
+  function openEmployeeCreditFromRecordPayment() {
+    if (!payStubMarkPaidTarget) return
+    const stub = payStubMarkPaidTarget
+    const paidSoFar = sumPayStubPaymentAmounts(payStubPaymentsByStubId[stub.id])
+    const dedSum = sumPayStubDeductionAmounts(payStubDeductionsByStubId[stub.id])
+    const addSum = sumPayStubAdditionalAmounts(payStubAdditionalByStubId[stub.id])
+    const netPay = stubNetPay(stub.gross_pay, dedSum, addSum)
+    const remaining = remainingPayStubBalance(netPay, paidSoFar)
+    const amtRaw = payStubMarkPaidAmount.trim().replace(/,/g, '')
+    const totalPaid = parseFloat(amtRaw)
+    let amountStr = ''
+    if (Number.isFinite(totalPaid) && totalPaid > remaining + PAY_STUB_PAY_FULLY_TOLERANCE) {
+      amountStr = (Math.round((totalPaid - remaining) * 100) / 100).toFixed(2)
+    }
+    const memo = payStubMarkPaidNote.trim()
+    const periodLine = `Pay period ${stub.period_start} – ${stub.period_end}`
+    const description = [memo, periodLine].filter(Boolean).join(' · ')
+    openOffsetFormWithDraft({
+      personName: stub.person_name,
+      type: 'employee_credit',
+      amount: amountStr,
+      description,
+      occurredDate: payStubMarkPaidDate.trim() || todayYyyyMmDdLocal(),
+    })
+    closePayStubMarkPaidModal()
+  }
+
   function openPayStubNoteDetail(stub: PayStubRow) {
     setPayStubNoteDetail(stub)
   }
@@ -3308,8 +3390,13 @@ export default function People() {
       setError('Enter a valid payment amount greater than zero.')
       return
     }
-    if (amount > remaining + 0.011) {
-      setError(`Amount cannot exceed remaining balance after Net Pay ($${formatCurrency(remaining)}).`)
+    if (remaining <= PAY_STUB_PAY_FULLY_TOLERANCE) {
+      setError('No remaining balance to apply this payment to.')
+      return
+    }
+    const applied = Math.round(Math.min(amount, remaining) * 100) / 100
+    if (applied <= 0) {
+      setError('No remaining balance to apply this payment to.')
       return
     }
     setMarkingPayStubId(stub.id)
@@ -3319,7 +3406,7 @@ export default function People() {
         async () =>
           await supabase.from('pay_stub_payments').insert({
             pay_stub_id: stub.id,
-            amount,
+            amount: applied,
             paid_at: paidAt,
             memo: noteTrim || null,
             created_by: authUser.id,
@@ -3564,6 +3651,36 @@ export default function People() {
       return () => clearTimeout(t)
     }
   }, [activeTab, canAccessPay, payStubPeriodStart, payStubPeriodEnd])
+
+  useEffect(() => {
+    draftPayrollRealtimeSnapRef.current = {
+      draftOpen: draftPayrollModalOpen,
+      activeTab,
+      canAccessPay,
+      periodStart: payStubPeriodStart,
+      periodEnd: payStubPeriodEnd,
+    }
+  }, [draftPayrollModalOpen, activeTab, canAccessPay, payStubPeriodStart, payStubPeriodEnd])
+
+  useEffect(() => {
+    if (!draftPayrollModalOpen || !canAccessPay) {
+      if (!draftPayrollModalOpen) {
+        setDraftPayrollPendingApprovalCount(null)
+        setDraftPayrollPendingApprovalLoading(false)
+        setDraftPayrollPendingApprovalError(null)
+      }
+      return
+    }
+    if (payStubPeriodStart > payStubPeriodEnd) {
+      setDraftPayrollPendingApprovalCount(null)
+      setDraftPayrollPendingApprovalLoading(false)
+      return
+    }
+    const t = setTimeout(() => {
+      void loadDraftPayrollPendingApprovals(payStubPeriodStart, payStubPeriodEnd)
+    }, 80)
+    return () => clearTimeout(t)
+  }, [draftPayrollModalOpen, canAccessPay, payStubPeriodStart, payStubPeriodEnd, loadDraftPayrollPendingApprovals])
 
   useEffect(() => {
     if (payStubCalendarPerson) {
@@ -3940,18 +4057,34 @@ export default function People() {
   }
 
   function openOffsetForm(o?: PersonOffset) {
+    setOffsetFormInitialCreateDraft(null)
     setEditingOffset(o ?? null)
     setOffsetFormOpen(true)
+  }
+
+  function openOffsetFormWithDraft(draft: PersonOffsetInitialDraft) {
+    setEditingOffset(null)
+    setOffsetFormInitialCreateDraft(draft)
+    setOffsetFormOpen(true)
+    setActiveTab('offsets')
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p)
+      next.set('tab', 'offsets')
+      return next
+    })
   }
 
   function closeOffsetForm() {
     setOffsetFormOpen(false)
     setEditingOffset(null)
+    setOffsetFormInitialCreateDraft(null)
     setOffsetsError(null)
   }
 
   async function deleteOffset(o: PersonOffset) {
-    if (!window.confirm(`Delete ${o.type} $${formatCurrency(o.amount)} for ${o.person_name}?`)) return
+    const delTypeLabel =
+      o.type === 'backcharge' ? 'Backcharge' : o.type === 'damage' ? 'Damage' : o.type === 'employee_credit' ? 'Employee credit' : o.type
+    if (!window.confirm(`Delete ${delTypeLabel} $${formatCurrency(o.amount)} for ${o.person_name}?`)) return
     const { error: err } = await supabase.from('person_offsets').delete().eq('id', o.id)
     if (err) setOffsetsError(err.message)
     else loadOffsets()
@@ -3959,6 +4092,10 @@ export default function People() {
 
   async function applyOffsetToPayStub() {
     if (!offsetToApply || !offsetApplyPayStubId) return
+    if (offsetToApply.type === 'employee_credit') {
+      setOffsetsError('Employee credit cannot be applied to a stub this way yet.')
+      return
+    }
     const { error: err } = await supabase.from('person_offsets').update({ pay_stub_id: offsetApplyPayStubId }).eq('id', offsetToApply.id)
     if (err) setOffsetsError(err.message)
     else {
@@ -4581,7 +4718,48 @@ export default function People() {
       setCrewJobsByDatePerson(buildCrewMapFromJobsAndBidRows(jobsRows, bidsRows))
     })
   }
+
+  /** Merges crew rows for Draft Payroll review; Hours tab loader still replaces its range only. */
+  function mergeCrewJobsForDateRange(periodStart: string, periodEnd: string) {
+    if (periodStart > periodEnd) return
+    const days = getDaysInRange(periodStart, periodEnd)
+    if (days.length === 0) return
+    const fetchId = ++draftPayrollCrewMergeFetchIdRef.current
+    void Promise.all([
+      supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').in('work_date', days),
+      supabase.from('people_crew_bids').select('work_date, person_name, crew_lead_person_name, bid_assignments').in('work_date', days),
+    ]).then(([jobsRes, bidsRes]) => {
+      if (fetchId !== draftPayrollCrewMergeFetchIdRef.current) return
+      const jobsRows = (jobsRes.data ?? []) as Array<{
+        work_date: string
+        person_name: string
+        crew_lead_person_name: string | null
+        job_assignments: CrewJobAssignment[]
+      }>
+      const bidsRows = (bidsRes.data ?? []) as Array<{
+        work_date: string
+        person_name: string
+        crew_lead_person_name: string | null
+        bid_assignments: CrewBidAssignment[]
+      }>
+      const partial = buildCrewMapFromJobsAndBidRows(jobsRows, bidsRows)
+      setCrewJobsByDatePerson((prev) => ({ ...prev, ...partial }))
+    })
+  }
   loadCrewJobsRef.current = loadCrewJobsForHoursRange
+
+  useEffect(() => {
+    if (!draftPayrollModalOpen || !canAccessPay) return
+    if (payStubPeriodStart > payStubPeriodEnd) return
+    const t = setTimeout(() => {
+      void loadHoursDaysCorrect(payStubPeriodStart, payStubPeriodEnd)
+      mergeCrewJobsForDateRange(payStubPeriodStart, payStubPeriodEnd)
+    }, 80)
+    return () => {
+      clearTimeout(t)
+      draftPayrollCrewMergeFetchIdRef.current += 1
+    }
+  }, [draftPayrollModalOpen, canAccessPay, payStubPeriodStart, payStubPeriodEnd])
 
   useEffect(() => {
     if (activeTab !== 'hours' || !canAccessHours) return
@@ -4614,7 +4792,7 @@ export default function People() {
 
   useEffect(() => {
     const hasAccess = canAccessHours || canAccessPay || canViewCostMatrixShared
-    const isRelevantTab = activeTab === 'pay' || activeTab === 'hours'
+    const isRelevantTab = activeTab === 'pay' || activeTab === 'hours' || activeTab === 'pay_stubs'
     if (!hasAccess || !isRelevantTab) return
     const channel = supabase
       .channel('people-hours-changes')
@@ -4623,6 +4801,15 @@ export default function People() {
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'clock_sessions' }, () => {
         loadAllClockSessionsRef.current?.()
+        const snap = draftPayrollRealtimeSnapRef.current
+        if (
+          snap.draftOpen &&
+          snap.activeTab === 'pay_stubs' &&
+          snap.canAccessPay &&
+          snap.periodStart <= snap.periodEnd
+        ) {
+          void loadDraftPayrollPendingApprovalsRef.current(snap.periodStart, snap.periodEnd)
+        }
       })
       .subscribe()
     return () => {
@@ -5753,6 +5940,22 @@ export default function People() {
     setHoursDateEnd(dEnd.toLocaleDateString('en-CA'))
   }
 
+  /** Prior full Sun–Sat week from local today (en-CA), for Draft Payroll default period. */
+  function getPriorWeekPayStubRangeEnCa(): { periodStart: string; periodEnd: string } {
+    const d = new Date()
+    const day = d.getDay()
+    const sundayThisWeek = new Date(d)
+    sundayThisWeek.setDate(d.getDate() - day)
+    const priorSunday = new Date(sundayThisWeek)
+    priorSunday.setDate(sundayThisWeek.getDate() - 7)
+    const priorSaturday = new Date(priorSunday)
+    priorSaturday.setDate(priorSunday.getDate() + 6)
+    return {
+      periodStart: priorSunday.toLocaleDateString('en-CA'),
+      periodEnd: priorSaturday.toLocaleDateString('en-CA'),
+    }
+  }
+
   function shiftPayStubWeek(delta: number) {
     const dStart = new Date(payStubPeriodStart + 'T12:00:00')
     const dEnd = new Date(payStubPeriodEnd + 'T12:00:00')
@@ -5760,6 +5963,22 @@ export default function People() {
     dEnd.setDate(dEnd.getDate() + delta * 7)
     setPayStubPeriodStart(dStart.toLocaleDateString('en-CA'))
     setPayStubPeriodEnd(dEnd.toLocaleDateString('en-CA'))
+  }
+
+  /** Align Hours tab range with Draft Payroll period so pending sessions match the banner count. */
+  function openHoursForDraftPayrollPeriod(periodStart: string, periodEnd: string) {
+    if (!canAccessHours) return
+    if (periodStart <= periodEnd) {
+      setHoursDateStart(periodStart)
+      setHoursDateEnd(periodEnd)
+    }
+    setDraftPayrollModalOpen(false)
+    setActiveTab('hours')
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p)
+      next.set('tab', 'hours')
+      return next
+    })
   }
 
   const matrixDays = getDaysInRange(matrixStartDate, matrixEndDate)
@@ -6480,7 +6699,12 @@ export default function People() {
                   <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Generate Pay Reports</h2>
                   <button
                     type="button"
-                    onClick={() => setDraftPayrollModalOpen(true)}
+                    onClick={() => {
+                      const { periodStart, periodEnd } = getPriorWeekPayStubRangeEnCa()
+                      setPayStubPeriodStart(periodStart)
+                      setPayStubPeriodEnd(periodEnd)
+                      setDraftPayrollModalOpen(true)
+                    }}
                     disabled={showPeopleForHours.length === 0}
                     title={showPeopleForHours.length === 0 ? 'Go to Pay tab and check Show in Hours for people to track' : undefined}
                     style={{
@@ -7177,8 +7401,8 @@ export default function People() {
                 ),
               )}
             </p>
-            <label style={{ display: 'block', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
-              <span style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 500 }}>Amount</span>
+            <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.875rem' }}>
+              <span style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 500 }}>Amount paid</span>
               <input
                 type="text"
                 inputMode="decimal"
@@ -7188,6 +7412,9 @@ export default function People() {
                 style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4, width: '100%', maxWidth: 200 }}
               />
             </label>
+            <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#6b7280', lineHeight: 1.4 }}>
+              <strong>Confirm</strong> records up to the <strong>remaining balance</strong> shown above from this amount (partial payments allowed). If you paid more than the remainder, use the section below to record an employee credit for the excess.
+            </p>
             <label style={{ display: 'block', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
               <span style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 500 }}>Paid date (sent)</span>
               <input
@@ -7207,6 +7434,55 @@ export default function People() {
                 style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, width: '100%', fontFamily: 'inherit', fontSize: '0.875rem', resize: 'vertical' }}
               />
             </label>
+            {(() => {
+              const stub = payStubMarkPaidTarget
+              const paidSoFar = sumPayStubPaymentAmounts(payStubPaymentsByStubId[stub.id])
+              const rem = remainingPayStubBalance(
+                stubNetPay(
+                  stub.gross_pay,
+                  sumPayStubDeductionAmounts(payStubDeductionsByStubId[stub.id] ?? []),
+                  sumPayStubAdditionalAmounts(payStubAdditionalByStubId[stub.id] ?? []),
+                ),
+                paidSoFar,
+              )
+              const parsedPaid = parseFloat(payStubMarkPaidAmount.trim().replace(/,/g, ''))
+              if (!Number.isFinite(parsedPaid) || parsedPaid <= rem + PAY_STUB_PAY_FULLY_TOLERANCE) return null
+              const excess = Math.round((parsedPaid - rem) * 100) / 100
+              return (
+                <div
+                  style={{
+                    marginBottom: '0.75rem',
+                    padding: '0.75rem',
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 6,
+                  }}
+                >
+                  <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: '#334155', lineHeight: 1.45 }}>
+                    You entered <strong>${formatCurrency(parsedPaid)}</strong>, which is more than the remaining balance (<strong>${formatCurrency(rem)}</strong>).{' '}
+                    <strong>Confirm</strong> will apply <strong>${formatCurrency(rem)}</strong> to this pay report.{' '}
+                    <strong>Excess:</strong> ${formatCurrency(excess)} — use the button below to open <strong>Offsets</strong> and save a pending employee credit (optional; you can confirm the payment first).
+                  </p>
+                  <button
+                    type="button"
+                    onClick={openEmployeeCreditFromRecordPayment}
+                    disabled={markingPayStubId === payStubMarkPaidTarget.id}
+                    style={{
+                      padding: '0.4rem 0.85rem',
+                      fontSize: '0.875rem',
+                      background: markingPayStubId === payStubMarkPaidTarget.id ? '#9ca3af' : '#2563eb',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 6,
+                      cursor: markingPayStubId === payStubMarkPaidTarget.id ? 'not-allowed' : 'pointer',
+                      fontWeight: 500,
+                    }}
+                  >
+                    Record employee credit…
+                  </button>
+                </div>
+              )
+            })()}
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button
                 type="button"
@@ -7312,6 +7588,51 @@ export default function People() {
                   <button type="button" onClick={() => shiftPayStubWeek(1)} disabled={bulkGeneratingPayStubs} style={{ padding: '2px 8px', fontSize: '0.8125rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: bulkGeneratingPayStubs ? 'not-allowed' : 'pointer', lineHeight: 1.3, opacity: bulkGeneratingPayStubs ? 0.5 : 1 }}>Next week</button>
                 </div>
               </div>
+              {draftPayrollPendingApprovalLoading ? (
+                <p style={{ fontSize: '0.8125rem', color: '#6b7280', margin: '0 0 0.75rem', textAlign: 'center' }}>Checking pending approvals…</p>
+              ) : null}
+              {draftPayrollPendingApprovalError ? (
+                <p style={{ fontSize: '0.8125rem', color: '#b91c1c', margin: '0 0 0.75rem', textAlign: 'center' }}>{draftPayrollPendingApprovalError}</p>
+              ) : null}
+              {!draftPayrollPendingApprovalLoading &&
+              draftPayrollPendingApprovalCount != null &&
+              draftPayrollPendingApprovalCount > 0 ? (
+                <div
+                  role="status"
+                  style={{
+                    marginBottom: '0.75rem',
+                    padding: '0.6rem 0.75rem',
+                    borderRadius: 6,
+                    border: '1px solid #f59e0b',
+                    background: '#fef3c7',
+                    color: '#92400e',
+                    fontSize: '0.8125rem',
+                    lineHeight: 1.4,
+                  }}
+                >
+                  <strong>{draftPayrollPendingApprovalCount}</strong> clock session{draftPayrollPendingApprovalCount === 1 ? '' : 's'} in this period still need approval (Hours → Pending sessions).
+                  {canAccessHours ? (
+                    <div style={{ marginTop: '0.5rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => openHoursForDraftPayrollPeriod(start, end)}
+                        style={{
+                          padding: '0.25rem 0.5rem',
+                          fontSize: '0.8125rem',
+                          background: '#b45309',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: 4,
+                          cursor: 'pointer',
+                          fontWeight: 500,
+                        }}
+                      >
+                        Open Hours tab
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
               {showPeopleForHours.length === 0 ? (
                 <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No people with Show in Hours selected. Go to Pay tab and check Show in Hours for people to track.</p>
               ) : (
@@ -9634,10 +9955,12 @@ export default function People() {
                 <tbody>
                   {offsets.map((o) => {
                     const stub = o.pay_stub_id ? payStubs.find((s) => s.id === o.pay_stub_id) : null
+                    const offsetTypeLabel =
+                      o.type === 'backcharge' ? 'Backcharge' : o.type === 'damage' ? 'Damage' : o.type === 'employee_credit' ? 'Employee credit' : o.type
                     return (
                       <tr key={o.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                         <td style={{ padding: '0.75rem' }}>{o.person_name}</td>
-                        <td style={{ padding: '0.75rem' }}>{o.type === 'backcharge' ? 'Backcharge' : 'Damage'}</td>
+                        <td style={{ padding: '0.75rem' }}>{offsetTypeLabel}</td>
                         <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(o.amount)}</td>
                         <td style={{ padding: '0.75rem' }}>{o.description || '—'}</td>
                         <td style={{ padding: '0.75rem' }}>{o.occurred_date}</td>
@@ -9660,6 +9983,28 @@ export default function People() {
                               >
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                                   <path d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+                                </svg>
+                              </button>
+                            ) : o.type === 'employee_credit' ? (
+                              <button
+                                type="button"
+                                disabled
+                                title="Applying employee credit to Net Pay is not wired yet (future: Additional line on a pay stub)."
+                                aria-label="Apply to pay stub unavailable for employee credit"
+                                style={{
+                                  padding: '0.35rem',
+                                  cursor: 'not-allowed',
+                                  background: '#f3f4f6',
+                                  border: '1px solid #e5e7eb',
+                                  borderRadius: 6,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: '#9ca3af',
+                                }}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                  <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                                 </svg>
                               </button>
                             ) : (
@@ -9704,7 +10049,11 @@ export default function People() {
                   })}
                 </tbody>
               </table>
-              {offsets.length === 0 && <p style={{ padding: '1rem', color: '#6b7280', margin: 0 }}>No offsets yet. Add backcharges or damages to get started.</p>}
+              {offsets.length === 0 && (
+                <p style={{ padding: '1rem', color: '#6b7280', margin: 0 }}>
+                  No offsets yet. Add backcharges, damages, or employee credits (e.g. from Record payment) to get started.
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -11380,9 +11729,13 @@ export default function People() {
         open={offsetFormOpen}
         onClose={closeOffsetForm}
         editingOffset={editingOffset}
-        initialCreateDraft={null}
+        initialCreateDraft={offsetFormInitialCreateDraft}
+        zIndex={Z_PEOPLE_OFFSET_FORM}
         personNameOptions={offsetPersonNameOptions}
-        onSaved={() => void loadOffsets()}
+        onSaved={() => {
+          void loadOffsets()
+          setOffsetFormInitialCreateDraft(null)
+        }}
         onError={setOffsetsError}
       />
 

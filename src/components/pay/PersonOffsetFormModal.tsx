@@ -2,9 +2,11 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 
+export type PersonOffsetKind = 'backcharge' | 'damage' | 'employee_credit'
+
 export type PersonOffsetInitialDraft = {
   personName: string
-  type: 'backcharge' | 'damage'
+  type: PersonOffsetKind
   amount: string
   description: string
   occurredDate: string
@@ -48,7 +50,7 @@ export function PersonOffsetFormModal({
   onError,
 }: PersonOffsetFormModalProps) {
   const [personName, setPersonName] = useState('')
-  const [offsetType, setOffsetType] = useState<'backcharge' | 'damage'>('backcharge')
+  const [offsetType, setOffsetType] = useState<PersonOffsetKind>('backcharge')
   const [amount, setAmount] = useState('')
   const [description, setDescription] = useState('')
   const [occurredDate, setOccurredDate] = useState(defaultOccurredDateYmd)
@@ -58,7 +60,13 @@ export function PersonOffsetFormModal({
     if (!open) return
     if (editingOffset) {
       setPersonName(editingOffset.person_name)
-      setOffsetType(editingOffset.type === 'damage' ? 'damage' : 'backcharge')
+      setOffsetType(
+        editingOffset.type === 'damage'
+          ? 'damage'
+          : editingOffset.type === 'employee_credit'
+            ? 'employee_credit'
+            : 'backcharge',
+      )
       setAmount(editingOffset.amount?.toString() ?? '')
       setDescription(editingOffset.description ?? '')
       setOccurredDate(editingOffset.occurred_date)
@@ -195,11 +203,12 @@ export function PersonOffsetFormModal({
           <label style={{ display: 'block', marginBottom: 4 }}>Type *</label>
           <select
             value={offsetType}
-            onChange={(e) => setOffsetType(e.target.value as 'backcharge' | 'damage')}
+            onChange={(e) => setOffsetType(e.target.value as PersonOffsetKind)}
             style={{ width: '100%', padding: '0.5rem' }}
           >
             <option value="backcharge">Backcharge</option>
             <option value="damage">Damage</option>
+            <option value="employee_credit">Employee credit (overpayment / advance)</option>
           </select>
         </div>
         <div style={{ marginBottom: '1rem' }}>
