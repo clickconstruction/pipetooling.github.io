@@ -106,6 +106,24 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: [`PreviewJobModal.tsx`](src/components/calendar/PreviewJobModal.tsx); types in [`database.ts`](src/types/database.ts)
 - **Category**: Jobs / Calendar
 
+**`20260407052651_job_schedule_blocks_min_duration_30m.sql`**
+- **Purpose**: Align DB with client **`JOB_SCHEDULE_BLOCK_MIN_DURATION_MINUTES`** (30 minutes)
+- **Changes**: **`CHECK`** on **`job_schedule_blocks`**: **`(time_end - time_start) >= interval '30 minutes'`**
+- **Impact**: [`ScheduleDispatch.tsx`](src/pages/ScheduleDispatch.tsx), [`ScheduleJobModal.tsx`](src/components/jobs/ScheduleJobModal.tsx), [`jobScheduleOverlap.ts`](src/lib/jobScheduleOverlap.ts)
+- **Category**: Jobs / Calendar
+
+**`20260407061043_job_schedule_blocks_shared_block_group.sql`**
+- **Purpose**: **Crew / mirror** schedule legs — multiple assignees share one logical planned window (same times and note)
+- **Changes**: **`shared_block_group_id uuid NULL`** on **`job_schedule_blocks`**; partial index **`idx_job_schedule_blocks_shared_group`** where non-null; column comment
+- **Impact**: [`jobScheduleBlocks.ts`](src/lib/jobScheduleBlocks.ts), [`ScheduleDispatch.tsx`](src/pages/ScheduleDispatch.tsx), [`ScheduleDispatchGrid.tsx`](src/components/schedule/ScheduleDispatchGrid.tsx), [`ScheduleJobModal.tsx`](src/components/jobs/ScheduleJobModal.tsx); **`RECENT_FEATURES.md`** v2.257
+- **Category**: Jobs / Calendar
+
+**`20260407165443_move_job_schedule_block_group.sql`**
+- **Purpose**: Schedule **Dispatch** DnD — move all legs of a **linked** group to a new **`work_date`** in one transaction with per-assignee overlap validation on the target day (**`SECURITY INVOKER`**, **`GRANT EXECUTE`** to **`authenticated`**)
+- **Changes**: **`move_job_schedule_block_group(p_job_id, p_shared_block_group_id, p_new_work_date)`**
+- **Impact**: [`scheduleDispatchDragEnd.ts`](src/lib/scheduleDispatchDragEnd.ts), [`jobScheduleBlocks.ts`](src/lib/jobScheduleBlocks.ts); **`RECENT_FEATURES.md`** v2.258
+- **Category**: Jobs / Calendar
+
 #### April 5, 2026
 
 **`20260405072854_estimate_create_job_rpc.sql`**

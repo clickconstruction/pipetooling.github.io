@@ -480,7 +480,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 | **Workflow** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ | ✅ limited |
 | **People** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ | ❌ |
 | **Jobs** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ✅ Reports + Billing | ✅ Reports + Sub Ledger |
-| **Dispatch** (`/schedule-dispatch`) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ week grid (same `job_schedule_blocks` mutate rules as office roles) |
+| **Dispatch** (`/schedule-dispatch`) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ week grid (same `job_schedule_blocks` rules; **+ → Linked copy** / **Linked** crew rows; DnD reassign **solo** legs only) |
 | **Banking** | ✅ full Mercury (Ledger + Sorting + Configuration + sync); RLS SELECT on **`mercury_transactions`** + nicknames | ❌ | ✅ **Sorting** (default slice, no Configuration / no sync); read **`mercury_transactions`** + nicknames; **edit `mercury_debit_card_nicknames`** only (RLS) | ❌ | ❌ | ❌ | ❌ |
 
 Mercury **Person** attribution (job splits modal): staff use **`list_users_for_banking_attribution`** (**SECURITY DEFINER**, same dev/master/assistant gate as **`replace_mercury_transaction_splits`**) for the user picker; **`mercury_transaction_attributions`** may store **`user_id`** or legacy **`person_id`** (not both).
@@ -662,6 +662,8 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 **SELECT**: Users who are the **assignee**, or who can see the parent **`jobs_ledger`** row via the same visibility family as **`jobs_ledger_thread_notes`** (master, dev, primary, adoption, superintendent/project access, **team** membership).
 
 **INSERT / UPDATE / DELETE**: **`dev`**, **`master_technician`**, **`assistant`**, **`superintendent`** only, with **job manage** access matching office/superintendent rules (not subcontractors, not team-only).
+
+**Linked rows**: Optional **`shared_block_group_id`** (UUID). Rows sharing a non-null value are edited as one logical block (times + note) in UI; each leg remains a normal row for RLS (assignee still scopes read where applicable).
 
 **Calendar / Preview**: Assignees see their blocks; **`list_assigned_jobs_for_dashboard`** includes **`project_id`** for mapping workflow context to team jobs on the Preview modal.
 

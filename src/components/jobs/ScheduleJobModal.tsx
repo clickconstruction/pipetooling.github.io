@@ -61,7 +61,7 @@ const EMPTY_TEAM_MEMBERS: ScheduleTeamMember[] = []
 export function ScheduleJobModal({ open, onClose, jobId, jobTitle, teamMembers }: Props) {
   const draftsRef = useRef<Record<string, ScheduleFormDraft>>({})
   const [contextStack, setContextStack] = useState<ScheduleJobContext[]>(() => [
-    { jobId, jobTitle, teamMembers },
+    { jobId, jobTitle, project_id: null, teamMembers },
   ])
   const [workDate, setWorkDate] = useState(() => scheduleTodayDateKey())
   const [blocksThisJob, setBlocksThisJob] = useState<Awaited<ReturnType<typeof fetchJobScheduleBlocksForJobDay>>['data']>([])
@@ -89,7 +89,7 @@ export function ScheduleJobModal({ open, onClose, jobId, jobTitle, teamMembers }
       setContextNavLoading(false)
       return
     }
-    setContextStack([{ jobId, jobTitle, teamMembers }])
+    setContextStack([{ jobId, jobTitle, project_id: null, teamMembers }])
     draftsRef.current = {}
     setWorkDate(scheduleTodayDateKey())
     setContextNavError(null)

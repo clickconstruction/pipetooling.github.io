@@ -20,6 +20,7 @@ export type ScheduleTeamMember = {
 export type ScheduleJobContext = {
   jobId: string
   jobTitle: string
+  project_id: string | null
   teamMembers: ScheduleTeamMember[]
 }
 
@@ -36,7 +37,7 @@ export async function fetchScheduleJobContext(
       async () =>
         await supabase
           .from('jobs_ledger')
-          .select('id, hcp_number, job_name, jobs_ledger_team_members(user_id, users(name))')
+          .select('id, hcp_number, job_name, project_id, jobs_ledger_team_members(user_id, users(name))')
           .eq('id', jobId)
           .maybeSingle(),
       'fetchScheduleJobContext',
@@ -45,6 +46,7 @@ export async function fetchScheduleJobContext(
       id: string
       hcp_number: string | null
       job_name: string | null
+      project_id: string | null
       jobs_ledger_team_members: JobsLedgerTeamMemberEmbed[] | null
     } | null
     if (!r?.id) return { data: null, error: 'Job not found or access denied.' }
@@ -52,10 +54,12 @@ export async function fetchScheduleJobContext(
       user_id: tm.user_id,
       name: tm.users?.name ?? null,
     }))
+    const pid = r.project_id != null && String(r.project_id).trim() !== '' ? String(r.project_id).trim() : null
     return {
       data: {
         jobId: r.id,
         jobTitle: mapJobTitle(r.hcp_number, r.job_name),
+        project_id: pid,
         teamMembers: team,
       },
       error: null,
@@ -190,6 +194,28 @@ export async function fetchJobScheduleBlocksForHubDateRange(
   }
 }
 
+/** All schedule blocks in a shared mirror group (any work_date); hub peer details. */
+export async function fetchJobScheduleBlocksForSharedGroupId(
+  sharedBlockGroupId: string,
+): Promise<{ data: JobScheduleBlockRow[]; error: string | null }> {
+  try {
+    const data = await withSupabaseRetry(
+      async () =>
+        await supabase
+          .from('job_schedule_blocks')
+          .select(SELECT_FIELDS)
+          .eq('shared_block_group_id', sharedBlockGroupId)
+          .order('work_date', { ascending: true })
+          .order('time_start', { ascending: true })
+          .order('assignee_user_id', { ascending: true }),
+      'fetchJobScheduleBlocksForSharedGroupId',
+    )
+    return { data: (data ?? []) as JobScheduleBlockRow[], error: null }
+  } catch (e) {
+    return { data: [], error: formatErrorMessage(e) }
+  }
+}
+
 export async function insertJobScheduleBlock(
   row: Database['public']['Tables']['job_schedule_blocks']['Insert'],
 ): Promise<{ data: JobScheduleBlockRow | null; error: string | null }> {
@@ -213,6 +239,28 @@ export async function updateJobScheduleBlock(
     await withSupabaseRetry(
       async () => await supabase.from('job_schedule_blocks').update(patch).eq('id', id),
       'updateJobScheduleBlock',
+    )
+    return { error: null }
+  } catch (e) {
+    return { error: formatErrorMessage(e) }
+  }
+}
+
+/** Atomically moves every leg of a linked group to `newWorkDate` (assignees unchanged); overlap-checked in the RPC. */
+export async function moveJobScheduleBlockGroupViaRpc(
+  jobId: string,
+  sharedBlockGroupId: string,
+  newWorkDate: string,
+): Promise<{ error: string | null }> {
+  try {
+    await withSupabaseRetry(
+      async () =>
+        await supabase.rpc('move_job_schedule_block_group', {
+          p_job_id: jobId,
+          p_shared_block_group_id: sharedBlockGroupId,
+          p_new_work_date: newWorkDate,
+        }),
+      'move linked schedule blocks to new day',
     )
     return { error: null }
   } catch (e) {

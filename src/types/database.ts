@@ -8184,6 +8184,14 @@ export type Database = {
         Args: { p_field_choices: Json; p_survivor: string; p_victim: string }
         Returns: Json
       }
+      move_job_schedule_block_group: {
+        Args: {
+          p_job_id: string
+          p_new_work_date: string
+          p_shared_block_group_id: string
+        }
+        Returns: undefined
+      }
       notify_dispatch_license_expiry_if_needed: {
         Args: { p_license_id: string; p_link: string }
         Returns: string

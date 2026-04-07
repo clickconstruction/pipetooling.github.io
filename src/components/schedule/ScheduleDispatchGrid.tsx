@@ -1,7 +1,9 @@
-import type { CSSProperties } from 'react'
+import type { CSSProperties, KeyboardEvent, MouseEvent } from 'react'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
+import { useToastContext } from '../../contexts/ToastContext'
 import type { JobScheduleBlockRow, ScheduleTeamMember } from '../../lib/jobScheduleBlocks'
 import { scheduleFormatWindow } from '../../lib/jobScheduleChicago'
+import { SCHEDULE_DISPATCH_DRAG_DISABLED_READONLY_MESSAGE } from '../../lib/scheduleDispatchDragHelp'
 import { scheduleDispatchCellDroppableId } from '../../lib/scheduleDispatchDnd'
 import { APP_CALENDAR_TZ, referenceDateForWorkDateYmd } from '../../utils/dateUtils'
 import { ScheduleDispatchWeekNav } from './ScheduleDispatchWeekNav'
@@ -18,6 +20,9 @@ function cellKey(assigneeUserId: string, workDate: string): string {
   return `${assigneeUserId}\t${workDate}`
 }
 
+/** Light yellow column tint for company “today” (`denverCalendarDayKey`). */
+const SCHEDULE_DISPATCH_TODAY_COLUMN_BG = '#fefce8'
+
 const scheduleGridSalarySuffix: CSSProperties = {
   marginLeft: '0.15rem',
   fontSize: '0.68rem',
@@ -25,59 +30,73 @@ const scheduleGridSalarySuffix: CSSProperties = {
   fontWeight: 400,
 }
 
-type ScheduleDispatchMirrorMode = { targetAssigneeUserId: string; workDate: string }
+export type ScheduleDispatchCardPlacementMode = { sourceBlockId: string; variant: 'linked' | 'unlinked' }
 
 function ScheduleDispatchBlockCard({
   block,
-  jobId,
   canEdit,
-  mirrorMode,
+  cardPlacementMode,
+  plusMenuOpen,
+  onPlusMenuBlockIdChange,
+  onStartCardPlacement,
   onEditBlock,
-  onMirrorPickSource,
   linkPeerCount,
   onDelete,
 }: {
   block: JobScheduleBlockRow
-  jobId: string
   canEdit: boolean
-  mirrorMode: ScheduleDispatchMirrorMode | null
+  cardPlacementMode: ScheduleDispatchCardPlacementMode | null
+  plusMenuOpen: boolean
+  onPlusMenuBlockIdChange: (blockId: string | null) => void
+  onStartCardPlacement: (b: JobScheduleBlockRow, variant: 'linked' | 'unlinked') => void
   onEditBlock: (b: JobScheduleBlockRow) => void
-  onMirrorPickSource: (b: JobScheduleBlockRow) => void
   linkPeerCount: number
   onDelete: (id: string) => void
 }) {
-  const dragDisabled = !canEdit || block.shared_block_group_id != null
+  const { showToast } = useToastContext()
+  const dragDisabled = !canEdit
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: block.id,
     disabled: dragDisabled,
   })
-  const mirrorPicking =
-    mirrorMode != null &&
-    canEdit &&
-    block.work_date === mirrorMode.workDate &&
-    block.job_id === jobId
-  const mirrorSourceEligible =
-    mirrorPicking && block.assignee_user_id !== mirrorMode.targetAssigneeUserId
+  const placementPickingActive = cardPlacementMode != null
   const style: CSSProperties = {
     ...(transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : {}),
     opacity: isDragging ? 0.5 : 1,
-    ...(mirrorSourceEligible
-      ? { outline: '2px solid #d97706', outlineOffset: 1, boxShadow: '0 0 0 1px rgba(217, 119, 6, 0.25)' }
-      : {}),
   }
   const openEdit = () => {
-    if (!canEdit) return
-    if (mirrorSourceEligible) {
-      onMirrorPickSource(block)
-      return
-    }
+    if (!canEdit || placementPickingActive) return
     onEditBlock(block)
   }
+
+  const plusMenuItemStyle: CSSProperties = {
+    display: 'block',
+    width: '100%',
+    padding: '0.28rem 0.4rem',
+    fontSize: '0.65rem',
+    border: 'none',
+    background: '#fff',
+    color: '#1e3a8a',
+    cursor: 'pointer',
+    textAlign: 'left',
+  }
+
+  const explainDisabledDrag = () => {
+    showToast(SCHEDULE_DISPATCH_DRAG_DISABLED_READONLY_MESSAGE, 'info')
+  }
+
+  const disabledStripAriaLabel =
+    'Cannot drag: you do not have permission to reassign schedule blocks. Click for an explanation.'
+
   return (
     <div
       ref={setNodeRef}
+      onClick={(e) => {
+        if (placementPickingActive) e.stopPropagation()
+      }}
       style={{
         ...style,
+        position: 'relative',
         display: 'flex',
         flexDirection: 'row',
         alignItems: 'stretch',
@@ -86,26 +105,42 @@ function ScheduleDispatchBlockCard({
         border: '1px solid #93c5fd',
         borderRadius: 4,
         fontSize: '0.75rem',
-        overflow: 'hidden',
+        overflow: 'visible',
       }}
     >
-      {canEdit ? (
-        <div
-          {...(dragDisabled ? {} : { ...listeners, ...attributes })}
-          style={{
-            flexShrink: 0,
-            width: 14,
-            minHeight: 40,
-            touchAction: dragDisabled ? undefined : 'none',
-            cursor: dragDisabled ? 'not-allowed' : 'grab',
-            background: dragDisabled
-              ? 'linear-gradient(90deg, #e5e7eb 0%, #f3f4f6 100%)'
-              : 'linear-gradient(90deg, #dbeafe 0%, #eff6ff 100%)',
-            borderRight: `1px solid ${dragDisabled ? '#d1d5db' : '#bfdbfe'}`,
-          }}
-          aria-label={dragDisabled ? 'Linked blocks cannot be dragged' : 'Drag to move block to another team row'}
-        />
-      ) : null}
+      <div
+        {...(dragDisabled
+          ? {
+              role: 'button' as const,
+              tabIndex: 0,
+              onClick: (e: MouseEvent) => {
+                e.stopPropagation()
+                explainDisabledDrag()
+              },
+              onKeyDown: (e: KeyboardEvent) => {
+                if (e.key !== 'Enter' && e.key !== ' ') return
+                e.preventDefault()
+                e.stopPropagation()
+                explainDisabledDrag()
+              },
+            }
+          : { ...listeners, ...attributes })}
+        style={{
+          flexShrink: 0,
+          width: 14,
+          minHeight: 40,
+          touchAction: dragDisabled ? undefined : 'none',
+          cursor: dragDisabled ? 'pointer' : 'grab',
+          background: dragDisabled
+            ? 'linear-gradient(90deg, #fee2e2 0%, #fecaca 100%)'
+            : 'linear-gradient(90deg, #dbeafe 0%, #eff6ff 100%)',
+          borderRight: `1px solid ${dragDisabled ? '#fca5a5' : '#bfdbfe'}`,
+          outline: 'none',
+        }}
+        aria-label={
+          dragDisabled ? disabledStripAriaLabel : 'Drag to move block to another day or team row'
+        }
+      />
       <div
         role={canEdit ? 'button' : undefined}
         tabIndex={canEdit ? 0 : undefined}
@@ -148,74 +183,186 @@ function ScheduleDispatchBlockCard({
         {block.note ? (
           <div style={{ color: '#4b5563', marginTop: 2, wordBreak: 'break-word' }}>{block.note}</div>
         ) : null}
-        {canEdit ? (
-          <div style={{ marginTop: 4, textAlign: 'right' }}>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                onDelete(block.id)
-              }}
+      </div>
+      {canEdit && !placementPickingActive ? (
+        <div
+          style={{
+            position: 'absolute',
+            top: 2,
+            right: 2,
+            zIndex: 3,
+          }}
+        >
+          <button
+            type="button"
+            aria-label="Remove block"
+            title="Remove block"
+            onClick={(e) => {
+              e.stopPropagation()
+              onDelete(block.id)
+            }}
+            style={{
+              width: 20,
+              height: 20,
+              padding: 0,
+              lineHeight: '18px',
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              borderRadius: 4,
+              border: '1px solid #fecaca',
+              background: '#fef2f2',
+              color: '#b91c1c',
+              cursor: 'pointer',
+            }}
+          >
+            −
+          </button>
+        </div>
+      ) : null}
+      {canEdit && !placementPickingActive ? (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 2,
+            right: 2,
+            zIndex: 3,
+          }}
+        >
+          <button
+            type="button"
+            aria-label="Copy block to another cell"
+            title="Copy to another person & day"
+            onClick={(e) => {
+              e.stopPropagation()
+              onPlusMenuBlockIdChange(plusMenuOpen ? null : block.id)
+            }}
+            style={{
+              width: 20,
+              height: 20,
+              padding: 0,
+              lineHeight: '18px',
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              borderRadius: 4,
+              border: '1px solid #60a5fa',
+              background: '#fff',
+              color: '#1d4ed8',
+              cursor: 'pointer',
+            }}
+          >
+            +
+          </button>
+          {plusMenuOpen ? (
+            <div
+              role="menu"
               style={{
-                padding: '0.15rem 0.4rem',
-                fontSize: '0.65rem',
-                background: '#fef2f2',
-                color: '#b91c1c',
-                border: '1px solid #fecaca',
-                borderRadius: 3,
-                cursor: 'pointer',
+                position: 'absolute',
+                bottom: '100%',
+                right: 0,
+                marginBottom: 2,
+                minWidth: 108,
+                borderRadius: 4,
+                border: '1px solid #93c5fd',
+                background: '#f8fafc',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                overflow: 'hidden',
               }}
             >
-              Remove
-            </button>
-          </div>
-        ) : null}
-      </div>
+              <button
+                type="button"
+                role="menuitem"
+                style={{ ...plusMenuItemStyle, borderBottom: '1px solid #e2e8f0' }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onPlusMenuBlockIdChange(null)
+                  onStartCardPlacement(block, 'linked')
+                }}
+              >
+                Linked copy
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                style={plusMenuItemStyle}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onPlusMenuBlockIdChange(null)
+                  onStartCardPlacement(block, 'unlinked')
+                }}
+              >
+                Solo copy
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   )
 }
 
 function ScheduleDispatchCell({
-  jobId,
   assigneeUserId,
   workDate,
+  scheduleTodayYmd,
   blocks,
-  dayHasJobBlock,
-  mirrorMode,
+  cardPlacementMode,
+  placementSourceWorkDate,
+  plusMenuBlockId,
+  onPlusMenuBlockIdChange,
+  onStartCardPlacement,
+  onCardPlacementCellPick,
   groupMemberCountByGroupId,
   canEdit,
   onAddClick,
-  onStartMirror,
   onEditBlock,
-  onMirrorPickSource,
   onDeleteBlock,
 }: {
-  jobId: string
   assigneeUserId: string
   workDate: string
+  scheduleTodayYmd: string
   blocks: JobScheduleBlockRow[]
-  dayHasJobBlock: boolean
-  mirrorMode: ScheduleDispatchMirrorMode | null
+  cardPlacementMode: ScheduleDispatchCardPlacementMode | null
+  placementSourceWorkDate: string | null
+  plusMenuBlockId: string | null
+  onPlusMenuBlockIdChange: (blockId: string | null) => void
+  onStartCardPlacement: (b: JobScheduleBlockRow, variant: 'linked' | 'unlinked') => void
+  onCardPlacementCellPick: (assigneeUserId: string, workDate: string) => void
   groupMemberCountByGroupId: ReadonlyMap<string, number>
   canEdit: boolean
   onAddClick: () => void
-  onStartMirror: (assigneeUserId: string, workDate: string) => void
   onEditBlock: (b: JobScheduleBlockRow) => void
-  onMirrorPickSource: (b: JobScheduleBlockRow) => void
   onDeleteBlock: (id: string) => void
 }) {
   const droppableId = scheduleDispatchCellDroppableId(workDate, assigneeUserId)
   const { isOver, setNodeRef } = useDroppable({ id: droppableId })
+  const idleBg = workDate === scheduleTodayYmd ? SCHEDULE_DISPATCH_TODAY_COLUMN_BG : '#fafafa'
+  const placementPickingActive = cardPlacementMode != null && canEdit
+  const linkedWrongDay =
+    cardPlacementMode?.variant === 'linked' &&
+    placementSourceWorkDate != null &&
+    workDate !== placementSourceWorkDate
+  let cellBg = isOver ? '#dbeafe' : idleBg
+  if (placementPickingActive && linkedWrongDay) {
+    cellBg = '#f3f4f6'
+  } else if (placementPickingActive && !linkedWrongDay) {
+    cellBg = isOver ? '#c7d2fe' : '#eef2ff'
+  }
+
   return (
     <td
       ref={setNodeRef}
+      onClick={() => {
+        if (!placementPickingActive) return
+        onCardPlacementCellPick(assigneeUserId, workDate)
+      }}
       style={{
         verticalAlign: 'top',
         minWidth: 132,
         maxWidth: 200,
         padding: 6,
         border: '1px solid #e5e7eb',
-        background: isOver ? '#dbeafe' : '#fafafa',
+        background: cellBg,
+        cursor: placementPickingActive ? 'pointer' : undefined,
       }}
     >
       <div style={{ minHeight: 48 }}>
@@ -226,11 +373,12 @@ function ScheduleDispatchCell({
             <ScheduleDispatchBlockCard
               key={b.id}
               block={b}
-              jobId={jobId}
               canEdit={canEdit}
-              mirrorMode={mirrorMode}
+              cardPlacementMode={cardPlacementMode}
+              plusMenuOpen={plusMenuBlockId === b.id}
+              onPlusMenuBlockIdChange={onPlusMenuBlockIdChange}
+              onStartCardPlacement={onStartCardPlacement}
               onEditBlock={onEditBlock}
-              onMirrorPickSource={onMirrorPickSource}
               linkPeerCount={linkPeerCount}
               onDelete={onDeleteBlock}
             />
@@ -238,7 +386,10 @@ function ScheduleDispatchCell({
         })}
       </div>
       {canEdit ? (
-        <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div
+          style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 4 }}
+          onClick={(e) => e.stopPropagation()}
+        >
           <button
             type="button"
             onClick={onAddClick}
@@ -255,24 +406,6 @@ function ScheduleDispatchCell({
           >
             Add block
           </button>
-          {dayHasJobBlock ? (
-            <button
-              type="button"
-              onClick={() => onStartMirror(assigneeUserId, workDate)}
-              style={{
-                width: '100%',
-                padding: '0.25rem',
-                fontSize: '0.7rem',
-                background: '#fffbeb',
-                border: '1px dashed #fbbf24',
-                borderRadius: 4,
-                color: '#b45309',
-                cursor: 'pointer',
-              }}
-            >
-              Mirror block
-            </button>
-          ) : null}
         </div>
       ) : null}
     </td>
@@ -285,9 +418,12 @@ export type ScheduleDispatchGridProps = {
   hideWeekend: boolean
   onHideWeekendChange: (hide: boolean) => void
   weekNavDateRangeOverride?: string
-  jobId: string
-  jobWeekDatesWithBlocks: ReadonlySet<string>
-  mirrorMode: ScheduleDispatchMirrorMode | null
+  cardPlacementMode: ScheduleDispatchCardPlacementMode | null
+  placementSourceWorkDate: string | null
+  plusMenuBlockId: string | null
+  onPlusMenuBlockIdChange: (blockId: string | null) => void
+  onStartCardPlacement: (b: JobScheduleBlockRow, variant: 'linked' | 'unlinked') => void
+  onCardPlacementCellPick: (assigneeUserId: string, workDate: string) => void
   groupMemberCountByGroupId: ReadonlyMap<string, number>
   salariedUserIds: ReadonlySet<string>
   teamMembers: ScheduleTeamMember[]
@@ -298,9 +434,14 @@ export type ScheduleDispatchGridProps = {
   onThisWeek: () => void
   onAddClick: (assigneeUserId: string, workDate: string) => void
   onEditBlock: (b: JobScheduleBlockRow) => void
-  onStartMirror: (assigneeUserId: string, workDate: string) => void
-  onMirrorPickSource: (b: JobScheduleBlockRow) => void
   onDeleteBlock: (id: string) => void
+  /** Company-calendar today YMD (`denverCalendarDayKey`); column highlight when in `visibleDayKeys`. */
+  scheduleTodayYmd: string
+  /** Job-week only: people in this set are on `jobs_ledger_team_members`. Omit while loading. */
+  officialJobTeamUserIds?: ReadonlySet<string>
+  canAddUserToJobRoster?: boolean
+  onAddUserToJobRoster?: (userId: string) => void
+  addToJobBusyUserId?: string | null
 }
 
 export function ScheduleDispatchGrid({
@@ -309,9 +450,12 @@ export function ScheduleDispatchGrid({
   hideWeekend,
   onHideWeekendChange,
   weekNavDateRangeOverride,
-  jobId,
-  jobWeekDatesWithBlocks,
-  mirrorMode,
+  cardPlacementMode,
+  placementSourceWorkDate,
+  plusMenuBlockId,
+  onPlusMenuBlockIdChange,
+  onStartCardPlacement,
+  onCardPlacementCellPick,
   groupMemberCountByGroupId,
   salariedUserIds,
   teamMembers,
@@ -322,9 +466,12 @@ export function ScheduleDispatchGrid({
   onThisWeek,
   onAddClick,
   onEditBlock,
-  onStartMirror,
-  onMirrorPickSource,
   onDeleteBlock,
+  scheduleTodayYmd,
+  officialJobTeamUserIds,
+  canAddUserToJobRoster = false,
+  onAddUserToJobRoster,
+  addToJobBusyUserId = null,
 }: ScheduleDispatchGridProps) {
   const sortedMembers = [...teamMembers].sort((a, b) => {
     const an = (a.name ?? '').trim().toLowerCase()
@@ -364,19 +511,22 @@ export function ScheduleDispatchGrid({
             </th>
             {visibleDayKeys.map((dk) => {
               const { dow, md } = formatDayHeader(dk)
+              const thBg = dk === scheduleTodayYmd ? SCHEDULE_DISPATCH_TODAY_COLUMN_BG : '#f3f4f6'
               return (
                 <th
                   key={dk}
+                  title={dk}
                   style={{
-                    background: '#f3f4f6',
+                    background: thBg,
                     border: '1px solid #e5e7eb',
                     padding: '0.5rem',
                     textAlign: 'center',
                     minWidth: 132,
                   }}
                 >
-                  <div style={{ fontWeight: 600 }}>{dow}</div>
-                  <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{md}</div>
+                  <div style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
+                    {dow} {md}
+                  </div>
                   <div style={{ fontSize: '0.65rem', color: '#9ca3af' }}>{dk}</div>
                 </th>
               )
@@ -390,7 +540,7 @@ export function ScheduleDispatchGrid({
                 colSpan={1 + visibleDayKeys.length}
                 style={{ padding: '1rem', border: '1px solid #e5e7eb', color: '#6b7280', textAlign: 'center' }}
               >
-                No team members on this job.
+                No roster or scheduled assignees for this week.
               </td>
             </tr>
           ) : (
@@ -408,32 +558,62 @@ export function ScheduleDispatchGrid({
                     verticalAlign: 'top',
                   }}
                 >
-                  {(m.name ?? '').trim() || '—'}
-                  {salariedUserIds.has(m.user_id) ? (
-                    <span
-                      title="Salaried (Pay settings)"
-                      aria-label="Salaried (Pay settings)"
-                      style={scheduleGridSalarySuffix}
-                    >
-                      {' '}(s)
-                    </span>
+                  <div style={{ lineHeight: 1.25 }}>
+                    <span>{(m.name ?? '').trim() || '—'}</span>
+                    {salariedUserIds.has(m.user_id) ? (
+                      <span
+                        title="Salaried (Pay settings)"
+                        aria-label="Salaried (Pay settings)"
+                        style={scheduleGridSalarySuffix}
+                      >
+                        {' '}(s)
+                      </span>
+                    ) : null}
+                  </div>
+                  {officialJobTeamUserIds != null && !officialJobTeamUserIds.has(m.user_id) ? (
+                    <div style={{ marginTop: 4 }}>
+                      <div style={{ fontSize: '0.7rem', color: '#6b7280', lineHeight: 1.25 }}>Not on job</div>
+                      {canAddUserToJobRoster && onAddUserToJobRoster ? (
+                        <button
+                          type="button"
+                          onClick={() => onAddUserToJobRoster(m.user_id)}
+                          disabled={addToJobBusyUserId === m.user_id}
+                          aria-label={`Add ${(m.name ?? '').trim() || 'team member'} to job`}
+                          style={{
+                            marginTop: 4,
+                            padding: 0,
+                            border: 'none',
+                            background: 'none',
+                            fontSize: '0.7rem',
+                            color: addToJobBusyUserId === m.user_id ? '#9ca3af' : '#2563eb',
+                            cursor: addToJobBusyUserId === m.user_id ? 'not-allowed' : 'pointer',
+                            textDecoration: 'underline',
+                            textUnderlineOffset: 2,
+                          }}
+                        >
+                          {addToJobBusyUserId === m.user_id ? 'Adding…' : 'Add to job'}
+                        </button>
+                      ) : null}
+                    </div>
                   ) : null}
                 </td>
                 {visibleDayKeys.map((dk) => (
                   <ScheduleDispatchCell
                     key={`${m.user_id}-${dk}`}
-                    jobId={jobId}
                     assigneeUserId={m.user_id}
                     workDate={dk}
+                    scheduleTodayYmd={scheduleTodayYmd}
                     blocks={blocksByCell.get(cellKey(m.user_id, dk)) ?? []}
-                    dayHasJobBlock={jobWeekDatesWithBlocks.has(dk)}
-                    mirrorMode={mirrorMode}
+                    cardPlacementMode={cardPlacementMode}
+                    placementSourceWorkDate={placementSourceWorkDate}
+                    plusMenuBlockId={plusMenuBlockId}
+                    onPlusMenuBlockIdChange={onPlusMenuBlockIdChange}
+                    onStartCardPlacement={onStartCardPlacement}
+                    onCardPlacementCellPick={onCardPlacementCellPick}
                     groupMemberCountByGroupId={groupMemberCountByGroupId}
                     canEdit={canEdit}
                     onAddClick={() => onAddClick(m.user_id, dk)}
-                    onStartMirror={onStartMirror}
                     onEditBlock={onEditBlock}
-                    onMirrorPickSource={onMirrorPickSource}
                     onDeleteBlock={onDeleteBlock}
                   />
                 ))}

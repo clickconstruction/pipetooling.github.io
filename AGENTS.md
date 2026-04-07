@@ -22,6 +22,7 @@
 | Bids system | `BIDS_SYSTEM.md` → Complete workflow documentation |
 | Edge Functions API | `EDGE_FUNCTIONS.md` → All Edge Functions with examples |
 | Migration history | `MIGRATIONS.md` → All migrations by date and category |
+| **Linked** DB: local vs remote migration history mismatch, **`repair`**, **`db push --include-all`** | [Migration history drift (linked project)](#migration-history-drift-linked-project) below |
 | Apply migrations / run SQL on linked Supabase (when Docker local unavailable) | Cursor **Supabase MCP** — read tool descriptors in `.cursor/.../mcps/` first; `apply_migration` for new files, `execute_sql` for ad-hoc queries; see [Supabase MCP](#supabase-mcp-cursor) below |
 | Workflow features | `WORKFLOW_FEATURES.md` → Stage management, financials |
 | Clock In/Out, pending sessions, Revoke, accountability, Quickfill Hours, Crew Jobs / Bids, unified job/bid search, Pay Report Jobs/Bids | `RECENT_FEATURES.md` → v2.100, v2.105, v2.114, v2.120; `PROJECT_DOCUMENTATION.md` → Dashboard, Hours, Quickfill, People; `GLOSSARY.md` → Clock Sessions |
@@ -71,6 +72,7 @@
 | People **Housing** tab (`housing_units`, `housing_possessions`); pay stub HTML **Housing** after vehicles | `RECENT_FEATURES.md` → v2.177; `ACCESS_CONTROL.md` → People; `MIGRATIONS.md` → 20270329180000; `PROJECT_DOCUMENTATION.md` → People; `src/pages/People.tsx` |
 | People roster **`primary`** / **`superintendent`** on `people`; Pay/Hours via `allRosterNames`; backfill `20260329042321` | `RECENT_FEATURES.md` → v2.178; `MIGRATIONS.md` → 20260329042321; `PROJECT_DOCUMENTATION.md` → People; `src/pages/People.tsx`; `src/pages/Jobs.tsx`; `ReceivablesSection.tsx` |
 | People Hours: Correct-day audit **Edit** (crew + clock + add session); **ClockSessionEditSplitModal**; **Highlight by job** on grid | `RECENT_FEATURES.md` → v2.171; `PROJECT_DOCUMENTATION.md` → People, Quickfill; `src/components/PeopleHoursDayAuditModal.tsx`; `src/pages/People.tsx` |
+| **Schedule dispatch** **Linked** / **+ → Linked copy** (`shared_block_group_id`), group time/note sync, overlap **`excludeIds`**, DnD solo cross-day/assignee + linked cross-day via **`move_job_schedule_block_group`**; Banking **Mercury** **`replace_mercury_transaction_splits`**: modal assertion for nullable attribution args vs **`gen types`** | `RECENT_FEATURES.md` → v2.258, v2.257; `MIGRATIONS.md` → **`20260407165443`**, **`20260407061043`**, **`20260407052651`**; `GLOSSARY.md` → Job schedule blocks; `PROJECT_DOCUMENTATION.md` → Jobs; `src/lib/jobScheduleBlocks.ts`; `src/lib/scheduleDispatchDragEnd.ts`; `src/lib/jobScheduleOverlap.ts`; `src/pages/ScheduleDispatch.tsx`; `src/components/schedule/ScheduleDispatchGrid.tsx`; `src/components/MercuryTransactionAllocationsModal.tsx` |
 
 ---
 
@@ -86,9 +88,75 @@
 
 ---
 
+## Migration history drift (linked project)
+
+Use this when **`supabase migration list --linked`** shows **Local** and **Remote** columns out of sync (one side empty for a version), or **`supabase db push --linked`** errors with **Remote migration versions not found in local migrations directory** / **Found local migration files to be inserted before the last migration on remote database**.
+
+### Inspect
+
+```bash
+supabase migration list --linked
+```
+
+Match each row: both columns should show the same **`YYYYMMDDHHMMSS`** for every applied version.
+
+### Remote-only versions (no file in `supabase/migrations/`)
+
+The remote **`supabase_migrations.schema_migrations`** table lists versions that do not exist in the repo (alternate timestamps, old applies, renamed files). They block **`db push`** until the history row is removed.
+
+**Fix** — mark those versions **reverted** (updates the **history table only**; it does **not** run `DOWN` or drop objects):
+
+```bash
+supabase migration repair --status reverted VERSION [VERSION ...] --linked
+```
+
+The CLI often prints the exact version list when **`db push`** fails; paste that list into the command.
+
+### Push local migrations
+
+After repair, apply pending files:
+
+```bash
+supabase db push --linked
+```
+
+If the CLI says local files must be applied **before** the last migration on remote (out-of-order timestamps), rerun with:
+
+```bash
+supabase db push --linked --include-all
+```
+
+Use **`--yes`** in CI or scripts to skip the confirmation prompt.
+
+### Push fails with “already exists”
+
+The migration was **never recorded** in history but DDL is already on the database (e.g. applied manually via SQL or MCP **`apply_migration`**, which does not always write the same history row as **`db push`**).
+
+**Fix** — record the version **applied** without executing SQL:
+
+```bash
+supabase migration repair --status applied VERSION --linked
+```
+
+Then run **`db push --linked`** again (with **`--include-all`** if needed again). Prefer resolving the root cause: use **`supabase db push`** on the linked project for repo migrations so history and schema stay aligned.
+
+### MCP vs CLI
+
+MCP **`apply_migration`** is for executing DDL when **`db push`** is not available. After using it, **`migration list`** may still show a local file as “not applied” until you **`repair --status applied`** for that version or re-apply via **`db push`** as appropriate. **`npm run gen-types:linked`** after the remote schema matches expectations.
+
+### Verify
+
+```bash
+supabase migration list --linked
+```
+
+No row should have an empty **Local** or **Remote** column for committed migration files.
+
+---
+
 ## Supabase MCP (Cursor)
 
-When this workspace has the **Supabase MCP** server enabled, agents can apply new migration files and run SQL against the **linked** project via MCP (useful when local Docker / `supabase db reset` is not available). **Create the migration file first** with `supabase migration new …`, then edit it; use MCP `apply_migration` only for that generated path. **Always read each tool’s JSON descriptor** under the project’s `mcps` folder before calling — e.g. `execute_sql` for validation or reads, `apply_migration` to apply a file under `supabase/migrations/`. This does not replace **Critical Constraints** item 3: after schema changes, still regenerate `src/types/database.ts` (see item 3 for `2>/dev/null` and npm scripts).
+When this workspace has the **Supabase MCP** server enabled, agents can apply new migration files and run SQL against the **linked** project via MCP (useful when local Docker / `supabase db reset` is not available). **Create the migration file first** with `supabase migration new …`, then edit it; use MCP `apply_migration` only for that generated path. **Always read each tool’s JSON descriptor** under the project’s `mcps` folder before calling — e.g. `execute_sql` for validation or reads, `apply_migration` to apply a file under `supabase/migrations/`. If **`migration list --linked`** and the repo diverge after MCP or manual SQL, use **[Migration history drift](#migration-history-drift-linked-project)**. This does not replace **Critical Constraints** item 3: after schema changes, still regenerate `src/types/database.ts` (see item 3 for `2>/dev/null` and npm scripts).
 
 ---
 

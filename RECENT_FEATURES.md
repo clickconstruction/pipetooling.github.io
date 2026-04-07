@@ -7,22 +7,28 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-07
+last_updated: 2026-04-09
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.256 → v2.4"
+version_range: "v2.258 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.258)"
+    line: ~770
+    description: "Schedule dispatch DnD: solo cross-day + assignee; linked crew cross-day via move_job_schedule_block_group RPC"
+  - name: "Latest Version (v2.257)"
+    line: ~790
+    description: "Linked schedule blocks (shared_block_group_id); Dispatch + Linked copy + group edit; Banking Mercury RPC null args vs gen types"
   - name: "Latest Version (v2.256)"
-    line: ~766
+    line: ~810
     description: "Schedule dispatch hub: People | Jobs tabs, fetchJobScheduleBlocksForHubDateRange; Week overview link on detail"
   - name: "Latest Version (v2.255)"
-    line: ~784
+    line: ~828
     description: "Schedule dispatch week grid: rows = team, columns = Central week days; DnD reassign same day; fetchJobScheduleBlocksForJobDateRange; Jobs Week dispatch link"
   - name: "Latest Version (v2.254)"
-    line: ~770
+    line: ~842
     description: "job_schedule_blocks + Schedule modal (Jobs Stages thread); list_assigned_jobs project_id; Calendar Job preview + planned chips; PreviewJobModal, ScheduleJobModal, jobScheduleBlocks lib"
   - name: "Latest Version (v2.253)"
     line: ~775
@@ -595,6 +601,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.257 — Linked schedule blocks + Dispatch linked copy (`+`); Mercury splits RPC typing](#latest-updates-v2257)
 **New:** [v2.256 — Schedule dispatch hub: all jobs + week counts (Scope B)](#latest-updates-v2256)
 **New:** [v2.255 — Schedule dispatch: people × week grid + drag reassign](#latest-updates-v2255)
 **New:** [v2.254 — Jobs Schedule modal + Calendar Job preview & planned chips](#latest-updates-v2254)
@@ -767,6 +774,31 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
+## Latest Updates (v2.258)
+
+**Date**: 2026-04-07
+
+### Schedule dispatch — Cross-day drag + linked crew day move
+
+- **RPC** **[`move_job_schedule_block_group`](supabase/migrations/20260407165443_move_job_schedule_block_group.sql)** (`p_job_id`, `p_shared_block_group_id`, `p_new_work_date`): locks all legs, no-op if already on target date, overlap-check per assignee on the target day (same interval rule as [`jobScheduleOverlap.ts`](src/lib/jobScheduleOverlap.ts)), then updates `work_date` for the whole group. **`moveJobScheduleBlockGroupViaRpc`** in [`jobScheduleBlocks.ts`](src/lib/jobScheduleBlocks.ts).
+- **DnD** [`executeScheduleDispatchBlockReassign`](src/lib/scheduleDispatchDragEnd.ts): **Solo** legs can move to another **day** and/or **assignee** with existing overlap checks (`excludeIds: [blockId]`). **Linked** legs move **day only** for the full group (drop target column sets the new date; assignee-only change same day → info toast, not supported in v1). Hub + job week grid allow dragging **Linked** cards (no longer disabled when multiple legs show in the week); [`scheduleDispatchDragHelp.ts`](src/lib/scheduleDispatchDragHelp.ts) copy updated.
+
+---
+
+## Latest Updates (v2.257)
+
+**Date**: 2026-04-09
+
+### Schedule — Linked blocks (crew mirror) + Banking types workaround
+
+- **`job_schedule_blocks.shared_block_group_id`** (nullable UUID, migration **[`20260407061043_job_schedule_blocks_shared_block_group.sql`](supabase/migrations/20260407061043_job_schedule_blocks_shared_block_group.sql)**): rows with the same non-null value share one logical block (same job, work date, `time_start` / `time_end`, `note`); each leg still has its own `assignee_user_id` and row id. **Legacy** rows keep `NULL` (solo). **New inserts** (Jobs **[`ScheduleJobModal`](src/components/jobs/ScheduleJobModal.tsx)**, Dispatch add) set a fresh UUID on every row so mirroring always has a group id.
+- **API** ([`jobScheduleBlocks.ts`](src/lib/jobScheduleBlocks.ts)): `newJobScheduleSharedBlockGroupId()`, `updateJobScheduleBlockGroup(jobId, groupId, patch)` for synced time/note, `ensureSharedBlockGroupForRow(id)` when mirroring from a legacy solo source.
+- **Overlap** ([`jobScheduleOverlap.ts`](src/lib/jobScheduleOverlap.ts)): `scheduleOverlapsAny(candidate, existing, excludeIds?)` supports excluding multiple row ids (group save validates per assignee).
+- **Dispatch job grid** ([`ScheduleDispatch.tsx`](src/pages/ScheduleDispatch.tsx), [`ScheduleDispatchGrid.tsx`](src/components/schedule/ScheduleDispatchGrid.tsx)): **+ → Linked copy** (or **Solo copy**) on a card starts placement (banner + Esc / Cancel); click a team member’s day cell to add a leg with overlap check; **Linked** badge when the group has more than one leg in the loaded week. **Edit** modal updates all legs in a group. **DnD**: solo → another day/assignee; linked → cross-day group move (**v2.258**). (Older **Mirror block** under **Add block** was removed as redundant.)
+- **Mercury splits**: [`MercuryTransactionAllocationsModal.tsx`](src/components/MercuryTransactionAllocationsModal.tsx) uses **`ReplaceMercuryTransactionSplitsCall`** + assertion into generated **`Database['public']['Functions']['replace_mercury_transaction_splits']['Args']`** because **`supabase gen types`** omits **`null`** for **`p_person_id`** / **`p_user_id`** even though Postgres allows both null (clear attribution).
+
+---
+
 ## Latest Updates (v2.256)
 
 **Date**: 2026-04-07
@@ -786,7 +818,7 @@ when_to_read:
 ### Schedule dispatch — Week grid (team rows × day columns)
 
 - **Route**: [`/schedule-dispatch`](src/pages/ScheduleDispatch.tsx) with **`jobId`** (required for grid) and optional **`week`** (Sunday `YYYY-MM-DD`, normalized to Chicago week start via [`companyWeekStartSundayContaining`](src/utils/dateUtils.ts)).
-- **UI**: [`ScheduleDispatchGrid.tsx`](src/components/schedule/ScheduleDispatchGrid.tsx) — sticky name column; **Add block** per cell; **Remove** on cards; **@dnd-kit** drag to another person **same day only** (overlap checked vs all blocks for that assignee that day); cross-day drop shows toast (not supported yet).
+- **UI**: [`ScheduleDispatchGrid.tsx`](src/components/schedule/ScheduleDispatchGrid.tsx) — sticky name column; **Add block** per cell; **+** on cards for **Linked** / **Solo** copy; **Remove** on cards; **@dnd-kit** drag: solo → another day or person; linked crew → cross-day group move (**v2.258**).
 - **Data**: [`fetchJobScheduleBlocksForJobDateRange`](src/lib/jobScheduleBlocks.ts); add/save uses same overlap rules as [`ScheduleJobModal`](src/components/jobs/ScheduleJobModal.tsx) ([`fetchScheduleBlocksForAssigneesOnDay`](src/lib/jobScheduleBlocks.ts)).
 - **Nav**: **Dispatch** link (dev / master / assistant / superintendent); superintendent [`SUPERINTENDENT_PATHS`](src/components/Layout.tsx). **Jobs** thread panel: **Week dispatch** next to **Schedule** ([`JobThreadNotesPanel`](src/components/JobThreadNotesPanel.tsx)); **Schedule** + **Week dispatch** also for superintendent when the job has team members.
 - **Docs**: [ACCESS_CONTROL.md](ACCESS_CONTROL.md) page matrix.
