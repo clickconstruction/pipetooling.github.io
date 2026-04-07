@@ -61,6 +61,54 @@ export async function fetchTeamMemberUserIdsForJobIds(
   }
 }
 
+/** Same auth `users` cohort as People → Users (non-archived). Includes `dev` when `includeDevUsers` (viewer is dev). */
+export async function fetchUsersTabUserIdsForScheduleDispatchHub(
+  includeDevUsers: boolean,
+): Promise<{ data: string[]; error: string | null }> {
+  try {
+    const baseRows = await withSupabaseRetry(
+      async () =>
+        await supabase
+          .from('users')
+          .select('id')
+          .is('archived_at', null)
+          .in('role', [
+            'assistant',
+            'master_technician',
+            'subcontractor',
+            'estimator',
+            'primary',
+            'superintendent',
+          ]),
+      'fetchUsersTabUserIdsForScheduleDispatchHub',
+    )
+    const seen = new Set<string>()
+    const ids: string[] = []
+    for (const row of (baseRows ?? []) as Array<{ id: string }>) {
+      const id = row.id
+      if (!id || seen.has(id)) continue
+      seen.add(id)
+      ids.push(id)
+    }
+    if (includeDevUsers) {
+      const devRows = await withSupabaseRetry(
+        async () =>
+          await supabase.from('users').select('id').is('archived_at', null).eq('role', 'dev'),
+        'fetchUsersTabUserIdsForScheduleDispatchHubDev',
+      )
+      for (const row of (devRows ?? []) as Array<{ id: string }>) {
+        const id = row.id
+        if (!id || seen.has(id)) continue
+        seen.add(id)
+        ids.push(id)
+      }
+    }
+    return { data: ids, error: null }
+  } catch (e) {
+    return { data: [], error: formatErrorMessage(e) }
+  }
+}
+
 export type JobScheduleBlockWeekSummaryRow = {
   job_id: string
   work_date: string

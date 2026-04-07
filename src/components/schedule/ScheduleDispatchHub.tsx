@@ -322,6 +322,7 @@ function HubPeopleBlockCard({
   getJobDisplayTitle,
   onOpenJob,
   onOpenJobPreview,
+  onDeleteBlock,
 }: {
   block: JobScheduleBlockRow
   workDate: string
@@ -337,6 +338,7 @@ function HubPeopleBlockCard({
   getJobDisplayTitle: (jobId: string) => string
   onOpenJob: (jobId: string) => void
   onOpenJobPreview: (jobId: string, workDateYmd: string) => void
+  onDeleteBlock: (id: string) => void
 }) {
   const { showToast } = useToastContext()
   const placementPickingActive = cardPlacementMode != null
@@ -355,7 +357,9 @@ function HubPeopleBlockCard({
 
   const groupId = block.shared_block_group_id
   const linkedAccent =
-    highlightLinkedGroups && groupId ? linkedGroupAccentByGroupId.get(groupId) : undefined
+    highlightLinkedGroups && groupId && linkPeerCount > 1
+      ? linkedGroupAccentByGroupId.get(groupId)
+      : undefined
 
   const style: CSSProperties = {
     ...(transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : {}),
@@ -476,16 +480,14 @@ function HubPeopleBlockCard({
             }}
           >
             <span>{scheduleFormatWindow(block.time_start, block.time_end)}</span>
-            {groupId ? (
+            {groupId && linkPeerCount > 1 ? (
               <button
                 type="button"
                 disabled={placementPickingActive}
                 title={
                   placementPickingActive
                     ? undefined
-                    : linkPeerCount > 1
-                      ? 'Linked: time and note stay in sync. Click to see every block in this group.'
-                      : 'Linked group — click to see all blocks (including outside this week).'
+                    : 'Linked: time and note stay in sync. Click to see every block in this group.'
                 }
                 aria-label="View linked schedule group details"
                 onClick={(e) => {
@@ -515,6 +517,41 @@ function HubPeopleBlockCard({
           ) : null}
         </button>
       </div>
+      {canEdit && !placementPickingActive ? (
+        <div
+          style={{
+            position: 'absolute',
+            top: 2,
+            right: 2,
+            zIndex: 3,
+          }}
+        >
+          <button
+            type="button"
+            aria-label="Remove block"
+            title="Remove block"
+            onClick={(e) => {
+              e.stopPropagation()
+              onDeleteBlock(block.id)
+            }}
+            style={{
+              width: 20,
+              height: 20,
+              padding: 0,
+              lineHeight: '18px',
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              borderRadius: 4,
+              border: '1px solid #fecaca',
+              background: '#fef2f2',
+              color: '#b91c1c',
+              cursor: 'pointer',
+            }}
+          >
+            −
+          </button>
+        </div>
+      ) : null}
       {canEdit && !placementPickingActive ? (
         <div
           style={{
@@ -617,6 +654,7 @@ function HubPeopleDayCell({
   onOpenLinkedGroup,
   hubAssignJobPlacement,
   onHubAssignJobCellPick,
+  onDeleteBlock,
 }: {
   personUserId: string
   workDate: string
@@ -638,6 +676,7 @@ function HubPeopleDayCell({
   onOpenLinkedGroup: (groupId: string) => void
   hubAssignJobPlacement: { jobId: string } | null
   onHubAssignJobCellPick: (assigneeUserId: string, workDate: string) => void
+  onDeleteBlock: (id: string) => void
 }) {
   const droppableId = scheduleDispatchCellDroppableId(workDate, personUserId)
   const { isOver, setNodeRef } = useDroppable({ id: droppableId })
@@ -704,6 +743,7 @@ function HubPeopleDayCell({
               getJobDisplayTitle={getJobDisplayTitle}
               onOpenJob={onOpenJob}
               onOpenJobPreview={onOpenJobPreview}
+              onDeleteBlock={onDeleteBlock}
             />
           )
         })
@@ -747,6 +787,7 @@ type HubPeoplePanelProps = {
   hubHourlyWageByUserId: ReadonlyMap<string, number>
   hubAssignJobPlacement: { jobId: string } | null
   onHubAssignJobCellPick: (assigneeUserId: string, workDate: string) => void
+  onDeleteBlock: (id: string) => void
 }
 
 function HubPeoplePanel({
@@ -784,9 +825,10 @@ function HubPeoplePanel({
   hubHourlyWageByUserId,
   hubAssignJobPlacement,
   onHubAssignJobCellPick,
+  onDeleteBlock,
 }: HubPeoplePanelProps) {
   const [search, setSearch] = useState('')
-  const [onlyWithBlocksThisWeek, setOnlyWithBlocksThisWeek] = useState(true)
+  const [onlyWithBlocksThisWeek, setOnlyWithBlocksThisWeek] = useState(false)
   const [expectedManpowerByJobSectionCollapsed, setExpectedManpowerByJobSectionCollapsed] = useState(false)
   const [collapsedExpectedManpowerJobIds, setCollapsedExpectedManpowerJobIds] = useState<Set<string>>(
     () => new Set(),
@@ -1021,6 +1063,7 @@ function HubPeoplePanel({
                         onOpenLinkedGroup={onOpenLinkedGroup}
                         hubAssignJobPlacement={hubAssignJobPlacement}
                         onHubAssignJobCellPick={onHubAssignJobCellPick}
+                        onDeleteBlock={onDeleteBlock}
                       />
                     )
                   })}
@@ -1468,16 +1511,33 @@ type Props = {
   onRequestHubAddJob: () => void
   onRequestHubNewJob: () => void
   onHubAssignJobCellPick: (assigneeUserId: string, workDate: string) => void
+  onDeleteBlock: (id: string) => void
 }
 
+const HUB_PEOPLE_TOOLBAR_BTN_H = 32
+
 const hubPeopleToolbarBtn: CSSProperties = {
-  padding: '0.4rem 0.75rem',
+  boxSizing: 'border-box',
+  height: HUB_PEOPLE_TOOLBAR_BTN_H,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '0 0.75rem',
   border: '1px solid #2563eb',
   borderRadius: 4,
   background: '#fff',
   color: '#2563eb',
   cursor: 'pointer',
   fontSize: '0.8125rem',
+}
+
+const hubPeopleToolbarIconBtn: CSSProperties = {
+  ...hubPeopleToolbarBtn,
+  padding: '0 0.55rem',
+  minWidth: HUB_PEOPLE_TOOLBAR_BTN_H,
+  lineHeight: 1,
+  fontWeight: 600,
+  fontSize: '1rem',
 }
 
 export function ScheduleDispatchHub({
@@ -1524,6 +1584,7 @@ export function ScheduleDispatchHub({
   onRequestHubAddJob,
   onRequestHubNewJob,
   onHubAssignJobCellPick,
+  onDeleteBlock,
 }: Props) {
   return (
     <div style={{ padding: '1rem 1.25rem', maxWidth: '100%' }}>
@@ -1558,8 +1619,14 @@ export function ScheduleDispatchHub({
               paddingTop: 2,
             }}
           >
-            <button type="button" style={hubPeopleToolbarBtn} onClick={onRequestHubAddJob}>
-              Add job
+            <button
+              type="button"
+              aria-label="Add job"
+              title="Add job"
+              style={hubPeopleToolbarIconBtn}
+              onClick={onRequestHubAddJob}
+            >
+              +
             </button>
             <button type="button" style={hubPeopleToolbarBtn} onClick={onRequestHubNewJob}>
               New job
@@ -1661,6 +1728,7 @@ export function ScheduleDispatchHub({
           hubHourlyWageByUserId={hubHourlyWageByUserId}
           hubAssignJobPlacement={hubAssignJobPlacement}
           onHubAssignJobCellPick={onHubAssignJobCellPick}
+          onDeleteBlock={onDeleteBlock}
         />
       )}
     </div>

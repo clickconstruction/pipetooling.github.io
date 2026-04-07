@@ -45,6 +45,7 @@ import {
   fetchJobsLedgerForScheduleDispatchHub,
   fetchTeamMemberUserIdsForJobIds,
   fetchUserNamesForIds,
+  fetchUsersTabUserIdsForScheduleDispatchHub,
   formatScheduleDispatchHubJobTitle,
   type ScheduleDispatchHubJobRow,
 } from '../lib/scheduleDispatchHub'
@@ -697,7 +698,13 @@ export default function ScheduleDispatch() {
       const teamRes = await fetchTeamMemberUserIdsForJobIds(jobIds)
       const teamIds = teamRes.error ? [] : teamRes.data
       if (teamRes.error) showToast(`Team roster: ${teamRes.error}`, 'warning')
-      setHubTeamMemberUserIds(teamIds)
+
+      const usersTabRes = await fetchUsersTabUserIdsForScheduleDispatchHub(role === 'dev')
+      const usersTabIds = usersTabRes.error ? [] : usersTabRes.data
+      if (usersTabRes.error) showToast(`Dispatch people list: ${usersTabRes.error}`, 'warning')
+
+      const mergedHubBaseIds = [...new Set([...teamIds, ...usersTabIds])]
+      setHubTeamMemberUserIds(mergedHubBaseIds)
 
       let blocksData: JobScheduleBlockRow[] = []
       if (br.error) {
@@ -711,7 +718,7 @@ export default function ScheduleDispatch() {
       }
 
       const assigneeIds = [...new Set(blocksData.map((b) => b.assignee_user_id))]
-      const rosterIds = [...new Set([...teamIds, ...assigneeIds])]
+      const rosterIds = [...new Set([...mergedHubBaseIds, ...assigneeIds])]
       const { data: nameMap, error: nameErr } = await fetchUserNamesForIds(rosterIds)
       setHubPeopleNameById(nameMap)
       if (nameErr) showToast(`People names: ${nameErr}`, 'warning')
@@ -771,7 +778,7 @@ export default function ScheduleDispatch() {
         setHubLoading(false)
       }
     }
-  }, [jobId, weekStart, weekEnd, showToast, canShowHubExpectedManpowerPayroll])
+  }, [jobId, weekStart, weekEnd, role, showToast, canShowHubExpectedManpowerPayroll])
 
   useEffect(() => {
     if (jobId) {
@@ -1371,9 +1378,13 @@ export default function ScheduleDispatch() {
         showToast(delErr, 'error')
         return
       }
-      await load()
+      if (jobId) {
+        await load()
+      } else {
+        await loadHub()
+      }
     },
-    [canEdit, load, showToast],
+    [canEdit, jobId, load, loadHub, showToast],
   )
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
@@ -1634,6 +1645,7 @@ export default function ScheduleDispatch() {
             onRequestHubAddJob={onRequestHubAddJob}
             onRequestHubNewJob={onRequestHubNewJob}
             onHubAssignJobCellPick={onHubAssignJobCellPick}
+            onDeleteBlock={(id) => void onDeleteBlock(id)}
           />
         </DndContext>
         <AddBlockModal
