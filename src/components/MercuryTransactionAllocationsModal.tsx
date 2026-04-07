@@ -11,6 +11,14 @@ import { SearchableSelect, type SearchableSelectOption } from './SearchableSelec
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 type JobSearchRow = { id: string; hcp_number: string; job_name: string; job_address: string }
 
+/** Runtime RPC args (`replace_mercury_transaction_splits` allows null for XOR/clear; `gen types` does not). */
+type ReplaceMercuryTransactionSplitsCall = {
+  p_mercury_transaction_id: string
+  p_rows: Json
+  p_person_id: string | null
+  p_user_id: string | null
+}
+
 export type MercuryJobSplit = {
   job_id: string
   amount: number
@@ -475,14 +483,18 @@ export function MercuryTransactionAllocationsModal({
           )
         }
       } else {
+        const replaceMercurySplitsPayload: ReplaceMercuryTransactionSplitsCall = {
+          p_mercury_transaction_id: transaction.id,
+          p_rows: p_rows as unknown as Json,
+          p_person_id: p_person_id ?? null,
+          p_user_id: p_user_id ?? null,
+        }
         await withSupabaseRetry(
           async () =>
-            supabase.rpc('replace_mercury_transaction_splits', {
-              p_mercury_transaction_id: transaction.id,
-              p_rows: p_rows as unknown as Json,
-              p_person_id: p_person_id ?? null,
-              p_user_id: p_user_id ?? null,
-            }),
+            supabase.rpc(
+              'replace_mercury_transaction_splits',
+              replaceMercurySplitsPayload as unknown as Database['public']['Functions']['replace_mercury_transaction_splits']['Args'],
+            ),
           'replace_mercury_transaction_splits',
         )
       }
