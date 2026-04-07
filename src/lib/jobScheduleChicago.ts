@@ -57,13 +57,20 @@ function scheduleDateKeyFromUtcNoon(d: Date): string {
 /**
  * PostgreSQL `time` / time-without-time-zone string "HH:MM:SS" or "HH:MM".
  * Returns compact display e.g. "9:30 AM".
+ * Uses a UTC Date anchor + `timeZone: 'UTC'` so digits match stored wall time regardless of browser TZ (Chicago semantics live in data/business rules, not here).
  */
 export function scheduleFormatTimeHm(pgTime: string): string {
   const parts = pgTime.trim().split(':')
   const h = Number(parts[0] ?? '0')
   const min = Number(parts[1] ?? '0')
+  let sec = 0
+  if (parts[2] != null) {
+    const secPart = String(parts[2]).split('.')[0] ?? '0'
+    const n = Number(secPart)
+    sec = Number.isFinite(n) ? n : 0
+  }
   if (!Number.isFinite(h) || !Number.isFinite(min)) return pgTime
-  const d = new Date(2000, 0, 1, h, min, 0)
+  const d = new Date(Date.UTC(2000, 0, 1, h, min, sec))
   return d.toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
