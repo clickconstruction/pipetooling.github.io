@@ -12,7 +12,22 @@ import { createPortal } from 'react-dom'
 const LIST_MAX_HEIGHT_PX = 240
 const DROPDOWN_MARGIN_PX = 2
 const PORTAL_Z_INDEX = 1100
-export type SearchableSelectOption = { value: string; label: string }
+
+/** Selectable row (value/label). */
+export type SearchableSelectSelectableOption = { value: string; label: string }
+
+/** Non-interactive divider between option groups (e.g. Schedule assignee sections). */
+export type SearchableSelectSeparatorOption = { kind: 'separator'; id: string }
+
+export type SearchableSelectOption = SearchableSelectSelectableOption | SearchableSelectSeparatorOption
+
+export function isSelectableOption(o: SearchableSelectOption): o is SearchableSelectSelectableOption {
+  return 'value' in o && 'label' in o
+}
+
+export function isSeparatorOption(o: SearchableSelectOption): o is SearchableSelectSeparatorOption {
+  return 'kind' in o && o.kind === 'separator'
+}
 
 type ListPosition = { top: number; left: number; width: number }
 
@@ -25,8 +40,8 @@ export type SearchableSelectProps = {
   disabled?: boolean
   id?: string
   searchable?: boolean
-  /** e.g. { value: '', label: '—' } or service type placeholder */
-  emptyOption?: SearchableSelectOption
+  /** e.g. { value: '', label: '—' } or service type placeholder. Do not mix with mid-list separators. */
+  emptyOption?: SearchableSelectSelectableOption
   required?: boolean
   /** Accessible name for the listbox */
   listAriaLabel?: string
@@ -36,11 +51,93 @@ export type SearchableSelectProps = {
 
 function normalizeOptions(
   options: SearchableSelectOption[],
-  emptyOption: SearchableSelectOption | undefined
+  emptyOption: SearchableSelectSelectableOption | undefined
 ): SearchableSelectOption[] {
   if (!emptyOption) return options
-  const rest = options.filter((o) => o.value !== emptyOption.value)
+  const rest = options.filter((o) => {
+    if (isSeparatorOption(o)) return true
+    return o.value !== emptyOption.value
+  })
   return [emptyOption, ...rest]
+}
+
+/** Split options into selectable groups; `separatorIds[i]` sits between group i and i+1. */
+function splitOptionGroups(options: SearchableSelectOption[]): {
+  groups: SearchableSelectSelectableOption[][]
+  separatorIds: string[]
+} {
+  const groups: SearchableSelectSelectableOption[][] = []
+  const separatorIds: string[] = []
+  let cur: SearchableSelectSelectableOption[] = []
+  for (const row of options) {
+    if (isSeparatorOption(row)) {
+      groups.push(cur)
+      separatorIds.push(row.id)
+      cur = []
+    } else {
+      cur.push(row)
+    }
+  }
+  groups.push(cur)
+  return { groups, separatorIds }
+}
+
+function filterOptionsBySearch(
+  allOptions: SearchableSelectOption[],
+  queryLower: string
+): SearchableSelectOption[] {
+  const q = queryLower.trim().toLowerCase()
+  if (!q) return allOptions
+  const { groups, separatorIds } = splitOptionGroups(allOptions)
+  const filteredGroups = groups.map((g) =>
+    g.filter((o) => o.label.toLowerCase().includes(q)),
+  )
+  const out: SearchableSelectOption[] = []
+  for (let i = 0; i < filteredGroups.length; i++) {
+    const g = filteredGroups[i]!
+    const nextGroup = filteredGroups[i + 1]
+    out.push(...g)
+    if (i < separatorIds.length && g.length > 0 && nextGroup && nextGroup.length > 0) {
+      out.push({ kind: 'separator', id: separatorIds[i]! })
+    }
+  }
+  return out
+}
+
+/** Same group-aware filtering as SearchableSelect search (for multi-pickers). */
+export function filterSearchableSelectOptionsByQuery(
+  options: SearchableSelectOption[],
+  query: string
+): SearchableSelectOption[] {
+  return filterOptionsBySearch(options, query)
+}
+
+function firstSelectableIndex(rows: SearchableSelectOption[]): number {
+  return rows.findIndex(isSelectableOption)
+}
+
+function lastSelectableIndex(rows: SearchableSelectOption[]): number {
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const row = rows[i]
+    if (row && isSelectableOption(row)) return i
+  }
+  return -1
+}
+
+function nextSelectableIndex(
+  rows: SearchableSelectOption[],
+  fromIndex: number,
+  direction: 1 | -1
+): number {
+  const len = rows.length
+  if (len === 0) return -1
+  let idx = fromIndex
+  for (let step = 0; step <= len; step++) {
+    idx = (idx + direction + len) % len
+    const row = rows[idx]
+    if (row && isSelectableOption(row)) return idx
+  }
+  return -1
 }
 
 export function SearchableSelect({
@@ -77,14 +174,15 @@ export function SearchableSelect({
     [optionsProp, emptyOption]
   )
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (!q) return allOptions
-    return allOptions.filter((o) => o.label.toLowerCase().includes(q))
-  }, [allOptions, query])
+  const filtered = useMemo(
+    () => filterOptionsBySearch(allOptions, query),
+    [allOptions, query]
+  )
 
   const selectedLabel = useMemo(() => {
-    const hit = allOptions.find((o) => o.value === value)
+    const hit = allOptions.find(
+      (o): o is SearchableSelectSelectableOption => isSelectableOption(o) && o.value === value,
+    )
     if (hit) return hit.label
     return placeholder
   }, [allOptions, value, placeholder])
@@ -190,6 +288,15 @@ export function SearchableSelect({
   }, [filtered.length, activeIndex, filtered])
 
   useEffect(() => {
+    if (activeIndex < 0 || activeIndex >= filtered.length) return
+    const row = filtered[activeIndex]
+    if (row && isSeparatorOption(row)) {
+      const next = firstSelectableIndex(filtered)
+      setActiveIndex(next)
+    }
+  }, [filtered, activeIndex])
+
+  useEffect(() => {
     if (!open) return
     if (searchable) {
       requestAnimationFrame(() => searchInputRef.current?.focus())
@@ -212,21 +319,32 @@ export function SearchableSelect({
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault()
       if (!open) {
-        if (allOptions.length === 0) return
-        const idx = e.key === 'ArrowDown' ? 0 : allOptions.length - 1
+        if (firstSelectableIndex(allOptions) < 0) return
+        const idx =
+          e.key === 'ArrowDown'
+            ? firstSelectableIndex(allOptions)
+            : lastSelectableIndex(allOptions)
+        if (idx < 0) return
         openPanelWithActive(idx)
         return
       }
       if (filtered.length === 0) return
       if (e.key === 'ArrowDown') {
-        setActiveIndex((i) => (i < filtered.length - 1 ? i + 1 : 0))
+        setActiveIndex((i) =>
+          i < 0 ? firstSelectableIndex(filtered) : nextSelectableIndex(filtered, i, 1),
+        )
       } else {
-        setActiveIndex((i) => (i <= 0 ? filtered.length - 1 : i - 1))
+        setActiveIndex((i) =>
+          i < 0 ? lastSelectableIndex(filtered) : nextSelectableIndex(filtered, i, -1),
+        )
       }
     }
-    if (e.key === 'Enter' && open && activeIndex >= 0 && filtered[activeIndex]) {
-      e.preventDefault()
-      applyOption(filtered[activeIndex].value)
+    if (e.key === 'Enter' && open && activeIndex >= 0) {
+      const row = filtered[activeIndex]
+      if (row && isSelectableOption(row)) {
+        e.preventDefault()
+        applyOption(row.value)
+      }
     }
     if (e.key === 'Escape' && open) {
       e.preventDefault()
@@ -242,17 +360,22 @@ export function SearchableSelect({
     }
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      if (filtered.length > 0) setActiveIndex(0)
+      const idx = firstSelectableIndex(filtered)
+      if (idx >= 0) setActiveIndex(idx)
       return
     }
     if (e.key === 'ArrowUp') {
       e.preventDefault()
-      if (filtered.length > 0) setActiveIndex(filtered.length - 1)
+      const idx = lastSelectableIndex(filtered)
+      if (idx >= 0) setActiveIndex(idx)
       return
     }
-    if (e.key === 'Enter' && activeIndex >= 0 && filtered[activeIndex]) {
-      e.preventDefault()
-      applyOption(filtered[activeIndex].value)
+    if (e.key === 'Enter' && activeIndex >= 0) {
+      const row = filtered[activeIndex]
+      if (row && isSelectableOption(row)) {
+        e.preventDefault()
+        applyOption(row.value)
+      }
     }
   }
 
@@ -328,35 +451,61 @@ export function SearchableSelect({
           </div>
         ) : (
           <ul id={listId} role="listbox" aria-label={listAriaLabel} style={listboxStyle}>
-            {filtered.map((o, idx) => (
-              <li key={`${o.value}-${idx}`} role="none">
-                <button
-                  type="button"
-                  ref={(el) => {
-                    if (el) optionRefs.current.set(idx, el)
-                    else optionRefs.current.delete(idx)
-                  }}
-                  role="option"
-                  aria-selected={value === o.value}
-                  id={`${listId}-opt-${idx}`}
-                  onMouseEnter={() => setActiveIndex(idx)}
-                  onMouseDown={(ev) => ev.preventDefault()}
-                  onClick={() => applyOption(o.value)}
-                  style={{
-                    width: '100%',
-                    textAlign: 'left',
-                    padding: '0.6rem 0.75rem',
-                    border: 'none',
-                    borderBottom: '1px solid #f3f4f6',
-                    background: idx === activeIndex ? '#eff6ff' : 'white',
-                    cursor: 'pointer',
-                    fontSize: '0.875rem',
-                  }}
-                >
-                  {o.label}
-                </button>
-              </li>
-            ))}
+            {filtered.map((o, idx) => {
+              if (isSeparatorOption(o)) {
+                return (
+                  <li
+                    key={`sep-${o.id}-${idx}`}
+                    role="separator"
+                    aria-hidden
+                    style={{
+                      listStyle: 'none',
+                      margin: 0,
+                      padding: '0.35rem 0.5rem 0',
+                      background: '#f9fafb',
+                    }}
+                  >
+                    <div
+                      style={{
+                        borderTop: '1px solid #d1d5db',
+                        margin: 0,
+                      }}
+                    />
+                  </li>
+                )
+              }
+              const nextRow = idx + 1 < filtered.length ? filtered[idx + 1] : undefined
+              const nextIsSep = nextRow ? isSeparatorOption(nextRow) : false
+              return (
+                <li key={`${o.value}-${idx}`} role="none">
+                  <button
+                    type="button"
+                    ref={(el) => {
+                      if (el) optionRefs.current.set(idx, el)
+                      else optionRefs.current.delete(idx)
+                    }}
+                    role="option"
+                    aria-selected={value === o.value}
+                    id={`${listId}-opt-${idx}`}
+                    onMouseEnter={() => setActiveIndex(idx)}
+                    onMouseDown={(ev) => ev.preventDefault()}
+                    onClick={() => applyOption(o.value)}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '0.6rem 0.75rem',
+                      border: 'none',
+                      borderBottom: nextIsSep ? 'none' : '1px solid #f3f4f6',
+                      background: idx === activeIndex ? '#eff6ff' : 'white',
+                      cursor: 'pointer',
+                      fontSize: '0.875rem',
+                    }}
+                  >
+                    {o.label}
+                  </button>
+                </li>
+              )
+            })}
           </ul>
         )}
       </div>,
@@ -378,7 +527,7 @@ export function SearchableSelect({
         aria-haspopup="listbox"
         aria-required={required || undefined}
         aria-activedescendant={
-          open && activeIndex >= 0 && filtered[activeIndex]
+          open && activeIndex >= 0 && filtered[activeIndex] && isSelectableOption(filtered[activeIndex])
             ? `${listId}-opt-${activeIndex}`
             : undefined
         }

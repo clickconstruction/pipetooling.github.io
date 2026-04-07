@@ -52,6 +52,8 @@ export type DispatchAddBlockTimeRangeProps = {
   formatAriaValue: (slotIndex: number) => string
   disabled?: boolean
   groupAriaLabel: string
+  /** Tighter vertical padding below the track (e.g. Schedule job modal); default spacing unchanged in Dispatch. */
+  compact?: boolean
 }
 
 /**
@@ -67,6 +69,7 @@ export function DispatchAddBlockTimeRange({
   formatAriaValue,
   disabled = false,
   groupAriaLabel,
+  compact = false,
 }: DispatchAddBlockTimeRangeProps) {
   const regionRef = useRef<HTMLDivElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
@@ -218,8 +221,8 @@ export function DispatchAddBlockTimeRange({
       style={{
         position: 'relative',
         width: '100%',
-        paddingTop: 10,
-        paddingBottom: 10,
+        paddingTop: compact ? 6 : 10,
+        paddingBottom: compact ? 4 : 10,
         touchAction: 'none',
         opacity: disabled ? 0.55 : 1,
       }}
@@ -286,8 +289,8 @@ export function DispatchAddBlockTimeRange({
           style={{
             position: 'relative',
             width: '100%',
-            height: 14,
-            marginTop: -2,
+            height: compact ? 12 : 14,
+            marginTop: compact ? 0 : -2,
             pointerEvents: 'none',
           }}
         >

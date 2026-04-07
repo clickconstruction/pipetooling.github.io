@@ -6,7 +6,12 @@ import type { Database, Json } from '../types/database'
 import { formatMercuryDebitCardIdCompact, mercuryDebitCardIdFromRaw } from '../lib/mercuryRawDebitCard'
 import { pushRecentPersonUserId, readRecentPersonUserIds } from '../lib/mercuryAllocRecentPersonUserIds'
 import { shortUuidPrefix } from '../lib/shortUuidPrefix'
-import { SearchableSelect, type SearchableSelectOption } from './SearchableSelect'
+import {
+  isSelectableOption,
+  SearchableSelect,
+  type SearchableSelectOption,
+  type SearchableSelectSelectableOption,
+} from './SearchableSelect'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 type JobSearchRow = { id: string; hcp_number: string; job_name: string; job_address: string }
@@ -362,7 +367,7 @@ export function MercuryTransactionAllocationsModal({
 
   const recentChipsOrdered = useMemo(() => {
     if (!recentPersonPicksStorageKey) return []
-    const valid = new Set(usersOptions.map((o) => o.value))
+    const valid = new Set(usersOptions.filter(isSelectableOption).map((o) => o.value))
     return recentPersonIds.filter((id) => valid.has(id))
   }, [recentPersonPicksStorageKey, recentPersonIds, usersOptions])
 
@@ -675,8 +680,11 @@ export function MercuryTransactionAllocationsModal({
                 <>
                   <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500 }}>Recent</span>
                   {recentChipsOrdered.map((id) => {
-                    const label =
-                      usersOptions.find((o) => o.value === id)?.label ?? shortUuidPrefix(id)
+                    const opt = usersOptions.find(
+                      (o): o is SearchableSelectSelectableOption =>
+                        isSelectableOption(o) && o.value === id,
+                    )
+                    const label = opt?.label ?? shortUuidPrefix(id)
                     return (
                       <button
                         key={id}

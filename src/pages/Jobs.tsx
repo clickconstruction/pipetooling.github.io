@@ -4580,7 +4580,8 @@ ${totalsHtml}
               )
             }
 
-            function renderStagesLastActivityCell(jobId: string) {
+            function renderStagesLastActivityCell(job: JobWithDetails) {
+              const jobId = job.id
               const stat = jobThreadStatsByJobId[jobId]
               const count = stat?.note_count ?? 0
               const notes = jobThreadNotesByJobId[jobId]
@@ -4589,6 +4590,7 @@ ${totalsHtml}
               const titleForEmpty = 'Job notes thread'
               const titleWithNotes = count > 0 ? `${count} thread note(s)` : titleForEmpty
               const expanded = expandedJobThreadId === jobId
+              const scheduleNoTeam = (job.team_members?.length ?? 0) === 0
 
               const tdShellStyle: CSSProperties = {
                 padding: '0.75rem',
@@ -4597,6 +4599,54 @@ ${totalsHtml}
                 flexDirection: 'row',
                 alignItems: 'flex-start',
                 gap: '0.35rem',
+              }
+
+              function renderStagesLastActivityLeadingControls() {
+                return (
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'row',
+                      alignItems: 'flex-start',
+                      gap: 2,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {canOpenJobScheduleModal ? (
+                      <button
+                        type="button"
+                        onClick={() => setScheduleModalJob(job)}
+                        disabled={scheduleNoTeam}
+                        title={scheduleNoTeam ? 'Assign team members to open schedule' : 'Open schedule'}
+                        aria-label={scheduleNoTeam ? 'Schedule: assign team members first' : 'Open schedule'}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '0.25rem',
+                          border: 'none',
+                          background: 'none',
+                          cursor: scheduleNoTeam ? 'not-allowed' : 'pointer',
+                          color: scheduleNoTeam ? '#9ca3af' : '#16a34a',
+                          flexShrink: 0,
+                          alignSelf: 'flex-start',
+                        }}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 640 640"
+                          width={16}
+                          height={16}
+                          fill="currentColor"
+                          aria-hidden
+                        >
+                          <path d="M224 64C206.3 64 192 78.3 192 96L192 128L160 128C124.7 128 96 156.7 96 192L96 240L544 240L544 192C544 156.7 515.3 128 480 128L448 128L448 96C448 78.3 433.7 64 416 64C398.3 64 384 78.3 384 96L384 128L256 128L256 96C256 78.3 241.7 64 224 64zM96 288L96 480C96 515.3 124.7 544 160 544L480 544C515.3 544 544 515.3 544 480L544 288L96 288z" />
+                        </svg>
+                      </button>
+                    ) : null}
+                    {renderStagesThreadExpandButton(jobId)}
+                  </div>
+                )
               }
 
               function lastActivityBodyInteractiveProps(title: string): {
@@ -4631,7 +4681,7 @@ ${totalsHtml}
               if (count === 0 || !stat?.last_note_at) {
                 return (
                   <td style={tdShellStyle}>
-                    {renderStagesThreadExpandButton(jobId)}
+                    {renderStagesLastActivityLeadingControls()}
                     <div {...lastActivityBodyInteractiveProps(titleForEmpty)}>
                       <span style={{ fontSize: '0.8125rem', color: '#9ca3af' }}>—</span>
                     </div>
@@ -4644,7 +4694,7 @@ ${totalsHtml}
               const body = (stat.last_note_body ?? '').trim() || fromThreadBody
               return (
                 <td style={{ ...tdShellStyle, maxWidth: 280 }}>
-                  {renderStagesThreadExpandButton(jobId)}
+                  {renderStagesLastActivityLeadingControls()}
                   <div {...lastActivityBodyInteractiveProps(titleWithNotes)}>
                     <div style={{ fontSize: '0.6875rem', color: '#6b7280', marginBottom: '0.2rem' }}>
                       {author ? <span>{author}</span> : null}
@@ -4880,7 +4930,7 @@ ${totalsHtml}
                               })()}
                               {renderJobCustomerLine(j)}
                             </td>
-                            {renderStagesLastActivityCell(j.id)}
+                            {renderStagesLastActivityCell(j)}
                             {showPctComplete && (
                               <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
@@ -5365,7 +5415,7 @@ ${totalsHtml}
                                     </div>
                                   ) : null}
                                 </td>
-                                {renderStagesLastActivityCell(j.id)}
+                                {renderStagesLastActivityCell(j)}
                                 <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
                                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                                     {!bundleInv ? (
@@ -5777,7 +5827,7 @@ ${totalsHtml}
                                   })()}
                                   {renderJobCustomerLine(job)}
                                 </td>
-                                {renderStagesLastActivityCell(job.id)}
+                                {renderStagesLastActivityCell(job)}
                                 <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
                                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                                     <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
@@ -9864,6 +9914,7 @@ ${totalsHtml}
             user_id: tm.user_id,
             name: tm.users?.name ?? null,
           }))}
+          assigneeCandidates={users.map((u) => ({ user_id: u.id, name: u.name }))}
         />
       ) : null}
     </div>

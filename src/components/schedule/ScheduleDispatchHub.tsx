@@ -451,71 +451,85 @@ function HubPeopleBlockCard({
             {getJobDisplayTitle(block.job_id)}
           </span>
         </button>
-        <button
-          type="button"
-          onClick={() => {
-            if (placementPickingActive) return
-            onOpenJob(block.job_id)
-          }}
+        <div
           style={{
-            display: 'block',
-            width: '100%',
-            padding: '0.35rem 0.45rem',
-            margin: 0,
-            border: 'none',
-            background: 'transparent',
-            cursor: placementPickingActive ? 'default' : 'pointer',
-            textAlign: 'left',
-            font: 'inherit',
-            color: 'inherit',
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'flex-start',
+            gap: 4,
+            minWidth: 0,
           }}
         >
-          <div
+          <button
+            type="button"
+            onClick={() => {
+              if (placementPickingActive) return
+              onOpenJob(block.job_id)
+            }}
             style={{
-              color: '#1e40af',
-              display: 'flex',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: 4,
+              flex: '1 1 0',
+              minWidth: 0,
+              display: 'block',
+              padding: '0.35rem 0.45rem',
+              margin: 0,
+              border: 'none',
+              background: 'transparent',
+              cursor: placementPickingActive ? 'default' : 'pointer',
+              textAlign: 'left',
+              font: 'inherit',
+              color: 'inherit',
             }}
           >
-            <span>{scheduleFormatWindow(block.time_start, block.time_end)}</span>
-            {groupId && linkPeerCount > 1 ? (
-              <button
-                type="button"
-                disabled={placementPickingActive}
-                title={
-                  placementPickingActive
-                    ? undefined
-                    : 'Linked: time and note stay in sync. Click to see every block in this group.'
-                }
-                aria-label="View linked schedule group details"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  if (placementPickingActive) return
-                  onOpenLinkedGroup(groupId)
-                }}
-                style={{
-                  fontSize: '0.6rem',
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
-                  color: '#1d4ed8',
-                  background: '#dbeafe',
-                  border: '1px solid #93c5fd',
-                  borderRadius: 3,
-                  padding: '0.1rem 0.28rem',
-                  cursor: placementPickingActive ? 'default' : 'pointer',
-                  fontFamily: 'inherit',
-                }}
-              >
-                Linked
-              </button>
-            ) : null}          </div>
-          {block.note ? (
-            <div style={{ color: '#4b5563', marginTop: 2, wordBreak: 'break-word' }}>{block.note}</div>
+            <div
+              style={{
+                color: '#1e40af',
+                display: 'flex',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: 4,
+              }}
+            >
+              <span>{scheduleFormatWindow(block.time_start, block.time_end)}</span>
+            </div>
+            {block.note ? (
+              <div style={{ color: '#4b5563', marginTop: 2, wordBreak: 'break-word' }}>{block.note}</div>
+            ) : null}
+          </button>
+          {groupId && linkPeerCount > 1 ? (
+            <button
+              type="button"
+              disabled={placementPickingActive}
+              title={
+                placementPickingActive
+                  ? undefined
+                  : 'Linked: time and note stay in sync. Click to see every block in this group.'
+              }
+              aria-label="View linked schedule group details"
+              onClick={(e) => {
+                e.stopPropagation()
+                if (placementPickingActive) return
+                onOpenLinkedGroup(groupId)
+              }}
+              style={{
+                flex: '0 0 auto',
+                alignSelf: 'center',
+                fontSize: '0.6rem',
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+                color: '#1d4ed8',
+                background: '#dbeafe',
+                border: '1px solid #93c5fd',
+                borderRadius: 3,
+                padding: '0.1rem 0.28rem',
+                cursor: placementPickingActive ? 'default' : 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              Linked
+            </button>
           ) : null}
-        </button>
+        </div>
       </div>
       {canEdit && !placementPickingActive ? (
         <div

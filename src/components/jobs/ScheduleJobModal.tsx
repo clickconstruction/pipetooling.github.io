@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { DispatchAddBlockTimeRange } from '../schedule/DispatchAddBlockTimeRange'
+import { isSelectableOption } from '../SearchableSelect'
+import { ScheduleAssigneeMultiPicker } from './ScheduleAssigneeMultiPicker'
 import {
   deleteJobScheduleBlock,
   fetchJobScheduleBlocksForJobDay,
@@ -15,6 +18,21 @@ import {
   scheduleTodayDateKey,
 } from '../../lib/jobScheduleChicago'
 import {
+  DISPATCH_ADD_BLOCK_SLOT_COUNT,
+  MIN_MIN,
+  MAX_MIN,
+  clampDispatchEndStartForMinDuration,
+  clampDispatchStartEndForMinDuration,
+  dispatchMinutesToHHmm,
+  dispatchMinutesToSlotIndex,
+  dispatchSlotIndexToMinutes,
+  formatBlockDurationAriaLabel,
+  formatBlockDurationMinutes,
+  formatDispatchQuickTimeLabel,
+  timeInputToMinutesSafe,
+  timeInputToPg,
+} from '../../lib/dispatchAddBlockTime'
+import {
   scheduleBlockToRange,
   scheduleOverlapsAny,
   scheduleTimeToMinutesFromMidnight,
@@ -25,17 +43,28 @@ import { ScheduleDayTimeline, type ScheduleTimelineSegment } from './ScheduleDay
 export type { ScheduleTeamMember } from '../../lib/jobScheduleBlocks'
 
 type ScheduleFormDraft = {
-  assigneeUserId: string
+  assigneeUserIds: string[]
   timeStart: string
   timeEnd: string
   note: string
 }
 
 const DEFAULT_DRAFT: ScheduleFormDraft = {
-  assigneeUserId: '',
+  assigneeUserIds: [],
   timeStart: '08:00',
   timeEnd: '12:00',
   note: '',
+}
+
+function dedupeAssigneeIds(ids: string[]): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const id of ids) {
+    if (!id || seen.has(id)) continue
+    seen.add(id)
+    out.push(id)
+  }
+  return out
 }
 
 type Props = {
@@ -44,21 +73,27 @@ type Props = {
   jobId: string
   jobTitle: string
   teamMembers: ScheduleTeamMember[]
+  /** Roster (e.g. Jobs page users); shown after job team in assignee picker. */
+  assigneeCandidates?: ScheduleTeamMember[]
 }
-
-function timeInputToPg(t: string): string {
-  const x = t.trim()
-  if (/^\d{2}:\d{2}$/.test(x)) return `${x}:00`
-  if (/^\d{2}:\d{2}:\d{2}$/.test(x)) return x
-  return `${x}:00`
-}
-
-const MIN_MIN = 4 * 60
-const MAX_MIN = 20 * 60
 
 const EMPTY_TEAM_MEMBERS: ScheduleTeamMember[] = []
+const EMPTY_ASSIGNEE_CANDIDATES: ScheduleTeamMember[] = []
 
-export function ScheduleJobModal({ open, onClose, jobId, jobTitle, teamMembers }: Props) {
+function scheduleAssigneeLabel(tm: ScheduleTeamMember): string {
+  const n = (tm.name ?? '').trim()
+  return n || tm.user_id.slice(0, 8)
+}
+
+export function ScheduleJobModal({
+  open,
+  onClose,
+  jobId,
+  jobTitle,
+  teamMembers,
+  assigneeCandidates: assigneeCandidatesProp,
+}: Props) {
+  const assigneeCandidates = assigneeCandidatesProp ?? EMPTY_ASSIGNEE_CANDIDATES
   const draftsRef = useRef<Record<string, ScheduleFormDraft>>({})
   const [contextStack, setContextStack] = useState<ScheduleJobContext[]>(() => [
     { jobId, jobTitle, project_id: null, teamMembers },
@@ -70,7 +105,7 @@ export function ScheduleJobModal({ open, onClose, jobId, jobTitle, teamMembers }
   const [error, setError] = useState<string | null>(null)
   const [contextNavLoading, setContextNavLoading] = useState(false)
   const [contextNavError, setContextNavError] = useState<string | null>(null)
-  const [assigneeUserId, setAssigneeUserId] = useState('')
+  const [assigneeUserIds, setAssigneeUserIds] = useState<string[]>([])
   const [timeStart, setTimeStart] = useState('08:00')
   const [timeEnd, setTimeEnd] = useState('12:00')
   const [note, setNote] = useState('')
@@ -93,13 +128,21 @@ export function ScheduleJobModal({ open, onClose, jobId, jobTitle, teamMembers }
     draftsRef.current = {}
     setWorkDate(scheduleTodayDateKey())
     setContextNavError(null)
-    const first = teamMembers[0]?.user_id ?? ''
-    setAssigneeUserId(first)
+    const teamFirst = teamMembers[0]?.user_id
+    if (teamFirst) {
+      setAssigneeUserIds([teamFirst])
+    } else {
+      const sorted = [...assigneeCandidates].sort((a, b) =>
+        scheduleAssigneeLabel(a).localeCompare(scheduleAssigneeLabel(b)),
+      )
+      const c0 = sorted[0]?.user_id
+      setAssigneeUserIds(c0 ? [c0] : [])
+    }
     setTimeStart(DEFAULT_DRAFT.timeStart)
     setTimeEnd(DEFAULT_DRAFT.timeEnd)
     setNote(DEFAULT_DRAFT.note)
     // Only open + root jobId: do not depend on teamMembers[] identity (parent re-renders).
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- jobTitle/teamMembers read fresh when jobId/open changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- jobTitle/teamMembers/assigneeCandidates read fresh when jobId/open changes
   }, [open, jobId])
 
   const flushDraftToRef = useCallback(
@@ -107,28 +150,34 @@ export function ScheduleJobModal({ open, onClose, jobId, jobTitle, teamMembers }
       draftsRef.current = {
         ...draftsRef.current,
         [ctxJobId]: {
-          assigneeUserId,
+          assigneeUserIds,
           timeStart,
           timeEnd,
           note,
         },
       }
     },
-    [assigneeUserId, timeStart, timeEnd, note],
+    [assigneeUserIds, timeStart, timeEnd, note],
   )
 
   const applyDraftToForm = useCallback((targetJobId: string, members: ScheduleTeamMember[]) => {
     const d = draftsRef.current[targetJobId]
-    const first = members[0]?.user_id ?? ''
-    const a =
-      d?.assigneeUserId && members.some((m) => m.user_id === d.assigneeUserId)
-        ? d.assigneeUserId
-        : first
-    setAssigneeUserId(a)
+    const candFirst =
+      [...assigneeCandidates].sort((a, b) =>
+        scheduleAssigneeLabel(a).localeCompare(scheduleAssigneeLabel(b)),
+      )[0]?.user_id ?? ''
+    const teamFirst = members[0]?.user_id
+    const defaultIds = dedupeAssigneeIds(teamFirst ? [teamFirst] : candFirst ? [candFirst] : [])
+    const allowed = new Set([
+      ...members.map((m) => m.user_id),
+      ...assigneeCandidates.map((c) => c.user_id),
+    ])
+    const fromDraft = dedupeAssigneeIds(d?.assigneeUserIds?.filter((id) => allowed.has(id)) ?? [])
+    setAssigneeUserIds(fromDraft.length > 0 ? fromDraft : defaultIds)
     setTimeStart(d?.timeStart ?? DEFAULT_DRAFT.timeStart)
     setTimeEnd(d?.timeEnd ?? DEFAULT_DRAFT.timeEnd)
     setNote(d?.note ?? DEFAULT_DRAFT.note)
-  }, [])
+  }, [assigneeCandidates])
 
   const goToJob = useCallback(
     async (targetJobId: string) => {
@@ -162,23 +211,66 @@ export function ScheduleJobModal({ open, onClose, jobId, jobTitle, teamMembers }
     [open, contextStack, flushDraftToRef, applyDraftToForm],
   )
 
-  const nameByUserId = useMemo(() => {
-    const m = new Map<string, string>()
-    if (!currentContext) return m
-    for (const t of currentContext.teamMembers) {
-      m.set(t.user_id, (t.name ?? '').trim() || 'Unnamed')
-    }
-    return m
-  }, [currentContext])
-
   const currentJobId = currentContext?.jobId ?? ''
   const currentTeamMembers = currentContext?.teamMembers ?? EMPTY_TEAM_MEMBERS
+
+  const assigneeSelectOptions = useMemo(() => {
+    const teamSorted = [...currentTeamMembers].sort((a, b) =>
+      scheduleAssigneeLabel(a).localeCompare(scheduleAssigneeLabel(b)),
+    )
+    const teamIds = new Set(teamSorted.map((t) => t.user_id))
+    const othersSorted = [...assigneeCandidates]
+      .filter((c) => !teamIds.has(c.user_id))
+      .sort((a, b) => scheduleAssigneeLabel(a).localeCompare(scheduleAssigneeLabel(b)))
+    const teamOpts = teamSorted.map((t) => ({ value: t.user_id, label: scheduleAssigneeLabel(t) }))
+    const otherOpts = othersSorted.map((t) => ({ value: t.user_id, label: scheduleAssigneeLabel(t) }))
+    if (teamOpts.length > 0 && otherOpts.length > 0) {
+      return [
+        ...teamOpts,
+        { kind: 'separator' as const, id: 'schedule-assignee-divider' },
+        ...otherOpts,
+      ]
+    }
+    return [...teamOpts, ...otherOpts]
+  }, [currentTeamMembers, assigneeCandidates])
+
+  const nameByUserId = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const c of assigneeCandidates) {
+      m.set(c.user_id, scheduleAssigneeLabel(c))
+    }
+    if (currentContext) {
+      for (const t of currentContext.teamMembers) {
+        m.set(t.user_id, scheduleAssigneeLabel(t))
+      }
+    }
+    return m
+  }, [assigneeCandidates, currentContext])
+
+  useEffect(() => {
+    if (!open) return
+    if (assigneeUserIds.length > 0) return
+    const first = assigneeSelectOptions.find(isSelectableOption)?.value
+    if (first) setAssigneeUserIds([first])
+  }, [open, assigneeUserIds.length, assigneeSelectOptions])
+
+  const hasAssigneePickOptions = useMemo(
+    () => assigneeSelectOptions.some(isSelectableOption),
+    [assigneeSelectOptions],
+  )
+
+  const assigneeUserIdsLoadKey = useMemo(
+    () => dedupeAssigneeIds(assigneeUserIds).sort().join(','),
+    [assigneeUserIds],
+  )
 
   const load = useCallback(async () => {
     if (!open || !currentJobId) return
     setLoading(true)
     setError(null)
-    const ids = currentTeamMembers.map((t) => t.user_id)
+    const teamIds = currentTeamMembers.map((t) => t.user_id)
+    const selected = dedupeAssigneeIds(assigneeUserIds)
+    const ids = [...new Set([...teamIds, ...selected].filter(Boolean))]
     const [r1, r2] = await Promise.all([
       fetchJobScheduleBlocksForJobDay(currentJobId, workDate),
       fetchScheduleBlocksForAssigneesOnDay(ids, workDate),
@@ -188,7 +280,7 @@ export function ScheduleJobModal({ open, onClose, jobId, jobTitle, teamMembers }
     setBlocksThisJob(r1.data)
     setDayBlocksAll(r2.data)
     setLoading(false)
-  }, [open, currentJobId, workDate, currentTeamMembers])
+  }, [open, currentJobId, workDate, currentTeamMembers, assigneeUserIdsLoadKey])
 
   useEffect(() => {
     void load()
@@ -217,6 +309,40 @@ export function ScheduleJobModal({ open, onClose, jobId, jobTitle, teamMembers }
     return segs.sort((a, b) => a.timeStart.localeCompare(b.timeStart))
   }, [dayBlocksAll, currentJobId, nameByUserId])
 
+  const startMin = useMemo(() => timeInputToMinutesSafe(timeStart), [timeStart])
+  const endMin = useMemo(() => timeInputToMinutesSafe(timeEnd), [timeEnd])
+  const startSlotIndex = useMemo(() => dispatchMinutesToSlotIndex(startMin), [startMin])
+  const endSlotIndex = useMemo(() => dispatchMinutesToSlotIndex(endMin), [endMin])
+  const { durationDisplay, durationAriaLabel } = useMemo(() => {
+    const dm = endMin > startMin ? endMin - startMin : Number.NaN
+    return {
+      durationDisplay: formatBlockDurationMinutes(dm),
+      durationAriaLabel: formatBlockDurationAriaLabel(dm),
+    }
+  }, [startMin, endMin])
+
+  const onStartSliderChange = useCallback(
+    (slotIndex: number) => {
+      const sMin = dispatchSlotIndexToMinutes(slotIndex)
+      const eMinCur = timeInputToMinutesSafe(timeEnd)
+      const { s, e } = clampDispatchStartEndForMinDuration(sMin, eMinCur)
+      setTimeStart(dispatchMinutesToHHmm(s))
+      setTimeEnd(dispatchMinutesToHHmm(e))
+    },
+    [timeEnd],
+  )
+
+  const onEndSliderChange = useCallback(
+    (slotIndex: number) => {
+      const eMin = dispatchSlotIndexToMinutes(slotIndex)
+      const sMinCur = timeInputToMinutesSafe(timeStart)
+      const { s, e } = clampDispatchEndStartForMinDuration(eMin, sMinCur)
+      setTimeStart(dispatchMinutesToHHmm(s))
+      setTimeEnd(dispatchMinutesToHHmm(e))
+    },
+    [timeStart],
+  )
+
   const shiftDay = (delta: number) => {
     const next = scheduleDateKeyAddDays(workDate, delta)
     if (next) setWorkDate(next)
@@ -236,8 +362,9 @@ export function ScheduleJobModal({ open, onClose, jobId, jobTitle, teamMembers }
   }
 
   const saveBlock = async () => {
-    if (!assigneeUserId) {
-      setError('Pick a team member.')
+    const ids = dedupeAssigneeIds(assigneeUserIds)
+    if (ids.length === 0) {
+      setError('Pick at least one person.')
       return
     }
     const v = validateRange()
@@ -248,30 +375,38 @@ export function ScheduleJobModal({ open, onClose, jobId, jobTitle, teamMembers }
     const ts = timeInputToPg(timeStart)
     const te = timeInputToPg(timeEnd)
     const candidate = scheduleBlockToRange(ts, te)
-    const sameAssignee = dayBlocksAll.filter((b) => b.assignee_user_id === assigneeUserId)
-    if (scheduleOverlapsAny(candidate, sameAssignee, undefined)) {
-      setError('That time overlaps another block for this person on this day.')
-      return
+    for (const uid of ids) {
+      const sameAssignee = dayBlocksAll.filter((b) => b.assignee_user_id === uid)
+      if (scheduleOverlapsAny(candidate, sameAssignee, undefined)) {
+        const personName = nameByUserId.get(uid) ?? 'This person'
+        setError(`${personName}: that time overlaps another block on this day.`)
+        return
+      }
     }
     setSaving(true)
     setError(null)
-    const { error: insErr } = await insertJobScheduleBlock({
-      job_id: currentJobId,
-      assignee_user_id: assigneeUserId,
-      work_date: workDate,
-      time_start: ts,
-      time_end: te,
-      note: note.trim() || null,
-      shared_block_group_id: newJobScheduleSharedBlockGroupId(),
-    })
-    setSaving(false)
-    if (insErr) {
-      setError(insErr)
-      return
+    const groupId = newJobScheduleSharedBlockGroupId()
+    for (const uid of ids) {
+      const { error: insErr } = await insertJobScheduleBlock({
+        job_id: currentJobId,
+        assignee_user_id: uid,
+        work_date: workDate,
+        time_start: ts,
+        time_end: te,
+        note: note.trim() || null,
+        shared_block_group_id: groupId,
+      })
+      if (insErr) {
+        setSaving(false)
+        setError(insErr)
+        await load()
+        return
+      }
     }
+    setSaving(false)
     setNote('')
     draftsRef.current[currentJobId] = {
-      assigneeUserId,
+      assigneeUserIds: ids,
       timeStart,
       timeEnd,
       note: '',
@@ -330,44 +465,65 @@ export function ScheduleJobModal({ open, onClose, jobId, jobTitle, teamMembers }
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
           <div style={{ minWidth: 0 }}>
-            <h2 id="schedule-job-modal-title" style={{ margin: 0, fontSize: '1.15rem' }}>
-              Schedule
+            <h2
+              id="schedule-job-modal-title"
+              style={{
+                margin: 0,
+                fontSize: '1.15rem',
+                fontWeight: 400,
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'baseline',
+                gap: '0.35rem',
+              }}
+            >
+              <span style={{ fontWeight: 600 }}>Schedule</span>
+              <nav
+                aria-label="Schedule job context"
+                style={{
+                  margin: 0,
+                  fontSize: '1.15rem',
+                  color: '#4b5563',
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'baseline',
+                }}
+              >
+                {contextStack.map((ctx, i) => (
+                  <span key={`${ctx.jobId}-${i}`}>
+                    {i > 0 ? (
+                      <span aria-hidden style={{ margin: '0 0.25rem', color: '#9ca3af' }}>
+                        ←
+                      </span>
+                    ) : null}
+                    {i < contextStack.length - 1 ? (
+                      <button
+                        type="button"
+                        onClick={() => void goToJob(ctx.jobId)}
+                        disabled={contextNavLoading}
+                        style={{
+                          padding: 0,
+                          margin: 0,
+                          border: 'none',
+                          background: 'none',
+                          color: '#2563eb',
+                          cursor: contextNavLoading ? 'not-allowed' : 'pointer',
+                          font: 'inherit',
+                          textDecoration: 'underline',
+                          textUnderlineOffset: 2,
+                        }}
+                      >
+                        {ctx.jobTitle}
+                      </button>
+                    ) : (
+                      <span aria-current="page" style={{ fontWeight: 600, color: '#111827' }}>
+                        {ctx.jobTitle}
+                      </span>
+                    )}
+                  </span>
+                ))}
+              </nav>
             </h2>
-            <nav aria-label="Schedule job context" style={{ margin: '0.35rem 0 0', fontSize: '0.875rem', color: '#4b5563' }}>
-              {contextStack.map((ctx, i) => (
-                <span key={`${ctx.jobId}-${i}`}>
-                  {i > 0 ? (
-                    <span aria-hidden style={{ margin: '0 0.25rem', color: '#9ca3af' }}>
-                      ←
-                    </span>
-                  ) : null}
-                  {i < contextStack.length - 1 ? (
-                    <button
-                      type="button"
-                      onClick={() => void goToJob(ctx.jobId)}
-                      disabled={contextNavLoading}
-                      style={{
-                        padding: 0,
-                        margin: 0,
-                        border: 'none',
-                        background: 'none',
-                        color: '#2563eb',
-                        cursor: contextNavLoading ? 'not-allowed' : 'pointer',
-                        font: 'inherit',
-                        textDecoration: 'underline',
-                        textUnderlineOffset: 2,
-                      }}
-                    >
-                      {ctx.jobTitle}
-                    </button>
-                  ) : (
-                    <span aria-current="page" style={{ fontWeight: 600, color: '#111827' }}>
-                      {ctx.jobTitle}
-                    </span>
-                  )}
-                </span>
-              ))}
-            </nav>
           </div>
           <button
             type="button"
@@ -447,21 +603,44 @@ export function ScheduleJobModal({ open, onClose, jobId, jobTitle, teamMembers }
             Add block for this job
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <label style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-              Team member
-              <select
-                value={assigneeUserId}
-                onChange={(e) => setAssigneeUserId(e.target.value)}
-                style={{ display: 'block', marginTop: 4, width: '100%', padding: '0.4rem', fontSize: '0.875rem' }}
-              >
-                {currentTeamMembers.map((t) => (
-                  <option key={t.user_id} value={t.user_id}>
-                    {(t.name ?? '').trim() || t.user_id.slice(0, 8)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+              <div style={{ marginBottom: 4 }}>Team members</div>
+              <div style={{ fontSize: '0.7rem', color: '#9ca3af', marginBottom: 6 }}>
+                Linked: same time and note for everyone selected ({assigneeUserIds.length} selected).
+              </div>
+              <ScheduleAssigneeMultiPicker
+                id="schedule-job-assignee"
+                options={assigneeSelectOptions}
+                value={assigneeUserIds}
+                onChange={setAssigneeUserIds}
+                disabled={!hasAssigneePickOptions}
+                listAriaLabel="Team members"
+              />
+            </div>
+            <div style={{ marginBottom: 0 }}>
+              <DispatchAddBlockTimeRange
+                compact
+                slotCount={DISPATCH_ADD_BLOCK_SLOT_COUNT}
+                startSlotIndex={startSlotIndex}
+                endSlotIndex={endSlotIndex}
+                onStartChange={onStartSliderChange}
+                onEndChange={onEndSliderChange}
+                formatAriaValue={(i) =>
+                  formatDispatchQuickTimeLabel(dispatchMinutesToHHmm(dispatchSlotIndexToMinutes(i)))
+                }
+                disabled={saving}
+                groupAriaLabel="Scheduled block time, 30-minute steps from 4:00 AM to 8:00 PM Central"
+              />
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                gap: '0.75rem',
+                flexWrap: 'wrap',
+                marginBottom: '0.75rem',
+                alignItems: 'flex-end',
+              }}
+            >
               <label style={{ fontSize: '0.75rem', color: '#6b7280', flex: '1 1 120px' }}>
                 Start
                 <input
@@ -471,6 +650,29 @@ export function ScheduleJobModal({ open, onClose, jobId, jobTitle, teamMembers }
                   style={{ display: 'block', marginTop: 4, width: '100%', padding: '0.35rem' }}
                 />
               </label>
+              <div
+                role="status"
+                aria-live="polite"
+                aria-label={durationAriaLabel}
+                style={{
+                  flex: '0 0 auto',
+                  textAlign: 'center',
+                  minWidth: 72,
+                  paddingBottom: 2,
+                }}
+              >
+                <div style={{ fontSize: '0.65rem', color: '#6b7280', marginBottom: 2 }}>Duration</div>
+                <div
+                  style={{
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    fontVariantNumeric: 'tabular-nums',
+                    color: '#374151',
+                  }}
+                >
+                  {durationDisplay}
+                </div>
+              </div>
               <label style={{ fontSize: '0.75rem', color: '#6b7280', flex: '1 1 120px' }}>
                 End
                 <input
@@ -493,20 +695,35 @@ export function ScheduleJobModal({ open, onClose, jobId, jobTitle, teamMembers }
             </label>
             <button
               type="button"
-              disabled={saving || currentTeamMembers.length === 0}
+              disabled={
+                saving || assigneeUserIds.length === 0 || !hasAssigneePickOptions
+              }
               onClick={() => void saveBlock()}
               style={{
                 alignSelf: 'flex-start',
                 padding: '0.45rem 1rem',
                 fontSize: '0.875rem',
-                background: saving || currentTeamMembers.length === 0 ? '#e5e7eb' : '#2563eb',
-                color: saving || currentTeamMembers.length === 0 ? '#6b7280' : '#fff',
+                background:
+                  saving || assigneeUserIds.length === 0 || !hasAssigneePickOptions
+                    ? '#e5e7eb'
+                    : '#2563eb',
+                color:
+                  saving || assigneeUserIds.length === 0 || !hasAssigneePickOptions
+                    ? '#6b7280'
+                    : '#fff',
                 border: 'none',
                 borderRadius: 4,
-                cursor: saving || currentTeamMembers.length === 0 ? 'not-allowed' : 'pointer',
+                cursor:
+                  saving || assigneeUserIds.length === 0 || !hasAssigneePickOptions
+                    ? 'not-allowed'
+                    : 'pointer',
               }}
             >
-              {saving ? 'Saving…' : 'Add to schedule'}
+              {saving
+                ? 'Saving…'
+                : assigneeUserIds.length > 1
+                  ? `Add to schedule (${assigneeUserIds.length})`
+                  : 'Add to schedule'}
             </button>
           </div>
         </div>
