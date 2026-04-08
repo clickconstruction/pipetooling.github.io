@@ -4,9 +4,12 @@ import {
   DragEndEvent,
   PointerSensor,
   closestCorners,
+  pointerWithin,
+  rectIntersection,
   useDroppable,
   useSensor,
   useSensors,
+  type CollisionDetection,
 } from '@dnd-kit/core'
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -36,6 +39,15 @@ function formatCardAddress(address: string | null): { line1: string; line2: stri
 
 function dropId(columnId: string): string {
   return `drop:${columnId}`
+}
+
+/** Kanban-style boards: `closestCorners` keeps favoring the source column; prefer pointer placement first. */
+const workingBoardCollisionDetection: CollisionDetection = (args) => {
+  const pointer = pointerWithin(args)
+  if (pointer.length > 0) return pointer
+  const rect = rectIntersection(args)
+  if (rect.length > 0) return rect
+  return closestCorners(args)
 }
 
 function sortBidIdsImplicit(aId: string, bId: string, bidMap: Map<string, BidsWorkingBoardBid>): number {
@@ -510,7 +522,7 @@ export function BidsWorkingBoard({
       {persisting ? (
         <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem' }}>Saving…</div>
       ) : null}
-      <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={onDragEnd}>
+      <DndContext sensors={sensors} collisionDetection={workingBoardCollisionDetection} onDragEnd={onDragEnd}>
         <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'stretch', overflowX: 'auto', paddingBottom: '0.5rem' }}>
           {sortedCols.map((col, idx) => (
             <div key={col.id} style={{ flexShrink: 0, width: 280, display: 'flex', flexDirection: 'column' }}>
