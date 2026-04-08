@@ -171,10 +171,11 @@ type SortableCardProps = {
   bid: BidsWorkingBoardBid
   expanded: boolean
   onToggleExpand: () => void
+  onOpenEditBid?: (bidId: string) => void
   notesContent: ReactNode
 }
 
-function SortableWorkingCard({ bid, expanded, onToggleExpand, notesContent }: SortableCardProps) {
+function SortableWorkingCard({ bid, expanded, onToggleExpand, onOpenEditBid, notesContent }: SortableCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: bid.id })
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -209,12 +210,26 @@ function SortableWorkingCard({ bid, expanded, onToggleExpand, notesContent }: So
         >
           ⋮⋮
         </button>
-        <button
-          type="button"
-          onClick={onToggleExpand}
+        <div
+          tabIndex={0}
           aria-expanded={expanded}
+          aria-label="Expand bid notes"
+          onClick={(e) => {
+            if (e.target instanceof Element && e.target.closest('[data-working-bid-edit]')) {
+              return
+            }
+            onToggleExpand()
+          }}
+          onKeyDown={(e) => {
+            if (e.target !== e.currentTarget) return
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              onToggleExpand()
+            }
+          }}
           style={{
             flex: 1,
+            minWidth: 0,
             textAlign: 'left',
             padding: '0.5rem 0.65rem',
             border: 'none',
@@ -222,8 +237,37 @@ function SortableWorkingCard({ bid, expanded, onToggleExpand, notesContent }: So
             cursor: 'pointer',
           }}
         >
-          <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#111827' }}>
-            <span style={{ color: '#3b82f6' }}>{bidNum}</span>
+          <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#111827', lineHeight: 1.35 }}>
+            {onOpenEditBid ? (
+              <span
+                data-working-bid-edit
+                role="link"
+                tabIndex={0}
+                title="Edit bid"
+                aria-label={`Edit bid ${bidNum}`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onOpenEditBid(bid.id)
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    onOpenEditBid(bid.id)
+                  }
+                }}
+                style={{
+                  color: '#3b82f6',
+                  cursor: 'pointer',
+                  borderRadius: 2,
+                  outlineOffset: 1,
+                }}
+              >
+                {bidNum}
+              </span>
+            ) : (
+              <span style={{ color: '#3b82f6' }}>{bidNum}</span>
+            )}
             <span style={{ color: '#9ca3af', margin: '0 0.35rem' }}>·</span>
             <span>{bid.project_name ?? '—'}</span>
           </div>
@@ -236,7 +280,7 @@ function SortableWorkingCard({ bid, expanded, onToggleExpand, notesContent }: So
               </>
             ) : null}
           </div>
-        </button>
+        </div>
       </div>
       {expanded ? (
         <div style={{ padding: '0.75rem', borderTop: '1px solid #e5e7eb', background: '#f9fafb' }}>{notesContent}</div>
@@ -274,6 +318,8 @@ type BidsWorkingBoardProps = {
   onLoadError: (message: string) => void
   onMutatedNotes: () => void
   onMutatedNotesCustomer: () => void
+  /** When set, bid number is clickable and opens the parent edit flow (e.g. BidFormModal). */
+  onOpenEditBid?: (bidId: string) => void
 }
 
 export function BidsWorkingBoard({
@@ -282,6 +328,7 @@ export function BidsWorkingBoard({
   onLoadError,
   onMutatedNotes,
   onMutatedNotesCustomer,
+  onOpenEditBid,
 }: BidsWorkingBoardProps) {
   const [columns, setColumns] = useState<BidWorkingColumn[]>([])
   const [columnBidIds, setColumnBidIds] = useState<Record<string, string[]>>({})
@@ -673,6 +720,7 @@ export function BidsWorkingBoard({
                         bid={bid}
                         expanded={expandedBidId === bidId}
                         onToggleExpand={() => setExpandedBidId((cur) => (cur === bidId ? null : bidId))}
+                        onOpenEditBid={onOpenEditBid}
                         notesContent={
                           <BidBoardNotesPanel
                             bid={bid}

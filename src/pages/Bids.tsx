@@ -8448,6 +8448,10 @@ export default function Bids() {
             onLoadError={(m) => setError(m)}
             onMutatedNotes={() => { void loadBids() }}
             onMutatedNotesCustomer={() => { void loadCustomerContacts(); void loadBids() }}
+            onOpenEditBid={(bidId) => {
+              const b = bids.find((x) => x.id === bidId)
+              if (b) openEditBid(b)
+            }}
           />
         </div>
       ) : null}
