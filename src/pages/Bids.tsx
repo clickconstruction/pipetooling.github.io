@@ -175,6 +175,8 @@ type TakeoffRoughPartLineRow = {
   unitPrice: number
   /** When set, unit_price came from this catalog row; null after manual price edit. */
   sourceMaterialPartPriceId: string | null
+  /** When set, line was created from expanding this assembly (Add assembly). Cleared when user picks another part. */
+  sourceTemplateId: string | null
   sequenceOrder: number
   isSaved: boolean
 }
@@ -2229,6 +2231,7 @@ export default function Bids() {
         unit_price: number
         sequence_order: number
         source_material_part_price_id: string | null
+        source_template_id: string | null
       }>
       setTakeoffRoughPartLines(
         savedRough.map((r) => ({
@@ -2238,6 +2241,7 @@ export default function Bids() {
           quantity: Number(r.quantity),
           unitPrice: Number(r.unit_price),
           sourceMaterialPartPriceId: r.source_material_part_price_id ?? null,
+          sourceTemplateId: r.source_template_id ?? null,
           sequenceOrder: r.sequence_order,
           isSaved: true,
         }))
@@ -6389,6 +6393,7 @@ export default function Bids() {
           unit_price: up,
           sequence_order: line.sequenceOrder,
           source_material_part_price_id: src,
+          source_template_id: line.sourceTemplateId ?? null,
         })
         .eq('id', line.id)
       if (error) {
@@ -6406,6 +6411,7 @@ export default function Bids() {
           unit_price: up,
           sequence_order: line.sequenceOrder,
           source_material_part_price_id: src,
+          source_template_id: line.sourceTemplateId ?? null,
         })
         .select('id')
         .single()
@@ -6435,7 +6441,7 @@ export default function Bids() {
     }
     setTakeoffRoughPartLines((prev) => {
       const mapped = prev.map((l) =>
-        l.id === lineId ? { ...l, partId, unitPrice, sourceMaterialPartPriceId } : l
+        l.id === lineId ? { ...l, partId, unitPrice, sourceMaterialPartPriceId, sourceTemplateId: null } : l
       )
       const line = mapped.find((l) => l.id === lineId)
       if (line?.partId.trim()) {
@@ -6538,7 +6544,10 @@ export default function Bids() {
   function updateTakeoffRoughPartLine(
     lineId: string,
     updates: Partial<
-      Pick<TakeoffRoughPartLineRow, 'partId' | 'quantity' | 'unitPrice' | 'sequenceOrder' | 'sourceMaterialPartPriceId'>
+      Pick<
+        TakeoffRoughPartLineRow,
+        'partId' | 'quantity' | 'unitPrice' | 'sequenceOrder' | 'sourceMaterialPartPriceId' | 'sourceTemplateId'
+      >
     >
   ) {
     setTakeoffRoughPartLines((prev) => {
@@ -6636,6 +6645,7 @@ export default function Bids() {
         quantity: 1,
         unitPrice: 0,
         sourceMaterialPartPriceId: null,
+        sourceTemplateId: null,
         sequenceOrder: maxSeq + 1,
         isSaved: false,
       },
@@ -7455,6 +7465,7 @@ export default function Bids() {
           quantity: Math.max(0.0001, Number(qty) || 0.0001),
           unitPrice: low != null ? low.price : 0,
           sourceMaterialPartPriceId: low != null ? low.priceId : null,
+          sourceTemplateId: templateId,
           sequenceOrder: maxSeq,
           isSaved: false,
         })
@@ -9407,10 +9418,15 @@ export default function Bids() {
               <h3 id="takeoff-remove-confirm-title" style={{ margin: '0 0 0.75rem', fontSize: '1.05rem' }}>
                 Remove this line?
               </h3>
-              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}>
+              <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}>
                 {takeoffRemoveConfirm.kind === 'rough_line'
                   ? 'This part line will be removed from the takeoff. You can add it again later.'
                   : 'This assembly line will be removed from the takeoff. You can add an assembly again later.'}
+              </p>
+              <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#6b7280', lineHeight: 1.5 }}>
+                <strong>Delete</strong> is focused when this dialog opens—press <strong>Space</strong> or{' '}
+                <strong>Enter</strong> to remove the line, or choose <strong>Cancel</strong> / <strong>Esc</strong> to
+                keep it.
               </p>
               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                 <button
@@ -11181,6 +11197,7 @@ export default function Bids() {
                                         const p = takeoffAddTemplateParts.find((x) => x.id === partId)
                                         if (p) openBidsPartFormForEdit(p)
                                       }}
+                                      materialTemplates={materialTemplates}
                                       filterPartsByQuery={filterPartsByQuery}
                                       roughQtyNumpadLineId={roughQtyNumpadLineId}
                                       roughQtyNumpadDraft={roughQtyNumpadDraft}
@@ -17830,6 +17847,7 @@ function SortableRoughPartLineRow({
   onRequestRemoveRoughLine,
   openBidsPartFormForCreate,
   onOpenEditTakeoffPart,
+  materialTemplates,
   filterPartsByQuery,
   roughQtyNumpadLineId,
   roughQtyNumpadDraft,
@@ -17853,7 +17871,10 @@ function SortableRoughPartLineRow({
   updateTakeoffRoughPartLine: (
     lineId: string,
     updates: Partial<
-      Pick<TakeoffRoughPartLineRow, 'partId' | 'quantity' | 'unitPrice' | 'sequenceOrder' | 'sourceMaterialPartPriceId'>
+      Pick<
+        TakeoffRoughPartLineRow,
+        'partId' | 'quantity' | 'unitPrice' | 'sequenceOrder' | 'sourceMaterialPartPriceId' | 'sourceTemplateId'
+      >
     >
   ) => void
   resetRoughLineToCatalogPrice: (lineId: string) => void | Promise<void>
@@ -17862,6 +17883,7 @@ function SortableRoughPartLineRow({
   onRequestRemoveRoughLine: (lineId: string) => void
   openBidsPartFormForCreate: (initialName: string) => void
   onOpenEditTakeoffPart: (partId: string) => void
+  materialTemplates: MaterialTemplateWithAssemblyType[]
   filterPartsByQuery: (parts: RoughTakeoffMaterialPart[], query: string, limit?: number) => RoughTakeoffMaterialPart[]
   roughQtyNumpadLineId: string | null
   roughQtyNumpadDraft: string
@@ -18060,7 +18082,12 @@ function SortableRoughPartLineRow({
                 {(() => {
                   const partTypeName =
                     takeoffAddTemplateParts.find((p) => p.id === line.partId)?.part_types?.name ?? '—'
-                  return `Part · ${partTypeName}`
+                  let s = `Part · ${partTypeName}`
+                  if (line.sourceTemplateId) {
+                    const asmName = materialTemplates.find((t) => t.id === line.sourceTemplateId)?.name
+                    s += asmName ? ` · ${asmName}` : ' · —'
+                  }
+                  return s
                 })()}
               </span>
               <button

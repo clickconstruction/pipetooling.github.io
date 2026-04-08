@@ -711,6 +711,7 @@ export type Database = {
           quantity: number
           sequence_order: number
           source_material_part_price_id: string | null
+          source_template_id: string | null
           unit_price: number
           updated_at: string | null
         }
@@ -723,6 +724,7 @@ export type Database = {
           quantity?: number
           sequence_order?: number
           source_material_part_price_id?: string | null
+          source_template_id?: string | null
           unit_price?: number
           updated_at?: string | null
         }
@@ -735,6 +737,7 @@ export type Database = {
           quantity?: number
           sequence_order?: number
           source_material_part_price_id?: string | null
+          source_template_id?: string | null
           unit_price?: number
           updated_at?: string | null
         }
@@ -765,6 +768,13 @@ export type Database = {
             columns: ["source_material_part_price_id"]
             isOneToOne: false
             referencedRelation: "material_part_prices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_takeoff_rough_part_lines_source_template_id_fkey"
+            columns: ["source_template_id"]
+            isOneToOne: false
+            referencedRelation: "material_templates"
             referencedColumns: ["id"]
           },
         ]
