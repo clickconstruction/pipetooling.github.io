@@ -44,6 +44,7 @@ import { executeScheduleDispatchBlockReassign } from '../lib/scheduleDispatchDra
 import { insertScheduleDispatchCopiedLeg } from '../lib/scheduleDispatchMirrorInsert'
 import { fetchSalariedUserIdSetFromUserIds } from '../lib/salaryPayConfigGate'
 import { DispatchAddBlockTimeRange } from '../components/schedule/DispatchAddBlockTimeRange'
+import DetailJobModal, { type DetailJobScheduleContext } from '../components/jobs/DetailJobModal'
 import { PreviewJobModal } from '../components/calendar/PreviewJobModal'
 import { LinkedScheduleGroupModal } from '../components/schedule/LinkedScheduleGroupModal'
 import { ScheduleDispatchHub } from '../components/schedule/ScheduleDispatchHub'
@@ -78,11 +79,14 @@ const SCHEDULE_DISPATCH_HIDE_WEEKEND_STORAGE_KEY = 'scheduleDispatchHideWeekend'
 const SCHEDULE_DISPATCH_HIGHLIGHT_LINKED_GROUPS_KEY = 'scheduleDispatchHighlightLinkedGroups'
 
 function readScheduleDispatchHideWeekend(): boolean {
-  if (typeof window === 'undefined') return false
+  if (typeof window === 'undefined') return true
   try {
-    return window.localStorage.getItem(SCHEDULE_DISPATCH_HIDE_WEEKEND_STORAGE_KEY) === '1'
+    const v = window.localStorage.getItem(SCHEDULE_DISPATCH_HIDE_WEEKEND_STORAGE_KEY)
+    if (v === '0') return false
+    if (v === '1') return true
+    return true
   } catch {
-    return false
+    return true
   }
 }
 
@@ -457,6 +461,12 @@ export default function ScheduleDispatch() {
   const [hubPayApprovedMasterIds, setHubPayApprovedMasterIds] = useState<Set<string>>(() => new Set())
   const [hubSalariedUserIds, setHubSalariedUserIds] = useState<Set<string>>(() => new Set())
   const [jobPreview, setJobPreview] = useState<{ projectId: string; dateKey: string | null } | null>(null)
+  const [hubDetailJobModal, setHubDetailJobModal] = useState<{
+    jobId: string
+    scheduleContext: DetailJobScheduleContext
+    prefillRowLabel: string | null
+    prefillAddress: string | null
+  } | null>(null)
   const [scheduleJobProjectId, setScheduleJobProjectId] = useState<string | null>(null)
   /** `null` until job-week `load()` succeeds; then whoever is not in this set is schedule-only. */
   const [officialJobTeamUserIds, setOfficialJobTeamUserIds] = useState<ReadonlySet<string> | null>(null)
@@ -506,14 +516,6 @@ export default function ScheduleDispatch() {
     const m = new Map<string, string>()
     for (const j of hubJobs) {
       m.set(j.id, formatScheduleDispatchHubJobTitle(j.hcp_number, j.job_name))
-    }
-    return m
-  }, [hubJobs])
-
-  const hubJobProjectIdById = useMemo(() => {
-    const m = new Map<string, string | null>()
-    for (const j of hubJobs) {
-      m.set(j.id, j.project_id)
     }
     return m
   }, [hubJobs])
@@ -782,6 +784,7 @@ export default function ScheduleDispatch() {
 
   useEffect(() => {
     setJobPreview(null)
+    setHubDetailJobModal(null)
   }, [jobId, weekStart])
 
   useEffect(() => {
@@ -1385,16 +1388,21 @@ export default function ScheduleDispatch() {
     [setSearchParams, weekStart],
   )
 
-  const openJobPreviewFromHub = useCallback(
-    (jid: string, dateKey: string) => {
-      const pid = hubJobProjectIdById.get(jid)?.trim()
-      if (!pid) {
-        showToast('No workflow project linked to this job.', 'warning')
-        return
-      }
-      setJobPreview({ projectId: pid, dateKey })
+  const openHubJobDetail = useCallback(
+    (block: JobScheduleBlockRow, workDateYmd: string) => {
+      setHubDetailJobModal({
+        jobId: block.job_id,
+        scheduleContext: {
+          workDate: workDateYmd,
+          timeStart: block.time_start,
+          timeEnd: block.time_end,
+          note: block.note,
+        },
+        prefillRowLabel: getHubJobDisplayTitle(block.job_id),
+        prefillAddress: null,
+      })
     },
-    [hubJobProjectIdById, showToast],
+    [getHubJobDisplayTitle],
   )
 
   const openJobPreviewFromJobWeek = useCallback(() => {
@@ -1530,7 +1538,7 @@ export default function ScheduleDispatch() {
             onWeekShift={shiftWeek}
             onThisWeek={goThisWeek}
             onOpenJob={openJobWeekGrid}
-            onOpenJobPreview={openJobPreviewFromHub}
+            onOpenHubJobDetail={openHubJobDetail}
             scheduleTodayYmd={scheduleTodayYmd}
             cardPlacementMode={cardPlacementMode}
             placementSourceWorkDate={placementSourceBlock?.work_date ?? null}
@@ -1681,14 +1689,17 @@ export default function ScheduleDispatch() {
             getJobDisplayTitle={getHubJobDisplayTitle}
           />
         ) : null}
-        {jobPreview ? (
-          <PreviewJobModal
+        {hubDetailJobModal ? (
+          <DetailJobModal
             open
-            onClose={() => setJobPreview(null)}
-            projectId={jobPreview.projectId}
-            contextDateKey={jobPreview.dateKey}
-            authUserId={authUser?.id}
-            showJobsDeepLink={role !== 'subcontractor'}
+            onClose={() => setHubDetailJobModal(null)}
+            jobId={hubDetailJobModal.jobId}
+            scheduleContext={hubDetailJobModal.scheduleContext}
+            authRole={role}
+            assignedJobsRows={[]}
+            prefillRowLabel={hubDetailJobModal.prefillRowLabel}
+            prefillAddress={hubDetailJobModal.prefillAddress}
+            onEditJobSaved={() => void loadHub()}
           />
         ) : null}
       </>

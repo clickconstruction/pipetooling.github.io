@@ -15,4 +15,6 @@ export type JobWithDetails = JobsLedgerRow & {
   team_members: (JobsLedgerTeamMember & { users: { name: string } | null })[]
   report_count?: number
   project?: { id: string; name: string } | null
+  /** Max `job_schedule_blocks.work_date` for this job; set in Jobs `loadJobs` only. */
+  last_schedule_work_date?: string | null
 }

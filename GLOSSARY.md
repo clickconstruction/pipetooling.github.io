@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-04-08
+last_updated: 2026-04-07
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -646,6 +646,21 @@ SQL file defining schema changes (CREATE TABLE, ALTER TABLE, etc.). Migrations a
 **Naming**: `YYYYMMDDHHMMSS_descriptive_name.sql`
 
 **Rule**: Never edit existing migrations; create new ones
+
+### Last work date (`jobs_ledger.last_work_date`)
+Cached calendar **`work_date`**: the latest among **approved**, non-rejected, non-revoked **`clock_sessions`** with **`job_ledger_id`** pointing at the job. Maintained by database triggers on **`clock_sessions`** (not edited in Job form). Used for read-only display (e.g. **Job Detail** modal).
+
+### Last bill date (Job Detail modal — UI-only row)
+**Not a database column.** In **[`DetailJobModal.tsx`](src/components/jobs/DetailJobModal.tsx)**, the **Last bill date** label shows the calendar-latest **recorded billing activity** from **`deriveRecordedBillingActivityDetail`** ([`stagesJobReferenceDates.ts`](src/lib/stagesJobReferenceDates.ts)): **`jobs_ledger_invoices`** **`sent_to_customer_at`** / **`billed_at`** and **`jobs_ledger_payments`** **`paid_on`** only (manual **`last_bill_date`** is **excluded** here; see **Last manual bill date** and Stages **`b:`**). **`—`** when no activity qualifies or when the modal uses a **limited** snapshot without invoice/payment data.
+
+### Last manual bill date (`jobs_ledger.last_bill_date`)
+**UI label** in **Edit Job** / **Detail Job**: **Last manual bill date** (database column **`last_bill_date`**). Business date for billing / Stages aging / partial-invoice defaults—**entered by the user**, not auto-updated when an invoice is sent. Set in **Edit Job** and **When Billed** / **Missing Billed Date** on Jobs **Ready to Bill** when unset. Former column name **`estimated_completion_date`**. Future **Stripe** webhooks may set or align this field. Included in the **Stages `b:`** line (`max` with invoice/payment activity; see below).
+
+### Other job charges (Jobs — manual materials)
+User-facing label for **manual job materials** lines stored on **`jobs_ledger_materials`** in **Edit Job** and **Job Detail** materials cost accordions (and in Jobs **Parts** totals / Quickfill copy). Replaces the older **Billed materials** wording. See **`RECENT_FEATURES.md`** → v2.277; **`JobFormModal.tsx`**, **`JobDetailMaterialsCostSection.tsx`**.
+
+### Stages lines `j:` and `b:` (Jobs Stages tab)
+Read-only **T±n (weekday)** summaries under **Assigned / HCP**: **`j:`** (job / field) = calendar-latest of **`last_work_date`** (approved clock sessions cache) and max **`job_schedule_blocks.work_date`** for the job; **`b:`** (billing reference) = calendar-**latest** of **last manual bill date** (**`last_bill_date`**) and invoice **`sent_to_customer_at`** / **`billed_at`** and payment **`paid_on`**—**`—`** only when all of those are empty. Helpers: **`src/lib/stagesJobReferenceDates.ts`**.
 
 ### pay_stub_payments
 Physical installment rows against a generated pay stub: amount sent, optional sent-on date, optional memo. A database trigger prevents the sum of installment amounts from exceeding **Net Pay** (stub **gross_pay** minus **`pay_stub_deductions`** plus **`pay_stub_additional_lines`** `line_total`, within a small rounding tolerance).

@@ -1,10 +1,11 @@
 /* eslint-disable react-hooks/exhaustive-deps -- mount-only init; parent remounts via key */
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { NO_CUSTOMER_TYPE_LABEL } from '../../constants/customerTypeLabels'
 import { supabase } from '../../lib/supabase'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { useAuth } from '../../hooks/useAuth'
+import { useMercuryLedgerNicknames } from '../../hooks/useMercuryLedgerNicknames'
 import { useToastContext } from '../../contexts/ToastContext'
 import { parseCustomerImport } from '../../utils/parseCustomerImport'
 import { nameSimilarity } from '../../utils/nameSimilarity'
@@ -16,12 +17,20 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import { resolveCustomerIdForJobPayload } from '../../lib/jobLedgerCustomer'
 import { resolveEffectiveJobMasterUserId } from '../../lib/resolveEffectiveJobMasterUserId'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
+import { formatMercuryCardChargesPostedDate } from '../../lib/formatMercuryCardChargesPostedDate'
+import { fetchJobMaterialsCostSnapshot } from '../../lib/fetchJobMaterialsCostSnapshot'
+import { formatMercuryDebitCardIdCompact } from '../../lib/mercuryRawDebitCard'
+import type { JobMercuryAllocLine, JobSupplyInvoiceLine, JobTallyPartLine } from '../../lib/fetchJobMaterialsCostSnapshot'
+import { MaterialsCostAccordionRow } from './JobFormMaterialsCostAccordion'
 
 type EstimatesRow = Database['public']['Tables']['estimates']['Row']
 type CustomerRow = Database['public']['Tables']['customers']['Row']
 type UserRow = { id: string; name: string; email: string | null; role: string }
 
 type MaterialRow = { id: string; description: string; amount: number }
+
+type MaterialsAccordionKey = 'supply' | 'mercury' | 'tally' | 'billed'
+
 type PaymentRow = { id: string; amount: number; paid_on: string | null; note: string | null }
 type FixtureRow = { id: string; name: string; count: number }
 
@@ -81,6 +90,10 @@ type ProjectOption = {
   customers: { name: string } | null
 }
 
+/** Above Job Detail modal (`1004`) so Edit Job can stack on top without closing detail. */
+const JOB_FORM_OVERLAY_Z_INDEX = 1010
+const JOB_FORM_NESTED_OVERLAY_Z_INDEX = JOB_FORM_OVERLAY_Z_INDEX + 1
+
 export type JobFormModalProps = {
   mode: 'new' | 'edit'
   editJobId: string | null
@@ -106,6 +119,7 @@ export default function JobFormModal({
   onCreatedJobId = null,
 }: JobFormModalProps) {
   const { user: authUser, role: authRole } = useAuth()
+  const { nicknameByDebitCard } = useMercuryLedgerNicknames()
   const { showToast } = useToastContext()
   const navigate = useNavigate()
   const onSavedRef = useRef(onSaved)
@@ -138,9 +152,10 @@ export default function JobFormModal({
   const [similarCustomersForCreate, setSimilarCustomersForCreate] = useState<CustomerRow[]>([])
   const [createCustomerFromJobModalLoading, setCreateCustomerFromJobModalLoading] = useState(false)
   const [customerExpanded, setCustomerExpanded] = useState(false)
+  const [projectFilesPlansExpanded, setProjectFilesPlansExpanded] = useState(false)
   const [billingCustomerHighlight, setBillingCustomerHighlight] = useState(false)
   const [dateMet, setDateMet] = useState('')
-  const [estimatedCompletionDate, setEstimatedCompletionDate] = useState('')
+  const [lastBillDate, setLastBillDate] = useState('')
   const jobFormMissingFields: string[] = []
   if (!jobName.trim()) jobFormMissingFields.push('Job Name')
   if (!jobAddress.trim()) jobFormMissingFields.push('Job Address')
@@ -162,6 +177,15 @@ export default function JobFormModal({
   const [newInvoiceAmount, setNewInvoiceAmount] = useState('')
   const [creatingInvoice, setCreatingInvoice] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [materialsAccordionOpen, setMaterialsAccordionOpen] = useState<MaterialsAccordionKey | null>('billed')
+  const [jobMaterialsSnapshotLoading, setJobMaterialsSnapshotLoading] = useState(false)
+  const [supplyInvoiceTotal, setSupplyInvoiceTotal] = useState(0)
+  const [supplyInvoiceRpcFailed, setSupplyInvoiceRpcFailed] = useState(false)
+  const [supplyInvoiceLines, setSupplyInvoiceLines] = useState<JobSupplyInvoiceLine[]>([])
+  const [mercuryAllocLines, setMercuryAllocLines] = useState<JobMercuryAllocLine[]>([])
+  const [mercuryFetchFailed, setMercuryFetchFailed] = useState(false)
+  const [tallyPartLines, setTallyPartLines] = useState<JobTallyPartLine[]>([])
+  const [tallyFetchFailed, setTallyFetchFailed] = useState(false)
   const jobNameInputRef = useRef<HTMLInputElement | null>(null)
   const jobAddressInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -221,9 +245,12 @@ export default function JobFormModal({
       !!(job.customer_name || job.customer_email || job.customer_phone || job.customer_id) ||
         (billingGate && !jobLedgerHasCustomerForBilling(job.customer_id)),
     )
-    setEstimatedCompletionDate(job.estimated_completion_date ? job.estimated_completion_date.slice(0, 10) : '')
+    setLastBillDate(job.last_bill_date ? job.last_bill_date.slice(0, 10) : '')
     setGoogleDriveLink(job.google_drive_link ?? '')
     setJobPlansLink(job.job_plans_link ?? '')
+    setProjectFilesPlansExpanded(
+      !!(job.project_id || (job.google_drive_link ?? '').trim() || (job.job_plans_link ?? '').trim()),
+    )
     setRevenue(job.revenue != null ? String(job.revenue) : '')
     setPayments(
       job.payments?.length
@@ -263,9 +290,10 @@ export default function JobFormModal({
     setCustomerSearch('')
     setDateMet('')
     setCustomerExpanded(true)
-    setEstimatedCompletionDate('')
+    setLastBillDate('')
     setGoogleDriveLink('')
     setJobPlansLink('')
+    setProjectFilesPlansExpanded(!!projectPrefill)
     setRevenue('')
     setPayments([newEmptyPaymentRow()])
     setMaterials([{ id: crypto.randomUUID(), description: '', amount: 0 }])
@@ -393,6 +421,48 @@ export default function JobFormModal({
   }, [editing?.id])
 
   useEffect(() => {
+    const jobId = editing?.id ?? null
+    if (!jobId) {
+      setJobMaterialsSnapshotLoading(false)
+      setSupplyInvoiceTotal(0)
+      setSupplyInvoiceRpcFailed(false)
+      setSupplyInvoiceLines([])
+      setMercuryAllocLines([])
+      setMercuryFetchFailed(false)
+      setTallyPartLines([])
+      setTallyFetchFailed(false)
+      setMaterialsAccordionOpen('billed')
+      return
+    }
+    let cancelled = false
+    setJobMaterialsSnapshotLoading(true)
+    setMaterialsAccordionOpen('billed')
+    setSupplyInvoiceRpcFailed(false)
+    setMercuryFetchFailed(false)
+    setTallyFetchFailed(false)
+
+    void (async () => {
+      try {
+        const snap = await fetchJobMaterialsCostSnapshot(jobId)
+        if (cancelled) return
+        setSupplyInvoiceTotal(snap.supplyInvoiceTotal)
+        setSupplyInvoiceRpcFailed(snap.supplyInvoiceRpcFailed)
+        setSupplyInvoiceLines(snap.supplyInvoiceLines)
+        setMercuryAllocLines(snap.mercuryAllocLines)
+        setMercuryFetchFailed(snap.mercuryFetchFailed)
+        setTallyPartLines(snap.tallyPartLines)
+        setTallyFetchFailed(snap.tallyFetchFailed)
+      } finally {
+        if (!cancelled) setJobMaterialsSnapshotLoading(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [editing?.id])
+
+  useEffect(() => {
     if (customerId && billingCustomerHighlight) {
       setBillingCustomerHighlight(false)
     }
@@ -454,6 +524,33 @@ export default function JobFormModal({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [contractorsDropdownOpen])
 
+  const billedMaterialsTotalDisplay = useMemo(() => {
+    const sum = materials.reduce((s, m) => s + (Number(m.amount) || 0), 0)
+    return formatCurrency(sum)
+  }, [materials])
+
+  const mercuryCardTotal = useMemo(
+    () => mercuryAllocLines.reduce((s, l) => s + Math.abs(Number(l.allocationAmount)), 0),
+    [mercuryAllocLines],
+  )
+
+  const tallyPartsTotal = useMemo(() => tallyPartLines.reduce((s, l) => s + l.lineTotal, 0), [tallyPartLines])
+
+  const toggleMaterialsAccordion = useCallback((key: MaterialsAccordionKey) => {
+    setMaterialsAccordionOpen((prev) => (prev === key ? null : key))
+  }, [])
+
+  const projectFilesPlansSummary = useMemo(() => {
+    const parts: string[] = []
+    if (projectId) {
+      parts.push(projects.find((p) => p.id === projectId)?.name ?? '—')
+    }
+    if (googleDriveLink.trim()) parts.push('Files')
+    if (jobPlansLink.trim()) parts.push('Plans')
+    if (parts.length === 0) return '—'
+    return parts.join(' · ')
+  }, [projectId, projects, googleDriveLink, jobPlansLink])
+
   function getEditJobBillableRemaining(): number {
     return Math.max(0, parseMoneyInputToNumber(revenue) - payments.reduce((s, p) => s + (Number(p.amount) || 0), 0))
   }
@@ -474,7 +571,7 @@ export default function JobFormModal({
     setError(null)
     try {
       const nextOrder = (editing.invoices ?? []).length
-      const estBill = editing.estimated_completion_date?.trim().slice(0, 10) ?? null
+      const estBill = editing.last_bill_date?.trim().slice(0, 10) ?? null
       const { error: err } = await supabase.from('jobs_ledger_invoices').insert({
         job_id: editing.id,
         amount,
@@ -659,7 +756,7 @@ export default function JobFormModal({
           customer_name: customerName.trim() || null,
           customer_email: customerEmail.trim() || null,
           customer_phone: customerPhone.trim() || null,
-          estimated_completion_date: estimatedCompletionDate.trim() || null,
+          last_bill_date: lastBillDate.trim() || null,
           google_drive_link: googleDriveLink.trim() || null,
           job_plans_link: jobPlansLink.trim() || null,
           revenue: revNum,
@@ -731,7 +828,7 @@ export default function JobFormModal({
             customer_name: customerName.trim() || null,
             customer_email: customerEmail.trim() || null,
             customer_phone: customerPhone.trim() || null,
-            estimated_completion_date: estimatedCompletionDate.trim() || null,
+            last_bill_date: lastBillDate.trim() || null,
             google_drive_link: googleDriveLink.trim() || null,
             job_plans_link: jobPlansLink.trim() || null,
             revenue: revNum,
@@ -814,7 +911,7 @@ export default function JobFormModal({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 50,
+          zIndex: JOB_FORM_OVERLAY_Z_INDEX,
         }}
       >
         <div style={{ background: 'white', padding: '1.25rem 1.5rem', borderRadius: 8, fontSize: '0.9375rem' }}>Loading…</div>
@@ -833,7 +930,7 @@ export default function JobFormModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 50,
+        zIndex: JOB_FORM_OVERLAY_Z_INDEX,
         padding: '1rem',
       }}
       onClick={(e) => e.target === e.currentTarget && closeForm()}
@@ -990,11 +1087,11 @@ export default function JobFormModal({
           </div>
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div style={{ flex: '0 0 auto', minWidth: 140 }}>
-              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Est. Done and Bill Date</label>
+              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Last manual bill date</label>
               <input
                 type="date"
-                value={estimatedCompletionDate}
-                onChange={(e) => setEstimatedCompletionDate(e.target.value)}
+                value={lastBillDate}
+                onChange={(e) => setLastBillDate(e.target.value)}
                 style={{ width: '100%', minWidth: 140, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
               />
             </div>
@@ -1030,7 +1127,8 @@ export default function JobFormModal({
               </div>
             </div>
           </div>
-          <div style={{ marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '1rem' }}>
+            <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: customerExpanded ? '0.5rem' : 0 }}>
               <button
                 type="button"
@@ -1270,253 +1368,239 @@ export default function JobFormModal({
                 </div>
               </div>
             )}
-          </div>
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Project</label>
-            <select
-              value={projectId ?? ''}
-              onChange={(e) => {
-                const pid = e.target.value || null
-                setProjectId(pid)
-                if (pid) {
-                  const proj = projects.find((p) => p.id === pid)
-                  if (proj && !customerId) {
-                    setCustomerId(proj.customer_id)
-                  }
-                }
-              }}
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
-            >
-              <option value="">None</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                  {p.customers?.name ? ` (${p.customers.name})` : ''}
-                </option>
-              ))}
-            </select>
-            <span style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 4, display: 'block' }}>
-              Link job to a multi-phase project for billing after each phase
-            </span>
-          </div>
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: 200 }}>
-              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Files</label>
-              <input
-                type="url"
-                value={googleDriveLink}
-                onChange={(e) => setGoogleDriveLink(e.target.value)}
-                placeholder="https://drive.google.com/..."
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
-              />
-              <a
-                href="https://drive.google.com/drive/folders/1cOTvZrJFTUlxTiUMoESdMtTRvQgxft60?usp=drive_link"
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => { e.preventDefault(); openInExternalBrowser('https://drive.google.com/drive/folders/1cOTvZrJFTUlxTiUMoESdMtTRvQgxft60?usp=drive_link') }}
-                style={{ fontSize: '0.8125rem', color: '#2563eb', marginTop: 4, display: 'inline-block' }}
-              >
-                job folders
-              </a>
             </div>
-            <div style={{ flex: 1, minWidth: 200 }}>
-              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Plans</label>
-              <input
-                type="url"
-                value={jobPlansLink}
-                onChange={(e) => setJobPlansLink(e.target.value)}
-                placeholder="https://drive.google.com/..."
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
-              />
+            <div>
+            <button
+              type="button"
+              id="job-form-project-files-plans-trigger"
+              aria-expanded={projectFilesPlansExpanded}
+              aria-controls="job-form-project-files-plans-panel"
+              onClick={() => setProjectFilesPlansExpanded((p) => !p)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: 0,
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                fontWeight: 500,
+                fontSize: 'inherit',
+                color: 'inherit',
+                width: '100%',
+                textAlign: 'left',
+                marginBottom: projectFilesPlansExpanded ? '0.5rem' : 0,
+              }}
+            >
+              <span aria-hidden>{projectFilesPlansExpanded ? '\u25BC' : '\u25B6'}</span>
+              <span>
+                Project, files, and plans: <span style={{ fontWeight: 400, color: '#6b7280' }}>{projectFilesPlansSummary}</span>
+              </span>
+            </button>
+            {projectFilesPlansExpanded && (
+              <div
+                id="job-form-project-files-plans-panel"
+                role="region"
+                aria-labelledby="job-form-project-files-plans-trigger"
+                style={{ paddingLeft: '1.25rem', borderLeft: '2px solid #e5e7eb' }}
+              >
+                <div style={{ marginBottom: '0.75rem' }}>
+                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Project</label>
+                  <select
+                    value={projectId ?? ''}
+                    onChange={(e) => {
+                      const pid = e.target.value || null
+                      setProjectId(pid)
+                      if (pid) {
+                        const proj = projects.find((p) => p.id === pid)
+                        if (proj && !customerId) {
+                          setCustomerId(proj.customer_id)
+                        }
+                      }
+                    }}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                  >
+                    <option value="">None</option>
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                        {p.customers?.name ? ` (${p.customers.name})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <span style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 4, display: 'block' }}>
+                    Link job to a multi-phase project for billing after each phase
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Files</label>
+                    <input
+                      type="url"
+                      value={googleDriveLink}
+                      onChange={(e) => setGoogleDriveLink(e.target.value)}
+                      placeholder="https://drive.google.com/..."
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                    />
+                    <a
+                      href="https://drive.google.com/drive/folders/1cOTvZrJFTUlxTiUMoESdMtTRvQgxft60?usp=drive_link"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => { e.preventDefault(); openInExternalBrowser('https://drive.google.com/drive/folders/1cOTvZrJFTUlxTiUMoESdMtTRvQgxft60?usp=drive_link') }}
+                      style={{ fontSize: '0.8125rem', color: '#2563eb', marginTop: 4, display: 'inline-block' }}
+                    >
+                      job folders
+                    </a>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Plans</label>
+                    <input
+                      type="url"
+                      value={jobPlansLink}
+                      onChange={(e) => setJobPlansLink(e.target.value)}
+                      placeholder="https://drive.google.com/..."
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
             </div>
           </div>
           <hr style={{ margin: '0.75rem auto', border: 'none', borderTop: '1px solid #9ca3af', width: '50%' }} />
-          <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', padding: '1rem', marginBottom: '1rem' }}>
-            <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#374151', marginBottom: '0.75rem' }}>Contractors</div>
-            <div ref={contractorsDropdownRef} style={{ position: 'relative' }}>
-              {teamMemberIds.length > 0 && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.5rem' }}>
-                  {teamMemberIds.map((id) => {
-                    const u = users.find((x) => x.id === id)
-                    return (
-                      <span
-                        key={id}
+          <div style={{ marginBottom: '1rem' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                flexWrap: 'wrap',
+                marginBottom: teamMemberIds.length > 0 ? '0.5rem' : 0,
+              }}
+            >
+              <div ref={contractorsDropdownRef} style={{ position: 'relative', flex: '1 1 12rem', minWidth: 0 }}>
+                <input
+                  type="text"
+                  value={contractorsSearch}
+                  onChange={(e) => setContractorsSearch(e.target.value)}
+                  onFocus={() => setContractorsDropdownOpen(true)}
+                  onBlur={() => setTimeout(() => setContractorsDropdownOpen(false), 150)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') setContractorsDropdownOpen(false)
+                    if (e.key === 'Enter') {
+                      const filtered = users.filter((u) => !teamMemberIds.includes(u.id) && u.name.toLowerCase().includes(contractorsSearch.toLowerCase().trim()))
+                      const first = filtered[0]
+                      if (first) {
+                        e.preventDefault()
+                        setTeamMemberIds((prev) => [...prev, first.id])
+                        setContractorsSearch('')
+                      }
+                    }
+                  }}
+                  placeholder="Add People..."
+                  style={{ width: '100%', padding: '0.375rem 0.625rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem' }}
+                />
+                {contractorsDropdownOpen && (() => {
+                  const filtered = users.filter((u) => !teamMemberIds.includes(u.id) && u.name.toLowerCase().includes(contractorsSearch.toLowerCase().trim()))
+                  if (filtered.length === 0 && !contractorsSearch.trim()) return null
+                  return (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        right: 0,
+                        background: 'white',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: 4,
+                        marginTop: 2,
+                        maxHeight: 200,
+                        overflowY: 'auto',
+                        zIndex: 9999,
+                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                      }}
+                    >
+                      {filtered.length > 0 ? (
+                        filtered.map((u, idx) => (
+                          <button
+                            key={u.id}
+                            type="button"
+                            onMouseDown={(e) => {
+                              e.preventDefault()
+                              setTeamMemberIds((prev) => [...prev, u.id])
+                              setContractorsSearch('')
+                            }}
+                            style={{
+                              width: '100%',
+                              padding: '0.5rem 0.75rem',
+                              textAlign: 'left',
+                              background: 'white',
+                              border: 'none',
+                              borderBottom: idx < filtered.length - 1 ? '1px solid #e5e7eb' : 'none',
+                              cursor: 'pointer',
+                              color: '#111827',
+                              fontSize: '0.875rem',
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = '#f9fafb' }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = 'white' }}
+                          >
+                            {u.name}
+                          </button>
+                        ))
+                      ) : (
+                        <div style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                          No matches
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
+              </div>
+            </div>
+            {teamMemberIds.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                {teamMemberIds.map((id) => {
+                  const u = users.find((x) => x.id === id)
+                  return (
+                    <span
+                      key={id}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.25rem',
+                        padding: '0.25rem 0.5rem',
+                        background: '#eff6ff',
+                        borderRadius: 6,
+                        fontSize: '0.875rem',
+                      }}
+                    >
+                      {u?.name ?? id}
+                      <button
+                        type="button"
+                        onClick={() => setTeamMemberIds((prev) => prev.filter((x) => x !== id))}
+                        title="Remove"
                         style={{
+                          padding: 0,
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: '0.25rem',
-                          padding: '0.25rem 0.5rem',
-                          background: '#eff6ff',
-                          borderRadius: 6,
+                          color: '#6b7280',
                           fontSize: '0.875rem',
                         }}
                       >
-                        {u?.name ?? id}
-                        <button
-                          type="button"
-                          onClick={() => setTeamMemberIds((prev) => prev.filter((x) => x !== id))}
-                          title="Remove"
-                          style={{
-                            padding: 0,
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            color: '#6b7280',
-                            fontSize: '0.875rem',
-                          }}
-                        >
-                          ×
-                        </button>
-                      </span>
-                    )
-                  })}
-                </div>
-              )}
-              <input
-                type="text"
-                value={contractorsSearch}
-                onChange={(e) => setContractorsSearch(e.target.value)}
-                onFocus={() => setContractorsDropdownOpen(true)}
-                onBlur={() => setTimeout(() => setContractorsDropdownOpen(false), 150)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape') setContractorsDropdownOpen(false)
-                  if (e.key === 'Enter') {
-                    const filtered = users.filter((u) => !teamMemberIds.includes(u.id) && u.name.toLowerCase().includes(contractorsSearch.toLowerCase().trim()))
-                    const first = filtered[0]
-                    if (first) {
-                      e.preventDefault()
-                      setTeamMemberIds((prev) => [...prev, first.id])
-                      setContractorsSearch('')
-                    }
-                  }
-                }}
-                placeholder="Search contractors…"
-                style={{ width: '100%', padding: '0.375rem 0.625rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem' }}
-              />
-              {contractorsDropdownOpen && (() => {
-                const filtered = users.filter((u) => !teamMemberIds.includes(u.id) && u.name.toLowerCase().includes(contractorsSearch.toLowerCase().trim()))
-                if (filtered.length === 0 && !contractorsSearch.trim()) return null
-                return (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: '100%',
-                      left: 0,
-                      right: 0,
-                      background: 'white',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: 4,
-                      marginTop: 2,
-                      maxHeight: 200,
-                      overflowY: 'auto',
-                      zIndex: 9999,
-                      boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                    }}
-                  >
-                    {filtered.length > 0 ? (
-                      filtered.map((u, idx) => (
-                        <button
-                          key={u.id}
-                          type="button"
-                          onMouseDown={(e) => {
-                            e.preventDefault()
-                            setTeamMemberIds((prev) => [...prev, u.id])
-                            setContractorsSearch('')
-                          }}
-                          style={{
-                            width: '100%',
-                            padding: '0.5rem 0.75rem',
-                            textAlign: 'left',
-                            background: 'white',
-                            border: 'none',
-                            borderBottom: idx < filtered.length - 1 ? '1px solid #e5e7eb' : 'none',
-                            cursor: 'pointer',
-                            color: '#111827',
-                            fontSize: '0.875rem',
-                          }}
-                          onMouseEnter={(e) => { e.currentTarget.style.background = '#f9fafb' }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = 'white' }}
-                        >
-                          {u.name}
-                        </button>
-                      ))
-                    ) : (
-                      <div style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
-                        No matching contractors
-                      </div>
-                    )}
-                  </div>
-                )
-              })()}
-            </div>
+                        ×
+                      </button>
+                    </span>
+                  )
+                })}
+              </div>
+            )}
           </div>
           <hr style={{ margin: '0.75rem auto', border: 'none', borderTop: '1px solid #9ca3af', width: '50%' }} />
-          <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', padding: '1rem', marginBottom: '1rem', overflow: 'hidden' }}>
-            <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#374151', marginBottom: '0.75rem' }}>Billed Materials</div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-              <thead style={{ background: '#f9fafb' }}>
-                <tr>
-                  <th style={{ padding: '0.625rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Line Item</th>
-                  <th style={{ padding: '0.625rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Amount ($)</th>
-                  <th style={{ padding: '0.625rem 0.5rem', width: 48, borderBottom: '1px solid #e5e7eb' }} />
-                </tr>
-              </thead>
-              <tbody>
-                {materials.map((row, idx) => (
-                  <tr key={row.id} style={{ borderBottom: idx < materials.length - 1 ? '1px solid #e5e7eb' : 'none' }}>
-                    <td style={{ padding: '0.625rem 0.75rem' }}>
-                      <input
-                        type="text"
-                        value={row.description}
-                        onChange={(e) => updateMaterialRow(row.id, { description: e.target.value })}
-                        placeholder="Item description"
-                        style={{ width: '100%', padding: '0.375rem 0.625rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem' }}
-                      />
-                    </td>
-                    <td style={{ padding: '0.625rem 0.75rem', textAlign: 'right' }}>
-                      <input
-                        type="number"
-                        min={0}
-                        step={0.01}
-                        value={row.amount || ''}
-                        onChange={(e) => updateMaterialRow(row.id, { amount: parseFloat(e.target.value) || 0 })}
-                        placeholder="0"
-                        style={{ width: '6rem', padding: '0.375rem 0.625rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem', textAlign: 'right' }}
-                      />
-                    </td>
-                    <td style={{ padding: '0.625rem 0.5rem' }}>
-                      <button
-                        type="button"
-                        onClick={() => removeMaterialRow(row.id)}
-                        disabled={materials.length <= 1}
-                        title="Remove"
-                        style={{
-                          padding: '0.35rem',
-                          background: materials.length <= 1 ? '#f3f4f6' : 'transparent',
-                          color: materials.length <= 1 ? '#9ca3af' : '#991b1c',
-                          border: 'none',
-                          borderRadius: 4,
-                          cursor: materials.length <= 1 ? 'not-allowed' : 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z" /></svg>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <button type="button" onClick={addMaterialRow} style={{ marginTop: '0.75rem', padding: '0.5rem 1rem', fontSize: '0.875rem', fontWeight: 500, background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
-              Add Billed Material
-            </button>
-          </div>
-          <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', padding: '1rem', overflow: 'hidden' }}>
-            <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#374151', marginBottom: '0.75rem' }}>Specific Work (Fixtures / Tie-ins)</div>
+          <div style={{ marginBottom: '1rem' }}>
+            <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#374151', marginBottom: '0.75rem' }}>Specific Work (Fixtures / Tie-ins / Repair)</div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
               <thead style={{ background: '#f9fafb' }}>
                 <tr>
@@ -1571,9 +1655,209 @@ export default function JobFormModal({
                 ))}
               </tbody>
             </table>
-            <button type="button" onClick={addFixtureRow} style={{ marginTop: '0.75rem', padding: '0.5rem 1rem', fontSize: '0.875rem', fontWeight: 500, background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
-              Add Fixture /Tie-in
-            </button>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.75rem' }}>
+              <button type="button" onClick={addFixtureRow} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', fontWeight: 500, background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
+                Add
+              </button>
+            </div>
+          </div>
+          <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', marginBottom: '1rem', overflow: 'hidden' }}>
+              {editing?.id ? (
+                <>
+                  <MaterialsCostAccordionRow
+                    title="Supply house invoices"
+                    totalDisplay={supplyInvoiceRpcFailed ? '—' : formatCurrency(supplyInvoiceTotal)}
+                    expanded={materialsAccordionOpen === 'supply'}
+                    onToggle={() => toggleMaterialsAccordion('supply')}
+                    busy={jobMaterialsSnapshotLoading}
+                  >
+                    {supplyInvoiceLines.length === 0 && supplyInvoiceTotal > 0 && !supplyInvoiceRpcFailed ? (
+                      <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
+                        Allocated invoice total for this job; line detail is available to office roles in Materials.
+                      </p>
+                    ) : supplyInvoiceLines.length === 0 ? (
+                      <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>No supply house invoice allocations for this job.</p>
+                    ) : (
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                        <thead style={{ background: '#f9fafb' }}>
+                          <tr>
+                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Supply house</th>
+                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Invoice</th>
+                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Date</th>
+                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Allocated</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {supplyInvoiceLines.map((ln, idx) => (
+                            <tr key={`${ln.invoiceNumber}-${ln.invoiceDate}-${idx}`} style={{ borderBottom: idx < supplyInvoiceLines.length - 1 ? '1px solid #e5e7eb' : 'none' }}>
+                              <td style={{ padding: '0.5rem 0.625rem' }}>{ln.supplyHouseName ?? '—'}</td>
+                              <td style={{ padding: '0.5rem 0.625rem' }}>{ln.invoiceNumber}</td>
+                              <td style={{ padding: '0.5rem 0.625rem' }}>{ln.invoiceDate || '—'}</td>
+                              <td style={{ padding: '0.5rem 0.625rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(ln.allocatedAmount)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </MaterialsCostAccordionRow>
+                  <MaterialsCostAccordionRow
+                    title="Card charges"
+                    totalDisplay={mercuryFetchFailed ? '—' : formatCurrency(mercuryCardTotal)}
+                    expanded={materialsAccordionOpen === 'mercury'}
+                    onToggle={() => toggleMaterialsAccordion('mercury')}
+                    busy={jobMaterialsSnapshotLoading}
+                  >
+                    {mercuryFetchFailed ? (
+                      <p style={{ margin: 0, fontSize: '0.875rem', color: '#b91c1c' }}>Could not load card allocations.</p>
+                    ) : mercuryAllocLines.length === 0 ? (
+                      <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>No Mercury card splits for this job.</p>
+                    ) : (
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                        <thead style={{ background: '#f9fafb' }}>
+                          <tr>
+                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Posted</th>
+                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Card</th>
+                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Counterparty</th>
+                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Amount</th>
+                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Note</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {mercuryAllocLines.map((ln, idx) => (
+                            <tr key={ln.id} style={{ borderBottom: idx < mercuryAllocLines.length - 1 ? '1px solid #e5e7eb' : 'none' }}>
+                              <td style={{ padding: '0.5rem 0.625rem' }}>{formatMercuryCardChargesPostedDate(ln.postedAt)}</td>
+                              <td
+                                style={{
+                                  padding: '0.5rem 0.625rem',
+                                  maxWidth: 140,
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                }}
+                                title={
+                                  ln.debitCardId
+                                    ? nicknameByDebitCard[ln.debitCardId] ?? formatMercuryDebitCardIdCompact(ln.debitCardId)
+                                    : undefined
+                                }
+                              >
+                                {ln.debitCardId
+                                  ? nicknameByDebitCard[ln.debitCardId] ?? formatMercuryDebitCardIdCompact(ln.debitCardId)
+                                  : '—'}
+                              </td>
+                              <td style={{ padding: '0.5rem 0.625rem' }}>{ln.counterpartyName ?? '—'}</td>
+                              <td style={{ padding: '0.5rem 0.625rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(Math.abs(ln.allocationAmount))}</td>
+                              <td style={{ padding: '0.5rem 0.625rem', color: '#4b5563' }}>{ln.note ?? '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </MaterialsCostAccordionRow>
+                  <MaterialsCostAccordionRow
+                    title="Parts from tally"
+                    totalDisplay={tallyFetchFailed ? '—' : formatCurrency(tallyPartsTotal)}
+                    expanded={materialsAccordionOpen === 'tally'}
+                    onToggle={() => toggleMaterialsAccordion('tally')}
+                    busy={jobMaterialsSnapshotLoading}
+                  >
+                    {tallyFetchFailed ? (
+                      <p style={{ margin: 0, fontSize: '0.875rem', color: '#b91c1c' }}>Could not load tally parts.</p>
+                    ) : tallyPartLines.length === 0 ? (
+                      <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>No tally parts for this job.</p>
+                    ) : (
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                        <thead style={{ background: '#f9fafb' }}>
+                          <tr>
+                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Description</th>
+                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Qty</th>
+                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Line total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {tallyPartLines.map((ln, idx) => (
+                            <tr key={ln.id} style={{ borderBottom: idx < tallyPartLines.length - 1 ? '1px solid #e5e7eb' : 'none' }}>
+                              <td style={{ padding: '0.5rem 0.625rem' }}>
+                                {[ln.fixtureName, ln.partName].filter(Boolean).join(' · ') || '—'}
+                              </td>
+                              <td style={{ padding: '0.5rem 0.625rem', textAlign: 'center' }}>{ln.quantity}</td>
+                              <td style={{ padding: '0.5rem 0.625rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(ln.lineTotal)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </MaterialsCostAccordionRow>
+                </>
+              ) : null}
+              <MaterialsCostAccordionRow
+                title="Other job charges"
+                totalDisplay={billedMaterialsTotalDisplay}
+                expanded={materialsAccordionOpen === 'billed'}
+                onToggle={() => toggleMaterialsAccordion('billed')}
+                busy={false}
+              >
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                  <thead style={{ background: '#f9fafb' }}>
+                    <tr>
+                      <th style={{ padding: '0.625rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Line Item</th>
+                      <th style={{ padding: '0.625rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Amount ($)</th>
+                      <th style={{ padding: '0.625rem 0.5rem', width: 48, borderBottom: '1px solid #e5e7eb' }} />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {materials.map((row, idx) => (
+                      <tr key={row.id} style={{ borderBottom: idx < materials.length - 1 ? '1px solid #e5e7eb' : 'none' }}>
+                        <td style={{ padding: '0.625rem 0.75rem' }}>
+                          <input
+                            type="text"
+                            value={row.description}
+                            onChange={(e) => updateMaterialRow(row.id, { description: e.target.value })}
+                            placeholder="Item description"
+                            style={{ width: '100%', padding: '0.375rem 0.625rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem' }}
+                          />
+                        </td>
+                        <td style={{ padding: '0.625rem 0.75rem', textAlign: 'right' }}>
+                          <input
+                            type="number"
+                            min={0}
+                            step={0.01}
+                            value={row.amount || ''}
+                            onChange={(e) => updateMaterialRow(row.id, { amount: parseFloat(e.target.value) || 0 })}
+                            placeholder="0"
+                            style={{ width: '6rem', padding: '0.375rem 0.625rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem', textAlign: 'right' }}
+                          />
+                        </td>
+                        <td style={{ padding: '0.625rem 0.5rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => removeMaterialRow(row.id)}
+                            disabled={materials.length <= 1}
+                            title="Remove"
+                            style={{
+                              padding: '0.35rem',
+                              background: materials.length <= 1 ? '#f3f4f6' : 'transparent',
+                              color: materials.length <= 1 ? '#9ca3af' : '#991b1c',
+                              border: 'none',
+                              borderRadius: 4,
+                              cursor: materials.length <= 1 ? 'not-allowed' : 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z" /></svg>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.75rem' }}>
+                  <button type="button" onClick={addMaterialRow} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', fontWeight: 500, background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
+                    Add
+                  </button>
+                </div>
+              </MaterialsCostAccordionRow>
           </div>
           <hr style={{ margin: '0.75rem auto', border: 'none', borderTop: '1px solid #9ca3af', width: '50%' }} />
           <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', padding: '1rem', marginBottom: '1rem' }}>
@@ -1873,7 +2157,7 @@ export default function JobFormModal({
         </div>
       </div>
       {createCustomerFromJobModalOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }} onClick={() => setCreateCustomerFromJobModalOpen(false)}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: JOB_FORM_NESTED_OVERLAY_Z_INDEX }} onClick={() => setCreateCustomerFromJobModalOpen(false)}>
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 480, maxHeight: '90vh', overflow: 'auto' }} onClick={(e) => e.stopPropagation()}>
             <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>Create customer from job</h2>
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>

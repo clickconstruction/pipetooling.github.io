@@ -771,6 +771,38 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ---
 
+### street-view-preview
+
+**Purpose**: **Proxy** Google **Street View Static** imagery and **metadata** so the Maps API key stays server-side. Used by **[`DetailJobModal`](src/components/jobs/DetailJobModal.tsx)** (Street View preview under **Address**); client loads the image with **`fetch` + `Authorization`** (not `<img src>`) and **`URL.createObjectURL`**.
+
+**Endpoint**:
+
+- **Metadata** (**200** JSON): `GET /functions/v1/street-view-preview?location=<address>&meta=1`
+- **Image** (**200** binary): `GET /functions/v1/street-view-preview?location=<address>`
+
+**Headers**: `Authorization: Bearer <user_jwt>`, `apikey: <anon_key>` (same as **`resolve-ip-geolocation`**).
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, **`GOOGLE_MAPS_API_KEY`**. If the Google key is unset, returns **503** `Street View not configured`.
+
+**Gateway**: `verify_jwt = false`; **`auth.getUser()`** with the Bearer on the Supabase client.
+
+**Validation**: **`location`** query required (trimmed); max length **500**; **400** if missing or too long.
+
+**Success**:
+
+- **`meta=1`**: **`200`** JSON (always **200** for a handled Google metadata response so the browser does not log **404** for normal no-imagery cases):
+  - Imagery OK: `{ "ok": true, "lat": number, "lng": number }`
+  - No imagery or Google **non-OK** status (e.g. **`ZERO_RESULTS`**, **`REQUEST_DENIED`**): `{ "ok": false, "googleStatus": string, "detail"?: string }`
+- **Image**: **`Content-Type`** from Google (typically **`image/jpeg`**), body is the proxied image.
+
+**Errors**: **401** not signed in; **502** upstream or unexpected content type for image path.
+
+**Deploy**: `supabase functions deploy street-view-preview`
+
+**Implementation**: [`supabase/functions/street-view-preview/index.ts`](supabase/functions/street-view-preview/index.ts); client: [`src/lib/fetchStreetViewPreview.ts`](src/lib/fetchStreetViewPreview.ts).
+
+---
+
 ### send-checklist-notification
 
 **Purpose**: Send Web Push notifications for checklist events (completion, test)

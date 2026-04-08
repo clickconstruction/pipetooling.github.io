@@ -127,7 +127,7 @@ export default function JobFormModal({
   const [customerExpanded, setCustomerExpanded] = useState(false)
   const [billingCustomerHighlight, setBillingCustomerHighlight] = useState(false)
   const [dateMet, setDateMet] = useState('')
-  const [estimatedCompletionDate, setEstimatedCompletionDate] = useState('')
+  const [lastBillDate, setLastBillDate] = useState('')
   const jobFormMissingFields: string[] = []
   if (!jobName.trim()) jobFormMissingFields.push('Job Name')
   if (!jobAddress.trim()) jobFormMissingFields.push('Job Address')
@@ -208,7 +208,7 @@ export default function JobFormModal({
       !!(job.customer_name || job.customer_email || job.customer_phone || job.customer_id) ||
         (billingGate && !jobLedgerHasCustomerForBilling(job.customer_id)),
     )
-    setEstimatedCompletionDate(job.estimated_completion_date ? job.estimated_completion_date.slice(0, 10) : '')
+    setLastBillDate(job.last_bill_date ? job.last_bill_date.slice(0, 10) : '')
     setGoogleDriveLink(job.google_drive_link ?? '')
     setJobPlansLink(job.job_plans_link ?? '')
     setRevenue(job.revenue != null ? String(job.revenue) : '')
@@ -250,7 +250,7 @@ export default function JobFormModal({
     setCustomerSearch('')
     setDateMet('')
     setCustomerExpanded(true)
-    setEstimatedCompletionDate('')
+    setLastBillDate('')
     setGoogleDriveLink('')
     setJobPlansLink('')
     setRevenue('')
@@ -461,7 +461,7 @@ export default function JobFormModal({
     setError(null)
     try {
       const nextOrder = (editing.invoices ?? []).length
-      const estBill = editing.estimated_completion_date?.trim().slice(0, 10) ?? null
+      const estBill = editing.last_bill_date?.trim().slice(0, 10) ?? null
       const { error: err } = await supabase.from('jobs_ledger_invoices').insert({
         job_id: editing.id,
         amount,
@@ -646,7 +646,7 @@ export default function JobFormModal({
           customer_name: customerName.trim() || null,
           customer_email: customerEmail.trim() || null,
           customer_phone: customerPhone.trim() || null,
-          estimated_completion_date: estimatedCompletionDate.trim() || null,
+          last_bill_date: lastBillDate.trim() || null,
           google_drive_link: googleDriveLink.trim() || null,
           job_plans_link: jobPlansLink.trim() || null,
           revenue: revNum,
@@ -718,7 +718,7 @@ export default function JobFormModal({
             customer_name: customerName.trim() || null,
             customer_email: customerEmail.trim() || null,
             customer_phone: customerPhone.trim() || null,
-            estimated_completion_date: estimatedCompletionDate.trim() || null,
+            last_bill_date: lastBillDate.trim() || null,
             google_drive_link: googleDriveLink.trim() || null,
             job_plans_link: jobPlansLink.trim() || null,
             revenue: revNum,

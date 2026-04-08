@@ -1,5 +1,5 @@
 import type { CSSProperties, KeyboardEvent, MouseEvent } from 'react'
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { JobScheduleBlockRow } from '../../lib/jobScheduleBlocks'
@@ -14,9 +14,11 @@ import {
 import { formatCurrency } from '../../lib/format'
 import { SCHEDULE_DISPATCH_DRAG_DISABLED_READONLY_MESSAGE } from '../../lib/scheduleDispatchDragHelp'
 import { scheduleDispatchCellDroppableId } from '../../lib/scheduleDispatchDnd'
+import { ScheduleDispatchLinkedChainsIcon } from '../icons/ScheduleDispatchLinkedChainsIcon'
 import type { LinkedGroupCardAccent } from '../../lib/scheduleDispatchLinkedGroupPalette'
 import { hubPersonDayKey, type ScheduleDispatchHubJobRow } from '../../lib/scheduleDispatchHub'
 import { APP_CALENDAR_TZ, formatMmDdSlash, referenceDateForWorkDateYmd } from '../../utils/dateUtils'
+import { ScheduleDispatchPlusCopyMenu } from './ScheduleDispatchPlusCopyMenu'
 import { ScheduleDispatchWeekNav } from './ScheduleDispatchWeekNav'
 import type { ScheduleDispatchCardPlacementMode } from './ScheduleDispatchGrid'
 
@@ -295,18 +297,6 @@ const hubPeopleSalarySuffix: CSSProperties = {
   fontWeight: 400,
 }
 
-const hubPlusMenuItemStyle: CSSProperties = {
-  display: 'block',
-  width: '100%',
-  padding: '0.28rem 0.4rem',
-  fontSize: '0.65rem',
-  border: 'none',
-  background: '#fff',
-  color: '#1e3a8a',
-  cursor: 'pointer',
-  textAlign: 'left',
-}
-
 function HubPeopleBlockCard({
   block,
   workDate,
@@ -321,7 +311,7 @@ function HubPeopleBlockCard({
   onStartCardPlacement,
   getJobDisplayTitle,
   onOpenJob,
-  onOpenJobPreview,
+  onOpenHubJobDetail,
   onDeleteBlock,
 }: {
   block: JobScheduleBlockRow
@@ -337,10 +327,11 @@ function HubPeopleBlockCard({
   onStartCardPlacement: (b: JobScheduleBlockRow, variant: 'linked' | 'unlinked') => void
   getJobDisplayTitle: (jobId: string) => string
   onOpenJob: (jobId: string) => void
-  onOpenJobPreview: (jobId: string, workDateYmd: string) => void
+  onOpenHubJobDetail: (block: JobScheduleBlockRow, workDateYmd: string) => void
   onDeleteBlock: (id: string) => void
 }) {
   const { showToast } = useToastContext()
+  const plusButtonRef = useRef<HTMLButtonElement>(null)
   const placementPickingActive = cardPlacementMode != null
   const dragDisabled = !canEdit
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -356,6 +347,7 @@ function HubPeopleBlockCard({
     'Cannot drag: you do not have permission to reassign schedule blocks. Click for an explanation.'
 
   const groupId = block.shared_block_group_id
+  const showLinkedFloat = Boolean(groupId && linkPeerCount > 1)
   const linkedAccent =
     highlightLinkedGroups && groupId && linkPeerCount > 1
       ? linkedGroupAccentByGroupId.get(groupId)
@@ -426,12 +418,19 @@ function HubPeopleBlockCard({
           dragDisabled ? disabledStripAriaLabel : 'Drag to move block to another day or person row'
         }
       />
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+      <div
+        style={{
+          flex: 1,
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
         <button
           type="button"
           onClick={() => {
             if (placementPickingActive) return
-            onOpenJobPreview(block.job_id, workDate)
+            onOpenHubJobDetail(block, workDate)
           }}
           style={{
             display: 'block',
@@ -451,93 +450,96 @@ function HubPeopleBlockCard({
             {getJobDisplayTitle(block.job_id)}
           </span>
         </button>
-        <div
+        <button
+          type="button"
+          onClick={() => {
+            if (placementPickingActive) return
+            onOpenJob(block.job_id)
+          }}
           style={{
-            display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'flex-start',
-            gap: 4,
+            display: 'block',
+            width: '100%',
             minWidth: 0,
+            padding: '0.35rem 0.45rem',
+            margin: 0,
+            border: 'none',
+            background: 'transparent',
+            cursor: placementPickingActive ? 'default' : 'pointer',
+            textAlign: 'left',
+            font: 'inherit',
+            color: 'inherit',
           }}
         >
-          <button
-            type="button"
-            onClick={() => {
-              if (placementPickingActive) return
-              onOpenJob(block.job_id)
-            }}
+          <div
             style={{
-              flex: '1 1 0',
-              minWidth: 0,
-              display: 'block',
-              padding: '0.35rem 0.45rem',
-              margin: 0,
-              border: 'none',
-              background: 'transparent',
-              cursor: placementPickingActive ? 'default' : 'pointer',
-              textAlign: 'left',
-              font: 'inherit',
-              color: 'inherit',
+              color: '#1e40af',
+              display: 'flex',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 4,
             }}
           >
-            <div
-              style={{
-                color: '#1e40af',
-                display: 'flex',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: 4,
-              }}
-            >
-              <span>{scheduleFormatWindow(block.time_start, block.time_end)}</span>
-            </div>
-            {block.note ? (
-              <div style={{ color: '#4b5563', marginTop: 2, wordBreak: 'break-word' }}>{block.note}</div>
-            ) : null}
-          </button>
-          {groupId && linkPeerCount > 1 ? (
-            <button
-              type="button"
-              disabled={placementPickingActive}
-              title={
-                placementPickingActive
-                  ? undefined
-                  : 'Linked: time and note stay in sync. Click to see every block in this group.'
-              }
-              aria-label="View linked schedule group details"
-              onClick={(e) => {
-                e.stopPropagation()
-                if (placementPickingActive) return
-                onOpenLinkedGroup(groupId)
-              }}
-              style={{
-                flex: '0 0 auto',
-                alignSelf: 'center',
-                fontSize: '0.6rem',
-                fontWeight: 600,
-                textTransform: 'uppercase',
-                letterSpacing: '0.04em',
-                color: '#1d4ed8',
-                background: '#dbeafe',
-                border: '1px solid #93c5fd',
-                borderRadius: 3,
-                padding: '0.1rem 0.28rem',
-                cursor: placementPickingActive ? 'default' : 'pointer',
-                fontFamily: 'inherit',
-              }}
-            >
-              Linked
-            </button>
+            <span>{scheduleFormatWindow(block.time_start, block.time_end)}</span>
+          </div>
+          {block.note ? (
+            <div style={{ color: '#4b5563', marginTop: 2, wordBreak: 'break-word' }}>{block.note}</div>
           ) : null}
-        </div>
+        </button>
       </div>
-      {canEdit && !placementPickingActive ? (
+      {showLinkedFloat ? (
         <div
           style={{
             position: 'absolute',
             top: 2,
             right: 2,
             zIndex: 3,
+          }}
+        >
+          <button
+            type="button"
+            disabled={placementPickingActive}
+            title={
+              placementPickingActive
+                ? undefined
+                : 'Linked: time and note stay in sync. Click to see every block in this group.'
+            }
+            aria-label="View linked schedule group details"
+            onClick={(e) => {
+              e.stopPropagation()
+              if (placementPickingActive || !groupId) return
+              onOpenLinkedGroup(groupId)
+            }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 20,
+              height: 20,
+              boxSizing: 'border-box',
+              padding: 0,
+              color: '#1d4ed8',
+              background: '#dbeafe',
+              border: '1px solid #93c5fd',
+              borderRadius: 4,
+              cursor: placementPickingActive ? 'default' : 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            <ScheduleDispatchLinkedChainsIcon size={12} />
+          </button>
+        </div>
+      ) : null}
+      {canEdit && !placementPickingActive ? (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 2,
+            right: 2,
+            zIndex: 3,
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
           }}
         >
           <button
@@ -564,83 +566,46 @@ function HubPeopleBlockCard({
           >
             −
           </button>
-        </div>
-      ) : null}
-      {canEdit && !placementPickingActive ? (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 2,
-            right: 2,
-            zIndex: 3,
-          }}
-        >
-          <button
-            type="button"
-            aria-label="Copy block to another cell"
-            title="Copy to another person & day"
-            onClick={(e) => {
-              e.stopPropagation()
-              onPlusMenuBlockIdChange(plusMenuOpen ? null : block.id)
-            }}
-            style={{
-              width: 20,
-              height: 20,
-              padding: 0,
-              lineHeight: '18px',
-              fontSize: '0.85rem',
-              fontWeight: 700,
-              borderRadius: 4,
-              border: '1px solid #60a5fa',
-              background: '#fff',
-              color: '#1d4ed8',
-              cursor: 'pointer',
-            }}
-          >
-            +
-          </button>
-          {plusMenuOpen ? (
-            <div
-              role="menu"
+          <div style={{ position: 'relative' }}>
+            <button
+              ref={plusButtonRef}
+              type="button"
+              aria-label="Copy block to another cell"
+              title="Copy to another person & day"
+              onClick={(e) => {
+                e.stopPropagation()
+                onPlusMenuBlockIdChange(plusMenuOpen ? null : block.id)
+              }}
               style={{
-                position: 'absolute',
-                bottom: '100%',
-                right: 0,
-                marginBottom: 2,
-                minWidth: 108,
+                width: 20,
+                height: 20,
+                padding: 0,
+                lineHeight: '18px',
+                fontSize: '0.85rem',
+                fontWeight: 700,
                 borderRadius: 4,
-                border: '1px solid #93c5fd',
-                background: '#f8fafc',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                overflow: 'hidden',
+                border: '1px solid #60a5fa',
+                background: '#fff',
+                color: '#1d4ed8',
+                cursor: 'pointer',
               }}
             >
-              <button
-                type="button"
-                role="menuitem"
-                style={{ ...hubPlusMenuItemStyle, borderBottom: '1px solid #e2e8f0' }}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onPlusMenuBlockIdChange(null)
-                  onStartCardPlacement(block, 'linked')
-                }}
-              >
-                Linked copy
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                style={hubPlusMenuItemStyle}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onPlusMenuBlockIdChange(null)
-                  onStartCardPlacement(block, 'unlinked')
-                }}
-              >
-                Solo copy
-              </button>
-            </div>
-          ) : null}
+              +
+            </button>
+            <ScheduleDispatchPlusCopyMenu
+              open={plusMenuOpen}
+              anchorRef={plusButtonRef}
+              onClose={() => onPlusMenuBlockIdChange(null)}
+              onLinkedCopy={() => {
+                onPlusMenuBlockIdChange(null)
+                onStartCardPlacement(block, 'linked')
+              }}
+              onSoloCopy={() => {
+                onPlusMenuBlockIdChange(null)
+                onStartCardPlacement(block, 'unlinked')
+              }}
+            />
+          </div>
         </div>
       ) : null}
     </div>
@@ -662,7 +627,7 @@ function HubPeopleDayCell({
   groupMemberCountByGroupId,
   getJobDisplayTitle,
   onOpenJob,
-  onOpenJobPreview,
+  onOpenHubJobDetail,
   highlightLinkedGroups,
   linkedGroupAccentByGroupId,
   onOpenLinkedGroup,
@@ -684,7 +649,7 @@ function HubPeopleDayCell({
   groupMemberCountByGroupId: ReadonlyMap<string, number>
   getJobDisplayTitle: (jobId: string) => string
   onOpenJob: (jobId: string) => void
-  onOpenJobPreview: (jobId: string, workDateYmd: string) => void
+  onOpenHubJobDetail: (block: JobScheduleBlockRow, workDateYmd: string) => void
   highlightLinkedGroups: boolean
   linkedGroupAccentByGroupId: ReadonlyMap<string, LinkedGroupCardAccent>
   onOpenLinkedGroup: (groupId: string) => void
@@ -756,7 +721,7 @@ function HubPeopleDayCell({
               onStartCardPlacement={onStartCardPlacement}
               getJobDisplayTitle={getJobDisplayTitle}
               onOpenJob={onOpenJob}
-              onOpenJobPreview={onOpenJobPreview}
+              onOpenHubJobDetail={onOpenHubJobDetail}
               onDeleteBlock={onDeleteBlock}
             />
           )
@@ -782,7 +747,7 @@ type HubPeoplePanelProps = {
   jobsError: string | null
   summariesError: string | null
   onOpenJob: (jobId: string) => void
-  onOpenJobPreview: (jobId: string, workDateYmd: string) => void
+  onOpenHubJobDetail: (block: JobScheduleBlockRow, workDateYmd: string) => void
   cardPlacementMode: ScheduleDispatchCardPlacementMode | null
   placementSourceWorkDate: string | null
   plusMenuBlockId: string | null
@@ -820,7 +785,7 @@ function HubPeoplePanel({
   jobsError,
   summariesError,
   onOpenJob,
-  onOpenJobPreview,
+  onOpenHubJobDetail,
   cardPlacementMode,
   placementSourceWorkDate,
   plusMenuBlockId,
@@ -1071,7 +1036,7 @@ function HubPeoplePanel({
                         groupMemberCountByGroupId={groupMemberCountByGroupId}
                         getJobDisplayTitle={getJobDisplayTitle}
                         onOpenJob={onOpenJob}
-                        onOpenJobPreview={onOpenJobPreview}
+                        onOpenHubJobDetail={onOpenHubJobDetail}
                         highlightLinkedGroups={highlightLinkedGroups}
                         linkedGroupAccentByGroupId={linkedGroupAccentByGroupId}
                         onOpenLinkedGroup={onOpenLinkedGroup}
@@ -1504,7 +1469,7 @@ type Props = {
   onWeekShift: (deltaWeeks: number) => void
   onThisWeek: () => void
   onOpenJob: (jobId: string) => void
-  onOpenJobPreview: (jobId: string, workDateYmd: string) => void
+  onOpenHubJobDetail: (block: JobScheduleBlockRow, workDateYmd: string) => void
   cardPlacementMode: ScheduleDispatchCardPlacementMode | null
   placementSourceWorkDate: string | null
   plusMenuBlockId: string | null
@@ -1577,7 +1542,7 @@ export function ScheduleDispatchHub({
   onWeekShift,
   onThisWeek,
   onOpenJob,
-  onOpenJobPreview,
+  onOpenHubJobDetail,
   cardPlacementMode,
   placementSourceWorkDate,
   plusMenuBlockId,
@@ -1723,7 +1688,7 @@ export function ScheduleDispatchHub({
           jobsError={jobsError}
           summariesError={summariesError}
           onOpenJob={onOpenJob}
-          onOpenJobPreview={onOpenJobPreview}
+          onOpenHubJobDetail={onOpenHubJobDetail}
           cardPlacementMode={cardPlacementMode}
           placementSourceWorkDate={placementSourceWorkDate}
           plusMenuBlockId={plusMenuBlockId}

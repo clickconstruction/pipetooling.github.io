@@ -402,6 +402,10 @@ verify_jwt = false
 [functions.resolve-ip-geolocation]
 verify_jwt = false
 
+# Signed-in users: JWT validated in function (getUser). Proxies Street View metadata + static image using GOOGLE_MAPS_API_KEY.
+[functions.street-view-preview]
+verify_jwt = false
+
 # Same as test-email: JWT validated in function (getUser + users.role); gateway returned Invalid JWT for browser sessions.
 [functions.login-as-user]
 verify_jwt = false

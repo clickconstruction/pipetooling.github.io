@@ -346,9 +346,11 @@ export default function Layout() {
         )}
         {role !== 'subcontractor' && (
           <>
-            <NavLink to="/projects" style={linkStyle} onClick={onNavClick}>Projects</NavLink>
             {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
-              <NavLink to="/jobs" style={linkStyle} onClick={onNavClick}>Jobs</NavLink>
+              <>
+                <NavLink to="/estimates" style={linkStyle} onClick={onNavClick}>Estimates</NavLink>
+                <NavLink to="/jobs" style={linkStyle} onClick={onNavClick}>Jobs</NavLink>
+              </>
             )}
             {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'superintendent') && (
               <NavLink
@@ -367,10 +369,13 @@ export default function Layout() {
             {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
               <>
                 <NavLink to="/materials" style={linkStyle} onClick={onNavClick}>Materials</NavLink>
-                <NavLink to="/estimates" style={linkStyle} onClick={onNavClick}>Estimates</NavLink>
+                <NavLink to="/projects" style={linkStyle} onClick={onNavClick}>Projects</NavLink>
                 <NavLink to="/bids" style={linkStyle} onClick={onNavClick}>Bids</NavLink>
                 <NavLink to="/prospects" style={linkStyle} onClick={onNavClick}>Prospects</NavLink>
               </>
+            )}
+            {role === 'superintendent' && (
+              <NavLink to="/projects" style={linkStyle} onClick={onNavClick}>Projects</NavLink>
             )}
             {role === 'master_technician' && (
               <>

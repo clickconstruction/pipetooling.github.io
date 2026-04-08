@@ -2564,13 +2564,14 @@ export type Database = {
           customer_id: string | null
           customer_name: string | null
           customer_phone: string | null
-          estimated_completion_date: string | null
           google_drive_link: string | null
           hcp_number: string
           id: string
           job_address: string
           job_name: string
           job_plans_link: string | null
+          last_bill_date: string | null
+          last_work_date: string | null
           master_user_id: string
           payments_made: number | null
           pct_complete: number | null
@@ -2585,13 +2586,14 @@ export type Database = {
           customer_id?: string | null
           customer_name?: string | null
           customer_phone?: string | null
-          estimated_completion_date?: string | null
           google_drive_link?: string | null
           hcp_number?: string
           id?: string
           job_address?: string
           job_name?: string
           job_plans_link?: string | null
+          last_bill_date?: string | null
+          last_work_date?: string | null
           master_user_id: string
           payments_made?: number | null
           pct_complete?: number | null
@@ -2606,13 +2608,14 @@ export type Database = {
           customer_id?: string | null
           customer_name?: string | null
           customer_phone?: string | null
-          estimated_completion_date?: string | null
           google_drive_link?: string | null
           hcp_number?: string
           id?: string
           job_address?: string
           job_name?: string
           job_plans_link?: string | null
+          last_bill_date?: string | null
+          last_work_date?: string | null
           master_user_id?: string
           payments_made?: number | null
           pct_complete?: number | null

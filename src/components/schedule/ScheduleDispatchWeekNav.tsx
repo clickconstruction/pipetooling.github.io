@@ -31,7 +31,7 @@ export function ScheduleDispatchWeekNav({
   onWeekShift,
   onThisWeek,
   dateRangeOverride,
-  hideWeekend = false,
+  hideWeekend = true,
   onHideWeekendChange,
 }: ScheduleDispatchWeekNavProps) {
   const weekEnd = useMemo(() => ymdAddDays(weekStart, 6), [weekStart])

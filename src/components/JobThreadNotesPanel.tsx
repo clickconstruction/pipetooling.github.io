@@ -16,6 +16,12 @@ type JobThreadNotesPanelProps = {
   onSubmit: () => void
   submitting: boolean
   emptyLabel?: string
+  /** When false, hide the centered "Job activity / notes" title (e.g. Job detail modal). */
+  showSectionTitle?: boolean
+  /** When false, no placeholder row when there are no notes yet. */
+  showEmptyPlaceholder?: boolean
+  /** When false, hide the visible "Add a note" label; textarea keeps placeholder / aria-label. */
+  showComposerLabel?: boolean
   /** Jobs Stages: open Schedule modal (planner roles only). */
   scheduleAction?: { onClick: () => void; disabled?: boolean }
   /** Week grid: navigate to Schedule dispatch (same roles + superintendent when job has team). */
@@ -85,6 +91,9 @@ export function JobThreadNotesPanel({
   onSubmit,
   submitting,
   emptyLabel = 'No thread notes yet.',
+  showSectionTitle = true,
+  showEmptyPlaceholder = true,
+  showComposerLabel = true,
   scheduleAction,
   scheduleDispatchAction,
 }: JobThreadNotesPanelProps) {
@@ -97,17 +106,21 @@ export function JobThreadNotesPanel({
         borderRadius: 6,
       }}
     >
-      <div style={{ marginBottom: '0.5rem' }}>
-        <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151' }}>
-          Job activity / notes (Central Time)
+      {showSectionTitle ? (
+        <div style={{ marginBottom: '0.5rem', textAlign: 'center' }}>
+          <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151' }}>
+            Job activity / notes
+          </div>
         </div>
-      </div>
+      ) : null}
       {loading ? (
         <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: '0 0 0.75rem 0' }}>Loading notes…</p>
       ) : (
         <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 0.75rem 0' }}>
           {notes.length === 0 ? (
-            <li style={{ color: '#6b7280', fontSize: '0.875rem' }}>{emptyLabel}</li>
+            showEmptyPlaceholder ? (
+              <li style={{ color: '#6b7280', fontSize: '0.875rem' }}>{emptyLabel}</li>
+            ) : null
           ) : (
             notes.map((n) => {
               const authorName = n.author?.name?.trim() || 'Unknown'
@@ -150,11 +163,14 @@ export function JobThreadNotesPanel({
       ) : null}
       {canPost && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
-          <label htmlFor="job-thread-note-body" style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block' }}>
-            Add a note
-          </label>
+          {showComposerLabel ? (
+            <label htmlFor="job-thread-note-body" style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block' }}>
+              Add a note
+            </label>
+          ) : null}
           <textarea
             id="job-thread-note-body"
+            aria-label={showComposerLabel ? undefined : 'Add a note'}
             value={draft}
             onChange={(e) => onDraftChange(e.target.value)}
             onKeyDown={(e) => {

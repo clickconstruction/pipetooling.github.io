@@ -28,6 +28,28 @@ export function scheduleFormatWeekdayLong(dateKey: string): string {
   }).format(d)
 }
 
+/** Long weekday name only (America/Chicago). Invalid keys fall back to raw `dateKey`. */
+export function scheduleFormatWeekdayOnly(dateKey: string): string {
+  const d = scheduleParseDateKeyLocal(dateKey)
+  if (!d) return dateKey
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: JOB_SCHEDULE_TIMEZONE,
+    weekday: 'long',
+  }).format(d)
+}
+
+/** Month, day, year without weekday (America/Chicago). Invalid keys fall back to raw `dateKey`. */
+export function scheduleFormatDateLongNoWeekday(dateKey: string): string {
+  const d = scheduleParseDateKeyLocal(dateKey)
+  if (!d) return dateKey
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: JOB_SCHEDULE_TIMEZONE,
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(d)
+}
+
 /** Parse YYYY-MM-DD as a UTC noon anchor for formatting (avoids previous-day shift). */
 export function scheduleParseDateKeyLocal(dateKey: string): Date | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey.trim())

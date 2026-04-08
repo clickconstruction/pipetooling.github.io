@@ -92,6 +92,20 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### April 2026
 
+#### April 8, 2026
+
+**`20260408013952_jobs_ledger_last_work_date_clock_sessions_trigger.sql`**
+- **Purpose**: **`jobs_ledger.last_work_date`** — cached **`MAX(work_date)`** of **approved**, non-rejected, non-revoked **`clock_sessions`** for the job; fast Stages/lists
+- **Changes**: Column **`last_work_date date NULL`**; **`refresh_jobs_ledger_last_work_date(uuid)`** (`SECURITY DEFINER`); **`touch_jobs_ledger_last_work_date_from_clock_sessions`** + **AFTER INSERT/DELETE** and **AFTER UPDATE OF** **`job_ledger_id`**, **`work_date`**, **`approved_at`**, **`rejected_at`**, **`revoked_at`**; backfill; index **`idx_jobs_ledger_last_work_date`**
+- **Impact**: [`database.ts`](src/types/database.ts), [`DetailJobModal.tsx`](src/components/jobs/DetailJobModal.tsx), [`limitedJobDetailSnapshot.ts`](src/types/limitedJobDetailSnapshot.ts)
+- **Category**: Jobs / Time
+
+**`20260408014106_rename_estimated_completion_to_last_bill_date_and_fix_rtb_rpc.sql`**
+- **Purpose**: Rename job-level bill date to **`last_bill_date`** (manual + future Stripe); **`ensure_single_ready_to_bill_invoice_for_job`** reads **`jl.last_bill_date`** for new RTB invoice **`estimated_bill_date`**
+- **Changes**: **`RENAME COLUMN estimated_completion_date TO last_bill_date`**; **`CREATE OR REPLACE`** **`ensure_single_ready_to_bill_invoice_for_job`**
+- **Impact**: [`Jobs.tsx`](src/pages/Jobs.tsx), [`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx), [`DetailJobModal.tsx`](src/components/jobs/DetailJobModal.tsx), types
+- **Category**: Jobs / Billing
+
 #### April 7, 2026
 
 **`20260407033913_job_schedule_blocks.sql`**
@@ -1035,6 +1049,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Changes**: Add `estimated_completion_date DATE` to `jobs_ledger`
 - **Impact**: Stages tab; Ham mode -1/+1 buttons adjust this date
 - **Category**: Jobs / Stages
+- **Note**: Renamed to **`last_bill_date`** in **`20260408014106_rename_estimated_completion_to_last_bill_date_and_fix_rtb_rpc.sql`** (April 8, 2026).
 
 **`20260417120000_create_user_checklist_item_mute_preferences.sql`**
 - **Purpose**: Per-task mute: user mutes completed-task push notifications for a specific checklist item

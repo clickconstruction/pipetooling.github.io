@@ -7,16 +7,76 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-09
+last_updated: 2026-04-07
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.258 → v2.4"
+version_range: "v2.278 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.278)"
+    line: ~847
+    description: "DetailJobModalFilesPlansRow hide when both links empty; numbered Specific Work [1][2]; Repair in section title"
+  - name: "Latest Version (v2.277)"
+    line: ~858
+    description: "Stacked Edit Job over Detail (JobFormModal z-index); JobDetail materials accordions + fetchJobMaterialsCostSnapshot; Other job charges label; Mercury Posted short date + Card column + useMercuryLedgerNicknames"
+  - name: "Latest Version (v2.276)"
+    line: ~871
+    description: "DetailJobModal: three dates (derived Last bill date), formatJobDetailModalDateYmd, JobLedgerStatusPipeline, 640px layout, thread notes chrome; Edit stacking → v2.277"
+  - name: "Latest Version (v2.275)"
+    line: ~887
+    description: "Jobs Stages j:/b: derived lines; loadJobs job_schedule_blocks batch; stagesJobReferenceDates; RTB Missing Billed Date separate"
+  - name: "Latest Version (v2.274)"
+    line: ~903
+    description: "jobs_ledger last_work_date cache + clock_sessions triggers; last_bill_date rename; Ready to Bill RPC; Jobs UI + DetailJobModal"
+  - name: "Latest Version (v2.273)"
+    line: ~916
+    description: "DetailJobModal: Scheduled block title includes weekday; date + time on second line; jobScheduleChicago formatters"
+  - name: "Latest Version (v2.272)"
+    line: ~926
+    description: "DetailJobModal: Customer title + three stacked lines; tel/mailto; beside Address/schedule"
+  - name: "Latest Version (v2.271)"
+    line: ~936
+    description: "DetailJobModal: Address + Scheduled block responsive CSS grid; Street View below"
+  - name: "Latest Version (v2.270)"
+    line: ~946
+    description: "Schedule Dispatch hub People card title opens DetailJobModal (not PreviewJobModal); onOpenHubJobDetail"
+  - name: "Latest Version (v2.269)"
+    line: ~957
+    description: "Schedule Dispatch: + Linked/Solo copy menu via portal (fixed); scroll/resize; Escape/outside close"
+  - name: "Latest Version (v2.268)"
+    line: ~967
+    description: "Schedule Dispatch: linked badge pure overlay — no extra content padding (Grid + Hub)"
+  - name: "Latest Version (v2.267)"
+    line: ~977
+    description: "Schedule Dispatch: Linked chain badge absolute top-right + content padding (Grid + Hub); minus/plus stay bottom-right"
+  - name: "Latest Version (v2.266)"
+    line: ~987
+    description: "Schedule Dispatch: Hide weekend default on (localStorage unset); explicit 0/1 preserved; WeekNav default prop"
+  - name: "Latest Version (v2.265)"
+    line: ~998
+    description: "Schedule Dispatch linked crew pill: FA chain icon (ScheduleDispatchLinkedChainsIcon) vs Linked text; Grid + Hub"
+  - name: "Latest Version (v2.264)"
+    line: ~1009
+    description: "DetailJobModal Job activity / notes: useJobThreadNotesForModal + JobThreadNotesPanel (composer); Realtime INSERT"
+  - name: "Latest Version (v2.263)"
+    line: ~802
+    description: "DetailJobModal Street View preview (Edge street-view-preview + GOOGLE_MAPS_API_KEY); fetchStreetViewPreview; open pano vs Maps fallback"
+  - name: "Latest Version (v2.262)"
+    line: ~798
+    description: "DetailJobModal top Address → Google Maps (openInExternalBrowser); prefillAddress from assignedJobs; body Job address row deduped"
+  - name: "Latest Version (v2.261)"
+    line: ~798
+    description: "DetailJobModal heading Job Detail: HCP, job name; prefillRowLabel from My schedule row; splitScheduleDetailRowLabel"
+  - name: "Latest Version (v2.260)"
+    line: ~810
+    description: "Dashboard My schedule row → DetailJobModal; staff full JobWithDetails; subcontractor limited snapshot + assignedJobs fallback"
+  - name: "Latest Version (v2.259)"
+    line: ~792
+    description: "Dashboard subcontractor My schedule: today + tomorrow Chicago job_schedule_blocks (read-only), Calendar link; dedupe linked mirror rows"
   - name: "Latest Version (v2.258)"
-    line: ~770
+    line: ~802
     description: "Schedule dispatch DnD: solo cross-day + assignee; linked crew cross-day via move_job_schedule_block_group RPC"
   - name: "Latest Version (v2.257)"
     line: ~790
@@ -601,6 +661,16 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.278 — Job Detail: Job Files/Plans when set; numbered Specific Work](#latest-updates-v2278)
+**New:** [v2.277 — Job Detail: stacked Edit Job, materials accordions, Mercury Card column, Other job charges](#latest-updates-v2277)
+**New:** [v2.276 — DetailJobModal: three dates, pipeline, 640px layout, notes chrome](#latest-updates-v2276)
+**New:** [v2.273 — DetailJobModal: Scheduled block weekday in title](#latest-updates-v2273)
+**New:** [v2.272 — DetailJobModal: Customer panel beside Address/schedule](#latest-updates-v2272)
+**New:** [v2.271 — DetailJobModal: Address + schedule row responsive grid](#latest-updates-v2271)
+**New:** [v2.270 — Schedule Dispatch hub: block title opens Detail Job modal](#latest-updates-v2270)
+**New:** [v2.269 — Schedule Dispatch: + copy menu portal (no overflow clip)](#latest-updates-v2269)
+**New:** [v2.268 — Schedule Dispatch: linked badge overlay without layout padding](#latest-updates-v2268)
+**New:** [v2.267 — Schedule Dispatch: linked chain badge top-right (floating) + content padding](#latest-updates-v2267)
 **New:** [v2.257 — Linked schedule blocks + Dispatch linked copy (`+`); Mercury splits RPC typing](#latest-updates-v2257)
 **New:** [v2.256 — Schedule dispatch hub: all jobs + week counts (Scope B)](#latest-updates-v2256)
 **New:** [v2.255 — Schedule dispatch: people × week grid + drag reassign](#latest-updates-v2255)
@@ -772,6 +842,231 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.278)
+
+**Date**: 2026-04-07
+
+### DetailJobModal — **Job Files** / **Job Plans** when links exist; numbered **Specific Work**
+
+- **`DetailJobModalFilesPlansRow`** in **[`DetailJobModal.tsx`](src/components/jobs/DetailJobModal.tsx)**: the whole row is omitted when both **`google_drive_link`** and **`job_plans_link`** are empty after trim; **Job Files** or **Job Plans** appears only when that link is set.
+- **Specific Work (Fixtures / Tie-ins / Repair)**: each fixture line is **`[1]`**, **`[2]`, …** then **name × count** (plain lines; previous bordered cards removed). UI section title includes **Repair**.
+
+---
+
+## Latest Updates (v2.277)
+
+**Date**: 2026-04-07
+
+### Job Detail — stacked **Edit Job**; **Materials cost** accordions; **Mercury** **Posted** / **Card**; **Other job charges** label
+
+- **Stacked modals**: **[`DetailJobModal.tsx`](src/components/jobs/DetailJobModal.tsx)** stays open when **Edit job** runs; **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)** **`JOB_FORM_OVERLAY_Z_INDEX`** **1010** sits above Detail backdrop **1004**. On save, Detail reloads (**`loadDetail`**, **`materialsCostRefreshKey`**); **`onEditJobSaved`** / parent refresh (e.g. **[`ScheduleDispatch.tsx`](src/pages/ScheduleDispatch.tsx)** **`loadHub`**).
+- **Materials cost**: **[`JobDetailMaterialsCostSection.tsx`](src/components/jobs/JobDetailMaterialsCostSection.tsx)** — four accordions aligned with **Edit Job** (supply house, Mercury card charges, tally, **Other job charges**); **[`fetchJobMaterialsCostSnapshot.ts`](src/lib/fetchJobMaterialsCostSnapshot.ts)** + **[`useJobMaterialsCostSnapshot.ts`](src/hooks/useJobMaterialsCostSnapshot.ts)**; **[`jobDetailModalRole.ts`](src/lib/jobDetailModalRole.ts)** **`canExpandJobDetailMaterials`** (expand for dev / master_technician / assistant / primary / superintendent / estimator; **subcontractor** non-expandable summary). Shared accordion behavior via **[`JobFormMaterialsCostAccordion.tsx`](src/components/jobs/JobFormMaterialsCostAccordion.tsx)** **`expandable`**.
+- **Copy**: UI label **Other job charges** for manual **`jobs_ledger_materials`** rows (replaces **Billed materials**) in **Edit Job**, **Detail**, **Jobs** Parts tab, Quickfill billing reminder, etc.
+- **Mercury** allocation table (Edit + Detail): **Posted** — short US date via **[`formatMercuryCardChargesPostedDate.ts`](src/lib/formatMercuryCardChargesPostedDate.ts)**; **Card** — debit card id from allocation **`raw`** (**`mercuryDebitCardIdFromRaw`**); display nicknames from **[`useMercuryLedgerNicknames.ts`](src/hooks/useMercuryLedgerNicknames.ts)**.
+
+---
+
+## Latest Updates (v2.276)
+
+**Date**: 2026-04-07
+
+### DetailJobModal — dates band, billing pipeline, layout, thread notes chrome
+
+- **[`DetailJobModal.tsx`](src/components/jobs/DetailJobModal.tsx)** — **Three date rows**: **Last work date** (read-only **`last_work_date`**); **Last bill date** from **`deriveRecordedBillingActivityDetail`** ([`stagesJobReferenceDates.ts`](src/lib/stagesJobReferenceDates.ts)) on **full** job fetch — **invoice / payment activity only** (`sent_to_customer_at` / `billed_at` / `paid_on`; **excludes** **`last_bill_date`**, which is the third row); **`—`** when no qualifying activity or on **limited** snapshot (**invoices/payments not loaded**). **Last manual bill date** = column **`last_bill_date`** (user-editable in **Edit Job**). Contrast Stages **`b:`**, which uses **`deriveStagesBillingActivityDetail`** (includes **`last_bill_date`**).
+- **Friendly date lines** + **title** tooltips: [`formatJobDetailModalDateYmd.ts`](src/lib/formatJobDetailModalDateYmd.ts) (`formatJobDetailModalDateFromYmd`, `formatJobDetailModalDateTitleFromYmd`); **Last bill date** hover merges ISO + activity detail via **`jobDetailBillingHoverTitle`**.
+- **Layout**: **`useNarrowViewport640`** — at ~640px and below, the **3-date** band stacks vertically (**`DetailRow`** **`softBox`**); wider viewports use a **3-column** date grid. **Status** is centered below the dates; **Job Total / Bid** sits below **Specific Work (Fixtures / Tie-ins / Repair)** (full detail) or below **Materials cost** (limited snapshot).
+- **Status**: **[`JobLedgerStatusPipeline`](src/components/jobs/JobLedgerStatusPipeline.tsx)** + **[`jobsLedgerStatusPipeline.ts`](src/lib/jobsLedgerStatusPipeline.ts)** — **Working → Ready to bill → Billed → Paid**; current step emphasized (**`aria-current`**). Used for both full and limited job rows.
+- **Lists**: section headings **Other job charges** and **Specific Work (Fixtures / Tie-ins / Repair)** (full load). **Job Files** / **Job Plans** visibility + numbered fixtures: [v2.278](#latest-updates-v2278). **Materials cost** rows + **Edit job** stacking: [v2.277](#latest-updates-v2277).
+- **Edit job**: gear control left of **Close** — see [v2.277](#latest-updates-v2277) (**`JobFormModal`** stacked above Detail; optional **`onEditJobSaved`**).
+- **Thread notes**: **`JobThreadNotesPanel`** with **`showSectionTitle={false}`**, **`showEmptyPlaceholder={false}`**, **`showComposerLabel={false}`** — chrome-light in Detail (see [v2.264](#latest-updates-v2264) for composer + Realtime). Detail modal backdrop **`z-index` 1004**.
+
+---
+
+## Latest Updates (v2.275)
+
+**Date**: 2026-04-07
+
+### Jobs Stages — `j:` / `b:` reference lines (derived)
+
+- **[`Jobs.tsx`](src/pages/Jobs.tsx)**: **Assigned / HCP** shows **`j:`** (max of **`last_work_date`** and max **`job_schedule_blocks.work_date`**) and **`b:`** (calendar-**max** of **`last_bill_date`**, invoice **`sent_to_customer_at`** / **`billed_at`**, and payment **`paid_on`**; **`—`** when all unset). Tooltips via **`deriveStagesFieldTooltip`** / **`deriveStagesBillingActivityDetail`**. Removed job-row Ham **±1** for **`last_bill_date`**.
+- **`b:`** / **last manual bill date**: **[`stagesJobReferenceDates.ts`](src/lib/stagesJobReferenceDates.ts)** **`deriveStagesBillingActivityDetail`** includes **`last_bill_date`** as a candidate so Edit Job / When Billed updates the line; later invoice send/billed/payment dates **win** when later.
+- **`loadJobs`**: chunked **`.in('job_id', …)`** fetch on **`job_schedule_blocks`**; sets **`last_schedule_work_date`** on each **[`JobWithDetails`](src/types/jobWithDetails.ts)**.
+- **[`stagesJobReferenceDates.ts`](src/lib/stagesJobReferenceDates.ts)** — pure derivations + **`mergeMaxScheduleWorkDateByJobId`**.
+- **[`fetchJobWithDetailsById.ts`](src/lib/fetchJobWithDetailsById.ts)**: **`last_schedule_work_date: null`** on single-job fetch (schedule max only on full Jobs load).
+- **Ready to Bill**: **Missing Billed Date** remains for unset **`last_bill_date`**, rendered beside **`j:`/`b:`**, not as empty **`b:`**.
+- **Copy**: **Edit Job**, **Detail Job**, **When was this job billed?** modal, and Stages **`b:`** tooltip use the label **Last manual bill date** (column **`last_bill_date`** unchanged).
+
+---
+
+## Latest Updates (v2.274)
+
+**Date**: 2026-04-08
+
+### Jobs ledger — Last work date (cached) + Last bill date (column rename)
+
+- **Schema**: **`jobs_ledger.last_work_date`** (nullable **DATE**) — cache of **`MAX(work_date)`** from **`clock_sessions`** where the session is **approved**, not rejected, not revoked, and linked to the job. **`refresh_jobs_ledger_last_work_date`** (**`SECURITY DEFINER`**) + **`touch_jobs_ledger_last_work_date_from_clock_sessions`** on **`clock_sessions`** INSERT / DELETE / UPDATE of relevant columns; backfill + optional index **`idx_jobs_ledger_last_work_date`** — **[`20260408013952_jobs_ledger_last_work_date_clock_sessions_trigger.sql`](supabase/migrations/20260408013952_jobs_ledger_last_work_date_clock_sessions_trigger.sql)**.
+- **Rename**: **`estimated_completion_date` → `last_bill_date`**; **`ensure_single_ready_to_bill_invoice_for_job`** updated — **[`20260408014106_rename_estimated_completion_to_last_bill_date_and_fix_rtb_rpc.sql`](supabase/migrations/20260408014106_rename_estimated_completion_to_last_bill_date_and_fix_rtb_rpc.sql)**.
+- **App**: **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)** **Last manual bill date**; **[`DetailJobModal.tsx`](src/components/jobs/DetailJobModal.tsx)** **Last work date** (read-only) + **Last manual bill date** (v2.276 adds derived **Last bill date** row—see [v2.276](#latest-updates-v2276)); **[`Jobs.tsx`](src/pages/Jobs.tsx)** and invoice fallbacks use **`last_bill_date`**; **[`limitedJobDetailSnapshot.ts`](src/types/limitedJobDetailSnapshot.ts)** / **`database.ts`** types.
+- **Docs**: **`GLOSSARY.md`**, **`PROJECT_DOCUMENTATION.md`** (Jobs), **`MIGRATIONS.md`**.
+
+---
+
+## Latest Updates (v2.273)
+
+**Date**: 2026-04-07
+
+### DetailJobModal — Scheduled block layout
+
+- **[`DetailJobModal.tsx`](src/components/jobs/DetailJobModal.tsx)** / **[`jobScheduleChicago.ts`](src/lib/jobScheduleChicago.ts)**: **Scheduled block** bold line is **`Scheduled block - {weekday}`** (Chicago). Second line is **calendar date without weekday** **`·`** **time window** via **`scheduleFormatDateLongNoWeekday`** + **`scheduleFormatWindow`**. New helpers **`scheduleFormatWeekdayOnly`**, **`scheduleFormatDateLongNoWeekday`**; invalid **`workDate`** still falls back to raw string like **`scheduleFormatWeekdayLong`**.
+
+---
+
+## Latest Updates (v2.272)
+
+**Date**: 2026-04-07
+
+### DetailJobModal — Customer panel beside Address / schedule
+
+- **[`DetailJobModal.tsx`](src/components/jobs/DetailJobModal.tsx)**: Top band uses **`detailJob`** only when **`!loading && !error`** (no empty customer column while fetching). **Customer** section is title plus **three stacked value lines** (name, phone, email; no per-field sublabels); **`tel:`** / **`mailto:`** via **`openInExternalBrowser`** when set. **Missing** name / phone / email show muted **`[missing name]`** / **`[missing phone]`** / **`[missing email]`** (`#9ca3af`). Outer grid **`minmax(min(100%, 240px), 1fr)`** with **Address** + **Scheduled block** stacked in the left cell; **Street View** unchanged below. **Customer** **DetailRow** duplicates removed from full and limited body sections.
+
+---
+
+## Latest Updates (v2.271)
+
+**Date**: 2026-04-08
+
+### DetailJobModal — Address and scheduled block row
+
+- **[`DetailJobModal.tsx`](src/components/jobs/DetailJobModal.tsx)**: **Address** and **Scheduled block** share a **`display: grid`** row with **`repeat(auto-fit, minmax(min(100%, 260px), 1fr))`** (side-by-side on wide modals, stacked on narrow); DOM order Address then schedule; **Street View** remains full-width below.
+
+---
+
+## Latest Updates (v2.270)
+
+**Date**: 2026-04-07
+
+### Schedule Dispatch hub — Job detail from block title
+
+- **[`ScheduleDispatch.tsx`](src/pages/ScheduleDispatch.tsx)**: People hub block **top row** (job title) opens **`DetailJobModal`** with **`jobId`**, **`scheduleContext`** from the block + cell date, **`assignedJobsRows={[]}`**; clears with week/job navigation. Removed hub **`PreviewJobModal`** path and **`hubJobProjectIdById`**.
+- **[`ScheduleDispatchHub.tsx`](src/components/schedule/ScheduleDispatchHub.tsx)**: **`onOpenHubJobDetail(block, workDateYmd)`** replaces **`onOpenJobPreview`**. Job-week overview still uses **`PreviewJobModal`** from the header when linked to a project.
+
+---
+
+## Latest Updates (v2.269)
+
+**Date**: 2026-04-07
+
+### Schedule Dispatch — + copy menu portal
+
+- **[`ScheduleDispatchPlusCopyMenu`](src/components/schedule/ScheduleDispatchPlusCopyMenu.tsx)**: **`createPortal`** to **`document.body`**, **`position: fixed`** from **+** **`getBoundingClientRect`** (prefer above, flip below, viewport clamp); **`zIndex` 200**; **`scroll`** (capture) + **`resize`** reposition; **Escape** + outside **mousedown** close. **[`ScheduleDispatchGrid`](src/components/schedule/ScheduleDispatchGrid.tsx)** / **[`ScheduleDispatchHub`](src/components/schedule/ScheduleDispatchHub.tsx)** block cards: **+** **`ref`**, removes inline **`absolute`** menu (fixes clip in hub **`td`** **`maxHeight`** / **`overflowY`** and grid **`overflowX`**).
+
+---
+
+## Latest Updates (v2.268)
+
+**Date**: 2026-04-07
+
+### Schedule Dispatch — Linked badge no layout inset
+
+- **[`ScheduleDispatchGrid`](src/components/schedule/ScheduleDispatchGrid.tsx)** / **[`ScheduleDispatchHub`](src/components/schedule/ScheduleDispatchHub.tsx)**: removed linked-only **right padding** so job/time/note use the same width as unlinked cards; chain chip remains **`absolute`** top-right (**long lines may pass under** the 20×20 control).
+
+---
+
+## Latest Updates (v2.267)
+
+**Date**: 2026-04-07
+
+### Schedule Dispatch — Linked badge top-right
+
+- **[`ScheduleDispatchGrid`](src/components/schedule/ScheduleDispatchGrid.tsx)** / **[`ScheduleDispatchHub`](src/components/schedule/ScheduleDispatchHub.tsx)**: linked chain control **`position: absolute`**, **`top: 2`**, **`right: 2`**, **`zIndex: 3`** (same overlay layer as **−** / **+** at bottom-right); main content gets **`paddingRight: 28`** when linked so time/note/title do not run under the icon.
+
+---
+
+## Latest Updates (v2.266)
+
+**Date**: 2026-04-07
+
+### Schedule Dispatch — Hide weekend default on
+
+- **[`ScheduleDispatch.tsx`](src/pages/ScheduleDispatch.tsx)** **`readScheduleDispatchHideWeekend`**: default **`true`** when **`scheduleDispatchHideWeekend`** is unset; **`'0'`** / **`'1'`** still turn weekends off/on. First load persists **`'1'`** via existing **`useEffect`**.
+- **[`ScheduleDispatchWeekNav.tsx`](src/components/schedule/ScheduleDispatchWeekNav.tsx)** **`hideWeekend`** fallback prop **`true`**.
+
+---
+
+## Latest Updates (v2.265)
+
+**Date**: 2026-04-07
+
+### Schedule Dispatch — Linked pill icon
+
+- **[`ScheduleDispatchLinkedChainsIcon`](src/components/icons/ScheduleDispatchLinkedChainsIcon.tsx)** (Font Awesome Free): chain glyph, **`currentColor`**, default size **13**.
+- **[`ScheduleDispatchGrid`](src/components/schedule/ScheduleDispatchGrid.tsx)** / **[`ScheduleDispatchHub`](src/components/schedule/ScheduleDispatchHub.tsx)**: linked-group badge shows icon instead of **Linked** text; Grid **`role="img"`** **`aria-label="Linked"`**; Hub button **`aria-label`** / **`title`** unchanged. **Linked copy** menu labels unchanged.
+
+---
+
+## Latest Updates (v2.264)
+
+**Date**: 2026-04-07
+
+### DetailJobModal — Job activity / notes
+
+- **[`useJobThreadNotesForModal`](src/hooks/useJobThreadNotesForModal.ts)**: Loads **`jobs_ledger_thread_notes`** when the modal is open; **Realtime** **INSERT** refreshes the list; **`submitNote`** matches Jobs Stages insert + **toast** on errors; **`canPost`** when signed in (**RLS** enforces insert).
+- **[`DetailJobModal`](src/components/jobs/DetailJobModal.tsx)**: **[`JobThreadNotesPanel`](src/components/JobThreadNotesPanel.tsx)** after **Scheduled block** (scroll **`maxHeight`**); **`useAuth`** + **`useToastContext`**. No Schedule / Week dispatch actions in the modal. Later: **v2.276** adds **`showSectionTitle` / `showEmptyPlaceholder` / `showComposerLabel`** off for chrome-light Detail + expanded dates/status layout.
+
+---
+
+## Latest Updates (v2.263)
+
+**Date**: 2026-04-07
+
+### DetailJobModal — Street View preview
+
+- **[`street-view-preview`](supabase/functions/street-view-preview/index.ts)** Edge Function: **`GET`** with **`location`**; **`meta=1`** returns **lat/lng** from Google Street View metadata; default path proxies **Street View Static** (**640×320**) using **`GOOGLE_MAPS_API_KEY`** (**[`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md)**). **`verify_jwt = false`**; **`auth.getUser()`** inside.
+- **[`fetchStreetViewPreview.ts`](src/lib/fetchStreetViewPreview.ts)**: **`fetchStreetViewMeta`**, **`fetchStreetViewImageBlob`**, **`googleStreetViewPanoUrl`** (session **`fetch`** + **`apikey`**).
+- **[`DetailJobModal`](src/components/jobs/DetailJobModal.tsx)**: **Street View** labeled block under **Address**; loading text; **16:9** thumbnail via **blob URL**; **`openInExternalBrowser`** opens **`map_action=pano`** when coordinates exist, else Maps search.
+
+---
+
+## Latest Updates (v2.262)
+
+**Date**: 2026-04-07
+
+### DetailJobModal — Address opens Google Maps
+
+- **[`DetailJobModal`](src/components/jobs/DetailJobModal.tsx)**: **Address** row below the title (above **Scheduled block**); underlined link opens **`https://www.google.com/maps/search/?api=1&query=…`** via **`openInExternalBrowser`**. **`role="link"`**, **Enter** / **Space**. **`prefillAddress`** from **[`Dashboard`](src/pages/Dashboard.tsx)** **Assigned Jobs** match on My schedule open so the line can show before fetch. Removed duplicate **Job address** **`DetailRow`** in the body.
+
+---
+
+## Latest Updates (v2.261)
+
+**Date**: 2026-04-07
+
+### DetailJobModal — Dynamic dialog title
+
+- **[`DetailJobModal`](src/components/jobs/DetailJobModal.tsx)** heading: **`Job Detail: [hcp], [job name]`** from loaded job; **`Job Detail`** while loading or on error. **Prefill** from My schedule row label ([`prefillRowLabel`](src/pages/Dashboard.tsx)) via **`splitScheduleDetailRowLabel`** (first ` · ` only) so the title is correct before fetch. **`wordBreak`** on **`h2`** for long names.
+
+---
+
+## Latest Updates (v2.260)
+
+**Date**: 2026-04-07
+
+### Dashboard — My schedule Job details modal
+
+- **My schedule** ([`Dashboard.tsx`](src/pages/Dashboard.tsx)): whole row (**click** / **Enter** / **Space**) opens read-only **[`DetailJobModal`](src/components/jobs/DetailJobModal.tsx)** with **Scheduled block** (Chicago date + [`scheduleFormatWindow`](src/lib/jobScheduleChicago.ts) + note). **Staff** (`dev` / `master_technician` / `assistant` / `primary` per [`isStaffFullJobLedgerDetailRole`](src/lib/jobDetailModalRole.ts)): full **[`fetchJobWithDetailsById`](src/lib/fetchJobWithDetailsById.ts)** — Edit Job–parity sections (team, materials, fixtures, payments, invoices). **Others** (e.g. **subcontractor**): [`jobs_ledger`](src/types/database.ts) column-only snapshot when RLS allows, else **[`assignedJobs`](src/pages/Dashboard.tsx)** fallback; muted copy that billing line items are not shown. **Workflow** link only when `authRole !== 'subcontractor'`. **[`LimitedJobDetailSnapshot`](src/types/limitedJobDetailSnapshot.ts)** for the limited tier.
+
+---
+
+## Latest Updates (v2.259)
+
+**Date**: 2026-04-07
+
+### Dashboard — Subcontractor My schedule (today / tomorrow)
+
+- **Subcontractors only** ([`Dashboard.tsx`](src/pages/Dashboard.tsx)): read-only **My schedule** after **Checklist: Outstanding** — **Today** and **Tomorrow** (America/Chicago dates) from [`fetchScheduleBlocksForAssigneeDateRange`](src/lib/jobScheduleBlocks.ts); [`scheduleFormatWindow`](src/lib/jobScheduleChicago.ts) + optional note; job labels from assigned jobs + `jobs_ledger` gap fill. **Calendar →** links to [`/calendar`](src/pages/Calendar.tsx) (not Schedule Dispatch). Mirrored **Linked** legs deduped in-app (`dedupeSubScheduleBlocks` by `shared_block_group_id` + date + window).
+
 ---
 
 ## Latest Updates (v2.258)
@@ -2639,21 +2934,21 @@ when_to_read:
 
 **Date**: 2026-03-11
 
-### Jobs – Billed Materials Reflect in Parts
+### Jobs – Other job charges reflect in Parts
 
-- **Parts Cost includes Billed Materials**: Job Summary Parts Cost and Jobs Parts tab Total Parts Cost now include the sum of Billed Materials (line items from Edit Job) in addition to Parts from Tally and Invoices from Supply Houses.
-- **Parts tab Billed Materials column**: New "Billed Materials" column in Jobs Parts tab shows the billed materials sum per job.
-- **Parts tab Billed Materials section**: When expanding a job row in Parts tab, a "Billed Materials" section appears below the tally parts table when the job has billed materials, listing each line item with Description and Amount.
-- **Link Billed Materials to parts**: Optional `part_id` on `jobs_ledger_materials` links a line item to `material_parts`. Migration: `20260311120002_add_part_id_to_jobs_ledger_materials.sql`. Part picker was removed from Edit Job modal for simplicity; Billed Materials now uses description + amount only.
+- **Parts Cost includes Other job charges**: Job Summary Parts Cost and Jobs Parts tab Total Parts Cost now include the sum of Other job charges (manual line items from Edit Job) in addition to Parts from Tally and Invoices from Supply Houses.
+- **Parts tab Other job charges column**: New "Other job charges" column in Jobs Parts tab shows the other job charges sum per job.
+- **Parts tab Other job charges section**: When expanding a job row in Parts tab, an "Other job charges" section appears below the tally parts table when the job has those line items, listing each line item with Description and Amount.
+- **Link Other job charges to parts**: Optional `part_id` on `jobs_ledger_materials` links a line item to `material_parts`. Migration: `20260311120002_add_part_id_to_jobs_ledger_materials.sql`. Part picker was removed from Edit Job modal for simplicity; Other job charges now uses description + amount only.
 
 ### People – Review Tab (Parts Cost)
 
-- **Parts Cost includes Billed Materials**: People Review Parts Cost (labor jobs, crew jobs, allocation) now includes Billed Materials from `jobs_ledger_materials` in addition to tally parts and supply house invoice amounts.
+- **Parts Cost includes Other job charges**: People Review Parts Cost (labor jobs, crew jobs, allocation) now includes Other job charges from `jobs_ledger_materials` in addition to tally parts and supply house invoice amounts.
 
 ### Jobs – Parts Tab: Materials-Only and Invoice-Only Jobs
 
-- **Jobs with Billed Materials only**: Parts tab now includes jobs that have Billed Materials but no tally parts. Previously these jobs appeared in the Billing tab but not in Parts. They now show with Parts from Tally = $0, Billed Materials column populated; when expanded, only the Billed Materials section is shown (no empty tally parts table).
-- **Jobs with Invoices from Supply Houses only**: Parts tab now includes jobs that have supply house invoice allocations (from Materials Supply Houses) but no tally parts and no Billed Materials. `loadTallyParts` merges job IDs from `supply_house_invoice_job_allocations` with tally parts job IDs before calling `get_invoice_amounts_for_jobs`, so all jobs with invoice allocations get their amounts in the "Invoices from Supply Houses" column.
+- **Jobs with Other job charges only**: Parts tab now includes jobs that have Other job charges but no tally parts. Previously these jobs appeared in the Billing tab but not in Parts. They now show with Parts from Tally = $0, Other job charges column populated; when expanded, only the Other job charges section is shown (no empty tally parts table).
+- **Jobs with Invoices from Supply Houses only**: Parts tab now includes jobs that have supply house invoice allocations (from Materials Supply Houses) but no tally parts and no Other job charges. `loadTallyParts` merges job IDs from `supply_house_invoice_job_allocations` with tally parts job IDs before calling `get_invoice_amounts_for_jobs`, so all jobs with invoice allocations get their amounts in the "Invoices from Supply Houses" column.
 
 ---
 
@@ -2663,7 +2958,7 @@ when_to_read:
 
 ### Jobs – Stages Tab: Ham Mode Date Buttons, Stage Notes, Job Name Wrap, View Reports Modal
 
-- **Ham mode -1 / +1 buttons**: When Ham mode is ON (dev/assistant only), -1 and +1 buttons appear below the T-2 (tue) estimated completion display. Clicking adjusts the job's `estimated_completion_date` by one day without opening Edit Job. If no date exists, +1 sets tomorrow, -1 sets yesterday.
+- **Ham mode -1 / +1 buttons**: When Ham mode is ON (dev/assistant only), -1 and +1 buttons appear below the T-2 (tue) last bill date display. Clicking adjusts the job's `last_bill_date` by one day without opening Edit Job. If no date exists, +1 sets tomorrow, -1 sets yesterday.
 - **Stage Notes**: Input changed to textarea for text wrapping; no placeholder when empty; transparent background; maxWidth removed, column minWidth 200 so the box expands to fill available space.
 - **Job name wrap at comma**: When a job name contains a comma (e.g. "Smith Residence, Phase 2"), the text after the comma displays on a second line in gray, matching the address display pattern.
 - **View Reports modal**: Escape and Spacebar close the full-screen modal. If a nested modal (viewing a report or adding an additional report) is open, that closes first. Spacebar is ignored when focus is in an input or textarea.
@@ -3662,7 +3957,7 @@ All buttons use `display: inline-flex`, `alignItems: center`, `justifyContent: c
 
 ### Jobs – Payments Made, Remaining, Stages enhancements
 
-- **New Job / Edit Job modals**: Below Total Bill ($), added **Payments Made ($)** as a table of multiple payment rows (Add Payment, Remove per row). **Remaining ($)** displays Total Bill minus sum of payments. Mirrors Billed Materials pattern.
+- **New Job / Edit Job modals**: Below Total Bill ($), added **Payments Made ($)** as a table of multiple payment rows (Add Payment, Remove per row). **Remaining ($)** displays Total Bill minus sum of payments. Mirrors Other job charges pattern.
 - **Database**: `jobs_ledger_payments` table (job_id, amount, sequence_order); `jobs_ledger.payments_made` kept in sync (sum) for Stages/Dashboard. Existing payments_made values migrated to jobs_ledger_payments.
 - **Stages tab**: Working, Ready to Bill, Billed show **Remaining** (revenue - payments_made) instead of Revenue. **Paid in Full** (renamed from Paid) shows **Final Bill** (revenue). Stage titles include total amount, e.g. `Billed (5) - $3,250.00`.
 - **Dashboard**: Ready to Bill and Waiting for Payment sections show Remaining instead of Revenue.

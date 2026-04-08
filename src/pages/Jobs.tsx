@@ -32,6 +32,12 @@ import { CLOCK_SESSION_LIST_SELECT } from '../lib/clockSessionSelect'
 import { APP_CALENDAR_TZ, formatWorkDateYmdWeekdayLongFriendly, getDefaultWeekRange } from '../utils/dateUtils'
 import { fetchAttributionsByMercuryTxIds } from '../lib/fetchMercuryRelationsByTxIds'
 import { formatMercuryDebitCardIdCompact, mercuryDebitCardIdFromRaw } from '../lib/mercuryRawDebitCard'
+import {
+  deriveStagesBillingActivityDetail,
+  deriveStagesFieldReferenceYmd,
+  deriveStagesFieldTooltip,
+  mergeMaxScheduleWorkDateByJobId,
+} from '../lib/stagesJobReferenceDates'
 
 type JobsLedgerRow = Database['public']['Tables']['jobs_ledger']['Row']
 type CustomerRow = Database['public']['Tables']['customers']['Row']
@@ -361,9 +367,9 @@ function addDaysToDate(dateStr: string | null, deltaDays: number): string {
   return base.toISOString().slice(0, 10)
 }
 
-/** Per-invoice est. bill date when set; else job-level est. done/bill date. */
+/** Per-invoice est. bill date when set; else job-level manual last bill date (`last_bill_date`). */
 function effectiveInvoiceEstBillDate(inv: JobsLedgerInvoice, job: JobWithDetails): string | null {
-  return inv.estimated_bill_date ?? job.estimated_completion_date ?? null
+  return inv.estimated_bill_date ?? job.last_bill_date ?? null
 }
 
 function stageRowBilledRemainingAmount(r: StageRow): number {
@@ -379,7 +385,7 @@ function stageRowBilledRemainingAmount(r: StageRow): number {
 function stageRowBilledAgeDays(r: StageRow, now = new Date()): number | null {
   const iso =
     r.kind === 'job'
-      ? r.job.estimated_completion_date ?? null
+      ? r.job.last_bill_date ?? null
       : effectiveInvoiceEstBillDate(r.inv, r.job)
   if (!iso) return null
   const days = calendarDaysSinceDateUtc(iso, now)
@@ -416,7 +422,7 @@ function formatYmdOrIsoDateForPrintDisplay(ymdOrIso: string): string {
 /** Reference date and whole calendar days since, for Billed Awaiting Payment printout. */
 function printBilledRowReferenceDate(r: StageRow, now = new Date()): { display: string; ageDays: number | null } {
   if (r.kind === 'job') {
-    const iso = r.job.estimated_completion_date?.trim() ?? null
+    const iso = r.job.last_bill_date?.trim() ?? null
     if (!iso) return { display: '—', ageDays: null }
     const days = calendarDaysSinceDateUtc(iso, now)
     if (days < 0) return { display: formatYmdOrIsoDateForPrintDisplay(iso), ageDays: null }
@@ -787,7 +793,7 @@ export default function Jobs() {
     let count90 = 0
     let sum90 = 0
     for (const j of billedJobsList) {
-      const iso = j.estimated_completion_date
+      const iso = j.last_bill_date
       if (!iso) continue
       const days = calendarDaysSinceDateUtc(iso, now)
       if (days < 30) continue
@@ -918,11 +924,41 @@ export default function Jobs() {
         team_members: team ?? [],
         report_count: (rep ?? []).length,
         project: proj ?? null,
+        last_schedule_work_date: null,
       }
     })
-    setJobs(jobsWithDetails)
+
+    const SCHEDULE_BLOCKS_IN_CHUNK = 150
+    let scheduleMaxByJobId = new Map<string, string>()
+    try {
+      const ids = jobsWithDetails.map((j) => j.id)
+      for (let i = 0; i < ids.length; i += SCHEDULE_BLOCKS_IN_CHUNK) {
+        const chunk = ids.slice(i, i + SCHEDULE_BLOCKS_IN_CHUNK)
+        const { data: blockRows, error: blocksErr } = await supabase
+          .from('job_schedule_blocks')
+          .select('job_id, work_date')
+          .in('job_id', chunk)
+        if (blocksErr) throw new Error(blocksErr.message)
+        const part = mergeMaxScheduleWorkDateByJobId(
+          (blockRows ?? []) as Array<{ job_id: string; work_date: string }>,
+        )
+        for (const [jobId, ymd] of part) {
+          const prev = scheduleMaxByJobId.get(jobId)
+          if (prev == null || ymd > prev) scheduleMaxByJobId.set(jobId, ymd)
+        }
+      }
+    } catch (e) {
+      console.warn('loadJobs: job_schedule_blocks batch failed', e)
+      scheduleMaxByJobId = new Map()
+    }
+
+    const jobsWithSchedule: JobWithDetails[] = jobsWithDetails.map((j) => ({
+      ...j,
+      last_schedule_work_date: scheduleMaxByJobId.get(j.id) ?? null,
+    }))
+    setJobs(jobsWithSchedule)
     setLoading(false)
-    return jobsWithDetails
+    return jobsWithSchedule
     } finally {
       loadJobsInFlightRef.current = false
     }
@@ -2693,9 +2729,9 @@ export default function Jobs() {
       }
     }
     if (jobSummaryPartsCostIsZero(billedMaterialsSum)) {
-      partsHtml += `<p><strong>Billed Materials</strong> $${formatCurrency(billedMaterialsSum)}</p>`
+      partsHtml += `<p><strong>Other job charges</strong> $${formatCurrency(billedMaterialsSum)}</p>`
     } else {
-      partsHtml += `<h3 style="font-size:1rem">Billed Materials — $${formatCurrency(billedMaterialsSum)}</h3>`
+      partsHtml += `<h3 style="font-size:1rem">Other job charges — $${formatCurrency(billedMaterialsSum)}</h3>`
       const matRows = [...(job.materials ?? [])].sort((a, b) => a.sequence_order - b.sequence_order)
       if (matRows.length > 0) {
         const mr = matRows
@@ -2706,7 +2742,7 @@ export default function Jobs() {
           .join('')
         partsHtml += `<table><thead><tr><th>Description</th><th style="text-align:right">Amount</th></tr></thead><tbody>${mr}</tbody></table>`
       } else {
-        partsHtml += `<p class="muted">${billedMaterialsSum > 0 ? 'No material line items on file.' : 'No billed materials.'}</p>`
+        partsHtml += `<p class="muted">${billedMaterialsSum > 0 ? 'No line items on file.' : 'No other job charges.'}</p>`
       }
     }
     if (jobSummaryPartsCostIsZero(invoicesFromSupplyHouses)) {
@@ -3649,7 +3685,7 @@ ${totalsHtml}
     try {
       const nextOrder = (createPartialInvoiceJob.invoices ?? []).length
       const estBillModal =
-        createPartialInvoiceJob.estimated_completion_date?.trim().slice(0, 10) ?? null
+        createPartialInvoiceJob.last_bill_date?.trim().slice(0, 10) ?? null
       const { error: err } = await supabase.from('jobs_ledger_invoices').insert({
         job_id: createPartialInvoiceJob.id,
         amount,
@@ -3743,31 +3779,14 @@ ${totalsHtml}
     }
   }
 
-  async function updateJobEstimatedCompletionDate(jobId: string, deltaDays: number, currentDate: string | null) {
-    setEstimatedCompletionDateSavingId(jobId)
-    setError(null)
-    const newDate = addDaysToDate(currentDate, deltaDays)
-    try {
-      const { error: err } = await supabase.from('jobs_ledger').update({ estimated_completion_date: newDate }).eq('id', jobId)
-      if (err) throw err
-      setJobs((prev) =>
-        prev.map((j) => (j.id === jobId ? { ...j, estimated_completion_date: newDate } : j))
-      )
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to update estimated completion date')
-    } finally {
-      setEstimatedCompletionDateSavingId(null)
-    }
-  }
-
-  async function setJobEstimatedCompletionDate(jobId: string, date: string | null) {
+  async function setJobLastBillDate(jobId: string, date: string | null) {
     setEstimatedCompletionDateSavingId(jobId)
     setError(null)
     try {
-      const { error: err } = await supabase.from('jobs_ledger').update({ estimated_completion_date: date }).eq('id', jobId)
+      const { error: err } = await supabase.from('jobs_ledger').update({ last_bill_date: date }).eq('id', jobId)
       if (err) throw err
       setJobs((prev) =>
-        prev.map((j) => (j.id === jobId ? { ...j, estimated_completion_date: date } : j))
+        prev.map((j) => (j.id === jobId ? { ...j, last_bill_date: date } : j))
       )
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to update date')
@@ -3819,7 +3838,7 @@ ${totalsHtml}
   ) {
     const base =
       inv.estimated_bill_date ??
-      job.estimated_completion_date ??
+      job.last_bill_date ??
       new Date().toISOString().slice(0, 10)
     const newDate = addDaysToDate(base, deltaDays)
     await setInvoiceEstimatedBillDate(invoiceId, jobId, newDate)
@@ -4417,75 +4436,58 @@ ${totalsHtml}
               setStagesSectionOpen((prev) => ({ ...prev, [key]: !prev[key] }))
             }
 
-            function renderEstimatedCompletionBlock(
-              job: JobWithDetails,
-              options?: { showEmptyPrompt?: boolean; onEmptyClick?: (j: JobWithDetails) => void }
-            ) {
-              const display = formatEstimatedCompletionDisplay(job.estimated_completion_date)
-              if (!display && options?.showEmptyPrompt && options?.onEmptyClick) {
-                return (
-                  <button
-                    type="button"
-                    onClick={() => options.onEmptyClick!(job)}
-                    style={{
-                      display: 'block',
-                      marginTop: '0.15rem',
-                      padding: '0.25rem 0.5rem',
-                      fontSize: '0.75rem',
-                      color: '#b91c1c',
-                      border: '2px solid #b91c1c',
-                      borderRadius: 4,
-                      background: 'none',
-                      cursor: 'pointer',
-                      width: 'fit-content',
-                    }}
-                  >
-                    Missing Billed Date
-                  </button>
-                )
-              }
+            function renderStagesFieldAndBillingLines(job: JobWithDetails) {
+              const jYmd = deriveStagesFieldReferenceYmd({
+                lastWorkDate: job.last_work_date,
+                lastScheduleWorkDate: job.last_schedule_work_date ?? null,
+              })
+              const bDetail = deriveStagesBillingActivityDetail(job)
+              const jDisplay = jYmd ? formatEstimatedCompletionDisplay(jYmd) : null
+              const bDisplay = bDetail ? formatEstimatedCompletionDisplay(bDetail.ymd) : null
+              const jTitle = deriveStagesFieldTooltip({
+                lastWorkDate: job.last_work_date,
+                lastScheduleWorkDate: job.last_schedule_work_date ?? null,
+                resolvedYmd: jYmd,
+              })
+              const lineStyle = {
+                fontSize: '0.75rem',
+                color: '#6b7280',
+                marginTop: '0.15rem',
+              } as const
               return (
                 <>
-                  {display && (
-                    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{display}</div>
-                  )}
-                  {stagesHamMode && (
-                    <div style={{ display: 'flex', gap: '0.25rem', marginTop: '0.15rem' }}>
-                      <button
-                        type="button"
-                        onClick={() => updateJobEstimatedCompletionDate(job.id, -1, job.estimated_completion_date)}
-                        disabled={estimatedCompletionDateSavingId === job.id}
-                        style={{
-                          padding: '0.25rem 0.5rem',
-                          fontSize: '0.75rem',
-                          border: '1px solid #d1d5db',
-                          borderRadius: 4,
-                          background: 'none',
-                          cursor: estimatedCompletionDateSavingId === job.id ? 'not-allowed' : 'pointer',
-                          color: '#6b7280',
-                        }}
-                      >
-                        -1
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => updateJobEstimatedCompletionDate(job.id, 1, job.estimated_completion_date)}
-                        disabled={estimatedCompletionDateSavingId === job.id}
-                        style={{
-                          padding: '0.25rem 0.5rem',
-                          fontSize: '0.75rem',
-                          border: '1px solid #d1d5db',
-                          borderRadius: 4,
-                          background: 'none',
-                          cursor: estimatedCompletionDateSavingId === job.id ? 'not-allowed' : 'pointer',
-                          color: '#6b7280',
-                        }}
-                      >
-                        +1
-                      </button>
-                    </div>
-                  )}
+                  <div style={lineStyle} title={jTitle ?? undefined}>
+                    j: {jDisplay ?? '—'}
+                  </div>
+                  <div style={lineStyle} title={bDetail?.tooltip}>
+                    b: {bDisplay ?? '—'}
+                  </div>
                 </>
+              )
+            }
+
+            const stagesMissingPlanBillDateButtonStyle = {
+              display: 'block' as const,
+              marginTop: '0.15rem',
+              padding: '0.25rem 0.5rem',
+              fontSize: '0.75rem' as const,
+              color: '#b91c1c',
+              border: '2px solid #b91c1c',
+              borderRadius: 4,
+              background: 'none' as const,
+              cursor: 'pointer' as const,
+              width: 'fit-content' as const,
+            }
+
+            function renderStagesRtbMissingPlanBillDateButton(
+              job: JobWithDetails,
+              onClick: (j: JobWithDetails) => void,
+            ) {
+              if (job.last_bill_date?.trim()) return null
+              return (
+                <button type="button" onClick={() => onClick(job)} style={stagesMissingPlanBillDateButtonStyle}>
+                  Missing Billed Date
+                </button>
               )
             }
 
@@ -4897,13 +4899,13 @@ ${totalsHtml}
                                     )}
                                   </div>
                                   <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{j.hcp_number || '—'}</div>
-                                  {renderEstimatedCompletionBlock(j)}
+                                  {renderStagesFieldAndBillingLines(j)}
                                 </div>
                               ) : (
                                 <>
                                   <div>{(j.team_members ?? []).map((t) => t.users?.name?.trim()).filter(Boolean).join(', ') || '—'}</div>
                                   <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{j.hcp_number || '—'}</div>
-                                  {renderEstimatedCompletionBlock(j)}
+                                  {renderStagesFieldAndBillingLines(j)}
                                 </>
                               )}
                             </td>
@@ -5370,17 +5372,19 @@ ${totalsHtml}
                                       )}
                                     </div>
                                     <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{j.hcp_number || '—'}</div>
+                                    {renderStagesFieldAndBillingLines(j)}
                                     {showEmptyEstDoneBillDatePrompt && onEmptyEstDoneBillDateClick
-                                      ? renderEstimatedCompletionBlock(j, { showEmptyPrompt: true, onEmptyClick: onEmptyEstDoneBillDateClick })
-                                      : renderEstimatedCompletionBlock(j)}
+                                      ? renderStagesRtbMissingPlanBillDateButton(j, onEmptyEstDoneBillDateClick)
+                                      : null}
                                   </div>
                                   ) : (
                                     <>
                                       <div>{(j.team_members ?? []).map((t) => t.users?.name?.trim()).filter(Boolean).join(', ') || '—'}</div>
                                       <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{j.hcp_number || '—'}</div>
+                                      {renderStagesFieldAndBillingLines(j)}
                                       {showEmptyEstDoneBillDatePrompt && onEmptyEstDoneBillDateClick
-                                        ? renderEstimatedCompletionBlock(j, { showEmptyPrompt: true, onEmptyClick: onEmptyEstDoneBillDateClick })
-                                        : renderEstimatedCompletionBlock(j)}
+                                        ? renderStagesRtbMissingPlanBillDateButton(j, onEmptyEstDoneBillDateClick)
+                                        : null}
                                     </>
                                   )}
                                 </td>
@@ -5692,6 +5696,7 @@ ${totalsHtml}
                                 <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
                                   <div>{(job.team_members ?? []).map((t) => t.users?.name?.trim()).filter(Boolean).join(', ') || '—'}</div>
                                   <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{job.hcp_number || '—'}</div>
+                                  {renderStagesFieldAndBillingLines(job)}
                                   {(() => {
                                     const eff = effectiveInvoiceEstBillDate(inv, job)
                                     const display = formatEstimatedCompletionDisplay(eff)
@@ -5776,7 +5781,7 @@ ${totalsHtml}
                                                 })
                                                 setWhenInvoiceBillModalDate(
                                                   inv.estimated_bill_date?.trim().slice(0, 10) ??
-                                                    job.estimated_completion_date?.trim().slice(0, 10) ??
+                                                    job.last_bill_date?.trim().slice(0, 10) ??
                                                     ''
                                                 )
                                               }}
@@ -6513,7 +6518,7 @@ ${totalsHtml}
                         {whenBilledModalJob.job_name || '—'} ({whenBilledModalJob.hcp_number || '—'})
                       </p>
                       <label style={{ display: 'block', marginBottom: '1rem' }}>
-                        <span style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>Date</span>
+                        <span style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>Last manual bill date</span>
                         <input
                           type="date"
                           value={whenBilledModalDate}
@@ -6534,7 +6539,7 @@ ${totalsHtml}
                           disabled={!whenBilledModalDate.trim() || estimatedCompletionDateSavingId === whenBilledModalJob.id}
                           onClick={async () => {
                             if (!whenBilledModalDate.trim()) return
-                            await setJobEstimatedCompletionDate(whenBilledModalJob.id, whenBilledModalDate.trim())
+                            await setJobLastBillDate(whenBilledModalJob.id, whenBilledModalDate.trim())
                             setWhenBilledModalJob(null)
                             setWhenBilledModalDate('')
                           }}
@@ -6960,7 +6965,7 @@ ${totalsHtml}
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>HCP</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Specific Work</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Billed Materials</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Other job charges</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Contractors</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total Bill</th>
                     <th style={{ padding: '0.75rem', width: 100, borderBottom: '1px solid #e5e7eb' }} />
@@ -7154,7 +7159,7 @@ ${totalsHtml}
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>HCP</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Parts from Tally</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Billed Materials</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Other job charges</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Invoices from Supply Houses</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Card charges</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total Parts Cost</th>
@@ -7415,7 +7420,7 @@ ${totalsHtml}
                                   )}
                                   {job && job.materials.length > 0 && (
                                     <div style={{ padding: '0.75rem', borderTop: '1px solid #e5e7eb', background: '#f9fafb' }}>
-                                      <div style={{ fontWeight: 500, fontSize: '0.8125rem', marginBottom: '0.5rem' }}>Billed Materials</div>
+                                      <div style={{ fontWeight: 500, fontSize: '0.8125rem', marginBottom: '0.5rem' }}>Other job charges</div>
                                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                                         <thead>
                                           <tr style={{ background: '#f3f4f6' }}>
@@ -7980,7 +7985,7 @@ ${totalsHtml}
                                       )}
                                       {jobSummaryPartsCostIsZero(billedMaterialsSum) ? (
                                         <div style={jobSummaryPartsCostFlatRowStyle}>
-                                          Billed Materials{' '}
+                                          Other job charges{' '}
                                           <span style={{ fontWeight: 400 }}>${formatCurrency(billedMaterialsSum)}</span>
                                         </div>
                                       ) : (
@@ -7995,7 +8000,7 @@ ${totalsHtml}
                                           }}
                                           onClick={(e) => e.stopPropagation()}
                                         >
-                                          Billed Materials{' '}
+                                          Other job charges{' '}
                                           <span style={{ fontWeight: 400 }}>${formatCurrency(billedMaterialsSum)}</span>
                                         </summary>
                                         <div style={{ marginTop: '0.5rem' }}>
@@ -8029,7 +8034,7 @@ ${totalsHtml}
                                               )
                                             }
                                             return (
-                                              <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>No billed materials.</p>
+                                              <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>No other job charges.</p>
                                             )
                                           })()}
                                         </div>

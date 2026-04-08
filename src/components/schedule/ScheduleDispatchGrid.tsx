@@ -1,11 +1,14 @@
 import type { CSSProperties, KeyboardEvent, MouseEvent } from 'react'
+import { useRef } from 'react'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { useToastContext } from '../../contexts/ToastContext'
+import { ScheduleDispatchLinkedChainsIcon } from '../icons/ScheduleDispatchLinkedChainsIcon'
 import type { JobScheduleBlockRow, ScheduleTeamMember } from '../../lib/jobScheduleBlocks'
 import { scheduleFormatWindow } from '../../lib/jobScheduleChicago'
 import { SCHEDULE_DISPATCH_DRAG_DISABLED_READONLY_MESSAGE } from '../../lib/scheduleDispatchDragHelp'
 import { scheduleDispatchCellDroppableId } from '../../lib/scheduleDispatchDnd'
 import { APP_CALENDAR_TZ, referenceDateForWorkDateYmd } from '../../utils/dateUtils'
+import { ScheduleDispatchPlusCopyMenu } from './ScheduleDispatchPlusCopyMenu'
 import { ScheduleDispatchWeekNav } from './ScheduleDispatchWeekNav'
 
 function formatDayHeader(dateKey: string): { dow: string; md: string } {
@@ -54,6 +57,7 @@ function ScheduleDispatchBlockCard({
   onDelete: (id: string) => void
 }) {
   const { showToast } = useToastContext()
+  const plusButtonRef = useRef<HTMLButtonElement>(null)
   const dragDisabled = !canEdit
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: block.id,
@@ -67,18 +71,6 @@ function ScheduleDispatchBlockCard({
   const openEdit = () => {
     if (!canEdit || placementPickingActive) return
     onEditBlock(block)
-  }
-
-  const plusMenuItemStyle: CSSProperties = {
-    display: 'block',
-    width: '100%',
-    padding: '0.28rem 0.4rem',
-    fontSize: '0.65rem',
-    border: 'none',
-    background: '#fff',
-    color: '#1e3a8a',
-    cursor: 'pointer',
-    textAlign: 'left',
   }
 
   const explainDisabledDrag = () => {
@@ -161,36 +153,53 @@ function ScheduleDispatchBlockCard({
       >
         <div style={{ fontWeight: 600, color: '#1e3a8a', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
           <span>{scheduleFormatWindow(block.time_start, block.time_end)}</span>
-          {linkPeerCount > 1 ? (
-            <span
-              title="Linked: time and note stay in sync for this crew block"
-              style={{
-                fontSize: '0.6rem',
-                fontWeight: 600,
-                textTransform: 'uppercase',
-                letterSpacing: '0.04em',
-                color: '#1d4ed8',
-                background: '#dbeafe',
-                border: '1px solid #93c5fd',
-                borderRadius: 3,
-                padding: '0.1rem 0.28rem',
-              }}
-            >
-              Linked
-            </span>
-          ) : null}
         </div>
         {block.note ? (
           <div style={{ color: '#4b5563', marginTop: 2, wordBreak: 'break-word' }}>{block.note}</div>
         ) : null}
       </div>
-      {canEdit && !placementPickingActive ? (
+      {linkPeerCount > 1 ? (
         <div
           style={{
             position: 'absolute',
             top: 2,
             right: 2,
             zIndex: 3,
+          }}
+        >
+          <span
+            role="img"
+            aria-label="Linked"
+            title="Linked: time and note stay in sync for this crew block"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 20,
+              height: 20,
+              boxSizing: 'border-box',
+              padding: 0,
+              color: '#1d4ed8',
+              background: '#dbeafe',
+              border: '1px solid #93c5fd',
+              borderRadius: 4,
+            }}
+          >
+            <ScheduleDispatchLinkedChainsIcon size={12} />
+          </span>
+        </div>
+      ) : null}
+      {canEdit && !placementPickingActive ? (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 2,
+            right: 2,
+            zIndex: 3,
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
           }}
         >
           <button
@@ -217,83 +226,46 @@ function ScheduleDispatchBlockCard({
           >
             −
           </button>
-        </div>
-      ) : null}
-      {canEdit && !placementPickingActive ? (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 2,
-            right: 2,
-            zIndex: 3,
-          }}
-        >
-          <button
-            type="button"
-            aria-label="Copy block to another cell"
-            title="Copy to another person & day"
-            onClick={(e) => {
-              e.stopPropagation()
-              onPlusMenuBlockIdChange(plusMenuOpen ? null : block.id)
-            }}
-            style={{
-              width: 20,
-              height: 20,
-              padding: 0,
-              lineHeight: '18px',
-              fontSize: '0.85rem',
-              fontWeight: 700,
-              borderRadius: 4,
-              border: '1px solid #60a5fa',
-              background: '#fff',
-              color: '#1d4ed8',
-              cursor: 'pointer',
-            }}
-          >
-            +
-          </button>
-          {plusMenuOpen ? (
-            <div
-              role="menu"
+          <div style={{ position: 'relative' }}>
+            <button
+              ref={plusButtonRef}
+              type="button"
+              aria-label="Copy block to another cell"
+              title="Copy to another person & day"
+              onClick={(e) => {
+                e.stopPropagation()
+                onPlusMenuBlockIdChange(plusMenuOpen ? null : block.id)
+              }}
               style={{
-                position: 'absolute',
-                bottom: '100%',
-                right: 0,
-                marginBottom: 2,
-                minWidth: 108,
+                width: 20,
+                height: 20,
+                padding: 0,
+                lineHeight: '18px',
+                fontSize: '0.85rem',
+                fontWeight: 700,
                 borderRadius: 4,
-                border: '1px solid #93c5fd',
-                background: '#f8fafc',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                overflow: 'hidden',
+                border: '1px solid #60a5fa',
+                background: '#fff',
+                color: '#1d4ed8',
+                cursor: 'pointer',
               }}
             >
-              <button
-                type="button"
-                role="menuitem"
-                style={{ ...plusMenuItemStyle, borderBottom: '1px solid #e2e8f0' }}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onPlusMenuBlockIdChange(null)
-                  onStartCardPlacement(block, 'linked')
-                }}
-              >
-                Linked copy
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                style={plusMenuItemStyle}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onPlusMenuBlockIdChange(null)
-                  onStartCardPlacement(block, 'unlinked')
-                }}
-              >
-                Solo copy
-              </button>
-            </div>
-          ) : null}
+              +
+            </button>
+            <ScheduleDispatchPlusCopyMenu
+              open={plusMenuOpen}
+              anchorRef={plusButtonRef}
+              onClose={() => onPlusMenuBlockIdChange(null)}
+              onLinkedCopy={() => {
+                onPlusMenuBlockIdChange(null)
+                onStartCardPlacement(block, 'linked')
+              }}
+              onSoloCopy={() => {
+                onPlusMenuBlockIdChange(null)
+                onStartCardPlacement(block, 'unlinked')
+              }}
+            />
+          </div>
         </div>
       ) : null}
     </div>

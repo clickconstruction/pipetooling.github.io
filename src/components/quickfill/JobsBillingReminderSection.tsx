@@ -125,7 +125,7 @@ export function JobsBillingReminderSection({ minHcpNumber }: { minHcpNumber: num
     >
       <span style={{ fontSize: '0.9375rem', fontWeight: 500, color: '#92400e' }}>
         Keep Jobs Billing up to date (HCP ≥ {minHcpNumber}): {counts?.specificWork ?? 0} Specific Work,{' '}
-        {counts?.billedMaterials ?? 0} Billed Materials, {counts?.totalBill ?? 0} Total Bill need filling
+        {counts?.billedMaterials ?? 0} Other job charges, {counts?.totalBill ?? 0} Total Bill need filling
       </span>
       <Link
         to="/jobs?tab=billing"

@@ -8,6 +8,7 @@ import NewReportModal from '../components/NewReportModal'
 import JobReportsModal from '../components/JobReportsModal'
 import AdditionalReportModal from '../components/AdditionalReportModal'
 import JobBillDetailsModal from '../components/JobBillDetailsModal'
+import DetailJobModal, { type DetailJobScheduleContext } from '../components/jobs/DetailJobModal'
 import ReportEditModal, { type ReportForEdit } from '../components/ReportEditModal'
 import ChecklistItemMuteModal from '../components/ChecklistItemMuteModal'
 import {
@@ -66,6 +67,16 @@ import {
   RecentReportsSkeleton,
   SubscribedSkeleton,
 } from '../components/dashboard/DashboardSkeletons'
+import {
+  fetchScheduleBlocksForAssigneeDateRange,
+  type JobScheduleBlockRow,
+} from '../lib/jobScheduleBlocks'
+import {
+  scheduleDateKeyAddDays,
+  scheduleFormatWeekdayLong,
+  scheduleFormatWindow,
+  scheduleTodayDateKey,
+} from '../lib/jobScheduleChicago'
 
 const DashboardMyTeamSection = lazy(() => import('../components/DashboardMyTeamSection'))
 import type { Database } from '../types/database'
@@ -334,6 +345,22 @@ function filterPinnedByRole(pins: PinnedItem[], role: string | null, estimatorPr
   return pins.filter((p) => allowed.has(p.path))
 }
 
+/** One row per mirrored linked group (same group, date, window). */
+function dedupeSubScheduleBlocks(blocks: JobScheduleBlockRow[]): JobScheduleBlockRow[] {
+  const seen = new Set<string>()
+  const out: JobScheduleBlockRow[] = []
+  for (const b of blocks) {
+    const g = b.shared_block_group_id
+    const key = g
+      ? `g:${g}:${b.work_date}:${b.time_start}:${b.time_end}`
+      : `id:${b.id}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(b)
+  }
+  return out
+}
+
 export default function Dashboard() {
   const navigate = useNavigate()
   const { user: authUser, role, estimatorProspectsAccess } = useAuth()
@@ -474,6 +501,9 @@ export default function Dashboard() {
   const [superintendentJobsLoading, setSuperintendentJobsLoading] = useState(false)
   const [superintendentJobsExpanded, setSuperintendentJobsExpanded] = useState(true)
   const [assignedJobsExpanded, setAssignedJobsExpanded] = useState(true)
+  const [subScheduleRows, setSubScheduleRows] = useState<JobScheduleBlockRow[]>([])
+  const [subScheduleLoading, setSubScheduleLoading] = useState(false)
+  const [subScheduleLabels, setSubScheduleLabels] = useState<Map<string, string>>(() => new Map())
   const [readyToBillInvoices, setReadyToBillInvoices] = useState<InvoiceForDashboard[]>([])
   const [readyToBillJobs, setReadyToBillJobs] = useState<JobForDashboard[]>([])
   const [readyToBillLoading, setReadyToBillLoading] = useState(false)
@@ -489,6 +519,12 @@ export default function Dashboard() {
   const [viewReportsJob, setViewReportsJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string } | null>(null)
   const [leaveReportJob, setLeaveReportJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string } | null>(null)
   const [viewBillDetailsJob, setViewBillDetailsJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string; revenue: number | null } | null>(null)
+  const [scheduleJobDetail, setScheduleJobDetail] = useState<{
+    jobId: string
+    scheduleContext: DetailJobScheduleContext
+    prefillRowLabel: string
+    prefillAddress: string | null
+  } | null>(null)
   const [dashboardButtonVisibility, setDashboardButtonVisibility] = useState<Record<string, boolean> | null>(null)
   const [quickButtonsPlacement, setQuickButtonsPlacement] = useState<'top' | 'with_pins'>('top')
   const [readyForBillingJob, setReadyForBillingJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
@@ -1960,6 +1996,110 @@ export default function Dashboard() {
         setAssignedJobs((data ?? []) as unknown as typeof assignedJobs)
       })
   }, [authUser?.id])
+
+  useEffect(() => {
+    if (!authUser?.id || role !== 'subcontractor') {
+      setSubScheduleRows([])
+      setSubScheduleLoading(false)
+      return
+    }
+    let cancelled = false
+    const run = async () => {
+      setSubScheduleLoading(true)
+      const todayYmd = scheduleTodayDateKey()
+      const tomorrowYmd = scheduleDateKeyAddDays(todayYmd, 1) ?? todayYmd
+      const { data, error } = await fetchScheduleBlocksForAssigneeDateRange(
+        authUser.id,
+        todayYmd,
+        tomorrowYmd,
+      )
+      if (cancelled) return
+      if (error) {
+        showToast(error, 'warning')
+        setSubScheduleRows([])
+        setSubScheduleLoading(false)
+        return
+      }
+      setSubScheduleRows(dedupeSubScheduleBlocks(data ?? []))
+      setSubScheduleLoading(false)
+    }
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [authUser?.id, role, showToast])
+
+  useEffect(() => {
+    if (role !== 'subcontractor' || !authUser?.id) {
+      setSubScheduleLabels(new Map())
+      return
+    }
+    if (subScheduleRows.length === 0) {
+      setSubScheduleLabels(new Map())
+      return
+    }
+    const jobIds = [...new Set(subScheduleRows.map((b) => b.job_id))]
+    const labelMap = new Map<string, string>()
+    for (const j of assignedJobs) {
+      if (jobIds.includes(j.id)) {
+        labelMap.set(
+          j.id,
+          `${(j.hcp_number ?? '').trim() || '—'} · ${(j.job_name ?? '').trim() || 'Job'}`,
+        )
+      }
+    }
+    const missing = jobIds.filter((id) => !labelMap.has(id))
+    if (missing.length === 0) {
+      setSubScheduleLabels(new Map(labelMap))
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const rows = await withSupabaseRetry(
+          async () =>
+            await supabase.from('jobs_ledger').select('id, hcp_number, job_name').in('id', missing),
+          'dashboardSubScheduleJobLabels',
+        )
+        if (cancelled) return
+        for (const r of (rows ?? []) as Array<{
+          id: string
+          hcp_number: string | null
+          job_name: string | null
+        }>) {
+          labelMap.set(
+            r.id,
+            `${(r.hcp_number ?? '').trim() || '—'} · ${(r.job_name ?? '').trim() || 'Job'}`,
+          )
+        }
+        for (const id of missing) {
+          if (!labelMap.has(id)) labelMap.set(id, 'Job')
+        }
+        setSubScheduleLabels(new Map(labelMap))
+      } catch {
+        if (!cancelled) {
+          for (const id of missing) {
+            if (!labelMap.has(id)) labelMap.set(id, 'Job')
+          }
+          setSubScheduleLabels(new Map(labelMap))
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [role, authUser?.id, subScheduleRows, assignedJobs])
+
+  const subScheduleDayPartition = useMemo(() => {
+    const todayYmd = scheduleTodayDateKey()
+    const tomorrowYmd = scheduleDateKeyAddDays(todayYmd, 1) ?? todayYmd
+    return {
+      todayYmd,
+      tomorrowYmd,
+      todayBlocks: subScheduleRows.filter((b) => b.work_date === todayYmd),
+      tomorrowBlocks: subScheduleRows.filter((b) => b.work_date === tomorrowYmd),
+    }
+  }, [subScheduleRows])
 
   useEffect(() => {
     if (!authUser?.id || role !== 'superintendent') return
@@ -4544,6 +4684,110 @@ export default function Dashboard() {
           ) : null}
         </div>
       )}
+      {role === 'subcontractor' && (
+        <div style={{ marginTop: '1.5rem', marginBottom: '2rem' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'baseline',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '0.5rem',
+              marginBottom: '0.75rem',
+            }}
+          >
+            <h2 style={{ fontSize: '1.125rem', margin: 0 }}>My schedule</h2>
+            <Link to="/calendar" style={{ fontSize: '0.875rem', fontWeight: 400, color: '#2563eb' }}>
+              Calendar →
+            </Link>
+          </div>
+          {subScheduleLoading ? (
+            <DashboardListRowSkeleton rows={2} />
+          ) : (
+            <>
+              {(['today', 'tomorrow'] as const).map((which) => {
+                const ymd = which === 'today' ? subScheduleDayPartition.todayYmd : subScheduleDayPartition.tomorrowYmd
+                const blocks =
+                  which === 'today' ? subScheduleDayPartition.todayBlocks : subScheduleDayPartition.tomorrowBlocks
+                const dayTitle = which === 'today' ? 'Today' : 'Tomorrow'
+                const sorted = [...blocks].sort((a, b) => a.time_start.localeCompare(b.time_start))
+                return (
+                  <div key={which} style={{ marginBottom: which === 'today' ? '1.25rem' : 0 }}>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 0.5rem 0', color: '#374151' }}>
+                      {dayTitle}
+                      <span style={{ fontWeight: 400, color: '#6b7280', fontSize: '0.875rem', marginLeft: '0.5rem' }}>
+                        {scheduleFormatWeekdayLong(ymd)}
+                      </span>
+                    </h3>
+                    {sorted.length === 0 ? (
+                      <p style={{ margin: 0, color: '#9ca3af', fontSize: '0.875rem' }}>No blocks scheduled.</p>
+                    ) : (
+                      <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                        {sorted.map((b) => {
+                          const rowLabel = subScheduleLabels.get(b.job_id) ?? 'Job'
+                          const fromAssigned = assignedJobs.find((j) => j.id === b.job_id)
+                          const prefillAddr = (fromAssigned?.job_address ?? '').trim() || null
+                          const scheduleDetailPayload = {
+                            jobId: b.job_id,
+                            prefillRowLabel: rowLabel,
+                            prefillAddress: prefillAddr,
+                            scheduleContext: {
+                              workDate: b.work_date,
+                              timeStart: b.time_start,
+                              timeEnd: b.time_end,
+                              note: b.note,
+                            },
+                          }
+                          return (
+                            <li
+                              key={b.id}
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => setScheduleJobDetail(scheduleDetailPayload)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault()
+                                  setScheduleJobDetail(scheduleDetailPayload)
+                                }
+                              }}
+                              aria-label={`Job details: ${rowLabel}`}
+                              style={{
+                                padding: '0.5rem 0.75rem',
+                                border: '1px solid #e5e7eb',
+                                borderRadius: 8,
+                                marginBottom: '0.5rem',
+                                background: '#fff',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <div style={{ fontWeight: 500 }}>{rowLabel}</div>
+                              <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                                {scheduleFormatWindow(b.time_start, b.time_end)}
+                              </div>
+                              {b.note?.trim() ? (
+                                <div
+                                  style={{
+                                    fontSize: '0.8125rem',
+                                    color: '#9ca3af',
+                                    marginTop: '0.35rem',
+                                    wordBreak: 'break-word',
+                                  }}
+                                >
+                                  {b.note.trim()}
+                                </div>
+                              ) : null}
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    )}
+                  </div>
+                )
+              })}
+            </>
+          )}
+        </div>
+      )}
       {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'estimator' || role === 'primary') && (myBidsLoading || myBids.some((b) => !hiddenBidIds.has(b.id))) && (
         <div style={{ marginBottom: '1rem' }}>
           <div
@@ -6711,6 +6955,18 @@ export default function Dashboard() {
           }}
         />
       )}
+      {scheduleJobDetail ? (
+        <DetailJobModal
+          open
+          onClose={() => setScheduleJobDetail(null)}
+          jobId={scheduleJobDetail.jobId}
+          scheduleContext={scheduleJobDetail.scheduleContext}
+          authRole={role}
+          assignedJobsRows={assignedJobs}
+          prefillRowLabel={scheduleJobDetail.prefillRowLabel}
+          prefillAddress={scheduleJobDetail.prefillAddress}
+        />
+      ) : null}
     </div>
   )
 }

@@ -51,6 +51,7 @@ function mapRowToJobWithDetails(
     team_members: team ?? [],
     report_count: (rep ?? []).length,
     project: proj ?? null,
+    last_schedule_work_date: null,
   }
 }
 
