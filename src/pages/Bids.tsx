@@ -1300,6 +1300,9 @@ export default function Bids() {
   } | null>(null)
   const [roughLineCatalogApplyPriceId, setRoughLineCatalogApplyPriceId] = useState('')
   const [roughLineCatalogApplySaving, setRoughLineCatalogApplySaving] = useState(false)
+  const [roughAddAssemblyModalCountRowId, setRoughAddAssemblyModalCountRowId] = useState<string | null>(null)
+  const [roughAddAssemblySearchQuery, setRoughAddAssemblySearchQuery] = useState('')
+  const [roughAddAssemblyExpanding, setRoughAddAssemblyExpanding] = useState(false)
   const [materialsModelSwitchModal, setMaterialsModelSwitchModal] = useState<{
     open: boolean
     next: MaterialsModel | null
@@ -2243,6 +2246,59 @@ export default function Bids() {
     setTakeoffNewItemQuantity('1')
     setTakeoffNewItemPartSearchQuery('')
     setTakeoffNewItemTemplateSearchQuery('')
+  }
+
+  function mergePartLinesToTakeoffTemplateItems(
+    lines: TakeoffRoughPartLineRow[]
+  ): Array<{ item_type: 'part' | 'template'; part_id: string | null; nested_template_id: string | null; quantity: number }> {
+    const merged: Array<{
+      item_type: 'part' | 'template'
+      part_id: string | null
+      nested_template_id: string | null
+      quantity: number
+    }> = []
+    for (const line of lines) {
+      const pid = line.partId.trim()
+      if (!pid) continue
+      const qty = Math.max(0.0001, Number(line.quantity) || 0.0001)
+      const existing = merged.find((m) => m.item_type === 'part' && m.part_id === pid)
+      if (existing) {
+        existing.quantity += qty
+      } else {
+        merged.push({
+          item_type: 'part',
+          part_id: pid,
+          nested_template_id: null,
+          quantity: qty,
+        })
+      }
+    }
+    return merged
+  }
+
+  function openSaveAsAssemblyFromRough(countRowId: string, row: BidCountRow) {
+    const lines = takeoffRoughPartLines
+      .filter((l) => l.countRowId === countRowId && l.partId.trim())
+      .sort((a, b) => a.sequenceOrder - b.sequenceOrder)
+    if (lines.length === 0) return
+    const merged = mergePartLinesToTakeoffTemplateItems(lines)
+    setTakeoffNewTemplateItems(merged)
+    const fx = (row.fixture ?? '').trim()
+    setTakeoffNewTemplateName(fx ? `${fx} assembly` : 'New assembly')
+    setTakeoffNewTemplateDescription('')
+    setTakeoffAddTemplateForMappingId(null)
+    setTakeoffNewItemType('part')
+    setTakeoffNewItemPartId('')
+    setTakeoffNewItemTemplateId('')
+    setTakeoffNewItemQuantity('1')
+    setTakeoffNewItemPartSearchQuery('')
+    setTakeoffNewItemTemplateSearchQuery('')
+    setTakeoffAddTemplateModalOpen(true)
+  }
+
+  function closeRoughAddAssemblyModal() {
+    setRoughAddAssemblyModalCountRowId(null)
+    setRoughAddAssemblySearchQuery('')
   }
 
   async function saveTakeoffNewTemplate(e: React.FormEvent) {
@@ -7202,6 +7258,73 @@ export default function Bids() {
     }
   }, [showToast])
 
+  async function applyRoughAddAssemblyTemplate(countRowId: string, templateId: string) {
+    if (!selectedBidForTakeoff?.id) return
+    setRoughAddAssemblyExpanding(true)
+    setError(null)
+    try {
+      const expanded = await expandTemplate(supabase, templateId, 1)
+      if (expanded.length === 0) {
+        showToast('This assembly has no parts to add.', 'info')
+        return
+      }
+      const mergedQty = new Map<string, number>()
+      for (const { part_id, quantity } of expanded) {
+        mergedQty.set(part_id, (mergedQty.get(part_id) ?? 0) + quantity)
+      }
+      const partIds = Array.from(mergedQty.keys())
+      const priceMap = await fetchLowestPartPricesBatch(supabase, partIds)
+
+      const forRow = takeoffRoughPartLines.filter((l) => l.countRowId === countRowId)
+      let maxSeq = forRow.length === 0 ? 0 : Math.max(...forRow.map((l) => l.sequenceOrder), 0)
+
+      const newLines: TakeoffRoughPartLineRow[] = []
+      for (const [partId, qty] of mergedQty) {
+        maxSeq += 1
+        const low = priceMap.get(partId)
+        newLines.push({
+          id: crypto.randomUUID(),
+          countRowId,
+          partId,
+          quantity: Math.max(0.0001, Number(qty) || 0.0001),
+          unitPrice: low != null ? low.price : 0,
+          sourceMaterialPartPriceId: low != null ? low.priceId : null,
+          sequenceOrder: maxSeq,
+          isSaved: false,
+        })
+      }
+
+      const missingPrice = newLines.filter((l) => !priceMap.has(l.partId))
+      if (missingPrice.length > 0) {
+        showToast(
+          `${missingPrice.length} part(s) have no catalog price; set prices in Materials or edit lines.`,
+          'info'
+        )
+      }
+
+      setTakeoffRoughPartLines((prev) => [...prev, ...newLines])
+
+      for (const line of newLines) {
+        await persistTakeoffRoughPartLine(line)
+      }
+
+      if (
+        activeTab === 'takeoffs' &&
+        selectedBidForTakeoff?.id &&
+        normalizeMaterialsModel(selectedBidForTakeoff.materials_model) === 'rough'
+      ) {
+        void refreshTakeoffRoughCatalogLowest(partIds)
+      }
+
+      showToast(`Added ${newLines.length} part line(s) from assembly.`, 'success')
+      closeRoughAddAssemblyModal()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Failed to add assembly'), 'error')
+    } finally {
+      setRoughAddAssemblyExpanding(false)
+    }
+  }
+
   useEffect(() => {
     if (!takeoffRoughCatalogLowestPartIdsKey) {
       setTakeoffRoughCatalogLowestByPartId({})
@@ -10684,13 +10807,54 @@ export default function Bids() {
                                   <td style={{ padding: '0.75rem' }}>{row.fixture ?? ''}</td>
                                   <td style={{ padding: '0.75rem', textAlign: 'center' }}>{Number(row.count)}</td>
                                   <td colSpan={5} style={{ padding: '0.75rem' }}>
-                                    <button
-                                      type="button"
-                                      onClick={() => addTakeoffRoughPartLine(row.id)}
-                                      style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                                    >
-                                      Add part line
-                                    </button>
+                                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.875rem' }}>
+                                      <span
+                                        role="button"
+                                        tabIndex={0}
+                                        onClick={() => addTakeoffRoughPartLine(row.id)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault()
+                                            addTakeoffRoughPartLine(row.id)
+                                          }
+                                        }}
+                                        style={{
+                                          color: '#1d4ed8',
+                                          cursor: 'pointer',
+                                          textDecoration: 'underline',
+                                          textUnderlineOffset: '2px',
+                                        }}
+                                      >
+                                        Add part line
+                                      </span>
+                                      <span
+                                        role={materialTemplates.length === 0 ? undefined : 'button'}
+                                        tabIndex={materialTemplates.length === 0 ? -1 : 0}
+                                        aria-disabled={materialTemplates.length === 0}
+                                        onClick={() => {
+                                          if (materialTemplates.length === 0) return
+                                          setRoughAddAssemblyModalCountRowId(row.id)
+                                          setRoughAddAssemblySearchQuery('')
+                                        }}
+                                        onKeyDown={(e) => {
+                                          if (materialTemplates.length === 0) return
+                                          if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault()
+                                            setRoughAddAssemblyModalCountRowId(row.id)
+                                            setRoughAddAssemblySearchQuery('')
+                                          }
+                                        }}
+                                        style={{
+                                          color: '#4b5563',
+                                          cursor: materialTemplates.length === 0 ? 'not-allowed' : 'pointer',
+                                          textDecoration: materialTemplates.length === 0 ? 'none' : 'underline',
+                                          textUnderlineOffset: '2px',
+                                          opacity: materialTemplates.length === 0 ? 0.5 : 1,
+                                        }}
+                                      >
+                                        Add assembly
+                                      </span>
+                                    </div>
                                   </td>
                                 </tr>
                               ) : (
@@ -10701,6 +10865,8 @@ export default function Bids() {
                                       line={line}
                                       lineIdx={lineIdx}
                                       row={row}
+                                      showSaveAsAssembly={linesForRow.some((l) => l.partId.trim())}
+                                      onSaveAsAssembly={() => openSaveAsAssemblyFromRough(row.id, row)}
                                       takeoffAddTemplateParts={takeoffAddTemplateParts}
                                       takeoffRoughPartPickerLineId={takeoffRoughPartPickerLineId}
                                       setTakeoffRoughPartPickerLineId={setTakeoffRoughPartPickerLineId}
@@ -10724,13 +10890,54 @@ export default function Bids() {
                                 <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
                                   <td style={{ padding: '0.75rem' }} colSpan={2} />
                                   <td colSpan={5} style={{ padding: '0.75rem' }}>
-                                    <button
-                                      type="button"
-                                      onClick={() => addTakeoffRoughPartLine(row.id)}
-                                      style={{ padding: '0.35rem 0.75rem', background: '#e0e7ff', color: '#3730a3', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
-                                    >
-                                      Add part line
-                                    </button>
+                                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.875rem' }}>
+                                      <span
+                                        role="button"
+                                        tabIndex={0}
+                                        onClick={() => addTakeoffRoughPartLine(row.id)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault()
+                                            addTakeoffRoughPartLine(row.id)
+                                          }
+                                        }}
+                                        style={{
+                                          color: '#1d4ed8',
+                                          cursor: 'pointer',
+                                          textDecoration: 'underline',
+                                          textUnderlineOffset: '2px',
+                                        }}
+                                      >
+                                        Add part line
+                                      </span>
+                                      <span
+                                        role={materialTemplates.length === 0 ? undefined : 'button'}
+                                        tabIndex={materialTemplates.length === 0 ? -1 : 0}
+                                        aria-disabled={materialTemplates.length === 0}
+                                        onClick={() => {
+                                          if (materialTemplates.length === 0) return
+                                          setRoughAddAssemblyModalCountRowId(row.id)
+                                          setRoughAddAssemblySearchQuery('')
+                                        }}
+                                        onKeyDown={(e) => {
+                                          if (materialTemplates.length === 0) return
+                                          if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault()
+                                            setRoughAddAssemblyModalCountRowId(row.id)
+                                            setRoughAddAssemblySearchQuery('')
+                                          }
+                                        }}
+                                        style={{
+                                          color: '#4b5563',
+                                          cursor: materialTemplates.length === 0 ? 'not-allowed' : 'pointer',
+                                          textDecoration: materialTemplates.length === 0 ? 'none' : 'underline',
+                                          textUnderlineOffset: '2px',
+                                          opacity: materialTemplates.length === 0 ? 0.5 : 1,
+                                        }}
+                                      >
+                                        Add assembly
+                                      </span>
+                                    </div>
                                   </td>
                                 </tr>
                               ) : null}
@@ -10873,6 +11080,104 @@ export default function Bids() {
                     <button type="submit" disabled={savingTakeoffNewTemplate} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingTakeoffNewTemplate ? 'Saving…' : 'Save'}</button>
                   </div>
                 </form>
+              </div>
+            </div>
+          )}
+
+          {roughAddAssemblyModalCountRowId && (
+            <div
+              role="presentation"
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0,0,0,0.5)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 1110,
+              }}
+              onClick={() => {
+                if (!roughAddAssemblyExpanding) closeRoughAddAssemblyModal()
+              }}
+            >
+              <div
+                style={{
+                  background: 'white',
+                  padding: '1.5rem',
+                  borderRadius: 8,
+                  maxWidth: 440,
+                  width: '90%',
+                  maxHeight: '85vh',
+                  overflowY: 'auto',
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Add assembly</h2>
+                  <button
+                    type="button"
+                    disabled={roughAddAssemblyExpanding}
+                    onClick={closeRoughAddAssemblyModal}
+                    style={{ background: 'none', border: 'none', cursor: roughAddAssemblyExpanding ? 'not-allowed' : 'pointer', fontSize: '1.25rem', lineHeight: 1 }}
+                  >
+                    ×
+                  </button>
+                </div>
+                <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                  Expand an assembly and add its parts as new lines (quantities merged by part).
+                </p>
+                <input
+                  type="text"
+                  value={roughAddAssemblySearchQuery}
+                  onChange={(e) => setRoughAddAssemblySearchQuery(e.target.value)}
+                  placeholder="Search assemblies by name or description…"
+                  disabled={roughAddAssemblyExpanding}
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.5rem' }}
+                />
+                <ul
+                  style={{
+                    margin: 0,
+                    padding: 0,
+                    listStyle: 'none',
+                    maxHeight: 280,
+                    overflowY: 'auto',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: 4,
+                  }}
+                >
+                  {filterTemplatesByQuery(materialTemplates, roughAddAssemblySearchQuery, 50).length === 0 ? (
+                    <li style={{ padding: '0.75rem', color: '#6b7280' }}>No assemblies match.</li>
+                  ) : (
+                    filterTemplatesByQuery(materialTemplates, roughAddAssemblySearchQuery, 50).map((t) => (
+                      <li key={t.id}>
+                        <button
+                          type="button"
+                          disabled={roughAddAssemblyExpanding}
+                          onClick={() => {
+                            void applyRoughAddAssemblyTemplate(roughAddAssemblyModalCountRowId, t.id)
+                          }}
+                          style={{
+                            width: '100%',
+                            textAlign: 'left',
+                            padding: '0.5rem 0.75rem',
+                            border: 'none',
+                            borderBottom: '1px solid #f3f4f6',
+                            background: roughAddAssemblyExpanding ? '#f9fafb' : '#fff',
+                            cursor: roughAddAssemblyExpanding ? 'not-allowed' : 'pointer',
+                          }}
+                        >
+                          <div style={{ fontWeight: 500 }}>{t.name}</div>
+                          {t.description ? (
+                            <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{t.description}</div>
+                          ) : null}
+                        </button>
+                      </li>
+                    ))
+                  )}
+                </ul>
+                {roughAddAssemblyExpanding ? (
+                  <p style={{ margin: '0.75rem 0 0', fontSize: '0.875rem', color: '#6b7280' }}>Adding parts…</p>
+                ) : null}
               </div>
             </div>
           )}
@@ -17172,6 +17477,8 @@ function SortableRoughPartLineRow({
   line,
   lineIdx,
   row,
+  showSaveAsAssembly,
+  onSaveAsAssembly,
   takeoffAddTemplateParts,
   takeoffRoughPartPickerLineId,
   setTakeoffRoughPartPickerLineId,
@@ -17191,6 +17498,8 @@ function SortableRoughPartLineRow({
   line: TakeoffRoughPartLineRow
   lineIdx: number
   row: BidCountRow
+  showSaveAsAssembly: boolean
+  onSaveAsAssembly: () => void
   takeoffAddTemplateParts: RoughTakeoffMaterialPart[]
   takeoffRoughPartPickerLineId: string | null
   setTakeoffRoughPartPickerLineId: (id: string | null) => void
@@ -17228,7 +17537,39 @@ function SortableRoughPartLineRow({
         opacity: isDragging ? 0.5 : 1,
       }}
     >
-      <td style={{ padding: '0.75rem' }}>{lineIdx === 0 ? row.fixture ?? '' : ''}</td>
+      <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
+        {lineIdx === 0 ? (
+          <div>
+            <div>{row.fixture ?? ''}</div>
+            {showSaveAsAssembly ? (
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={onSaveAsAssembly}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    onSaveAsAssembly()
+                  }
+                }}
+                style={{
+                  display: 'inline-block',
+                  marginTop: '0.35rem',
+                  fontSize: '0.75rem',
+                  color: '#4b5563',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  textUnderlineOffset: '2px',
+                }}
+              >
+                Save as Assembly
+              </span>
+            ) : null}
+          </div>
+        ) : (
+          ''
+        )}
+      </td>
       <td style={{ padding: '0.75rem', textAlign: 'center' }}>{lineIdx === 0 ? Number(row.count) : ''}</td>
       <td style={{ padding: '0.75rem', minWidth: 200 }}>
         <div style={{ position: 'relative' }}>
