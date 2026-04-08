@@ -8427,7 +8427,7 @@ export default function Bids() {
       {activeTab === 'working' && authUser?.id ? (
         <div>
           <p style={{ margin: '0 0 0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
-            Drag bids between columns. You see bids where you are Estimator or Account Man. New bids appear in Inbox until moved.
+            Drag unsent bids between columns. You see bids where you are Estimator or Account Man. New bids appear in Inbox until moved.
           </p>
           <BidsWorkingBoard
             userId={authUser.id}
