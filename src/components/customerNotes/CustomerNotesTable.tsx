@@ -341,6 +341,11 @@ export type CustomerNotesTableProps = {
   hasBidsAbove?: boolean
   /** When set, table uses this data/refetch instead of loading via the internal hook (single source for parent preview + table). */
   contactsState?: { entries: CustomerContactRow[]; loading: boolean; refetch: () => Promise<void> }
+  /** Controlled add-row open state (e.g. parent toolbar). */
+  adding?: boolean
+  onAddingChange?: (adding: boolean) => void
+  /** Hide bottom "Add row" when the parent provides add controls. */
+  hideFooterAddButton?: boolean
 }
 
 export function CustomerNotesTable({
@@ -351,9 +356,18 @@ export function CustomerNotesTable({
   title,
   hasBidsAbove = false,
   contactsState,
+  adding: addingProp,
+  onAddingChange,
+  hideFooterAddButton = false,
 }: CustomerNotesTableProps) {
   const headingLabel = title === undefined ? 'Customer notes' : title
-  const [adding, setAdding] = useState(false)
+  const [internalAdding, setInternalAdding] = useState(false)
+  const controlled = onAddingChange != null
+  const adding = controlled ? Boolean(addingProp) : internalAdding
+  const setAdding = (v: boolean) => {
+    if (controlled) onAddingChange(v)
+    else setInternalAdding(v)
+  }
   const internal = useCustomerContactsForCustomer(contactsState ? null : customerId, onLoadError)
   const entries = contactsState?.entries ?? internal.entries
   const loading = contactsState?.loading ?? internal.loading
@@ -407,7 +421,7 @@ export function CustomerNotesTable({
           />
         ) : null}
       </div>
-      {!adding && (
+      {!adding && !hideFooterAddButton && (
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.75rem' }}>
           <button
             type="button"

@@ -7,7 +7,7 @@ export default function EditCustomerModal() {
   if (!modalContext?.isOpen || !modalContext.customerId) return null
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001 }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200 }}>
       <div style={{ background: 'white', padding: '1rem 2rem 2rem', borderRadius: 8, maxWidth: '560px', width: '92%', maxHeight: '90vh', overflow: 'auto' }}>
         <EditCustomerForm
           customerId={modalContext.customerId}

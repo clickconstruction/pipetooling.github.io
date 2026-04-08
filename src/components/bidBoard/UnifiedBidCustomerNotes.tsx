@@ -772,6 +772,60 @@ function UnifiedNewCustomerRow({
   )
 }
 
+export type UnifiedNotesAddingKind = null | 'bid' | 'customer'
+
+export function UnifiedBidCustomerNotesActionButtons({
+  addingKind,
+  onAddingKindChange,
+  customerId,
+  customerName,
+}: {
+  addingKind: UnifiedNotesAddingKind
+  onAddingKindChange: (v: UnifiedNotesAddingKind) => void
+  customerId: string | null
+  customerName: string
+}) {
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+      <button
+        type="button"
+        onClick={() => onAddingKindChange(addingKind === 'bid' ? null : 'bid')}
+        style={{
+          padding: '0.25rem 0.65rem',
+          background: addingKind === 'bid' ? '#1d4ed8' : '#3b82f6',
+          color: 'white',
+          border: 'none',
+          borderRadius: 4,
+          cursor: 'pointer',
+          fontSize: '0.875rem',
+        }}
+      >
+        {addingKind === 'bid' ? 'Cancel bid note' : '+ bid note'}
+      </button>
+      <button
+        type="button"
+        disabled={!customerId}
+        title={!customerId ? 'No linked customer on this bid.' : `Add note for ${customerName}`}
+        onClick={() => {
+          if (!customerId) return
+          onAddingKindChange(addingKind === 'customer' ? null : 'customer')
+        }}
+        style={{
+          padding: '0.25rem 0.65rem',
+          background: !customerId ? '#e5e7eb' : addingKind === 'customer' ? '#15803d' : '#16a34a',
+          color: !customerId ? '#9ca3af' : 'white',
+          border: 'none',
+          borderRadius: 4,
+          cursor: !customerId ? 'not-allowed' : 'pointer',
+          fontSize: '0.875rem',
+        }}
+      >
+        {addingKind === 'customer' ? 'Cancel customer note' : '+ customer note'}
+      </button>
+    </div>
+  )
+}
+
 export type UnifiedBidCustomerNotesProps = {
   bidId: string
   customerId: string | null
@@ -779,6 +833,11 @@ export type UnifiedBidCustomerNotesProps = {
   onMutated?: () => void
   onLoadError?: (message: string) => void
   title?: string
+  /** When set with `onAddingKindChange`, controls the + bid / + customer draft state from the parent. */
+  addingKind?: UnifiedNotesAddingKind
+  onAddingKindChange?: (v: UnifiedNotesAddingKind) => void
+  /** Hide the + bid note row (parent renders it, e.g. beside tabs on desktop preview). */
+  hideActionButtons?: boolean
 }
 
 export function UnifiedBidCustomerNotes({
@@ -788,10 +847,16 @@ export function UnifiedBidCustomerNotes({
   onMutated,
   onLoadError,
   title,
+  addingKind: addingKindProp,
+  onAddingKindChange,
+  hideActionButtons = false,
 }: UnifiedBidCustomerNotesProps) {
   const [merged, setMerged] = useState<UnifiedNoteRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [addingKind, setAddingKind] = useState<null | 'bid' | 'customer'>(null)
+  const [internalAddingKind, setInternalAddingKind] = useState<UnifiedNotesAddingKind>(null)
+  const controlled = onAddingKindChange != null
+  const addingKind = controlled ? (addingKindProp ?? null) : internalAddingKind
+  const setAddingKind = controlled ? onAddingKindChange : setInternalAddingKind
   const onLoadErrorRef = useRef(onLoadError)
   onLoadErrorRef.current = onLoadError
 
@@ -853,51 +918,24 @@ export function UnifiedBidCustomerNotes({
       {headingLabel ? (
         <div style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>{headingLabel}</div>
       ) : null}
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '0.5rem',
-          marginBottom: '0.75rem',
-          justifyContent: 'center',
-        }}
-      >
-        <button
-          type="button"
-          onClick={() => setAddingKind((prev) => (prev === 'bid' ? null : 'bid'))}
+      {!hideActionButtons ? (
+        <div
           style={{
-            padding: '0.25rem 0.65rem',
-            background: addingKind === 'bid' ? '#1d4ed8' : '#3b82f6',
-            color: 'white',
-            border: 'none',
-            borderRadius: 4,
-            cursor: 'pointer',
-            fontSize: '0.875rem',
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '0.5rem',
+            marginBottom: '0.75rem',
+            justifyContent: 'center',
           }}
         >
-          {addingKind === 'bid' ? 'Cancel bid note' : '+ bid note'}
-        </button>
-        <button
-          type="button"
-          disabled={!customerId}
-          title={!customerId ? 'No linked customer on this bid.' : `Add note for ${customerName}`}
-          onClick={() => {
-            if (!customerId) return
-            setAddingKind((prev) => (prev === 'customer' ? null : 'customer'))
-          }}
-          style={{
-            padding: '0.25rem 0.65rem',
-            background: !customerId ? '#e5e7eb' : addingKind === 'customer' ? '#15803d' : '#16a34a',
-            color: !customerId ? '#9ca3af' : 'white',
-            border: 'none',
-            borderRadius: 4,
-            cursor: !customerId ? 'not-allowed' : 'pointer',
-            fontSize: '0.875rem',
-          }}
-        >
-          {addingKind === 'customer' ? 'Cancel customer note' : '+ customer note'}
-        </button>
-      </div>
+          <UnifiedBidCustomerNotesActionButtons
+            addingKind={addingKind}
+            onAddingKindChange={setAddingKind}
+            customerId={customerId}
+            customerName={customerName}
+          />
+        </div>
+      ) : null}
       <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden', background: '#f9fafb' }}>
         {loading && merged.length === 0 && !hasDraft ? (
           <div style={{ padding: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>Loading…</div>

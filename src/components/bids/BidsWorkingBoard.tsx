@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import {
   DndContext,
   DragEndEvent,
@@ -171,11 +171,22 @@ type SortableCardProps = {
   bid: BidsWorkingBoardBid
   expanded: boolean
   onToggleExpand: () => void
-  onOpenEditBid?: (bidId: string) => void
+  /** When set, bid number opens preview (does not expand the row). */
+  onOpenPreviewBid?: (bidId: string) => void
   notesContent: ReactNode
+  isDeepLinkHighlight?: boolean
+  deepLinkHighlightGen?: number
 }
 
-function SortableWorkingCard({ bid, expanded, onToggleExpand, onOpenEditBid, notesContent }: SortableCardProps) {
+function SortableWorkingCard({
+  bid,
+  expanded,
+  onToggleExpand,
+  onOpenPreviewBid,
+  notesContent,
+  isDeepLinkHighlight,
+  deepLinkHighlightGen,
+}: SortableCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: bid.id })
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -186,12 +197,24 @@ function SortableWorkingCard({ bid, expanded, onToggleExpand, onOpenEditBid, not
     borderRadius: 6,
     background: '#fff',
     overflow: 'hidden',
+    ...(isDeepLinkHighlight
+      ? {
+          backgroundColor: '#fffbeb',
+          outline: '2px solid #d97706',
+          outlineOffset: -2,
+        }
+      : {}),
   }
   const bidNum = bid.bid_number ? `B${bid.bid_number}` : '—'
   const addr = formatCardAddress(bid.address)
 
   return (
-    <div ref={setNodeRef} style={style}>
+    <div
+      ref={setNodeRef}
+      id={`working-board-bid-${bid.id}`}
+      data-deeplink-gen={isDeepLinkHighlight && deepLinkHighlightGen != null ? deepLinkHighlightGen : undefined}
+      style={style}
+    >
       <div style={{ display: 'flex', alignItems: 'stretch' }}>
         <button
           type="button"
@@ -215,7 +238,7 @@ function SortableWorkingCard({ bid, expanded, onToggleExpand, onOpenEditBid, not
           aria-expanded={expanded}
           aria-label="Expand bid notes"
           onClick={(e) => {
-            if (e.target instanceof Element && e.target.closest('[data-working-bid-edit]')) {
+            if (e.target instanceof Element && e.target.closest('[data-working-bid-preview]')) {
               return
             }
             onToggleExpand()
@@ -238,22 +261,22 @@ function SortableWorkingCard({ bid, expanded, onToggleExpand, onOpenEditBid, not
           }}
         >
           <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#111827', lineHeight: 1.35 }}>
-            {onOpenEditBid ? (
+            {onOpenPreviewBid ? (
               <span
-                data-working-bid-edit
+                data-working-bid-preview
                 role="link"
                 tabIndex={0}
-                title="Edit bid"
-                aria-label={`Edit bid ${bidNum}`}
+                title="Preview bid"
+                aria-label={`Preview bid ${bidNum}`}
                 onClick={(e) => {
                   e.stopPropagation()
-                  onOpenEditBid(bid.id)
+                  onOpenPreviewBid(bid.id)
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
                     e.stopPropagation()
-                    onOpenEditBid(bid.id)
+                    onOpenPreviewBid(bid.id)
                   }
                 }}
                 style={{
@@ -318,8 +341,11 @@ type BidsWorkingBoardProps = {
   onLoadError: (message: string) => void
   onMutatedNotes: () => void
   onMutatedNotesCustomer: () => void
-  /** When set, bid number is clickable and opens the parent edit flow (e.g. BidFormModal). */
-  onOpenEditBid?: (bidId: string) => void
+  /** When set, bid number opens bid preview from the parent (e.g. global BidPreviewModal). */
+  onOpenPreviewBid?: (bidId: string) => void
+  /** Deep link from Bids URL: scroll/highlight this bid once the board has loaded. */
+  deepLinkBidId?: string | null
+  onDeepLinkHandled?: () => void
 }
 
 export function BidsWorkingBoard({
@@ -328,10 +354,16 @@ export function BidsWorkingBoard({
   onLoadError,
   onMutatedNotes,
   onMutatedNotesCustomer,
-  onOpenEditBid,
+  onOpenPreviewBid,
+  deepLinkBidId,
+  onDeepLinkHandled,
 }: BidsWorkingBoardProps) {
   const [columns, setColumns] = useState<BidWorkingColumn[]>([])
   const [columnBidIds, setColumnBidIds] = useState<Record<string, string[]>>({})
+  const [deepLinkHighlightBidId, setDeepLinkHighlightBidId] = useState<string | null>(null)
+  const [deepLinkHighlightGen, setDeepLinkHighlightGen] = useState(0)
+  const workingDeepLinkHighlightTimeoutRef = useRef<number | null>(null)
+  const workingDeepLinkConsumeRef = useRef<string | null>(null)
   const [boardLoading, setBoardLoading] = useState(true)
   const [persisting, setPersisting] = useState(false)
   const [expandedBidId, setExpandedBidId] = useState<string | null>(null)
@@ -423,6 +455,47 @@ export function BidsWorkingBoard({
   useEffect(() => {
     if (expandedBidId) setNotesTab('all')
   }, [expandedBidId])
+
+  useEffect(() => {
+    if (!deepLinkBidId) {
+      workingDeepLinkConsumeRef.current = null
+      return
+    }
+    if (boardLoading) return
+    const inBoard = Object.values(columnBidIds).some((list) => list.includes(deepLinkBidId))
+    if (!inBoard) {
+      onDeepLinkHandled?.()
+      return
+    }
+    if (workingDeepLinkConsumeRef.current === deepLinkBidId) return
+    workingDeepLinkConsumeRef.current = deepLinkBidId
+
+    window.setTimeout(() => {
+      document
+        .getElementById(`working-board-bid-${deepLinkBidId}`)
+        ?.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'nearest' })
+    }, 0)
+    setDeepLinkHighlightGen((g) => g + 1)
+    if (workingDeepLinkHighlightTimeoutRef.current) {
+      window.clearTimeout(workingDeepLinkHighlightTimeoutRef.current)
+      workingDeepLinkHighlightTimeoutRef.current = null
+    }
+    setDeepLinkHighlightBidId(deepLinkBidId)
+    workingDeepLinkHighlightTimeoutRef.current = window.setTimeout(() => {
+      setDeepLinkHighlightBidId(null)
+      workingDeepLinkHighlightTimeoutRef.current = null
+    }, 2500)
+    onDeepLinkHandled?.()
+  }, [deepLinkBidId, boardLoading, columnBidIds, onDeepLinkHandled])
+
+  useEffect(() => {
+    return () => {
+      if (workingDeepLinkHighlightTimeoutRef.current) {
+        window.clearTimeout(workingDeepLinkHighlightTimeoutRef.current)
+        workingDeepLinkHighlightTimeoutRef.current = null
+      }
+    }
+  }, [])
 
   const applyAndPersist = useCallback(
     async (next: Record<string, string[]>) => {
@@ -720,7 +793,9 @@ export function BidsWorkingBoard({
                         bid={bid}
                         expanded={expandedBidId === bidId}
                         onToggleExpand={() => setExpandedBidId((cur) => (cur === bidId ? null : bidId))}
-                        onOpenEditBid={onOpenEditBid}
+                        onOpenPreviewBid={onOpenPreviewBid}
+                        isDeepLinkHighlight={bid.id === deepLinkHighlightBidId}
+                        deepLinkHighlightGen={deepLinkHighlightGen}
                         notesContent={
                           <BidBoardNotesPanel
                             bid={bid}

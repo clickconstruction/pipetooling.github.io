@@ -40,6 +40,7 @@ import { EstimatorTaskModalProvider } from './contexts/EstimatorTaskModalContext
 import { NewCustomerModalProvider } from './contexts/NewCustomerModalContext'
 import { EditCustomerModalProvider } from './contexts/EditCustomerModalContext'
 import { JobFormModalProvider } from './contexts/JobFormModalContext'
+import { BidPreviewModalProvider } from './contexts/BidPreviewModalContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { DailyGoalsGateProvider } from './contexts/DailyGoalsGateContext'
 
@@ -157,9 +158,11 @@ function AppContent() {
                       <NewCustomerModalProvider>
                         <EditCustomerModalProvider>
                           <JobFormModalProvider>
-                            <DailyGoalsGateProvider>
-                              <Layout />
-                            </DailyGoalsGateProvider>
+                            <BidPreviewModalProvider>
+                              <DailyGoalsGateProvider>
+                                <Layout />
+                              </DailyGoalsGateProvider>
+                            </BidPreviewModalProvider>
                           </JobFormModalProvider>
                         </EditCustomerModalProvider>
                       </NewCustomerModalProvider>

@@ -17,6 +17,7 @@ import {
   type PinnedItem,
 } from '../lib/pinnedTabs'
 import { useToastContext } from '../contexts/ToastContext'
+import { useBidPreview } from '../contexts/BidPreviewModalContext'
 import { useCostMatrixTotal } from '../hooks/useCostMatrixTotal'
 import { useBilledTotal } from '../hooks/useBilledTotal'
 import { useHoursAwaitingApprovalCount } from '../hooks/useHoursAwaitingApprovalCount'
@@ -363,6 +364,7 @@ function dedupeSubScheduleBlocks(blocks: JobScheduleBlockRow[]): JobScheduleBloc
 
 export default function Dashboard() {
   const navigate = useNavigate()
+  const bidPreview = useBidPreview()
   const { user: authUser, role, estimatorProspectsAccess } = useAuth()
   const showClockStripScopeToggle =
     role === 'dev' || role === 'master_technician' || role === 'assistant'
@@ -4951,6 +4953,27 @@ export default function Dashboard() {
                             Due {dueStr} · {status}
                           </div>
                         </Link>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            bidPreview?.openBidPreview(b.id)
+                          }}
+                          style={{
+                            flexShrink: 0,
+                            padding: '0.35rem 0.55rem',
+                            background: '#f3f4f6',
+                            border: '1px solid #d1d5db',
+                            borderRadius: 4,
+                            cursor: 'pointer',
+                            color: '#374151',
+                            fontSize: '0.8125rem',
+                          }}
+                          title="Preview bid"
+                        >
+                          Preview
+                        </button>
                         {mode === 'visible' ? (
                           <button
                             type="button"

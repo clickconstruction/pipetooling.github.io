@@ -899,7 +899,7 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (if missing, returns 200 with `push_sent: 0`)
 
-**Verify JWT**: `true` (recommended; function validates caller matches `from_user_id`)
+**Verify JWT**: `false` at gateway; function validates caller matches `from_user_id` (same as [`notify-estimator-request`](#notify-estimator-request)—gateway `verify_jwt` caused 401 for browser sessions if omitted from `config.toml`).
 
 #### Request body
 

@@ -370,8 +370,14 @@ verify_jwt = false
 [functions.sync-salary-sessions]
 verify_jwt = false
 
-# Same as notify-dispatch-request: JWT validated in function (getUser + from_user_id match).
+# Signed-in users: JWT validated in function (getUser + estimator_requests.from_user_id match).
+# Gateway verify_jwt caused 401s for legitimate browser sessions (match notify-dispatch-request).
 [functions.notify-estimator-request]
+verify_jwt = false
+
+# Signed-in users: JWT validated in function (getUser + dispatch_requests.from_user_id match).
+# Without this block the gateway defaults to verify_jwt=true → 401 while notify-estimator-request works.
+[functions.notify-dispatch-request]
 verify_jwt = false
 
 # Dev-only: validates JWT + users.role = dev, pulls Mercury transactions into mercury_transactions.

@@ -400,10 +400,29 @@ export type BidNotesTableProps = {
   onLoadError?: (message: string) => void
   /** Omit for default label "Bid Notes"; pass "" to hide the heading (e.g. embedded in Bids summary). */
   title?: string
+  /** Controlled add-row open state (e.g. parent toolbar). */
+  adding?: boolean
+  onAddingChange?: (adding: boolean) => void
+  /** Hide bottom "Add row" when the parent provides add controls. */
+  hideFooterAddButton?: boolean
 }
 
-export function BidNotesTable({ bidId, onMutated, onLoadError, title }: BidNotesTableProps) {
-  const [adding, setAdding] = useState(false)
+export function BidNotesTable({
+  bidId,
+  onMutated,
+  onLoadError,
+  title,
+  adding: addingProp,
+  onAddingChange,
+  hideFooterAddButton = false,
+}: BidNotesTableProps) {
+  const [internalAdding, setInternalAdding] = useState(false)
+  const controlled = onAddingChange != null
+  const adding = controlled ? Boolean(addingProp) : internalAdding
+  const setAdding = (v: boolean) => {
+    if (controlled) onAddingChange(v)
+    else setInternalAdding(v)
+  }
   const { entries, loading, refetch } = useBidSubmissionEntries(bidId, onLoadError)
   const headingLabel = title === undefined ? 'Bid Notes' : title
 
@@ -446,7 +465,7 @@ export function BidNotesTable({ bidId, onMutated, onLoadError, title }: BidNotes
           />
         ) : null}
       </div>
-      {!adding && (
+      {!adding && !hideFooterAddButton && (
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.75rem' }}>
           <button
             type="button"

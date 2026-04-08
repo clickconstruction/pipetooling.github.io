@@ -1,6 +1,12 @@
+import { useEffect, useState } from 'react'
 import { BidNotesTable } from '../bidNotes/BidNotesTable'
 import { CustomerNotesTable } from '../customerNotes/CustomerNotesTable'
-import { UnifiedBidCustomerNotes } from '../bidBoard/UnifiedBidCustomerNotes'
+import {
+  UnifiedBidCustomerNotes,
+  UnifiedBidCustomerNotesActionButtons,
+  type UnifiedNotesAddingKind,
+} from '../bidBoard/UnifiedBidCustomerNotes'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 
 export type BidBoardNotesTab = 'all' | 'bid' | 'customer'
 
@@ -31,80 +37,118 @@ export function BidBoardNotesPanel({
 }: BidBoardNotesPanelProps) {
   const panelId = `${idPrefix}-notes-panel-${bid.id}`
   const mutCustomer = onMutatedCustomer ?? onMutated
+  const narrow = useNarrowViewport640()
+  const previewDesktopSplit = idPrefix === 'bid-preview' && !narrow
+  const [unifiedAddingKind, setUnifiedAddingKind] = useState<UnifiedNotesAddingKind>(null)
+
+  useEffect(() => {
+    setUnifiedAddingKind(null)
+  }, [notesTab, bid.id])
+
+  const tablist = (
+    <div
+      role="tablist"
+      aria-label="Notes type"
+      style={{ display: 'inline-flex', border: '1px solid #d1d5db', borderRadius: 4, overflow: 'hidden' }}
+    >
+      <button
+        type="button"
+        role="tab"
+        id={`${idPrefix}-tab-all-${bid.id}`}
+        aria-selected={notesTab === 'all'}
+        aria-controls={panelId}
+        onClick={() => onNotesTabChange('all')}
+        style={{
+          padding: '0.25rem 0.65rem',
+          border: 'none',
+          borderRight: '1px solid #d1d5db',
+          background: notesTab === 'all' ? '#3b82f6' : '#ffffff',
+          color: notesTab === 'all' ? '#ffffff' : '#374151',
+          cursor: 'pointer',
+          fontWeight: notesTab === 'all' ? 600 : 400,
+          fontSize: '0.875rem',
+        }}
+      >
+        All
+      </button>
+      <button
+        type="button"
+        role="tab"
+        id={`${idPrefix}-tab-bid-${bid.id}`}
+        aria-selected={notesTab === 'bid'}
+        aria-controls={panelId}
+        onClick={() => onNotesTabChange('bid')}
+        style={{
+          padding: '0.25rem 0.65rem',
+          border: 'none',
+          borderRight: '1px solid #d1d5db',
+          background: notesTab === 'bid' ? '#3b82f6' : '#ffffff',
+          color: notesTab === 'bid' ? '#ffffff' : '#374151',
+          cursor: 'pointer',
+          fontWeight: notesTab === 'bid' ? 600 : 400,
+          fontSize: '0.875rem',
+        }}
+      >
+        Bid
+      </button>
+      <button
+        type="button"
+        role="tab"
+        id={`${idPrefix}-tab-customer-${bid.id}`}
+        aria-selected={notesTab === 'customer'}
+        aria-controls={panelId}
+        disabled={!bid.customers?.id}
+        aria-disabled={!bid.customers?.id}
+        title={!bid.customers?.id ? 'No linked customer on this bid.' : undefined}
+        onClick={() => {
+          if (bid.customers?.id) onNotesTabChange('customer')
+        }}
+        style={{
+          padding: '0.25rem 0.65rem',
+          border: 'none',
+          background: notesTab === 'customer' ? '#3b82f6' : '#ffffff',
+          color: notesTab === 'customer' ? '#ffffff' : '#374151',
+          cursor: !bid.customers?.id ? 'not-allowed' : 'pointer',
+          fontWeight: notesTab === 'customer' ? 600 : 400,
+          fontSize: '0.875rem',
+          opacity: !bid.customers?.id ? 0.5 : 1,
+        }}
+      >
+        Customer
+      </button>
+    </div>
+  )
 
   return (
     <>
-      <div style={{ display: 'flex', justifyContent: 'center', width: '100%', marginBottom: '0.75rem' }}>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: previewDesktopSplit ? 'row' : 'column',
+          alignItems: previewDesktopSplit ? 'center' : 'stretch',
+          gap: '0.75rem',
+          marginBottom: '0.75rem',
+          width: '100%',
+        }}
+      >
+        {previewDesktopSplit && notesTab === 'all' ? (
+          <UnifiedBidCustomerNotesActionButtons
+            addingKind={unifiedAddingKind}
+            onAddingKindChange={setUnifiedAddingKind}
+            customerId={bid.customers?.id ?? null}
+            customerName={bid.customers?.name ?? 'Customer'}
+          />
+        ) : null}
         <div
-          role="tablist"
-          aria-label="Notes type"
-          style={{ display: 'inline-flex', border: '1px solid #d1d5db', borderRadius: 4, overflow: 'hidden' }}
-        >
-        <button
-          type="button"
-          role="tab"
-          id={`${idPrefix}-tab-all-${bid.id}`}
-          aria-selected={notesTab === 'all'}
-          aria-controls={panelId}
-          onClick={() => onNotesTabChange('all')}
           style={{
-            padding: '0.25rem 0.65rem',
-            border: 'none',
-            borderRight: '1px solid #d1d5db',
-            background: notesTab === 'all' ? '#3b82f6' : '#ffffff',
-            color: notesTab === 'all' ? '#ffffff' : '#374151',
-            cursor: 'pointer',
-            fontWeight: notesTab === 'all' ? 600 : 400,
-            fontSize: '0.875rem',
+            display: 'flex',
+            justifyContent: previewDesktopSplit ? 'flex-end' : 'center',
+            flex: previewDesktopSplit ? '1 1 auto' : undefined,
+            width: previewDesktopSplit ? undefined : '100%',
+            minWidth: 0,
           }}
         >
-          All
-        </button>
-        <button
-          type="button"
-          role="tab"
-          id={`${idPrefix}-tab-bid-${bid.id}`}
-          aria-selected={notesTab === 'bid'}
-          aria-controls={panelId}
-          onClick={() => onNotesTabChange('bid')}
-          style={{
-            padding: '0.25rem 0.65rem',
-            border: 'none',
-            borderRight: '1px solid #d1d5db',
-            background: notesTab === 'bid' ? '#3b82f6' : '#ffffff',
-            color: notesTab === 'bid' ? '#ffffff' : '#374151',
-            cursor: 'pointer',
-            fontWeight: notesTab === 'bid' ? 600 : 400,
-            fontSize: '0.875rem',
-          }}
-        >
-          Bid
-        </button>
-        <button
-          type="button"
-          role="tab"
-          id={`${idPrefix}-tab-customer-${bid.id}`}
-          aria-selected={notesTab === 'customer'}
-          aria-controls={panelId}
-          disabled={!bid.customers?.id}
-          aria-disabled={!bid.customers?.id}
-          title={!bid.customers?.id ? 'No linked customer on this bid.' : undefined}
-          onClick={() => {
-            if (bid.customers?.id) onNotesTabChange('customer')
-          }}
-          style={{
-            padding: '0.25rem 0.65rem',
-            border: 'none',
-            background: notesTab === 'customer' ? '#3b82f6' : '#ffffff',
-            color: notesTab === 'customer' ? '#ffffff' : '#374151',
-            cursor: !bid.customers?.id ? 'not-allowed' : 'pointer',
-            fontWeight: notesTab === 'customer' ? 600 : 400,
-            fontSize: '0.875rem',
-            opacity: !bid.customers?.id ? 0.5 : 1,
-          }}
-        >
-          Customer
-        </button>
+          {tablist}
         </div>
       </div>
       <div
@@ -143,6 +187,13 @@ export function BidBoardNotesPanel({
             title=""
             onLoadError={onLoadError}
             onMutated={mutCustomer}
+            {...(previewDesktopSplit
+              ? {
+                  addingKind: unifiedAddingKind,
+                  onAddingKindChange: setUnifiedAddingKind,
+                  hideActionButtons: true,
+                }
+              : {})}
           />
         )}
       </div>
