@@ -1483,6 +1483,17 @@ export default function Bids() {
     }, { replace: true })
   }
 
+  const bidDetailCloseXStyle: CSSProperties = {
+    padding: '0.2rem 0.45rem',
+    background: 'transparent',
+    border: 'none',
+    borderRadius: 4,
+    cursor: 'pointer',
+    color: '#9ca3af',
+    fontSize: '1.35rem',
+    lineHeight: 1,
+  }
+
   /** Select a bid and sync URL so tab switches show the same bid. */
   function selectBidAndSyncUrl(bid: BidWithBuilder, tab: typeof activeTab) {
     setSharedBid(bid)
@@ -4535,20 +4546,22 @@ export default function Bids() {
         const revenue = isFixedPrice ? unitPrice : count * unitPrice
         totalRevenue += revenue
         const margin = revenue > 0 ? ((revenue - cost) / revenue) * 100 : null
-        return { countRow, entry, count, cost, revenue, margin }
+        return { countRow, entry, count, unitPrice, isFixedPrice, cost, revenue, margin }
       })
       const tableRows = rows
         .map(
-          ({ countRow, entry, count, cost, revenue, margin }) =>
-            `<tr><td>${escapeHtml(countRow.fixture ?? '')}</td><td style="text-align:center">${count}</td><td>${escapeHtml(entry?.fixture_types?.name ?? '—')}</td><td style="text-align:right">$${formatCurrency(cost)}</td><td style="text-align:right">$${formatCurrency(revenue)}</td><td style="text-align:center">${margin != null ? `${margin.toFixed(1)}%` : '—'}</td></tr>`
+          ({ countRow, entry, count, unitPrice, isFixedPrice, cost, revenue, margin }) => {
+            const fixedHint = isFixedPrice ? ' <span style="font-size:0.85em;color:#4b5563">(fixed)</span>' : ''
+            return `<tr><td>${escapeHtml(countRow.fixture ?? '')}</td><td style="text-align:center">${count}</td><td>${escapeHtml(entry?.fixture_types?.name ?? '—')}</td><td style="text-align:right">$${formatCurrency(unitPrice)}${fixedHint}</td><td style="text-align:right">$${formatCurrency(cost)}</td><td style="text-align:right">$${formatCurrency(revenue)}</td><td style="text-align:center">${margin != null ? `${margin.toFixed(1)}%` : '—'}</td></tr>`
+          }
         )
         .join('')
       const overallMarginStr = totalRevenue > 0 ? `${(((totalRevenue - totalCost) / totalRevenue) * 100).toFixed(1)}%` : '—'
       bodyContent = `<h2>Price book</h2>
   <p>${versionName}</p>
   <table>
-    <thead><tr><th>Fixture or Tie-in</th><th style="text-align:center">Count</th><th>Price book entry</th><th style="text-align:right">Our cost</th><th style="text-align:right">Revenue</th><th style="text-align:center">Margin %</th></tr></thead>
-    <tbody>${tableRows}<tr style="background:#f9fafb; font-weight:600"><td>Total</td><td style="text-align:center"></td><td></td><td style="text-align:right">$${formatCurrency(totalCost)}</td><td style="text-align:right">$${formatCurrency(totalRevenue)}</td><td style="text-align:center">${overallMarginStr}</td></tr></tbody>
+    <thead><tr><th>Fixture or Tie-in</th><th style="text-align:center">Count</th><th>Price book entry</th><th style="text-align:right">Unit price</th><th style="text-align:right">Our cost</th><th style="text-align:right">Revenue</th><th style="text-align:center">Margin %</th></tr></thead>
+    <tbody>${tableRows}<tr style="background:#f9fafb; font-weight:600"><td>Total</td><td style="text-align:center"></td><td></td><td style="text-align:right"></td><td style="text-align:right">$${formatCurrency(totalCost)}</td><td style="text-align:right">$${formatCurrency(totalRevenue)}</td><td style="text-align:center">${overallMarginStr}</td></tr></tbody>
   </table>`
     } else {
       bodyContent = '<p style="color:#6b7280">Select a price book version and ensure Counts and Cost Estimate are set up.</p>'
@@ -4573,6 +4586,147 @@ export default function Bids() {
     win.focus()
     win.print()
     win.onafterprint = () => win.close()
+  }
+
+  function csvEscapeField(value: string): string {
+    const s = value ?? ''
+    if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`
+    return s
+  }
+
+  function downloadPricingCsv() {
+    if (!selectedBidForPricing) return
+    if (!selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate) {
+      showToast('Select a price book version and ensure Counts and Cost Estimate are set up.', 'info')
+      return
+    }
+
+    const bidLabel = bidDisplayName(selectedBidForPricing) || 'bid'
+    const versionName = priceBookVersions.find((v) => v.id === selectedPricingVersionId)?.name ?? 'version'
+
+    const totalMaterials = (pricingMaterialTotalRoughIn ?? 0) + (pricingMaterialTotalTopOut ?? 0) + (pricingMaterialTotalTrimSet ?? 0)
+    const rate = pricingLaborRate ?? 0
+    const totalLaborHours = pricingLaborRows.reduce((s, r) => s + laborRowHours(r), 0)
+    const taxPercent = parseFloat(costEstimatePOModalTaxPercent || '8.25') || 0
+    const laborCostAll = totalLaborHours * rate
+    const distance = parseFloat(selectedBidForPricing?.distance_from_office ?? '0') || 0
+    const ratePerMile =
+      (pricingCostEstimate as { driving_cost_rate?: unknown }).driving_cost_rate != null
+        ? Number((pricingCostEstimate as { driving_cost_rate?: unknown }).driving_cost_rate)
+        : 0.7
+    const hrsPerTrip =
+      (pricingCostEstimate as { hours_per_trip?: unknown }).hours_per_trip != null
+        ? Number((pricingCostEstimate as { hours_per_trip?: unknown }).hours_per_trip)
+        : 2.0
+    const numTrips = totalLaborHours / hrsPerTrip
+    const drivingCost = numTrips * ratePerMile * distance
+    const ce = pricingCostEstimate as {
+      estimator_cost_flat_amount?: unknown
+      estimator_cost_per_count?: unknown
+    }
+    const estimatorCost =
+      ce.estimator_cost_flat_amount != null
+        ? Number(ce.estimator_cost_flat_amount)
+        : pricingCountRows.length * (Number(ce.estimator_cost_per_count) || 10)
+    const teamLaborCostByBidId = new Map(teamLaborDataForBids.map((r) => [r.bidId, r.bidCost]))
+    const teamLaborCost = teamLaborCostByBidId.get(selectedBidForPricing.id) ?? 0
+    const totalBidCost = totalMaterials + laborCostAll + drivingCost + estimatorCost + teamLaborCost
+
+    const entriesById = new Map(priceBookEntries.map((e) => [e.id, e]))
+    let totalRevenue = 0
+    const rowCalcs = pricingCountRows.map((countRow) => {
+      const assignment = bidPricingAssignments.find((a) => a.count_row_id === countRow.id)
+      const entry = assignment
+        ? entriesById.get(assignment.price_book_entry_id)
+        : priceBookEntries.find((e) => (e.fixture_types?.name ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase())
+      const customPrice = bidCountRowCustomPrices.find((c) => c.count_row_id === countRow.id)?.unit_price
+      const laborRow = pricingLaborRows.find((l) => (l.fixture ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase())
+      const count = Number(countRow.count)
+      const laborHrs = laborRow ? laborRowHours(laborRow) : 0
+      const laborCost = laborHrs * rate
+      const materialsFromTakeoff = pricingFixtureMaterialsFromTakeoff[countRow.id]
+      const materialsBeforeTax =
+        materialsFromTakeoff != null
+          ? materialsFromTakeoff
+          : totalLaborHours > 0
+            ? totalMaterials * (laborHrs / totalLaborHours)
+            : 0
+      const materialsWithTax =
+        materialsFromTakeoff != null ? materialsBeforeTax * (1 + taxPercent / 100) : materialsBeforeTax
+      const unitPrice = assignment?.unit_price_override ?? (entry ? Number(entry.total_price) : (customPrice ?? 0))
+      const isFixedPrice = assignment?.is_fixed_price ?? false
+      const revenue = isFixedPrice ? unitPrice : count * unitPrice
+      totalRevenue += revenue
+      const lineCost = laborCost + materialsWithTax
+      const margin = revenue > 0 ? ((revenue - lineCost) / revenue) * 100 : null
+      return {
+        fixture: countRow.fixture ?? '',
+        count,
+        priceBookEntry: entry?.fixture_types?.name ?? '',
+        fixedPrice: isFixedPrice,
+        unitPrice,
+        ourCost: lineCost,
+        revenue,
+        marginPct: margin,
+      }
+    })
+
+    const headers = [
+      'Fixture or Tie-in',
+      'Count',
+      'Price book entry',
+      'Fixed price',
+      'Unit price',
+      'Our cost',
+      'Revenue',
+      'Margin %',
+      '% of bid revenue',
+    ]
+    const lines = [headers.map((h) => csvEscapeField(h)).join(',')]
+    for (const r of rowCalcs) {
+      const pctOf = totalRevenue > 0 ? (r.revenue / totalRevenue) * 100 : null
+      lines.push(
+        [
+          csvEscapeField(r.fixture),
+          String(r.count),
+          csvEscapeField(r.priceBookEntry),
+          r.fixedPrice ? 'Yes' : 'No',
+          r.unitPrice.toFixed(2),
+          r.ourCost.toFixed(2),
+          r.revenue.toFixed(2),
+          r.marginPct != null ? r.marginPct.toFixed(1) : '',
+          pctOf != null ? pctOf.toFixed(1) : '',
+        ].join(',')
+      )
+    }
+    const overallMargin = totalRevenue > 0 ? ((totalRevenue - totalBidCost) / totalRevenue) * 100 : null
+    lines.push(
+      [
+        csvEscapeField('TOTAL (bid)'),
+        '',
+        '',
+        '',
+        '',
+        totalBidCost.toFixed(2),
+        totalRevenue.toFixed(2),
+        overallMargin != null ? overallMargin.toFixed(1) : '',
+        totalRevenue > 0 ? '100.0' : '',
+      ].join(',')
+    )
+
+    const safe = (s: string) =>
+      s
+        .replace(/[^a-zA-Z0-9._-]+/g, '_')
+        .replace(/^_+|_+$/g, '')
+        .slice(0, 80)
+    const blob = new Blob([`\uFEFF${lines.join('\n')}`], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `pricing_${safe(bidLabel)}_${safe(versionName)}_${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    showToast('Pricing exported to CSV.', 'success')
   }
 
   async function printAllPricingPages() {
@@ -4656,12 +4810,14 @@ export default function Bids() {
           const revenue = isFixedPrice ? unitPrice : count * unitPrice
           totalRevenue += revenue
           const margin = revenue > 0 ? ((revenue - cost) / revenue) * 100 : null
-          return { countRow, entry, count, cost, revenue, margin }
+          return { countRow, entry, count, unitPrice, isFixedPrice, cost, revenue, margin }
         })
         const tableRows = rows
           .map(
-            ({ countRow, entry, count, cost, revenue, margin }) =>
-              `<tr><td>${escapeHtml(countRow.fixture ?? '')}</td><td style="text-align:center">${count}</td><td>${escapeHtml(entry?.fixture_types?.name ?? '—')}</td><td style="text-align:right">$${formatCurrency(cost)}</td><td style="text-align:right">$${formatCurrency(revenue)}</td><td style="text-align:center">${margin != null ? `${margin.toFixed(1)}%` : '—'}</td></tr>`
+            ({ countRow, entry, count, unitPrice, isFixedPrice, cost, revenue, margin }) => {
+              const fixedHint = isFixedPrice ? ' <span style="font-size:0.85em;color:#4b5563">(fixed)</span>' : ''
+              return `<tr><td>${escapeHtml(countRow.fixture ?? '')}</td><td style="text-align:center">${count}</td><td>${escapeHtml(entry?.fixture_types?.name ?? '—')}</td><td style="text-align:right">$${formatCurrency(unitPrice)}${fixedHint}</td><td style="text-align:right">$${formatCurrency(cost)}</td><td style="text-align:right">$${formatCurrency(revenue)}</td><td style="text-align:center">${margin != null ? `${margin.toFixed(1)}%` : '—'}</td></tr>`
+            }
           )
           .join('')
         const overallMarginStr = totalRevenue > 0 ? `${(((totalRevenue - totalCost) / totalRevenue) * 100).toFixed(1)}%` : '—'
@@ -4671,8 +4827,8 @@ export default function Bids() {
           `<section class="price-book-page" style="page-break-after: ${pageBreak}">
   <h2>${escapeHtml(versionName)}</h2>
   <table>
-    <thead><tr><th>Fixture or Tie-in</th><th style="text-align:center">Count</th><th>Price book entry</th><th style="text-align:right">Our cost</th><th style="text-align:right">Revenue</th><th style="text-align:center">Margin %</th></tr></thead>
-    <tbody>${tableRows}<tr style="background:#f9fafb; font-weight:600"><td>Total</td><td style="text-align:center"></td><td></td><td style="text-align:right">$${formatCurrency(totalCost)}</td><td style="text-align:right">$${formatCurrency(totalRevenue)}</td><td style="text-align:center">${overallMarginStr}</td></tr></tbody>
+    <thead><tr><th>Fixture or Tie-in</th><th style="text-align:center">Count</th><th>Price book entry</th><th style="text-align:right">Unit price</th><th style="text-align:right">Our cost</th><th style="text-align:right">Revenue</th><th style="text-align:center">Margin %</th></tr></thead>
+    <tbody>${tableRows}<tr style="background:#f9fafb; font-weight:600"><td>Total</td><td style="text-align:center"></td><td></td><td style="text-align:right"></td><td style="text-align:right">$${formatCurrency(totalCost)}</td><td style="text-align:right">$${formatCurrency(totalRevenue)}</td><td style="text-align:center">${overallMarginStr}</td></tr></tbody>
   </table>
 </section>`
         )
@@ -8951,9 +9107,11 @@ export default function Bids() {
                   <button
                     type="button"
                     onClick={closeSharedBidAndClearUrl}
-                    style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                    title="Close"
+                    aria-label="Close"
+                    style={bidDetailCloseXStyle}
                   >
-                    Close
+                    ×
                   </button>
                 </div>
               </div>
@@ -9238,9 +9396,11 @@ export default function Bids() {
                   <button
                     type="button"
                     onClick={() => { closeSharedBidAndClearUrl(); setTakeoffCreatedPOId(null) }}
-                    style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                    title="Close"
+                    aria-label="Close"
+                    style={bidDetailCloseXStyle}
                   >
-                    Close
+                    ×
                   </button>
                 </div>
               </div>
@@ -9934,9 +10094,11 @@ export default function Bids() {
                   <button
                     type="button"
                     onClick={() => { closeSharedBidAndClearUrl(); setTakeoffCreatedPOId(null) }}
-                    style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                    title="Close"
+                    aria-label="Close"
+                    style={bidDetailCloseXStyle}
                   >
-                    Close
+                    ×
                   </button>
                 </div>
               )}
@@ -10117,9 +10279,11 @@ export default function Bids() {
                   <button
                     type="button"
                     onClick={closeSharedBidAndClearUrl}
-                    style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                    title="Close"
+                    aria-label="Close"
+                    style={bidDetailCloseXStyle}
                   >
-                    Close
+                    ×
                   </button>
                 </div>
               </div>
@@ -11230,23 +11394,29 @@ export default function Bids() {
                   onOpenPreview={() => bidPreview?.openBidPreviewFromBid(selectedBidForPricing)}
                   h2Style={{ margin: 0, flex: '0 0 auto' }}
                 />
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: '1 1 auto', justifyContent: 'center', minWidth: 0 }}>
-                  <label style={{ fontSize: '0.875rem', marginRight: '0.25rem' }}>Price book</label>
-                  <select
-                    value={selectedPricingVersionId ?? ''}
-                    onChange={(e) => {
-                      const v = e.target.value
-                      if (v) handlePricingVersionChange(selectedBidForPricing.id, v)
-                    }}
-                    style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '12rem' }}
-                  >
-                    <option value="">— Select version —</option>
-                    {priceBookVersions.map((v) => (
-                      <option key={v.id} value={v.id}>{v.name}</option>
-                    ))}
-                  </select>
-                </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: '0 0 auto' }}>
+                  <button
+                    type="button"
+                    onClick={() => downloadPricingCsv()}
+                    disabled={!selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate}
+                    title={
+                      !selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate
+                        ? 'Select a price book and ensure Counts and Cost Estimate exist'
+                        : 'Download pricing grid as CSV'
+                    }
+                    style={{
+                      padding: '0.5rem 1rem',
+                      background:
+                        !selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate ? '#e5e7eb' : '#f3f4f6',
+                      color: '#111827',
+                      border: '1px solid #d1d5db',
+                      borderRadius: 4,
+                      cursor:
+                        !selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    Export CSV
+                  </button>
                   <button
                     type="button"
                     onClick={() => printPricingPage()}
@@ -11264,11 +11434,87 @@ export default function Bids() {
                   <button
                     type="button"
                     onClick={closeSharedBidAndClearUrl}
-                    style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                    title="Close"
+                    aria-label="Close"
+                    style={bidDetailCloseXStyle}
                   >
-                    Close
+                    ×
                   </button>
                 </div>
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '0.75rem',
+                  flexWrap: 'wrap',
+                  gap: '0.5rem',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: '0 0 auto', minWidth: 0 }}>
+                  <label style={{ fontSize: '0.875rem', marginRight: '0.25rem', whiteSpace: 'nowrap' }}>Price book</label>
+                  <select
+                    value={selectedPricingVersionId ?? ''}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      if (v) handlePricingVersionChange(selectedBidForPricing.id, v)
+                    }}
+                    style={{
+                      padding: '0.5rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: 4,
+                      boxSizing: 'border-box',
+                      width: 'max-content',
+                      maxWidth: '100%',
+                      ...( { fieldSizing: 'content' } as CSSProperties ),
+                    }}
+                  >
+                    <option value="">— Select version —</option>
+                    {priceBookVersions.map((v) => (
+                      <option key={v.id} value={v.id}>{v.name}</option>
+                    ))}
+                  </select>
+                </div>
+                {selectedPricingVersionId && pricingCountRows.length > 0 && pricingCostEstimate ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flex: '0 0 auto', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.875rem', fontWeight: 500, marginRight: '0.25rem' }}>View:</span>
+                    <button
+                      type="button"
+                      onClick={() => setPricingViewModel('cost')}
+                      style={{
+                        padding: '0.35rem 0.75rem',
+                        fontSize: '0.8125rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: 4,
+                        background: pricingViewModel === 'cost' ? '#e5e7eb' : 'white',
+                        cursor: 'pointer',
+                        fontWeight: pricingViewModel === 'cost' ? 600 : 400,
+                        color: pricingViewModel === 'cost' ? '#111827' : '#6b7280',
+                        boxShadow: pricingViewModel === 'cost' ? '0 0 0 2px #374151' : 'none',
+                      }}
+                    >
+                      Cost Model
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPricingViewModel('price')}
+                      style={{
+                        padding: '0.35rem 0.75rem',
+                        fontSize: '0.8125rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: 4,
+                        background: pricingViewModel === 'price' ? '#e5e7eb' : 'white',
+                        cursor: 'pointer',
+                        fontWeight: pricingViewModel === 'price' ? 600 : 400,
+                        color: pricingViewModel === 'price' ? '#111827' : '#6b7280',
+                        boxShadow: pricingViewModel === 'price' ? '0 0 0 2px #374151' : 'none',
+                      }}
+                    >
+                      Price Model
+                    </button>
+                  </div>
+                ) : null}
               </div>
               {!pricingCostEstimate && pricingCountRows.length > 0 && (
                 <p style={{ marginBottom: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>
@@ -11367,43 +11613,6 @@ export default function Bids() {
                     </div>
                   </div>
                   )}
-                  <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem', gap: '0.25rem' }}>
-                    <span style={{ fontSize: '0.875rem', fontWeight: 500, marginRight: '0.25rem' }}>View:</span>
-                    <button
-                      type="button"
-                      onClick={() => setPricingViewModel('cost')}
-                      style={{
-                        padding: '0.35rem 0.75rem',
-                        fontSize: '0.8125rem',
-                        border: '1px solid #d1d5db',
-                        borderRadius: 4,
-                        background: pricingViewModel === 'cost' ? '#e5e7eb' : 'white',
-                        cursor: 'pointer',
-                        fontWeight: pricingViewModel === 'cost' ? 600 : 400,
-                        color: pricingViewModel === 'cost' ? '#111827' : '#6b7280',
-                        boxShadow: pricingViewModel === 'cost' ? '0 0 0 2px #374151' : 'none'
-                      }}
-                    >
-                      Cost Model
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPricingViewModel('price')}
-                      style={{
-                        padding: '0.35rem 0.75rem',
-                        fontSize: '0.8125rem',
-                        border: '1px solid #d1d5db',
-                        borderRadius: 4,
-                        background: pricingViewModel === 'price' ? '#e5e7eb' : 'white',
-                        cursor: 'pointer',
-                        fontWeight: pricingViewModel === 'price' ? 600 : 400,
-                        color: pricingViewModel === 'price' ? '#111827' : '#6b7280',
-                        boxShadow: pricingViewModel === 'price' ? '0 0 0 2px #374151' : 'none'
-                      }}
-                    >
-                      Price Model
-                    </button>
-                  </div>
                   <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'visible' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead style={{ background: '#f9fafb' }}>
@@ -12399,9 +12608,11 @@ export default function Bids() {
                     <button
                       type="button"
                       onClick={closeSharedBidAndClearUrl}
-                      style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                      title="Close"
+                      aria-label="Close"
+                      style={bidDetailCloseXStyle}
                     >
-                      Close
+                      ×
                     </button>
                   </div>
                 </div>
@@ -12850,9 +13061,11 @@ export default function Bids() {
                   <button
                     type="button"
                     onClick={() => setSelectedBidForSubmission(null)}
-                    style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                    title="Close"
+                    aria-label="Close"
+                    style={bidDetailCloseXStyle}
                   >
-                    Close
+                    ×
                   </button>
                 </div>
               </div>
@@ -13913,9 +14126,11 @@ export default function Bids() {
                     <button
                       type="button"
                       onClick={() => setSelectedBidForRfi(null)}
-                      style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                      title="Close"
+                      aria-label="Close"
+                      style={bidDetailCloseXStyle}
                     >
-                      Close
+                      ×
                     </button>
                   </div>
                 </div>
@@ -14213,7 +14428,15 @@ export default function Bids() {
                   />
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <button type="button" onClick={() => openEditBid(bid)} title="Edit bid" style={{ padding: '0.5rem 1rem', background: '#eff6ff', border: '1px solid #3b82f6', borderRadius: 4, color: '#1d4ed8', cursor: 'pointer' }}>Edit bid</button>
-                    <button type="button" onClick={closeSharedBidAndClearUrl} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Close</button>
+                    <button
+                      type="button"
+                      onClick={closeSharedBidAndClearUrl}
+                      title="Close"
+                      aria-label="Close"
+                      style={bidDetailCloseXStyle}
+                    >
+                      ×
+                    </button>
                   </div>
                 </div>
                 <div style={{ marginBottom: '1rem' }}>
@@ -14441,7 +14664,15 @@ export default function Bids() {
                   />
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <button type="button" onClick={() => { setBidFormOpen(true); setEditingBid(bid) }} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Edit bid</button>
-                    <button type="button" onClick={closeSharedBidAndClearUrl} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Close</button>
+                    <button
+                      type="button"
+                      onClick={closeSharedBidAndClearUrl}
+                      title="Close"
+                      aria-label="Close"
+                      style={bidDetailCloseXStyle}
+                    >
+                      ×
+                    </button>
                   </div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>

@@ -2471,6 +2471,7 @@ user_id = auth.uid()
 #### Features
 
 **Bid Board Tab**:
+- **Bid #** (**v2.279+**): When **`bid_number`** is set, **`B{n}`** is clickable and opens **Bid preview** (same as the **Preview** eye column); otherwise **`-`**. Inline notes: expand the row (first column); **All notes | Bid notes | Customer notes** use **`UnifiedBidCustomerNotes`** / **`BidNotesTable`** / **`CustomerNotesTable`** (see **RECENT_FEATURES** v2.148, v2.279).
 - **Evaluate**: Button to the left of "New" opens a modal with an evaluation checklist (LOCATION, PAYMENT TERMS, BID DOCUMENTS, COMPETITION, STRENGTHS); checklist state resets when the modal is closed.
 - **Search**: Full-width search input filters bids by project name, address, customer name, or GC/builder name (case-insensitive). Empty state reflects search and "hide lost" filter.
 - Table of bids; all column headers and cells are **centered**. Columns: Project Folder, Job Plans, GC/Builder, Project Name, Address, Win/ Loss, Bid Value, Estimator, Bid Due Date, Bid Date Sent, Distance to Office (miles), Last Contact, Notes, Edit. (Agreed Value and Maximum Profit columns are not shown.)
@@ -2482,6 +2483,9 @@ user_id = auth.uid()
 - **Edit Bid modal**: **Cancel** button is at **top right** next to the title. **Delete**: "Delete bid" opens a separate confirmation modal; user must type the project name (or leave empty) to enable Delete.
 - **GC/Builder**: Uses `customers` table as data source with searchable combobox (same pattern as customer picker in ProjectForm). **"+ Add new customer"** option at the top of the dropdown (for dev, master_technician, assistant, and estimator) opens an **Add Customer** modal with the same form as `/customers/new` but without Quick Fill; on save, the new customer is created, list is refetched, and the new customer is selected as the bid's GC/Builder. Legacy `bids_gc_builders` retained for backward compatibility.
 - Clicking a GC/Builder name opens a modal: customer details (name, address, phone/email from contact_info, won/lost bids) or legacy GC/Builder details (name, address, contact number, won/lost bids) depending on whether bid has `customer_id` or `gc_builder_id`.
+
+**Workflow tabs with a selected bid** (**Counts**, **Takeoffs**, **Cost Estimate**, **Pricing**, **Cover Letter**, **Submission & Followup**, **RFI**, **Change Order**, **Lien Release** — **v2.279+**):
+- Selected-bid **`h2`** includes **`B{n}`** as a preview link when **`bid_number`** is set (**`BidWorkflowTabTitleWithPreview`** in **[`Bids.tsx`](src/pages/Bids.tsx)**).
 
 **Counts Tab**:
 - **Search** box is **below** the selected-bid panel, **full width**; column header is **"Project Name"**. **"Edit Bid"** button in tab header (next to Close) opens Edit Bid modal for the selected bid.
@@ -2510,7 +2514,7 @@ user_id = auth.uid()
 
 **Submission & Followup Tab**:
 - **Five tables** (in order): **Unsent bids** (bid_date_sent null), **Not yet won or lost** (sent, outcome not won/lost/started_or_complete), **Won**, **Started or Complete**, **Lost**. Each section has a **clickable header** with chevron (▼ expanded, ▶ collapsed) and item count (e.g. "Unsent bids (3)"); tables are shown/hidden by section state. "Lost" is collapsed by default. Search filters all five. Clicking a row selects the bid and shows its submission entries in a panel above.
-- **Selected bid panel**: When a bid is selected, an inline panel shows the bid title, then a **bid summary**: Builder Name, Builder Address, **Builder Phone Number**, **Builder Email** (from customer or legacy GC/Builder), Project Name, Project Address, **Project Contact Name**, **Project Contact Phone**, **Project Contact Email**, Bid Size (project contact fields are stored per bid and are not shown on the Bid Board). **Call script buttons** above the contact table: **Sent Bid Script** and **Bid Question Script** open read-only modals with the respective script text. Below that: **Margins** section includes:
+- **Selected bid panel**: When a bid is selected, an inline panel shows the bid title (**`h2`**: **`B{n}`** opens **Bid preview** when numbered — **v2.279**), then a **bid summary**: Builder Name, Builder Address, **Builder Phone Number**, **Builder Email** (from customer or legacy GC/Builder), Project Name, Project Address, **Project Contact Name**, **Project Contact Phone**, **Project Contact Email**, Bid Size (project contact fields are stored per bid and are not shown on the Bid Board). **Notes strip** (**v2.279**): **+ bid note** / **+ customer note** and **All | Bid | Customer** on one row (wide: actions left, tabs right; narrow/mobile: stacked, centered). **Call script buttons** above the contact table: **Sent Bid Script** and **Bid Question Script** open read-only modals with the respective script text. Below that: **Margins** section includes:
   - **Approval PDF** download button (multi-page packet: Submission and Followup, Pricing [landscape], Cost Estimate, Cover Letter; pricing table has Per Unit column; Per Unit and Revenue as whole numbers; Cover Letter "Inclusions:" and "Exclusions and Scope:" headings bold)
   - **Bid links**: Bid Submission, Project Folder, Job Plans (rendered as clickable links in the PDF with spacing between them)
   - **Cost estimate** status/amount (if available)

@@ -167,11 +167,11 @@ Central hub for viewing and managing all bids. Provides high-level overview of b
 
 #### Table Columns
 
-Column order (left to right):
+Column order (left to right; leading **expand** chevron opens inline **Notes** — see above):
 1. **Project Folder** - Folder icon linking to drive folder (or dash if none)
 2. **Job Plans** - Document icon linking to plans (or dash if none)
 3. **GC/Builder** - Customer name (clickable for details)
-4. **Bid #** - Auto-generated for new bids; displayed as B456 in Clock In search. Editable only by dev, master, assistant (read-only for estimator, primary)
+4. **Bid #** - Auto-generated for new bids; displayed as **B456** on the board and in Clock In search. **When set, `B{n}` is clickable on the Bid Board** and opens **Bid preview** (same as the Preview column). Editable only by dev, master, assistant (read-only for estimator, primary)
 5. **Project Name** - Bid identifier
 6. **Address** - Project location; line break after first comma (street on line 1, city/state on line 2)
 7. **Account Man** - Account manager or estimator name
@@ -180,10 +180,11 @@ Column order (left to right):
 10. **Distance to Office** - Miles (rounded)
 11. **Last Contact** - Weekday and date on separate lines (e.g., "Wed" / "2/11"); clickable; "+" if none
 12. **Counts** - Hexagon icon button; clicking opens that bid in the Counts tab
-13. **Edit** - Gear icon button (header hidden, only icon visible)
+13. **Preview** - Eye icon; opens **Bid preview** for that row
+14. **Edit** - Gear icon button (header hidden, only icon visible)
 
-**Note**: Removed columns from earlier versions:
-- Notes (removed)
+**Note**: Removed / relocated from earlier table versions:
+- Old single-cell **Notes** column (replaced by expandable row + **All / Bid / Customer**)
 - Win/Loss (removed)
 - Sent Date (removed)
 - Agreed Value (removed)
@@ -1155,6 +1156,10 @@ Electrical, fire protection, fire alarm, drywall, framing, and architectural fin
 
 ### Purpose
 Track bid submissions, follow-up activities, and outcomes. Organize bids by status for efficient pipeline management.
+
+### Selected bid — notes toolbar (above the notes list)
+
+One horizontal strip: **+ bid note** and **+ customer note** (left on wide screens) and **All | Bid | Customer** tab pills (right on wide screens). On **narrow viewports** (`useNarrowViewport640`), the strip stacks vertically and is **centered**. **`BidNotesTable`** / **`CustomerNotesTable`** use **controlled** add state from the parent so there is no duplicate **Add row** under the table. Cross-tab: e.g. **+ customer note** while on **Bid** can switch to **Customer** and open the add form. See **RECENT_FEATURES** v2.279.
 
 ### Four Collapsible Sections
 

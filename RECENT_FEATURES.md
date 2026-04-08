@@ -7,14 +7,17 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-07
+last_updated: 2026-04-08
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.278 → v2.4"
+version_range: "v2.279 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.279)"
+    line: ~847
+    description: "Bids Bid Preview from B# (workflow + Bid Board); Submission notes toolbar + mobile center; notify-dispatch-request verify_jwt in config"
   - name: "Latest Version (v2.278)"
     line: ~847
     description: "DetailJobModalFilesPlansRow hide when both links empty; numbered Specific Work [1][2]; Repair in section title"
@@ -677,6 +680,7 @@ when_to_read:
 **New:** [v2.254 — Jobs Schedule modal + Calendar Job preview & planned chips](#latest-updates-v2254)
 **New:** [v2.253 — Calendar: per-session chips + day modal clock sessions](#latest-updates-v2253)
 **New:** [v2.252 — Pay History: Draft Payroll week + crew merge + employee credit + Record payment](#latest-updates-v2252)
+**New:** [v2.279 — Bids: Bid Preview from **B#**; Submission notes toolbar; **notify-dispatch-request** gateway JWT](#latest-updates-v2279)
 **New:** [v2.251 — Jobs worked today: approve controls (Clocked in today parity)](#latest-updates-v2251)
 **New:** [v2.250 — My Time: prior-week acknowledgment + two-week edit window](#latest-updates-v2250)
 **New:** [v2.249 — Salary split sync: overlap guard (work_date + clock-in TZ date)](#latest-updates-v2249)
@@ -842,6 +846,19 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.279)
+
+**Date**: 2026-04-08
+
+### Bids — **Bid Preview** from **Bid #**; **Submission & Followup** notes toolbar; Task Dispatch **notify-dispatch-request** gateway auth
+
+- **Workflow tab titles** (**Counts**, **Takeoffs**, **Cost Estimate**, **Pricing**, **Cover Letter**, **Submission & Followup**, **RFI**, **Change Order**, **Lien Release**): when the bid has a **`bid_number`**, **`B{n}`** in the heading is a link-style control that opens the global bid preview (**[`BidWorkflowTabTitleWithPreview`](src/pages/Bids.tsx)** via **[`BidPreviewModalContext`](src/contexts/BidPreviewModalContext.tsx)**). Unnumbered bids stay plain text.
+- **Bid Board** **Bid #** column: **`B{n}`** opens the same preview (when preview context is available), consistent with the **Preview** (eye) column.
+- **Submission & Followup** selected-bid panel: **+ bid note** / **+ customer note** sit on one row with **All | Bid | Customer** (**desktop**: actions left, tab pills right; **`narrowViewport640`**: column stack, **centered**). **`BidNotesTable`** / **`CustomerNotesTable`** accept **controlled** add-row state and **`hideFooterAddButton`** so the footer **Add row** is not duplicated (**[`UnifiedBidCustomerNotesActionButtons`](src/components/bidBoard/UnifiedBidCustomerNotes.tsx)** in the toolbar).
+- **Edge Function `notify-dispatch-request`**: **`[functions.notify-dispatch-request] verify_jwt = false`** in **[`supabase/config.toml`](supabase/config.toml)** (same gateway behavior as **`notify-estimator-request`**). Without it the API gateway can return **401** before the function runs **`auth.getUser`**. Redeploy with **`supabase functions deploy notify-dispatch-request --no-verify-jwt`** when needed. Docs: **[`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md)** (notify-dispatch-request).
+
 ---
 
 ## Latest Updates (v2.278)
