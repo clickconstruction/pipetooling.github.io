@@ -7909,7 +7909,32 @@ export default function Bids() {
           )}
         </td>
         <td style={{ padding: '0.0625rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
-          {(bid as { bid_number?: string | null }).bid_number ? `B${(bid as { bid_number?: string | null }).bid_number}` : '-'}
+          {(() => {
+            const num = (bid as { bid_number?: string | null }).bid_number?.trim()
+            if (!num) return '-'
+            const label = `B${num}`
+            if (!bidPreview) return label
+            const a11y = `Preview bid ${label}`
+            return (
+              <button
+                type="button"
+                onClick={() => bidPreview.openBidPreviewFromBid(bid)}
+                title={a11y}
+                aria-label={a11y}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  color: '#3b82f6',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  font: 'inherit',
+                }}
+              >
+                {label}
+              </button>
+            )
+          })()}
         </td>
         <td style={{ padding: '0.0625rem', maxWidth: 200, whiteSpace: 'normal', wordBreak: 'break-word', textAlign: 'center' }}>
           {bid.project_name ?? '-'}
@@ -13002,10 +13027,13 @@ export default function Bids() {
                 style={{
                   display: 'flex',
                   flexWrap: 'wrap',
+                  flexDirection: narrowViewport640 ? 'column' : 'row',
                   alignItems: 'center',
-                  justifyContent: 'space-between',
+                  justifyContent: narrowViewport640 ? 'center' : 'space-between',
+                  alignContent: narrowViewport640 ? 'center' : undefined,
                   gap: '0.75rem',
                   marginBottom: '0.75rem',
+                  width: '100%',
                 }}
               >
                 <UnifiedBidCustomerNotesActionButtons
