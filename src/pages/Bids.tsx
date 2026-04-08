@@ -7131,6 +7131,18 @@ export default function Bids() {
     return bids.length
   }, [bids])
 
+  const workingBoardBids = useMemo(() => {
+    if (!authUser?.id) return []
+    return bids.filter(
+      (b) =>
+        (b.estimator_id === authUser.id || b.account_manager_id === authUser.id) &&
+        !b.bid_date_sent &&
+        b.outcome !== 'won' &&
+        b.outcome !== 'lost' &&
+        b.outcome !== 'started_or_complete'
+    )
+  }, [bids, authUser?.id])
+
   const submissionUnsent = filteredBidsForSubmission.filter((b) => !b.bid_date_sent && b.outcome !== 'won' && b.outcome !== 'lost' && b.outcome !== 'started_or_complete')
   const submissionPending = filteredBidsForSubmission.filter((b) => b.bid_date_sent && b.outcome !== 'won' && b.outcome !== 'lost' && b.outcome !== 'started_or_complete')
   const submissionWon = filteredBidsForSubmission
@@ -8427,11 +8439,12 @@ export default function Bids() {
       {activeTab === 'working' && authUser?.id ? (
         <div>
           <p style={{ margin: '0 0 0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
-            Drag unsent bids between columns. You see bids where you are Estimator or Account Man. New bids appear in Inbox until moved.
+            Drag unsent bids between columns. You see bids where you are Estimator or Account Man. New bids appear in Inbox until moved. Sent or
+            closed bids (won, lost, started/complete) stay on the Bid Board and Submission tabs.
           </p>
           <BidsWorkingBoard
             userId={authUser.id}
-            bids={bids}
+            bids={workingBoardBids}
             onLoadError={(m) => setError(m)}
             onMutatedNotes={() => { void loadBids() }}
             onMutatedNotesCustomer={() => { void loadCustomerContacts(); void loadBids() }}
