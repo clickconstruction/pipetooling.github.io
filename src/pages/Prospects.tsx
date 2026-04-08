@@ -1553,6 +1553,7 @@ export default function Prospects() {
           created_by: authUser.id,
           service_type_id: b.service_type_id,
           project_name: b.project_name.trim(),
+          materials_model: 'rough',
         })
         if (bidErr) throw new Error(`Failed to add bid: ${bidErr.message}`)
       }
