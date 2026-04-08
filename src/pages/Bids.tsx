@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -11,6 +11,11 @@ import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { formatCompactNoteDateTime } from '../utils/dateUtils'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { addExpandedPartsToPO, expandTemplate, getTemplatePartsPreview } from '../lib/materialPOUtils'
+import {
+  catalogUnitPricesEffectivelyEqual,
+  fetchLowestPartPrice,
+  fetchLowestPartPricesBatch,
+} from '../lib/materialPartCatalogPrice'
 import { decimalHoursToHhMm } from '../lib/format'
 import { loadTeamLaborDataForBids, type TeamLaborBidRow } from '../utils/teamLabor'
 import { useAuth } from '../hooks/useAuth'
@@ -163,6 +168,8 @@ type TakeoffRoughPartLineRow = {
   partId: string
   quantity: number
   unitPrice: number
+  /** When set, unit_price came from this catalog row; null after manual price edit. */
+  sourceMaterialPartPriceId: string | null
   sequenceOrder: number
   isSaved: boolean
 }
@@ -198,6 +205,8 @@ interface PartType {
   created_at: string
   updated_at: string
 }
+
+type RoughTakeoffMaterialPart = MaterialPart & { part_types?: PartType | null }
 
 // Extended types that include joined fixture_types data
 // Note: BidCountRow uses free text `fixture` field, not FK
@@ -1139,6 +1148,7 @@ export default function Bids() {
   const [countRows, setCountRows] = useState<BidCountRow[]>([])
   const [movingCountRow, setMovingCountRow] = useState(false)
   const countRowsSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
+  const roughPartLinesSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
   const [lastMovedId, setLastMovedId] = useState<string | null>(null)
   const [addingCountRow, setAddingCountRow] = useState(false)
   const [countsImportOpen, setCountsImportOpen] = useState(false)
@@ -1276,8 +1286,20 @@ export default function Bids() {
   const [takeoffCountRows, setTakeoffCountRows] = useState<BidCountRow[]>([])
   const [takeoffMappings, setTakeoffMappings] = useState<TakeoffMapping[]>([])
   const [takeoffRoughPartLines, setTakeoffRoughPartLines] = useState<TakeoffRoughPartLineRow[]>([])
+  const [reorderingRoughPartLine, setReorderingRoughPartLine] = useState(false)
+  const [takeoffRoughCatalogLowestByPartId, setTakeoffRoughCatalogLowestByPartId] = useState<
+    Record<string, { price: number; supplyHouseName: string }>
+  >({})
   const [takeoffRoughPartPickerLineId, setTakeoffRoughPartPickerLineId] = useState<string | null>(null)
   const [takeoffRoughPartSearchQuery, setTakeoffRoughPartSearchQuery] = useState('')
+  const [roughLineCatalogApplyModal, setRoughLineCatalogApplyModal] = useState<{
+    lineId: string
+    partName: string
+    unitPrice: number
+    rows: Array<{ id: string; label: string }>
+  } | null>(null)
+  const [roughLineCatalogApplyPriceId, setRoughLineCatalogApplyPriceId] = useState('')
+  const [roughLineCatalogApplySaving, setRoughLineCatalogApplySaving] = useState(false)
   const [materialsModelSwitchModal, setMaterialsModelSwitchModal] = useState<{
     open: boolean
     next: MaterialsModel | null
@@ -1352,6 +1374,7 @@ export default function Bids() {
 
   // Part Prices modal (check/modify prices from Add Assembly / Edit Assembly item rows)
   const [partPricesModal, setPartPricesModal] = useState<{ partId: string; partName: string } | null>(null)
+  const prevPartPricesModalRef = useRef<{ partId: string; partName: string } | null>(null)
   const [partPricesModalData, setPartPricesModalData] = useState<Array<{ price_id: string; supply_house_name: string; supply_house_id: string; price: number; website_url: string | null }> | 'loading' | null>(null)
   const [partPricesModalEditing, setPartPricesModalEditing] = useState<Record<string, string>>({})
   const [partPricesModalUpdating, setPartPricesModalUpdating] = useState<string | null>(null)
@@ -2122,6 +2145,7 @@ export default function Bids() {
         quantity: number
         unit_price: number
         sequence_order: number
+        source_material_part_price_id: string | null
       }>
       setTakeoffRoughPartLines(
         savedRough.map((r) => ({
@@ -2130,6 +2154,7 @@ export default function Bids() {
           partId: r.part_id,
           quantity: Number(r.quantity),
           unitPrice: Number(r.unit_price),
+          sourceMaterialPartPriceId: r.source_material_part_price_id ?? null,
           sequenceOrder: r.sequence_order,
           isSaved: true,
         }))
@@ -2572,7 +2597,7 @@ export default function Bids() {
         const lineId = takeoffRoughPartPickerLineId
         setTakeoffRoughPartPickerLineId(null)
         setTakeoffRoughPartSearchQuery('')
-        updateTakeoffRoughPartLine(lineId, { partId: part.id })
+        void setRoughPartLinePartAndCatalogPrice(lineId, part.id)
       } else {
         setTakeoffNewItemPartId(part.id)
         setTakeoffNewItemPartSearchQuery('')
@@ -4326,14 +4351,14 @@ export default function Bids() {
               const nm = escapeHtml(nameById.get(l.part_id) ?? l.part_id.slice(0, 8))
               const q = Number(l.quantity)
               const up = Number(l.unit_price)
-              return `<tr><td style="padding:0.25rem 0.5rem; border:1px solid #ccc">${nm}</td><td style="padding:0.25rem 0.5rem; text-align:center; border:1px solid #ccc">${q}</td><td style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">$${up.toFixed(2)}</td><td style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">$${(q * up).toFixed(2)}</td></tr>`
+              return `<tr><td style="padding:0.25rem 0.5rem; border:1px solid #ccc">${nm}</td><td style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">$${up.toFixed(2)}</td><td style="padding:0.25rem 0.5rem; text-align:center; border:1px solid #ccc">${q}</td><td style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">$${(q * up).toFixed(2)}</td></tr>`
             })
             .join('')
           return `
   <div class="po-section">
     <p style="margin:0 0 0.25rem; font-weight:600">${escapeHtml(cr.fixture ?? '—')} <span style="font-weight:400; color:#6b7280">(count ${Number(cr.count)})</span></p>
     <table style="width:100%; border-collapse:collapse; font-size:0.875rem">
-      <thead style="background:#f9fafb"><tr><th style="padding:0.25rem 0.5rem; text-align:left; border:1px solid #ccc">Part</th><th style="padding:0.25rem 0.5rem; text-align:center; border:1px solid #ccc">Qty</th><th style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">Unit</th><th style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">Total</th></tr></thead>
+      <thead style="background:#f9fafb"><tr><th style="padding:0.25rem 0.5rem; text-align:left; border:1px solid #ccc">Part</th><th style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">Unit</th><th style="padding:0.25rem 0.5rem; text-align:center; border:1px solid #ccc">Qty</th><th style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">Total</th></tr></thead>
       <tbody>${tr}</tbody>
     </table>
   </div>`
@@ -6214,6 +6239,7 @@ export default function Bids() {
     if (!selectedBidForTakeoff?.id || !line.partId.trim()) return
     const q = Math.max(0.0001, Number(line.quantity) || 0.0001)
     const up = Math.max(0, Number(line.unitPrice) || 0)
+    const src = line.sourceMaterialPartPriceId
     if (line.isSaved) {
       const { error } = await supabase
         .from('bids_takeoff_rough_part_lines')
@@ -6222,6 +6248,7 @@ export default function Bids() {
           quantity: q,
           unit_price: up,
           sequence_order: line.sequenceOrder,
+          source_material_part_price_id: src,
         })
         .eq('id', line.id)
       if (error) {
@@ -6238,6 +6265,7 @@ export default function Bids() {
           quantity: q,
           unit_price: up,
           sequence_order: line.sequenceOrder,
+          source_material_part_price_id: src,
         })
         .select('id')
         .single()
@@ -6253,7 +6281,126 @@ export default function Bids() {
     }
   }
 
-  function updateTakeoffRoughPartLine(lineId: string, updates: Partial<Pick<TakeoffRoughPartLineRow, 'partId' | 'quantity' | 'unitPrice' | 'sequenceOrder'>>) {
+  async function setRoughPartLinePartAndCatalogPrice(lineId: string, partId: string) {
+    let low: Awaited<ReturnType<typeof fetchLowestPartPrice>> = null
+    try {
+      low = await fetchLowestPartPrice(supabase, partId)
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Failed to load catalog price'), 'error')
+    }
+    const unitPrice = low != null ? low.price : 0
+    const sourceMaterialPartPriceId = low != null ? low.priceId : null
+    if (!low) {
+      showToast('No catalog price for this part. Add prices in Materials or use Catalog prices.', 'info')
+    }
+    setTakeoffRoughPartLines((prev) => {
+      const mapped = prev.map((l) =>
+        l.id === lineId ? { ...l, partId, unitPrice, sourceMaterialPartPriceId } : l
+      )
+      const line = mapped.find((l) => l.id === lineId)
+      if (line?.partId.trim()) {
+        queueMicrotask(() => {
+          void persistTakeoffRoughPartLine(line)
+        })
+      }
+      return mapped
+    })
+  }
+
+  async function resetRoughLineToCatalogPrice(lineId: string) {
+    const line = takeoffRoughPartLines.find((l) => l.id === lineId)
+    if (!line?.partId.trim()) return
+    let low: Awaited<ReturnType<typeof fetchLowestPartPrice>> = null
+    try {
+      low = await fetchLowestPartPrice(supabase, line.partId)
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Failed to load catalog price'), 'error')
+      return
+    }
+    if (!low) {
+      showToast('No catalog price to reset to.', 'info')
+      return
+    }
+    updateTakeoffRoughPartLine(lineId, {
+      unitPrice: low.price,
+      sourceMaterialPartPriceId: low.priceId,
+    })
+  }
+
+  async function openRoughLineCatalogApplyPicker(lineId: string) {
+    const line = takeoffRoughPartLines.find((l) => l.id === lineId)
+    if (!line?.partId.trim()) return
+    const partName = takeoffAddTemplateParts.find((p) => p.id === line.partId)?.name ?? 'Part'
+    const { data, error } = await supabase
+      .from('material_part_prices')
+      .select('id, price, supply_house_id, supply_houses(name)')
+      .eq('part_id', line.partId)
+      .order('price', { ascending: true })
+    if (error) {
+      showToast(formatErrorMessage(error, 'Failed to load catalog prices'), 'error')
+      return
+    }
+    const rows = (data ?? []).map(
+      (r: { id: string; price: number; supply_houses: { name?: string } | null }) => ({
+        id: r.id,
+        label: `${(r.supply_houses as { name?: string } | null)?.name ?? 'Supplier'} — $${Number(r.price).toFixed(2)}`,
+      })
+    )
+    if (rows.length === 0) {
+      showToast('No catalog prices for this part. Opening catalog prices.', 'info')
+      setPartPricesModal({ partId: line.partId, partName })
+      return
+    }
+    setRoughLineCatalogApplyPriceId(rows[0]!.id)
+    setRoughLineCatalogApplyModal({
+      lineId,
+      partName,
+      unitPrice: Math.max(0, Number(line.unitPrice) || 0),
+      rows,
+    })
+  }
+
+  async function confirmRoughLineCatalogApply() {
+    if (!roughLineCatalogApplyModal || !roughLineCatalogApplyPriceId) return
+    setRoughLineCatalogApplySaving(true)
+    try {
+      const priceRowId = roughLineCatalogApplyPriceId
+      await withSupabaseRetry(
+        async () =>
+          await supabase
+            .from('material_part_prices')
+            .update({ price: roughLineCatalogApplyModal.unitPrice })
+            .eq('id', priceRowId),
+        'apply rough line price to catalog'
+      )
+      updateTakeoffRoughPartLine(roughLineCatalogApplyModal.lineId, {
+        unitPrice: roughLineCatalogApplyModal.unitPrice,
+        sourceMaterialPartPriceId: priceRowId,
+      })
+      showToast('Catalog price updated.', 'success')
+      setRoughLineCatalogApplyModal(null)
+      setRoughLineCatalogApplyPriceId('')
+      if (
+        activeTab === 'takeoffs' &&
+        selectedBidForTakeoff?.id &&
+        normalizeMaterialsModel(selectedBidForTakeoff.materials_model) === 'rough'
+      ) {
+        const ids = Array.from(new Set(takeoffRoughPartLines.map((l) => l.partId.trim()).filter(Boolean)))
+        void refreshTakeoffRoughCatalogLowest(ids)
+      }
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Failed to update catalog'), 'error')
+    } finally {
+      setRoughLineCatalogApplySaving(false)
+    }
+  }
+
+  function updateTakeoffRoughPartLine(
+    lineId: string,
+    updates: Partial<
+      Pick<TakeoffRoughPartLineRow, 'partId' | 'quantity' | 'unitPrice' | 'sequenceOrder' | 'sourceMaterialPartPriceId'>
+    >
+  ) {
     setTakeoffRoughPartLines((prev) => {
       const mapped = prev.map((l) => (l.id === lineId ? { ...l, ...updates } : l))
       const line = mapped.find((l) => l.id === lineId)
@@ -6277,6 +6424,7 @@ export default function Bids() {
         partId: '',
         quantity: 1,
         unitPrice: 0,
+        sourceMaterialPartPriceId: null,
         sequenceOrder: maxSeq + 1,
         isSaved: false,
       },
@@ -6296,32 +6444,51 @@ export default function Bids() {
     }
   }
 
-  async function moveTakeoffRoughPartLine(lineId: string, delta: -1 | 1) {
-    const line = takeoffRoughPartLines.find((l) => l.id === lineId)
-    if (!line) return
-    const sameRow = takeoffRoughPartLines
-      .filter((l) => l.countRowId === line.countRowId)
+  async function handleRoughPartLinesDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id || reorderingRoughPartLine) return
+    const activeId = String(active.id)
+    const overId = String(over.id)
+    const activeLine = takeoffRoughPartLines.find((l) => l.id === activeId)
+    const overLine = takeoffRoughPartLines.find((l) => l.id === overId)
+    if (!activeLine || !overLine || activeLine.countRowId !== overLine.countRowId) return
+
+    const sorted = takeoffRoughPartLines
+      .filter((l) => l.countRowId === activeLine.countRowId)
       .sort((a, b) => a.sequenceOrder - b.sequenceOrder)
-    const idx = sameRow.findIndex((l) => l.id === lineId)
-    const j = idx + delta
-    if (idx < 0 || j < 0 || j >= sameRow.length) return
-    const a = sameRow[idx]!
-    const b = sameRow[j]!
-    const seqA = a.sequenceOrder
-    const seqB = b.sequenceOrder
-    setTakeoffRoughPartLines((prev) =>
-      prev.map((l) => {
-        if (l.id === a.id) return { ...l, sequenceOrder: seqB }
-        if (l.id === b.id) return { ...l, sequenceOrder: seqA }
-        return l
-      })
-    )
-    if (a.isSaved && b.isSaved) {
-      await supabase.from('bids_takeoff_rough_part_lines').update({ sequence_order: seqB }).eq('id', a.id)
-      await supabase.from('bids_takeoff_rough_part_lines').update({ sequence_order: seqA }).eq('id', b.id)
-    } else {
-      if (a.partId.trim()) void persistTakeoffRoughPartLine({ ...a, sequenceOrder: seqB })
-      if (b.partId.trim()) void persistTakeoffRoughPartLine({ ...b, sequenceOrder: seqA })
+    const oldIndex = sorted.findIndex((l) => l.id === activeId)
+    const newIndex = sorted.findIndex((l) => l.id === overId)
+    if (oldIndex < 0 || newIndex < 0) return
+
+    const reordered = arrayMove(sorted, oldIndex, newIndex)
+    const withSeq: TakeoffRoughPartLineRow[] = reordered.map((l, i) => ({ ...l, sequenceOrder: i }))
+
+    const prevSnapshot = takeoffRoughPartLines.map((l) => ({ ...l }))
+    setReorderingRoughPartLine(true)
+    setTakeoffRoughPartLines((prev) => {
+      const map = new Map(withSeq.map((l) => [l.id, l]))
+      return prev.map((l) => (map.has(l.id) ? map.get(l.id)! : l))
+    })
+    try {
+      const saved = withSeq.filter((l) => l.isSaved)
+      const unsavedWithPart = withSeq.filter((l) => !l.isSaved && l.partId.trim())
+      await Promise.all(
+        saved.map((l) =>
+          withSupabaseRetry(
+            async () =>
+              await supabase.from('bids_takeoff_rough_part_lines').update({ sequence_order: l.sequenceOrder }).eq('id', l.id),
+            'reorder rough part line'
+          )
+        )
+      )
+      for (const l of unsavedWithPart) {
+        await persistTakeoffRoughPartLine(l)
+      }
+    } catch (e) {
+      setTakeoffRoughPartLines(prevSnapshot)
+      showToast(formatErrorMessage(e, 'Failed to save line order'), 'error')
+    } finally {
+      setReorderingRoughPartLine(false)
     }
   }
 
@@ -6523,14 +6690,14 @@ export default function Bids() {
                 const q = Number(l.quantity)
                 const up = Number(l.unitPrice)
                 const tot = q * up
-                return `<tr><td style="padding:0.25rem 0.5rem; border:1px solid #ccc">${nm}</td><td style="padding:0.25rem 0.5rem; text-align:center; border:1px solid #ccc">${q}</td><td style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">$${up.toFixed(2)}</td><td style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">$${tot.toFixed(2)}</td></tr>`
+                return `<tr><td style="padding:0.25rem 0.5rem; border:1px solid #ccc">${nm}</td><td style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">$${up.toFixed(2)}</td><td style="padding:0.25rem 0.5rem; text-align:center; border:1px solid #ccc">${q}</td><td style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">$${tot.toFixed(2)}</td></tr>`
               })
               .join('')
             return `
           <div style="margin-bottom:1rem">
             <h3 style="margin:0.5rem 0 0.25rem 0; font-size:1rem">${escapeHtml(row.fixture ?? '—')} <span style="font-weight:400; color:#6b7280">(count ${Number(row.count)})</span></h3>
             <table style="width:100%; border-collapse:collapse; font-size:0.875rem; margin-left:0.5rem">
-              <thead style="background:#f9fafb"><tr><th style="padding:0.25rem 0.5rem; text-align:left; border:1px solid #ccc">Part</th><th style="padding:0.25rem 0.5rem; text-align:center; border:1px solid #ccc">Qty</th><th style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">Unit</th><th style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">Total</th></tr></thead>
+              <thead style="background:#f9fafb"><tr><th style="padding:0.25rem 0.5rem; text-align:left; border:1px solid #ccc">Part</th><th style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">Unit</th><th style="padding:0.25rem 0.5rem; text-align:center; border:1px solid #ccc">Qty</th><th style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">Total</th></tr></thead>
               <tbody>${body}</tbody>
             </table>
           </div>`
@@ -7010,6 +7177,73 @@ export default function Bids() {
     setDeletePricingVersionError(null)
   }, [selectedServiceTypeId])
 
+  const takeoffRoughCatalogLowestPartIdsKey = useMemo(() => {
+    if (activeTab !== 'takeoffs' || !selectedBidForTakeoff?.id) return ''
+    if (normalizeMaterialsModel(selectedBidForTakeoff.materials_model) !== 'rough') return ''
+    const ids = takeoffRoughPartLines.map((l) => l.partId.trim()).filter(Boolean)
+    return Array.from(new Set(ids)).sort().join(',')
+  }, [activeTab, selectedBidForTakeoff?.id, selectedBidForTakeoff?.materials_model, takeoffRoughPartLines])
+
+  const refreshTakeoffRoughCatalogLowest = useCallback(async (partIds: string[]) => {
+    const unique = Array.from(new Set(partIds.filter(Boolean)))
+    if (unique.length === 0) {
+      setTakeoffRoughCatalogLowestByPartId({})
+      return
+    }
+    try {
+      const map = await fetchLowestPartPricesBatch(supabase, unique)
+      const next: Record<string, { price: number; supplyHouseName: string }> = {}
+      for (const [pid, row] of map) {
+        next[pid] = { price: row.price, supplyHouseName: row.supplyHouseName }
+      }
+      setTakeoffRoughCatalogLowestByPartId(next)
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Failed to load catalog prices'), 'error')
+    }
+  }, [showToast])
+
+  useEffect(() => {
+    if (!takeoffRoughCatalogLowestPartIdsKey) {
+      setTakeoffRoughCatalogLowestByPartId({})
+      return
+    }
+    const ids = takeoffRoughCatalogLowestPartIdsKey.split(',').filter(Boolean)
+    let cancelled = false
+    void (async () => {
+      try {
+        const map = await fetchLowestPartPricesBatch(supabase, ids)
+        if (cancelled) return
+        const next: Record<string, { price: number; supplyHouseName: string }> = {}
+        for (const [pid, row] of map) {
+          next[pid] = { price: row.price, supplyHouseName: row.supplyHouseName }
+        }
+        setTakeoffRoughCatalogLowestByPartId(next)
+      } catch (e) {
+        if (!cancelled) showToast(formatErrorMessage(e, 'Failed to load catalog prices'), 'error')
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [takeoffRoughCatalogLowestPartIdsKey, showToast])
+
+  useEffect(() => {
+    const prev = prevPartPricesModalRef.current
+    prevPartPricesModalRef.current = partPricesModal
+    if (prev == null || partPricesModal != null) return
+    if (activeTab !== 'takeoffs' || !selectedBidForTakeoff?.id) return
+    if (normalizeMaterialsModel(selectedBidForTakeoff.materials_model) !== 'rough') return
+    if (!takeoffRoughCatalogLowestPartIdsKey) return
+    void refreshTakeoffRoughCatalogLowest(takeoffRoughCatalogLowestPartIdsKey.split(',').filter(Boolean))
+  }, [
+    partPricesModal,
+    activeTab,
+    selectedBidForTakeoff?.id,
+    selectedBidForTakeoff?.materials_model,
+    takeoffRoughCatalogLowestPartIdsKey,
+    refreshTakeoffRoughCatalogLowest,
+  ])
+
   useEffect(() => {
     if (selectedBidForCounts?.id) loadCountRows(selectedBidForCounts.id)
     else setCountRows([])
@@ -7021,6 +7255,7 @@ export default function Bids() {
       setTakeoffCountRows([])
       setTakeoffMappings([])
       setTakeoffRoughPartLines([])
+      setTakeoffRoughCatalogLowestByPartId({})
     }
   }, [selectedBidForTakeoff?.id, selectedBidForTakeoff?.materials_model, activeTab])
 
@@ -10390,9 +10625,13 @@ export default function Bids() {
                   </>
                   ) : (
                   <>
-                  <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
-                    Rough takeoff: add material parts per fixture with quantity and unit price (no stage). Extended costs feed Cost Estimate and Pricing (Cost Model).
-                  </p>
+                  <DndContext
+                    sensors={roughPartLinesSensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={(e) => {
+                      void handleRoughPartLinesDragEnd(e)
+                    }}
+                  >
                   <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead style={{ background: '#f9fafb' }}>
@@ -10400,10 +10639,36 @@ export default function Bids() {
                           <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture or Tie-in</th>
                           <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Count</th>
                           <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Part</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Qty</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Unit price</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Line total</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Order</th>
+                          <th
+                            style={{
+                              padding: '0.75rem',
+                              paddingLeft: 'calc(0.75rem + 0.35rem)',
+                              textAlign: 'left',
+                              borderBottom: '1px solid #e5e7eb',
+                            }}
+                          >
+                            Unit price
+                          </th>
+                          <th
+                            style={{
+                              padding: '0.35rem 0.05rem 0.35rem 0.5rem',
+                              textAlign: 'center',
+                              borderBottom: '1px solid #e5e7eb',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            Qty
+                          </th>
+                          <th
+                            style={{
+                              padding: '0.35rem 0.5rem 0.35rem 0.05rem',
+                              textAlign: 'right',
+                              borderBottom: '1px solid #e5e7eb',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            Line total
+                          </th>
                           <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
                         </tr>
                       </thead>
@@ -10418,7 +10683,7 @@ export default function Bids() {
                                 <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
                                   <td style={{ padding: '0.75rem' }}>{row.fixture ?? ''}</td>
                                   <td style={{ padding: '0.75rem', textAlign: 'center' }}>{Number(row.count)}</td>
-                                  <td colSpan={6} style={{ padding: '0.75rem' }}>
+                                  <td colSpan={5} style={{ padding: '0.75rem' }}>
                                     <button
                                       type="button"
                                       onClick={() => addTakeoffRoughPartLine(row.id)}
@@ -10429,186 +10694,36 @@ export default function Bids() {
                                   </td>
                                 </tr>
                               ) : (
-                                linesForRow.map((line, lineIdx) => {
-                                  const lineTotal = Number(line.quantity) * Number(line.unitPrice)
-                                  const partName = line.partId
-                                    ? (takeoffAddTemplateParts.find((p) => p.id === line.partId)?.name ?? '')
-                                    : ''
-                                  return (
-                                    <tr key={line.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                                      <td style={{ padding: '0.75rem' }}>{lineIdx === 0 ? row.fixture ?? '' : ''}</td>
-                                      <td style={{ padding: '0.75rem', textAlign: 'center' }}>{lineIdx === 0 ? Number(row.count) : ''}</td>
-                                      <td style={{ padding: '0.75rem', minWidth: 200 }}>
-                                        <div style={{ position: 'relative' }}>
-                                          <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-                                            <input
-                                              type="text"
-                                              value={
-                                                takeoffRoughPartPickerLineId === line.id
-                                                  ? takeoffRoughPartSearchQuery
-                                                  : partName
-                                              }
-                                              onChange={(e) => setTakeoffRoughPartSearchQuery(e.target.value)}
-                                              onFocus={() => {
-                                                setTakeoffRoughPartPickerLineId(line.id)
-                                                setTakeoffRoughPartSearchQuery('')
-                                              }}
-                                              onBlur={() => setTimeout(() => setTakeoffRoughPartPickerLineId(null), 150)}
-                                              onKeyDown={(e) => {
-                                                if (e.key === 'Escape') setTakeoffRoughPartPickerLineId(null)
-                                              }}
-                                              readOnly={takeoffRoughPartPickerLineId !== line.id && !!line.partId}
-                                              placeholder="Search parts…"
-                                              style={{
-                                                flex: 1,
-                                                padding: '0.5rem',
-                                                border: '1px solid #d1d5db',
-                                                borderRadius: 4,
-                                                background: takeoffRoughPartPickerLineId !== line.id && line.partId ? '#f3f4f6' : undefined,
-                                              }}
-                                            />
-                                            {line.partId && takeoffRoughPartPickerLineId !== line.id ? (
-                                              <button
-                                                type="button"
-                                                onClick={() => {
-                                                  setTakeoffRoughPartPickerLineId(line.id)
-                                                  setTakeoffRoughPartSearchQuery('')
-                                                }}
-                                                style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer', fontSize: '0.75rem' }}
-                                              >
-                                                Change
-                                              </button>
-                                            ) : null}
-                                          </div>
-                                          {takeoffRoughPartPickerLineId === line.id && (
-                                            <ul
-                                              style={{
-                                                position: 'absolute',
-                                                left: 0,
-                                                right: 0,
-                                                top: '100%',
-                                                margin: 0,
-                                                marginTop: 2,
-                                                padding: 0,
-                                                listStyle: 'none',
-                                                maxHeight: 220,
-                                                overflowY: 'auto',
-                                                border: '1px solid #d1d5db',
-                                                borderRadius: 4,
-                                                background: '#fff',
-                                                zIndex: 50,
-                                                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                                              }}
-                                            >
-                                              {takeoffAddTemplateParts.length === 0 ? (
-                                                <li style={{ padding: '0.75rem', color: '#6b7280' }}>Loading parts…</li>
-                                              ) : filterPartsByQuery(takeoffAddTemplateParts, takeoffRoughPartSearchQuery).length === 0 ? (
-                                                <li style={{ padding: '0.75rem', color: '#6b7280' }}>
-                                                  No parts match.{' '}
-                                                  <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                      setBidsPartFormInitialName(takeoffRoughPartSearchQuery.trim())
-                                                      setBidsPartFormOpen(true)
-                                                      setTakeoffRoughPartPickerLineId(line.id)
-                                                    }}
-                                                    style={{ marginLeft: '0.25rem', padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-                                                  >
-                                                    Add Part
-                                                  </button>
-                                                </li>
-                                              ) : (
-                                                filterPartsByQuery(takeoffAddTemplateParts, takeoffRoughPartSearchQuery).map((p) => (
-                                                  <li
-                                                    key={p.id}
-                                                    onMouseDown={(e) => e.preventDefault()}
-                                                    onClick={() => {
-                                                      updateTakeoffRoughPartLine(line.id, { partId: p.id })
-                                                      setTakeoffRoughPartPickerLineId(null)
-                                                      setTakeoffRoughPartSearchQuery('')
-                                                    }}
-                                                    style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}
-                                                  >
-                                                    <div style={{ fontWeight: 500 }}>{p.name}</div>
-                                                    {(p.manufacturer || p.part_types?.name) && (
-                                                      <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                                                        {[p.manufacturer, (p.part_types as { name?: string } | null)?.name].filter(Boolean).join(' · ')}
-                                                      </div>
-                                                    )}
-                                                  </li>
-                                                ))
-                                              )}
-                                            </ul>
-                                          )}
-                                        </div>
-                                      </td>
-                                      <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                                        <input
-                                          type="number"
-                                          min={0.0001}
-                                          step="any"
-                                          value={line.quantity}
-                                          onChange={(e) =>
-                                            updateTakeoffRoughPartLine(line.id, {
-                                              quantity: parseFloat(e.target.value) || 0.0001,
-                                            })
-                                          }
-                                          style={{ width: 72, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
-                                        />
-                                      </td>
-                                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                                        <input
-                                          type="number"
-                                          min={0}
-                                          step={0.01}
-                                          value={line.unitPrice}
-                                          onChange={(e) =>
-                                            updateTakeoffRoughPartLine(line.id, {
-                                              unitPrice: parseFloat(e.target.value) || 0,
-                                            })
-                                          }
-                                          onWheel={(e) => e.currentTarget.blur()}
-                                          style={{ width: 88, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'right' }}
-                                        />
-                                      </td>
-                                      <td style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem' }}>${lineTotal.toFixed(2)}</td>
-                                      <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                                        <button
-                                          type="button"
-                                          title="Move up"
-                                          onClick={() => void moveTakeoffRoughPartLine(line.id, -1)}
-                                          disabled={lineIdx === 0}
-                                          style={{ padding: '0.15rem 0.35rem', marginRight: 2, cursor: lineIdx === 0 ? 'not-allowed' : 'pointer' }}
-                                        >
-                                          ↑
-                                        </button>
-                                        <button
-                                          type="button"
-                                          title="Move down"
-                                          onClick={() => void moveTakeoffRoughPartLine(line.id, 1)}
-                                          disabled={lineIdx >= linesForRow.length - 1}
-                                          style={{ padding: '0.15rem 0.35rem', cursor: lineIdx >= linesForRow.length - 1 ? 'not-allowed' : 'pointer' }}
-                                        >
-                                          ↓
-                                        </button>
-                                      </td>
-                                      <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                                        <button
-                                          type="button"
-                                          onClick={() => void removeTakeoffRoughPartLine(line.id)}
-                                          style={{ padding: '0.25rem 0.5rem', background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
-                                        >
-                                          Remove
-                                        </button>
-                                      </td>
-                                    </tr>
-                                  )
-                                })
+                                <SortableContext items={linesForRow.map((l) => l.id)} strategy={verticalListSortingStrategy}>
+                                  {linesForRow.map((line, lineIdx) => (
+                                    <SortableRoughPartLineRow
+                                      key={line.id}
+                                      line={line}
+                                      lineIdx={lineIdx}
+                                      row={row}
+                                      takeoffAddTemplateParts={takeoffAddTemplateParts}
+                                      takeoffRoughPartPickerLineId={takeoffRoughPartPickerLineId}
+                                      setTakeoffRoughPartPickerLineId={setTakeoffRoughPartPickerLineId}
+                                      takeoffRoughPartSearchQuery={takeoffRoughPartSearchQuery}
+                                      setTakeoffRoughPartSearchQuery={setTakeoffRoughPartSearchQuery}
+                                      takeoffRoughCatalogLowestByPartId={takeoffRoughCatalogLowestByPartId}
+                                      setRoughPartLinePartAndCatalogPrice={setRoughPartLinePartAndCatalogPrice}
+                                      updateTakeoffRoughPartLine={updateTakeoffRoughPartLine}
+                                      resetRoughLineToCatalogPrice={resetRoughLineToCatalogPrice}
+                                      setPartPricesModal={setPartPricesModal}
+                                      openRoughLineCatalogApplyPicker={openRoughLineCatalogApplyPicker}
+                                      removeTakeoffRoughPartLine={removeTakeoffRoughPartLine}
+                                      setBidsPartFormInitialName={setBidsPartFormInitialName}
+                                      setBidsPartFormOpen={setBidsPartFormOpen}
+                                      filterPartsByQuery={filterPartsByQuery}
+                                    />
+                                  ))}
+                                </SortableContext>
                               )}
                               {linesForRow.length > 0 ? (
                                 <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
                                   <td style={{ padding: '0.75rem' }} colSpan={2} />
-                                  <td colSpan={6} style={{ padding: '0.75rem' }}>
+                                  <td colSpan={5} style={{ padding: '0.75rem' }}>
                                     <button
                                       type="button"
                                       onClick={() => addTakeoffRoughPartLine(row.id)}
@@ -10625,6 +10740,7 @@ export default function Bids() {
                       </tbody>
                     </table>
                   </div>
+                  </DndContext>
                   <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginTop: '1rem', flexWrap: 'wrap' }}>
                     <button
                       type="button"
@@ -16959,8 +17075,492 @@ We saw some structural issues with your plans and I wanted to get clarity...
           </div>
         </div>
       )}
+
+      {roughLineCatalogApplyModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1210,
+          }}
+          onClick={() => {
+            if (roughLineCatalogApplySaving) return
+            setRoughLineCatalogApplyModal(null)
+            setRoughLineCatalogApplyPriceId('')
+          }}
+        >
+          <div
+            style={{
+              background: 'white',
+              padding: '1.5rem',
+              borderRadius: 8,
+              maxWidth: 420,
+              width: '90%',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem' }}>Apply line price to catalog</h3>
+            <p style={{ margin: '0 0 0.35rem', fontSize: '0.875rem', color: '#374151' }}>
+              <strong>{roughLineCatalogApplyModal.partName}</strong>
+            </p>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+              Set the selected supplier row to{' '}
+              <strong>${roughLineCatalogApplyModal.unitPrice.toFixed(2)}</strong> (this bid line stays linked to that row).
+            </p>
+            <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.35rem' }}>
+              Catalog row
+            </label>
+            <select
+              value={roughLineCatalogApplyPriceId}
+              onChange={(e) => setRoughLineCatalogApplyPriceId(e.target.value)}
+              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem' }}
+            >
+              {roughLineCatalogApplyModal.rows.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.label}
+                </option>
+              ))}
+            </select>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                disabled={roughLineCatalogApplySaving}
+                onClick={() => {
+                  setRoughLineCatalogApplyModal(null)
+                  setRoughLineCatalogApplyPriceId('')
+                }}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: '#f3f4f6',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  cursor: roughLineCatalogApplySaving ? 'wait' : 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!roughLineCatalogApplyPriceId || roughLineCatalogApplySaving}
+                onClick={() => void confirmRoughLineCatalogApply()}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: roughLineCatalogApplyPriceId && !roughLineCatalogApplySaving ? '#059669' : '#d1d5db',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: roughLineCatalogApplyPriceId && !roughLineCatalogApplySaving ? 'pointer' : 'not-allowed',
+                }}
+              >
+                {roughLineCatalogApplySaving ? 'Saving…' : 'Apply'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
     </>
+  )
+}
+
+function SortableRoughPartLineRow({
+  line,
+  lineIdx,
+  row,
+  takeoffAddTemplateParts,
+  takeoffRoughPartPickerLineId,
+  setTakeoffRoughPartPickerLineId,
+  takeoffRoughPartSearchQuery,
+  setTakeoffRoughPartSearchQuery,
+  takeoffRoughCatalogLowestByPartId,
+  setRoughPartLinePartAndCatalogPrice,
+  updateTakeoffRoughPartLine,
+  resetRoughLineToCatalogPrice,
+  setPartPricesModal,
+  openRoughLineCatalogApplyPicker,
+  removeTakeoffRoughPartLine,
+  setBidsPartFormInitialName,
+  setBidsPartFormOpen,
+  filterPartsByQuery,
+}: {
+  line: TakeoffRoughPartLineRow
+  lineIdx: number
+  row: BidCountRow
+  takeoffAddTemplateParts: RoughTakeoffMaterialPart[]
+  takeoffRoughPartPickerLineId: string | null
+  setTakeoffRoughPartPickerLineId: (id: string | null) => void
+  takeoffRoughPartSearchQuery: string
+  setTakeoffRoughPartSearchQuery: (q: string) => void
+  takeoffRoughCatalogLowestByPartId: Record<string, { price: number; supplyHouseName: string }>
+  setRoughPartLinePartAndCatalogPrice: (lineId: string, partId: string) => void | Promise<void>
+  updateTakeoffRoughPartLine: (
+    lineId: string,
+    updates: Partial<
+      Pick<TakeoffRoughPartLineRow, 'partId' | 'quantity' | 'unitPrice' | 'sequenceOrder' | 'sourceMaterialPartPriceId'>
+    >
+  ) => void
+  resetRoughLineToCatalogPrice: (lineId: string) => void | Promise<void>
+  setPartPricesModal: (v: { partId: string; partName: string } | null) => void
+  openRoughLineCatalogApplyPicker: (lineId: string) => void | Promise<void>
+  removeTakeoffRoughPartLine: (lineId: string) => void | Promise<void>
+  setBidsPartFormInitialName: (s: string) => void
+  setBidsPartFormOpen: (open: boolean) => void
+  filterPartsByQuery: (parts: RoughTakeoffMaterialPart[], query: string, limit?: number) => RoughTakeoffMaterialPart[]
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: line.id })
+  const lineTotal = Number(line.quantity) * Number(line.unitPrice)
+  const partName = line.partId ? (takeoffAddTemplateParts.find((p) => p.id === line.partId)?.name ?? '') : ''
+  const roughCatalogLow = line.partId ? takeoffRoughCatalogLowestByPartId[line.partId] : undefined
+  const roughMatchesLowest =
+    roughCatalogLow != null && catalogUnitPricesEffectivelyEqual(line.unitPrice, roughCatalogLow.price)
+  return (
+    <tr
+      ref={setNodeRef}
+      style={{
+        borderBottom: '1px solid #e5e7eb',
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+      }}
+    >
+      <td style={{ padding: '0.75rem' }}>{lineIdx === 0 ? row.fixture ?? '' : ''}</td>
+      <td style={{ padding: '0.75rem', textAlign: 'center' }}>{lineIdx === 0 ? Number(row.count) : ''}</td>
+      <td style={{ padding: '0.75rem', minWidth: 200 }}>
+        <div style={{ position: 'relative' }}>
+          <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+            <input
+              type="text"
+              value={takeoffRoughPartPickerLineId === line.id ? takeoffRoughPartSearchQuery : partName}
+              onChange={(e) => setTakeoffRoughPartSearchQuery(e.target.value)}
+              onFocus={() => {
+                setTakeoffRoughPartPickerLineId(line.id)
+                setTakeoffRoughPartSearchQuery('')
+              }}
+              onBlur={() => setTimeout(() => setTakeoffRoughPartPickerLineId(null), 150)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') setTakeoffRoughPartPickerLineId(null)
+              }}
+              readOnly={takeoffRoughPartPickerLineId !== line.id && !!line.partId}
+              placeholder="Search parts…"
+              style={{
+                flex: 1,
+                padding: '0.5rem',
+                border: '1px solid #d1d5db',
+                borderRadius: 4,
+                background: takeoffRoughPartPickerLineId !== line.id && line.partId ? '#f3f4f6' : undefined,
+              }}
+            />
+          </div>
+          {takeoffRoughPartPickerLineId === line.id && (
+            <ul
+              style={{
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                top: '100%',
+                margin: 0,
+                marginTop: 2,
+                padding: 0,
+                listStyle: 'none',
+                maxHeight: 220,
+                overflowY: 'auto',
+                border: '1px solid #d1d5db',
+                borderRadius: 4,
+                background: '#fff',
+                zIndex: 50,
+                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+              }}
+            >
+              {takeoffAddTemplateParts.length === 0 ? (
+                <li style={{ padding: '0.75rem', color: '#6b7280' }}>Loading parts…</li>
+              ) : filterPartsByQuery(takeoffAddTemplateParts, takeoffRoughPartSearchQuery).length === 0 ? (
+                <li style={{ padding: '0.75rem', color: '#6b7280' }}>
+                  No parts match.{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBidsPartFormInitialName(takeoffRoughPartSearchQuery.trim())
+                      setBidsPartFormOpen(true)
+                      setTakeoffRoughPartPickerLineId(line.id)
+                    }}
+                    style={{
+                      marginLeft: '0.25rem',
+                      padding: '0.25rem 0.5rem',
+                      background: '#3b82f6',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      fontWeight: 500,
+                    }}
+                  >
+                    Add Part
+                  </button>
+                </li>
+              ) : (
+                filterPartsByQuery(takeoffAddTemplateParts, takeoffRoughPartSearchQuery).map((p) => (
+                  <li
+                    key={p.id}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      void setRoughPartLinePartAndCatalogPrice(line.id, p.id)
+                      setTakeoffRoughPartPickerLineId(null)
+                      setTakeoffRoughPartSearchQuery('')
+                    }}
+                    style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}
+                  >
+                    <div style={{ fontWeight: 500 }}>{p.name}</div>
+                    {(p.manufacturer || p.part_types?.name) && (
+                      <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                        {[p.manufacturer, p.part_types?.name].filter(Boolean).join(' · ')}
+                      </div>
+                    )}
+                  </li>
+                ))
+              )}
+            </ul>
+          )}
+        </div>
+      </td>
+      <td style={{ padding: '0.75rem', textAlign: 'left', verticalAlign: 'top' }}>
+        {!line.partId ? (
+          <input
+            type="number"
+            min={0}
+            step={0.01}
+            value={line.unitPrice}
+            onChange={(e) =>
+              updateTakeoffRoughPartLine(line.id, {
+                unitPrice: parseFloat(e.target.value) || 0,
+                sourceMaterialPartPriceId: null,
+              })
+            }
+            onWheel={(e) => e.currentTarget.blur()}
+            style={{ width: 88, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'right' }}
+          />
+        ) : (
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-start',
+              gap: '0.25rem',
+              maxWidth: '100%',
+              paddingLeft: '0.35rem',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                alignItems: 'flex-start',
+                justifyContent: 'flex-start',
+                gap: '0.35rem',
+              }}
+            >
+              <input
+                type="number"
+                min={0}
+                step={0.01}
+                value={line.unitPrice}
+                onChange={(e) =>
+                  updateTakeoffRoughPartLine(line.id, {
+                    unitPrice: parseFloat(e.target.value) || 0,
+                    sourceMaterialPartPriceId: null,
+                  })
+                }
+                onWheel={(e) => e.currentTarget.blur()}
+                style={{ width: 88, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'right' }}
+              />
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  gap: '0.25rem',
+                }}
+              >
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => void resetRoughLineToCatalogPrice(line.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      void resetRoughLineToCatalogPrice(line.id)
+                    }
+                  }}
+                  style={{
+                    fontSize: '0.7rem',
+                    color: '#4b5563',
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    textUnderlineOffset: '2px',
+                    textAlign: 'left',
+                  }}
+                >
+                  Reset to catalog
+                </span>
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={() =>
+                    setPartPricesModal({
+                      partId: line.partId,
+                      partName: takeoffAddTemplateParts.find((p) => p.id === line.partId)?.name ?? 'Part',
+                    })
+                  }
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      setPartPricesModal({
+                        partId: line.partId,
+                        partName: takeoffAddTemplateParts.find((p) => p.id === line.partId)?.name ?? 'Part',
+                      })
+                    }
+                  }}
+                  style={{
+                    fontSize: '0.7rem',
+                    color: '#1d4ed8',
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    textUnderlineOffset: '2px',
+                    textAlign: 'left',
+                  }}
+                >
+                  Catalog prices
+                </span>
+                {!line.sourceMaterialPartPriceId ? (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => void openRoughLineCatalogApplyPicker(line.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        void openRoughLineCatalogApplyPicker(line.id)
+                      }
+                    }}
+                    style={{
+                      fontSize: '0.7rem',
+                      color: '#4b5563',
+                      cursor: 'pointer',
+                      textDecoration: 'underline',
+                      textUnderlineOffset: '2px',
+                      textAlign: 'left',
+                      maxWidth: '12rem',
+                    }}
+                  >
+                    Apply line price to catalog…
+                  </span>
+                ) : null}
+              </div>
+            </div>
+            {roughMatchesLowest && roughCatalogLow ? (
+              <span
+                title={`lowest: ${roughCatalogLow.supplyHouseName}`}
+                style={{
+                  fontSize: '0.7rem',
+                  color: '#059669',
+                  maxWidth: '100%',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  textAlign: 'left',
+                }}
+              >
+                lowest: {roughCatalogLow.supplyHouseName}
+              </span>
+            ) : !roughCatalogLow ? (
+              <span style={{ fontSize: '0.7rem', color: '#6b7280', textAlign: 'left' }}>No catalog price</span>
+            ) : (
+              <span style={{ fontSize: '0.7rem', color: '#92400e', textAlign: 'left' }}>Bid override</span>
+            )}
+          </div>
+        )}
+      </td>
+      <td style={{ padding: '0.35rem 0.05rem 0.35rem 0.5rem', textAlign: 'center', verticalAlign: 'middle' }}>
+        <input
+          type="number"
+          className="no-spinner rough-takeoff-qty-input"
+          min={0.0001}
+          step="any"
+          value={line.quantity}
+          onChange={(e) =>
+            updateTakeoffRoughPartLine(line.id, {
+              quantity: parseFloat(e.target.value) || 0.0001,
+            })
+          }
+          style={{ width: 56, maxWidth: '100%' }}
+        />
+      </td>
+      <td
+        style={{
+          padding: '0.35rem 0.5rem 0.35rem 0.05rem',
+          textAlign: 'right',
+          fontSize: '0.875rem',
+          verticalAlign: 'middle',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        ${lineTotal.toFixed(2)}
+      </td>
+      <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            {...attributes}
+            {...listeners}
+            title="Drag to reorder"
+            aria-label="Drag to reorder"
+            style={{
+              padding: '0.35rem',
+              cursor: 'grab',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: '#fff',
+              border: '1px solid #e5e7eb',
+              borderRadius: 4,
+              color: '#6b7280',
+              lineHeight: 0,
+            }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} fill="currentColor" aria-hidden>
+              <path d="M342.6 41.4C330.1 28.9 309.8 28.9 297.3 41.4L201.3 137.4C188.8 149.9 188.8 170.2 201.3 182.7C213.8 195.2 234.1 195.2 246.6 182.7L288 141.3L288 498.7L246.6 457.4C234.1 444.9 213.8 444.9 201.3 457.4C188.8 469.9 188.8 490.2 201.3 502.7L297.3 598.7C303.3 604.7 311.4 608.1 319.9 608.1C328.4 608.1 336.5 604.7 342.5 598.7L438.5 502.7C451 490.2 451 469.9 438.5 457.4C426 444.9 405.7 444.9 393.2 457.4L351.8 498.8L351.8 141.3L393.2 182.7C405.7 195.2 426 195.2 438.5 182.7C451 170.2 451 149.9 438.5 137.4L342.5 41.4z" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            title="Remove"
+            aria-label="Remove part line"
+            onClick={() => void removeTakeoffRoughPartLine(line.id)}
+            style={{
+              padding: '0.35rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: '#fef2f2',
+              color: '#b91c1c',
+              border: '1px solid #fecaca',
+              borderRadius: 4,
+              cursor: 'pointer',
+              lineHeight: 0,
+            }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} fill="currentColor" aria-hidden>
+              <path d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z" />
+            </svg>
+          </button>
+        </div>
+      </td>
+    </tr>
   )
 }
 

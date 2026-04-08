@@ -701,6 +701,74 @@ export type Database = {
           },
         ]
       }
+      bids_takeoff_rough_part_lines: {
+        Row: {
+          bid_id: string
+          count_row_id: string
+          created_at: string | null
+          id: string
+          part_id: string
+          quantity: number
+          sequence_order: number
+          source_material_part_price_id: string | null
+          unit_price: number
+          updated_at: string | null
+        }
+        Insert: {
+          bid_id: string
+          count_row_id: string
+          created_at?: string | null
+          id?: string
+          part_id: string
+          quantity?: number
+          sequence_order?: number
+          source_material_part_price_id?: string | null
+          unit_price?: number
+          updated_at?: string | null
+        }
+        Update: {
+          bid_id?: string
+          count_row_id?: string
+          created_at?: string | null
+          id?: string
+          part_id?: string
+          quantity?: number
+          sequence_order?: number
+          source_material_part_price_id?: string | null
+          unit_price?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bids_takeoff_rough_part_lines_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_takeoff_rough_part_lines_count_row_id_fkey"
+            columns: ["count_row_id"]
+            isOneToOne: false
+            referencedRelation: "bids_count_rows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_takeoff_rough_part_lines_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "material_parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_takeoff_rough_part_lines_source_material_part_price_i_fkey"
+            columns: ["source_material_part_price_id"]
+            isOneToOne: false
+            referencedRelation: "material_part_prices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bids_takeoff_template_mappings: {
         Row: {
           bid_id: string
@@ -755,64 +823,6 @@ export type Database = {
             columns: ["template_id"]
             isOneToOne: false
             referencedRelation: "material_templates"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      bids_takeoff_rough_part_lines: {
-        Row: {
-          bid_id: string
-          count_row_id: string
-          created_at: string | null
-          id: string
-          part_id: string
-          quantity: number
-          sequence_order: number
-          unit_price: number
-          updated_at: string | null
-        }
-        Insert: {
-          bid_id: string
-          count_row_id: string
-          created_at?: string | null
-          id?: string
-          part_id: string
-          quantity?: number
-          sequence_order?: number
-          unit_price?: number
-          updated_at?: string | null
-        }
-        Update: {
-          bid_id?: string
-          count_row_id?: string
-          created_at?: string | null
-          id?: string
-          part_id?: string
-          quantity?: number
-          sequence_order?: number
-          unit_price?: number
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "bids_takeoff_rough_part_lines_bid_id_fkey"
-            columns: ["bid_id"]
-            isOneToOne: false
-            referencedRelation: "bids"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "bids_takeoff_rough_part_lines_count_row_id_fkey"
-            columns: ["count_row_id"]
-            isOneToOne: false
-            referencedRelation: "bids_count_rows"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "bids_takeoff_rough_part_lines_part_id_fkey"
-            columns: ["part_id"]
-            isOneToOne: false
-            referencedRelation: "material_parts"
             referencedColumns: ["id"]
           },
         ]

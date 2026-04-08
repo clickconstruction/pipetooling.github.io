@@ -1218,6 +1218,18 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Dashboard, BilledAwaitingPaymentSection use this instead of direct `jobs_ledger` fetches
 - **Category**: Database / RLS Hardening
 
+**`20260408180831_bids_materials_model_and_rough_part_lines.sql`**
+- **Purpose**: Bid-level Exact vs Rough materials mode and rough takeoff part lines table
+- **Changes**: `bids.materials_model`; `bids_takeoff_rough_part_lines` with RLS (short policy names)
+- **Impact**: Takeoffs / CE / Pricing rough path; see RECENT_FEATURES v2.280 for catalog price link migration
+- **Category**: Bids / Materials
+
+**`20260408192820_rough_takeoff_line_catalog_price_source.sql`**
+- **Purpose**: Track which `material_part_prices` row defaulted a rough line’s `unit_price`
+- **Changes**: `bids_takeoff_rough_part_lines.source_material_part_price_id` nullable FK to `material_part_prices` ON DELETE SET NULL
+- **Impact**: Reset to catalog, save line price to catalog row; cleared on manual unit price override
+- **Category**: Bids / Materials
+
 ### March 2026
 
 #### March 10, 2026

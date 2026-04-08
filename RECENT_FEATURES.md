@@ -12,9 +12,12 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.279 → v2.4"
+version_range: "v2.280 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.280)"
+    line: ~851
+    description: "Bids Rough takeoffs: unit price from lowest material_part_prices, source row on line, reset/save to catalog; migration source_material_part_price_id"
   - name: "Latest Version (v2.279)"
     line: ~847
     description: "Bids Bid Preview from B# (workflow + Bid Board); Submission notes toolbar + mobile center; notify-dispatch-request verify_jwt in config"
@@ -664,6 +667,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.280 — Bids Rough takeoffs: catalog unit price, source row, reset / save to catalog](#latest-updates-v2280)
 **New:** [v2.278 — Job Detail: Job Files/Plans when set; numbered Specific Work](#latest-updates-v2278)
 **New:** [v2.277 — Job Detail: stacked Edit Job, materials accordions, Mercury Card column, Other job charges](#latest-updates-v2277)
 **New:** [v2.276 — DetailJobModal: three dates, pipeline, 640px layout, notes chrome](#latest-updates-v2276)
@@ -846,6 +850,19 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.280)
+
+**Date**: 2026-04-08
+
+### Bids Takeoffs — **Rough** unit price from catalog (`material_part_prices`); override; push to catalog
+
+- **Default**: Choosing a part on a rough takeoff line fills **unit price** from the **lowest** `material_part_prices.price` for that part (same rule as PO expansion in **[`materialPOUtils.ts`](src/lib/materialPOUtils.ts)**). Helper **[`fetchLowestPartPrice`](src/lib/materialPartCatalogPrice.ts)** / **`fetchLowestPartPricesBatch`** use **`withSupabaseRetry`**.
+- **Persistence**: Migration **[`20260408192820_rough_takeoff_line_catalog_price_source.sql`](supabase/migrations/20260408192820_rough_takeoff_line_catalog_price_source.sql)** adds nullable **`source_material_part_price_id`** on **`bids_takeoff_rough_part_lines`** — set when the price came from that catalog row; **cleared** when the user edits unit price (**bid override**).
+- **UI** (under unit price): **Reset to catalog**, **Catalog prices** (existing modal), **Apply line price to catalog…** (picker when overridden). Inline hints: **`lowest: [supply house]`** when the line **unit price** matches the live minimum **`material_part_prices.price`** (batch **`fetchLowestPartPricesBatch`** + small tolerance); **No catalog price** or **Bid override** otherwise (independent of **`source_material_part_price_id`** for the label).
+- **Rough part line order**: Reorder lines **within the same fixture** by dragging the **reorder** handle (**`@dnd-kit`** + **`SortableRoughPartLineRow`** in **[`Bids.tsx`](src/pages/Bids.tsx)**); **`sequence_order`** persisted on drop (**`handleRoughPartLinesDragEnd`**).
+
 ---
 
 ## Latest Updates (v2.279)

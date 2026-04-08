@@ -47,6 +47,22 @@ input.no-spinner[type="number"] {
   -moz-appearance: textfield;
 }
 
+/* Rough takeoffs table: compact underline-only qty */
+input.rough-takeoff-qty-input[type="number"] {
+  border: none;
+  border-radius: 0;
+  border-bottom: 1px solid #d1d5db;
+  background: transparent;
+  padding: 2px 4px;
+  text-align: center;
+}
+
+input.rough-takeoff-qty-input[type="number"]:focus-visible {
+  outline: none;
+  border-bottom-color: #2563eb;
+  border-bottom-width: 2px;
+}
+
 /* Generate Pay Reports: shrink gap between date text and calendar icon (Chrome, Safari, Edge) */
 .generate-pay-reports-date-input {
   width: auto;
