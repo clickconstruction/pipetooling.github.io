@@ -254,6 +254,87 @@ export type Database = {
           },
         ]
       }
+      bid_working_board_columns: {
+        Row: {
+          created_at: string
+          id: string
+          position: number
+          system_key: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          position: number
+          system_key?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          position?: number
+          system_key?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_working_board_columns_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bid_working_board_placements: {
+        Row: {
+          bid_id: string
+          column_id: string
+          position: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bid_id: string
+          column_id: string
+          position?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bid_id?: string
+          column_id?: string
+          position?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_working_board_placements_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_working_board_placements_column_id_fkey"
+            columns: ["column_id"]
+            isOneToOne: false
+            referencedRelation: "bid_working_board_columns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_working_board_placements_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bids: {
         Row: {
           account_manager_id: string | null
@@ -8232,6 +8313,10 @@ export type Database = {
           rejected_count: number
         }[]
       }
+      refresh_jobs_ledger_last_work_date: {
+        Args: { p_job_id: string }
+        Returns: undefined
+      }
       replace_estimate_catalog_payload: {
         Args: { p_payload: Json }
         Returns: undefined
@@ -8451,6 +8536,14 @@ export type Database = {
         Returns: boolean
       }
       user_has_prospects_staff_access: { Args: never; Returns: boolean }
+      user_is_bid_estimator_or_account_manager: {
+        Args: { bid_uuid: string }
+        Returns: boolean
+      }
+      user_owns_working_board_column: {
+        Args: { column_uuid: string }
+        Returns: boolean
+      }
       validate_pay_stub_payments_vs_net: {
         Args: { p_stub: string }
         Returns: undefined

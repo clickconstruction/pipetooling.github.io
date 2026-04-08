@@ -106,6 +106,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: [`Jobs.tsx`](src/pages/Jobs.tsx), [`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx), [`DetailJobModal.tsx`](src/components/jobs/DetailJobModal.tsx), types
 - **Category**: Jobs / Billing
 
+**`20260408124821_bid_working_board.sql`**
+- **Purpose**: Bids **Working** tab — per-user Kanban columns and bid card placements (only when user is **`estimator_id`** or **`account_manager_id`** on the bid)
+- **Changes**: Tables **`bid_working_board_columns`** (`system_key` **`inbox`** / **`ready`** or custom), **`bid_working_board_placements`** (`PRIMARY KEY (user_id, bid_id)`); helpers **`user_is_bid_estimator_or_account_manager`**, **`user_owns_working_board_column`**; **RLS** (own rows + assignment + column ownership); dev **SELECT** all; **Realtime** publication
+- **Impact**: [`Bids.tsx`](src/pages/Bids.tsx), [`BidsWorkingBoard.tsx`](src/components/bids/BidsWorkingBoard.tsx), [`BidBoardNotesPanel.tsx`](src/components/bids/BidBoardNotesPanel.tsx), [`database.ts`](src/types/database.ts)
+- **Category**: Bids
+
 #### April 7, 2026
 
 **`20260407033913_job_schedule_blocks.sql`**

@@ -416,3 +416,18 @@ export function denverHourMarksBetween(t0Ms: number, t1Ms: number): DenverHourMa
     label: singleMeridiem ? r.hour : `${r.hour}${r.dayPeriod === 'AM' ? 'a' : 'p'}`,
   }))
 }
+
+/**
+ * Compact display for bid/customer note timestamps in the viewer's local zone, e.g. `3/31/26, 6:10 PM`.
+ */
+export function formatCompactNoteDateTime(isoOrDate: string | Date): string {
+  const d = typeof isoOrDate === 'string' ? new Date(isoOrDate) : isoOrDate
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleString('en-US', {
+    year: '2-digit',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}

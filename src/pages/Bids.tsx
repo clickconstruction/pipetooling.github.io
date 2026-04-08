@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase'
 import { loadJsPDF } from '../lib/loadJsPDF'
 import { upsertBidNotesReadWatermark } from '../lib/userBidNotesReadState'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import { formatCompactNoteDateTime } from '../utils/dateUtils'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { addExpandedPartsToPO, expandTemplate, getTemplatePartsPreview } from '../lib/materialPOUtils'
 import { decimalHoursToHhMm } from '../lib/format'
@@ -21,6 +22,8 @@ import { PartFormModal } from '../components/PartFormModal'
 import { BidNotesTable, type BidSubmissionEntry } from '../components/bidNotes/BidNotesTable'
 import { CustomerNotesTable } from '../components/customerNotes/CustomerNotesTable'
 import { UnifiedBidCustomerNotes } from '../components/bidBoard/UnifiedBidCustomerNotes'
+import { BidBoardNotesPanel } from '../components/bids/BidBoardNotesPanel'
+import { BidsWorkingBoard } from '../components/bids/BidsWorkingBoard'
 import { SearchableSelect } from '../components/SearchableSelect'
 import { SupplyHouseWebsiteLink } from '../components/SupplyHouseWebsiteLink'
 import { Database } from '../types/database'
@@ -942,7 +945,7 @@ export default function Bids() {
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'bid-board' | 'builder-review' | 'bid-costs' | 'counts' | 'takeoffs' | 'cost-estimate' | 'pricing' | 'cover-letter' | 'submission-followup' | 'rfi' | 'change-order' | 'lien-release'>('bid-board')
+  const [activeTab, setActiveTab] = useState<'bid-board' | 'builder-review' | 'working' | 'bid-costs' | 'counts' | 'takeoffs' | 'cost-estimate' | 'pricing' | 'cover-letter' | 'submission-followup' | 'rfi' | 'change-order' | 'lien-release'>('bid-board')
   
   // Service Types state
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
@@ -5077,7 +5080,7 @@ export default function Bids() {
               <span class="submission-label">${idx + 1}.</span>
               <span class="submission-label">Contact Method:</span> ${escapeHtml(entry.contact_method ?? '—')}
               <span class="submission-label">Notes:</span> ${escapeHtml(entry.notes ?? '—')}
-              <span class="submission-label">Time:</span> ${entry.occurred_at ? new Date(entry.occurred_at).toLocaleString() : '—'}
+              <span class="submission-label">Time:</span> ${entry.occurred_at ? formatCompactNoteDateTime(entry.occurred_at) : '—'}
             </div>
           `).join('')}
         </div>
@@ -5328,7 +5331,7 @@ export default function Bids() {
       entries.forEach((entry, idx) => {
         push(`  ${idx + 1}. Contact Method: ${entry.contact_method ?? '—'}`)
         push(`     Notes: ${entry.notes ?? '—'}`)
-        push(`     Time: ${entry.occurred_at ? new Date(entry.occurred_at).toLocaleString() : '—'}`)
+        push(`     Time: ${entry.occurred_at ? formatCompactNoteDateTime(entry.occurred_at) : '—'}`)
         y += lineHeight * 0.2
       })
       
@@ -5859,7 +5862,7 @@ export default function Bids() {
     loadRole()
   }, [authUser?.id])
 
-  const BIDS_TABS = ['bid-board', 'builder-review', 'bid-costs', 'counts', 'takeoffs', 'cost-estimate', 'pricing', 'cover-letter', 'submission-followup', 'rfi', 'change-order', 'lien-release'] as const
+  const BIDS_TABS = ['bid-board', 'builder-review', 'working', 'bid-costs', 'counts', 'takeoffs', 'cost-estimate', 'pricing', 'cover-letter', 'submission-followup', 'rfi', 'change-order', 'lien-release'] as const
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
@@ -7669,117 +7672,15 @@ export default function Bids() {
         {notesExpanded ? (
           <tr id={`bid-board-notes-${bid.id}`} style={{ background: '#f9fafb' }}>
             <td colSpan={16} style={{ padding: '1rem', borderTop: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb', verticalAlign: 'top' }}>
-              <div role="tablist" aria-label="Notes type" style={{ display: 'inline-flex', border: '1px solid #d1d5db', borderRadius: 4, overflow: 'hidden', marginBottom: '0.75rem' }}>
-                <button
-                  type="button"
-                  role="tab"
-                  id={`bid-board-tab-all-${bid.id}`}
-                  aria-selected={bidBoardNotesTab === 'all'}
-                  aria-controls={`bid-board-notes-panel-${bid.id}`}
-                  onClick={() => setBidBoardNotesTab('all')}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    border: 'none',
-                    borderRight: '1px solid #d1d5db',
-                    background: bidBoardNotesTab === 'all' ? '#3b82f6' : '#ffffff',
-                    color: bidBoardNotesTab === 'all' ? '#ffffff' : '#374151',
-                    cursor: 'pointer',
-                    fontWeight: bidBoardNotesTab === 'all' ? 600 : 400,
-                    fontSize: '0.875rem',
-                  }}
-                >
-                  All notes
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  id={`bid-board-tab-bid-${bid.id}`}
-                  aria-selected={bidBoardNotesTab === 'bid'}
-                  aria-controls={`bid-board-notes-panel-${bid.id}`}
-                  onClick={() => setBidBoardNotesTab('bid')}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    border: 'none',
-                    borderRight: '1px solid #d1d5db',
-                    background: bidBoardNotesTab === 'bid' ? '#3b82f6' : '#ffffff',
-                    color: bidBoardNotesTab === 'bid' ? '#ffffff' : '#374151',
-                    cursor: 'pointer',
-                    fontWeight: bidBoardNotesTab === 'bid' ? 600 : 400,
-                    fontSize: '0.875rem',
-                  }}
-                >
-                  Bid notes
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  id={`bid-board-tab-customer-${bid.id}`}
-                  aria-selected={bidBoardNotesTab === 'customer'}
-                  aria-controls={`bid-board-notes-panel-${bid.id}`}
-                  disabled={!bid.customers?.id}
-                  aria-disabled={!bid.customers?.id}
-                  title={!bid.customers?.id ? 'No linked customer on this bid.' : undefined}
-                  onClick={() => {
-                    if (bid.customers?.id) setBidBoardNotesTab('customer')
-                  }}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    border: 'none',
-                    background: bidBoardNotesTab === 'customer' ? '#3b82f6' : '#ffffff',
-                    color: bidBoardNotesTab === 'customer' ? '#ffffff' : '#374151',
-                    cursor: !bid.customers?.id ? 'not-allowed' : 'pointer',
-                    fontWeight: bidBoardNotesTab === 'customer' ? 600 : 400,
-                    fontSize: '0.875rem',
-                    opacity: !bid.customers?.id ? 0.5 : 1,
-                  }}
-                >
-                  Customer notes
-                </button>
-              </div>
-              <div
-                role="tabpanel"
-                id={`bid-board-notes-panel-${bid.id}`}
-                aria-labelledby={
-                  bidBoardNotesTab === 'bid'
-                    ? `bid-board-tab-bid-${bid.id}`
-                    : bidBoardNotesTab === 'customer'
-                      ? `bid-board-tab-customer-${bid.id}`
-                      : `bid-board-tab-all-${bid.id}`
-                }
-              >
-                {bidBoardNotesTab === 'bid' ? (
-                  <BidNotesTable
-                    bidId={bid.id}
-                    title=""
-                    onLoadError={(m) => setError(m)}
-                    onMutated={() => { void loadBids() }}
-                  />
-                ) : bidBoardNotesTab === 'customer' ? (
-                  bid.customers?.id ? (
-                    <CustomerNotesTable
-                      customerId={bid.customers.id}
-                      customerName={bid.customers.name ?? 'Customer'}
-                      title=""
-                      hasBidsAbove={false}
-                      onLoadError={(m) => setError(m)}
-                      onMutated={() => { void loadCustomerContacts(); void loadBids() }}
-                    />
-                  ) : (
-                    <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
-                      No linked customer — customer notes are not available for this bid.
-                    </p>
-                  )
-                ) : (
-                  <UnifiedBidCustomerNotes
-                    bidId={bid.id}
-                    customerId={bid.customers?.id ?? null}
-                    customerName={bid.customers?.name ?? 'Customer'}
-                    title=""
-                    onLoadError={(m) => setError(m)}
-                    onMutated={() => { void loadCustomerContacts(); void loadBids() }}
-                  />
-                )}
-              </div>
+              <BidBoardNotesPanel
+                bid={bid}
+                notesTab={bidBoardNotesTab}
+                onNotesTabChange={setBidBoardNotesTab}
+                onLoadError={(m) => setError(m)}
+                onMutated={() => { void loadBids() }}
+                onMutatedCustomer={() => { void loadCustomerContacts(); void loadBids() }}
+                idPrefix="bid-board"
+              />
             </td>
           </tr>
         ) : null}
@@ -7897,6 +7798,20 @@ export default function Bids() {
           style={tabStyle(activeTab === 'builder-review')}
         >
           Builder Review
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('working')
+            setSearchParams((p) => {
+              const next = new URLSearchParams(p)
+              next.set('tab', 'working')
+              return next
+            })
+          }}
+          style={tabStyle(activeTab === 'working')}
+        >
+          Working
         </button>
         {myRole === 'dev' && (
           <>
@@ -8508,6 +8423,21 @@ export default function Bids() {
           </div>
         </div>
       )}
+
+      {activeTab === 'working' && authUser?.id ? (
+        <div>
+          <p style={{ margin: '0 0 0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
+            Drag bids between columns. You see bids where you are Estimator or Account Man. New bids appear in Inbox until moved.
+          </p>
+          <BidsWorkingBoard
+            userId={authUser.id}
+            bids={bids}
+            onLoadError={(m) => setError(m)}
+            onMutatedNotes={() => { void loadBids() }}
+            onMutatedNotesCustomer={() => { void loadCustomerContacts(); void loadBids() }}
+          />
+        </div>
+      ) : null}
 
       {/* Bid Costs Tab - Dev only */}
       {myRole === 'dev' && activeTab === 'bid-costs' && (
@@ -12685,7 +12615,7 @@ export default function Bids() {
                     fontSize: '0.875rem',
                   }}
                 >
-                  All notes
+                  All
                 </button>
                 <button
                   type="button"
@@ -12705,7 +12635,7 @@ export default function Bids() {
                     fontSize: '0.875rem',
                   }}
                 >
-                  Bid notes
+                  Bid
                 </button>
                 <button
                   type="button"
@@ -12730,7 +12660,7 @@ export default function Bids() {
                     opacity: !selectedBidForSubmission.customers?.id ? 0.5 : 1,
                   }}
                 >
-                  Customer notes
+                  Customer
                 </button>
               </div>
               <div

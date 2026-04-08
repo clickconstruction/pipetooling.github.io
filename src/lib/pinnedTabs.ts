@@ -52,6 +52,7 @@ export const PATH_TABS: Record<string, readonly string[]> = {
   '/bids': [
     'bid-board',
     'builder-review',
+    'working',
     'counts',
     'takeoffs',
     'cost-estimate',

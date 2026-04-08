@@ -114,6 +114,9 @@ The Bids system is a comprehensive bidding and estimation tool for plumbing cont
 - **dev, master_technician, assistant, estimator**: Full access to all Bids tabs
 - **primary**: Bid Board, RFI, Change Order, Lien Release only (view bids, generate documents; no create/edit bids, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission)
 
+### Working tab (Kanban)
+- Per-user columns persisted in **`bid_working_board_columns`** and **`bid_working_board_placements`** (see **`MIGRATIONS.md`** `20260408124821_bid_working_board.sql`). Default columns **Inbox** and **Ready for Submission**; users add custom columns between. Cards show bids where the current user is **Estimator** or **Account Man**; unplaced bids appear in Inbox. UI: [`BidsWorkingBoard.tsx`](src/components/bids/BidsWorkingBoard.tsx).
+
 ### Workflow
 1. **Bid Board** - Create and manage bids
 2. **Counts** - Enter fixture/tie-in counts per stage
