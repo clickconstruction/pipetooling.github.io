@@ -528,7 +528,7 @@ function formatJobNameTwoLines(name: string | null): { line1: string; line2?: st
 export default function Jobs() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const { user: authUser, role: authRole, loading: authLoading } = useAuth()
+  const { user: authUser, role: authRole, loading: authLoading, profileName: authProfileName } = useAuth()
   const canOpenJobScheduleModal = useMemo(
     () =>
       authRole === 'dev' ||
@@ -834,7 +834,7 @@ export default function Jobs() {
     submitJobThreadNote,
     jobThreadStatsByJobId,
     refreshJobThreadStatsForJobIds,
-  } = useJobThreadNotes(showToast, authUser?.id)
+  } = useJobThreadNotes(showToast, authUser?.id, authProfileName)
 
   useEffect(() => {
     if (!authUser?.id || activeTab !== 'stages') return

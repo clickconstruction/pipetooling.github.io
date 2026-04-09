@@ -5,6 +5,17 @@ import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 
 type ToastFn = (message: string, type: 'success' | 'info' | 'warning' | 'error') => void
 
+const OPTIMISTIC_JOB_THREAD_NOTE_PREFIX = '__optimistic__:'
+
+function makeOptimisticThreadNote(body: string, authorDisplayName: string | null | undefined): JobThreadNoteRow {
+  return {
+    id: `${OPTIMISTIC_JOB_THREAD_NOTE_PREFIX}${crypto.randomUUID()}`,
+    body,
+    created_at: new Date().toISOString(),
+    author: { name: authorDisplayName?.trim() ? authorDisplayName.trim() : null },
+  }
+}
+
 const SELECT =
   'id, body, created_at, author:users!jobs_ledger_thread_notes_author_user_id_fkey(name)'
 
@@ -28,15 +39,16 @@ async function queryNotesForJob(jobId: string): Promise<JobThreadNoteRow[]> {
 export function useJobThreadNotesForModal(
   jobId: string | null,
   open: boolean,
-  opts: { authUserId: string | undefined; showToast: ToastFn },
+  opts: { authUserId: string | undefined; showToast: ToastFn; authorDisplayName?: string | null },
 ) {
-  const { authUserId, showToast } = opts
+  const { authUserId, showToast, authorDisplayName } = opts
   const realtimeChannelId = useId()
   const [notes, setNotes] = useState<JobThreadNoteRow[]>([])
   const [loading, setLoading] = useState(false)
   const [draft, setDraft] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const openJobIdRef = useRef<string | null>(null)
+  const inFlightThreadNoteRef = useRef<{ optimisticId: string } | null>(null)
 
   useEffect(() => {
     openJobIdRef.current = open && jobId ? jobId : null
@@ -46,7 +58,18 @@ export function useJobThreadNotesForModal(
     try {
       const rows = await queryNotesForJob(id)
       if (openJobIdRef.current !== id) return
-      setNotes(rows)
+      setNotes((prev) => {
+        const flight = inFlightThreadNoteRef.current
+        if (flight) {
+          const opt = prev.find((n) => n.id === flight.optimisticId)
+          if (opt && !rows.some((r) => r.id === opt.id)) {
+            return [...rows, opt].sort(
+              (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+            )
+          }
+        }
+        return rows
+      })
     } catch {
       /* optional refresh; avoid toast spam */
     }
@@ -54,6 +77,7 @@ export function useJobThreadNotesForModal(
 
   useEffect(() => {
     if (!open || !jobId) {
+      inFlightThreadNoteRef.current = null
       setNotes([])
       setDraft('')
       setLoading(false)
@@ -105,25 +129,44 @@ export function useJobThreadNotesForModal(
     const id = openJobIdRef.current
     const body = draft.trim()
     if (!authUserId || !id || !body) return
+    const optimistic = makeOptimisticThreadNote(body, authorDisplayName ?? null)
+    inFlightThreadNoteRef.current = { optimisticId: optimistic.id }
+    setNotes((prev) => [...prev, optimistic])
+    setDraft('')
     setSubmitting(true)
     try {
-      await withSupabaseRetry(
+      const inserted = await withSupabaseRetry(
         async () =>
-          await supabase.from('jobs_ledger_thread_notes').insert({
-            job_id: id,
-            author_user_id: authUserId,
-            body,
-          }),
+          await supabase
+            .from('jobs_ledger_thread_notes')
+            .insert({
+              job_id: id,
+              author_user_id: authUserId,
+              body,
+            })
+            .select(SELECT)
+            .single(),
         'insert jobs_ledger_thread_note modal',
       )
-      setDraft('')
-      await reloadNotesQuiet(id)
+      if (inserted == null) throw new Error('No note row returned')
+      const row = inserted as unknown as JobThreadNoteRow
+      setNotes((prev) => {
+        const idx = prev.findIndex((n) => n.id === optimistic.id)
+        if (idx < 0) return [...prev, row]
+        const next = [...prev]
+        next[idx] = row
+        return next
+      })
+      inFlightThreadNoteRef.current = null
     } catch (e: unknown) {
+      inFlightThreadNoteRef.current = null
+      setNotes((prev) => prev.filter((n) => n.id !== optimistic.id))
+      setDraft(body)
       showToast(formatErrorMessage(e, 'Failed to post note'), 'error')
     } finally {
       setSubmitting(false)
     }
-  }, [authUserId, draft, reloadNotesQuiet, showToast])
+  }, [authUserId, authorDisplayName, draft, showToast])
 
   const canPost = Boolean(authUserId)
 

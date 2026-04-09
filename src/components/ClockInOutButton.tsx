@@ -53,9 +53,11 @@ function computeTotalSecondsToday(sessions: TodaySession[]): number {
 type Props = {
   userId: string
   userName: string | null
+  /** Opens My Time day editor (e.g. Dashboard read-only preview). */
+  onOpenMyTimeDayEditor?: () => void
 }
 
-export default function ClockInOutButton({ userId, userName }: Props) {
+export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEditor }: Props) {
   const { user: authUser } = useAuth()
   const { showToast } = useToastContext()
   const { notifyFirstClockInOfDay } = useDailyGoalsGate()
@@ -811,6 +813,44 @@ export default function ClockInOutButton({ userId, userName }: Props) {
 
   const canClockIn = userName?.trim() && !openSession && !salaryUiActive
   const hasOpenSession = !!openSession
+  const showMyTimeDayPreview =
+    Boolean(onOpenMyTimeDayEditor) && !loading && !hasOpenSession && todaySessions.length > 0
+
+  const myTimePreviewButton = showMyTimeDayPreview ? (
+    <button
+      type="button"
+      onClick={() => onOpenMyTimeDayEditor?.()}
+      title="View today’s time"
+      aria-label="View today’s time"
+      style={{
+        flexShrink: 0,
+        width: 48,
+        height: 48,
+        boxSizing: 'border-box',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#3b82f6',
+        color: 'white',
+        border: 'none',
+        borderRadius: 8,
+        cursor: 'pointer',
+        padding: 0,
+      }}
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 640 640"
+        width={26}
+        height={26}
+        fill="currentColor"
+        style={{ display: 'block' }}
+        aria-hidden
+      >
+        <path d="M320 64C461.4 64 576 178.6 576 320C576 461.4 461.4 576 320 576C178.6 576 64 461.4 64 320C64 178.6 178.6 64 320 64zM296 184L296 320C296 328 300 335.5 306.7 340L402.7 404C413.7 411.4 428.6 408.4 436 397.3C443.4 386.2 440.4 371.4 429.3 364L344 307.2L344 184C344 170.7 333.3 160 320 160C306.7 160 296 170.7 296 184z" />
+      </svg>
+    </button>
+  ) : null
 
   return (
     <>
@@ -880,50 +920,58 @@ export default function ClockInOutButton({ userId, userName }: Props) {
           </button>
         </>
       ) : salaryUiActive ? (
-        <div
-          style={{
-            width: '100%',
-            padding: '0 1.5rem',
-            minHeight: 48,
-            height: 48,
-            boxSizing: 'border-box',
-            fontSize: '1rem',
-            fontWeight: 600,
-            border: '2px solid #d1d5db',
-            borderRadius: 8,
-            background: '#f9fafb',
-            color: '#6b7280',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          title="Outside your scheduled shift windows (see Settings → Salaried workday)"
-        >
-          Off shift
+        <div style={{ display: 'flex', alignItems: 'stretch', gap: '0.5rem', width: '100%' }}>
+          <div
+            style={{
+              flex: 1,
+              minWidth: 0,
+              padding: '0 1.5rem',
+              minHeight: 48,
+              height: 48,
+              boxSizing: 'border-box',
+              fontSize: '1rem',
+              fontWeight: 600,
+              border: '2px solid #d1d5db',
+              borderRadius: 8,
+              background: '#f9fafb',
+              color: '#6b7280',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            title="Outside your scheduled shift windows (see Settings → Salaried workday)"
+          >
+            Off shift
+          </div>
+          {myTimePreviewButton}
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={handleOpenClockInModal}
-          disabled={!canClockIn || actionLoading}
-          title={!userName?.trim() ? 'Set your name in Settings to clock in' : 'Clock in'}
-          style={{
-            width: '100%',
-            padding: '0 1.5rem',
-            minHeight: 48,
-            height: 48,
-            boxSizing: 'border-box',
-            fontSize: '1.125rem',
-            fontWeight: 600,
-            border: '2px solid #ff6600',
-            borderRadius: 8,
-            background: canClockIn ? '#ff6600' : '#f3f4f6',
-            color: canClockIn ? 'white' : '#9ca3af',
-            cursor: canClockIn && !actionLoading ? 'pointer' : 'not-allowed',
-          }}
-        >
-          Clock In
-        </button>
+        <div style={{ display: 'flex', alignItems: 'stretch', gap: '0.5rem', width: '100%' }}>
+          <button
+            type="button"
+            onClick={handleOpenClockInModal}
+            disabled={!canClockIn || actionLoading}
+            title={!userName?.trim() ? 'Set your name in Settings to clock in' : 'Clock in'}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              padding: '0 1.5rem',
+              minHeight: 48,
+              height: 48,
+              boxSizing: 'border-box',
+              fontSize: '1.125rem',
+              fontWeight: 600,
+              border: '2px solid #ff6600',
+              borderRadius: 8,
+              background: canClockIn ? '#ff6600' : '#f3f4f6',
+              color: canClockIn ? 'white' : '#9ca3af',
+              cursor: canClockIn && !actionLoading ? 'pointer' : 'not-allowed',
+            }}
+          >
+            Clock In
+          </button>
+          {myTimePreviewButton}
+        </div>
       )}
       {error && (
         <span style={{ color: '#dc2626', fontSize: '0.875rem' }}>{error}</span>

@@ -432,6 +432,7 @@ export default function Dashboard() {
   const [stripMyTimeEditor, setStripMyTimeEditor] = useState<{
     subjectUserId: string
     displayName: string
+    clockTimesReadOnly?: boolean
   } | null>(null)
   const openStripMyTimeEditor = useCallback((p: { subjectUserId: string; displayName: string }) => {
     setStripMyTimeEditor(p)
@@ -440,10 +441,10 @@ export default function Dashboard() {
   const [subscribedSteps, setSubscribedSteps] = useState<SubscribedStep[]>([])
   const [assignedSteps, setAssignedSteps] = useState<AssignedStep[]>([])
   const [todayChecklist, setTodayChecklist] = useState<ChecklistInstance[]>([])
-  const [completingChecklistId, setCompletingChecklistId] = useState<string | null>(null)
+  const checklistToggleInFlightRef = useRef(new Set<string>())
   const [outstandingItems, setOutstandingItems] = useState<ChecklistInstance[]>([])
   const [outstandingLoading, setOutstandingLoading] = useState(true)
-  const [completingOutstandingId, setCompletingOutstandingId] = useState<string | null>(null)
+  const outstandingToggleInFlightRef = useRef(new Set<string>())
   const [userError, setUserError] = useState<string | null>(null)
   const [userLoading, setUserLoading] = useState(true)
   const [checklistLoading, setChecklistLoading] = useState(true)
@@ -549,6 +550,14 @@ export default function Dashboard() {
     () => userName ?? displayNameFromAuthUser(authUser),
     [userName, authUser],
   )
+  const openMyTimePreviewFromClock = useCallback(() => {
+    if (!authUser?.id) return
+    setStripMyTimeEditor({
+      subjectUserId: authUser.id,
+      displayName: clockDisplayName?.trim() || 'You',
+      clockTimesReadOnly: true,
+    })
+  }, [authUser?.id, clockDisplayName])
   const [teamFeedbackHomeEnabled, setTeamFeedbackHomeEnabled] = useState(false)
   const [teamFeedbackWizardOpen, setTeamFeedbackWizardOpen] = useState(false)
   const [dispatchInboxEligible, setDispatchInboxEligible] = useState(false)
@@ -2660,42 +2669,77 @@ export default function Dashboard() {
   }
 
   async function toggleChecklistComplete(inst: ChecklistInstance) {
-    if (!authUser?.id || completingChecklistId) return
-    setCompletingChecklistId(inst.id)
+    if (!authUser?.id) return
+    if (checklistToggleInFlightRef.current.has(inst.id)) return
+    checklistToggleInFlightRef.current.add(inst.id)
+
     const isCompleted = !!inst.completed_at
-    const { error: e } = await supabase
-      .from('checklist_instances')
-      .update({
-        completed_at: isCompleted ? null : new Date().toISOString(),
-        completed_by_user_id: isCompleted ? null : authUser.id,
-      })
-      .eq('id', inst.id)
-    setCompletingChecklistId(null)
-    if (e) return
-    await loadTodayChecklist()
-    if (!isCompleted) {
-      await sendChecklistCompletionNotifications(inst)
-      await maybeCreateNextChecklistInstance(inst)
+    const nextCompletedAt = isCompleted ? null : new Date().toISOString()
+    const nextCompletedBy = isCompleted ? null : authUser.id
+    const previous = inst
+
+    setTodayChecklist((prev) =>
+      prev.map((row) =>
+        row.id === inst.id
+          ? { ...row, completed_at: nextCompletedAt, completed_by_user_id: nextCompletedBy }
+          : row,
+      ),
+    )
+
+    try {
+      const { error: e } = await supabase
+        .from('checklist_instances')
+        .update({
+          completed_at: nextCompletedAt,
+          completed_by_user_id: nextCompletedBy,
+        })
+        .eq('id', inst.id)
+      if (e) throw e
+      await loadTodayChecklist()
+      if (!isCompleted) {
+        void sendChecklistCompletionNotifications(inst)
+        void maybeCreateNextChecklistInstance(inst)
+      }
+    } catch (e: unknown) {
+      setTodayChecklist((prev) => prev.map((row) => (row.id === inst.id ? previous : row)))
+      showToast(formatErrorMessage(e, 'Could not update checklist'), 'error')
+    } finally {
+      checklistToggleInFlightRef.current.delete(inst.id)
     }
   }
 
   async function toggleOutstandingComplete(inst: ChecklistInstance) {
-    if (!authUser?.id || completingOutstandingId) return
-    setCompletingOutstandingId(inst.id)
+    if (!authUser?.id) return
+    if (outstandingToggleInFlightRef.current.has(inst.id)) return
     const isCompleted = !!inst.completed_at
-    const { error: e } = await supabase
-      .from('checklist_instances')
-      .update({
-        completed_at: isCompleted ? null : new Date().toISOString(),
-        completed_by_user_id: isCompleted ? null : authUser.id,
-      })
-      .eq('id', inst.id)
-    setCompletingOutstandingId(null)
-    if (e) return
-    await loadOutstanding()
-    if (!isCompleted) {
-      await sendChecklistCompletionNotifications(inst)
-      await maybeCreateNextChecklistInstance(inst)
+    if (isCompleted) {
+      return
+    }
+
+    outstandingToggleInFlightRef.current.add(inst.id)
+    let snapshot: ChecklistInstance[] = []
+    setOutstandingItems((prev) => {
+      snapshot = prev
+      return prev.filter((row) => row.id !== inst.id)
+    })
+
+    try {
+      const { error: e } = await supabase
+        .from('checklist_instances')
+        .update({
+          completed_at: new Date().toISOString(),
+          completed_by_user_id: authUser.id,
+        })
+        .eq('id', inst.id)
+      if (e) throw e
+      await loadOutstanding()
+      void sendChecklistCompletionNotifications(inst)
+      void maybeCreateNextChecklistInstance(inst)
+    } catch (e: unknown) {
+      setOutstandingItems(snapshot)
+      showToast(formatErrorMessage(e, 'Could not update checklist'), 'error')
+    } finally {
+      outstandingToggleInFlightRef.current.delete(inst.id)
     }
   }
 
@@ -3645,7 +3689,11 @@ export default function Dashboard() {
       )}
       {authUser?.id && (
         <div style={{ marginBottom: '1rem' }}>
-          <ClockInOutButton userId={authUser.id} userName={clockDisplayName} />
+          <ClockInOutButton
+            userId={authUser.id}
+            userName={clockDisplayName}
+            onOpenMyTimeDayEditor={openMyTimePreviewFromClock}
+          />
         </div>
       )}
       {authUser?.id && teamFeedbackHomeEnabled && (
@@ -3704,6 +3752,8 @@ export default function Dashboard() {
           onMaterializeSalarySession={
             showClockStripScopeToggle ? materializeSalarySessionForStrip : undefined
           }
+          enableCopyDayJobMix={showClockStripScopeToggle}
+          clockStripWorkDateYmd={myTeam.clockStripWorkDateYmd}
         />
       )}
       {role === 'assistant' && authUser?.id && (
@@ -4071,6 +4121,8 @@ export default function Dashboard() {
           onMaterializeSalarySession={
             showClockStripScopeToggle ? materializeSalarySessionForStrip : undefined
           }
+          enableCopyDayJobMix={showClockStripScopeToggle}
+          clockStripWorkDateYmd={myTeam.clockStripWorkDateYmd}
         />
       )}
       {(role === 'dev' || role === 'master_technician') && authUser?.id && (
@@ -4086,6 +4138,7 @@ export default function Dashboard() {
           sessions={[]}
           subjectUserId={stripMyTimeEditor.subjectUserId}
           subjectDisplayName={stripMyTimeEditor.displayName}
+          clockTimesReadOnly={stripMyTimeEditor.clockTimesReadOnly === true}
           jobLabels={{}}
           bidLabels={{}}
           allowNcnsFromMyTime={showClockStripScopeToggle}
@@ -4559,8 +4612,7 @@ export default function Dashboard() {
                   <input
                     type="checkbox"
                     checked={isCompleted}
-                    onChange={() => toggleChecklistComplete(inst)}
-                    disabled={!!completingChecklistId}
+                    onChange={() => void toggleChecklistComplete(inst)}
                   />
                   <span style={{ flex: 1, fontWeight: 500, textDecoration: isCompleted ? 'line-through' : 'none', color: isCompleted ? '#6b7280' : 'inherit' }}>
                     <ChecklistTitleWithLinks title={title} links={links} />
@@ -4647,8 +4699,7 @@ export default function Dashboard() {
                     <input
                       type="checkbox"
                       checked={!!inst.completed_at}
-                      onChange={() => toggleOutstandingComplete(inst)}
-                      disabled={!!completingOutstandingId}
+                      onChange={() => void toggleOutstandingComplete(inst)}
                       title="Mark complete"
                       aria-label="Mark complete"
                     />

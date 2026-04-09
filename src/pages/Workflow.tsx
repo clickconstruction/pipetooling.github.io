@@ -132,7 +132,7 @@ function PersonDisplayWithContact({ name, contacts, userNames }: { name: string 
 
 export default function Workflow() {
   const { projectId } = useParams()
-  const { user: authUser } = useAuth()
+  const { user: authUser, profileName: authProfileName } = useAuth()
   const { showToast } = useToastContext()
   const {
     expandedJobThreadId: expandedWorkflowJobThreadId,
@@ -145,7 +145,7 @@ export default function Workflow() {
     submitJobThreadNote: submitWorkflowJobThreadNote,
     jobThreadStatsByJobId: workflowJobThreadStatsByJobId,
     refreshJobThreadStatsForJobIds: refreshWorkflowJobThreadStats,
-  } = useJobThreadNotes(showToast, authUser?.id)
+  } = useJobThreadNotes(showToast, authUser?.id, authProfileName)
   const [project, setProject] = useState<Project | null>(null)
   const [workflow, setWorkflow] = useState<Workflow | null>(null)
   const [steps, setSteps] = useState<Step[]>([])

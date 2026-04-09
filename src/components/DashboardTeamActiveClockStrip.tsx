@@ -40,6 +40,7 @@ import {
   isSyntheticSalaryStripSession,
   shouldShowSalaryStripNameSuffix,
 } from '../types/clockSessions'
+import { CopyDayJobMixModal, CopyDayJobMixIcon } from './day-job-mix/CopyDayJobMixModal'
 
 const timeOpts: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit' }
 
@@ -72,6 +73,17 @@ function stripSessionIsPendingApprovalMerged(
   optimisticIds: ReadonlySet<string>,
 ): boolean {
   return stripApproveStatusForSession(s, optimisticIds) === 'pending'
+}
+
+/** Visible / a11y label for the clocked-in-today strip row; keeps the viewer’s row identifiable. */
+function stripClockedInTodayDisplayLabel(
+  row: Pick<ClockedInTodayStripRow, 'userId' | 'displayName'>,
+  authUserId: string | undefined,
+): string {
+  if (authUserId != null && row.userId === authUserId) {
+    return `You · ${row.displayName}`
+  }
+  return row.displayName
 }
 
 function stripRowHasPendingApprovalMerged(
@@ -493,6 +505,8 @@ export function DashboardTeamActiveClockStrip({
   onClockSessionsMutated,
   onMaterializeSalarySession,
   hideCurrentlyInTable = false,
+  enableCopyDayJobMix = false,
+  clockStripWorkDateYmd,
 }: {
   sessions: DashboardStripSession[]
   hoursTodayByUserId: Readonly<Record<string, number>>
@@ -519,6 +533,10 @@ export function DashboardTeamActiveClockStrip({
   onMaterializeSalarySession?: (userId: string) => Promise<void>
   /** When true, omit the live open-sessions "Currently In" table (e.g. Quickfill browsing a non-today work date). */
   hideCurrentlyInTable?: boolean
+  /** Dev / master / assistant: show copy job-mix mode on Clocked in today. */
+  enableCopyDayJobMix?: boolean
+  /** Strip `work_date` (YYYY-MM-DD), e.g. from my team hook `clockStripWorkDateYmd`. */
+  clockStripWorkDateYmd?: string
 }) {
   const stripRejectTitleId = useId()
   const nowMs = useIntervalNowMs(45_000)
@@ -529,6 +547,15 @@ export function DashboardTeamActiveClockStrip({
   const [optimisticStripApprovedIds, setOptimisticStripApprovedIds] = useState<ReadonlySet<string>>(
     () => new Set(),
   )
+  const [copyDayJobMixMode, setCopyDayJobMixMode] = useState(false)
+  const [copyDayJobMixModal, setCopyDayJobMixModal] = useState<{
+    sourceUserId: string
+    sourceDisplayName: string
+  } | null>(null)
+
+  useEffect(() => {
+    if (!copyDayJobMixMode) setCopyDayJobMixModal(null)
+  }, [copyDayJobMixMode])
 
   const stripActionsPayload = useMemo((): ClockSessionStripActionsPayload | null => {
     if (!stripActionsSession) return null
@@ -542,10 +569,15 @@ export function DashboardTeamActiveClockStrip({
       const timeRangeLabel = openS
         ? `${tIn} – Open`
         : `${tIn} – ${new Date(s.clocked_out_at!).toLocaleTimeString(undefined, timeOpts)}`
-      return stripActionsPayloadFromSession(s, row.displayName, timeRangeLabel, st === 'approved' ? 'approved' : 'pending')
+      return stripActionsPayloadFromSession(
+        s,
+        stripClockedInTodayDisplayLabel(row, authUserId),
+        timeRangeLabel,
+        st === 'approved' ? 'approved' : 'pending',
+      )
     }
     return normalizeStripActionsPayloadFallback(stripActionsSession)
-  }, [stripActionsSession, clockedInTodayRows, optimisticStripApprovedIds])
+  }, [authUserId, stripActionsSession, clockedInTodayRows, optimisticStripApprovedIds])
 
   useEffect(() => {
     setOptimisticStripApprovedIds((prev) => {
@@ -774,24 +806,64 @@ export function DashboardTeamActiveClockStrip({
   const scopeHeaderReserve: CSSProperties = scopeShowsOverlay
     ? { paddingRight: 'clamp(8.5rem, 22vw, 10.5rem)' }
     : {}
-  const clockedInTodayModeOverlay =
-    showClockedInTodayToggle ? (
-      <div style={stripScopeOverlay}>
-        <button
-          type="button"
-          onClick={() =>
-            setClockedInTodayTableMode((m) => (m === 'all' ? 'missing' : 'all'))
-          }
-          style={{ ...scopeBtn(false), flexShrink: 0 }}
-          title="Limit to people with an unassigned session or a closed session pending approval"
-          aria-label={
-            clockedInTodayTableMode === 'all'
-              ? 'Show only people needing attention: unassigned job or bid, or pending clock approval'
-              : 'Show everyone clocked in today'
-          }
-        >
-          {clockedInTodayTableMode === 'all' ? 'Needs attention' : 'Show all'}
-        </button>
+  const copyJobMixChrome = enableCopyDayJobMix === true && clockedInTodayRows.length > 0
+  const showClockedInHeaderChrome = showClockedInTodayToggle || copyJobMixChrome
+  const clockStripWorkDateResolved =
+    clockStripWorkDateYmd ?? new Date().toLocaleDateString('en-CA')
+  const clockedInTodayHeaderOverlay =
+    showClockedInHeaderChrome ? (
+      <div
+        style={{
+          ...stripScopeOverlay,
+          display: 'flex',
+          gap: 6,
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          justifyContent: 'flex-end',
+          maxWidth: 'min(100%, 24rem)',
+        }}
+      >
+        {copyJobMixChrome ? (
+          <button
+            type="button"
+            aria-pressed={copyDayJobMixMode}
+            onClick={() => setCopyDayJobMixMode((v) => !v)}
+            title="Copy one person’s job time mix to another person’s day"
+            aria-label={
+              copyDayJobMixMode
+                ? 'Exit copy job time mix mode'
+                : 'Turn on copy job time mix: use the copy icon by each name to pick a template person'
+            }
+            style={{
+              ...scopeBtn(copyDayJobMixMode),
+              flexShrink: 0,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '0.25rem 0.45rem',
+            }}
+          >
+            <CopyDayJobMixIcon active={copyDayJobMixMode} />
+            <span style={{ fontSize: '0.65rem', lineHeight: 1.2 }}>Mix</span>
+          </button>
+        ) : null}
+        {showClockedInTodayToggle ? (
+          <button
+            type="button"
+            onClick={() =>
+              setClockedInTodayTableMode((m) => (m === 'all' ? 'missing' : 'all'))
+            }
+            style={{ ...scopeBtn(false), flexShrink: 0 }}
+            title="Limit to people with an unassigned session or a closed session pending approval"
+            aria-label={
+              clockedInTodayTableMode === 'all'
+                ? 'Show only people needing attention: unassigned job or bid, or pending clock approval'
+                : 'Show everyone clocked in today'
+            }
+          >
+            {clockedInTodayTableMode === 'all' ? 'Needs attention' : 'Show all'}
+          </button>
+        ) : null}
       </div>
     ) : null
 
@@ -1073,10 +1145,10 @@ export function DashboardTeamActiveClockStrip({
               <div
                 style={{
                   position: 'relative',
-                  ...(showClockedInTodayToggle ? { minHeight: '2.25rem' } : {}),
+                  ...(showClockedInHeaderChrome ? { minHeight: '2.25rem' } : {}),
                 }}
               >
-                {showClockedInTodayToggle ? clockedInTodayModeOverlay : null}
+                {clockedInTodayHeaderOverlay}
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ background: STRIP_SECTION_HEAD_BG }}>
@@ -1153,7 +1225,7 @@ export function DashboardTeamActiveClockStrip({
                         scope="col"
                         style={{
                           ...stripSectionTh,
-                          ...(showClockedInTodayToggle
+                          ...(showClockedInHeaderChrome
                             ? { paddingRight: 'clamp(8rem, 20vw, 12rem)' }
                             : {}),
                         }}
@@ -1173,7 +1245,7 @@ export function DashboardTeamActiveClockStrip({
                             padding: '0.35rem 0.4rem 0.5rem',
                             fontSize: '0.75rem',
                             color: '#6b7280',
-                            ...(showClockedInTodayToggle
+                            ...(showClockedInHeaderChrome
                               ? { paddingRight: 'clamp(8rem, 20vw, 12rem)' }
                               : {}),
                           }}
@@ -1190,6 +1262,7 @@ export function DashboardTeamActiveClockStrip({
                   const hasDetail = row.todaySessions.length > 0
                   const expanded = hasDetail && !collapsedClockedInTodayUserIds.has(row.userId)
                   const detailId = `clocked-in-today-detail-${row.userId}`
+                  const rowLabel = stripClockedInTodayDisplayLabel(row, authUserId)
                   return (
                     <Fragment key={row.userId}>
                       <tr>
@@ -1208,8 +1281,8 @@ export function DashboardTeamActiveClockStrip({
                               aria-controls={detailId}
                               aria-label={
                                 expanded
-                                  ? `Hide today’s sessions for ${row.displayName}`
-                                  : `Show today’s sessions for ${row.displayName}`
+                                  ? `Hide today’s sessions for ${rowLabel}`
+                                  : `Show today’s sessions for ${rowLabel}`
                               }
                               onClick={() =>
                                 setCollapsedClockedInTodayUserIds((prev) => {
@@ -1242,8 +1315,36 @@ export function DashboardTeamActiveClockStrip({
                               flexWrap: 'wrap',
                             }}
                           >
-                            {row.displayName}
+                            {rowLabel}
                             {row.hasIntervalOverlapToday ? <StripClockOverlapBadge /> : null}
+                            {copyDayJobMixMode && copyJobMixChrome ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setCopyDayJobMixModal({
+                                    sourceUserId: row.userId,
+                                    sourceDisplayName: row.displayName,
+                                  })
+                                }
+                                title={`Copy ${row.displayName}’s job time mix to another person`}
+                                aria-label={`Copy job time mix from ${rowLabel}`}
+                                style={{
+                                  flexShrink: 0,
+                                  marginLeft: 2,
+                                  padding: '0.1rem 0.2rem',
+                                  border: '1px solid #bfdbfe',
+                                  borderRadius: 4,
+                                  background: '#eff6ff',
+                                  color: '#1d4ed8',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  lineHeight: 1,
+                                }}
+                              >
+                                <CopyDayJobMixIcon />
+                              </button>
+                            ) : null}
                           </span>
                         </td>
                         <td
@@ -1251,7 +1352,7 @@ export function DashboardTeamActiveClockStrip({
                             ...clockedInTodayRowTd,
                             textAlign: 'left',
                             whiteSpace: 'nowrap' as const,
-                            ...(showClockedInTodayToggle
+                            ...(showClockedInHeaderChrome
                               ? { paddingRight: 'clamp(8rem, 20vw, 12rem)' }
                               : {}),
                           }}
@@ -1266,7 +1367,7 @@ export function DashboardTeamActiveClockStrip({
                                 })
                               }
                               title="Edit today's time"
-                              aria-label={`Edit today's time for ${row.displayName}`}
+                              aria-label={`Edit today's time for ${rowLabel}`}
                               style={{
                                 border: 'none',
                                 background: 'none',
@@ -1304,7 +1405,7 @@ export function DashboardTeamActiveClockStrip({
                               color: '#6b7280',
                             }}
                           >
-                            <div id={detailId} role="region" aria-label={`Today’s clock sessions for ${row.displayName}`}>
+                            <div id={detailId} role="region" aria-label={`Today’s clock sessions for ${rowLabel}`}>
                               <div
                                 style={{
                                   overflowX: 'auto',
@@ -1322,7 +1423,7 @@ export function DashboardTeamActiveClockStrip({
                                     width: 'auto',
                                   }}
                                 >
-                                  <caption style={srOnly}>{`Today’s sessions for ${row.displayName}`}</caption>
+                                  <caption style={srOnly}>{`Today’s sessions for ${rowLabel}`}</caption>
                                   <tbody>
                                     {row.todaySessions.map((s, idx) => {
                                       const tIn = new Date(s.clocked_in_at).toLocaleTimeString(undefined, timeOpts)
@@ -1380,7 +1481,7 @@ export function DashboardTeamActiveClockStrip({
                                                       setStripActionsSession(
                                                         stripActionsPayloadFromSession(
                                                           s,
-                                                          row.displayName,
+                                                          rowLabel,
                                                           timeRangeLabel,
                                                           stripApproveStatus === 'approved'
                                                             ? 'approved'
@@ -1995,6 +2096,18 @@ export function DashboardTeamActiveClockStrip({
         </div>
       </div>
     </div>
+  ) : null}
+  {copyDayJobMixModal ? (
+    <CopyDayJobMixModal
+      open
+      onClose={() => setCopyDayJobMixModal(null)}
+      workDateYmd={clockStripWorkDateResolved}
+      sourceUserId={copyDayJobMixModal.sourceUserId}
+      sourceDisplayName={copyDayJobMixModal.sourceDisplayName}
+      clockedInTodayRows={clockedInTodayRows}
+      nowMs={nowMs}
+      onApplied={() => onClockSessionsMutated?.()}
+    />
   ) : null}
     </>
   )

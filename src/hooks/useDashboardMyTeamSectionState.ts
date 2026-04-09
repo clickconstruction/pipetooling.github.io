@@ -265,6 +265,12 @@ export function useDashboardMyTeamSectionState(
   const [myTeamExpanded, setMyTeamExpanded] = useState(false)
   const [{ start: dateStart, end: dateEnd }, setDateRange] = useState(weekStartEndEnCA)
 
+  /** Team strip: members plus viewer (leader is not in `team_leader_assignments` as member). */
+  const stripTeamUserIds = useMemo(
+    () => [...new Set([...memberUserIds, ...(authUserId ? [authUserId] : [])])],
+    [memberUserIds, authUserId],
+  )
+
   const loadAssignments = useCallback(async () => {
     if (!authUserId) {
       setMemberUserIds([])
@@ -344,7 +350,7 @@ export function useDashboardMyTeamSectionState(
   }, [authUserId])
 
   const loadTodayClockSessions = useCallback(async () => {
-    if (!authUserId || memberUserIds.length === 0) {
+    if (!authUserId) {
       setTodaySessionsRows([])
       return
     }
@@ -355,7 +361,7 @@ export function useDashboardMyTeamSectionState(
           supabase
             .from('clock_sessions')
             .select(CLOCK_SESSION_TODAY_STRIP_SELECT)
-            .in('user_id', memberUserIds)
+            .in('user_id', stripTeamUserIds)
             .eq('work_date', workDate),
         'load team today clock sessions',
       )
@@ -363,7 +369,7 @@ export function useDashboardMyTeamSectionState(
     } catch {
       setTodaySessionsRows([])
     }
-  }, [authUserId, memberUserIds, stripWorkDateYmd])
+  }, [authUserId, stripTeamUserIds, stripWorkDateYmd])
 
   const loadTodayClockSessionsOrg = useCallback(async () => {
     if (!authUserId) {
@@ -395,11 +401,11 @@ export function useDashboardMyTeamSectionState(
     try {
       let tmplQuery = supabase.from('salary_work_schedule_templates').select('*')
       if (!orgWideStripEnabled) {
-        if (memberUserIds.length === 0) {
+        if (stripTeamUserIds.length === 0) {
           setSalaryStripMeta({ todayYmd, templates: [], overrides: [], timeOff: [], displayNameByUserId: {} })
           return
         }
-        tmplQuery = tmplQuery.in('user_id', memberUserIds)
+        tmplQuery = tmplQuery.in('user_id', stripTeamUserIds)
       }
       const templates = await withSupabaseRetry(async () => await tmplQuery, 'salary strip templates')
       const tlistRaw = (templates ?? []) as Database['public']['Tables']['salary_work_schedule_templates']['Row'][]
@@ -453,7 +459,7 @@ export function useDashboardMyTeamSectionState(
     } catch {
       setSalaryStripMeta(null)
     }
-  }, [authUserId, memberUserIds, orgWideStripEnabled, stripWorkDateYmd])
+  }, [authUserId, orgWideStripEnabled, stripTeamUserIds, stripWorkDateYmd])
 
   const loadOrgWidePending = useCallback(async () => {
     if (!authUserId) {
@@ -621,7 +627,7 @@ export function useDashboardMyTeamSectionState(
 
   const loadPending = useCallback(async (options?: { silent?: boolean }) => {
     const silent = options?.silent === true
-    if (!authUserId || memberUserIds.length === 0) {
+    if (!authUserId) {
       setPendingSessions([])
       setHoursSummaryByUserId({})
       setTodaySessionsRows([])
@@ -641,7 +647,7 @@ export function useDashboardMyTeamSectionState(
             supabase
               .from('clock_sessions')
               .select(CLOCK_SESSION_LIST_SELECT)
-              .in('user_id', memberUserIds)
+              .in('user_id', stripTeamUserIds)
               .is('approved_at', null)
               .is('rejected_at', null)
               .is('revoked_at', null)
@@ -656,7 +662,7 @@ export function useDashboardMyTeamSectionState(
             supabase
               .from('clock_sessions')
               .select(CLOCK_SESSION_LIST_SELECT)
-              .in('user_id', memberUserIds)
+              .in('user_id', stripTeamUserIds)
               .eq('origin', 'salary_schedule')
               .is('clocked_out_at', null)
               .is('rejected_at', null)
@@ -696,7 +702,7 @@ export function useDashboardMyTeamSectionState(
     }
   }, [
     authUserId,
-    memberUserIds,
+    stripTeamUserIds,
     dateStart,
     dateEnd,
     loadTeamHoursSummary,
@@ -897,18 +903,18 @@ export function useDashboardMyTeamSectionState(
   const todayHoursNowMs = useIntervalNowMs(45_000)
   const hoursTodayByUserId = useMemo(() => {
     const out: Record<string, number> = {}
-    const memberSet = new Set(memberUserIds)
-    for (const uid of memberUserIds) {
+    const stripSet = new Set(stripTeamUserIds)
+    for (const uid of stripTeamUserIds) {
       out[uid] = 0
     }
     for (const row of todaySessionsRows) {
       if (row.rejected_at || row.revoked_at) continue
-      if (!memberSet.has(row.user_id)) continue
+      if (!stripSet.has(row.user_id)) continue
       const sec = sessionDurationSeconds(row.clocked_in_at, row.clocked_out_at, todayHoursNowMs)
       out[row.user_id] = (out[row.user_id] ?? 0) + sec / 3600
     }
     return out
-  }, [memberUserIds, todaySessionsRows, todayHoursNowMs])
+  }, [stripTeamUserIds, todaySessionsRows, todayHoursNowMs])
 
   const hoursTodayByUserIdOrg = useMemo(() => {
     const out: Record<string, number> = {}
@@ -975,12 +981,16 @@ export function useDashboardMyTeamSectionState(
       })
     }
     rows.sort((a, b) => {
+      const aSelf = authUserId != null && a.userId === authUserId ? 0 : 1
+      const bSelf = authUserId != null && b.userId === authUserId ? 0 : 1
+      if (aSelf !== bSelf) return aSelf - bSelf
       const c = a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' })
       if (c !== 0) return c
       return a.userId.localeCompare(b.userId)
     })
     return rows
   }, [
+    authUserId,
     todaySessionsForStripScope,
     orgWideStripEnabled,
     hoursTodayByUserIdOrg,
@@ -1130,6 +1140,11 @@ export function useDashboardMyTeamSectionState(
     [pendingSessions, fullDetailMemberUserIdSet],
   )
 
+  const clockStripWorkDateYmd = useMemo(
+    () => stripWorkDateYmd ?? new Date().toLocaleDateString('en-CA'),
+    [stripWorkDateYmd],
+  )
+
   return {
     authUserId,
     memberUserIds,
@@ -1156,6 +1171,7 @@ export function useDashboardMyTeamSectionState(
     hoursTodayByUserIdOrg,
     todaySessionsForStripScope,
     clockedInTodayStripRows,
+    clockStripWorkDateYmd,
     jobsWorkedTodayStripRows,
     stripSyntheticSalarySessions,
     pendingApprovalCount,

@@ -61,6 +61,8 @@ export type MyTimeDayClusterVisualProps = {
   onAdjustTimes?: (session: DayEditorSession) => void
   onRejectSession?: (session: DayEditorSession) => void | Promise<void>
   rejectSessionBusyId?: string | null
+  /** Dashboard clock preview: strip and actions non-interactive. */
+  readOnlyView?: boolean
 }
 
 export function MyTimeDayClusterVisual({
@@ -90,6 +92,7 @@ export function MyTimeDayClusterVisual({
   onAdjustTimes,
   onRejectSession,
   rejectSessionBusyId = null,
+  readOnlyView = false,
 }: MyTimeDayClusterVisualProps) {
   const openLastCluster = !lastS.clocked_out_at
   return (
@@ -194,9 +197,9 @@ export function MyTimeDayClusterVisual({
                 ? `Adjust focus boundaries for ${formatDenverBlockDateHeader(t0, t1)}, ${formatDenverTimeOnly(t0)} to ${formatDenverTimeOnly(t1)}; multiple job or bid links`
                 : `Adjust focus boundaries for ${formatDenverBlockDateHeader(t0, t1)}, ${formatDenverTimeOnly(t0)} to ${formatDenverTimeOnly(t1)}`
             }
-            tabIndex={0}
-            onPointerDown={onStripPointerDown}
-            onKeyDown={onStripKeyDown}
+            tabIndex={readOnlyView ? -1 : 0}
+            onPointerDown={readOnlyView ? undefined : onStripPointerDown}
+            onKeyDown={readOnlyView ? undefined : onStripKeyDown}
             style={{
               width: 32,
               flex: 1,
@@ -204,8 +207,9 @@ export function MyTimeDayClusterVisual({
               position: 'relative',
               background: '#e5e7eb',
               borderRadius: 8,
-              touchAction: 'none',
-              cursor: 'crosshair',
+              touchAction: readOnlyView ? undefined : 'none',
+              cursor: readOnlyView ? 'default' : 'crosshair',
+              pointerEvents: readOnlyView ? 'none' : undefined,
             }}
           >
             {internalRowJoinMs(c, nowTick).map((refMs) => {
@@ -275,9 +279,9 @@ export function MyTimeDayClusterVisual({
                   data-boundary-handle
                   tabIndex={0}
                   aria-label={`Boundary at ${formatDenverDateTimeShort(ms)}`}
-                  disabled={!canDrag || saving}
+                  disabled={readOnlyView || !canDrag || saving}
                   onPointerDown={(ev) => {
-                    if (!canDrag) return
+                    if (readOnlyView || !canDrag) return
                     ev.stopPropagation()
                     ev.preventDefault()
                     onFocusHandle(bi)
@@ -328,7 +332,7 @@ export function MyTimeDayClusterVisual({
           >
             {formatDenverTimeOnly(t1)}
           </span>
-          {onForceClockOut && !lastS.clocked_out_at ? (
+          {onForceClockOut && !readOnlyView && !lastS.clocked_out_at ? (
             <button
               type="button"
               disabled={saving}
@@ -383,7 +387,10 @@ export function MyTimeDayClusterVisual({
             const allocLabels = segmentAllocationLabelsForOverlap(c, split, nowTick, segIdx, jobLabels, bidLabels)
             const multiAlloc = allocLabels.length > 1
             const showSingleUnassignedAssign =
-              !saving && allocLabels.length === 1 && allocLabels[0] === NO_JOB_BID_LINKED_LABEL
+              !readOnlyView &&
+              !saving &&
+              allocLabels.length === 1 &&
+              allocLabels[0] === NO_JOB_BID_LINKED_LABEL
             const unassignedIds = showSingleUnassignedAssign
               ? unassignedSessionIdsOverlappingSegment(c, split, nowTick, segIdx)
               : []
@@ -395,15 +402,19 @@ export function MyTimeDayClusterVisual({
                 ? c.find((row) => row.id === unassignedIds[0]!)
                 : undefined
             const showSingleAssignedChange =
+              !readOnlyView &&
               !saving &&
               allocLabels.length === 1 &&
               allocLabels[0] !== NO_JOB_BID_LINKED_LABEL
             const adjustRow = clockSessionRowForSegmentAssign(c, split, nowTick, segIdx)
             const changeAssignTargetRow = showSingleAssignedChange ? adjustRow : null
             const visualSpanAndDur = `${segmentAssignLabel} [${formatDurationMs(dur)}]`
-            const visualSpanAdjustClickable = Boolean(onAdjustTimes && adjustRow && !saving)
-            const showSegmentReject =
-              Boolean(onRejectSession && adjustRow && adjustRow.clocked_out_at && !saving)
+            const visualSpanAdjustClickable = Boolean(
+              !readOnlyView && onAdjustTimes && adjustRow && !saving,
+            )
+            const showSegmentReject = Boolean(
+              !readOnlyView && onRejectSession && adjustRow && adjustRow.clocked_out_at && !saving,
+            )
             const segmentRejectDisabled = Boolean(rejectSessionBusyId != null)
             const visualSpanDurText: CSSProperties = {
               fontSize: '0.75rem',
@@ -478,7 +489,7 @@ export function MyTimeDayClusterVisual({
                         {visualSpanAndDur}
                       </span>
                     )}
-                    {split.boundaries.length > 2 && !saving ? (
+                    {split.boundaries.length > 2 && !readOnlyView && !saving ? (
                       <span
                         style={{
                           display: 'inline-flex',
@@ -803,7 +814,8 @@ export function MyTimeDayClusterVisual({
                   value={split.notes[segIdx] ?? ''}
                   onChange={(ev) => patchClusterAction({ type: 'setNote', index: segIdx, text: ev.target.value })}
                   rows={2}
-                  disabled={saving}
+                  readOnly={readOnlyView}
+                  disabled={readOnlyView || saving}
                   placeholder="What were you working on?"
                   style={{
                     width: '100%',

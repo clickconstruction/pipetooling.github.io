@@ -218,6 +218,8 @@ type Props = {
   showMarkNotComingIn?: boolean
   /** Called after confirm; parent runs staff time-off RPC + refresh. */
   onMarkNotComingIn?: () => void | Promise<void>
+  /** Dashboard clock preview: allow splits/assign/notes; disable Adjust times, force clock-out, reject, NCNS. */
+  clockTimesReadOnly?: boolean
 }
 
 export function DashboardMyTimeDayEditorModal({
@@ -234,6 +236,7 @@ export function DashboardMyTimeDayEditorModal({
   allowNcnsFromMyTime = false,
   showMarkNotComingIn = false,
   onMarkNotComingIn,
+  clockTimesReadOnly = false,
 }: Props) {
   const { showToast } = useToastContext()
   void _editableRangeProp
@@ -248,9 +251,15 @@ export function DashboardMyTimeDayEditorModal({
     setPriorWeekAck(false)
   }, [dateStr])
   const effectiveEditable = inSaveableRange && (inCurrentWeek || priorWeekAck)
+  /** Splits, merges, notes, assign prep, strip interactions (preview from clock allows these). */
+  const allowTimelineEdits = effectiveEditable
+  /** Adjust-times modal, force clock-out, reject, NCNS (disabled in dashboard clock preview). */
+  const allowPunchTimeActions = effectiveEditable && !clockTimesReadOnly
 
   const showNotComingInControl =
-    showMarkNotComingIn === true && Boolean(subjectUserIdProp?.trim())
+    !clockTimesReadOnly &&
+    showMarkNotComingIn === true &&
+    Boolean(subjectUserIdProp?.trim())
 
   const [markNotComingInBusy, setMarkNotComingInBusy] = useState(false)
   const handleNotComingInClick = useCallback(async () => {
@@ -423,8 +432,11 @@ export function DashboardMyTimeDayEditorModal({
   }, [resolvedSubjectLabel, subjectUserIdProp, authUserId])
 
   const modalTitleText = useMemo(
-    () => `${modalTitlePerson} · ${formatWorkDateYmdWeekdayLongFriendly(dateStr)}`,
-    [modalTitlePerson, dateStr]
+    () =>
+      `${modalTitlePerson} · ${formatWorkDateYmdWeekdayLongFriendly(dateStr)}${
+        clockTimesReadOnly ? ' — punch times locked' : ''
+      }`,
+    [modalTitlePerson, dateStr, clockTimesReadOnly]
   )
 
   useEffect(() => {
@@ -513,7 +525,7 @@ export function DashboardMyTimeDayEditorModal({
   const ncnsClickAllowed =
     allowNcnsFromMyTime &&
     !editingSelf &&
-    effectiveEditable &&
+    allowPunchTimeActions &&
     !!effectiveSubjectUserId &&
     sortedSessions.length > 0 &&
     !sessionsLoading &&
@@ -527,7 +539,7 @@ export function DashboardMyTimeDayEditorModal({
 
   const ncnsButtonTitle = useMemo(() => {
     if (!allowNcnsFromMyTime || editingSelf) return ''
-    if (!effectiveEditable) return ''
+    if (!allowPunchTimeActions) return ''
     if (sessionsLoading || pendingAuthForFetch) return 'Loading…'
     if (sortedSessions.length === 0) return 'No sessions to reject for this day'
     if (ncnsHasOpenSession) return 'Click to clock out open sessions at current time, then record NCNS'
@@ -535,7 +547,7 @@ export function DashboardMyTimeDayEditorModal({
   }, [
     allowNcnsFromMyTime,
     editingSelf,
-    effectiveEditable,
+    allowPunchTimeActions,
     sessionsLoading,
     pendingAuthForFetch,
     sortedSessions.length,
@@ -712,16 +724,21 @@ export function DashboardMyTimeDayEditorModal({
     })
   }, [nowTick, sortedSessions])
 
-  const patchCluster = useCallback((clusterId: string, action: SplitAction) => {
-    setSplitByCluster((prev) => {
-      const cur = prev[clusterId]
-      if (!cur) return prev
-      return { ...prev, [clusterId]: splitReducer(cur, action) }
-    })
-  }, [])
+  const patchCluster = useCallback(
+    (clusterId: string, action: SplitAction) => {
+      if (!allowTimelineEdits) return
+      setSplitByCluster((prev) => {
+        const cur = prev[clusterId]
+        if (!cur) return prev
+        return { ...prev, [clusterId]: splitReducer(cur, action) }
+      })
+    },
+    [allowTimelineEdits],
+  )
 
   const openMergeJobChoiceForCluster = useCallback(
     (clusterId: string, payload: { direction: 'prev' | 'next'; segIdx: number }) => {
+      if (!allowTimelineEdits) return
       const c = sessionClusters.find((x) => sessionClusterId(x) === clusterId)
       const split = splitByCluster[clusterId]
       if (!c?.length || !split) return
@@ -770,7 +787,7 @@ export function DashboardMyTimeDayEditorModal({
         initialMergedFocusNote,
       })
     },
-    [sessionClusters, splitByCluster, nowTick, mergedJobLabels, mergedBidLabels]
+    [allowTimelineEdits, sessionClusters, splitByCluster, nowTick, mergedJobLabels, mergedBidLabels]
   )
 
   const confirmMergeJobChoice = useCallback((choice: MergeJobAllocOption, mergedFocusNote: string) => {
@@ -817,6 +834,7 @@ export function DashboardMyTimeDayEditorModal({
   }, [nowTick])
 
   const commitInnerBoundary = useCallback((clusterId: string, boundaryIndex: number, ms: number) => {
+    if (!allowTimelineEdits) return
     setSplitByCluster((prev) => {
       const s0 = prev[clusterId]
       const c = sessionClustersRef.current.find((x) => sessionClusterId(x) === clusterId)
@@ -833,7 +851,7 @@ export function DashboardMyTimeDayEditorModal({
       }
       return { ...prev, [clusterId]: next }
     })
-  }, [])
+  }, [allowTimelineEdits])
 
   const splitByClusterRef = useRef(splitByCluster)
   const sessionClustersRef = useRef(sessionClusters)
@@ -1069,7 +1087,7 @@ export function DashboardMyTimeDayEditorModal({
   /** Persist UI splits to DB when needed so job/bid assign targets only one segment (single-row + virtual splits). */
   const resolveAssignSessionForSegment = useCallback(
     async (clusterId: string, segIdx: number) => {
-      if (!effectiveEditable) return null
+      if (!allowTimelineEdits) return null
       const c = sessionClustersRef.current.find((x) => sessionClusterId(x) === clusterId)
       const split = splitByClusterRef.current[clusterId]
       if (!c?.length || !split) return null
@@ -1126,7 +1144,7 @@ export function DashboardMyTimeDayEditorModal({
         setSaving(false)
       }
     },
-    [effectiveEditable, editingSelf, onLinkedSessionsUpdated]
+    [allowTimelineEdits, editingSelf, onLinkedSessionsUpdated]
   )
 
   const endBoundaryDragListeners = useCallback(() => {
@@ -1190,6 +1208,7 @@ export function DashboardMyTimeDayEditorModal({
 
   const startDrag = useCallback(
     (clusterId: string, index: number, ev: React.PointerEvent<HTMLButtonElement>, undo: SplitEditorState) => {
+      if (!allowTimelineEdits) return
       const captureEl = ev.currentTarget
       dragRef.current = { clusterId, index, pointerId: ev.pointerId, captureEl, undo }
       try {
@@ -1202,12 +1221,12 @@ export function DashboardMyTimeDayEditorModal({
       window.addEventListener('pointerup', endBoundaryDragListeners)
       window.addEventListener('pointercancel', endBoundaryDragListeners)
     },
-    [endBoundaryDragListeners, stableWindowPointerMove]
+    [allowTimelineEdits, endBoundaryDragListeners, stableWindowPointerMove]
   )
 
   const handleStripPointerDown = useCallback(
     (clusterId: string, c: DayEditorSession[], ev: React.PointerEvent<HTMLDivElement>) => {
-      if (saving) return
+      if (!allowTimelineEdits || saving) return
       if (!ev.isPrimary || ev.button !== 0) return
       if ((ev.target as HTMLElement).closest('button[data-boundary-handle]')) return
 
@@ -1275,7 +1294,7 @@ export function DashboardMyTimeDayEditorModal({
       window.addEventListener('pointerup', stableStripTapEnd)
       window.addEventListener('pointercancel', stableStripTapEnd)
     },
-    [cancelStripTapGesture, saving, stableStripTapMove, stableStripTapEnd]
+    [allowTimelineEdits, cancelStripTapGesture, saving, stableStripTapMove, stableStripTapEnd]
   )
 
   useEffect(
@@ -1311,6 +1330,7 @@ export function DashboardMyTimeDayEditorModal({
   )
 
   function handleStripKeyDown(clusterId: string, e: React.KeyboardEvent) {
+    if (!allowTimelineEdits) return
     const fh = focusedHandle
     if (!fh || fh.clusterId !== clusterId) return
     if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
@@ -1805,7 +1825,12 @@ export function DashboardMyTimeDayEditorModal({
           <>
             <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.75rem', color: '#9ca3af' }}>
               {sortedSessions.length} session{sortedSessions.length === 1 ? '' : 's'} ·{' '}
-              {layoutMode === 'visual' ? (
+              {clockTimesReadOnly ? (
+                <>
+                  Punch start/end cannot be changed with Adjust times here. You can split focus, edit segment notes, assign
+                  jobs or bids, and use Close to save when you have pending changes.
+                </>
+              ) : layoutMode === 'visual' ? (
                 <>
                   Each block starts as one focus; tap the gray strip to add a split, then drag blue handles to adjust
                   boundaries. Off-clock gaps are read-only.
@@ -1935,9 +1960,9 @@ export function DashboardMyTimeDayEditorModal({
                           onRequestMergeJobChoice={(payload) =>
                             openMergeJobChoiceForCluster(clusterId, payload)
                           }
-                          onForceClockOut={effectiveEditable && !saving ? openForceClockOut : undefined}
-                          onAdjustTimes={effectiveEditable && !saving ? openAdjustTimes : undefined}
-                          onRejectSession={effectiveEditable && !saving ? handleRejectSession : undefined}
+                          onForceClockOut={allowPunchTimeActions && !saving ? openForceClockOut : undefined}
+                          onAdjustTimes={allowPunchTimeActions && !saving ? openAdjustTimes : undefined}
+                          onRejectSession={allowPunchTimeActions && !saving ? handleRejectSession : undefined}
                           rejectSessionBusyId={rejectSessionBusyId}
                         />
                       ) : (
@@ -1966,9 +1991,9 @@ export function DashboardMyTimeDayEditorModal({
                           onRequestMergeJobChoice={(payload) =>
                             openMergeJobChoiceForCluster(clusterId, payload)
                           }
-                          onForceClockOut={effectiveEditable && !saving ? openForceClockOut : undefined}
-                          onAdjustTimes={effectiveEditable && !saving ? openAdjustTimes : undefined}
-                          onRejectSession={effectiveEditable && !saving ? handleRejectSession : undefined}
+                          onForceClockOut={allowPunchTimeActions && !saving ? openForceClockOut : undefined}
+                          onAdjustTimes={allowPunchTimeActions && !saving ? openAdjustTimes : undefined}
+                          onRejectSession={allowPunchTimeActions && !saving ? handleRejectSession : undefined}
                           rejectSessionBusyId={rejectSessionBusyId}
                         />
                       )}
@@ -2019,7 +2044,7 @@ export function DashboardMyTimeDayEditorModal({
                     {markNotComingInBusy ? '…' : 'Not coming in'}
                   </button>
                 ) : null}
-                {allowNcnsFromMyTime && !editingSelf && effectiveEditable ? (
+                {allowNcnsFromMyTime && !editingSelf && allowPunchTimeActions ? (
                   <button
                     type="button"
                     onClick={() => void handleNcnsHeaderClick()}
@@ -2106,7 +2131,7 @@ export function DashboardMyTimeDayEditorModal({
                   {markNotComingInBusy ? '…' : 'Not coming in'}
                 </button>
               ) : null}
-              {allowNcnsFromMyTime && !editingSelf && effectiveEditable ? (
+              {allowNcnsFromMyTime && !editingSelf && allowPunchTimeActions ? (
                 <button
                   type="button"
                   onClick={() => void handleNcnsHeaderClick()}

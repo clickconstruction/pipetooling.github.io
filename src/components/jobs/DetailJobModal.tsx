@@ -596,11 +596,12 @@ export default function DetailJobModal({
     openInExternalBrowser(googleMapsSearchUrlForAddress(mapsAddressLine))
   }
 
-  const { user: authUser } = useAuth()
+  const { user: authUser, profileName } = useAuth()
   const { showToast } = useToastContext()
   const threadNotes = useJobThreadNotesForModal(open ? jobId : null, open, {
     authUserId: authUser?.id,
     showToast,
+    authorDisplayName: authUser?.id ? profileName : undefined,
   })
 
   const jobFormModal = useJobFormModal()

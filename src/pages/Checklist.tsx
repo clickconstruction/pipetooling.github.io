@@ -211,7 +211,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
   const [upcomingInstances, setUpcomingInstances] = useState<ChecklistInstance[]>([])
   const [upcomingExpanded, setUpcomingExpanded] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [completingId, setCompletingId] = useState<string | null>(null)
+  const toggleCompleteInFlightRef = useRef(new Set<string>())
   const [notesByInstance, setNotesByInstance] = useState<Record<string, string>>({})
   const [fwdInstance, setFwdInstance] = useState<ChecklistInstance | null>(null)
   const [fwdTitle, setFwdTitle] = useState('')
@@ -317,28 +317,64 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
   }
 
   async function toggleComplete(inst: ChecklistInstance) {
-    if (!authUserId || completingId) return
-    setCompletingId(inst.id)
+    if (!authUserId) return
+    if (toggleCompleteInFlightRef.current.has(inst.id)) return
+    toggleCompleteInFlightRef.current.add(inst.id)
+
     setError(null)
     const isCompleted = !!inst.completed_at
     const notes = notesByInstance[inst.id] ?? inst.notes ?? ''
-    const { error: e } = await supabase
-      .from('checklist_instances')
-      .update({
-        completed_at: isCompleted ? null : new Date().toISOString(),
-        notes: isCompleted ? null : notes || null,
-        completed_by_user_id: isCompleted ? null : authUserId,
+    const nextCompletedAt = isCompleted ? null : new Date().toISOString()
+    const nextNotes = isCompleted ? null : notes || null
+    const nextCompletedBy = isCompleted ? null : authUserId
+    const previous = inst
+
+    setTodayInstances((prev) =>
+      prev.map((row) =>
+        row.id === inst.id
+          ? {
+              ...row,
+              completed_at: nextCompletedAt,
+              notes: nextNotes,
+              completed_by_user_id: nextCompletedBy,
+            }
+          : row,
+      ),
+    )
+    if (isCompleted) {
+      setNotesByInstance((prev) => {
+        const next = { ...prev }
+        delete next[inst.id]
+        return next
       })
-      .eq('id', inst.id)
-    setCompletingId(null)
-    if (e) {
-      setError(e.message)
-      return
     }
-    await loadToday()
-    if (!isCompleted) {
-      await sendCompletionNotifications(inst)
-      await maybeCreateNextInstance(inst)
+
+    try {
+      const { error: e } = await supabase
+        .from('checklist_instances')
+        .update({
+          completed_at: nextCompletedAt,
+          notes: nextNotes,
+          completed_by_user_id: nextCompletedBy,
+        })
+        .eq('id', inst.id)
+      if (e) throw e
+      await loadToday()
+      if (!isCompleted) {
+        void sendCompletionNotifications(inst)
+        void maybeCreateNextInstance(inst)
+      }
+    } catch (e: unknown) {
+      setTodayInstances((prev) => prev.map((row) => (row.id === inst.id ? previous : row)))
+      setNotesByInstance((prev) => {
+        const next = { ...prev }
+        if (previous.notes != null && previous.notes !== '') next[inst.id] = previous.notes
+        else delete next[inst.id]
+        return next
+      })
+      setError(e instanceof Error ? e.message : 'Failed to update checklist')
+    } finally {
+      toggleCompleteInFlightRef.current.delete(inst.id)
     }
   }
 
@@ -531,8 +567,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
                   <input
                     type="checkbox"
                     checked={isCompleted}
-                    onChange={() => toggleComplete(inst)}
-                    disabled={!!completingId}
+                    onChange={() => void toggleComplete(inst)}
                     style={{ marginTop: '0.25rem' }}
                   />
                   <div style={{ flex: 1, minWidth: 0 }}>

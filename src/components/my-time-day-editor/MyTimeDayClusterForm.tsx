@@ -101,6 +101,8 @@ export type MyTimeDayClusterFormProps = {
   onRejectSession?: (session: DayEditorSession) => void | Promise<void>
   /** When set, segment reject buttons are disabled (single in-flight reject). */
   rejectSessionBusyId?: string | null
+  /** Dashboard clock preview: no edits to times, notes, merge, or assign. */
+  readOnlyView?: boolean
 }
 
 export function MyTimeDayClusterForm({
@@ -126,6 +128,7 @@ export function MyTimeDayClusterForm({
   onAdjustTimes,
   onRejectSession,
   rejectSessionBusyId = null,
+  readOnlyView = false,
 }: MyTimeDayClusterFormProps) {
   const timeOnlyMode = denverSameCalendarDay(t0, t1)
   const anchorYmd = anchorDateYmdFromClusterStart(t0)
@@ -176,7 +179,7 @@ export function MyTimeDayClusterForm({
         >
           {formatDenverTimeOnly(t0)} – {formatDenverTimeOnly(t1)}
         </span>
-        {onForceClockOut && !lastS.clocked_out_at ? (
+        {onForceClockOut && !readOnlyView && !lastS.clocked_out_at ? (
           <button
             type="button"
             disabled={saving}
@@ -229,7 +232,10 @@ export function MyTimeDayClusterForm({
         const allocLabels = segmentAllocationLabelsForOverlap(c, split, nowTick, segIdx, jobLabels, bidLabels)
         const multiAlloc = allocLabels.length > 1
         const showSingleUnassignedAssign =
-          !saving && allocLabels.length === 1 && allocLabels[0] === NO_JOB_BID_LINKED_LABEL
+          !readOnlyView &&
+          !saving &&
+          allocLabels.length === 1 &&
+          allocLabels[0] === NO_JOB_BID_LINKED_LABEL
         const unassignedIds = showSingleUnassignedAssign
           ? unassignedSessionIdsOverlappingSegment(c, split, nowTick, segIdx)
           : []
@@ -241,6 +247,7 @@ export function MyTimeDayClusterForm({
             ? c.find((row) => row.id === unassignedIds[0]!)
             : undefined
         const showSingleAssignedChange =
+          !readOnlyView &&
           !saving &&
           allocLabels.length === 1 &&
           allocLabels[0] !== NO_JOB_BID_LINKED_LABEL
@@ -258,9 +265,12 @@ export function MyTimeDayClusterForm({
         const adjustRow = clockSessionRowForSegmentAssign(c, split, nowTick, segIdx)
         const changeAssignTargetRow = showSingleAssignedChange ? adjustRow : null
         const spanAndDurText = `${spanRangeText} [${formatDurationMs(dur)}]`
-        const spanAdjustClickable = Boolean(onAdjustTimes && adjustRow && !saving)
-        const showSegmentReject =
-          Boolean(onRejectSession && adjustRow && adjustRow.clocked_out_at && !saving)
+        const spanAdjustClickable = Boolean(
+          !readOnlyView && onAdjustTimes && adjustRow && !saving,
+        )
+        const showSegmentReject = Boolean(
+          !readOnlyView && onRejectSession && adjustRow && adjustRow.clocked_out_at && !saving,
+        )
         const segmentRejectDisabled = Boolean(rejectSessionBusyId != null)
 
         return (
@@ -346,7 +356,7 @@ export function MyTimeDayClusterForm({
                         {spanAndDurText}
                       </span>
                     )}
-                    {split.boundaries.length > 2 && !saving ? (
+                    {split.boundaries.length > 2 && !readOnlyView && !saving ? (
                       <span
                         style={{
                           display: 'inline-flex',
@@ -677,7 +687,7 @@ export function MyTimeDayClusterForm({
                 flexDirection: 'column',
               }}
             >
-              {canSplitThis ? (
+              {canSplitThis && !readOnlyView ? (
                 <div style={{ ...FORM_ROW_GRID, marginTop: 6 }}>
                   <span style={FORM_LABEL_CELL} />
                   <button
@@ -716,8 +726,10 @@ export function MyTimeDayClusterForm({
                       step={timeOnlyMode ? 60 : undefined}
                       defaultValue={timeOnlyMode ? msToTimeLocalValue(b) : msToDatetimeLocalValue(b)}
                       key={`${clusterId}-e-${segIdx}-${b}-${timeOnlyMode ? 't' : 'dt'}`}
-                      disabled={saving}
+                      disabled={readOnlyView || saving}
+                      readOnly={readOnlyView}
                       onBlur={(e) => {
+                        if (readOnlyView) return
                         const ms = timeOnlyMode
                           ? parseTimeOnAnchorDateToMs(anchorYmd, e.target.value)
                           : parseDatetimeLocalToMs(e.target.value)
@@ -741,7 +753,8 @@ export function MyTimeDayClusterForm({
                 value={split.notes[segIdx] ?? ''}
                 onChange={(ev) => patchClusterAction({ type: 'setNote', index: segIdx, text: ev.target.value })}
                 rows={2}
-                disabled={saving}
+                readOnly={readOnlyView}
+                disabled={readOnlyView || saving}
                 placeholder="What were you working on?"
                 style={{
                   width: '100%',
