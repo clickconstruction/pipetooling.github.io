@@ -335,6 +335,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Single **`mark_invoice_paid`** overload; regenerate **`database.ts`** if duplicate union arm disappears
 - **Category**: Jobs / Billing
 
+**`20270410130300_stripe_webhook_events_dedupe.sql`**
+- **Purpose**: **Stripe webhook dedupe log** — **`stripe_webhook_events`** stores **`stripe_event_id`** (unique) plus payload snapshot for **`invoice.*`**, **`payment_intent.*`**, **`charge.*`**; **`stripe-webhook`** inserts before processing and bails on duplicate
+- **Changes**: **`CREATE TABLE`** + indexes; **dev-only** SELECT RLS (`is_dev()`)
+- **Impact**: [`stripe-webhook`](supabase/functions/stripe-webhook/index.ts); Banking **Stripe** → **Data** ([`BankingStripeWebhookEventsPanel.tsx`](src/components/BankingStripeWebhookEventsPanel.tsx)); [`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.284
+- **Category**: Jobs / Billing / Dev tooling
+
 ### March 2027
 
 #### March 31, 2027

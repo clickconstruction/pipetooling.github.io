@@ -15,6 +15,8 @@ import { useAuth } from '../hooks/useAuth'
 import { useToastContext } from '../contexts/ToastContext'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import type { Database } from '../types/database'
+import { BankingStripeInvoicesPanel } from '../components/BankingStripeInvoicesPanel'
+import { BankingStripeWebhookEventsPanel } from '../components/BankingStripeWebhookEventsPanel'
 import { BankingAccountNicknamesModal } from '../components/BankingAccountNicknamesModal'
 import { BankingDebitCardNicknamesModal } from '../components/BankingDebitCardNicknamesModal'
 import { BankingDebitCardRecentTxModal } from '../components/BankingDebitCardRecentTxModal'
@@ -46,7 +48,53 @@ import {
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 const DEBIT_CARD_RECENT_TX_CAP = 50
 type SortKey = 'posted_at' | 'mercury_account_id' | 'mercury_id'
-type BankingTab = 'ledger' | 'sorting'
+
+type BankingProduct = 'mercury' | 'stripe'
+type MercuryBankingTab = 'ledger' | 'sorting'
+type StripeBankingTab = 'invoices' | 'data'
+
+type BankingView = {
+  product: BankingProduct
+  mercuryTab: MercuryBankingTab
+  stripeTab: StripeBankingTab
+}
+
+type BankingPageRole =
+  | 'dev'
+  | 'master_technician'
+  | 'assistant'
+  | 'estimator'
+  | 'primary'
+  | 'superintendent'
+  | 'subcontractor'
+  | null
+
+function parseBankingView(params: URLSearchParams, role: BankingPageRole): BankingView {
+  if (role === 'assistant' || role === 'master_technician') {
+    return { product: 'mercury', mercuryTab: 'sorting', stripeTab: 'invoices' }
+  }
+  if (role !== 'dev') {
+    return { product: 'mercury', mercuryTab: 'ledger', stripeTab: 'invoices' }
+  }
+
+  const productRaw = params.get('product')
+  const tabRaw = params.get('tab')
+
+  if (productRaw === 'stripe') {
+    return {
+      product: 'stripe',
+      mercuryTab: 'ledger',
+      stripeTab: tabRaw === 'data' ? 'data' : 'invoices',
+    }
+  }
+
+  let mercuryTab: MercuryBankingTab = 'ledger'
+  if (tabRaw === 'sorting') mercuryTab = 'sorting'
+  else if (tabRaw === 'ledger') mercuryTab = 'ledger'
+  else if (tabRaw === 'invoices' || tabRaw === 'data') mercuryTab = 'ledger'
+
+  return { product: 'mercury', mercuryTab, stripeTab: 'invoices' }
+}
 
 type BankingNicknamesMenuProps = {
   menuOpen: boolean
@@ -704,20 +752,54 @@ export default function Banking() {
   const isDevBanking = myRole === 'dev'
   const canAccessBanking = myRole === 'dev' || myRole === 'assistant' || myRole === 'master_technician'
 
-  const activeTab: BankingTab =
-    myRole === 'assistant' || myRole === 'master_technician'
-      ? 'sorting'
-      : searchParams.get('tab') === 'sorting'
-        ? 'sorting'
-        : 'ledger'
+  const bankingView = useMemo(() => parseBankingView(searchParams, myRole), [searchParams, myRole])
 
-  const setBankingTab = useCallback(
-    (tab: BankingTab) => {
+  const setMercurySubTab = useCallback(
+    (tab: MercuryBankingTab) => {
       setSearchParams(
         (prev) => {
           const p = new URLSearchParams(prev)
-          if (tab === 'sorting') p.set('tab', 'sorting')
-          else p.delete('tab')
+          p.set('product', 'mercury')
+          p.set('tab', tab)
+          return p
+        },
+        { replace: true },
+      )
+    },
+    [setSearchParams],
+  )
+
+  const setStripeSubTab = useCallback(
+    (tab: StripeBankingTab) => {
+      setSearchParams(
+        (prev) => {
+          const p = new URLSearchParams(prev)
+          p.set('product', 'stripe')
+          p.set('tab', tab)
+          return p
+        },
+        { replace: true },
+      )
+    },
+    [setSearchParams],
+  )
+
+  const setBankingProduct = useCallback(
+    (product: BankingProduct) => {
+      setSearchParams(
+        (prev) => {
+          const p = new URLSearchParams(prev)
+          if (product === 'mercury') {
+            p.set('product', 'mercury')
+            const t = prev.get('tab')
+            if (t === 'sorting' || t === 'ledger') p.set('tab', t)
+            else p.set('tab', 'ledger')
+          } else {
+            p.set('product', 'stripe')
+            const t = prev.get('tab')
+            if (t === 'data' || t === 'invoices') p.set('tab', t)
+            else p.set('tab', 'invoices')
+          }
           return p
         },
         { replace: true },
@@ -728,14 +810,14 @@ export default function Banking() {
 
   useEffect(() => {
     setNicknamesMenuOpen(false)
-  }, [activeTab])
+  }, [bankingView.product, bankingView.mercuryTab, bankingView.stripeTab])
 
   useEffect(() => {
-    if (activeTab !== 'sorting') {
+    if (bankingView.product !== 'mercury' || bankingView.mercuryTab !== 'sorting') {
       setSortingConfigModalOpen(false)
       setUserCardLinkModalOpen(false)
     }
-  }, [activeTab])
+  }, [bankingView.product, bankingView.mercuryTab])
 
   useEffect(() => {
     if (!user?.id || !myRole) return
@@ -765,22 +847,27 @@ export default function Banking() {
   }, [myRole, navigate])
 
   useEffect(() => {
-    if (myRole !== 'master_technician' || searchParams.get('tab') === 'sorting') return
+    if (myRole !== 'master_technician' && myRole !== 'assistant') return
+    const product = searchParams.get('product')
+    const tab = searchParams.get('tab')
+    if (tab === 'sorting' && product !== 'stripe' && (product === null || product === 'mercury')) {
+      if (product === null) {
+        setSearchParams(
+          (prev) => {
+            const p = new URLSearchParams(prev)
+            p.set('product', 'mercury')
+            p.set('tab', 'sorting')
+            return p
+          },
+          { replace: true },
+        )
+      }
+      return
+    }
     setSearchParams(
       (prev) => {
         const p = new URLSearchParams(prev)
-        p.set('tab', 'sorting')
-        return p
-      },
-      { replace: true },
-    )
-  }, [myRole, searchParams, setSearchParams])
-
-  useEffect(() => {
-    if (myRole !== 'assistant' || searchParams.get('tab') === 'sorting') return
-    setSearchParams(
-      (prev) => {
-        const p = new URLSearchParams(prev)
+        p.set('product', 'mercury')
         p.set('tab', 'sorting')
         return p
       },
@@ -1106,11 +1193,15 @@ export default function Banking() {
   )
 
   useEffect(() => {
-    const visible = activeTab === 'sorting' ? sortingFilteredSorted : filteredSorted
+    if (bankingView.product !== 'mercury') {
+      if (expandedRowId !== null) setExpandedRowId(null)
+      return
+    }
+    const visible = bankingView.mercuryTab === 'sorting' ? sortingFilteredSorted : filteredSorted
     if (expandedRowId && !visible.some((r) => r.id === expandedRowId)) {
       setExpandedRowId(null)
     }
-  }, [activeTab, filteredSorted, sortingFilteredSorted, expandedRowId])
+  }, [bankingView.product, bankingView.mercuryTab, filteredSorted, sortingFilteredSorted, expandedRowId])
 
   async function handleSync() {
     setSyncing(true)
@@ -1249,52 +1340,124 @@ export default function Banking() {
     <div style={{ padding: '0 2rem 2rem', maxWidth: 1200 }}>
       <div
         style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '0.75rem',
           marginBottom: '1.5rem',
           borderBottom: '1px solid #e5e7eb',
+          paddingBottom: '1rem',
         }}
       >
-        <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-            <div
-              role="tablist"
-              aria-label="Banking sections"
-              style={{ display: 'flex', alignItems: 'center', gap: 0, width: 'max-content' }}
-            >
-              {isDevBanking && (
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'flex-start',
+            justifyContent: 'space-between',
+            gap: '0.75rem',
+          }}
+        >
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h1 style={{ margin: '0 0 0.75rem', fontSize: '1.5rem', fontWeight: 700 }}>Banking</h1>
+            {isDevBanking ? (
+              <div
+                role="tablist"
+                aria-label="Banking data source"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0,
+                  marginBottom: '0.5rem',
+                  width: 'max-content',
+                  overflowX: 'auto',
+                  WebkitOverflowScrolling: 'touch',
+                }}
+              >
                 <button
                   type="button"
                   role="tab"
-                  aria-selected={activeTab === 'ledger'}
-                  id="banking-tab-ledger"
-                  onClick={() => setBankingTab('ledger')}
-                  style={pageUnderlineTabStyle(activeTab === 'ledger')}
+                  aria-selected={bankingView.product === 'mercury'}
+                  id="banking-product-mercury"
+                  onClick={() => setBankingProduct('mercury')}
+                  style={pageUnderlineTabStyle(bankingView.product === 'mercury')}
                 >
-                  Ledger
+                  Mercury
                 </button>
-              )}
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activeTab === 'sorting'}
-                id="banking-tab-sorting"
-                onClick={() => setBankingTab('sorting')}
-                style={pageUnderlineTabStyle(activeTab === 'sorting')}
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={bankingView.product === 'stripe'}
+                  id="banking-product-stripe"
+                  onClick={() => setBankingProduct('stripe')}
+                  style={pageUnderlineTabStyle(bankingView.product === 'stripe')}
+                >
+                  Stripe
+                </button>
+              </div>
+            ) : null}
+            <div
+              style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}
+              role="presentation"
+            >
+              <div
+                role="tablist"
+                aria-label="Banking sections"
+                style={{ display: 'flex', alignItems: 'center', gap: 0, width: 'max-content' }}
               >
-                Sorting
-              </button>
+                {bankingView.product === 'mercury' ? (
+                  <>
+                    {isDevBanking ? (
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={bankingView.mercuryTab === 'ledger'}
+                        id="banking-tab-ledger"
+                        onClick={() => setMercurySubTab('ledger')}
+                        style={pageUnderlineTabStyle(bankingView.mercuryTab === 'ledger')}
+                      >
+                        Ledger
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={bankingView.mercuryTab === 'sorting'}
+                      id="banking-tab-sorting"
+                      onClick={() => setMercurySubTab('sorting')}
+                      style={pageUnderlineTabStyle(bankingView.mercuryTab === 'sorting')}
+                    >
+                      Sorting
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={bankingView.stripeTab === 'invoices'}
+                      id="banking-tab-stripe-invoices"
+                      onClick={() => setStripeSubTab('invoices')}
+                      style={pageUnderlineTabStyle(bankingView.stripeTab === 'invoices')}
+                    >
+                      Invoices
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={bankingView.stripeTab === 'data'}
+                      id="banking-tab-stripe-data"
+                      onClick={() => setStripeSubTab('data')}
+                      style={pageUnderlineTabStyle(bankingView.stripeTab === 'data')}
+                    >
+                      Data
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
-        <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, flexShrink: 0 }}>Banking</h1>
       </div>
 
-      {activeTab === 'sorting' && (
-        <div role="tabpanel" aria-labelledby="banking-tab-sorting">
+      {bankingView.product === 'mercury' && bankingView.mercuryTab === 'sorting' && (
+        <div role="tabpanel" id="banking-panel-mercury-sorting" aria-labelledby="banking-tab-sorting">
           {!isDevBanking ? (
             <p
               style={{
@@ -1509,8 +1672,8 @@ export default function Banking() {
         </div>
       )}
 
-      {activeTab === 'ledger' && isDevBanking && (
-        <div role="tabpanel" aria-labelledby="banking-tab-ledger">
+      {bankingView.product === 'mercury' && bankingView.mercuryTab === 'ledger' && isDevBanking && (
+        <div role="tabpanel" id="banking-panel-mercury-ledger" aria-labelledby="banking-tab-ledger">
           <div
             style={{
               display: 'flex',
@@ -1656,6 +1819,18 @@ export default function Banking() {
               onEditAllocations={(r) => setAllocModalTx(r)}
             />
           )}
+        </div>
+      )}
+
+      {bankingView.product === 'stripe' && isDevBanking && bankingView.stripeTab === 'invoices' && (
+        <div role="tabpanel" id="banking-panel-stripe-invoices" aria-labelledby="banking-tab-stripe-invoices">
+          <BankingStripeInvoicesPanel />
+        </div>
+      )}
+
+      {bankingView.product === 'stripe' && isDevBanking && bankingView.stripeTab === 'data' && (
+        <div role="tabpanel" id="banking-panel-stripe-data" aria-labelledby="banking-tab-stripe-data">
+          <BankingStripeWebhookEventsPanel />
         </div>
       )}
 

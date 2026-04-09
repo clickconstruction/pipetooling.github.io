@@ -1,11 +1,13 @@
 import {
   Fragment,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
   type CSSProperties,
   type KeyboardEvent,
+  type ReactNode,
 } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -24,6 +26,7 @@ import { type JobBillingContext } from '../components/jobs/SendRecordInvoiceModa
 import { useBillCustomerModal } from '../contexts/BillCustomerModalContext'
 import BilledPaymentConfirmationModal from '../components/jobs/BilledPaymentConfirmationModal'
 import { JobThreadNotesPanel } from '../components/JobThreadNotesPanel'
+import DetailJobModal, { type DetailJobModalAssignedJobRow } from '../components/jobs/DetailJobModal'
 import { ScheduleJobModal } from '../components/jobs/ScheduleJobModal'
 import { useJobThreadNotes } from '../hooks/useJobThreadNotes'
 import { CrewJobsBlock } from '../components/CrewJobsBlock'
@@ -523,6 +526,8 @@ function formatJobNameTwoLines(name: string | null): { line1: string; line2?: st
 export default function Jobs() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
+  /** `loadJobs()` only filters by this URL param; avoid refetching all jobs when unrelated search params change. */
+  const customerParamForJobsReload = searchParams.get('customer')
   const { user: authUser, role: authRole, loading: authLoading, profileName: authProfileName } = useAuth()
   const canOpenJobScheduleModal = useMemo(
     () =>
@@ -760,6 +765,63 @@ export default function Jobs() {
   const [assignedEditSavingId, setAssignedEditSavingId] = useState<string | null>(null)
   const [pctCompleteSavingId, setPctCompleteSavingId] = useState<string | null>(null)
   const assignedEditDropdownRef = useRef<HTMLDivElement | null>(null)
+  const [stagesDetailJobModal, setStagesDetailJobModal] = useState<{
+    jobId: string
+    prefillRowLabel: string | null
+    prefillAddress: string | null
+  } | null>(null)
+
+  const detailModalAssignedJobsRows = useMemo((): DetailJobModalAssignedJobRow[] => {
+    return jobs.map((j) => ({
+      id: j.id,
+      hcp_number: j.hcp_number ?? '',
+      job_name: j.job_name ?? '',
+      job_address: j.job_address ?? '',
+      google_drive_link: j.google_drive_link,
+      job_plans_link: j.job_plans_link,
+      revenue: j.revenue != null ? Number(j.revenue) : null,
+      project_id: j.project_id,
+    }))
+  }, [jobs])
+
+  const renderStagesOpenDetailJobName = useCallback((j: JobWithDetails): ReactNode => {
+    const fmt = formatJobNameTwoLines(j.job_name)
+    if (!fmt) return <div>—</div>
+    const h = (j.hcp_number ?? '').trim() || '—'
+    const n = (j.job_name ?? '').trim() || 'Job'
+    return (
+      <button
+        type="button"
+        onClick={() =>
+          setStagesDetailJobModal({
+            jobId: j.id,
+            prefillRowLabel: `${h} · ${n}`,
+            prefillAddress: (j.job_address ?? '').trim() || null,
+          })
+        }
+        aria-label={`Open job detail for ${n}`}
+        style={{
+          display: 'block',
+          margin: 0,
+          padding: 0,
+          border: 'none',
+          background: 'none',
+          cursor: 'pointer',
+          font: 'inherit',
+          textAlign: 'left',
+          color: '#1d4ed8',
+          textDecoration: 'underline',
+          textUnderlineOffset: '2px',
+          width: '100%',
+        }}
+      >
+        <span style={{ color: 'inherit', textDecoration: 'inherit' }}>{fmt.line1}</span>
+        {fmt.line2 ? (
+          <div style={{ fontSize: '0.75rem', color: 'inherit', marginTop: '0.15rem', textDecoration: 'inherit' }}>{fmt.line2}</div>
+        ) : null}
+      </button>
+    )
+  }, [])
 
   const stagesFilteredJobs = useMemo(() => {
     const q = stagesSearchQuery.trim().toLowerCase()
@@ -834,10 +896,15 @@ export default function Jobs() {
     refreshJobThreadStatsForJobIds,
   } = useJobThreadNotes(showToast, authUser?.id, authProfileName)
 
+  /** Debounce: stagesFilteredJobs changes every Stages search keystroke; avoids overlapping multi-chunk RPC bursts. */
+  const THREAD_STATS_STAGES_DEBOUNCE_MS = 320
   useEffect(() => {
     if (!authUser?.id || activeTab !== 'stages') return
     const ids = [...new Set(stagesFilteredJobs.map((j) => j.id))]
-    void refreshJobThreadStatsForJobIds(ids)
+    const t = window.setTimeout(() => {
+      void refreshJobThreadStatsForJobIds(ids)
+    }, THREAD_STATS_STAGES_DEBOUNCE_MS)
+    return () => window.clearTimeout(t)
   }, [authUser?.id, activeTab, stagesFilteredJobs, refreshJobThreadStatsForJobIds])
 
   /** True when loaded customers include exactly one row matching name (prefer same master_user_id as the job). */
@@ -2892,7 +2959,7 @@ ${totalsHtml}
     if (authLoading || !authUser?.id) return
     if (activeTab === 'stages' || activeTab === 'billing') loadJobs()
     loadUsers()
-  }, [authUser?.id, authLoading, searchParams, activeTab])
+  }, [authUser?.id, authLoading, customerParamForJobsReload, activeTab])
 
   useEffect(() => {
     if (authLoading || !authUser?.id) return
@@ -4863,16 +4930,7 @@ ${totalsHtml}
                               )}
                             </td>
                             <td style={{ padding: '0.75rem' }}>
-                              {(() => {
-                                const fmt = formatJobNameTwoLines(j.job_name)
-                                if (!fmt) return <div>—</div>
-                                return (
-                                  <>
-                                    <div>{fmt.line1}</div>
-                                    {fmt.line2 && <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{fmt.line2}</div>}
-                                  </>
-                                )
-                              })()}
+                              {renderStagesOpenDetailJobName(j)}
                               {(() => {
                                 const fmt = formatAddressTwoLines(j.job_address)
                                 if (!fmt) return null
@@ -5344,16 +5402,7 @@ ${totalsHtml}
                                   )}
                                 </td>
                                 <td style={{ padding: '0.75rem' }}>
-                                  {(() => {
-                                    const fmt = formatJobNameTwoLines(j.job_name)
-                                    if (!fmt) return <div>—</div>
-                                    return (
-                                      <>
-                                        <div>{fmt.line1}</div>
-                                        {fmt.line2 && <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{fmt.line2}</div>}
-                                      </>
-                                    )
-                                  })()}
+                                  {renderStagesOpenDetailJobName(j)}
                                   {(() => {
                                     const fmt = formatAddressTwoLines(j.job_address)
                                     if (!fmt) return null
@@ -9774,6 +9823,19 @@ ${totalsHtml}
           </div>
         </div>
       )}
+      {stagesDetailJobModal ? (
+        <DetailJobModal
+          open
+          onClose={() => setStagesDetailJobModal(null)}
+          jobId={stagesDetailJobModal.jobId}
+          scheduleContext={null}
+          authRole={authRole}
+          assignedJobsRows={detailModalAssignedJobsRows}
+          prefillRowLabel={stagesDetailJobModal.prefillRowLabel ?? undefined}
+          prefillAddress={stagesDetailJobModal.prefillAddress ?? undefined}
+          onEditJobSaved={() => void loadJobs()}
+        />
+      ) : null}
       {scheduleModalJob ? (
         <ScheduleJobModal
           key={scheduleModalJob.id}

@@ -481,7 +481,9 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 | **People** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ | ❌ |
 | **Jobs** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ✅ Reports + Billing | ✅ Reports + Sub Ledger |
 | **Dispatch** (`/schedule-dispatch`) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ week grid (same `job_schedule_blocks` rules; **+ → Linked copy** / **Linked** crew rows; DnD reassign **solo** legs only) |
-| **Banking** | ✅ full Mercury (Ledger + Sorting + Configuration + sync); RLS SELECT on **`mercury_transactions`** + nicknames | ❌ | ✅ **Sorting** (default slice, no Configuration / no sync); read **`mercury_transactions`** + nicknames; **edit `mercury_debit_card_nicknames`** only (RLS) | ❌ | ❌ | ❌ | ❌ |
+| **Banking** | ✅ full Mercury (Ledger + Sorting + Configuration + sync); RLS SELECT on **`mercury_transactions`** + nicknames; **Stripe** segment (**dev-only**): **Invoices** (`jobs_ledger_invoices` + job embed, rows without **`stripe_invoice_id`** highlighted) and **Data** (`stripe_webhook_events` webhook log) | ❌ | ✅ **Sorting** (default slice, no Configuration / no sync); read **`mercury_transactions`** + nicknames; **edit `mercury_debit_card_nicknames`** only (RLS) | ❌ | ❌ | ❌ | ❌ |
+
+Non-dev roles do not see the Banking **Stripe** segment; master/assistant deep links with `product=stripe` normalize to Mercury **Sorting**.
 
 Mercury **Person** attribution (job splits modal): staff use **`list_users_for_banking_attribution`** (**SECURITY DEFINER**, same dev/master/assistant gate as **`replace_mercury_transaction_splits`**) for the user picker; **`mercury_transaction_attributions`** may store **`user_id`** or legacy **`person_id`** (not both).
 | **Calendar** | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |

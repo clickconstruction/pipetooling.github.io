@@ -62,6 +62,9 @@ function makeOptimisticThreadNote(body: string, authorDisplayName: string | null
 const THREAD_NOTE_SELECT =
   'id, body, created_at, author:users!jobs_ledger_thread_notes_author_user_id_fkey(name)' as const
 
+/** Avoid oversized uuid[] payloads to jobs_ledger_thread_note_stats in one RPC. */
+const THREAD_STATS_JOB_IDS_CHUNK = 200
+
 export function useJobThreadNotes(
   showToast: ToastFn,
   authUserId: string | undefined,
@@ -77,6 +80,8 @@ export function useJobThreadNotes(
   const expandedJobThreadIdRef = useRef<string | null>(null)
   /** While posting, quiet reloads may run before the server row exists; keep optimistic row visible. */
   const inFlightThreadNoteRef = useRef<{ jobId: string; optimisticId: string } | null>(null)
+  /** Bumped on each full refresh so overlapping refreshes (e.g. Stages search keystrokes) abandon in-flight RPCs. */
+  const threadStatsRefreshGenRef = useRef(0)
 
   const loadJobThreadNotesForJob = useCallback(
     async (jobId: string, opts?: { quiet?: boolean }) => {
@@ -151,30 +156,36 @@ export function useJobThreadNotes(
     }
   }, [])
 
-  const refreshJobThreadStatsForJobIds = useCallback(
-    async (ids: string[]) => {
-      if (ids.length === 0) {
-        setJobThreadStatsByJobId({})
-        return
-      }
-      try {
+  const refreshJobThreadStatsForJobIds = useCallback(async (ids: string[]) => {
+    if (ids.length === 0) {
+      threadStatsRefreshGenRef.current += 1
+      setJobThreadStatsByJobId({})
+      return
+    }
+    const gen = ++threadStatsRefreshGenRef.current
+    try {
+      const next: Record<string, JobThreadNoteStats> = {}
+      for (let i = 0; i < ids.length; i += THREAD_STATS_JOB_IDS_CHUNK) {
+        if (threadStatsRefreshGenRef.current !== gen) return
+        const slice = ids.slice(i, i + THREAD_STATS_JOB_IDS_CHUNK)
         const data = await withSupabaseRetry(
-          async () => supabase.rpc('jobs_ledger_thread_note_stats', { p_job_ids: ids }),
+          async () => supabase.rpc('jobs_ledger_thread_note_stats', { p_job_ids: slice }),
           'jobs_ledger_thread_note_stats batch',
         )
+        if (threadStatsRefreshGenRef.current !== gen) return
         const rows = (data as unknown[] | null) ?? []
-        const next: Record<string, JobThreadNoteStats> = {}
         for (const r of rows) {
           const id = rpcRowJobId(r)
           if (id) next[id] = statsFromRpcRow(r)
         }
-        setJobThreadStatsByJobId(next)
-      } catch {
-        setJobThreadStatsByJobId({})
       }
-    },
-    [],
-  )
+      if (threadStatsRefreshGenRef.current !== gen) return
+      setJobThreadStatsByJobId(next)
+    } catch {
+      if (threadStatsRefreshGenRef.current !== gen) return
+      setJobThreadStatsByJobId({})
+    }
+  }, [])
 
   useEffect(() => {
     expandedJobThreadIdRef.current = expandedJobThreadId

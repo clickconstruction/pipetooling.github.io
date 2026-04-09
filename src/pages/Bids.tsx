@@ -2169,6 +2169,39 @@ export default function Bids() {
     setCountsImportOpen(true)
   }
 
+  function exportCountsToCsv() {
+    const bid = selectedBidForCounts
+    if (!bid || countRows.length === 0) return
+
+    const safe = (s: string) =>
+      s
+        .replace(/[^a-zA-Z0-9._-]+/g, '_')
+        .replace(/^_+|_+$/g, '')
+        .slice(0, 80)
+
+    const headerLabels = ['Count', 'Fixture or Tie-in', 'Group/Tag', 'Plan Page']
+    const lines = [headerLabels.map((h) => csvEscapeField(h)).join(',')]
+    for (const row of countRows) {
+      lines.push(
+        [
+          String(row.count),
+          csvEscapeField(row.fixture),
+          csvEscapeField(row.group_tag ?? ''),
+          csvEscapeField(row.page ?? ''),
+        ].join(','),
+      )
+    }
+    const bidLabel = bidDisplayName(bid) || 'bid'
+    const blob = new Blob([`\uFEFF${lines.join('\n')}`], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `counts_${safe(bidLabel)}_${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    showToast('Counts exported to CSV.', 'success')
+  }
+
   async function loadCustomerContacts() {
     const { data, error } = await supabase
       .from('customer_contacts')
@@ -10373,38 +10406,60 @@ export default function Bids() {
                 <div
                   style={{
                     marginTop: '0.75rem',
-                    display: 'flex',
-                    gap: '0.5rem',
-                    flexWrap: 'wrap',
+                    display: 'grid',
+                    gridTemplateColumns: '1fr auto 1fr',
                     alignItems: 'center',
                     width: '100%',
+                    gap: '0.5rem',
                   }}
                 >
-                  <button
-                    type="button"
-                    onClick={() => setAddingCountRow(true)}
-                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                  >
-                    Add row
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setClearAllCountsOpen(true); setClearAllCountsConfirm('') }}
-                    disabled={countRows.length === 0 || clearAllCountsBusy}
-                    title={countRows.length === 0 ? 'No count rows to clear' : 'Remove all count rows for this bid'}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      background: 'white',
-                      color: '#b91c1c',
-                      border: '1px solid #fca5a5',
-                      borderRadius: 4,
-                      cursor: countRows.length === 0 || clearAllCountsBusy ? 'not-allowed' : 'pointer',
-                      opacity: countRows.length === 0 ? 0.5 : 1,
-                      marginLeft: 'auto',
-                    }}
-                  >
-                    Clear all counts
-                  </button>
+                  <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                    <button
+                      type="button"
+                      onClick={() => setAddingCountRow(true)}
+                      style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                    >
+                      Add row
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'center' }}>
+                    <button
+                      type="button"
+                      onClick={() => exportCountsToCsv()}
+                      disabled={countRows.length === 0}
+                      title={countRows.length === 0 ? 'No rows to export' : 'Download counts as a CSV file'}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        background: countRows.length === 0 ? '#d1d5db' : '#059669',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 4,
+                        cursor: countRows.length === 0 ? 'not-allowed' : 'pointer',
+                        textAlign: 'center',
+                      }}
+                    >
+                      Export as .csv
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <button
+                      type="button"
+                      onClick={() => { setClearAllCountsOpen(true); setClearAllCountsConfirm('') }}
+                      disabled={countRows.length === 0 || clearAllCountsBusy}
+                      title={countRows.length === 0 ? 'No count rows to clear' : 'Remove all count rows for this bid'}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        background: 'white',
+                        color: '#b91c1c',
+                        border: '1px solid #fca5a5',
+                        borderRadius: 4,
+                        cursor: countRows.length === 0 || clearAllCountsBusy ? 'not-allowed' : 'pointer',
+                        opacity: countRows.length === 0 ? 0.5 : 1,
+                      }}
+                    >
+                      Clear all counts
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

@@ -12,11 +12,14 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.283 → v2.4"
+version_range: "v2.284 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.284)"
+    line: ~867
+    description: "Banking: product+tab URL (Mercury Ledger/Sorting vs Stripe Invoices/Data, dev-only Stripe); BankingStripeInvoicesPanel + BankingStripeWebhookEventsPanel; Jobs Stages: narrow loadJobs customer param, thread stats chunk 200 + generation guard, 320ms debounce"
   - name: "Latest Version (v2.283)"
-    line: ~863
+    line: ~903
     description: "Bill Customer Stripe pre-create preview (preview-stripe-invoice); StripeBillPreSubmitPreview; stripeInvoiceShareCopy; BillCustomerModalProvider + Edit Job Preview/Stripe bill; modal z-index over Edit Job"
   - name: "Latest Version (v2.282)"
     line: ~890
@@ -676,6 +679,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.284 — Banking: Mercury/Stripe tabs + URL; Stripe invoice & webhook grids; Jobs Stages thread-stats perf](#latest-updates-v2284)
 **New:** [v2.283 — Bill Customer: Stripe preview before create; global modal; Edit Job entry](#latest-updates-v2283)
 **New:** [v2.282 — Bill Customer: Stripe invoice + share panel; webhook lifecycle](#latest-updates-v2282)
 **New:** [v2.281 — Dashboard: copy day job mix (Mix); My Time preview from Clock (punch locked)](#latest-updates-v2281)
@@ -862,6 +866,20 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.284)
+
+**Date**: 2026-04-10
+
+### Banking — **Mercury | Stripe** rows, **`product` + `tab`** URL; **Stripe Invoices** & **Data** (dev); Jobs **Stages** thread-stats **debounce + chunks**
+
+- **[`Banking.tsx`](src/pages/Banking.tsx)** — **Row 1**: **Mercury** | **Stripe** (Stripe visible to **dev** only). **Row 2**: Mercury **Ledger** / **Sorting** (and Configuration where applicable); Stripe **Invoices** / **Data**. Query model: **`?product=mercury|stripe`** and **`?tab=…`** — Mercury uses **`ledger`** / **`sorting`**; Stripe uses **`invoices`** / **`data`**. Legacy **`?tab=sorting`** (no product) still opens Mercury **Sorting**. Master/assistant deep links with **`product=stripe`** are normalized to Mercury **Sorting**.
+- **[`BankingStripeInvoicesPanel.tsx`](src/components/BankingStripeInvoicesPanel.tsx)** — Lists **`jobs_ledger_invoices`** with job embed (HCP, name, customer). **Seq** = per-job **`sequence_order`**. Rows with no **`stripe_invoice_id`** use a light red row background.
+- **[`BankingStripeWebhookEventsPanel.tsx`](src/components/BankingStripeWebhookEventsPanel.tsx)** — Read-only grid of **`stripe_webhook_events`** (dev RLS). Populated by Edge **[`stripe-webhook`](supabase/functions/stripe-webhook/index.ts)** dedupe insert (**[`20270410130300_stripe_webhook_events_dedupe.sql`](supabase/migrations/20270410130300_stripe_webhook_events_dedupe.sql)**).
+- **[`Jobs.tsx`](src/pages/Jobs.tsx)** — Main **`loadJobs`** effect depends on **`searchParams.get('customer')`** (**`customerParamForJobsReload`**) so unrelated query-string churn does not refetch the full jobs payload. **Stages** **Last activity** refreshes: **`refreshJobThreadStatsForJobIds`** is debounced (**`THREAD_STATS_STAGES_DEBOUNCE_MS` = 320**) to avoid overlapping **`jobs_ledger_thread_note_stats`** calls while typing search.
+- **[`useJobThreadNotes.ts`](src/hooks/useJobThreadNotes.ts)** — Thread stats RPC calls split into chunks of **200** job IDs; **`threadStatsRefreshGenRef`** drops stale in-flight work when a newer refresh starts.
+
 ---
 
 ## Latest Updates (v2.283)

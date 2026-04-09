@@ -89,10 +89,10 @@ serve(async (req) => {
   let eventForLog: Pick<Stripe.Event, 'id' | 'type'> | null = null
 
   try {
-    const stripeSecret = Deno.env.get('STRIPE_SECRET_KEY')
-    const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET')
-    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const stripeSecret = Deno.env.get('STRIPE_SECRET_KEY')?.trim() ?? ''
+    const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET')?.trim() ?? ''
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() ?? ''
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim() ?? ''
 
     if (!stripeSecret || !webhookSecret || !serviceKey) {
       console.error('[stripe-webhook] missing STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, or SUPABASE_SERVICE_ROLE_KEY')
