@@ -7,19 +7,28 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-08
+last_updated: 2026-04-10
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.280 → v2.4"
+version_range: "v2.283 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.283)"
+    line: ~863
+    description: "Bill Customer Stripe pre-create preview (preview-stripe-invoice); StripeBillPreSubmitPreview; stripeInvoiceShareCopy; BillCustomerModalProvider + Edit Job Preview/Stripe bill; modal z-index over Edit Job"
+  - name: "Latest Version (v2.282)"
+    line: ~890
+    description: "Bill Customer Stripe tab (create-stripe-invoice); StripeInvoiceSharePanel (pay page, Dashboard, copy link, email, SMS text); webhook invoice.updated/voided/payment_failed; external_send_channel stripe"
+  - name: "Latest Version (v2.281)"
+    line: ~874
+    description: "Dashboard Clocked in today: Mix (copy day job %); salary closed-day gate; My Time preview from Clock (punch locked); strip clockStripWorkDateYmd"
   - name: "Latest Version (v2.280)"
-    line: ~851
+    line: ~871
     description: "Bids Rough takeoffs: unit price from lowest material_part_prices, source row on line, reset/save to catalog; migration source_material_part_price_id"
   - name: "Latest Version (v2.279)"
-    line: ~847
+    line: ~884
     description: "Bids Bid Preview from B# (workflow + Bid Board); Submission notes toolbar + mobile center; notify-dispatch-request verify_jwt in config"
   - name: "Latest Version (v2.278)"
     line: ~847
@@ -667,6 +676,9 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.283 — Bill Customer: Stripe preview before create; global modal; Edit Job entry](#latest-updates-v2283)
+**New:** [v2.282 — Bill Customer: Stripe invoice + share panel; webhook lifecycle](#latest-updates-v2282)
+**New:** [v2.281 — Dashboard: copy day job mix (Mix); My Time preview from Clock (punch locked)](#latest-updates-v2281)
 **New:** [v2.280 — Bids Rough takeoffs: catalog unit price, source row, reset / save to catalog](#latest-updates-v2280)
 **New:** [v2.278 — Job Detail: Job Files/Plans when set; numbered Specific Work](#latest-updates-v2278)
 **New:** [v2.277 — Job Detail: stacked Edit Job, materials accordions, Mercury Card column, Other job charges](#latest-updates-v2277)
@@ -850,6 +862,49 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.283)
+
+**Date**: 2026-04-10
+
+### Bill Customer — **Stripe preview** before create; **`BillCustomerModalProvider`**; **Edit Job** entry
+
+- **[`BillCustomerModalContext.tsx`](src/contexts/BillCustomerModalContext.tsx)** — Global **`openBillCustomer` / `closeBillCustomer`**; renders **[`SendRecordInvoiceModal`](src/components/jobs/SendRecordInvoiceModal.tsx)** once (overlay **z-index 1020**, above **Edit Job** `1010`). **`Jobs`** and **`Dashboard`** open billing via **`useBillCustomerModal()`** instead of mounting the modal locally.
+- **[`preview-stripe-invoice`](supabase/functions/preview-stripe-invoice/index.ts)** — Edge function: same auth/validation as **`create-stripe-invoice`**, **no DB writes**, no Stripe customer creation; **`invoices.createPreview`** with **`customer`** or **`customer_details`**; returns totals + line amounts (cents). **`supabase/config.toml`** **`verify_jwt = false`**. Docs: **[`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md)**.
+- **[`SendRecordInvoiceModal.tsx`](src/components/jobs/SendRecordInvoiceModal.tsx)** — **Stripe** tab: debounced **`preview-stripe-invoice`** while amount / due date / memo change; optional **`overlayZIndex`** (provider passes **1020**).
+- **[`StripeBillPreSubmitPreview.tsx`](src/components/jobs/StripeBillPreSubmitPreview.tsx)** — Pre-submit **Invoice (Stripe)** block, **Bill to**, payment-link placeholder, read-only **email** / **SMS** drafts.
+- **[`stripeInvoiceShareCopy.ts`](src/lib/stripeInvoiceShareCopy.ts)** — Shared email/SMS templates; **[`StripeInvoiceSharePanel.tsx`](src/components/jobs/StripeInvoiceSharePanel.tsx)** imports them (behavior unchanged).
+- **[`stripeInvoicePreview.ts`](src/lib/stripeInvoicePreview.ts)** — Preview response typing + **`formatStripeCents`**.
+- **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)** — **Open invoices** → **Ready to Bill**: **Preview / Stripe bill…** opens the same Bill Customer flow (**`kind: 'invoice'`**); refreshes the edit form after success via **`fetchJobWithDetailsById`**.
+- **[`App.tsx`](src/App.tsx)** — **`BillCustomerModalProvider`** wraps **`JobFormModalProvider`** so **Edit Job** and routed pages share the modal.
+
+---
+
+## Latest Updates (v2.282)
+
+**Date**: 2026-04-09
+
+### Jobs — **Bill Customer** Stripe tab; **Edit Job** share actions; **stripe-webhook** lifecycle
+
+- **[`SendRecordInvoiceModal.tsx`](src/components/jobs/SendRecordInvoiceModal.tsx)** — **Stripe bill** tab: amount, due date (default +30 days), memo; **`supabase.functions.invoke('create-stripe-invoice')`** with Bearer session; after success calls **`update_job_status` → `billed`** when opened from a **job** row (parity with outside bill). Customer email required. Shows **[`StripeInvoiceSharePanel`](src/components/jobs/StripeInvoiceSharePanel.tsx)** after create / idempotent hit.
+- **[`StripeInvoiceSharePanel.tsx`](src/components/jobs/StripeInvoiceSharePanel.tsx)** — Customer pay page, **Open in Stripe** (Dashboard), **Copy payment link**, **Copy text for SMS**, **Send email…** (`mailto` with template). Used in the modal and **Edit Job** outstanding Stripe invoices ([`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)).
+- **Edge [`create-stripe-invoice`](supabase/functions/create-stripe-invoice/index.ts)** — Persists **`external_send_channel: 'stripe'`** and **`sent_to_customer_at`** on finalize.
+- **Migration [`20260409032340_external_send_channel_stripe_value.sql`](supabase/migrations/20260409032340_external_send_channel_stripe_value.sql)** — CHECK allows **`stripe`** on **`jobs_ledger_invoices.external_send_channel`**.
+- **Edge [`stripe-webhook`](supabase/functions/stripe-webhook/index.ts)** — **`invoice.updated`**, **`invoice.voided`**, **`invoice.payment_failed`**: sync **`stripe_invoice_status`**; does not downgrade when app row is already **`paid`** and Stripe is not **`paid`**. **Ops**: add these events in Stripe Dashboard for the same endpoint. Docs: **[`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md)**.
+
+---
+
+## Latest Updates (v2.281)
+
+**Date**: 2026-04-08
+
+### Dashboard — **Copy day job mix** on **Clocked in today**; **My Time** preview from **Clock** row
+
+- **Copy job time mix** (**dev**, **master_technician**, **assistant** — same strip scope as **My team / Everyone**): When **Clocked in today** has rows, the subsection header can show a **Mix** toggle ([`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)). Turn **Mix** on, use the per-row **copy** control to choose a **source** person whose closed-today sessions define a **% job mix**, then apply to a **target** person for the strip’s calendar **`work_date`** ([`clockStripWorkDateYmd`](src/hooks/useDashboardMyTeamSectionState.ts) from the my-team hook; falls back to company-calendar today). Modal **[`CopyDayJobMixModal.tsx`](src/components/day-job-mix/CopyDayJobMixModal.tsx)** + helpers **[`dayJobMixPercentages.ts`](src/lib/dayJobMixPercentages.ts)**, **[`dayJobMixApply.ts`](src/lib/dayJobMixApply.ts)** build segment plans; **`leader_replace_clock_session_cluster_mixed`** applies replacement (**[`leaderClockSessionSplit.ts`](src/lib/leaderClockSessionSplit.ts)**). Client guard **[`copyDayJobMixTargetGate.ts`](src/lib/copyDayJobMixTargetGate.ts)** (**`assertTargetSessionsAllowJobMixReplace`**) blocks the target when any eligible session has **`origin === 'salary_schedule'`** and **any** of those salary rows is still **open** (`clocked_out_at` null)—user must close the salary session first (My Time or People → Hours). Confirm copy text summarizes cluster count; cluster-level RPC errors surface in the modal.
+- **Dashboard** passes **`enableCopyDayJobMix={showClockStripScopeToggle}`** and **`clockStripWorkDateYmd`** on both assistant and non-assistant strip instances ([`Dashboard.tsx`](src/pages/Dashboard.tsx)). Strip session loads include **`approved_at`** where needed (**[`CLOCK_SESSION_CALENDAR_SELECT`](src/lib/clockSessionSelect.ts)** / related selects) for editor and mix flows.
+- **View today’s time** — **[`ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx)**: when **`onOpenMyTimeDayEditor`** is set, the user has **no open** session, but **today’s `work_date`** already has at least one row in **`clock_sessions`**, a compact **blue clock** button opens **[`DashboardMyTimeDayEditorModal`](src/components/DashboardMyTimeDayEditorModal.tsx)** via **`openMyTimePreviewFromClock`** in **Dashboard** with **`clockTimesReadOnly`**: **Form** / **Visual** timeline edits, bulk assign, merges/splits, and **Save on close** (`requestClose`) behave like the full editor for in-range days; **punch-time** actions (**Adjust times**, force clock-out, reject, NCNS) are disabled; modal title suffix **— punch times locked**.
+
 ---
 
 ## Latest Updates (v2.280)

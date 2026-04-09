@@ -99,6 +99,7 @@ when_to_read:
    - [claim-dev](#claim-dev)
    - [test-email](#test-email)
    - [create-stripe-invoice](#create-stripe-invoice)
+   - [preview-stripe-invoice](#preview-stripe-invoice)
    - [stripe-webhook](#stripe-webhook)
 4. [Error Handling](#error-handling)
 5. [Deployment](#deployment)
@@ -1423,15 +1424,54 @@ If **`stripe_invoice_id`** and **`hosted_invoice_url`** are already set, returns
 
 1. Loads job and customer with **service role**; requires **`jobs_ledger.customer_id`** and matches body **`customer_id`** to it; ensures **`customers.master_user_id`** matches **`jobs_ledger.master_user_id`**.
 2. Creates or reuses **`customers.stripe_customer_id`** on Stripe; updates Stripe customer email/name.
-3. Creates draft invoice + invoice item, **finalize**s, then **UPDATE** **`jobs_ledger_invoices`** (**`status = 'billed'`**) and Stripe columns.
+3. Creates draft invoice + invoice item, **finalize**s, then **UPDATE** **`jobs_ledger_invoices`** (**`status = 'billed'`**) and Stripe columns, plus **`external_send_channel = 'stripe'`** and **`sent_to_customer_at`** (timestamp of finalize).
 
 **Gateway JWT**: [`supabase/config.toml`](supabase/config.toml) sets **`verify_jwt = false`**. Deploy with **`supabase functions deploy create-stripe-invoice --no-verify-jwt`** when the hosted gateway still enforces JWT.
 
 ---
 
+### preview-stripe-invoice
+
+**Purpose**: Return a **Stripe-accurate** invoice preview for a **`jobs_ledger_invoices`** row in **Ready to Bill** using **`invoices.createPreview`** (no Stripe customer creation, no DB writes).
+
+**Endpoint**: `POST /functions/v1/preview-stripe-invoice`
+
+**Authentication**: Same as **create-stripe-invoice** — Bearer JWT + RLS **`SELECT`** on the invoice.
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY`
+
+#### Request body
+
+Same fields as **create-stripe-invoice** (`jobs_ledger_invoice_id`, `customer_id`, `amount_dollars`, `customer_email`, `customer_name`, `due_date`, optional `memo`).
+
+#### Success response (200)
+
+```json
+{
+  "success": true,
+  "currency": "usd",
+  "subtotal": 123400,
+  "total": 123400,
+  "amount_due": 123400,
+  "lines": [{ "description": "Job name · HCP 123", "amount": 123400 }]
+}
+```
+
+Amounts are in **cents**, matching Stripe invoice objects.
+
+#### Behavior
+
+- Validates job/customer ownership via service role (same rules as create).
+- If **`customers.stripe_customer_id`** is set, previews as that **`customer`**; otherwise uses **`customer_details`** from the body (no `cus_` creation).
+- **`collection_method`**, **`days_until_due`**, memo/line description mirror **create-stripe-invoice**.
+
+**Gateway JWT**: **`verify_jwt = false`** in [`supabase/config.toml`](supabase/config.toml). Deploy with **`supabase functions deploy preview-stripe-invoice --no-verify-jwt`** if needed.
+
+---
+
 ### stripe-webhook
 
-**Purpose**: Handle Stripe **`invoice.paid`** (and sync status); marks the matching **`jobs_ledger_invoices`** row paid via **`mark_invoice_paid_from_stripe`** (service role — no end-user JWT).
+**Purpose**: Handle Stripe invoice lifecycle events: **`invoice.paid`** marks the matching **`jobs_ledger_invoices`** row paid via **`mark_invoice_paid_from_stripe`**; **`invoice.updated`**, **`invoice.voided`**, and **`invoice.payment_failed`** sync **`stripe_invoice_status`** only (does not downgrade app **`status`** when the row is already **`paid`**).
 
 **Endpoint**: `POST /functions/v1/stripe-webhook`
 
@@ -1451,10 +1491,15 @@ If **`stripe_invoice_id`** and **`hosted_invoice_url`** are already set, returns
 #### Behavior
 
 1. **`constructEvent`** on raw body.
-2. On **`invoice.paid`**, resolve **`jobs_ledger_invoices`** by **`stripe_invoice_id`**; invoke **`mark_invoice_paid_from_stripe`** when appropriate; update **`stripe_invoice_status`**.
-3. Other event types may be ignored or lightly handled (see function source).
+2. **Dedupe:** insert **`stripe_event_id`** into **`stripe_webhook_events`** (unique). On conflict, respond **`200`** with **`{ "received": true, "duplicate": true }`** and skip processing (reduces duplicate work when Stripe retries).
+3. On **`invoice.paid`**, resolve **`jobs_ledger_invoices`** by **`stripe_invoice_id`**; invoke **`mark_invoice_paid_from_stripe`** when appropriate; update **`stripe_invoice_status`** to **`paid`** only when the RPC succeeds (or the row was already **`paid`**). On lookup errors, RPC errors, or RPC JSON **`{ error }`** (business rule), respond **`200`** with **`applied: false`** and a **`reason`** (e.g. **`invoice_lookup_failed`**, **`mark_paid_rpc_failed`**, **`mark_paid_rejected`**) — **do not** return **`5xx`** for those paths so Stripe does not retry-storm.
+4. On **`invoice.updated`**, **`invoice.voided`**, and **`invoice.payment_failed`**, resolve by **`stripe_invoice_id`** and **PATCH** **`stripe_invoice_status`** from the Stripe object’s **`status`** (skip downgrading when DB row **`status`** is already **`paid`** and Stripe is not **`paid`**).
+5. **Unhandled exceptions:** respond **`200`** with **`applied: false`**, **`reason: unhandled_exception`** (logged) so Stripe stops retrying; fix data/code and replay from Stripe Dashboard if needed.
+6. **Misconfigured secrets:** respond **`200`** with **`reason: misconfigured`** (no retries). **`400`** only for missing/invalid **`Stripe-Signature`**.
 
-**Ops**: Point Stripe webhook URL at **`https://<project-ref>.supabase.co/functions/v1/stripe-webhook`**. Use test mode keys in development.
+**Response shape (examples):** `{ "received": true }`, `{ "received": true, "applied": false, "reason": "…" }`, `{ "received": true, "duplicate": true }`, `{ "received": true, "skipped": "unknown invoice" }`.
+
+**Ops**: Point Stripe webhook URL at **`https://<project-ref>.supabase.co/functions/v1/stripe-webhook`**. In the Stripe Dashboard, subscribe the endpoint to **`invoice.paid`**, **`invoice.updated`**, **`invoice.voided`**, and **`invoice.payment_failed`**. Use test mode keys in development. When **`applied`** is **`false`**, check **Supabase Edge Function logs** (`stripe-webhook`) and **Stripe → Webhooks → delivery** details — do not rely on HTTP **`5xx`** to surface most failures.
 
 **Gateway JWT**: **`verify_jwt = false`** in [`supabase/config.toml`](supabase/config.toml). Deploy with **`--no-verify-jwt`**.
 

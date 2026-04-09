@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-04-08
+last_updated: 2026-04-09
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -91,6 +91,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ## Recent Migrations
 
 ### April 2026
+
+#### April 9, 2026
+
+**`20260409032340_external_send_channel_stripe_value.sql`**
+- **Purpose**: Allow **`jobs_ledger_invoices.external_send_channel = 'stripe`** for finalized Stripe hosted invoices (Edge **`create-stripe-invoice`** sets this with **`sent_to_customer_at`**).
+- **Changes**: **CHECK** constraint **`jobs_ledger_invoices_external_send_channel_check`** — allowed values include **`stripe`**; column comment update
+- **Impact**: [`create-stripe-invoice`](supabase/functions/create-stripe-invoice/index.ts), [`SendRecordInvoiceModal.tsx`](src/components/jobs/SendRecordInvoiceModal.tsx)
+- **Category**: Jobs / Billing / Stripe
 
 #### April 8, 2026
 
@@ -312,6 +320,20 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Changes**: Replace **`person_offsets_type_check`** — **`CHECK (type IN ('backcharge', 'damage', 'employee_credit'))`**; **`COMMENT ON TABLE`**
 - **Impact**: [`PersonOffsetFormModal.tsx`](src/components/pay/PersonOffsetFormModal.tsx), [`People.tsx`](src/pages/People.tsx) **Offsets** + pay HTML, [`PayStubLessModal.tsx`](src/components/pay/PayStubLessModal.tsx) (**Employee credit** listed, **Apply** disabled); [`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.252
 - **Category**: People / Pay
+
+#### April 10, 2027
+
+**`20270410120000_invoice_linked_payments_partial_mark_paid.sql`**
+- **Purpose**: **Partial invoice payments** — link **`jobs_ledger_payments`** rows to **`jobs_ledger_invoices`**; **`mark_invoice_paid`** accepts optional **`p_amount`**, **`p_paid_on`**, **`p_note`** (remaining balance when amount omitted); **`mark_job_paid`** same optional fields for whole-job billed payments; **`mark_invoice_paid_from_stripe`** applies **remainder** after prior **`invoice_id`** payments and sets **`invoice_id`** on insert (idempotent if already **paid**)
+- **Changes**: **`invoice_id`** on **`jobs_ledger_payments`**; **`DROP`/`CREATE`** RPCs (replace single-arg **`mark_invoice_paid`** / **`mark_job_paid`** with defaulted-args versions)
+- **Impact**: [`BilledPaymentConfirmationModal.tsx`](src/components/jobs/BilledPaymentConfirmationModal.tsx), [`Jobs.tsx`](src/pages/Jobs.tsx), [`Dashboard.tsx`](src/pages/Dashboard.tsx), [`stripe-webhook`](supabase/functions/stripe-webhook/index.ts); [`database.ts`](src/types/database.ts)
+- **Category**: Jobs / Billing
+
+**`20270410130100_drop_duplicate_mark_invoice_paid_overload.sql`**
+- **Purpose**: Fix PostgREST **`mark_invoice_paid`** RPC ambiguity when a stray overload **`(uuid, date, text, numeric)`** exists alongside the canonical **`(uuid, numeric, date, text)`** from **`20270410120000`** — **`DROP FUNCTION IF EXISTS`** the duplicate signature only
+- **Changes**: **`DROP FUNCTION IF EXISTS public.mark_invoice_paid(uuid, date, text, numeric)`**
+- **Impact**: Single **`mark_invoice_paid`** overload; regenerate **`database.ts`** if duplicate union arm disappears
+- **Category**: Jobs / Billing
 
 ### March 2027
 

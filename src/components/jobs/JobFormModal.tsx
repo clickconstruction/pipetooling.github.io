@@ -22,8 +22,12 @@ import { fetchJobMaterialsCostSnapshot } from '../../lib/fetchJobMaterialsCostSn
 import { formatMercuryDebitCardIdCompact } from '../../lib/mercuryRawDebitCard'
 import type { JobMercuryAllocLine, JobSupplyInvoiceLine, JobTallyPartLine } from '../../lib/fetchJobMaterialsCostSnapshot'
 import { MaterialsCostAccordionRow } from './JobFormMaterialsCostAccordion'
+import type { JobBillingContext } from './SendRecordInvoiceModal'
+import { useBillCustomerModal } from '../../contexts/BillCustomerModalContext'
+import { StripeInvoiceSharePanel } from './StripeInvoiceSharePanel'
 
 type EstimatesRow = Database['public']['Tables']['estimates']['Row']
+type JobsLedgerInvoiceRow = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 type CustomerRow = Database['public']['Tables']['customers']['Row']
 type UserRow = { id: string; name: string; email: string | null; role: string }
 
@@ -31,7 +35,14 @@ type MaterialRow = { id: string; description: string; amount: number }
 
 type MaterialsAccordionKey = 'supply' | 'mercury' | 'tally' | 'billed'
 
-type PaymentRow = { id: string; amount: number; paid_on: string | null; note: string | null }
+type PaymentRow = {
+  id: string
+  amount: number
+  paid_on: string | null
+  note: string | null
+  /** Set when loaded from DB; payments applied to an invoice cannot be removed in this form. */
+  invoice_id: string | null
+}
 type FixtureRow = { id: string; name: string; count: number }
 
 function localDateYYYYMMDD(): string {
@@ -43,11 +54,25 @@ function localDateYYYYMMDD(): string {
 }
 
 function newEmptyPaymentRow(): PaymentRow {
-  return { id: crypto.randomUUID(), amount: 0, paid_on: localDateYYYYMMDD(), note: null }
+  return { id: crypto.randomUUID(), amount: 0, paid_on: localDateYYYYMMDD(), note: null, invoice_id: null }
+}
+
+function paymentRowLinkedToInvoice(row: PaymentRow): boolean {
+  return row.invoice_id != null && String(row.invoice_id).trim().length > 0
 }
 
 function formatCurrency(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+function outstandingBillingLabel(inv: JobsLedgerInvoiceRow): string {
+  if ((inv.stripe_invoice_id ?? '').trim()) return 'Stripe'
+  const ch = (inv.external_send_channel ?? '').trim()
+  if (ch === 'stripe') return 'Stripe'
+  if (ch === 'housecallpro') return 'Outside (Housecall Pro)'
+  if (ch === 'physical') return 'Outside (Physical)'
+  if (ch) return `Outside (${ch})`
+  return 'Billed'
 }
 
 function parseMoneyInputToNumber(s: string): number {
@@ -121,6 +146,7 @@ export default function JobFormModal({
   const { user: authUser, role: authRole } = useAuth()
   const { nicknameByDebitCard } = useMercuryLedgerNicknames()
   const { showToast } = useToastContext()
+  const billCustomer = useBillCustomerModal()
   const navigate = useNavigate()
   const onSavedRef = useRef(onSaved)
   onSavedRef.current = onSaved
@@ -259,6 +285,7 @@ export default function JobFormModal({
             amount: Number(p.amount),
             paid_on: p.paid_on ? String(p.paid_on).slice(0, 10) : null,
             note: p.note ?? null,
+            invoice_id: p.invoice_id ?? null,
           }))
         : [newEmptyPaymentRow()],
     )
@@ -611,6 +638,24 @@ export default function JobFormModal({
     setPayments((prev) => (prev.length <= 1 ? prev : prev.filter((r) => r.id !== id)))
   }
 
+  function requestRemovePaymentRow(row: PaymentRow) {
+    if (paymentRowLinkedToInvoice(row)) {
+      showToast(
+        'This payment is linked to an invoice and can’t be removed in Edit Job. Change it from Outstanding billing or the mark-paid flow.',
+        'error',
+      )
+      return
+    }
+    if (payments.length <= 1) {
+      showToast(
+        'At least one payment line must stay in this form. Add another line first, or set this row’s amount to $0 if you don’t need a payment here.',
+        'info',
+      )
+      return
+    }
+    removePaymentRow(row.id)
+  }
+
   function updateMaterialRow(id: string, updates: Partial<MaterialRow>) {
     setMaterials((prev) => prev.map((r) => (r.id === id ? { ...r, ...updates } : r)))
   }
@@ -777,6 +822,7 @@ export default function JobFormModal({
             sequence_order: i,
             paid_on: p.paid_on?.trim() ? p.paid_on.trim() : null,
             note: p.note?.trim() ? p.note.trim() : null,
+            invoice_id: p.invoice_id,
           })
         }
         await supabase.from('jobs_ledger_materials').delete().eq('job_id', editing.id)
@@ -847,6 +893,7 @@ export default function JobFormModal({
               sequence_order: i,
               paid_on: p.paid_on?.trim() ? p.paid_on.trim() : null,
               note: p.note?.trim() ? p.note.trim() : null,
+              invoice_id: p.invoice_id,
             })
           }
           for (const [i, m] of validMaterials.entries()) {
@@ -1907,19 +1954,143 @@ export default function JobFormModal({
                           <button
                             type="button"
                             onClick={() => {
-                              const jid = editing?.id
                               onClose()
-                              if (jid) {
-                                navigate(`/jobs?tab=stages&edit=${encodeURIComponent(jid)}`)
-                              }
+                              navigate(`/jobs?tab=stages&stagesInvoice=${encodeURIComponent(inv.id)}`)
                             }}
                             style={{ marginLeft: 8, padding: '0.15rem 0.35rem', fontSize: '0.75rem', background: '#e5e7eb', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                           >
                             View in Stages
                           </button>
+                          {inv.status === 'ready_to_bill' && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!editing) return
+                                if (!jobLedgerHasCustomerForBilling(editing.customer_id)) {
+                                  showToast('Link this job to a customer before billing.', 'error')
+                                  return
+                                }
+                                const ctx: JobBillingContext = {
+                                  id: editing.id,
+                                  master_user_id: editing.master_user_id,
+                                  hcp_number: editing.hcp_number,
+                                  job_name: editing.job_name,
+                                  customer_id: editing.customer_id,
+                                  customer_name: editing.customer_name,
+                                  customer_email: editing.customer_email,
+                                }
+                                billCustomer?.openBillCustomer({
+                                  payload: {
+                                    kind: 'invoice',
+                                    job: ctx,
+                                    invoice: {
+                                      id: inv.id,
+                                      amount: inv.amount,
+                                      status: inv.status,
+                                    },
+                                  },
+                                  onSuccess: async () => {
+                                    onSavedRef.current?.()
+                                    const found = await fetchJobWithDetailsById(editing.id)
+                                    if (found) setEditing(found)
+                                  },
+                                  onAfterEnsureSuccess: async () => {
+                                    const found = await fetchJobWithDetailsById(editing.id)
+                                    if (found) setEditing(found)
+                                  },
+                                })
+                              }}
+                              style={{
+                                marginLeft: 8,
+                                padding: '0.15rem 0.35rem',
+                                fontSize: '0.75rem',
+                                background: '#dbeafe',
+                                border: '1px solid #93c5fd',
+                                borderRadius: 4,
+                                cursor: 'pointer',
+                                color: '#1e40af',
+                              }}
+                            >
+                              Preview / Stripe bill…
+                            </button>
+                          )}
                         </li>
                       ))}
                   </ul>
+                </div>
+              )}
+              {(editing.invoices ?? []).some((i) => i.status === 'billed') && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Outstanding billing</h4>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                    <thead style={{ background: '#f9fafb' }}>
+                      <tr>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Label</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Date</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Note</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Billed</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Open</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(editing.invoices ?? [])
+                        .filter((i) => i.status === 'billed')
+                        .map((inv, idx, arr) => {
+                          const applied = (editing.payments ?? [])
+                            .filter((p) => p.invoice_id === inv.id)
+                            .reduce((s, p) => s + Number(p.amount ?? 0), 0)
+                          const open = Math.max(0, Number(inv.amount ?? 0) - applied)
+                          const sent =
+                            inv.sent_to_customer_at != null && String(inv.sent_to_customer_at).trim()
+                              ? String(inv.sent_to_customer_at).slice(0, 10)
+                              : '—'
+                          const note = (inv.external_send_note ?? '').trim() || '—'
+                          return (
+                            <tr
+                              key={inv.id}
+                              style={{ borderBottom: idx < arr.length - 1 ? '1px solid #e5e7eb' : 'none' }}
+                            >
+                              <td style={{ padding: '0.5rem 0.75rem', verticalAlign: 'top' }}>{outstandingBillingLabel(inv)}</td>
+                              <td style={{ padding: '0.5rem 0.75rem', verticalAlign: 'top' }}>{sent}</td>
+                              <td style={{ padding: '0.5rem 0.75rem', verticalAlign: 'top', wordBreak: 'break-word' }}>{note}</td>
+                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
+                                ${formatCurrency(Number(inv.amount ?? 0))}
+                              </td>
+                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top', fontWeight: 600 }}>
+                                ${formatCurrency(open)}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                    </tbody>
+                  </table>
+                  {(() => {
+                    const stripeLinks = (editing.invoices ?? [])
+                      .filter((i) => i.status === 'billed')
+                      .filter((inv) => (inv.stripe_invoice_id ?? '').trim() && (inv.hosted_invoice_url ?? '').trim())
+                    if (stripeLinks.length === 0) return null
+                    return (
+                      <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem' }}>
+                        {stripeLinks.map((inv) => (
+                          <div key={inv.id} style={{ marginTop: 8 }}>
+                            <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                              Stripe invoice #{inv.sequence_order} — ${formatCurrency(Number(inv.amount ?? 0))}
+                            </div>
+                            <StripeInvoiceSharePanel
+                              hostedInvoiceUrl={inv.hosted_invoice_url!.trim()}
+                              stripeInvoiceId={(inv.stripe_invoice_id ?? '').trim()}
+                              customerEmail={editing.customer_email}
+                              customerName={editing.customer_name}
+                              jobName={editing.job_name}
+                              hcpNumber={editing.hcp_number}
+                              amountLabel={`$${formatCurrency(Number(inv.amount ?? 0))}`}
+                              compact
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  })()}
                 </div>
               )}
             </>
@@ -1971,16 +2142,18 @@ export default function JobFormModal({
                       <td style={{ padding: '0.625rem 0.5rem', verticalAlign: 'middle' }}>
                         <button
                           type="button"
-                          onClick={() => removePaymentRow(row.id)}
-                          disabled={payments.length <= 1}
+                          onClick={() => requestRemovePaymentRow(row)}
                           title="Remove"
+                          aria-label="Remove payment row"
                           style={{
                             padding: '0.35rem',
-                            background: payments.length <= 1 ? '#f3f4f6' : 'transparent',
-                            color: payments.length <= 1 ? '#9ca3af' : '#991b1c',
+                            background:
+                              payments.length <= 1 || paymentRowLinkedToInvoice(row) ? '#f3f4f6' : 'transparent',
+                            color: payments.length <= 1 || paymentRowLinkedToInvoice(row) ? '#9ca3af' : '#991b1c',
                             border: 'none',
                             borderRadius: 4,
-                            cursor: payments.length <= 1 ? 'not-allowed' : 'pointer',
+                            cursor:
+                              payments.length <= 1 || paymentRowLinkedToInvoice(row) ? 'not-allowed' : 'pointer',
                             display: 'inline-flex',
                             alignItems: 'center',
                             justifyContent: 'center',

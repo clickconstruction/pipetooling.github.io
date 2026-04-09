@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import type { Database } from '../../types/database'
-import type { Json } from '../../types/database'
+import type { StripeInvoicePreviewSuccess } from '../../lib/stripeInvoicePreview'
+import { StripeBillPreSubmitPreview } from './StripeBillPreSubmitPreview'
+import { StripeInvoiceSharePanel } from './StripeInvoiceSharePanel'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
-type CustomerRow = Database['public']['Tables']['customers']['Row']
 
 export type JobBillingContext = {
   id: string
@@ -46,24 +46,29 @@ function todayIsoDate(): string {
   return `${y}-${m}-${day}`
 }
 
-function contactInfoFromCustomer(c: CustomerRow): { email: string; phone: string } {
-  const ci = c.contact_info
-  if (ci == null || typeof ci !== 'object') return { email: '', phone: '' }
-  const o = ci as Record<string, unknown>
-  return {
-    email: typeof o.email === 'string' ? o.email : '',
-    phone: typeof o.phone === 'string' ? o.phone : '',
-  }
-}
-
-function isValidEmail(s: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim())
+function isoDatePlusDays(days: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() + days)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 
 function jobLedgerHasCustomerForBilling(customerId: string | null | undefined): boolean {
   return customerId != null && String(customerId).trim().length > 0
 }
 
+type CreateStripeInvoiceFnResponse = {
+  success?: boolean
+  idempotent?: boolean
+  error?: string
+  stripe_invoice_id?: string
+  hosted_invoice_url?: string
+  stripe_invoice_status?: string
+}
+
+/** Bill Customer — Outside bill (date, note, amount) or Stripe hosted invoice. */
 export default function SendRecordInvoiceModal({
   payload,
   onClose,
@@ -71,103 +76,85 @@ export default function SendRecordInvoiceModal({
   onAfterEnsureSuccess,
   jobUpdating,
   invoiceUpdating,
+  overlayZIndex = 60,
 }: {
   payload: SendRecordInvoicePayload | null
   onClose: () => void
   onSuccess: () => Promise<void>
-  /** Refetch jobs/invoices after ensure RPC creates or syncs the RTB line (so UI e.g. green button updates without full page reload). */
   onAfterEnsureSuccess?: () => void | Promise<void>
   jobUpdating: boolean
   invoiceUpdating: boolean
+  /** Use &gt; JobFormModal (1010) when opened from Edit Job */
+  overlayZIndex?: number
 }) {
   const onAfterEnsureSuccessRef = useRef(onAfterEnsureSuccess)
   onAfterEnsureSuccessRef.current = onAfterEnsureSuccess
-  const [tab, setTab] = useState<'record' | 'stripe'>('record')
+
+  const [tab, setTab] = useState<'outside' | 'stripe'>('outside')
   const [channel, setChannel] = useState<ExternalChannel>('housecallpro')
-  const [recordAck, setRecordAck] = useState(false)
   const [sentDate, setSentDate] = useState(todayIsoDate)
   const [externalNote, setExternalNote] = useState('')
-  const [recordError, setRecordError] = useState<string | null>(null)
-
-  const [customers, setCustomers] = useState<CustomerRow[]>([])
-  const [customersLoading, setCustomersLoading] = useState(false)
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string>('')
-  const [createMode, setCreateMode] = useState(false)
-  const [newName, setNewName] = useState('')
-  const [newEmail, setNewEmail] = useState('')
-  const [newPhone, setNewPhone] = useState('')
-
-  const [totalStr, setTotalStr] = useState('')
-  const [billingName, setBillingName] = useState('')
-  const [billingEmail, setBillingEmail] = useState('')
-  const [dueDate, setDueDate] = useState(todayIsoDate)
-  const [memo, setMemo] = useState('')
-  const [stripeError, setStripeError] = useState<string | null>(null)
-  const [stripeSubmitting, setStripeSubmitting] = useState(false)
-  const [stripeSuccess, setStripeSuccess] = useState<{ url: string; id: string } | null>(null)
+  const [billAmountStr, setBillAmountStr] = useState('')
+  const [outsideError, setOutsideError] = useState<string | null>(null)
+  const [outsideSubmitting, setOutsideSubmitting] = useState(false)
 
   const [ensuredInvoice, setEnsuredInvoice] = useState<{ jobId: string; id: string; amount: number } | null>(null)
   const [ensureError, setEnsureError] = useState<string | null>(null)
   const [ensureLoading, setEnsureLoading] = useState(false)
 
+  const [stripeDueDate, setStripeDueDate] = useState(() => isoDatePlusDays(30))
+  const [stripeMemo, setStripeMemo] = useState('')
+  const [stripeSubmitting, setStripeSubmitting] = useState(false)
+  const [stripeError, setStripeError] = useState<string | null>(null)
+  const [stripeResult, setStripeResult] = useState<{
+    hosted_invoice_url: string
+    stripe_invoice_id: string
+    stripe_invoice_status: string | null
+    idempotent?: boolean
+  } | null>(null)
+
+  const [stripePreview, setStripePreview] = useState<StripeInvoicePreviewSuccess | null>(null)
+  const [stripePreviewLoading, setStripePreviewLoading] = useState(false)
+  const [stripePreviewError, setStripePreviewError] = useState<string | null>(null)
+  const stripePreviewReqId = useRef(0)
+
+  const STRIPE_PAY_URL_PLACEHOLDER =
+    '(Payment link will appear here after you create the Stripe invoice)'
+
   const open = payload !== null
   const kind = payload?.kind ?? 'job'
   const job = payload?.job ?? null
   const invoice = payload?.kind === 'invoice' ? payload.invoice : null
-  const canStripe = job !== null && (kind === 'invoice' ? invoice !== null : true)
 
   useEffect(() => {
     if (!open || !job) return
-    setTab('record')
-    setRecordAck(false)
+    setTab('outside')
     setChannel('housecallpro')
     setSentDate(todayIsoDate())
     setExternalNote('')
-    setRecordError(null)
-    setStripeError(null)
-    setStripeSuccess(null)
-    setStripeSubmitting(false)
+    setOutsideError(null)
+    setOutsideSubmitting(false)
     setEnsuredInvoice(null)
     setEnsureError(null)
     setEnsureLoading(false)
-    setCreateMode(false)
-    setNewName('')
-    setNewEmail('')
-    setNewPhone('')
-    setDueDate(todayIsoDate())
-    setMemo('')
-    setSelectedCustomerId(job.customer_id ?? '')
-    setBillingName((job.customer_name ?? '').trim())
-    setBillingEmail((job.customer_email ?? '').trim())
+    setStripeDueDate(isoDatePlusDays(30))
+    setStripeMemo('')
+    setStripeSubmitting(false)
+    setStripeError(null)
+    setStripeResult(null)
+    setStripePreview(null)
+    setStripePreviewLoading(false)
+    setStripePreviewError(null)
     if (invoice) {
-      setTotalStr(String(Number(invoice.amount)))
+      setBillAmountStr(String(Number(invoice.amount)))
     } else {
-      setTotalStr('')
+      setBillAmountStr('')
     }
   }, [open, job?.id, invoice?.id])
 
+  // Ensure primary RTB line when opening for a job row (shared for Outside submit).
   useEffect(() => {
-    if (!open || !job) return
-    setCustomersLoading(true)
-    void (async () => {
-      try {
-        const data = await withSupabaseRetry(
-          async () => supabase.from('customers').select('*').eq('master_user_id', job.master_user_id).order('name'),
-          'load customers for send invoice'
-        )
-        setCustomers((data ?? []) as CustomerRow[])
-      } catch {
-        setCustomers([])
-      } finally {
-        setCustomersLoading(false)
-      }
-    })()
-  }, [open, job?.id, job?.master_user_id])
-
-  useEffect(() => {
-    if (!open || !job?.id || tab !== 'stripe' || kind !== 'job') return
-    // After Stripe finalize the row is `billed`; re-running ensure is wasted and can surface PostgREST errors.
-    if (stripeSuccess) return
+    if (!open || !job?.id || kind !== 'job') return
     if (ensuredInvoice?.jobId === job.id) return
 
     let cancelled = false
@@ -181,7 +168,7 @@ export default function SendRecordInvoiceModal({
             await supabase.rpc('ensure_single_ready_to_bill_invoice_for_job', {
               p_job_id: job.id,
             }),
-          'ensure RTB invoice'
+          'ensure RTB invoice for Bill Customer'
         )
         if (cancelled) return
         const obj = raw as Record<string, unknown> | null
@@ -193,23 +180,19 @@ export default function SendRecordInvoiceModal({
         if (obj?.ok === true && typeof obj.invoice_id === 'string') {
           const rawAmt = obj.amount
           const amt =
-            typeof rawAmt === 'number'
-              ? rawAmt
-              : typeof rawAmt === 'string'
-                ? Number(rawAmt)
-                : NaN
+            typeof rawAmt === 'number' ? rawAmt : typeof rawAmt === 'string' ? Number(rawAmt) : NaN
           if (!Number.isFinite(amt)) {
             setEnsuredInvoice(null)
             setEnsureError('Unexpected response from server')
             return
           }
           setEnsuredInvoice({ jobId: job.id, id: obj.invoice_id, amount: amt })
-          setTotalStr(String(amt))
+          setBillAmountStr((prev) => (prev.trim() === '' ? String(amt) : prev))
           setEnsureError(null)
           try {
             await onAfterEnsureSuccessRef.current?.()
           } catch {
-            /* Refetch failed; ensured invoice state is still valid. */
+            /* ignore */
           }
         } else {
           setEnsuredInvoice(null)
@@ -228,21 +211,145 @@ export default function SendRecordInvoiceModal({
       cancelled = true
       setEnsureLoading(false)
     }
-    // ensuredInvoice is read when tab/open/job changes; omit from deps to avoid an extra run right after a successful ensure.
-  }, [open, job?.id, tab, kind, stripeSuccess])
+  }, [open, job?.id, kind])
 
   useEffect(() => {
-    if (!open || createMode || !selectedCustomerId) return
-    const c = customers.find((x) => x.id === selectedCustomerId)
-    if (!c) return
-    const { email } = contactInfoFromCustomer(c)
-    setBillingName((c.name ?? '').trim())
-    setBillingEmail(email.trim())
-  }, [open, createMode, selectedCustomerId, customers])
+    if (!open || !job || tab !== 'stripe' || stripeResult) {
+      return
+    }
 
-  async function confirmRecordExternal() {
-    if (!job || !recordAck) return
-    setRecordError(null)
+    const amt = Number(billAmountStr)
+    const invId = kind === 'invoice' ? invoice?.id : ensuredInvoice?.id
+    const outsideReadyForPreview =
+      kind === 'invoice'
+        ? invoice != null
+        : kind === 'job' && ensuredInvoice != null && !ensureLoading && !ensureError
+
+    const canPreview =
+      jobLedgerHasCustomerForBilling(job.customer_id) &&
+      (job.customer_email ?? '').trim().length > 0 &&
+      Number.isFinite(amt) &&
+      amt > 0 &&
+      Boolean(invId) &&
+      stripeDueDate.trim().length > 0 &&
+      outsideReadyForPreview
+
+    if (!canPreview) {
+      setStripePreview(null)
+      setStripePreviewLoading(false)
+      setStripePreviewError(null)
+      return
+    }
+
+    const handle = window.setTimeout(() => {
+      const req = ++stripePreviewReqId.current
+      setStripePreviewLoading(true)
+      setStripePreviewError(null)
+      setStripePreview(null)
+
+      void (async () => {
+        try {
+          const { data: auth } = await supabase.auth.getSession()
+          const token = auth.session?.access_token
+          if (!token) {
+            if (stripePreviewReqId.current === req) {
+              setStripePreviewLoading(false)
+              setStripePreviewError('Not signed in')
+            }
+            return
+          }
+          if (stripePreviewReqId.current !== req) return
+
+          const raw = await withSupabaseRetry(
+            async () =>
+              supabase.functions.invoke('preview-stripe-invoice', {
+                body: {
+                  jobs_ledger_invoice_id: invId,
+                  customer_id: job.customer_id!,
+                  amount_dollars: amt,
+                  customer_email: (job.customer_email ?? '').trim(),
+                  customer_name: (job.customer_name ?? '').trim() || 'Customer',
+                  due_date: stripeDueDate.trim(),
+                  memo: stripeMemo.trim() || undefined,
+                },
+                headers: { Authorization: `Bearer ${token}` },
+              }),
+            'preview stripe invoice',
+          )
+
+          if (stripePreviewReqId.current !== req) return
+
+          const body = raw as Record<string, unknown> | null
+          if (body && typeof body.error === 'string' && body.error.length > 0) {
+            setStripePreview(null)
+            setStripePreviewError(body.error)
+            return
+          }
+          if (
+            body &&
+            body.success === true &&
+            typeof body.currency === 'string' &&
+            Array.isArray(body.lines)
+          ) {
+            const linesRaw = body.lines as unknown[]
+            const lines = linesRaw.map((item) => {
+              const o = item as Record<string, unknown>
+              return {
+                description: typeof o.description === 'string' ? o.description : '',
+                amount: typeof o.amount === 'number' ? o.amount : 0,
+              }
+            })
+            setStripePreview({
+              success: true,
+              currency: body.currency,
+              subtotal: typeof body.subtotal === 'number' ? body.subtotal : 0,
+              total: typeof body.total === 'number' ? body.total : 0,
+              amount_due: typeof body.amount_due === 'number' ? body.amount_due : 0,
+              lines,
+            })
+            setStripePreviewError(null)
+          } else {
+            setStripePreview(null)
+            setStripePreviewError('Unexpected response from server')
+          }
+        } catch (e) {
+          if (stripePreviewReqId.current !== req) return
+          setStripePreview(null)
+          setStripePreviewError(formatErrorMessage(e, 'Preview failed'))
+        } finally {
+          if (stripePreviewReqId.current === req) setStripePreviewLoading(false)
+        }
+      })()
+    }, 300)
+
+    return () => window.clearTimeout(handle)
+  }, [
+    open,
+    job?.id,
+    job?.customer_id,
+    job?.customer_email,
+    job?.customer_name,
+    tab,
+    stripeResult,
+    billAmountStr,
+    stripeDueDate,
+    stripeMemo,
+    kind,
+    invoice?.id,
+    ensuredInvoice?.id,
+    ensureLoading,
+    ensureError,
+  ])
+
+  async function confirmOutsideBill() {
+    if (!job) return
+    const amt = Number(billAmountStr)
+    if (!Number.isFinite(amt) || amt <= 0) {
+      setOutsideError('Enter a valid bill amount greater than 0')
+      return
+    }
+    setOutsideSubmitting(true)
+    setOutsideError(null)
     const sentAt = sentDate.trim() ? new Date(sentDate + 'T12:00:00').toISOString() : new Date().toISOString()
     try {
       if (kind === 'invoice' && invoice) {
@@ -252,17 +359,36 @@ export default function SendRecordInvoiceModal({
               .from('jobs_ledger_invoices')
               .update({
                 status: 'billed',
+                amount: amt,
                 external_send_channel: channel,
                 external_send_note: externalNote.trim() || null,
                 sent_to_customer_at: sentAt,
               })
               .eq('id', invoice.id),
-          'record external invoice send'
+          'record outside bill on invoice'
         )
       } else {
+        const invId = ensuredInvoice?.id
+        if (!invId) {
+          throw new Error(ensureError || 'Could not prepare invoice line for this job')
+        }
+        await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('jobs_ledger_invoices')
+              .update({
+                status: 'billed',
+                amount: amt,
+                external_send_channel: channel,
+                external_send_note: externalNote.trim() || null,
+                sent_to_customer_at: sentAt,
+              })
+              .eq('id', invId),
+          'record outside bill on ensured invoice'
+        )
         const data = await withSupabaseRetry(
           async () => supabase.rpc('update_job_status', { p_job_id: job.id, p_to_status: 'billed' }),
-          'record external job billed'
+          'job status billed after outside bill'
         )
         const res = data as { error?: string } | null
         if (res?.error) throw new Error(res.error)
@@ -270,116 +396,98 @@ export default function SendRecordInvoiceModal({
       await onSuccess()
       onClose()
     } catch (e) {
-      setRecordError(e instanceof Error ? e.message : 'Failed to save')
+      setOutsideError(e instanceof Error ? e.message : 'Failed to save')
+    } finally {
+      setOutsideSubmitting(false)
     }
   }
 
-  async function resolveCustomerIdForStripe(): Promise<string | null> {
-    if (!job) return null
-    if (createMode) {
-      const name = newName.trim()
-      const email = newEmail.trim()
-      if (!name || !isValidEmail(email)) return null
-      const contact_info: Json = { email, phone: newPhone.trim() || '' }
-      const row = await withSupabaseRetry(
-        async () =>
-          supabase
-            .from('customers')
-            .insert({
-              name,
-              master_user_id: job.master_user_id,
-              contact_info,
-            })
-            .select('id')
-            .single(),
-        'create customer for Stripe invoice'
-      )
-      const id = row && typeof row === 'object' && 'id' in row ? (row as { id: string }).id : null
-      if (!id) throw new Error('Customer create failed')
-      if (!job.customer_id) {
-        await withSupabaseRetry(
-          async () => supabase.from('jobs_ledger').update({ customer_id: id }).eq('id', job.id),
-          'link customer to job for Stripe'
-        )
-      }
-      return id
-    }
-    if (!selectedCustomerId) return null
-    return selectedCustomerId
-  }
-
-  async function submitStripe() {
-    if (!job || !canStripe) return
-    const effectiveInvoiceId = invoice?.id ?? ensuredInvoice?.id
-    if (!effectiveInvoiceId) return
-    setStripeError(null)
-    const amt = Number(totalStr)
+  async function submitStripeInvoice() {
+    if (!job?.customer_id) return
+    const amt = Number(billAmountStr)
     if (!Number.isFinite(amt) || amt <= 0) {
-      setStripeError('Enter a valid total')
+      setStripeError('Enter a valid bill amount greater than 0')
       return
     }
-    if (!isValidEmail(billingEmail)) {
-      setStripeError('Valid customer email required')
+    if (!(job.customer_email ?? '').trim()) {
+      setStripeError('Customer email is required for Stripe invoices. Add it on Edit Job.')
       return
     }
+    const invId = kind === 'invoice' ? invoice?.id : ensuredInvoice?.id
+    if (!invId) {
+      setStripeError(ensureError || 'Could not prepare invoice line for this job')
+      return
+    }
+    if (!stripeDueDate.trim()) {
+      setStripeError('Choose a due date')
+      return
+    }
+
     setStripeSubmitting(true)
+    setStripeError(null)
     try {
-      const cid = await resolveCustomerIdForStripe()
-      if (!cid) {
-        setStripeError('Choose a customer or complete create-customer fields')
-        setStripeSubmitting(false)
+      const { data: auth } = await supabase.auth.getSession()
+      const token = auth.session?.access_token
+      if (!token) {
+        setStripeError('Not signed in')
         return
       }
 
-      const {
-        data: { session: refreshedSession },
-        error: refreshErr,
-      } = await supabase.auth.refreshSession()
-      if (refreshErr || !refreshedSession?.access_token) {
-        throw new Error('Session expired. Sign in again.')
+      let body: CreateStripeInvoiceFnResponse | null
+      try {
+        body = (await withSupabaseRetry(
+          async () =>
+            supabase.functions.invoke('create-stripe-invoice', {
+              body: {
+                jobs_ledger_invoice_id: invId,
+                customer_id: job.customer_id,
+                amount_dollars: amt,
+                customer_email: (job.customer_email ?? '').trim(),
+                customer_name: (job.customer_name ?? '').trim() || 'Customer',
+                due_date: stripeDueDate.trim(),
+                memo: stripeMemo.trim() || undefined,
+              },
+              headers: { Authorization: `Bearer ${token}` },
+            }),
+          'create stripe invoice',
+        )) as CreateStripeInvoiceFnResponse | null
+      } catch (invokeErr) {
+        setStripeError(formatErrorMessage(invokeErr, 'Stripe invoice failed'))
+        return
+      }
+      if (body && typeof body.error === 'string' && body.error.length > 0) {
+        setStripeError(body.error)
+        return
       }
 
-      const { data, error: fnErr } = await supabase.functions.invoke('create-stripe-invoice', {
-        headers: { Authorization: `Bearer ${refreshedSession.access_token}` },
-        body: {
-          jobs_ledger_invoice_id: effectiveInvoiceId,
-          customer_id: cid,
-          amount_dollars: amt,
-          customer_email: billingEmail.trim(),
-          customer_name: billingName.trim() || billingEmail.trim(),
-          due_date: dueDate.trim(),
-          memo: memo.trim() || undefined,
-        },
-      })
+      const hosted = typeof body?.hosted_invoice_url === 'string' ? body.hosted_invoice_url.trim() : ''
+      const stripeId = typeof body?.stripe_invoice_id === 'string' ? body.stripe_invoice_id.trim() : ''
+      if (!hosted || !stripeId) {
+        setStripeError('Unexpected response from server')
+        return
+      }
 
-      if (fnErr) {
-        let msg = fnErr.message
-        if (fnErr instanceof FunctionsHttpError && fnErr.context?.json) {
-          try {
-            const b = (await fnErr.context.json()) as { error?: string } | null
-            if (b?.error) msg = b.error
-          } catch {
-            /* ignore */
-          }
+      if (kind === 'job') {
+        const dataRpc = await withSupabaseRetry(
+          async () => supabase.rpc('update_job_status', { p_job_id: job.id, p_to_status: 'billed' }),
+          'job status billed after stripe invoice',
+        )
+        const res = dataRpc as { error?: string } | null
+        if (res?.error) {
+          setStripeError(res.error)
+          return
         }
-        throw new Error(msg)
       }
 
-      const res = data as {
-        success?: boolean
-        error?: string
-        hosted_invoice_url?: string
-        stripe_invoice_id?: string
-      } | null
-      if (res?.error) throw new Error(res.error)
-      const url = res?.hosted_invoice_url
-      const sid = res?.stripe_invoice_id
-      if (!url || !sid) throw new Error('Invalid response from server')
-
-      setStripeSuccess({ url, id: sid })
+      setStripeResult({
+        hosted_invoice_url: hosted,
+        stripe_invoice_id: stripeId,
+        stripe_invoice_status: typeof body?.stripe_invoice_status === 'string' ? body.stripe_invoice_status : null,
+        idempotent: body?.idempotent === true,
+      })
       await onSuccess()
     } catch (e) {
-      setStripeError(e instanceof Error ? e.message : 'Stripe request failed')
+      setStripeError(e instanceof Error ? e.message : 'Stripe invoice failed')
     } finally {
       setStripeSubmitting(false)
     }
@@ -387,7 +495,7 @@ export default function SendRecordInvoiceModal({
 
   if (!open || !job) return null
 
-  const busy = jobUpdating || invoiceUpdating || stripeSubmitting
+  const busy = jobUpdating || invoiceUpdating || outsideSubmitting || stripeSubmitting
 
   if (!jobLedgerHasCustomerForBilling(job.customer_id)) {
     return (
@@ -399,11 +507,11 @@ export default function SendRecordInvoiceModal({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 60,
+          zIndex: overlayZIndex,
         }}
       >
         <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 420, maxWidth: 520, maxHeight: '90vh', overflow: 'auto' }}>
-          <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>Invoice / Update</h2>
+          <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>Bill Customer</h2>
           <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
             {job.hcp_number ?? '—'} · {job.job_name ?? '—'}
           </p>
@@ -424,6 +532,11 @@ export default function SendRecordInvoiceModal({
     )
   }
 
+  const outsideReady =
+    kind === 'invoice'
+      ? invoice != null
+      : kind === 'job' && ensuredInvoice != null && !ensureLoading && !ensureError
+
   return (
     <div
       style={{
@@ -433,203 +546,218 @@ export default function SendRecordInvoiceModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 60,
+        zIndex: overlayZIndex,
       }}
     >
       <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 420, maxWidth: 520, maxHeight: '90vh', overflow: 'auto' }}>
-        <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>Invoice / Update</h2>
+        <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>Bill Customer</h2>
         <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
           {job.hcp_number ?? '—'} · {job.job_name ?? '—'}
-          {invoice ? ` · $${Number(invoice.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : ''}
+          {invoice ? ` · RTB $${Number(invoice.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : ''}
         </p>
 
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', borderBottom: '1px solid #e5e7eb' }}>
           <button
             type="button"
-            onClick={() => setTab('record')}
+            onClick={() => setTab('outside')}
             style={{
               padding: '0.5rem 0.75rem',
               border: 'none',
               background: 'none',
               cursor: 'pointer',
-              fontWeight: tab === 'record' ? 600 : 400,
-              borderBottom: tab === 'record' ? '2px solid #3b82f6' : '2px solid transparent',
+              fontWeight: tab === 'outside' ? 600 : 400,
+              borderBottom: tab === 'outside' ? '2px solid #3b82f6' : '2px solid transparent',
               marginBottom: -1,
             }}
           >
-            Record external send
+            Outside bill
           </button>
           <button
             type="button"
-            onClick={() => canStripe && setTab('stripe')}
-            disabled={!canStripe}
+            onClick={() => setTab('stripe')}
             style={{
               padding: '0.5rem 0.75rem',
               border: 'none',
               background: 'none',
-              cursor: canStripe ? 'pointer' : 'not-allowed',
+              cursor: 'pointer',
               fontWeight: tab === 'stripe' ? 600 : 400,
               borderBottom: tab === 'stripe' ? '2px solid #3b82f6' : '2px solid transparent',
               marginBottom: -1,
-              color: canStripe ? 'inherit' : '#9ca3af',
+              color: tab === 'stripe' ? 'inherit' : '#6b7280',
             }}
           >
-            Stripe invoice
+            Stripe bill
           </button>
         </div>
 
-        {tab === 'record' && (
+        {tab === 'outside' && (
           <>
-            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer', marginBottom: '0.5rem' }}>
-              <input type="checkbox" checked={recordAck} onChange={(e) => setRecordAck(e.target.checked)} style={{ marginTop: 4 }} />
-              <span>Invoice has been sent to the customer through</span>
-            </label>
+            {kind === 'job' && ensureLoading && (
+              <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.75rem' }}>Preparing billing line…</p>
+            )}
+            {kind === 'job' && !ensureLoading && ensureError && (
+              <p style={{ color: '#b91c1c', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{ensureError}</p>
+            )}
+            <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: '0.75rem' }}>
+              Record what you sent the customer. Job balance is not reduced until payment is recorded.
+            </p>
             <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
               <button type="button" onClick={() => setChannel('housecallpro')} style={channelButtonStyle(channel === 'housecallpro')}>
-                HouseCallPro
+                HouseCall Pro
               </button>
               <button type="button" onClick={() => setChannel('physical')} style={channelButtonStyle(channel === 'physical')}>
-                Physical Invoice
+                Physical invoice
               </button>
             </div>
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>Amount ($)</label>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={billAmountStr}
+              onChange={(e) => setBillAmountStr(e.target.value)}
+              disabled={!outsideReady && kind === 'job'}
+              style={{ width: '100%', padding: '0.35rem', marginBottom: '0.75rem', boxSizing: 'border-box' }}
+            />
             <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>Date</label>
-            <input type="date" value={sentDate} onChange={(e) => setSentDate(e.target.value)} style={{ width: '100%', padding: '0.35rem', marginBottom: '0.75rem' }} />
+            <input type="date" value={sentDate} onChange={(e) => setSentDate(e.target.value)} style={{ width: '100%', padding: '0.35rem', marginBottom: '0.75rem', boxSizing: 'border-box' }} />
             <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>Note (optional)</label>
-            <textarea value={externalNote} onChange={(e) => setExternalNote(e.target.value)} rows={3} style={{ width: '100%', padding: '0.35rem', marginBottom: '0.75rem' }} />
-            {recordError && <p style={{ color: '#b91c1c', fontSize: '0.875rem' }}>{recordError}</p>}
+            <textarea value={externalNote} onChange={(e) => setExternalNote(e.target.value)} rows={3} style={{ width: '100%', padding: '0.35rem', marginBottom: '0.75rem', boxSizing: 'border-box', resize: 'vertical' }} />
+            {outsideError && <p style={{ color: '#b91c1c', fontSize: '0.875rem' }}>{outsideError}</p>}
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
               <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>
                 Cancel
               </button>
               <button
                 type="button"
-                disabled={!recordAck || busy}
-                onClick={() => void confirmRecordExternal()}
+                disabled={!outsideReady || busy}
+                onClick={() => void confirmOutsideBill()}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: recordAck && !busy ? '#3b82f6' : '#9ca3af',
+                  background: outsideReady && !busy ? '#3b82f6' : '#9ca3af',
                   color: 'white',
                   border: 'none',
                   borderRadius: 4,
-                  cursor: recordAck && !busy ? 'pointer' : 'not-allowed',
+                  cursor: outsideReady && !busy ? 'pointer' : 'not-allowed',
                 }}
               >
-                {busy ? '…' : 'Confirm'}
+                {busy ? '…' : 'Save'}
               </button>
             </div>
           </>
         )}
 
-        {tab === 'stripe' && canStripe && (
-          <>
+        {tab === 'stripe' && (
+          <div style={{ padding: '0.5rem 0' }}>
             {kind === 'job' && ensureLoading && (
-              <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.75rem' }}>Preparing invoice line…</p>
+              <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.75rem' }}>Preparing billing line…</p>
             )}
             {kind === 'job' && !ensureLoading && ensureError && (
               <p style={{ color: '#b91c1c', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{ensureError}</p>
             )}
-            {!stripeSuccess &&
-            (kind === 'invoice' ? invoice : kind === 'job' && ensuredInvoice && !ensureLoading && !ensureError) ? (
+            <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: '0.75rem' }}>
+              Creates a finalized Stripe invoice (hosted pay page). The job billing line moves to Billed. Payment still syncs via Stripe webhook when the customer pays.
+            </p>
+            {stripeResult ? (
               <>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>Total (USD)</label>
-                <input type="text" inputMode="decimal" value={totalStr} onChange={(e) => setTotalStr(e.target.value)} style={{ width: '100%', padding: '0.35rem', marginBottom: '0.75rem' }} />
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>Customer name</label>
-                <input type="text" value={billingName} onChange={(e) => setBillingName(e.target.value)} style={{ width: '100%', padding: '0.35rem', marginBottom: '0.75rem' }} />
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>Customer email</label>
-                <input type="email" value={billingEmail} onChange={(e) => setBillingEmail(e.target.value)} style={{ width: '100%', padding: '0.35rem', marginBottom: '0.75rem' }} />
-
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>Due date</label>
-                <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} style={{ width: '100%', padding: '0.35rem', marginBottom: '0.75rem' }} />
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>Memo (optional)</label>
-                <input type="text" value={memo} onChange={(e) => setMemo(e.target.value)} style={{ width: '100%', padding: '0.35rem', marginBottom: '0.75rem' }} />
-
-                <div style={{ marginBottom: '0.75rem' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                    <input type="checkbox" checked={createMode} onChange={(e) => setCreateMode(e.target.checked)} />
-                    Create new customer
-                  </label>
-                  {!createMode ? (
-                    <>
-                      <label style={{ fontSize: '0.875rem', fontWeight: 500 }}>Bill to customer</label>
-                      <select
-                        value={selectedCustomerId}
-                        onChange={(e) => setSelectedCustomerId(e.target.value)}
-                        disabled={customersLoading}
-                        style={{ width: '100%', padding: '0.35rem', marginTop: '0.25rem' }}
-                      >
-                        <option value="">Select customer…</option>
-                        {customers.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
-                      </select>
-                    </>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      <input type="text" placeholder="Customer name" value={newName} onChange={(e) => setNewName(e.target.value)} style={{ padding: '0.35rem' }} />
-                      <input type="email" placeholder="Email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} style={{ padding: '0.35rem' }} />
-                      <input type="text" placeholder="Phone (optional)" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} style={{ padding: '0.35rem' }} />
-                    </div>
-                  )}
-                </div>
-
-                {stripeError && <p style={{ color: '#b91c1c', fontSize: '0.875rem' }}>{stripeError}</p>}
-                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                  <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>
-                    Cancel
-                  </button>
+                <p style={{ fontSize: '0.875rem', color: '#15803d', marginBottom: '0.5rem', fontWeight: 600 }}>
+                  {stripeResult.idempotent ? 'Stripe invoice already exists.' : 'Stripe invoice created.'}{' '}
+                  {stripeResult.stripe_invoice_status ? `(${stripeResult.stripe_invoice_status})` : ''}
+                </p>
+                <StripeInvoiceSharePanel
+                  hostedInvoiceUrl={stripeResult.hosted_invoice_url}
+                  stripeInvoiceId={stripeResult.stripe_invoice_id}
+                  customerEmail={job.customer_email}
+                  customerName={job.customer_name}
+                  jobName={job.job_name}
+                  hcpNumber={job.hcp_number}
+                  amountLabel={`$${Number(billAmountStr).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                />
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
                   <button
                     type="button"
-                    disabled={busy}
-                    onClick={() => void submitStripe()}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      background: !busy ? '#3b82f6' : '#9ca3af',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: 4,
-                      cursor: busy ? 'not-allowed' : 'pointer',
-                    }}
-                  >
-                    {stripeSubmitting ? '…' : 'Generate invoice'}
-                  </button>
-                </div>
-              </>
-            ) : stripeSuccess ? (
-              <>
-                <p style={{ fontSize: '0.875rem', color: '#059669', marginBottom: '0.75rem' }}>Stripe invoice created.</p>
-                <p style={{ fontSize: '0.8125rem', wordBreak: 'break-all', marginBottom: '0.5rem' }}>{stripeSuccess.url}</p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                  <button
-                    type="button"
-                    onClick={() => void navigator.clipboard.writeText(stripeSuccess.url)}
-                    style={{ padding: '0.35rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
-                  >
-                    Copy payment link
-                  </button>
-                  <a href={stripeSuccess.url} target="_blank" rel="noreferrer" style={{ padding: '0.35rem 0.75rem', border: '1px solid #3b82f6', borderRadius: 4, color: '#3b82f6' }}>
-                    Open link
-                  </a>
-                </div>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#9ca3af', marginBottom: '1rem' }}>
-                  <input type="checkbox" disabled checked={false} readOnly />
-                  Email customer automatically (coming soon)
-                </label>
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onClose()
-                    }}
+                    onClick={onClose}
                     style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                   >
                     Done
                   </button>
                 </div>
               </>
-            ) : null}
-          </>
+            ) : (
+              <>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>Amount ($)</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={billAmountStr}
+                  onChange={(e) => setBillAmountStr(e.target.value)}
+                  disabled={!outsideReady && kind === 'job'}
+                  style={{ width: '100%', padding: '0.35rem', marginBottom: '0.75rem', boxSizing: 'border-box' }}
+                />
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>Due date</label>
+                <input
+                  type="date"
+                  value={stripeDueDate}
+                  onChange={(e) => setStripeDueDate(e.target.value)}
+                  style={{ width: '100%', padding: '0.35rem', marginBottom: '0.75rem', boxSizing: 'border-box' }}
+                />
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>Memo (optional)</label>
+                <textarea
+                  value={stripeMemo}
+                  onChange={(e) => setStripeMemo(e.target.value)}
+                  rows={2}
+                  style={{ width: '100%', padding: '0.35rem', marginBottom: '0.75rem', boxSizing: 'border-box', resize: 'vertical' }}
+                />
+                {job ? (
+                  <StripeBillPreSubmitPreview
+                    customerName={job.customer_name}
+                    customerEmail={job.customer_email}
+                    jobName={job.job_name}
+                    hcpNumber={job.hcp_number}
+                    amountLabel={
+                      Number.isFinite(Number(billAmountStr)) && Number(billAmountStr) > 0
+                        ? `$${Number(billAmountStr).toLocaleString('en-US', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}`
+                        : '—'
+                    }
+                    dueDateYmd={stripeDueDate}
+                    memo={stripeMemo}
+                    payUrlPlaceholder={STRIPE_PAY_URL_PLACEHOLDER}
+                    localLineDescription={`${job.job_name ?? 'Job'} · HCP ${job.hcp_number ?? '—'}`}
+                    stripePreview={stripePreview}
+                    stripePreviewLoading={stripePreviewLoading}
+                    stripePreviewError={stripePreviewError}
+                  />
+                ) : null}
+                {stripeError && <p style={{ color: '#b91c1c', fontSize: '0.875rem', marginBottom: '0.5rem' }}>{stripeError}</p>}
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!outsideReady || busy}
+                    onClick={() => void submitStripeInvoice()}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      background: outsideReady && !busy ? '#3b82f6' : '#9ca3af',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 4,
+                      cursor: outsideReady && !busy ? 'pointer' : 'not-allowed',
+                    }}
+                  >
+                    {busy ? '…' : 'Create Stripe invoice'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         )}
       </div>
     </div>

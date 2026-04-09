@@ -5,6 +5,10 @@ import { useAuth } from '../../hooks/useAuth'
 import { formatCurrency } from '../../lib/format'
 import type { Database } from '../../types/database'
 
+type LedgerPaymentPick = Pick<
+  Database['public']['Tables']['jobs_ledger_payments']['Row'],
+  'job_id' | 'invoice_id' | 'amount'
+>
 type JobsLedgerRow = Database['public']['Tables']['jobs_ledger']['Row']
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 type JobsLedgerTeamMember = Database['public']['Tables']['jobs_ledger_team_members']['Row']
@@ -59,10 +63,24 @@ export function BilledAwaitingPaymentSection() {
           )
         }
 
+        const jobIdsArray = Array.from(jobIds)
+        const { data: payRows } =
+          jobIdsArray.length > 0
+            ? await supabase.from('jobs_ledger_payments').select('job_id, invoice_id, amount').in('job_id', jobIdsArray)
+            : { data: [] as LedgerPaymentPick[] }
+        const payments = (payRows ?? []) as LedgerPaymentPick[]
+        function appliedToInvoice(invoiceId: string): number {
+          let s = 0
+          for (const p of payments) {
+            if (p.invoice_id === invoiceId) s += Number(p.amount ?? 0)
+          }
+          return s
+        }
+
         const { data: teamData } = await supabase
           .from('jobs_ledger_team_members')
           .select('job_id, users(name)')
-          .in('job_id', Array.from(jobIds))
+          .in('job_id', jobIdsArray)
         const teamByJob = new Map<string, string[]>()
         for (const t of (teamData ?? []) as (JobsLedgerTeamMember & { users: { name: string } | null })[]) {
           const names = (teamByJob.get(t.job_id) ?? [])
@@ -88,13 +106,15 @@ export function BilledAwaitingPaymentSection() {
           const job = jobDetailsMap[inv.job_id]
           if (!job) continue
           const amount = Number(inv.amount ?? 0)
-          sumTotal += amount
+          const remaining = Math.max(0, amount - appliedToInvoice(inv.id))
+          if (remaining <= 0) continue
+          sumTotal += remaining
           result.push({
             kind: 'invoice',
             inv,
             job,
             assigned: teamByJob.get(inv.job_id) ?? [],
-            remaining: amount,
+            remaining,
           })
         }
 

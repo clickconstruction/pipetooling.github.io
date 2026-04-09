@@ -363,6 +363,9 @@ verify_jwt = false
 [functions.create-stripe-invoice]
 verify_jwt = false
 
+[functions.preview-stripe-invoice]
+verify_jwt = false
+
 [functions.stripe-webhook]
 verify_jwt = false
 

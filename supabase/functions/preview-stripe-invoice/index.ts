@@ -8,7 +8,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-interface CreateStripeInvoiceBody {
+interface PreviewStripeInvoiceBody {
   jobs_ledger_invoice_id: string
   customer_id: string
   amount_dollars: number
@@ -67,7 +67,7 @@ serve(async (req) => {
       return jsonResponse({ error: 'Invalid session' }, 401)
     }
 
-    const body = (await req.json()) as CreateStripeInvoiceBody
+    const body = (await req.json()) as PreviewStripeInvoiceBody
     const {
       jobs_ledger_invoice_id,
       customer_id,
@@ -98,7 +98,7 @@ serve(async (req) => {
 
     const { data: invRow, error: invErr } = await userClient
       .from('jobs_ledger_invoices')
-      .select('id, job_id, amount, status, stripe_invoice_id, hosted_invoice_url, stripe_invoice_status')
+      .select('id, job_id, amount, status')
       .eq('id', jobs_ledger_invoice_id)
       .maybeSingle()
 
@@ -108,16 +108,6 @@ serve(async (req) => {
 
     if (invRow.status !== 'ready_to_bill') {
       return jsonResponse({ error: 'Invoice must be Ready to Bill' }, 400)
-    }
-
-    if (invRow.stripe_invoice_id && invRow.hosted_invoice_url) {
-      return jsonResponse({
-        success: true,
-        stripe_invoice_id: invRow.stripe_invoice_id,
-        hosted_invoice_url: invRow.hosted_invoice_url,
-        stripe_invoice_status: invRow.stripe_invoice_status,
-        idempotent: true,
-      })
     }
 
     const admin = createClient(supabaseUrl, serviceKey)
@@ -133,7 +123,7 @@ serve(async (req) => {
     }
 
     if (!jobRow.customer_id) {
-      return jsonResponse({ error: 'Job must be linked to a customer before creating a Stripe invoice.' }, 400)
+      return jsonResponse({ error: 'Job must be linked to a customer before previewing a Stripe invoice.' }, 400)
     }
 
     if (jobRow.customer_id !== customer_id) {
@@ -142,7 +132,7 @@ serve(async (req) => {
 
     const { data: custRow, error: custErr } = await admin
       .from('customers')
-      .select('id, master_user_id, name, stripe_customer_id, contact_info')
+      .select('id, master_user_id, name, stripe_customer_id')
       .eq('id', customer_id)
       .single()
 
@@ -154,95 +144,62 @@ serve(async (req) => {
       return jsonResponse({ error: 'Customer does not belong to this job master' }, 400)
     }
 
-    const stripe = new Stripe(stripeSecret, { apiVersion: '2023-10-16' })
-
-    let stripeCustomerId = custRow.stripe_customer_id
-    if (!stripeCustomerId) {
-      const created = await stripe.customers.create({
-        email: customer_email.trim(),
-        name: customer_name.trim(),
-        metadata: { pipetooling_customer_id: customer_id },
-      })
-      stripeCustomerId = created.id
-      await admin
-        .from('customers')
-        .update({ stripe_customer_id: stripeCustomerId })
-        .eq('id', customer_id)
-    } else {
-      await stripe.customers.update(stripeCustomerId, {
-        email: customer_email.trim(),
-        name: customer_name.trim(),
-      })
-    }
-
     const amountCents = Math.round(amount_dollars * 100)
     if (amountCents < 1) {
       return jsonResponse({ error: 'Amount too small' }, 400)
     }
 
     const d = daysUntilDue(due_date.trim())
+    const lineDesc = `${jobRow.job_name ?? 'Job'} · HCP ${jobRow.hcp_number ?? '—'}`
+    const stripe = new Stripe(stripeSecret, { apiVersion: '2023-10-16' })
 
-    const invoice = await stripe.invoices.create({
-      customer: stripeCustomerId!,
+    const stripeCustomerId = custRow.stripe_customer_id?.trim() || null
+
+    const previewParams: Record<string, unknown> = {
       collection_method: 'send_invoice',
       days_until_due: d,
       description: memo?.trim() || undefined,
-      metadata: {
-        pipetooling_invoice_id: jobs_ledger_invoice_id,
-        pipetooling_job_id: invRow.job_id,
-      },
-    })
-
-    await stripe.invoiceItems.create({
-      customer: stripeCustomerId!,
-      invoice: invoice.id,
-      amount: amountCents,
       currency: 'usd',
-      description: `${jobRow.job_name ?? 'Job'} · HCP ${jobRow.hcp_number ?? '—'}`,
-    })
-
-    const finalized = await stripe.invoices.finalizeInvoice(invoice.id)
-    const hostedUrl = finalized.hosted_invoice_url
-
-    if (!hostedUrl) {
-      return jsonResponse({ error: 'Stripe did not return hosted_invoice_url' }, 500)
-    }
-
-    const patch: Record<string, unknown> = {
-      stripe_invoice_id: finalized.id,
-      stripe_invoice_status: finalized.status,
-      hosted_invoice_url: hostedUrl,
-      status: 'billed',
-      external_send_channel: 'stripe',
-      sent_to_customer_at: new Date().toISOString(),
-    }
-    if (Number(invRow.amount) !== amount_dollars) {
-      patch.amount = amount_dollars
-    }
-
-    const { error: upErr } = await admin.from('jobs_ledger_invoices').update(patch).eq('id', jobs_ledger_invoice_id)
-
-    if (upErr) {
-      console.error('DB update after Stripe finalize:', upErr)
-      return jsonResponse(
+      invoice_items: [
         {
-          error: 'Invoice created in Stripe but failed to save to database',
-          stripe_invoice_id: finalized.id,
-          hosted_invoice_url: hostedUrl,
+          amount: amountCents,
+          currency: 'usd',
+          description: lineDesc,
         },
-        500
-      )
+      ],
     }
+
+    if (stripeCustomerId) {
+      previewParams.customer = stripeCustomerId
+    } else {
+      previewParams.customer_details = {
+        email: customer_email.trim(),
+        name: customer_name.trim(),
+      }
+    }
+
+    const invoices = stripe.invoices as typeof stripe.invoices & {
+      createPreview: (p: Record<string, unknown>) => Promise<Stripe.Invoice>
+    }
+    const preview = await invoices.createPreview(previewParams)
+
+    const rawLines = preview.lines?.data ?? []
+    const lines = rawLines.map((li) => ({
+      description: li.description ?? '',
+      amount: typeof li.amount === 'number' ? li.amount : 0,
+    }))
 
     return jsonResponse({
       success: true,
-      stripe_invoice_id: finalized.id,
-      hosted_invoice_url: hostedUrl,
-      stripe_invoice_status: finalized.status,
+      currency: preview.currency ?? 'usd',
+      subtotal: preview.subtotal ?? 0,
+      total: preview.total ?? 0,
+      amount_due: preview.amount_due ?? preview.total ?? 0,
+      lines,
     })
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
-    console.error('create-stripe-invoice:', e)
+    console.error('preview-stripe-invoice:', e)
     return jsonResponse({ error: msg }, 500)
   }
 })

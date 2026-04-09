@@ -2947,6 +2947,7 @@ export type Database = {
           amount: number
           created_at: string | null
           id: string
+          invoice_id: string | null
           job_id: string
           note: string | null
           paid_on: string | null
@@ -2956,6 +2957,7 @@ export type Database = {
           amount?: number
           created_at?: string | null
           id?: string
+          invoice_id?: string | null
           job_id: string
           note?: string | null
           paid_on?: string | null
@@ -2965,12 +2967,20 @@ export type Database = {
           amount?: number
           created_at?: string | null
           id?: string
+          invoice_id?: string | null
           job_id?: string
           note?: string | null
           paid_on?: string | null
           sequence_order?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "jobs_ledger_payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger_invoices"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "jobs_ledger_payments_job_id_fkey"
             columns: ["job_id"]
@@ -6157,6 +6167,24 @@ export type Database = {
           },
         ]
       }
+      stripe_webhook_events: {
+        Row: {
+          event_type: string
+          received_at: string
+          stripe_event_id: string
+        }
+        Insert: {
+          event_type: string
+          received_at?: string
+          stripe_event_id: string
+        }
+        Update: {
+          event_type?: string
+          received_at?: string
+          stripe_event_id?: string
+        }
+        Relationships: []
+      }
       supply_house_invoice_job_allocations: {
         Row: {
           invoice_id: string
@@ -8330,12 +8358,33 @@ export type Database = {
         }
         Returns: string
       }
-      mark_invoice_paid: { Args: { p_invoice_id: string }; Returns: Json }
+      mark_invoice_paid: {
+        Args: {
+          p_amount?: number
+          p_invoice_id: string
+          p_note?: string
+          p_paid_on?: string
+        }
+        Returns: Json
+      }
       mark_invoice_paid_from_stripe: {
         Args: { p_invoice_id: string }
         Returns: Json
       }
-      mark_job_paid: { Args: { p_job_id: string }; Returns: Json }
+      mark_job_paid:
+        | {
+            Args: {
+              p_amount?: number
+              p_job_id: string
+              p_note?: string
+              p_paid_on?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: { p_job_id: string; p_note?: string; p_paid_on?: string }
+            Returns: Json
+          }
       master_adopted_current_user: {
         Args: { master_user_id: string }
         Returns: boolean

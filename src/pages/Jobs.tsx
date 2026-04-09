@@ -20,7 +20,9 @@ import NewReportModal from '../components/NewReportModal'
 import JobReportsModal from '../components/JobReportsModal'
 import AddInspectionModal from '../components/AddInspectionModal'
 import { ErrorBoundary } from '../components/ErrorBoundary'
-import SendRecordInvoiceModal, { type JobBillingContext } from '../components/jobs/SendRecordInvoiceModal'
+import { type JobBillingContext } from '../components/jobs/SendRecordInvoiceModal'
+import { useBillCustomerModal } from '../contexts/BillCustomerModalContext'
+import BilledPaymentConfirmationModal from '../components/jobs/BilledPaymentConfirmationModal'
 import { JobThreadNotesPanel } from '../components/JobThreadNotesPanel'
 import { ScheduleJobModal } from '../components/jobs/ScheduleJobModal'
 import { useJobThreadNotes } from '../hooks/useJobThreadNotes'
@@ -38,6 +40,13 @@ import {
   deriveStagesFieldTooltip,
   mergeMaxScheduleWorkDateByJobId,
 } from '../lib/stagesJobReferenceDates'
+import {
+  buildJobsStagesBoardLists,
+  locateStagesInvoiceSection,
+  stagesInvoiceVisibleWithEmptySearch,
+  type InvoiceWithJob,
+  type StageRow,
+} from '../lib/jobsStagesBoard'
 
 type JobsLedgerRow = Database['public']['Tables']['jobs_ledger']['Row']
 type CustomerRow = Database['public']['Tables']['customers']['Row']
@@ -48,8 +57,6 @@ type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['R
 type JobsLedgerTeamMember = Database['public']['Tables']['jobs_ledger_team_members']['Row']
 type InspectionRow = Database['public']['Tables']['inspections']['Row']
 type UserRow = { id: string; name: string; email: string | null; role: string }
-
-type InvoiceWithJob = JobsLedgerInvoice & { job: JobWithDetails }
 
 function jobBillingContextFromJob(j: JobWithDetails): JobBillingContext {
   return {
@@ -66,31 +73,6 @@ function jobBillingContextFromJob(j: JobWithDetails): JobBillingContext {
 /** Jobs ledger row must be linked to a customers row before Invoice/Update or instant billed. */
 function jobLedgerHasCustomerForBilling(customerId: string | null | undefined): boolean {
   return customerId != null && String(customerId).trim().length > 0
-}
-
-type StageRow =
-  | { kind: 'job'; job: JobWithDetails }
-  | { kind: 'job_with_primary_rtb'; job: JobWithDetails; inv: JobsLedgerInvoice }
-  | { kind: 'invoice'; inv: JobsLedgerInvoice; job: JobWithDetails }
-
-function buildReadyToBillStageRows(readyToBillJobs: JobWithDetails[], readyToBillInvoices: InvoiceWithJob[]): StageRow[] {
-  const bundledIds = new Set<string>()
-  const rows: StageRow[] = []
-  for (const job of readyToBillJobs) {
-    const primary = (job.invoices ?? []).find((i) => i.status === 'ready_to_bill' && i.is_primary_rtb_bundle === true)
-    if (primary) {
-      rows.push({ kind: 'job_with_primary_rtb', job, inv: primary })
-      bundledIds.add(primary.id)
-    } else {
-      rows.push({ kind: 'job', job })
-    }
-  }
-  for (const iw of readyToBillInvoices) {
-    if (bundledIds.has(iw.id)) continue
-    const { job, ...inv } = iw
-    rows.push({ kind: 'invoice', inv: inv as JobsLedgerInvoice, job })
-  }
-  return rows
 }
 
 function readyToBillSectionTotal(rows: StageRow[]): number {
@@ -372,14 +354,27 @@ function effectiveInvoiceEstBillDate(inv: JobsLedgerInvoice, job: JobWithDetails
   return inv.estimated_bill_date ?? job.last_bill_date ?? null
 }
 
+function sumInvoiceAppliedFromJobPayments(job: JobWithDetails, invoiceId: string): number {
+  let s = 0
+  for (const p of job.payments ?? []) {
+    if (p.invoice_id === invoiceId) s += Number(p.amount ?? 0)
+  }
+  return s
+}
+
+function invoiceOpenRemainingOnJob(inv: JobsLedgerInvoice, job: JobWithDetails): number {
+  const applied = sumInvoiceAppliedFromJobPayments(job, inv.id)
+  return Math.max(0, Number(inv.amount ?? 0) - applied)
+}
+
 function stageRowBilledRemainingAmount(r: StageRow): number {
   if (r.kind === 'job') {
     return Number(r.job.revenue ?? 0) - Number(r.job.payments_made ?? 0)
   }
   if (r.kind === 'job_with_primary_rtb') {
-    return Number(r.inv.amount ?? 0)
+    return invoiceOpenRemainingOnJob(r.inv, r.job)
   }
-  return Number(r.inv.amount ?? 0)
+  return invoiceOpenRemainingOnJob(r.inv, r.job)
 }
 
 function stageRowBilledAgeDays(r: StageRow, now = new Date()): number | null {
@@ -540,6 +535,7 @@ export default function Jobs() {
   const { nicknameByDebitCard } = useMercuryLedgerNicknames()
   const { showToast } = useToastContext()
   const jobFormModal = useJobFormModal()
+  const billCustomer = useBillCustomerModal()
   const [activeTab, setActiveTab] = useState<JobsTab>('stages')
   const [jobs, setJobs] = useState<JobWithDetails[]>([])
   const [users, setUsers] = useState<UserRow[]>([])
@@ -714,6 +710,8 @@ export default function Jobs() {
   >(() => new Map())
   const [mercuryCardChargesByJobId, setMercuryCardChargesByJobId] = useState<Map<string, number>>(() => new Map())
   const [pendingScrollToPartsJobId, setPendingScrollToPartsJobId] = useState<string | null>(null)
+  const [pendingStagesInvoiceFocusId, setPendingStagesInvoiceFocusId] = useState<string | null>(null)
+  const [stagesInvoiceFlashId, setStagesInvoiceFlashId] = useState<string | null>(null)
   const [reportTemplatesModalOpen, setReportTemplatesModalOpen] = useState(false)
   const [reportTemplatesList, setReportTemplatesList] = useState<Array<{ id: string; name: string; sequence_order: number }>>([])
   const [reportTemplatesLoading, setReportTemplatesLoading] = useState(false)
@@ -727,8 +725,6 @@ export default function Jobs() {
   const [billedTotalByNameModalOpen, setBilledTotalByNameModalOpen] = useState(false)
   const [billedTotalByNameExpandedName, setBilledTotalByNameExpandedName] = useState<string | null>(null)
   const [capableToBillModalOpen, setCapableToBillModalOpen] = useState(false)
-  const [whenBilledModalJob, setWhenBilledModalJob] = useState<JobWithDetails | null>(null)
-  const [whenBilledModalDate, setWhenBilledModalDate] = useState('')
   const [whenInvoiceBillModal, setWhenInvoiceBillModal] = useState<{
     invoiceId: string
     jobId: string
@@ -744,10 +740,7 @@ export default function Jobs() {
   const [readyForBillingJob, setReadyForBillingJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
   const [readyForBillingChecked1, setReadyForBillingChecked1] = useState(false)
   const [readyForBillingChecked2, setReadyForBillingChecked2] = useState(false)
-  const [sendRecordInvoiceJob, setSendRecordInvoiceJob] = useState<JobWithDetails | null>(null)
-  const [sendRecordInvoiceInvoice, setSendRecordInvoiceInvoice] = useState<InvoiceWithJob | null>(null)
-  const [markPaidJob, setMarkPaidJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
-  const [markPaidChecked, setMarkPaidChecked] = useState(false)
+  const [markPaidJob, setMarkPaidJob] = useState<JobWithDetails | null>(null)
   const [markPaidInvoice, setMarkPaidInvoice] = useState<InvoiceWithJob | null>(null)
   const [sendBackJob, setSendBackJob] = useState<{ id: string; hcpNumber: string; jobName: string; toStatus: 'working' | 'ready_to_bill' } | null>(null)
   const [sendBackInvoice, setSendBackInvoice] = useState<{ inv: InvoiceWithJob; action: 'delete' | 'revert' } | null>(null)
@@ -766,7 +759,6 @@ export default function Jobs() {
   const [assignedEditSelectedIds, setAssignedEditSelectedIds] = useState<string[]>([])
   const [assignedEditSavingId, setAssignedEditSavingId] = useState<string | null>(null)
   const [pctCompleteSavingId, setPctCompleteSavingId] = useState<string | null>(null)
-  const [estimatedCompletionDateSavingId, setEstimatedCompletionDateSavingId] = useState<string | null>(null)
   const assignedEditDropdownRef = useRef<HTMLDivElement | null>(null)
 
   const stagesFilteredJobs = useMemo(() => {
@@ -779,6 +771,11 @@ export default function Jobs() {
         (j.job_address ?? '').toLowerCase().includes(q)
     )
   }, [jobs, stagesSearchQuery])
+
+  const stagesBoardLists = useMemo(
+    () => buildJobsStagesBoardLists(jobs, stagesSearchQuery),
+    [jobs, stagesSearchQuery],
+  )
 
   const billedAgingBuckets = useMemo(() => {
     const st = (j: JobWithDetails) => (j.status ?? 'working') as string
@@ -811,7 +808,8 @@ export default function Jobs() {
       if (!iso) continue
       const days = calendarDaysSinceDateUtc(iso, now)
       if (days < 30) continue
-      const amount = Number(inv.amount ?? 0)
+      const amount = invoiceOpenRemainingOnJob(inv, inv.job)
+      if (amount <= 0) continue
       if (days < 90) {
         count30_90++
         sum30_90 += amount
@@ -1018,38 +1016,6 @@ export default function Jobs() {
       setError(e instanceof Error ? e.message : 'Failed to delete invoice')
     } finally {
       setStagesInvoiceUpdatingId(null)
-    }
-  }
-
-  async function markInvoicePaid(invoiceId: string) {
-    setStagesInvoiceUpdatingId(invoiceId)
-    setError(null)
-    try {
-      const { data, error: err } = await supabase.rpc('mark_invoice_paid', { p_invoice_id: invoiceId })
-      if (err) throw err
-      const result = data as { error?: string } | null
-      if (result?.error) throw new Error(result.error)
-      await loadJobs()
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to mark invoice paid')
-    } finally {
-      setStagesInvoiceUpdatingId(null)
-    }
-  }
-
-  async function markJobPaid(jobId: string) {
-    setStagesStatusUpdatingId(jobId)
-    setError(null)
-    try {
-      const { data, error: err } = await supabase.rpc('mark_job_paid', { p_job_id: jobId })
-      if (err) throw err
-      const result = data as { error?: string } | null
-      if (result?.error) throw new Error(result.error)
-      await loadJobs()
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to mark job paid')
-    } finally {
-      setStagesStatusUpdatingId(null)
     }
   }
 
@@ -3188,6 +3154,59 @@ ${totalsHtml}
     return () => clearTimeout(timer)
   }, [pendingScrollToPartsJobId, expandedPartsJobIds])
 
+  const stagesInvoiceParam = searchParams.get('stagesInvoice')
+  useEffect(() => {
+    const raw = stagesInvoiceParam?.trim()
+    if (!raw || loading || activeTab !== 'stages') return
+
+    const { readyToBillRows, billedRows } = buildJobsStagesBoardLists(jobs, stagesSearchQuery)
+    const section = locateStagesInvoiceSection(raw, readyToBillRows, billedRows)
+
+    if (section == null) {
+      if (stagesInvoiceVisibleWithEmptySearch(raw, jobs)) {
+        showToast('Clear the Stages search to see this invoice.', 'info')
+      } else {
+        showToast('That invoice isn’t on the Stages board right now.', 'info')
+      }
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.delete('stagesInvoice')
+        return next
+      }, { replace: true })
+      return
+    }
+
+    if (section === 'readyToBill') {
+      setStagesSectionOpen((prev) => ({ ...prev, readyToBill: true }))
+    } else {
+      setStagesSectionOpen((prev) => ({ ...prev, billed: true }))
+    }
+    setPendingStagesInvoiceFocusId(raw)
+    setStagesInvoiceFlashId(raw)
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p)
+      next.delete('stagesInvoice')
+      if (!next.get('tab')) next.set('tab', 'stages')
+      return next
+    }, { replace: true })
+  }, [stagesInvoiceParam, loading, activeTab, jobs, stagesSearchQuery, showToast, setSearchParams])
+
+  useEffect(() => {
+    if (!stagesInvoiceFlashId) return
+    const t = window.setTimeout(() => setStagesInvoiceFlashId(null), 2600)
+    return () => window.clearTimeout(t)
+  }, [stagesInvoiceFlashId])
+
+  useEffect(() => {
+    if (!pendingStagesInvoiceFocusId) return
+    const timer = window.setTimeout(() => {
+      const el = document.querySelector(`[data-stages-invoice-id="${pendingStagesInvoiceFocusId}"]`)
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      setPendingStagesInvoiceFocusId(null)
+    }, 200)
+    return () => window.clearTimeout(timer)
+  }, [pendingStagesInvoiceFocusId])
+
   useEffect(() => {
     if (activeTab === 'sub_sheet_ledger') {
       const t = setTimeout(() => loadRoster(), 80)
@@ -3779,22 +3798,6 @@ ${totalsHtml}
     }
   }
 
-  async function setJobLastBillDate(jobId: string, date: string | null) {
-    setEstimatedCompletionDateSavingId(jobId)
-    setError(null)
-    try {
-      const { error: err } = await supabase.from('jobs_ledger').update({ last_bill_date: date }).eq('id', jobId)
-      if (err) throw err
-      setJobs((prev) =>
-        prev.map((j) => (j.id === jobId ? { ...j, last_bill_date: date } : j))
-      )
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to update date')
-    } finally {
-      setEstimatedCompletionDateSavingId(null)
-    }
-  }
-
   async function setInvoiceEstimatedBillDate(invoiceId: string, jobId: string, date: string | null) {
     setInvoiceEstimatedBillDateSavingId(invoiceId)
     setError(null)
@@ -4356,7 +4359,7 @@ ${totalsHtml}
               <button
                 type="button"
                 onClick={toggleStagesHamMode}
-                title={stagesHamMode ? 'Ham mode on: confirmation modals skipped' : 'Ham mode off: show confirmation modals'}
+                title={stagesHamMode ? 'Ham mode on: faster shortcuts for some stage actions' : 'Ham mode off: all stage confirmations'}
                 aria-pressed={stagesHamMode}
                 style={{
                   display: 'flex',
@@ -4405,32 +4408,7 @@ ${totalsHtml}
             </button>
           </div>
           {(() => {
-            const q = stagesSearchQuery.trim().toLowerCase()
-            const filtered = q
-              ? jobs.filter(
-                  (j) =>
-                    (j.hcp_number ?? '').toLowerCase().includes(q) ||
-                    (j.job_name ?? '').toLowerCase().includes(q) ||
-                    (j.job_address ?? '').toLowerCase().includes(q)
-                )
-              : jobs
-            const status = (j: JobWithDetails) => (j.status ?? 'working') as string
-            const working = filtered.filter((j) => status(j) === 'working')
-            const paid = filtered.filter((j) => status(j) === 'paid')
-            const readyToBillJobs = filtered.filter((j) => status(j) === 'ready_to_bill')
-            const billedJobs = filtered.filter((j) => status(j) === 'billed')
-            const readyToBillInvoices: InvoiceWithJob[] = filtered.flatMap((j) =>
-              (j.invoices ?? []).filter((i) => i.status === 'ready_to_bill').map((inv) => ({ ...inv, job: j }))
-            )
-            const billedInvoices: InvoiceWithJob[] = filtered.flatMap((j) =>
-              (j.invoices ?? []).filter((i) => i.status === 'billed').map((inv) => ({ ...inv, job: j }))
-            )
-
-            const readyToBillRows: StageRow[] = buildReadyToBillStageRows(readyToBillJobs, readyToBillInvoices)
-            const billedRows: StageRow[] = [
-              ...billedJobs.map((j) => ({ kind: 'job' as const, job: j })),
-              ...billedInvoices.map(({ job, ...inv }) => ({ kind: 'invoice' as const, inv, job })),
-            ]
+            const { working, paid, billedJobs, billedInvoices, readyToBillRows, billedRows } = stagesBoardLists
 
             function toggleStages(key: keyof typeof stagesSectionOpen) {
               setStagesSectionOpen((prev) => ({ ...prev, [key]: !prev[key] }))
@@ -4463,31 +4441,6 @@ ${totalsHtml}
                     b: {bDisplay ?? '—'}
                   </div>
                 </>
-              )
-            }
-
-            const stagesMissingPlanBillDateButtonStyle = {
-              display: 'block' as const,
-              marginTop: '0.15rem',
-              padding: '0.25rem 0.5rem',
-              fontSize: '0.75rem' as const,
-              color: '#b91c1c',
-              border: '2px solid #b91c1c',
-              borderRadius: 4,
-              background: 'none' as const,
-              cursor: 'pointer' as const,
-              width: 'fit-content' as const,
-            }
-
-            function renderStagesRtbMissingPlanBillDateButton(
-              job: JobWithDetails,
-              onClick: (j: JobWithDetails) => void,
-            ) {
-              if (job.last_bill_date?.trim()) return null
-              return (
-                <button type="button" onClick={() => onClick(job)} style={stagesMissingPlanBillDateButtonStyle}>
-                  Missing Billed Date
-                </button>
               )
             }
 
@@ -5199,12 +5152,11 @@ ${totalsHtml}
                 showTimeOpen?: boolean
                 sendBackBelowRemaining?: boolean
                 showCreatePartialInvoice?: boolean
-                showEmptyEstDoneBillDatePrompt?: boolean
-                onEmptyEstDoneBillDateClick?: (j: JobWithDetails) => void
-                onEmptyInvoiceEstBillDateClick?: (inv: JobsLedgerInvoice, job: JobWithDetails) => void
                 jobSendBackLabel?: string
                 invoiceBundleActionLabel?: string
                 invoiceStandaloneActionLabel?: string
+                /** Deep-link flash: row matching this invoice id gets a brief highlight. */
+                flashInvoiceId?: string | null
               }
             ) {
               const {
@@ -5217,14 +5169,21 @@ ${totalsHtml}
                 showTimeOpen,
                 sendBackBelowRemaining,
                 showCreatePartialInvoice,
-                showEmptyEstDoneBillDatePrompt,
-                onEmptyEstDoneBillDateClick,
-                onEmptyInvoiceEstBillDateClick,
                 jobSendBackLabel = 'Send back',
                 invoiceBundleActionLabel = 'Remove line',
                 invoiceStandaloneActionLabel = 'Send back',
+                flashInvoiceId = null,
               } = options
               const unifiedStagesColCount = 6
+              const flashRowStyle = (invoiceId: string): CSSProperties =>
+                flashInvoiceId === invoiceId
+                  ? {
+                      backgroundColor: '#fef3c7',
+                      outline: '2px solid #f59e0b',
+                      outlineOffset: -2,
+                      transition: 'background-color 0.35s ease',
+                    }
+                  : {}
               return (
                 <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
                   <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
@@ -5255,8 +5214,10 @@ ${totalsHtml}
                             return (
                               <Fragment key={bundleInv != null ? `job-${j.id}-rtb-${bundleInv.id}` : `job-${j.id}`}>
                               <tr
+                                data-stages-invoice-id={bundleInv != null ? bundleInv.id : undefined}
                                 style={{
                                   borderBottom: stagesRowHasProjectBanner(j.project_id, j.project) ? 'none' : '1px solid #e5e7eb',
+                                  ...(bundleInv != null ? flashRowStyle(bundleInv.id) : {}),
                                 }}
                                 onClick={(e) => {
                                   if (shouldSuppressStagesRowJobThreadToggle(e.target)) return
@@ -5373,18 +5334,12 @@ ${totalsHtml}
                                     </div>
                                     <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{j.hcp_number || '—'}</div>
                                     {renderStagesFieldAndBillingLines(j)}
-                                    {showEmptyEstDoneBillDatePrompt && onEmptyEstDoneBillDateClick
-                                      ? renderStagesRtbMissingPlanBillDateButton(j, onEmptyEstDoneBillDateClick)
-                                      : null}
                                   </div>
                                   ) : (
                                     <>
                                       <div>{(j.team_members ?? []).map((t) => t.users?.name?.trim()).filter(Boolean).join(', ') || '—'}</div>
                                       <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{j.hcp_number || '—'}</div>
                                       {renderStagesFieldAndBillingLines(j)}
-                                      {showEmptyEstDoneBillDatePrompt && onEmptyEstDoneBillDateClick
-                                        ? renderStagesRtbMissingPlanBillDateButton(j, onEmptyEstDoneBillDateClick)
-                                        : null}
                                     </>
                                   )}
                                 </td>
@@ -5685,8 +5640,10 @@ ${totalsHtml}
                             return (
                               <Fragment key={`inv-${inv.id}`}>
                               <tr
+                                data-stages-invoice-id={inv.id}
                                 style={{
                                   borderBottom: stagesRowHasProjectBanner(job.project_id, job.project) ? 'none' : '1px solid #e5e7eb',
+                                  ...flashRowStyle(inv.id),
                                 }}
                                 onClick={(e) => {
                                   if (shouldSuppressStagesRowJobThreadToggle(e.target)) return
@@ -5702,26 +5659,6 @@ ${totalsHtml}
                                     const display = formatEstimatedCompletionDisplay(eff)
                                     return (
                                       <>
-                                        {!display && showEmptyEstDoneBillDatePrompt && onEmptyInvoiceEstBillDateClick ? (
-                                          <button
-                                            type="button"
-                                            onClick={() => onEmptyInvoiceEstBillDateClick(inv, job)}
-                                            style={{
-                                              display: 'block',
-                                              marginTop: '0.15rem',
-                                              padding: '0.25rem 0.5rem',
-                                              fontSize: '0.75rem',
-                                              color: '#b91c1c',
-                                              border: '2px solid #b91c1c',
-                                              borderRadius: 4,
-                                              background: 'none',
-                                              cursor: 'pointer',
-                                              width: 'fit-content',
-                                            }}
-                                          >
-                                            Missing Billed Date
-                                          </button>
-                                        ) : null}
                                         {display ? (
                                           <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{display}</div>
                                         ) : null}
@@ -6012,7 +5949,7 @@ ${totalsHtml}
             const readyToBillTotal = readyToBillSectionTotal(readyToBillRows)
             const billedTotal =
               billedJobs.reduce((s, j) => s + (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)), 0) +
-              billedInvoices.reduce((s, i) => s + Number(i.amount), 0)
+              billedInvoices.reduce((s, i) => s + invoiceOpenRemainingOnJob(i, i.job), 0)
             return (
               <>
                 <div id="stages-working" style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
@@ -6063,12 +6000,15 @@ ${totalsHtml}
                       openEdit(j, { billingCustomerHighlight: true })
                       return
                     }
-                    if (stagesHamMode) {
-                      void updateJobStatus(j.id, 'billed')
-                    } else {
-                      setSendRecordInvoiceInvoice(null)
-                      setSendRecordInvoiceJob(j)
-                    }
+                    billCustomer?.openBillCustomer({
+                      payload: { kind: 'job', job: jobBillingContextFromJob(j) },
+                      onSuccess: async () => {
+                        await loadJobs()
+                      },
+                      onAfterEnsureSuccess: async () => {
+                        await loadJobs()
+                      },
+                    })
                   },
                   onInvoiceAction: (inv) => {
                     if (!jobLedgerHasCustomerForBilling(inv.job.customer_id)) {
@@ -6076,12 +6016,23 @@ ${totalsHtml}
                       openEdit(inv.job, { billingCustomerHighlight: true })
                       return
                     }
-                    if (stagesHamMode) {
-                      void updateInvoiceStatus(inv.id, 'billed')
-                    } else {
-                      setSendRecordInvoiceJob(null)
-                      setSendRecordInvoiceInvoice(inv)
-                    }
+                    billCustomer?.openBillCustomer({
+                      payload: {
+                        kind: 'invoice',
+                        job: jobBillingContextFromJob(inv.job),
+                        invoice: {
+                          id: inv.id,
+                          amount: inv.amount,
+                          status: inv.status,
+                        },
+                      },
+                      onSuccess: async () => {
+                        await loadJobs()
+                      },
+                      onAfterEnsureSuccess: async () => {
+                        await loadJobs()
+                      },
+                    })
                   },
                   onJobSendBack: (j) => stagesHamMode ? updateJobStatus(j.id, 'working') : (setSendBackChecked(false), setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'working' })),
                   onInvoiceSendBack: (inv) => stagesHamMode ? deleteInvoice(inv.id) : (setSendBackChecked(false), setSendBackInvoice({ inv, action: 'delete' })),
@@ -6091,6 +6042,7 @@ ${totalsHtml}
                   jobSendBackLabel: 'Job: Send Job Back',
                   invoiceBundleActionLabel: 'Delete draft bill',
                   invoiceStandaloneActionLabel: 'Delete draft bill',
+                  flashInvoiceId: stagesInvoiceFlashId,
                 })}
 
                 <div id="stages-billed" style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
@@ -6142,25 +6094,15 @@ ${totalsHtml}
                 </div>
                 {stagesSectionOpen.billed && renderUnifiedStagesTable(billedRows, {
                   actionLabel: 'Mark Paid',
-                  onJobAction: (j) => stagesHamMode ? markJobPaid(j.id) : (setMarkPaidChecked(false), setMarkPaidJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—' })),
-                  onInvoiceAction: (inv) => stagesHamMode ? markInvoicePaid(inv.id) : (setMarkPaidChecked(false), setMarkPaidInvoice(inv)),
+                  onJobAction: (j) => setMarkPaidJob(j),
+                  onInvoiceAction: (inv) => setMarkPaidInvoice(inv),
                   onJobSendBack: (j) => stagesHamMode ? updateJobStatus(j.id, 'ready_to_bill') : (setSendBackChecked(false), setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'ready_to_bill' })),
                   onInvoiceSendBack: (inv) => stagesHamMode ? updateInvoiceStatus(inv.id, 'ready_to_bill') : (setSendBackChecked(false), setSendBackInvoice({ inv, action: 'revert' })),
                   showRemaining: true,
                   showTimeOpen: true,
                   sendBackBelowRemaining: true,
                   showCreatePartialInvoice: false,
-                  showEmptyEstDoneBillDatePrompt: true,
-                  onEmptyEstDoneBillDateClick: (j) => { setWhenBilledModalJob(j); setWhenBilledModalDate(''); },
-                  onEmptyInvoiceEstBillDateClick: (inv, j) => {
-                    setWhenInvoiceBillModal({
-                      invoiceId: inv.id,
-                      jobId: j.id,
-                      jobName: j.job_name ?? '—',
-                      hcpNumber: j.hcp_number ?? '—',
-                    })
-                    setWhenInvoiceBillModalDate('')
-                  },
+                  flashInvoiceId: stagesInvoiceFlashId,
                 })}
 
                 <button
@@ -6505,47 +6447,6 @@ ${totalsHtml}
                           }}
                         >
                           {invoiceEstimatedBillDateSavingId === whenInvoiceBillModal.invoiceId ? 'Saving…' : 'Save'}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {whenBilledModalJob && (
-                  <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-                    <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 480 }}>
-                      <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>When was this job billed?</h2>
-                      <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
-                        {whenBilledModalJob.job_name || '—'} ({whenBilledModalJob.hcp_number || '—'})
-                      </p>
-                      <label style={{ display: 'block', marginBottom: '1rem' }}>
-                        <span style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>Last manual bill date</span>
-                        <input
-                          type="date"
-                          value={whenBilledModalDate}
-                          onChange={(e) => setWhenBilledModalDate(e.target.value)}
-                          style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
-                        />
-                      </label>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                        <button
-                          type="button"
-                          onClick={() => { setWhenBilledModalJob(null); setWhenBilledModalDate(''); }}
-                          style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          disabled={!whenBilledModalDate.trim() || estimatedCompletionDateSavingId === whenBilledModalJob.id}
-                          onClick={async () => {
-                            if (!whenBilledModalDate.trim()) return
-                            await setJobLastBillDate(whenBilledModalJob.id, whenBilledModalDate.trim())
-                            setWhenBilledModalJob(null)
-                            setWhenBilledModalDate('')
-                          }}
-                          style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: estimatedCompletionDateSavingId === whenBilledModalJob.id ? 'not-allowed' : 'pointer' }}
-                        >
-                          {estimatedCompletionDateSavingId === whenBilledModalJob.id ? 'Saving…' : 'Save'}
                         </button>
                       </div>
                     </div>
@@ -9581,71 +9482,36 @@ ${totalsHtml}
           </div>
         </div>
       )}
-      <SendRecordInvoiceModal
-        payload={
-          sendRecordInvoiceInvoice
+      <BilledPaymentConfirmationModal
+        mode="job"
+        invoice={null}
+        payments={undefined}
+        job={
+          markPaidJob
             ? {
-                kind: 'invoice',
-                job: jobBillingContextFromJob(sendRecordInvoiceInvoice.job),
-                invoice: {
-                  id: sendRecordInvoiceInvoice.id,
-                  amount: sendRecordInvoiceInvoice.amount,
-                  status: sendRecordInvoiceInvoice.status,
-                },
+                id: markPaidJob.id,
+                hcp_number: markPaidJob.hcp_number,
+                job_name: markPaidJob.job_name,
+                revenue: markPaidJob.revenue,
+                payments_made: markPaidJob.payments_made,
               }
-            : sendRecordInvoiceJob
-              ? { kind: 'job', job: jobBillingContextFromJob(sendRecordInvoiceJob) }
-              : null
+            : null
         }
-        onClose={() => {
-          setSendRecordInvoiceJob(null)
-          setSendRecordInvoiceInvoice(null)
-        }}
+        onClose={() => setMarkPaidJob(null)}
         onSuccess={async () => {
           await loadJobs()
         }}
-        onAfterEnsureSuccess={async () => {
+      />
+      <BilledPaymentConfirmationModal
+        mode="invoice"
+        invoice={markPaidInvoice}
+        payments={markPaidInvoice?.job.payments}
+        job={null}
+        onClose={() => setMarkPaidInvoice(null)}
+        onSuccess={async () => {
           await loadJobs()
         }}
-        jobUpdating={sendRecordInvoiceJob ? stagesStatusUpdatingId === sendRecordInvoiceJob.id : false}
-        invoiceUpdating={sendRecordInvoiceInvoice ? stagesInvoiceUpdatingId === sendRecordInvoiceInvoice.id : false}
       />
-      {markPaidJob && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
-            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Mark Paid</h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>{markPaidJob.hcpNumber} · {markPaidJob.jobName}</p>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
-                <input type="checkbox" checked={markPaidChecked} onChange={(e) => setMarkPaidChecked(e.target.checked)} style={{ marginTop: 4 }} />
-                <span>Payment has been received and recorded</span>
-              </label>
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button type="button" onClick={() => { setMarkPaidJob(null); setMarkPaidChecked(false) }} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-              <button type="button" disabled={!markPaidChecked || stagesStatusUpdatingId === markPaidJob.id} onClick={async () => { if (!markPaidJob) return; await markJobPaid(markPaidJob.id); setMarkPaidJob(null); setMarkPaidChecked(false); loadJobs() }} style={{ padding: '0.5rem 1rem', background: markPaidChecked && stagesStatusUpdatingId !== markPaidJob.id ? '#3b82f6' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: markPaidChecked && stagesStatusUpdatingId !== markPaidJob.id ? 'pointer' : 'not-allowed' }}>{stagesStatusUpdatingId === markPaidJob.id ? '…' : 'Confirm'}</button>
-            </div>
-          </div>
-        </div>
-      )}
-      {markPaidInvoice && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
-            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Mark Paid</h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>{markPaidInvoice.job.hcp_number || '—'} · {markPaidInvoice.job.job_name || '—'} · ${Number(markPaidInvoice.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
-                <input type="checkbox" checked={markPaidChecked} onChange={(e) => setMarkPaidChecked(e.target.checked)} style={{ marginTop: 4 }} />
-                <span>Payment has been received and recorded</span>
-              </label>
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button type="button" onClick={() => { setMarkPaidInvoice(null); setMarkPaidChecked(false) }} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-              <button type="button" disabled={!markPaidChecked || stagesInvoiceUpdatingId === markPaidInvoice.id} onClick={async () => { if (!markPaidInvoice) return; await markInvoicePaid(markPaidInvoice.id); setMarkPaidInvoice(null); setMarkPaidChecked(false); loadJobs() }} style={{ padding: '0.5rem 1rem', background: markPaidChecked && stagesInvoiceUpdatingId !== markPaidInvoice.id ? '#3b82f6' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: markPaidChecked && stagesInvoiceUpdatingId !== markPaidInvoice.id ? 'pointer' : 'not-allowed' }}>{stagesInvoiceUpdatingId === markPaidInvoice.id ? '…' : 'Confirm'}</button>
-            </div>
-          </div>
-        </div>
-      )}
       {makePaymentLaborJob && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>

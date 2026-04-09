@@ -50,7 +50,9 @@ import {
 } from '../components/EstimatorInboxSection'
 import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
 import AssignedStageCard from '../components/AssignedStageCard'
-import SendRecordInvoiceModal, { type JobBillingContext } from '../components/jobs/SendRecordInvoiceModal'
+import { type JobBillingContext } from '../components/jobs/SendRecordInvoiceModal'
+import { useBillCustomerModal } from '../contexts/BillCustomerModalContext'
+import BilledPaymentConfirmationModal, { type InvoiceWithJobLike } from '../components/jobs/BilledPaymentConfirmationModal'
 import { getNextDisplayOrders } from '../utils/checklistOrder'
 import { denverCalendarDayKey } from '../utils/dateUtils'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
@@ -169,26 +171,119 @@ type SubscribedStep = {
   notify_when_reopened: boolean
 }
 
-type InvoiceForDashboard = {
-  id: string
-  job_id: string
-  amount: number
-  status: string
+type JobsLedgerInvoiceRow = Database['public']['Tables']['jobs_ledger_invoices']['Row']
+type JobsLedgerPaymentRow = Database['public']['Tables']['jobs_ledger_payments']['Row']
+
+type InvoiceForDashboard = JobsLedgerInvoiceRow & {
   hcp_number: string
   job_name: string
   job_address: string
   google_drive_link: string | null
   job_plans_link: string | null
-  created_at: string | null
   master_user_id: string
   customer_id: string | null
   customer_name: string | null
   customer_email: string | null
-  is_primary_rtb_bundle: boolean
+  /** Prefer job `created_at` for dashboard “Open … ago” labels */
+  open_since_at: string | null
+  invoice_payments: JobsLedgerPaymentRow[]
+}
+
+type DashboardInvoiceJoinRow = JobsLedgerInvoiceRow & {
+  jobs_ledger: {
+    hcp_number: string
+    job_name: string
+    job_address: string
+    google_drive_link: string | null
+    job_plans_link: string | null
+    created_at: string | null
+    master_user_id: string
+    customer_id: string | null
+    customer_name: string | null
+    customer_email: string | null
+  }
 }
 
 const DASHBOARD_INVOICES_JOBS_LEDGER_SELECT =
-  'id, job_id, amount, status, created_at, is_primary_rtb_bundle, jobs_ledger!inner(hcp_number, job_name, job_address, google_drive_link, job_plans_link, created_at, master_user_id, customer_id, customer_name, customer_email)'
+  'id, job_id, amount, status, created_at, is_primary_rtb_bundle, billed_at, estimated_bill_date, external_send_channel, external_send_note, hosted_invoice_url, sent_to_customer_at, sequence_order, stripe_invoice_id, stripe_invoice_status, jobs_ledger!inner(hcp_number, job_name, job_address, google_drive_link, job_plans_link, created_at, master_user_id, customer_id, customer_name, customer_email)'
+
+function buildPaymentsByInvoiceIdMap(payments: JobsLedgerPaymentRow[]): Map<string, JobsLedgerPaymentRow[]> {
+  const m = new Map<string, JobsLedgerPaymentRow[]>()
+  for (const p of payments) {
+    if (!p.invoice_id) continue
+    const list = m.get(p.invoice_id) ?? []
+    list.push(p)
+    m.set(p.invoice_id, list)
+  }
+  return m
+}
+
+function mapJoinedInvoiceToDashboard(
+  r: DashboardInvoiceJoinRow,
+  paymentsByInvoiceId: Map<string, JobsLedgerPaymentRow[]>,
+): InvoiceForDashboard {
+  const jl = r.jobs_ledger
+  return {
+    id: r.id,
+    job_id: r.job_id,
+    amount: r.amount,
+    status: r.status,
+    billed_at: r.billed_at,
+    created_at: r.created_at,
+    estimated_bill_date: r.estimated_bill_date,
+    external_send_channel: r.external_send_channel,
+    external_send_note: r.external_send_note,
+    hosted_invoice_url: r.hosted_invoice_url,
+    sent_to_customer_at: r.sent_to_customer_at,
+    sequence_order: r.sequence_order,
+    stripe_invoice_id: r.stripe_invoice_id,
+    stripe_invoice_status: r.stripe_invoice_status,
+    is_primary_rtb_bundle: r.is_primary_rtb_bundle,
+    hcp_number: jl?.hcp_number ?? '',
+    job_name: jl?.job_name ?? '',
+    job_address: jl?.job_address ?? '',
+    google_drive_link: jl?.google_drive_link ?? null,
+    job_plans_link: jl?.job_plans_link ?? null,
+    master_user_id: jl?.master_user_id ?? '',
+    customer_id: jl?.customer_id ?? null,
+    customer_name: jl?.customer_name ?? null,
+    customer_email: jl?.customer_email ?? null,
+    open_since_at: jl?.created_at ?? r.created_at,
+    invoice_payments: paymentsByInvoiceId.get(r.id) ?? [],
+  }
+}
+
+function dashboardBilledInvoiceAmounts(inv: InvoiceForDashboard): { applied: number; open: number } {
+  const applied = inv.invoice_payments.reduce((s, p) => s + Number(p.amount ?? 0), 0)
+  return { applied, open: Math.max(0, Number(inv.amount ?? 0) - applied) }
+}
+
+function dashboardInvoiceToPaymentModal(inv: InvoiceForDashboard): InvoiceWithJobLike {
+  const {
+    hcp_number,
+    job_name,
+    job_address,
+    google_drive_link,
+    job_plans_link,
+    master_user_id,
+    customer_id,
+    customer_name,
+    customer_email,
+    open_since_at: _openSince,
+    invoice_payments: _invPay,
+    ...invoiceRow
+  } = inv
+  return {
+    ...invoiceRow,
+    job: {
+      id: inv.job_id,
+      hcp_number,
+      job_name,
+      revenue: null,
+      payments_made: null,
+    },
+  }
+}
 
 function jobBillingFromDashboardInvoice(inv: InvoiceForDashboard): JobBillingContext {
   return {
@@ -534,10 +629,7 @@ export default function Dashboard() {
   const [readyForBillingChecked1, setReadyForBillingChecked1] = useState(false)
   const [readyForBillingChecked2, setReadyForBillingChecked2] = useState(false)
   const [sendRecordJobMeta, setSendRecordJobMeta] = useState<{ id: string } | null>(null)
-  const [sendRecordJobCtx, setSendRecordJobCtx] = useState<JobBillingContext | null>(null)
-  const [sendRecordInvoice, setSendRecordInvoice] = useState<InvoiceForDashboard | null>(null)
-  const [markPaidJob, setMarkPaidJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
-  const [markPaidChecked, setMarkPaidChecked] = useState(false)
+  const [markPaidJob, setMarkPaidJob] = useState<JobForDashboard | null>(null)
   const [markPaidInvoice, setMarkPaidInvoice] = useState<InvoiceForDashboard | null>(null)
   const [sendBackJob, setSendBackJob] = useState<{ id: string; hcpNumber: string; jobName: string; toStatus: 'working' | 'ready_to_bill' } | null>(null)
   const [sendBackInvoice, setSendBackInvoice] = useState<{ inv: InvoiceForDashboard; action: 'delete' | 'revert' } | null>(null)
@@ -640,6 +732,7 @@ export default function Dashboard() {
 
   const isDev = role === 'dev'
   const { showToast } = useToastContext()
+  const billCustomer = useBillCustomerModal()
   const materializeSalarySessionForStrip = useCallback(
     async (userId: string) => {
       const { error } = await syncSalaryClockSessionsForUserDay(userId)
@@ -752,59 +845,6 @@ export default function Dashboard() {
       setSendTaskUsers((data ?? []) as Array<{ id: string; name: string; email: string }>)
     })
   }, [authUser?.id])
-
-  useEffect(() => {
-    if (!sendRecordJobMeta) {
-      setSendRecordJobCtx(null)
-      return
-    }
-    let cancelled = false
-    setSendRecordJobCtx(null)
-    void (async () => {
-      try {
-        type JobBillingRow = Pick<
-          Database['public']['Tables']['jobs_ledger']['Row'],
-          'id' | 'master_user_id' | 'customer_id' | 'customer_name' | 'customer_email' | 'hcp_number' | 'job_name'
-        >
-        const data = await withSupabaseRetry<JobBillingRow | null>(
-          async () =>
-            supabase
-              .from('jobs_ledger')
-              .select('id, master_user_id, customer_id, customer_name, customer_email, hcp_number, job_name')
-              .eq('id', sendRecordJobMeta.id)
-              .maybeSingle(),
-          'load job for send invoice modal'
-        )
-        if (cancelled) return
-        if (!data) {
-          showToast?.('Could not load job', 'error')
-          setSendRecordJobMeta(null)
-          return
-        }
-        if (!dashboardJobHasCustomerForBilling(data.customer_id)) {
-          showToast?.('Link this job to a customer before billing.', 'error')
-          setSendRecordJobMeta(null)
-          return
-        }
-        setSendRecordJobCtx({
-          id: data.id,
-          master_user_id: data.master_user_id,
-          customer_id: data.customer_id,
-          customer_name: data.customer_name,
-          customer_email: data.customer_email,
-          hcp_number: data.hcp_number,
-          job_name: data.job_name,
-        })
-      } catch (e) {
-        if (cancelled) return
-        showToast?.(e instanceof Error ? e.message : 'Could not load job', 'error')
-        setSendRecordJobMeta(null)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [sendRecordJobMeta?.id, showToast])
 
   useEffect(() => {
     if (!authUser?.id) {
@@ -2137,45 +2177,9 @@ export default function Dashboard() {
     ]).then(([invRes, jobRes]) => {
       setReadyToBillLoading(false)
       if (!invRes.error) {
-        const rows = (invRes.data ?? []) as Array<{
-          id: string
-          job_id: string
-          amount: number
-          status: string
-          created_at: string | null
-          is_primary_rtb_bundle?: boolean | null
-          jobs_ledger: {
-            hcp_number: string
-            job_name: string
-            job_address: string
-            google_drive_link: string | null
-            job_plans_link: string | null
-            created_at: string | null
-            master_user_id: string
-            customer_id: string | null
-            customer_name: string | null
-            customer_email: string | null
-          }
-        }>
-        setReadyToBillInvoices(
-          rows.map((r) => ({
-            id: r.id,
-            job_id: r.job_id,
-            amount: r.amount,
-            status: r.status,
-            hcp_number: r.jobs_ledger?.hcp_number ?? '',
-            job_name: r.jobs_ledger?.job_name ?? '',
-            job_address: r.jobs_ledger?.job_address ?? '',
-            google_drive_link: r.jobs_ledger?.google_drive_link ?? null,
-            job_plans_link: r.jobs_ledger?.job_plans_link ?? null,
-            created_at: r.jobs_ledger?.created_at ?? r.created_at,
-            master_user_id: r.jobs_ledger?.master_user_id ?? '',
-            customer_id: r.jobs_ledger?.customer_id ?? null,
-            customer_name: r.jobs_ledger?.customer_name ?? null,
-            customer_email: r.jobs_ledger?.customer_email ?? null,
-            is_primary_rtb_bundle: r.is_primary_rtb_bundle === true,
-          }))
-        )
+        const rows = (invRes.data ?? []) as DashboardInvoiceJoinRow[]
+        const emptyPay = new Map<string, JobsLedgerPaymentRow[]>()
+        setReadyToBillInvoices(rows.map((r) => mapJoinedInvoiceToDashboard(r, emptyPay)))
       }
       if (!jobRes.error) {
         setReadyToBillJobs((jobRes.data ?? []) as JobForDashboard[])
@@ -2193,52 +2197,23 @@ export default function Dashboard() {
         .eq('status', 'billed')
         .order('created_at', { ascending: false }),
       supabase.rpc('get_jobs_ledger_by_status', { p_status: 'billed' }),
-    ]).then(([invRes, jobRes]) => {
+    ]).then(async ([invRes, jobRes]) => {
       setWaitingForPaymentLoading(false)
-      if (!invRes.error) {
-        const rows = (invRes.data ?? []) as Array<{
-          id: string
-          job_id: string
-          amount: number
-          status: string
-          created_at: string | null
-          is_primary_rtb_bundle?: boolean | null
-          jobs_ledger: {
-            hcp_number: string
-            job_name: string
-            job_address: string
-            google_drive_link: string | null
-            job_plans_link: string | null
-            created_at: string | null
-            master_user_id: string
-            customer_id: string | null
-            customer_name: string | null
-            customer_email: string | null
-          }
-        }>
-        setWaitingForPaymentInvoices(
-          rows.map((r) => ({
-            id: r.id,
-            job_id: r.job_id,
-            amount: r.amount,
-            status: r.status,
-            hcp_number: r.jobs_ledger?.hcp_number ?? '',
-            job_name: r.jobs_ledger?.job_name ?? '',
-            job_address: r.jobs_ledger?.job_address ?? '',
-            google_drive_link: r.jobs_ledger?.google_drive_link ?? null,
-            job_plans_link: r.jobs_ledger?.job_plans_link ?? null,
-            created_at: r.jobs_ledger?.created_at ?? r.created_at,
-            master_user_id: r.jobs_ledger?.master_user_id ?? '',
-            customer_id: r.jobs_ledger?.customer_id ?? null,
-            customer_name: r.jobs_ledger?.customer_name ?? null,
-            customer_email: r.jobs_ledger?.customer_email ?? null,
-            is_primary_rtb_bundle: r.is_primary_rtb_bundle === true,
-          }))
-        )
-      }
+      const jobs = (jobRes.data ?? []) as JobForDashboard[]
       if (!jobRes.error) {
-        setWaitingForPaymentJobs((jobRes.data ?? []) as JobForDashboard[])
+        setWaitingForPaymentJobs(jobs)
       }
+      if (invRes.error) return
+      const rows = (invRes.data ?? []) as DashboardInvoiceJoinRow[]
+      const jobIds = new Set<string>()
+      for (const r of rows) jobIds.add(r.job_id)
+      for (const j of jobs) jobIds.add(j.id)
+      let payMap = new Map<string, JobsLedgerPaymentRow[]>()
+      if (jobIds.size > 0) {
+        const { data: payData } = await supabase.from('jobs_ledger_payments').select('*').in('job_id', [...jobIds])
+        payMap = buildPaymentsByInvoiceIdMap((payData ?? []) as JobsLedgerPaymentRow[])
+      }
+      setWaitingForPaymentInvoices(rows.map((r) => mapJoinedInvoiceToDashboard(r, payMap)))
     })
   }, [authUser?.id, role])
 
@@ -2269,64 +2244,111 @@ export default function Dashboard() {
 
   async function refreshInvoices() {
     if (role !== 'dev' && role !== 'master_technician' && role !== 'assistant') return
-    const fetchInvoices = async (status: string) => {
+    const emptyPay = new Map<string, JobsLedgerPaymentRow[]>()
+    const fetchInvoiceRows = async (status: string) => {
       const { data } = await supabase
         .from('jobs_ledger_invoices')
         .select(DASHBOARD_INVOICES_JOBS_LEDGER_SELECT)
         .eq('status', status)
         .order('created_at', { ascending: false })
-      const rows = (data ?? []) as Array<{
-        id: string
-        job_id: string
-        amount: number
-        status: string
-        created_at: string | null
-        is_primary_rtb_bundle?: boolean | null
-        jobs_ledger: {
-          hcp_number: string
-          job_name: string
-          job_address: string
-          google_drive_link: string | null
-          job_plans_link: string | null
-          created_at: string | null
-          master_user_id: string
-          customer_id: string | null
-          customer_name: string | null
-          customer_email: string | null
-        }
-      }>
-      return rows.map((r) => ({
-        id: r.id,
-        job_id: r.job_id,
-        amount: r.amount,
-        status: r.status,
-        hcp_number: r.jobs_ledger?.hcp_number ?? '',
-        job_name: r.jobs_ledger?.job_name ?? '',
-        job_address: r.jobs_ledger?.job_address ?? '',
-        google_drive_link: r.jobs_ledger?.google_drive_link ?? null,
-        job_plans_link: r.jobs_ledger?.job_plans_link ?? null,
-        created_at: r.jobs_ledger?.created_at ?? r.created_at,
-        master_user_id: r.jobs_ledger?.master_user_id ?? '',
-        customer_id: r.jobs_ledger?.customer_id ?? null,
-        customer_name: r.jobs_ledger?.customer_name ?? null,
-        customer_email: r.jobs_ledger?.customer_email ?? null,
-        is_primary_rtb_bundle: r.is_primary_rtb_bundle === true,
-      }))
+      return (data ?? []) as DashboardInvoiceJoinRow[]
     }
     const fetchJobs = async (status: string) => {
       const { data } = await supabase.rpc('get_jobs_ledger_by_status', { p_status: status })
       return (data ?? []) as JobForDashboard[]
     }
-    const [readyInv, billedInv, readyJobs, billedJobs] = await Promise.all([
-      fetchInvoices('ready_to_bill'),
-      fetchInvoices('billed'),
+    const [readyRows, billedRows, readyJobs, billedJobs] = await Promise.all([
+      fetchInvoiceRows('ready_to_bill'),
+      fetchInvoiceRows('billed'),
       fetchJobs('ready_to_bill'),
       fetchJobs('billed'),
     ])
-    setReadyToBillInvoices(readyInv)
-    setWaitingForPaymentInvoices(billedInv)
+    setReadyToBillInvoices(readyRows.map((r) => mapJoinedInvoiceToDashboard(r, emptyPay)))
+    const jobIds = new Set<string>()
+    for (const r of billedRows) jobIds.add(r.job_id)
+    for (const j of billedJobs) jobIds.add(j.id)
+    let payMap = emptyPay
+    if (jobIds.size > 0) {
+      const { data: payData } = await supabase.from('jobs_ledger_payments').select('*').in('job_id', [...jobIds])
+      payMap = buildPaymentsByInvoiceIdMap((payData ?? []) as JobsLedgerPaymentRow[])
+    }
+    setWaitingForPaymentInvoices(billedRows.map((r) => mapJoinedInvoiceToDashboard(r, payMap)))
     setReadyToBillJobs(readyJobs)
     setWaitingForPaymentJobs(billedJobs)
+  }
+
+  const refreshInvoicesRef = useRef(refreshInvoices)
+  refreshInvoicesRef.current = refreshInvoices
+
+  useEffect(() => {
+    if (!sendRecordJobMeta) return
+    let cancelled = false
+    void (async () => {
+      try {
+        type JobBillingRow = Pick<
+          Database['public']['Tables']['jobs_ledger']['Row'],
+          'id' | 'master_user_id' | 'customer_id' | 'customer_name' | 'customer_email' | 'hcp_number' | 'job_name'
+        >
+        const data = await withSupabaseRetry<JobBillingRow | null>(
+          async () =>
+            supabase
+              .from('jobs_ledger')
+              .select('id, master_user_id, customer_id, customer_name, customer_email, hcp_number, job_name')
+              .eq('id', sendRecordJobMeta.id)
+              .maybeSingle(),
+          'load job for send invoice modal',
+        )
+        if (cancelled) return
+        if (!data) {
+          showToast?.('Could not load job', 'error')
+          setSendRecordJobMeta(null)
+          return
+        }
+        if (!dashboardJobHasCustomerForBilling(data.customer_id)) {
+          showToast?.('Link this job to a customer before billing.', 'error')
+          setSendRecordJobMeta(null)
+          return
+        }
+        const ctx: JobBillingContext = {
+          id: data.id,
+          master_user_id: data.master_user_id,
+          customer_id: data.customer_id,
+          customer_name: data.customer_name,
+          customer_email: data.customer_email,
+          hcp_number: data.hcp_number,
+          job_name: data.job_name,
+        }
+        billCustomer?.openBillCustomer({
+          payload: { kind: 'job', job: ctx },
+          onSuccess: async () => {
+            await refreshInvoicesRef.current()
+          },
+          onAfterEnsureSuccess: async () => {
+            await refreshInvoicesRef.current()
+          },
+        })
+        setSendRecordJobMeta(null)
+      } catch (e) {
+        if (cancelled) return
+        showToast?.(e instanceof Error ? e.message : 'Could not load job', 'error')
+        setSendRecordJobMeta(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [sendRecordJobMeta?.id, showToast, billCustomer])
+
+  function openDashboardBillCustomerInvoice(inv: InvoiceForDashboard) {
+    billCustomer?.openBillCustomer({
+      payload: {
+        kind: 'invoice',
+        job: jobBillingFromDashboardInvoice(inv),
+        invoice: { id: inv.id, amount: inv.amount, status: inv.status },
+      },
+      onSuccess: refreshInvoices,
+      onAfterEnsureSuccess: refreshInvoices,
+    })
   }
 
   async function updateInvoiceStatus(invoiceId: string, status: 'ready_to_bill' | 'billed') {
@@ -2354,38 +2376,6 @@ export default function Dashboard() {
       showToast?.(e instanceof Error ? e.message : 'Failed to remove invoice', 'error')
     } finally {
       setInvoiceStatusUpdatingId(null)
-    }
-  }
-
-  async function markInvoicePaid(invoiceId: string) {
-    setInvoiceStatusUpdatingId(invoiceId)
-    try {
-      const { data, error } = await supabase.rpc('mark_invoice_paid', { p_invoice_id: invoiceId })
-      if (error) throw error
-      const result = data as { error?: string } | null
-      if (result?.error) throw new Error(result.error)
-      showToast?.('Payment recorded', 'success')
-      await refreshInvoices()
-    } catch (e) {
-      showToast?.(e instanceof Error ? e.message : 'Failed to record payment', 'error')
-    } finally {
-      setInvoiceStatusUpdatingId(null)
-    }
-  }
-
-  async function markJobPaid(jobId: string) {
-    setJobStatusUpdatingId(jobId)
-    try {
-      const { data, error } = await supabase.rpc('mark_job_paid', { p_job_id: jobId })
-      if (error) throw error
-      const result = data as { error?: string } | null
-      if (result?.error) throw new Error(result.error)
-      showToast?.('Payment recorded', 'success')
-      await refreshInvoices()
-    } catch (e) {
-      showToast?.(e instanceof Error ? e.message : 'Failed to record payment', 'error')
-    } finally {
-      setJobStatusUpdatingId(null)
     }
   }
 
@@ -3809,7 +3799,18 @@ export default function Dashboard() {
                                 '—'
                               )}
                             </div>
-                            <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Invoice: ${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                            <div style={{ fontSize: '0.875rem', marginTop: 4 }}>
+                              {`Invoice: $${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+                              {(() => {
+                                const { applied, open } = dashboardBilledInvoiceAmounts(inv)
+                                if (applied <= 0) return null
+                                return (
+                                  <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 2 }}>
+                                    {`Applied: $${applied.toLocaleString('en-US', { minimumFractionDigits: 2 })} · Open: $${open.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+                                  </div>
+                                )
+                              })()}
+                            </div>
                           </div>
                           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                             {(inv.google_drive_link?.trim() || inv.job_plans_link?.trim()) && (
@@ -3852,10 +3853,9 @@ export default function Dashboard() {
                                   showToast?.('Link this job to a customer before billing.', 'error')
                                   return
                                 }
-                                setSendRecordJobMeta(null)
-                                setSendRecordInvoice(inv)
+                                openDashboardBillCustomerInvoice(inv)
                               }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === inv.id ? '…' : <>Invoice /<br />Update</>}</button>
-                            {inv.created_at && <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since invoice created">{isMobile ? <>Open {formatTimeSince(inv.created_at)}</> : <>Open<br />{formatTimeSince(inv.created_at)}</>}</span>}
+                            {inv.open_since_at && <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time open">{isMobile ? <>Open {formatTimeSince(inv.open_since_at)}</> : <>Open<br />{formatTimeSince(inv.open_since_at)}</>}</span>}
                           </div>
                         </div>
                       </div>
@@ -3921,8 +3921,7 @@ export default function Dashboard() {
                                   showToast?.('Link this job to a customer before billing.', 'error')
                                   return
                                 }
-                                setSendRecordJobMeta(null)
-                                setSendRecordInvoice(bundleInv)
+                                openDashboardBillCustomerInvoice(bundleInv)
                               }} disabled={invoiceStatusUpdatingId === bundleInv.id} title="Invoice / Update for the billing line (e.g. Stripe)" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === bundleInv.id ? '…' : <>Invoice /<br />Update</>}</button>
                             </>
                           ) : (
@@ -3931,7 +3930,6 @@ export default function Dashboard() {
                                   showToast?.('Link this job to a customer before billing.', 'error')
                                   return
                                 }
-                                setSendRecordInvoice(null)
                                 setSendRecordJobMeta({ id: j.id })
                               }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : <>Invoice /<br />Update</>}</button>
                           )}
@@ -4041,7 +4039,7 @@ export default function Dashboard() {
                             <button type="button" onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
                             <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
                             <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'ready_to_bill' }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
-                            <button type="button" onClick={() => { setMarkPaidChecked(false); setMarkPaidJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—' }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : <>Mark<br />Paid</>}</button>
+                            <button type="button" onClick={() => setMarkPaidJob(j)} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : <>Mark<br />Paid</>}</button>
                             {j.created_at && <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">{isMobile ? <>Open {formatTimeSince(j.created_at)}</> : <>Open<br />{formatTimeSince(j.created_at)}</>}</span>}
                           </div>
                         </div>
@@ -4060,7 +4058,18 @@ export default function Dashboard() {
                               '—'
                             )}
                           </div>
-                          <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Invoice: ${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                          <div style={{ fontSize: '0.875rem', marginTop: 4 }}>
+                            {`Invoice: $${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+                            {(() => {
+                              const { applied, open } = dashboardBilledInvoiceAmounts(inv)
+                              if (applied <= 0) return null
+                              return (
+                                <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 2 }}>
+                                  {`Applied: $${applied.toLocaleString('en-US', { minimumFractionDigits: 2 })} · Open: $${open.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+                                </div>
+                              )
+                            })()}
+                          </div>
                         </div>
                         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                           {(inv.google_drive_link?.trim() || inv.job_plans_link?.trim()) && (
@@ -4080,8 +4089,8 @@ export default function Dashboard() {
                           <button type="button" onClick={() => setViewBillDetailsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—', revenue: inv.amount })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
                           <button type="button" onClick={() => setViewReportsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
                           <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv, action: 'revert' }) }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
-                          <button type="button" onClick={() => { setMarkPaidChecked(false); setMarkPaidInvoice(inv) }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === inv.id ? '…' : <>Mark<br />Paid</>}</button>
-                          {inv.created_at && <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since invoice created">{isMobile ? <>Open {formatTimeSince(inv.created_at)}</> : <>Open<br />{formatTimeSince(inv.created_at)}</>}</span>}
+                          <button type="button" onClick={() => setMarkPaidInvoice(inv)} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === inv.id ? '…' : <>Mark<br />Paid</>}</button>
+                          {inv.open_since_at && <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time open">{isMobile ? <>Open {formatTimeSince(inv.open_since_at)}</> : <>Open<br />{formatTimeSince(inv.open_since_at)}</>}</span>}
                         </div>
                       </div>
                     </div>
@@ -4247,7 +4256,18 @@ export default function Dashboard() {
                               '—'
                             )}
                           </div>
-                          <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Invoice: ${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                          <div style={{ fontSize: '0.875rem', marginTop: 4 }}>
+                            {`Invoice: $${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+                            {(() => {
+                              const { applied, open } = dashboardBilledInvoiceAmounts(inv)
+                              if (applied <= 0) return null
+                              return (
+                                <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 2 }}>
+                                  {`Applied: $${applied.toLocaleString('en-US', { minimumFractionDigits: 2 })} · Open: $${open.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+                                </div>
+                              )
+                            })()}
+                          </div>
                         </div>
                         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                           {(inv.google_drive_link?.trim() || inv.job_plans_link?.trim()) && (
@@ -4290,10 +4310,9 @@ export default function Dashboard() {
                                   showToast?.('Link this job to a customer before billing.', 'error')
                                   return
                                 }
-                                setSendRecordJobMeta(null)
-                                setSendRecordInvoice(inv)
+                                openDashboardBillCustomerInvoice(inv)
                               }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === inv.id ? '…' : <>Invoice /<br />Update</>}</button>
-                          {inv.created_at && <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since invoice created">{isMobile ? <>Open {formatTimeSince(inv.created_at)}</> : <>Open<br />{formatTimeSince(inv.created_at)}</>}</span>}
+                          {inv.open_since_at && <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time open">{isMobile ? <>Open {formatTimeSince(inv.open_since_at)}</> : <>Open<br />{formatTimeSince(inv.open_since_at)}</>}</span>}
                         </div>
                       </div>
                     </div>
@@ -4359,8 +4378,7 @@ export default function Dashboard() {
                                   showToast?.('Link this job to a customer before billing.', 'error')
                                   return
                                 }
-                                setSendRecordJobMeta(null)
-                                setSendRecordInvoice(bundleInv)
+                                openDashboardBillCustomerInvoice(bundleInv)
                               }} disabled={invoiceStatusUpdatingId === bundleInv.id} title="Invoice / Update for the billing line (e.g. Stripe)" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === bundleInv.id ? '…' : <>Invoice /<br />Update</>}</button>
                           </>
                         ) : (
@@ -4369,7 +4387,6 @@ export default function Dashboard() {
                                   showToast?.('Link this job to a customer before billing.', 'error')
                                   return
                                 }
-                                setSendRecordInvoice(null)
                                 setSendRecordJobMeta({ id: j.id })
                               }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : <>Invoice /<br />Update</>}</button>
                         )}
@@ -4452,7 +4469,7 @@ export default function Dashboard() {
                         <button type="button" onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
                         <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
                         <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'ready_to_bill' }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
-                        <button type="button" onClick={() => { setMarkPaidChecked(false); setMarkPaidJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—' }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : <>Mark<br />Paid</>}</button>
+                        <button type="button" onClick={() => setMarkPaidJob(j)} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : <>Mark<br />Paid</>}</button>
                         {j.created_at && <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">{isMobile ? <>Open {formatTimeSince(j.created_at)}</> : <>Open<br />{formatTimeSince(j.created_at)}</>}</span>}
                       </div>
                     </div>
@@ -4482,7 +4499,18 @@ export default function Dashboard() {
                           '—'
                         )}
                       </div>
-                      <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Invoice: ${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                      <div style={{ fontSize: '0.875rem', marginTop: 4 }}>
+                        {`Invoice: $${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+                        {(() => {
+                          const { applied, open } = dashboardBilledInvoiceAmounts(inv)
+                          if (applied <= 0) return null
+                          return (
+                            <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 2 }}>
+                              {`Applied: $${applied.toLocaleString('en-US', { minimumFractionDigits: 2 })} · Open: $${open.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+                            </div>
+                          )
+                        })()}
+                      </div>
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                       {(inv.google_drive_link?.trim() || inv.job_plans_link?.trim()) && (
@@ -4549,7 +4577,7 @@ export default function Dashboard() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => { setMarkPaidChecked(false); setMarkPaidInvoice(inv) }}
+                        onClick={() => setMarkPaidInvoice(inv)}
                         disabled={invoiceStatusUpdatingId === inv.id}
                         style={{
                           padding: '0.35rem 0.75rem',
@@ -4563,9 +4591,9 @@ export default function Dashboard() {
                       >
                         {invoiceStatusUpdatingId === inv.id ? '…' : <>Mark<br />Paid</>}
                       </button>
-                      {inv.created_at && (
-                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since invoice created">
-                          {isMobile ? <>Open {formatTimeSince(inv.created_at)}</> : <>Open<br />{formatTimeSince(inv.created_at)}</>}
+                      {inv.open_since_at && (
+                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time open">
+                          {isMobile ? <>Open {formatTimeSince(inv.open_since_at)}</> : <>Open<br />{formatTimeSince(inv.open_since_at)}</>}
                         </span>
                       )}
                     </div>
@@ -6855,77 +6883,43 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-      {sendRecordJobMeta && !sendRecordJobCtx && !sendRecordInvoice && (
+      {sendRecordJobMeta && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8 }}>Loading job…</div>
         </div>
       )}
-      <SendRecordInvoiceModal
-        payload={
-          sendRecordInvoice
+      <BilledPaymentConfirmationModal
+        mode="job"
+        invoice={null}
+        payments={undefined}
+        job={
+          markPaidJob
             ? {
-                kind: 'invoice',
-                job: jobBillingFromDashboardInvoice(sendRecordInvoice),
-                invoice: {
-                  id: sendRecordInvoice.id,
-                  amount: sendRecordInvoice.amount,
-                  status: sendRecordInvoice.status,
-                },
+                id: markPaidJob.id,
+                hcp_number: markPaidJob.hcp_number,
+                job_name: markPaidJob.job_name,
+                revenue: markPaidJob.revenue,
+                payments_made: markPaidJob.payments_made,
               }
-            : sendRecordJobCtx
-              ? { kind: 'job', job: sendRecordJobCtx }
-              : null
+            : null
         }
-        onClose={() => {
-          setSendRecordInvoice(null)
-          setSendRecordJobMeta(null)
-          setSendRecordJobCtx(null)
-        }}
+        onClose={() => setMarkPaidJob(null)}
         onSuccess={async () => {
           await refreshInvoices()
+          showToast?.('Payment recorded', 'success')
         }}
-        onAfterEnsureSuccess={async () => {
-          await refreshInvoices()
-        }}
-        jobUpdating={sendRecordJobCtx ? jobStatusUpdatingId === sendRecordJobCtx.id : false}
-        invoiceUpdating={sendRecordInvoice ? invoiceStatusUpdatingId === sendRecordInvoice.id : false}
       />
-      {markPaidJob && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
-            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Mark Paid</h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>{markPaidJob.hcpNumber} · {markPaidJob.jobName}</p>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
-                <input type="checkbox" checked={markPaidChecked} onChange={(e) => setMarkPaidChecked(e.target.checked)} style={{ marginTop: 4 }} />
-                <span>Payment has been received and recorded</span>
-              </label>
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button type="button" onClick={() => { setMarkPaidJob(null); setMarkPaidChecked(false) }} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-              <button type="button" disabled={!markPaidChecked || jobStatusUpdatingId === markPaidJob.id} onClick={async () => { if (!markPaidJob) return; await markJobPaid(markPaidJob.id); setMarkPaidJob(null); setMarkPaidChecked(false); refreshInvoices() }} style={{ padding: '0.5rem 1rem', background: markPaidChecked && jobStatusUpdatingId !== markPaidJob.id ? '#3b82f6' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: markPaidChecked && jobStatusUpdatingId !== markPaidJob.id ? 'pointer' : 'not-allowed' }}>{jobStatusUpdatingId === markPaidJob.id ? '…' : 'Confirm'}</button>
-            </div>
-          </div>
-        </div>
-      )}
-      {markPaidInvoice && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
-            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Mark Paid</h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>{markPaidInvoice.hcp_number || '—'} · {markPaidInvoice.job_name || '—'} · ${markPaidInvoice.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
-                <input type="checkbox" checked={markPaidChecked} onChange={(e) => setMarkPaidChecked(e.target.checked)} style={{ marginTop: 4 }} />
-                <span>Payment has been received and recorded</span>
-              </label>
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button type="button" onClick={() => { setMarkPaidInvoice(null); setMarkPaidChecked(false) }} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-              <button type="button" disabled={!markPaidChecked || invoiceStatusUpdatingId === markPaidInvoice.id} onClick={async () => { if (!markPaidInvoice) return; await markInvoicePaid(markPaidInvoice.id); setMarkPaidInvoice(null); setMarkPaidChecked(false); refreshInvoices() }} style={{ padding: '0.5rem 1rem', background: markPaidChecked && invoiceStatusUpdatingId !== markPaidInvoice.id ? '#3b82f6' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: markPaidChecked && invoiceStatusUpdatingId !== markPaidInvoice.id ? 'pointer' : 'not-allowed' }}>{invoiceStatusUpdatingId === markPaidInvoice.id ? '…' : 'Confirm'}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <BilledPaymentConfirmationModal
+        mode="invoice"
+        invoice={markPaidInvoice ? dashboardInvoiceToPaymentModal(markPaidInvoice) : null}
+        payments={markPaidInvoice?.invoice_payments}
+        job={null}
+        onClose={() => setMarkPaidInvoice(null)}
+        onSuccess={async () => {
+          await refreshInvoices()
+          showToast?.('Payment recorded', 'success')
+        }}
+      />
       {sendBackInvoice && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
