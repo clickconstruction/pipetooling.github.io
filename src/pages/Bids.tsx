@@ -8213,24 +8213,16 @@ export default function Bids() {
     return null
   }
 
-  function handleBidDateSentFieldChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const v = e.target.value
+  /** Opens attestation modal once when the committed date differs from last saved; reverts field to baseline until confirmed. */
+  function promptBidDateSentAttestationIfNeeded(proposedRaw: string): boolean {
+    if (bidSentAttestModalOpen) return false
+    const proposedNorm = normalizeBidDateInput(proposedRaw)
+    if (!proposedNorm) return false
     const baseline = savedBidDateSentRef.current
-    if (!v) {
-      setBidDateSent('')
-      setPendingBidDateSentAttestation(null)
-      setPendingAttestationForDate(null)
-      return
-    }
-    if (v === baseline) {
-      setBidDateSent(v)
-      if (pendingAttestationForDate && pendingAttestationForDate !== v) {
-        setPendingBidDateSentAttestation(null)
-        setPendingAttestationForDate(null)
-      }
-      return
-    }
-    setPendingBidDateSentForModal(v)
+    if (proposedNorm === baseline) return false
+    if (pendingBidDateSentAttestation && pendingAttestationForDate === proposedNorm) return false
+
+    setPendingBidDateSentForModal(proposedNorm)
     setBidSentAckEmail(false)
     setBidSentAckPhone(false)
     setBidSentAckHonesty(false)
@@ -8238,7 +8230,40 @@ export default function Bids() {
     setBidSentAckPhoneAt(null)
     setBidSentAckHonestyAt(null)
     setBidSentAttestModalOpen(true)
-    setBidDateSent(baseline)
+    setBidDateSent(baseline || '')
+    return true
+  }
+
+  function handleBidDateSentInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const v = e.target.value
+    const norm = normalizeBidDateInput(v)
+    const baseline = savedBidDateSentRef.current
+
+    if (!v) {
+      setBidDateSent('')
+      setPendingBidDateSentAttestation(null)
+      setPendingAttestationForDate(null)
+      return
+    }
+
+    setBidDateSent(v)
+
+    if (norm === baseline) {
+      if (pendingAttestationForDate) {
+        setPendingBidDateSentAttestation(null)
+        setPendingAttestationForDate(null)
+      }
+      return
+    }
+
+    if (pendingAttestationForDate && pendingAttestationForDate !== norm) {
+      setPendingBidDateSentAttestation(null)
+      setPendingAttestationForDate(null)
+    }
+  }
+
+  function handleBidDateSentBlur(e: React.FocusEvent<HTMLInputElement>) {
+    promptBidDateSentAttestationIfNeeded(e.target.value)
   }
 
   function cancelBidSentAttestationModal() {
@@ -8295,6 +8320,10 @@ export default function Bids() {
     if (!authUser?.id) return
     if (!projectName.trim()) {
       setError('Project Name is required.')
+      return
+    }
+    if (promptBidDateSentAttestationIfNeeded(bidDateSent)) {
+      setError(null)
       return
     }
     const attestSaveErr = validateBidDateSentAttestationForSave()
@@ -8376,6 +8405,10 @@ export default function Bids() {
     if (!authUser?.id) return
     if (!projectName.trim()) {
       setError('Project Name is required.')
+      return
+    }
+    if (promptBidDateSentAttestationIfNeeded(bidDateSent)) {
+      setError(null)
       return
     }
     const attestSaveErrCounts = validateBidDateSentAttestationForSave()
@@ -16685,7 +16718,8 @@ export default function Bids() {
         outcome={outcome}
         setOutcome={setOutcome}
         bidDateSent={bidDateSent}
-        handleBidDateSentFieldChange={handleBidDateSentFieldChange}
+        handleBidDateSentInputChange={handleBidDateSentInputChange}
+        handleBidDateSentBlur={handleBidDateSentBlur}
         pendingAttestationForDate={pendingAttestationForDate}
         pendingBidDateSentAttestation={pendingBidDateSentAttestation}
         lossReason={lossReason}

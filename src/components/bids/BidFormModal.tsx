@@ -1,4 +1,4 @@
-import type { ChangeEvent, Dispatch, FormEvent, SetStateAction } from 'react'
+import type { ChangeEvent, Dispatch, FocusEvent, FormEvent, SetStateAction } from 'react'
 import { SearchableSelect } from '../SearchableSelect'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import type { Database } from '../../types/database'
@@ -46,7 +46,8 @@ export type BidFormModalProps = {
   outcome: BidFormOutcomeOption
   setOutcome: (value: BidFormOutcomeOption) => void
   bidDateSent: string
-  handleBidDateSentFieldChange: (e: ChangeEvent<HTMLInputElement>) => void
+  handleBidDateSentInputChange: (e: ChangeEvent<HTMLInputElement>) => void
+  handleBidDateSentBlur: (e: FocusEvent<HTMLInputElement>) => void
   pendingAttestationForDate: string | null
   pendingBidDateSentAttestation: BidDateSentAttestationPayload | null
   lossReason: string
@@ -134,7 +135,8 @@ export function BidFormModal(props: BidFormModalProps) {
     outcome,
     setOutcome,
     bidDateSent,
-    handleBidDateSentFieldChange,
+    handleBidDateSentInputChange,
+    handleBidDateSentBlur,
     pendingAttestationForDate,
     pendingBidDateSentAttestation,
     lossReason,
@@ -343,7 +345,8 @@ export function BidFormModal(props: BidFormModalProps) {
                   <input
                     type="date"
                     value={bidDateSent}
-                    onChange={handleBidDateSentFieldChange}
+                    onChange={handleBidDateSentInputChange}
+                    onBlur={handleBidDateSentBlur}
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
                   />
                   {bidDateSent.trim() &&
