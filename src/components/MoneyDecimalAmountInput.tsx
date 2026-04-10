@@ -32,6 +32,8 @@ export type MoneyDecimalAmountInputProps = {
   'aria-label'?: string
   id?: string
   style?: CSSProperties
+  /** When true, shows formatted value and does not accept edits. */
+  readOnly?: boolean
 }
 
 export function MoneyDecimalAmountInput({
@@ -41,34 +43,56 @@ export function MoneyDecimalAmountInput({
   'aria-label': ariaLabel,
   id,
   style,
+  readOnly = false,
 }: MoneyDecimalAmountInputProps) {
   const [focused, setFocused] = useState(false)
   const [draft, setDraft] = useState('')
 
-  const displayValue = focused
-    ? draft
-    : value !== 0
-      ? formatCurrency(value)
-      : ''
+  const displayValue =
+    readOnly
+      ? value !== 0
+        ? formatCurrency(value)
+        : formatCurrency(0)
+      : focused
+        ? draft
+        : value !== 0
+          ? formatCurrency(value)
+          : ''
 
   return (
     <input
       id={id}
       type="text"
       inputMode="decimal"
+      readOnly={readOnly}
       value={displayValue}
-      placeholder={placeholder}
+      placeholder={readOnly ? undefined : placeholder}
       aria-label={ariaLabel}
+      title={readOnly ? 'Amount is set by the Stripe invoice allocation and cannot be edited here.' : undefined}
       onFocus={() => {
+        if (readOnly) return
         setFocused(true)
         setDraft(value === 0 ? '' : String(value))
       }}
       onBlur={() => {
+        if (readOnly) return
         setFocused(false)
         onChange(parseMoneyInputToNumber(draft))
       }}
-      onChange={(e) => setDraft(sanitizeMoneyTyping(e.target.value))}
-      style={style}
+      onChange={(e) => {
+        if (readOnly) return
+        setDraft(sanitizeMoneyTyping(e.target.value))
+      }}
+      style={
+        readOnly
+          ? {
+              ...style,
+              cursor: 'not-allowed',
+              background: '#f3f4f6',
+              color: '#374151',
+            }
+          : style
+      }
     />
   )
 }

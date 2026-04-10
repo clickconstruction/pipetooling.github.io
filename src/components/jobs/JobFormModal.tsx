@@ -63,8 +63,32 @@ function paymentRowLinkedToInvoice(row: PaymentRow): boolean {
   return row.invoice_id != null && String(row.invoice_id).trim().length > 0
 }
 
+function jobsLedgerInvoiceIsStripeLinked(inv: JobsLedgerInvoiceRow): boolean {
+  if ((inv.stripe_invoice_id ?? '').trim()) return true
+  return (inv.external_send_channel ?? '').trim() === 'stripe'
+}
+
+function stripeBillInvoiceForPaymentRow(
+  row: PaymentRow,
+  job: JobWithDetails | null,
+): JobsLedgerInvoiceRow | null {
+  if (!job || !paymentRowLinkedToInvoice(row)) return null
+  const inv = (job.invoices ?? []).find((i) => i.id === row.invoice_id)
+  if (!inv || !jobsLedgerInvoiceIsStripeLinked(inv)) return null
+  return inv
+}
+
 function formatCurrency(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+/** Display `YYYY-MM-DD` for payment table cells (Stripe-locked rows use plain text, not date inputs). */
+function formatPaymentDateForDisplay(isoYmd: string | null | undefined): string {
+  const t = isoYmd?.trim()
+  if (!t) return '—'
+  const d = new Date(`${t}T12:00:00`)
+  if (Number.isNaN(d.getTime())) return t
+  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
 function outstandingBillingLabel(inv: JobsLedgerInvoiceRow): string {
@@ -639,7 +663,17 @@ export default function JobFormModal({
   }
 
   function updatePaymentRow(id: string, updates: Partial<PaymentRow>) {
-    setPayments((prev) => prev.map((r) => (r.id === id ? { ...r, ...updates } : r)))
+    setPayments((prev) =>
+      prev.map((r) => {
+        if (r.id !== id) return r
+        const merged = { ...r, ...updates }
+        if (stripeBillInvoiceForPaymentRow(r, editing)) {
+          merged.amount = r.amount
+          merged.paid_on = r.paid_on
+        }
+        return merged
+      }),
+    )
   }
 
   function removePaymentRow(id: string) {
@@ -2157,29 +2191,64 @@ export default function JobFormModal({
           )}
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Payments received ($)</label>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+              <div style={{ overflowX: 'auto', marginLeft: -4, marginRight: -4, paddingLeft: 4, paddingRight: 4 }}>
+              <table style={{ width: '100%', minWidth: 420, borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>
+                <colgroup>
+                  <col style={{ width: '26%' }} />
+                  <col style={{ width: '42%' }} />
+                  <col style={{ width: '26%' }} />
+                  <col style={{ width: '6%' }} />
+                </colgroup>
                 <thead style={{ background: '#f9fafb' }}>
                   <tr>
-                    <th style={{ padding: '0.625rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Date</th>
-                    <th style={{ padding: '0.625rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Note</th>
-                    <th style={{ padding: '0.625rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Amount ($)</th>
-                    <th style={{ padding: '0.625rem 0.5rem', width: 48, borderBottom: '1px solid #e5e7eb' }} />
+                    <th style={{ padding: '0.625rem 0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Date</th>
+                    <th style={{ padding: '0.625rem 0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Note</th>
+                    <th style={{ padding: '0.625rem 0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Amount ($)</th>
+                    <th style={{ padding: '0.625rem 0.35rem', width: 44, borderBottom: '1px solid #e5e7eb' }} />
                   </tr>
                 </thead>
                 <tbody>
-                  {payments.map((row, idx) => (
-                    <tr key={row.id} style={{ borderBottom: idx < payments.length - 1 ? '1px solid #e5e7eb' : 'none' }}>
-                      <td style={{ padding: '0.625rem 0.75rem', verticalAlign: 'middle' }}>
-                        <input
-                          id={`edit-job-payment-date-${row.id}`}
-                          type="date"
-                          value={row.paid_on ?? ''}
-                          onChange={(e) => updatePaymentRow(row.id, { paid_on: e.target.value ? e.target.value : null })}
-                          aria-label="Payment date"
-                          style={{ width: '100%', maxWidth: '11rem', padding: '0.375rem 0.625rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem' }}
-                        />
+                  {payments.map((row, idx) => {
+                    const stripePaymentLocked = Boolean(stripeBillInvoiceForPaymentRow(row, editing))
+                    return (
+                    <tr
+                      key={row.id}
+                      style={{
+                        borderBottom: idx < payments.length - 1 ? '1px solid #e5e7eb' : 'none',
+                        ...(stripePaymentLocked
+                          ? { background: '#f8fafc', boxShadow: 'inset 3px 0 0 0 #2563eb' }
+                          : {}),
+                      }}
+                    >
+                      <td style={{ padding: '0.625rem 0.5rem', verticalAlign: 'middle', overflow: 'hidden' }}>
+                        {stripePaymentLocked ? (
+                          <span
+                            style={{ fontSize: '0.875rem', color: '#374151', fontVariantNumeric: 'tabular-nums' }}
+                            title="Recorded from the Stripe invoice."
+                            aria-label={`Payment date ${formatPaymentDateForDisplay(row.paid_on)}`}
+                          >
+                            {formatPaymentDateForDisplay(row.paid_on)}
+                          </span>
+                        ) : (
+                          <input
+                            id={`edit-job-payment-date-${row.id}`}
+                            type="date"
+                            value={row.paid_on ?? ''}
+                            onChange={(e) => updatePaymentRow(row.id, { paid_on: e.target.value ? e.target.value : null })}
+                            aria-label="Payment date"
+                            style={{
+                              width: '100%',
+                              maxWidth: '100%',
+                              boxSizing: 'border-box',
+                              padding: '0.375rem 0.5rem',
+                              border: '1px solid #d1d5db',
+                              borderRadius: 6,
+                              fontSize: '0.8125rem',
+                            }}
+                          />
+                        )}
                       </td>
-                      <td style={{ padding: '0.625rem 0.75rem', verticalAlign: 'middle', minWidth: 120 }}>
+                      <td style={{ padding: '0.625rem 0.5rem', verticalAlign: 'middle', overflow: 'hidden' }}>
                         <input
                           id={`edit-job-payment-note-${row.id}`}
                           type="text"
@@ -2187,45 +2256,136 @@ export default function JobFormModal({
                           onChange={(e) => updatePaymentRow(row.id, { note: e.target.value === '' ? null : e.target.value })}
                           placeholder="Optional"
                           aria-label="Payment note"
-                          style={{ width: '100%', minWidth: '8rem', padding: '0.375rem 0.625rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem' }}
-                        />
-                      </td>
-                      <td style={{ padding: '0.625rem 0.75rem', textAlign: 'right', verticalAlign: 'middle' }}>
-                        <MoneyDecimalAmountInput
-                          value={row.amount}
-                          onChange={(amount) => updatePaymentRow(row.id, { amount })}
-                          placeholder="0"
-                          aria-label="Payment amount"
-                          style={{ width: '6rem', padding: '0.375rem 0.625rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem', textAlign: 'right' }}
-                        />
-                      </td>
-                      <td style={{ padding: '0.625rem 0.5rem', verticalAlign: 'middle' }}>
-                        <button
-                          type="button"
-                          onClick={() => requestRemovePaymentRow(row)}
-                          title="Remove"
-                          aria-label="Remove payment row"
                           style={{
-                            padding: '0.35rem',
-                            background:
-                              payments.length <= 1 || paymentRowLinkedToInvoice(row) ? '#f3f4f6' : 'transparent',
-                            color: payments.length <= 1 || paymentRowLinkedToInvoice(row) ? '#9ca3af' : '#991b1c',
-                            border: 'none',
-                            borderRadius: 4,
-                            cursor:
-                              payments.length <= 1 || paymentRowLinkedToInvoice(row) ? 'not-allowed' : 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
+                            width: '100%',
+                            minWidth: 0,
+                            boxSizing: 'border-box',
+                            padding: '0.375rem 0.5rem',
+                            border: '1px solid #d1d5db',
+                            borderRadius: 6,
+                            fontSize: '0.875rem',
                           }}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z" /></svg>
-                        </button>
+                        />
+                      </td>
+                      <td style={{ padding: '0.625rem 0.5rem', textAlign: 'right', verticalAlign: 'middle', overflow: 'hidden' }}>
+                        {stripePaymentLocked ? (
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'flex-end',
+                              gap: '0.2rem',
+                              flexWrap: 'nowrap',
+                              minWidth: 0,
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontSize: '0.875rem',
+                                fontWeight: 600,
+                                color: '#111827',
+                                fontVariantNumeric: 'tabular-nums',
+                                minWidth: 0,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                              title="From the Stripe invoice allocation."
+                              aria-label={`Payment amount ${formatCurrency(Number(row.amount))} dollars`}
+                            >
+                              ${formatCurrency(Number(row.amount))}
+                            </span>
+                            {(() => {
+                              const stripeInv = stripeBillInvoiceForPaymentRow(row, editing)
+                              if (!stripeInv) return null
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (!editing) return
+                                    setBillViewInvoice({ ...stripeInv, job: editing })
+                                  }}
+                                  title="View Stripe bill"
+                                  aria-label="View Stripe bill for this payment"
+                                  style={{
+                                    flexShrink: 0,
+                                    padding: '0.2rem',
+                                    background: 'transparent',
+                                    border: 'none',
+                                    borderRadius: 4,
+                                    cursor: 'pointer',
+                                    color: '#2563eb',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                  }}
+                                >
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 640 640"
+                                    width={17}
+                                    height={17}
+                                    fill="currentColor"
+                                    aria-hidden
+                                  >
+                                    <path d="M142 66.2C150.5 62.3 160.5 63.7 167.6 69.8L208 104.4L248.4 69.8C257.4 62.1 270.7 62.1 279.6 69.8L320 104.4L360.4 69.8C369.4 62.1 382.6 62.1 391.6 69.8L432 104.4L472.4 69.8C479.5 63.7 489.5 62.3 498 66.2C506.5 70.1 512 78.6 512 88L512 552C512 561.4 506.5 569.9 498 573.8C489.5 577.7 479.5 576.3 472.4 570.2L432 535.6L391.6 570.2C382.6 577.9 369.4 577.9 360.4 570.2L320 535.6L279.6 570.2C270.6 577.9 257.3 577.9 248.4 570.2L208 535.6L167.6 570.2C160.5 576.3 150.5 577.7 142 573.8C133.5 569.9 128 561.4 128 552L128 88C128 78.6 133.5 70.1 142 66.2zM232 200C218.7 200 208 210.7 208 224C208 237.3 218.7 248 232 248L408 248C421.3 248 432 237.3 432 224C432 210.7 421.3 200 408 200L232 200zM208 416C208 429.3 218.7 440 232 440L408 440C421.3 440 432 429.3 432 416C432 402.7 421.3 392 408 392L232 392C218.7 392 208 402.7 208 416zM232 296C218.7 296 208 306.7 208 320C208 333.3 218.7 344 232 344L408 344C421.3 344 432 333.3 432 320C432 306.7 421.3 296 408 296L232 296z" />
+                                  </svg>
+                                </button>
+                              )
+                            })()}
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                            <MoneyDecimalAmountInput
+                              value={row.amount}
+                              onChange={(amount) => updatePaymentRow(row.id, { amount })}
+                              placeholder="0"
+                              aria-label="Payment amount"
+                              style={{
+                                width: '5.25rem',
+                                maxWidth: '100%',
+                                boxSizing: 'border-box',
+                                padding: '0.375rem 0.5rem',
+                                border: '1px solid #d1d5db',
+                                borderRadius: 6,
+                                fontSize: '0.875rem',
+                                textAlign: 'right',
+                              }}
+                            />
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ padding: '0.625rem 0.35rem', verticalAlign: 'middle', textAlign: 'center' }}>
+                        {stripePaymentLocked ? null : (
+                          <button
+                            type="button"
+                            onClick={() => requestRemovePaymentRow(row)}
+                            title="Remove"
+                            aria-label="Remove payment row"
+                            style={{
+                              padding: '0.35rem',
+                              background:
+                                payments.length <= 1 || paymentRowLinkedToInvoice(row) ? '#f3f4f6' : 'transparent',
+                              color: payments.length <= 1 || paymentRowLinkedToInvoice(row) ? '#9ca3af' : '#991b1c',
+                              border: 'none',
+                              borderRadius: 4,
+                              cursor:
+                                payments.length <= 1 || paymentRowLinkedToInvoice(row) ? 'not-allowed' : 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z" /></svg>
+                          </button>
+                        )}
                       </td>
                     </tr>
-                  ))}
+                    )
+                  })}
                 </tbody>
               </table>
+              </div>
               <div
                 style={{
                   display: 'flex',
