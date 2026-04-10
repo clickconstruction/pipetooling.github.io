@@ -183,7 +183,7 @@ export function useJobThreadNotes(
       setJobThreadStatsByJobId(next)
     } catch {
       if (threadStatsRefreshGenRef.current !== gen) return
-      setJobThreadStatsByJobId({})
+      // Keep prior stats on timeout / failure so Stages does not flash empty after heavy loadJobs.
     }
   }, [])
 

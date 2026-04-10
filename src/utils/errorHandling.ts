@@ -57,6 +57,15 @@ function isRetryableError(error: unknown): boolean {
   if (isAbort) return false
   
   const errorMessage = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase()
+
+  // Postgres statement timeouts: retrying repeats expensive work and worsens overload.
+  if (
+    errorMessage.includes('statement timeout') ||
+    errorMessage.includes('canceling statement due to statement timeout') ||
+    errorMessage.includes('query canceled')
+  ) {
+    return false
+  }
   
   // Network errors
   if (errorMessage.includes('network') || 
@@ -211,6 +220,56 @@ export function formatErrorMessage(error: unknown, fallbackMessage = 'An unexpec
     return error
   }
   
+  return fallbackMessage
+}
+
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return v != null && typeof v === 'object' && !Array.isArray(v)
+}
+
+/**
+ * Formats Supabase PostgREST / `throw error` client errors for UI (RLS 403, constraints, etc.).
+ * Includes `code`, `details`, and `hint` when present. Safe for multi-line display (`white-space: pre-wrap`).
+ */
+export function formatPostgrestOrUnknownError(error: unknown, fallbackMessage: string): string {
+  if (error instanceof DatabaseError) {
+    const parts: string[] = [error.message]
+    const code = error.code?.trim()
+    if (code) parts.push(`Code: ${code}`)
+    const det = error.details
+    if (typeof det === 'string' && det.trim()) {
+      parts.push(`Details: ${det.trim()}`)
+    } else if (det != null && typeof det !== 'string') {
+      try {
+        parts.push(`Details: ${JSON.stringify(det)}`)
+      } catch {
+        /* ignore */
+      }
+    }
+    return parts.join('\n')
+  }
+
+  if (isPlainObject(error)) {
+    const message = typeof error.message === 'string' ? error.message.trim() : ''
+    const code = typeof error.code === 'string' ? error.code.trim() : ''
+    const details = typeof error.details === 'string' ? error.details.trim() : ''
+    const hint = typeof error.hint === 'string' ? error.hint.trim() : ''
+    const parts: string[] = []
+    if (message) parts.push(message)
+    if (code) parts.push(`Code: ${code}`)
+    if (details) parts.push(`Details: ${details}`)
+    if (hint) parts.push(`Hint: ${hint}`)
+    if (parts.length > 0) return parts.join('\n')
+  }
+
+  if (error instanceof Error && error.message.trim()) {
+    return error.message
+  }
+
+  if (typeof error === 'string' && error.trim()) {
+    return error
+  }
+
   return fallbackMessage
 }
 

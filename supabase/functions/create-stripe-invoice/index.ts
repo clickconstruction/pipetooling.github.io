@@ -1,6 +1,18 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import Stripe from 'https://esm.sh/stripe@14.21.0?target=deno'
+import Stripe from 'https://esm.sh/stripe@16.12.0?target=deno'
+import {
+  anyStripeApiKeyConfigured,
+  resolveStripeBillingMode,
+  stripeApiKeyForMode,
+  type StripeBillingMode,
+} from '../_shared/stripeSecrets.ts'
+import {
+  clearCustomerStripeCustomerId,
+  isMissingStripeCustomerError,
+} from '../_shared/stripeStaleCustomer.ts'
+import { stripeInvoiceSnapshotForResponse } from '../_shared/stripeInvoiceSnapshot.ts'
+import { buildStripeInvoiceLineDescription } from '../_shared/stripeLineDescription.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,6 +28,8 @@ interface CreateStripeInvoiceBody {
   customer_name: string
   due_date: string
   memo?: string
+  /** Optional: `test` | `live`. Omit to use server default (legacy / non-UI callers). */
+  stripe_mode?: StripeBillingMode
 }
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
@@ -47,13 +61,18 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseAnon = Deno.env.get('SUPABASE_ANON_KEY')!
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-    const stripeSecret = Deno.env.get('STRIPE_SECRET_KEY')
 
     if (!serviceKey) {
       return jsonResponse({ error: 'Server misconfigured: SUPABASE_SERVICE_ROLE_MISSING' }, 500)
     }
-    if (!stripeSecret) {
-      return jsonResponse({ error: 'Server misconfigured: STRIPE_SECRET_KEY' }, 500)
+    if (!anyStripeApiKeyConfigured()) {
+      return jsonResponse(
+        {
+          error:
+            'Server misconfigured: set STRIPE_SECRET_KEY_TEST / STRIPE_SECRET_KEY_LIVE or legacy STRIPE_SECRET_KEY',
+        },
+        500,
+      )
     }
 
     const userClient = createClient(supabaseUrl, supabaseAnon, {
@@ -76,6 +95,7 @@ serve(async (req) => {
       customer_name,
       due_date,
       memo,
+      stripe_mode: stripeModeRaw,
     } = body
 
     if (
@@ -96,6 +116,22 @@ serve(async (req) => {
       )
     }
 
+    const stripeMode = resolveStripeBillingMode(stripeModeRaw)
+    const stripeSecret = stripeApiKeyForMode(stripeMode)
+    if (!stripeSecret) {
+      return jsonResponse(
+        {
+          error:
+            stripeMode === 'test'
+              ? 'Stripe test mode not configured (STRIPE_SECRET_KEY_TEST or sk_test legacy key).'
+              : 'Stripe live mode not configured (STRIPE_SECRET_KEY_LIVE or sk_live legacy key).',
+        },
+        400,
+      )
+    }
+
+    const stripe = new Stripe(stripeSecret, { apiVersion: '2024-06-20' })
+
     const { data: invRow, error: invErr } = await userClient
       .from('jobs_ledger_invoices')
       .select('id, job_id, amount, status, stripe_invoice_id, hosted_invoice_url, stripe_invoice_status')
@@ -106,18 +142,27 @@ serve(async (req) => {
       return jsonResponse({ error: 'Invoice not found or access denied' }, 403)
     }
 
-    if (invRow.status !== 'ready_to_bill') {
-      return jsonResponse({ error: 'Invoice must be Ready to Bill' }, 400)
-    }
-
+    // After a successful create, status is `billed` and retries must still return the Stripe URL.
     if (invRow.stripe_invoice_id && invRow.hosted_invoice_url) {
+      let invoice_preview: Record<string, unknown> | undefined
+      try {
+        const existing = await stripe.invoices.retrieve(invRow.stripe_invoice_id, { expand: ['lines.data'] })
+        invoice_preview = await stripeInvoiceSnapshotForResponse(stripe, existing)
+      } catch (e) {
+        console.warn('create-stripe-invoice: idempotent invoice retrieve failed', e)
+      }
       return jsonResponse({
         success: true,
         stripe_invoice_id: invRow.stripe_invoice_id,
         hosted_invoice_url: invRow.hosted_invoice_url,
         stripe_invoice_status: invRow.stripe_invoice_status,
         idempotent: true,
+        ...(invoice_preview ? { invoice_preview } : {}),
       })
+    }
+
+    if (invRow.status !== 'ready_to_bill') {
+      return jsonResponse({ error: 'Invoice must be Ready to Bill' }, 400)
     }
 
     const admin = createClient(supabaseUrl, serviceKey)
@@ -154,9 +199,25 @@ serve(async (req) => {
       return jsonResponse({ error: 'Customer does not belong to this job master' }, 400)
     }
 
-    const stripe = new Stripe(stripeSecret, { apiVersion: '2023-10-16' })
-
-    let stripeCustomerId = custRow.stripe_customer_id
+    let stripeCustomerId = custRow.stripe_customer_id?.trim() || null
+    if (stripeCustomerId) {
+      try {
+        await stripe.customers.update(stripeCustomerId, {
+          email: customer_email.trim(),
+          name: customer_name.trim(),
+        })
+      } catch (e) {
+        if (!isMissingStripeCustomerError(e)) {
+          throw e
+        }
+        console.warn(
+          'create-stripe-invoice: stale stripe_customer_id, clearing and creating new Stripe customer',
+          stripeCustomerId,
+        )
+        await clearCustomerStripeCustomerId(admin, customer_id)
+        stripeCustomerId = null
+      }
+    }
     if (!stripeCustomerId) {
       const created = await stripe.customers.create({
         email: customer_email.trim(),
@@ -168,11 +229,6 @@ serve(async (req) => {
         .from('customers')
         .update({ stripe_customer_id: stripeCustomerId })
         .eq('id', customer_id)
-    } else {
-      await stripe.customers.update(stripeCustomerId, {
-        email: customer_email.trim(),
-        name: customer_name.trim(),
-      })
     }
 
     const amountCents = Math.round(amount_dollars * 100)
@@ -198,7 +254,11 @@ serve(async (req) => {
       invoice: invoice.id,
       amount: amountCents,
       currency: 'usd',
-      description: `${jobRow.job_name ?? 'Job'} · HCP ${jobRow.hcp_number ?? '—'}`,
+      description: buildStripeInvoiceLineDescription(
+        customer_name.trim(),
+        jobRow.job_name,
+        jobRow.hcp_number,
+      ),
     })
 
     const finalized = await stripe.invoices.finalizeInvoice(invoice.id)
@@ -207,6 +267,8 @@ serve(async (req) => {
     if (!hostedUrl) {
       return jsonResponse({ error: 'Stripe did not return hosted_invoice_url' }, 500)
     }
+
+    const invoice_preview = await stripeInvoiceSnapshotForResponse(stripe, finalized)
 
     const patch: Record<string, unknown> = {
       stripe_invoice_id: finalized.id,
@@ -229,6 +291,7 @@ serve(async (req) => {
           error: 'Invoice created in Stripe but failed to save to database',
           stripe_invoice_id: finalized.id,
           hosted_invoice_url: hostedUrl,
+          invoice_preview,
         },
         500
       )
@@ -239,6 +302,7 @@ serve(async (req) => {
       stripe_invoice_id: finalized.id,
       hosted_invoice_url: hostedUrl,
       stripe_invoice_status: finalized.status,
+      invoice_preview,
     })
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)

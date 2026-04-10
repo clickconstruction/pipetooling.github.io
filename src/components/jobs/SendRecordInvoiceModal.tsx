@@ -1,9 +1,24 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
+import {
+  getBillingStripeModePref,
+  setBillingStripeModePref,
+  stripeModeInvokeBody,
+  type BillingStripeModePref,
+} from '../../lib/billingStripeModePref'
+import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import type { Database } from '../../types/database'
-import type { StripeInvoicePreviewSuccess } from '../../lib/stripeInvoicePreview'
+import type { StripeInvoiceLinesSnapshot, StripeInvoicePreviewSuccess } from '../../lib/stripeInvoicePreview'
+import {
+  parseStripeInvoiceLinesSnapshot,
+  parseStripeInvoicePreviewResponse,
+} from '../../lib/stripeInvoicePreview'
+import { buildStripeInvoiceLineDescription } from '../../lib/stripeInvoiceLineDescription'
 import { StripeBillPreSubmitPreview } from './StripeBillPreSubmitPreview'
+import StripeBillingModeToggle from './StripeBillingModeToggle'
+import { StripeInvoiceLinesSummary } from './StripeInvoiceLinesSummary'
+import { StripeInvoicePreviewMeta } from './StripeInvoicePreviewMeta'
 import { StripeInvoiceSharePanel } from './StripeInvoiceSharePanel'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
@@ -66,6 +81,7 @@ type CreateStripeInvoiceFnResponse = {
   stripe_invoice_id?: string
   hosted_invoice_url?: string
   stripe_invoice_status?: string
+  invoice_preview?: unknown
 }
 
 /** Bill Customer — Outside bill (date, note, amount) or Stripe hosted invoice. */
@@ -111,12 +127,14 @@ export default function SendRecordInvoiceModal({
     stripe_invoice_id: string
     stripe_invoice_status: string | null
     idempotent?: boolean
+    invoice_preview: StripeInvoiceLinesSnapshot | null
   } | null>(null)
 
   const [stripePreview, setStripePreview] = useState<StripeInvoicePreviewSuccess | null>(null)
   const [stripePreviewLoading, setStripePreviewLoading] = useState(false)
   const [stripePreviewError, setStripePreviewError] = useState<string | null>(null)
   const stripePreviewReqId = useRef(0)
+  const [stripeModePref, setStripeModePref] = useState<BillingStripeModePref>(() => getBillingStripeModePref())
 
   const STRIPE_PAY_URL_PLACEHOLDER =
     '(Payment link will appear here after you create the Stripe invoice)'
@@ -145,6 +163,7 @@ export default function SendRecordInvoiceModal({
     setStripePreview(null)
     setStripePreviewLoading(false)
     setStripePreviewError(null)
+    setStripeModePref(getBillingStripeModePref())
     if (invoice) {
       setBillAmountStr(String(Number(invoice.amount)))
     } else {
@@ -260,24 +279,28 @@ export default function SendRecordInvoiceModal({
           }
           if (stripePreviewReqId.current !== req) return
 
-          const raw = await withSupabaseRetry(
-            async () =>
-              supabase.functions.invoke('preview-stripe-invoice', {
-                body: {
-                  jobs_ledger_invoice_id: invId,
-                  customer_id: job.customer_id!,
-                  amount_dollars: amt,
-                  customer_email: (job.customer_email ?? '').trim(),
-                  customer_name: (job.customer_name ?? '').trim() || 'Customer',
-                  due_date: stripeDueDate.trim(),
-                  memo: stripeMemo.trim() || undefined,
-                },
-                headers: { Authorization: `Bearer ${token}` },
-              }),
-            'preview stripe invoice',
-          )
+          const { data: raw, error: fnErr } = await supabase.functions.invoke('preview-stripe-invoice', {
+            body: {
+              jobs_ledger_invoice_id: invId,
+              customer_id: job.customer_id!,
+              amount_dollars: amt,
+              customer_email: (job.customer_email ?? '').trim(),
+              customer_name: (job.customer_name ?? '').trim() || 'Customer',
+              due_date: stripeDueDate.trim(),
+              memo: stripeMemo.trim() || undefined,
+              ...stripeModeInvokeBody(stripeModePref),
+            },
+            headers: { Authorization: `Bearer ${token}` },
+          })
 
           if (stripePreviewReqId.current !== req) return
+
+          if (fnErr) {
+            const detail = await readEdgeFunctionErrorBody(fnErr)
+            setStripePreview(null)
+            setStripePreviewError(detail ?? formatErrorMessage(fnErr, 'Preview failed'))
+            return
+          }
 
           const body = raw as Record<string, unknown> | null
           if (body && typeof body.error === 'string' && body.error.length > 0) {
@@ -285,28 +308,9 @@ export default function SendRecordInvoiceModal({
             setStripePreviewError(body.error)
             return
           }
-          if (
-            body &&
-            body.success === true &&
-            typeof body.currency === 'string' &&
-            Array.isArray(body.lines)
-          ) {
-            const linesRaw = body.lines as unknown[]
-            const lines = linesRaw.map((item) => {
-              const o = item as Record<string, unknown>
-              return {
-                description: typeof o.description === 'string' ? o.description : '',
-                amount: typeof o.amount === 'number' ? o.amount : 0,
-              }
-            })
-            setStripePreview({
-              success: true,
-              currency: body.currency,
-              subtotal: typeof body.subtotal === 'number' ? body.subtotal : 0,
-              total: typeof body.total === 'number' ? body.total : 0,
-              amount_due: typeof body.amount_due === 'number' ? body.amount_due : 0,
-              lines,
-            })
+          const parsedPreview = parseStripeInvoicePreviewResponse(body)
+          if (parsedPreview) {
+            setStripePreview(parsedPreview)
             setStripePreviewError(null)
           } else {
             setStripePreview(null)
@@ -320,7 +324,7 @@ export default function SendRecordInvoiceModal({
           if (stripePreviewReqId.current === req) setStripePreviewLoading(false)
         }
       })()
-    }, 300)
+    }, 450)
 
     return () => window.clearTimeout(handle)
   }, [
@@ -339,6 +343,7 @@ export default function SendRecordInvoiceModal({
     ensuredInvoice?.id,
     ensureLoading,
     ensureError,
+    stripeModePref,
   ])
 
   async function confirmOutsideBill() {
@@ -434,27 +439,25 @@ export default function SendRecordInvoiceModal({
       }
 
       let body: CreateStripeInvoiceFnResponse | null
-      try {
-        body = (await withSupabaseRetry(
-          async () =>
-            supabase.functions.invoke('create-stripe-invoice', {
-              body: {
-                jobs_ledger_invoice_id: invId,
-                customer_id: job.customer_id,
-                amount_dollars: amt,
-                customer_email: (job.customer_email ?? '').trim(),
-                customer_name: (job.customer_name ?? '').trim() || 'Customer',
-                due_date: stripeDueDate.trim(),
-                memo: stripeMemo.trim() || undefined,
-              },
-              headers: { Authorization: `Bearer ${token}` },
-            }),
-          'create stripe invoice',
-        )) as CreateStripeInvoiceFnResponse | null
-      } catch (invokeErr) {
-        setStripeError(formatErrorMessage(invokeErr, 'Stripe invoice failed'))
+      const { data: invokeData, error: fnErr } = await supabase.functions.invoke('create-stripe-invoice', {
+        body: {
+          jobs_ledger_invoice_id: invId,
+          customer_id: job.customer_id,
+          amount_dollars: amt,
+          customer_email: (job.customer_email ?? '').trim(),
+          customer_name: (job.customer_name ?? '').trim() || 'Customer',
+          due_date: stripeDueDate.trim(),
+          memo: stripeMemo.trim() || undefined,
+          ...stripeModeInvokeBody(stripeModePref),
+        },
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (fnErr) {
+        const detail = await readEdgeFunctionErrorBody(fnErr)
+        setStripeError(detail ?? formatErrorMessage(fnErr, 'Stripe invoice failed'))
         return
       }
+      body = invokeData as CreateStripeInvoiceFnResponse | null
       if (body && typeof body.error === 'string' && body.error.length > 0) {
         setStripeError(body.error)
         return
@@ -484,6 +487,7 @@ export default function SendRecordInvoiceModal({
         stripe_invoice_id: stripeId,
         stripe_invoice_status: typeof body?.stripe_invoice_status === 'string' ? body.stripe_invoice_status : null,
         idempotent: body?.idempotent === true,
+        invoice_preview: parseStripeInvoiceLinesSnapshot(body?.invoice_preview),
       })
       await onSuccess()
     } catch (e) {
@@ -550,11 +554,48 @@ export default function SendRecordInvoiceModal({
       }}
     >
       <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 420, maxWidth: 520, maxHeight: '90vh', overflow: 'auto' }}>
-        <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>Bill Customer</h2>
-        <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
-          {job.hcp_number ?? '—'} · {job.job_name ?? '—'}
-          {invoice ? ` · RTB $${Number(invoice.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : ''}
-        </p>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            gap: '0.75rem',
+            marginBottom: '1rem',
+            flexWrap: 'wrap',
+          }}
+        >
+          <div style={{ minWidth: 0, flex: '1 1 auto' }}>
+            <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>Bill Customer</h2>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
+              {job.hcp_number ?? '—'} · {job.job_name ?? '—'}
+              {invoice ? ` · RTB $${Number(invoice.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : ''}
+            </p>
+          </div>
+          {tab === 'stripe' && !stripeResult && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '0.2rem',
+                fontSize: '0.8125rem',
+                fontWeight: 500,
+                color: '#374151',
+                flex: '0 0 auto',
+              }}
+            >
+              <span>Stripe</span>
+              <StripeBillingModeToggle
+                value={stripeModePref}
+                onChange={(next) => {
+                  setStripeModePref(next)
+                  setBillingStripeModePref(next)
+                }}
+                disabled={stripeSubmitting}
+              />
+            </div>
+          )}
+        </div>
 
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', borderBottom: '1px solid #e5e7eb' }}>
           <button
@@ -672,6 +713,32 @@ export default function SendRecordInvoiceModal({
                   hcpNumber={job.hcp_number}
                   amountLabel={`$${Number(billAmountStr).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                 />
+                {stripeResult.invoice_preview ? (
+                  <div style={{ marginTop: '0.75rem' }}>
+                    <div
+                      style={{
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        color: '#374151',
+                        margin: '0 0 0.35rem',
+                      }}
+                    >
+                      Invoice (Stripe)
+                    </div>
+                    <StripeInvoicePreviewMeta
+                      customerName={
+                        stripeResult.invoice_preview.customer_name ?? job.customer_name
+                      }
+                      customerEmail={
+                        stripeResult.invoice_preview.customer_email ?? job.customer_email
+                      }
+                      invoiceNumber={stripeResult.invoice_preview.invoice_number ?? null}
+                      dueYmd={stripeDueDate}
+                      memo={stripeMemo}
+                    />
+                    <StripeInvoiceLinesSummary snapshot={stripeResult.invoice_preview} showTitle={false} />
+                  </div>
+                ) : null}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
                   <button
                     type="button"
@@ -724,10 +791,21 @@ export default function SendRecordInvoiceModal({
                     dueDateYmd={stripeDueDate}
                     memo={stripeMemo}
                     payUrlPlaceholder={STRIPE_PAY_URL_PLACEHOLDER}
-                    localLineDescription={`${job.job_name ?? 'Job'} · HCP ${job.hcp_number ?? '—'}`}
+                    localLineDescription={buildStripeInvoiceLineDescription(
+                      (job.customer_name ?? '').trim() || 'Customer',
+                      job.job_name,
+                      job.hcp_number,
+                    )}
                     stripePreview={stripePreview}
                     stripePreviewLoading={stripePreviewLoading}
                     stripePreviewError={stripePreviewError}
+                    previewIdleHint={
+                      kind === 'job' && ensureLoading
+                        ? 'Preparing billing line…'
+                        : kind === 'job' && !ensureLoading && ensureError
+                          ? 'Fix the billing line error above, then enter amount and due date.'
+                          : null
+                    }
                   />
                 ) : null}
                 {stripeError && <p style={{ color: '#b91c1c', fontSize: '0.875rem', marginBottom: '0.5rem' }}>{stripeError}</p>}
