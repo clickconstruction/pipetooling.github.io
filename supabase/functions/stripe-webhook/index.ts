@@ -1,9 +1,11 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import Stripe from 'https://esm.sh/stripe@16.12.0?target=deno'
+import Stripe from 'https://esm.sh/stripe@16.12.0?target=denonext'
 import {
   anyStripeApiKeyConfigured,
   stripeApiKeyForMode,
+  stripeWebhookDebugFingerprintsEnabled,
+  stripeWebhookEnvFingerprints,
   stripeWebhookSecretsOrdered,
 } from '../_shared/stripeSecrets.ts'
 
@@ -86,6 +88,58 @@ function isUniqueViolation(err: { code?: string } | null): boolean {
   return err?.code === '23505'
 }
 
+/** `invoice.paid` (classic) and `invoice.payment_succeeded` (newer API / dashboard) — same PipeTooling handling. */
+async function handleStripeInvoicePaidEvent(
+  admin: SupabaseClient,
+  inv: Stripe.Invoice,
+  eventForLog: Pick<Stripe.Event, 'id' | 'type'>,
+): Promise<Response> {
+  const stripeInvId = inv.id
+  if (!stripeInvId) {
+    return jsonOk({ received: true, skipped: 'no invoice id' })
+  }
+
+  const { data: rows, error: qErr } = await admin
+    .from('jobs_ledger_invoices')
+    .select('id, status')
+    .eq('stripe_invoice_id', stripeInvId)
+    .limit(1)
+
+  if (qErr) {
+    webhookLog('error', eventForLog, 'invoice paid lookup failed', qErr)
+    return jsonOk({ received: true, applied: false, reason: 'invoice_lookup_failed' })
+  }
+
+  const row = rows?.[0]
+  if (!row) {
+    webhookLog('warn', eventForLog, 'No jobs_ledger_invoices for stripe invoice', stripeInvId)
+    return jsonOk({ received: true, skipped: 'unknown invoice' })
+  }
+
+  if (row.status === 'paid') {
+    await admin.from('jobs_ledger_invoices').update({ stripe_invoice_status: 'paid' }).eq('id', row.id)
+  } else {
+    const { data: rpcData, error: rpcErr } = await admin.rpc('mark_invoice_paid_from_stripe', {
+      p_invoice_id: row.id,
+    })
+
+    if (rpcErr) {
+      webhookLog('error', eventForLog, 'mark_invoice_paid_from_stripe rpc failed', rpcErr)
+      return jsonOk({ received: true, applied: false, reason: 'mark_paid_rpc_failed' })
+    }
+
+    const result = rpcData as { error?: string; ok?: boolean } | null
+    if (result && typeof result === 'object' && result.error) {
+      webhookLog('warn', eventForLog, 'mark_invoice_paid_from_stripe business error', result.error)
+      return jsonOk({ received: true, applied: false, reason: 'mark_paid_rejected', detail: result.error })
+    }
+
+    await admin.from('jobs_ledger_invoices').update({ stripe_invoice_status: 'paid' }).eq('id', row.id)
+  }
+
+  return jsonOk({ received: true })
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -108,25 +162,47 @@ serve(async (req) => {
       return jsonOk({ received: true, applied: false, reason: 'misconfigured' })
     }
 
-    const signature = req.headers.get('stripe-signature')
+    const debugFp = stripeWebhookDebugFingerprintsEnabled()
+    if (debugFp) {
+      console.info(
+        '[stripe-webhook] STRIPE_WEBHOOK_DEBUG_FINGERPRINT: signing secrets (fingerprints only)',
+        stripeWebhookEnvFingerprints(),
+      )
+    }
+
+    const signature =
+      req.headers.get('stripe-signature') ?? req.headers.get('Stripe-Signature')
     if (!signature) {
       return jsonBadRequest({ error: 'No signature' })
     }
 
-    const body = await req.text()
+    const body = new TextDecoder('utf-8', { fatal: false }).decode(await req.arrayBuffer())
     const stripe = new Stripe(stripeInitKey, { apiVersion: '2024-06-20' })
+    /** Deno / Supabase Edge has no Node `crypto`; sync `constructEvent` often fails verification. Use Web Crypto. */
+    const cryptoProvider = Stripe.createSubtleCryptoProvider()
     let event: Stripe.Event | null = null
+    let lastVerifyErr: string | null = null
     for (const whsec of webhookSecrets) {
       try {
-        event = stripe.webhooks.constructEvent(body, signature, whsec)
+        event = await stripe.webhooks.constructEventAsync(body, signature, whsec, undefined, cryptoProvider)
         break
-      } catch {
-        /* try next secret (test vs live use different whsec_) */
+      } catch (e) {
+        lastVerifyErr = e instanceof Error ? e.message : String(e)
       }
     }
     if (!event) {
-      console.error('[stripe-webhook] signature verification failed for all configured webhook secrets')
-      return jsonBadRequest({ error: 'Invalid signature' })
+      const fps = stripeWebhookEnvFingerprints()
+      console.error(
+        '[stripe-webhook] signature verification failed (secrets_tried=%s last_error=%s) webhook_secret_fingerprints=%s',
+        String(webhookSecrets.length),
+        lastVerifyErr ?? 'unknown',
+        JSON.stringify(fps),
+      )
+      return jsonBadRequest({
+        error: 'Invalid signature',
+        ...(lastVerifyErr ? { detail: lastVerifyErr } : {}),
+        ...(debugFp ? { webhook_secret_fingerprints: fps } : {}),
+      })
     }
 
     eventForLog = { id: event.id, type: event.type }
@@ -144,56 +220,9 @@ serve(async (req) => {
       webhookLog('error', eventForLog, 'stripe_webhook_events insert failed (continuing)', dedupeErr)
     }
 
-    if (event.type === 'invoice.paid') {
+    if (event.type === 'invoice.paid' || event.type === 'invoice.payment_succeeded') {
       const inv = event.data.object as Stripe.Invoice
-      const stripeInvId = inv.id
-      if (!stripeInvId) {
-        return jsonOk({ received: true, skipped: 'no invoice id' })
-      }
-
-      const { data: rows, error: qErr } = await admin
-        .from('jobs_ledger_invoices')
-        .select('id, status')
-        .eq('stripe_invoice_id', stripeInvId)
-        .limit(1)
-
-      if (qErr) {
-        webhookLog('error', eventForLog, 'invoice.paid lookup failed', qErr)
-        return jsonOk({ received: true, applied: false, reason: 'invoice_lookup_failed' })
-      }
-
-      const row = rows?.[0]
-      if (!row) {
-        webhookLog('warn', eventForLog, 'No jobs_ledger_invoices for stripe invoice', stripeInvId)
-        return jsonOk({ received: true, skipped: 'unknown invoice' })
-      }
-
-      if (row.status === 'paid') {
-        await admin
-          .from('jobs_ledger_invoices')
-          .update({ stripe_invoice_status: 'paid' })
-          .eq('id', row.id)
-      } else {
-        const { data: rpcData, error: rpcErr } = await admin.rpc('mark_invoice_paid_from_stripe', {
-          p_invoice_id: row.id,
-        })
-
-        if (rpcErr) {
-          webhookLog('error', eventForLog, 'mark_invoice_paid_from_stripe rpc failed', rpcErr)
-          return jsonOk({ received: true, applied: false, reason: 'mark_paid_rpc_failed' })
-        }
-
-        const result = rpcData as { error?: string; ok?: boolean } | null
-        if (result && typeof result === 'object' && result.error) {
-          webhookLog('warn', eventForLog, 'mark_invoice_paid_from_stripe business error', result.error)
-          return jsonOk({ received: true, applied: false, reason: 'mark_paid_rejected', detail: result.error })
-        }
-
-        await admin
-          .from('jobs_ledger_invoices')
-          .update({ stripe_invoice_status: 'paid' })
-          .eq('id', row.id)
-      }
+      return await handleStripeInvoicePaidEvent(admin, inv, eventForLog)
     } else if (
       event.type === 'invoice.updated' ||
       event.type === 'invoice.voided' ||

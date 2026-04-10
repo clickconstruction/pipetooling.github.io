@@ -60,15 +60,64 @@ export function resolveStripeBillingMode(requested: unknown): StripeBillingMode 
   return defaultStripeBillingMode()
 }
 
-/** Webhook signing secrets to try (test dashboard endpoint + live endpoint + legacy). Order: test, live, legacy. */
+function normalizeWebhookSecret(raw: string | undefined): string {
+  let t = raw?.trim() ?? ''
+  if (t.startsWith('\uFEFF')) t = t.slice(1).trim()
+  if (
+    t.length >= 2 &&
+    ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'")))
+  ) {
+    t = t.slice(1, -1).trim()
+  }
+  return t
+}
+
+/**
+ * Webhook signing secrets to try. Order: **live, test, legacy** — most prod traffic is livemode, so we verify
+ * in one `constructEvent` when only `STRIPE_WEBHOOK_SECRET_LIVE` is set. (Test events still succeed: live secret
+ * fails first, then test matches.)
+ */
 export function stripeWebhookSecretsOrdered(): string[] {
   const out: string[] = []
   const push = (s: string | undefined) => {
-    const t = s?.trim()
+    const t = normalizeWebhookSecret(s)
     if (t && !out.includes(t)) out.push(t)
   }
-  push(Deno.env.get('STRIPE_WEBHOOK_SECRET_TEST'))
   push(Deno.env.get('STRIPE_WEBHOOK_SECRET_LIVE'))
+  push(Deno.env.get('STRIPE_WEBHOOK_SECRET_TEST'))
   push(Deno.env.get('STRIPE_WEBHOOK_SECRET'))
   return out
+}
+
+/** Safe preview for logs / Stripe retry UI — never log or return the full `whsec_` value. */
+export type StripeWebhookEnvFingerprint = {
+  envVar: string
+  rawEnvNonEmpty: boolean
+  normalizedLen: number
+  whsecPrefix: boolean
+  tail4: string | null
+}
+
+export function stripeWebhookEnvFingerprints(): StripeWebhookEnvFingerprint[] {
+  const names = [
+    'STRIPE_WEBHOOK_SECRET_LIVE',
+    'STRIPE_WEBHOOK_SECRET_TEST',
+    'STRIPE_WEBHOOK_SECRET',
+  ] as const
+  return names.map((envVar) => {
+    const raw = Deno.env.get(envVar)
+    const t = normalizeWebhookSecret(raw)
+    return {
+      envVar,
+      rawEnvNonEmpty: Boolean(raw?.trim()),
+      normalizedLen: t.length,
+      whsecPrefix: t.startsWith('whsec_'),
+      tail4: t.length >= 4 ? t.slice(-4) : null,
+    }
+  })
+}
+
+export function stripeWebhookDebugFingerprintsEnabled(): boolean {
+  const v = Deno.env.get('STRIPE_WEBHOOK_DEBUG_FINGERPRINT')?.trim().toLowerCase() ?? ''
+  return v === '1' || v === 'true' || v === 'yes'
 }
