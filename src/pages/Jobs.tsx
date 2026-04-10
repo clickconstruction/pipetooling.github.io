@@ -25,6 +25,7 @@ import { ErrorBoundary } from '../components/ErrorBoundary'
 import { type JobBillingContext } from '../components/jobs/SendRecordInvoiceModal'
 import { useBillCustomerModal } from '../contexts/BillCustomerModalContext'
 import BilledPaymentConfirmationModal from '../components/jobs/BilledPaymentConfirmationModal'
+import BilledBillViewModal from '../components/jobs/BilledBillViewModal'
 import { JobThreadNotesPanel } from '../components/JobThreadNotesPanel'
 import DetailJobModal, { type DetailJobModalAssignedJobRow } from '../components/jobs/DetailJobModal'
 import { ScheduleJobModal } from '../components/jobs/ScheduleJobModal'
@@ -726,7 +727,12 @@ export default function Jobs() {
   const [newTemplateFields, setNewTemplateFields] = useState<string[]>([''])
   const [templateSaving, setTemplateSaving] = useState(false)
   const [templateDeletingId, setTemplateDeletingId] = useState<string | null>(null)
-  const [stagesSectionOpen, setStagesSectionOpen] = useState({ working: true, readyToBill: true, billed: true, paid: true })
+  const [stagesSectionOpen, setStagesSectionOpen] = useState({
+    working: true,
+    readyToBill: true,
+    billed: true,
+    paid: false,
+  })
   const [billedTotalByNameModalOpen, setBilledTotalByNameModalOpen] = useState(false)
   const [billedTotalByNameExpandedName, setBilledTotalByNameExpandedName] = useState<string | null>(null)
   const [capableToBillModalOpen, setCapableToBillModalOpen] = useState(false)
@@ -747,6 +753,7 @@ export default function Jobs() {
   const [readyForBillingChecked2, setReadyForBillingChecked2] = useState(false)
   const [markPaidJob, setMarkPaidJob] = useState<JobWithDetails | null>(null)
   const [markPaidInvoice, setMarkPaidInvoice] = useState<InvoiceWithJob | null>(null)
+  const [viewBillInvoice, setViewBillInvoice] = useState<InvoiceWithJob | null>(null)
   const [sendBackJob, setSendBackJob] = useState<{ id: string; hcpNumber: string; jobName: string; toStatus: 'working' | 'ready_to_bill' } | null>(null)
   const [sendBackInvoice, setSendBackInvoice] = useState<{ inv: InvoiceWithJob; action: 'delete' | 'revert' } | null>(null)
   const [sendBackChecked, setSendBackChecked] = useState(false)
@@ -5204,6 +5211,8 @@ ${totalsHtml}
                 actionLabel: React.ReactNode | null
                 onJobAction: (j: JobWithDetails) => void
                 onInvoiceAction: (inv: InvoiceWithJob) => void
+                /** Billed Awaiting Payment: open read-only bill (Stripe or outside). */
+                onViewBill?: (inv: InvoiceWithJob) => void
                 onJobSendBack?: (j: JobWithDetails) => void
                 onInvoiceSendBack: (inv: InvoiceWithJob) => void
                 showRemaining?: boolean
@@ -5221,6 +5230,7 @@ ${totalsHtml}
                 actionLabel,
                 onJobAction,
                 onInvoiceAction,
+                onViewBill,
                 onJobSendBack,
                 onInvoiceSendBack,
                 showRemaining,
@@ -5493,6 +5503,27 @@ ${totalsHtml}
                                 </td>
                                 <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
                                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                                    {onViewBill && !bundleInv && (j.invoices ?? []).filter((i) => i.status === 'billed').length === 1 ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const b = (j.invoices ?? []).filter((i) => i.status === 'billed')
+                                          onViewBill({ ...b[0], job: j } as InvoiceWithJob)
+                                        }}
+                                        style={{
+                                          padding: '0.35rem 0.75rem',
+                                          fontSize: '0.8125rem',
+                                          background: 'white',
+                                          color: '#2563eb',
+                                          border: '1px solid #2563eb',
+                                          borderRadius: 4,
+                                          cursor: 'pointer',
+                                          fontWeight: 500,
+                                        }}
+                                      >
+                                        View Bill
+                                      </button>
+                                    ) : null}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
                                       {actionLabel && (
                                         <button
@@ -5848,6 +5879,24 @@ ${totalsHtml}
                                 </td>
                                 <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
                                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                                    {onViewBill ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => onViewBill(invWithJob)}
+                                        style={{
+                                          padding: '0.35rem 0.75rem',
+                                          fontSize: '0.8125rem',
+                                          background: 'white',
+                                          color: '#2563eb',
+                                          border: '1px solid #2563eb',
+                                          borderRadius: 4,
+                                          cursor: 'pointer',
+                                          fontWeight: 500,
+                                        }}
+                                      >
+                                        View Bill
+                                      </button>
+                                    ) : null}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
                                       {actionLabel && (
                                         <button
@@ -6145,6 +6194,7 @@ ${totalsHtml}
                   actionLabel: 'Mark Paid',
                   onJobAction: (j) => setMarkPaidJob(j),
                   onInvoiceAction: (inv) => setMarkPaidInvoice(inv),
+                  onViewBill: (inv) => setViewBillInvoice(inv),
                   onJobSendBack: (j) => stagesHamMode ? updateJobStatus(j.id, 'ready_to_bill') : (setSendBackChecked(false), setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'ready_to_bill' })),
                   onInvoiceSendBack: (inv) => stagesHamMode ? updateInvoiceStatus(inv.id, 'ready_to_bill') : (setSendBackChecked(false), setSendBackInvoice({ inv, action: 'revert' })),
                   showRemaining: true,
@@ -9531,6 +9581,7 @@ ${totalsHtml}
           </div>
         </div>
       )}
+      <BilledBillViewModal invoice={viewBillInvoice} onClose={() => setViewBillInvoice(null)} />
       <BilledPaymentConfirmationModal
         mode="job"
         invoice={null}

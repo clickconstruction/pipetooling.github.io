@@ -268,7 +268,7 @@ export default function Layout() {
 
   function renderNavLinks(onNavClick?: () => void, excludeHeaderLinks?: boolean) {
     const linkStyle = onNavClick ? dropdownLinkStyle : navStyle
-    const dashboardContent = onNavClick ? dashboardIcon : 'Dashboard'
+    const dashboardContent = dashboardIcon
     if (role === 'estimator') {
       return (
         <>

@@ -9,7 +9,7 @@ import { useMercuryLedgerNicknames } from '../../hooks/useMercuryLedgerNicknames
 import { useToastContext } from '../../contexts/ToastContext'
 import { parseCustomerImport } from '../../utils/parseCustomerImport'
 import { nameSimilarity } from '../../utils/nameSimilarity'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { formatPostgrestOrUnknownError, withSupabaseRetry } from '../../utils/errorHandling'
 import CustomerAcceptanceRecordModal from '../estimates/CustomerAcceptanceRecordModal'
 import { MoneyDecimalAmountInput } from '../MoneyDecimalAmountInput'
 import type { Database } from '../../types/database'
@@ -17,6 +17,7 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import { resolveCustomerIdForJobPayload } from '../../lib/jobLedgerCustomer'
 import { resolveEffectiveJobMasterUserId } from '../../lib/resolveEffectiveJobMasterUserId'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
+import { formatInvoiceCreatedRelativePhrase } from '../../lib/invoiceCreatedRelative'
 import { formatMercuryCardChargesPostedDate } from '../../lib/formatMercuryCardChargesPostedDate'
 import { fetchJobMaterialsCostSnapshot } from '../../lib/fetchJobMaterialsCostSnapshot'
 import { formatMercuryDebitCardIdCompact } from '../../lib/mercuryRawDebitCard'
@@ -24,6 +25,7 @@ import type { JobMercuryAllocLine, JobSupplyInvoiceLine, JobTallyPartLine } from
 import { MaterialsCostAccordionRow } from './JobFormMaterialsCostAccordion'
 import type { JobBillingContext } from './SendRecordInvoiceModal'
 import { useBillCustomerModal } from '../../contexts/BillCustomerModalContext'
+import BilledBillViewModal, { type InvoiceWithJobForBillView } from './BilledBillViewModal'
 import { StripeInvoiceSharePanel } from './StripeInvoiceSharePanel'
 
 type EstimatesRow = Database['public']['Tables']['estimates']['Row']
@@ -118,6 +120,8 @@ type ProjectOption = {
 /** Above Job Detail modal (`1004`) so Edit Job can stack on top without closing detail. */
 const JOB_FORM_OVERLAY_Z_INDEX = 1010
 const JOB_FORM_NESTED_OVERLAY_Z_INDEX = JOB_FORM_OVERLAY_Z_INDEX + 1
+/** Above Edit Job + nested create-customer overlay so View Bill stacks correctly. */
+const JOB_FORM_BILL_VIEW_OVERLAY_Z_INDEX = JOB_FORM_NESTED_OVERLAY_Z_INDEX + 1
 
 export type JobFormModalProps = {
   mode: 'new' | 'edit'
@@ -155,6 +159,7 @@ export default function JobFormModal({
 
   const [initDone, setInitDone] = useState(false)
   const [editing, setEditing] = useState<JobWithDetails | null>(null)
+  const [billViewInvoice, setBillViewInvoice] = useState<InvoiceWithJobForBillView | null>(null)
   const [sourceEstimateForJob, setSourceEstimateForJob] = useState<EstimatesRow | null>(null)
   const [sourceEstimateLoading, setSourceEstimateLoading] = useState(false)
   const [contractModalEstimateId, setContractModalEstimateId] = useState<string | null>(null)
@@ -250,12 +255,14 @@ export default function JobFormModal({
   function closeForm() {
     setContractModalEstimateId(null)
     setCreateCustomerFromJobModalOpen(false)
+    setBillViewInvoice(null)
     setBillingCustomerHighlight(false)
     setNewInvoiceAmount('')
     onClose()
   }
 
   function applyEditJob(job: JobWithDetails, billingGate: boolean) {
+    setBillViewInvoice(null)
     setBillingCustomerHighlight(billingGate)
     setEditing(job)
     setHcpNumber(job.hcp_number ?? '')
@@ -305,6 +312,7 @@ export default function JobFormModal({
   }
 
   function resetNewForm(projectPrefill: string | null) {
+    setBillViewInvoice(null)
     setEditing(null)
     setHcpNumber('')
     setJobName('')
@@ -718,9 +726,10 @@ export default function JobFormModal({
       setCreateCustomerFromJobModalOpen(false)
       showToast('Customer created and linked', 'success')
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to create customer'
+      console.error('JobFormModal create customer failed', err)
+      const msg = formatPostgrestOrUnknownError(err, 'Failed to create customer')
       setError(msg)
-      showToast(msg, 'error')
+      showToast(msg.split('\n')[0] ?? msg, 'error')
     } finally {
       setCreatingCustomerFromJob(false)
     }
@@ -741,7 +750,8 @@ export default function JobFormModal({
     if (editing) {
       const { error: updErr } = await supabase.from('jobs_ledger').update({ customer_id: c.id }).eq('id', editing.id)
       if (updErr) {
-        showToast(updErr.message, 'error')
+        const m = formatPostgrestOrUnknownError(updErr, updErr.message || 'Failed to link customer')
+        showToast(m.split('\n')[0] ?? m, 'error')
         return
       }
       const found = await fetchJobWithDetailsById(editing.id)
@@ -928,7 +938,8 @@ export default function JobFormModal({
       closeForm()
       onSavedRef.current?.()
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to save')
+      console.error('JobFormModal saveJob failed', err)
+      setError(formatPostgrestOrUnknownError(err, 'Failed to save job'))
     } finally {
       setSaving(false)
     }
@@ -938,7 +949,8 @@ export default function JobFormModal({
     setDeletingId(id)
     const { error: err } = await supabase.from('jobs_ledger').delete().eq('id', id)
     if (err) {
-      setError(err.message)
+      console.error('JobFormModal deleteJob failed', err)
+      setError(formatPostgrestOrUnknownError(err, err.message || 'Failed to delete job'))
       setDeletingId(null)
       return false
     }
@@ -1087,7 +1099,19 @@ export default function JobFormModal({
             </button>
           </div>
         ) : null}
-        {error && <p style={{ color: '#b91c1c', marginBottom: '0.75rem', fontSize: '0.875rem' }}>{error}</p>}
+        {error && (
+          <p
+            style={{
+              color: '#b91c1c',
+              marginBottom: '0.75rem',
+              fontSize: '0.875rem',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+            }}
+          >
+            {error}
+          </p>
+        )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
             <div style={{ flex: '0 0 110px', minWidth: 110 }}>
@@ -2071,23 +2095,59 @@ export default function JobFormModal({
                     if (stripeLinks.length === 0) return null
                     return (
                       <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem' }}>
-                        {stripeLinks.map((inv) => (
-                          <div key={inv.id} style={{ marginTop: 8 }}>
-                            <div style={{ fontWeight: 600, marginBottom: 4 }}>
-                              Stripe invoice #{inv.sequence_order} — ${formatCurrency(Number(inv.amount ?? 0))}
+                        {stripeLinks.map((inv) => {
+                          const createdPhrase = formatInvoiceCreatedRelativePhrase(inv.created_at)
+                          return (
+                            <div key={inv.id} style={{ marginTop: 8 }}>
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  flexWrap: 'wrap',
+                                  gap: '0.35rem 0.5rem',
+                                  fontWeight: 600,
+                                  marginBottom: 4,
+                                }}
+                              >
+                                <span>
+                                  Stripe invoice #{inv.sequence_order} — ${formatCurrency(Number(inv.amount ?? 0))}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (!editing) return
+                                    setBillViewInvoice({ ...inv, job: editing })
+                                  }}
+                                  style={{
+                                    padding: '0.15rem 0.5rem',
+                                    fontSize: '0.75rem',
+                                    background: '#e5e7eb',
+                                    border: 'none',
+                                    borderRadius: 4,
+                                    cursor: 'pointer',
+                                    fontWeight: 500,
+                                  }}
+                                >
+                                  View Bill
+                                </button>
+                                {createdPhrase ? (
+                                  <span style={{ fontWeight: 400, color: '#6b7280', fontSize: '0.75rem' }}>{createdPhrase}</span>
+                                ) : null}
+                              </div>
+                              <StripeInvoiceSharePanel
+                                hostedInvoiceUrl={inv.hosted_invoice_url!.trim()}
+                                stripeInvoiceId={(inv.stripe_invoice_id ?? '').trim()}
+                                customerEmail={editing.customer_email}
+                                customerName={editing.customer_name}
+                                jobName={editing.job_name}
+                                hcpNumber={editing.hcp_number}
+                                amountLabel={`$${formatCurrency(Number(inv.amount ?? 0))}`}
+                                compact
+                                paymentLinkActionsAsIcons
+                              />
                             </div>
-                            <StripeInvoiceSharePanel
-                              hostedInvoiceUrl={inv.hosted_invoice_url!.trim()}
-                              stripeInvoiceId={(inv.stripe_invoice_id ?? '').trim()}
-                              customerEmail={editing.customer_email}
-                              customerName={editing.customer_name}
-                              jobName={editing.job_name}
-                              hcpNumber={editing.hcp_number}
-                              amountLabel={`$${formatCurrency(Number(inv.amount ?? 0))}`}
-                              compact
-                            />
-                          </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     )
                   })()}
@@ -2421,6 +2481,11 @@ export default function JobFormModal({
       )}
     </div>
 
+      <BilledBillViewModal
+        invoice={billViewInvoice}
+        onClose={() => setBillViewInvoice(null)}
+        overlayZIndex={JOB_FORM_BILL_VIEW_OVERLAY_Z_INDEX}
+      />
       <CustomerAcceptanceRecordModal
         open={contractModalEstimateId != null}
         estimateId={contractModalEstimateId}

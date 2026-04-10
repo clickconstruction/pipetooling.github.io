@@ -1,6 +1,11 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import Stripe from 'https://esm.sh/stripe@14.21.0?target=deno'
+import Stripe from 'https://esm.sh/stripe@16.12.0?target=deno'
+import {
+  anyStripeApiKeyConfigured,
+  stripeApiKeyForMode,
+  stripeWebhookSecretsOrdered,
+} from '../_shared/stripeSecrets.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -89,13 +94,17 @@ serve(async (req) => {
   let eventForLog: Pick<Stripe.Event, 'id' | 'type'> | null = null
 
   try {
-    const stripeSecret = Deno.env.get('STRIPE_SECRET_KEY')?.trim() ?? ''
-    const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET')?.trim() ?? ''
+    const webhookSecrets = stripeWebhookSecretsOrdered()
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() ?? ''
     const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim() ?? ''
 
-    if (!stripeSecret || !webhookSecret || !serviceKey) {
-      console.error('[stripe-webhook] missing STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, or SUPABASE_SERVICE_ROLE_KEY')
+    const stripeInitKey =
+      stripeApiKeyForMode('test') ?? stripeApiKeyForMode('live') ?? ''
+
+    if (!anyStripeApiKeyConfigured() || webhookSecrets.length === 0 || !serviceKey || !stripeInitKey) {
+      console.error(
+        '[stripe-webhook] missing Stripe API key(s), webhook signing secret(s), or SUPABASE_SERVICE_ROLE_KEY',
+      )
       return jsonOk({ received: true, applied: false, reason: 'misconfigured' })
     }
 
@@ -105,12 +114,18 @@ serve(async (req) => {
     }
 
     const body = await req.text()
-    const stripe = new Stripe(stripeSecret, { apiVersion: '2023-10-16' })
-    let event: Stripe.Event
-    try {
-      event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
-    } catch (err) {
-      console.error('[stripe-webhook] signature verification failed', err)
+    const stripe = new Stripe(stripeInitKey, { apiVersion: '2024-06-20' })
+    let event: Stripe.Event | null = null
+    for (const whsec of webhookSecrets) {
+      try {
+        event = stripe.webhooks.constructEvent(body, signature, whsec)
+        break
+      } catch {
+        /* try next secret (test vs live use different whsec_) */
+      }
+    }
+    if (!event) {
+      console.error('[stripe-webhook] signature verification failed for all configured webhook secrets')
       return jsonBadRequest({ error: 'Invalid signature' })
     }
 

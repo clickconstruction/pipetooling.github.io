@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import type { StripeInvoicePreviewSuccess } from '../../lib/stripeInvoicePreview'
-import { formatStripeCents } from '../../lib/stripeInvoicePreview'
+import { StripeInvoiceLinesSummary } from './StripeInvoiceLinesSummary'
+import { StripeInvoicePreviewMeta } from './StripeInvoicePreviewMeta'
 import {
   buildStripeInvoiceEmailBody,
   buildStripeInvoiceSmsText,
@@ -19,6 +20,8 @@ export type StripeBillPreSubmitPreviewProps = {
   stripePreview: StripeInvoicePreviewSuccess | null
   stripePreviewLoading: boolean
   stripePreviewError: string | null
+  /** When set, replaces the default “Enter amount…” idle hint (e.g. while RTB line is being ensured). */
+  previewIdleHint?: string | null
 }
 
 const preStyle: CSSProperties = {
@@ -69,59 +72,29 @@ export function StripeBillPreSubmitPreview(p: StripeBillPreSubmitPreviewProps) {
 
       <div style={{ marginBottom: '0.65rem' }}>
         <div style={sectionTitle}>Invoice (Stripe)</div>
+        <StripeInvoicePreviewMeta
+          customerName={p.customerName}
+          customerEmail={p.customerEmail}
+          invoiceNumber={p.stripePreview?.invoice_number ?? null}
+          dueYmd={p.dueDateYmd}
+          memo={p.memo}
+        />
         {p.stripePreviewLoading && <p style={{ margin: 0, color: '#6b7280', fontSize: '0.75rem' }}>Loading totals…</p>}
         {!p.stripePreviewLoading && p.stripePreviewError && (
           <p style={{ margin: '0 0 0.35rem', color: '#b45309', fontSize: '0.75rem' }}>
             Preview unavailable ({p.stripePreviewError}). Showing draft line below.
           </p>
         )}
-        {!p.stripePreviewLoading && p.stripePreview && (() => {
-          const sp = p.stripePreview
-          return (
-          <div style={{ fontSize: '0.75rem', color: '#374151' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <tbody>
-                {sp.lines.map((line, i) => (
-                  <tr key={i}>
-                    <td style={{ padding: '0.25rem 0', verticalAlign: 'top', wordBreak: 'break-word' }}>
-                      {line.description || '—'}
-                    </td>
-                    <td style={{ padding: '0.25rem 0', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      {formatStripeCents(line.amount, sp.currency)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div style={{ marginTop: '0.35rem', paddingTop: '0.35rem', borderTop: '1px solid #e5e7eb', fontWeight: 600 }}>
-              Total due: {formatStripeCents(sp.amount_due, sp.currency)}
-            </div>
-          </div>
-          )
-        })()}
+        {!p.stripePreviewLoading && p.stripePreview && (
+          <StripeInvoiceLinesSummary embedded showTitle={false} snapshot={p.stripePreview} />
+        )}
         {!p.stripePreviewLoading && !p.stripePreview && !p.stripePreviewError && (
-          <p style={{ margin: 0, color: '#6b7280', fontSize: '0.75rem' }}>Enter amount and due date to load preview.</p>
+          <p style={{ margin: 0, color: '#6b7280', fontSize: '0.75rem' }}>
+            {p.previewIdleHint?.trim() || 'Enter amount and due date to load preview.'}
+          </p>
         )}
         <div style={{ marginTop: '0.35rem', fontSize: '0.72rem', color: '#6b7280' }}>
           Draft line: {p.localLineDescription}
-        </div>
-      </div>
-
-      <div style={{ marginBottom: '0.65rem' }}>
-        <div style={sectionTitle}>Bill to</div>
-        <div style={{ fontSize: '0.75rem', color: '#374151' }}>
-          {(p.customerName ?? '').trim() || '—'}
-          <br />
-          {(p.customerEmail ?? '').trim() || '—'}
-        </div>
-        <div style={{ marginTop: '0.25rem', fontSize: '0.72rem', color: '#6b7280' }}>
-          Due: {p.dueDateYmd || '—'}
-          {p.memo.trim() ? (
-            <>
-              <br />
-              Memo: {p.memo.trim()}
-            </>
-          ) : null}
         </div>
       </div>
 

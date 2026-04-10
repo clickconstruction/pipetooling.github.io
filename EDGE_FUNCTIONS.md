@@ -1409,11 +1409,20 @@ const { data, error } = await supabase.functions.invoke('create-stripe-invoice',
   "success": true,
   "stripe_invoice_id": "in_...",
   "hosted_invoice_url": "https://invoice.stripe.com/...",
-  "stripe_invoice_status": "open"
+  "stripe_invoice_status": "open",
+  "invoice_preview": {
+    "currency": "usd",
+    "subtotal": 123456,
+    "total": 123456,
+    "amount_due": 123456,
+    "lines": [{ "description": "Job name · HCP 123", "amount": 123456 }]
+  }
 }
 ```
 
-If **`stripe_invoice_id`** and **`hosted_invoice_url`** are already set, returns the same shape with **`idempotent: true`**.
+**`invoice_preview`**: Finalized invoice line items and totals (**amounts in cents**), same shape as **`preview-stripe-invoice`** line payload; omitted if an idempotent **`invoices.retrieve`** fails. Bill Customer uses it to show the invoice table after create.
+
+If **`stripe_invoice_id`** and **`hosted_invoice_url`** are already set, returns the same shape with **`idempotent: true`** (and **`invoice_preview`** when retrieve succeeds).
 
 #### Error responses (400)
 
