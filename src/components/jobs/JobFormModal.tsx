@@ -108,6 +108,12 @@ function parseMoneyInputToNumberOrNull(s: string): number | null {
   return Number.isFinite(n) ? n : null
 }
 
+function billableRemainingFromJob(job: JobWithDetails): number {
+  const rev = job.revenue != null ? Number(job.revenue) : 0
+  const paid = (job.payments ?? []).reduce((s, p) => s + (Number(p.amount) || 0), 0)
+  return Math.max(0, rev - paid)
+}
+
 function sanitizeMoneyTyping(raw: string): string {
   const noComma = raw.replace(/,/g, '')
   let out = ''
@@ -390,6 +396,8 @@ export default function JobFormModal({
     setTeamMemberIds(job.team_members.map((t) => t.user_id))
     setContractorsSearch('')
     setContractorsDropdownOpen(false)
+    const rem = billableRemainingFromJob(job)
+    setNewInvoiceAmount(rem > 0 ? rem.toFixed(2) : '')
   }
 
   function resetNewForm(projectPrefill: string | null) {
@@ -420,6 +428,7 @@ export default function JobFormModal({
     setBillingCustomerHighlight(false)
     setSourceEstimateForJob(null)
     setContractModalEstimateId(null)
+    setNewInvoiceAmount('')
   }
 
   useLayoutEffect(() => {
@@ -697,9 +706,14 @@ export default function JobFormModal({
         is_primary_rtb_bundle: false,
       })
       if (err) throw err
-      setNewInvoiceAmount('')
       const found = await fetchJobWithDetailsById(editing.id)
-      if (found) setEditing(found)
+      if (found) {
+        setEditing(found)
+        const rem = billableRemainingFromJob(found)
+        setNewInvoiceAmount(rem > 0 ? rem.toFixed(2) : '')
+      } else {
+        setNewInvoiceAmount('')
+      }
       onSavedRef.current?.()
     } catch (e: unknown) {
       const err = e as { message?: string; details?: string; hint?: string }
@@ -2135,6 +2149,71 @@ export default function JobFormModal({
                   </ul>
                 </div>
               )}
+              {editing ? (
+                <div
+                  style={{
+                    marginBottom: '1rem',
+                    padding: '0.75rem',
+                    borderRadius: 8,
+                    border: '1px solid #e5e7eb',
+                    background: '#f9fafb',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexWrap: 'wrap',
+                      gap: '0.5rem',
+                      width: '100%',
+                    }}
+                  >
+                    <label htmlFor="edit-job-partial-invoice-amount" style={{ fontSize: '0.875rem', fontWeight: 500, color: '#374151' }}>
+                      Make Invoice:
+                    </label>
+                    <input
+                      id="edit-job-partial-invoice-amount"
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      value={newInvoiceAmount}
+                      onChange={(e) => setNewInvoiceAmount(e.target.value)}
+                      placeholder="$0"
+                      title="Break off an amount to send through Ready to Bill. Job stays in Working."
+                      style={{ width: '6rem', padding: '0.375rem 0.625rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem', background: 'white' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={createInvoice}
+                      disabled={creatingInvoice || !(parseFloat(newInvoiceAmount) > 0)}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        fontSize: '0.875rem',
+                        fontWeight: 500,
+                        background: creatingInvoice || !(parseFloat(newInvoiceAmount) > 0) ? '#9ca3af' : '#3b82f6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 6,
+                        cursor: creatingInvoice || !(parseFloat(newInvoiceAmount) > 0) ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      {creatingInvoice ? '…' : 'Create invoice'}
+                    </button>
+                  </div>
+                  <p
+                    style={{
+                      margin: '0.5rem 0 0',
+                      fontSize: '0.8125rem',
+                      color: '#6b7280',
+                      textAlign: 'center',
+                      lineHeight: 1.45,
+                    }}
+                  >
+                    Break off an amount to send through Ready to Bill. Job stays in Working.
+                  </p>
+                </div>
+              ) : null}
               {(editing.invoices ?? []).some((i) => i.status === 'billed') && (
                 <div style={{ marginBottom: '1rem' }}>
                   <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Outstanding billing</h4>
@@ -2259,12 +2338,14 @@ export default function JobFormModal({
                                     <td
                                       colSpan={3}
                                       style={{
-                                        padding: '0.2rem 0.75rem 0.5rem',
+                                        paddingTop: '0.2rem',
+                                        paddingRight: '0.75rem',
+                                        paddingBottom: '0.5rem',
+                                        paddingLeft: '3.5rem',
                                         fontSize: '0.75rem',
                                         color: '#6b7280',
                                         wordBreak: 'break-word',
                                         lineHeight: 1.45,
-                                        borderTop: '1px solid #f3f4f6',
                                       }}
                                     >
                                       {noteLine ? (
@@ -2298,15 +2379,15 @@ export default function JobFormModal({
               <table style={{ width: '100%', minWidth: 420, borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>
                 <colgroup>
                   <col style={{ width: '26%' }} />
-                  <col style={{ width: '42%' }} />
                   <col style={{ width: '26%' }} />
+                  <col style={{ width: '42%' }} />
                   <col style={{ width: '6%' }} />
                 </colgroup>
                                <thead style={{ background: '#f9fafb' }}>
                   <tr>
                     <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Date</th>
-                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Memo</th>
                     <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Amount ($)</th>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Memo</th>
                     <th style={{ padding: '0.5rem 0.35rem', width: 44, borderBottom: '1px solid #e5e7eb' }} />
                   </tr>
                 </thead>
@@ -2324,7 +2405,7 @@ export default function JobFormModal({
                       <td style={{ padding: '0.5rem 0.75rem', verticalAlign: 'middle', overflow: 'hidden' }}>
                         {stripePaymentLocked ? (
                           <span
-                            style={{ fontSize: '0.875rem', color: '#374151', fontVariantNumeric: 'tabular-nums' }}
+                            style={{ color: '#374151', fontVariantNumeric: 'tabular-nums' }}
                             title="Recorded from the Stripe invoice."
                             aria-label={`Payment date ${formatPaymentDateForDisplay(row.paid_on)}`}
                           >
@@ -2344,29 +2425,10 @@ export default function JobFormModal({
                               padding: '0.375rem 0.5rem',
                               border: '1px solid #d1d5db',
                               borderRadius: 6,
-                              fontSize: '0.8125rem',
+                              fontSize: '0.875rem',
                             }}
                           />
                         )}
-                      </td>
-                      <td style={{ padding: '0.5rem 0.75rem', verticalAlign: 'middle', overflow: 'hidden' }}>
-                        <input
-                          id={`edit-job-payment-note-${row.id}`}
-                          type="text"
-                          value={row.note ?? ''}
-                          onChange={(e) => updatePaymentRow(row.id, { note: e.target.value === '' ? null : e.target.value })}
-                          placeholder="Optional"
-                          aria-label="Payment memo"
-                          style={{
-                            width: '100%',
-                            minWidth: 0,
-                            boxSizing: 'border-box',
-                            padding: '0.375rem 0.5rem',
-                            border: '1px solid #d1d5db',
-                            borderRadius: 6,
-                            fontSize: '0.875rem',
-                          }}
-                        />
                       </td>
                       <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'middle', overflow: 'hidden' }}>
                         {stripePaymentLocked ? (
@@ -2382,8 +2444,6 @@ export default function JobFormModal({
                           >
                             <span
                               style={{
-                                fontSize: '0.875rem',
-                                fontWeight: 600,
                                 color: '#111827',
                                 fontVariantNumeric: 'tabular-nums',
                                 minWidth: 0,
@@ -2456,6 +2516,25 @@ export default function JobFormModal({
                           </div>
                         )}
                       </td>
+                      <td style={{ padding: '0.5rem 0.75rem', verticalAlign: 'middle', overflow: 'hidden' }}>
+                        <input
+                          id={`edit-job-payment-note-${row.id}`}
+                          type="text"
+                          value={row.note ?? ''}
+                          onChange={(e) => updatePaymentRow(row.id, { note: e.target.value === '' ? null : e.target.value })}
+                          placeholder="Optional"
+                          aria-label="Payment memo"
+                          style={{
+                            width: '100%',
+                            minWidth: 0,
+                            boxSizing: 'border-box',
+                            padding: '0.375rem 0.5rem',
+                            border: '1px solid #d1d5db',
+                            borderRadius: 6,
+                            fontSize: '0.875rem',
+                          }}
+                        />
+                      </td>
                       <td style={{ padding: '0.5rem 0.35rem', verticalAlign: 'middle', textAlign: 'center' }}>
                         {stripePaymentLocked ? null : (
                           <button
@@ -2500,102 +2579,6 @@ export default function JobFormModal({
                     Record Payment
                   </button>
                 </div>
-                {editing && (
-                  <div
-                    style={{
-                      padding: '0.75rem',
-                      borderRadius: 8,
-                      border: '1px solid #e5e7eb',
-                      background: '#f9fafb',
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        flexWrap: 'wrap',
-                        justifyContent: 'space-between',
-                        gap: '0.5rem',
-                        marginBottom: '0.5rem',
-                      }}
-                    >
-                      <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>Partial invoice</h4>
-                      <div style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
-                        Remaining (billable): ${formatCurrency(getEditJobBillableRemaining())}
-                        {getEditJobBillableRemaining() > 0 ? (
-                          <>
-                            {' · '}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setError(null)
-                                setNewInvoiceAmount(getEditJobBillableRemaining().toFixed(2))
-                              }}
-                              aria-label="Fill partial invoice amount with full remaining billable balance"
-                              style={{
-                                background: 'none',
-                                border: 'none',
-                                padding: 0,
-                                cursor: 'pointer',
-                                color: '#2563eb',
-                                fontSize: 'inherit',
-                                fontFamily: 'inherit',
-                                textDecoration: 'underline',
-                              }}
-                            >
-                              Use full remaining
-                            </button>
-                          </>
-                        ) : null}
-                      </div>
-                    </div>
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexWrap: 'wrap',
-                        gap: '0.5rem',
-                        width: '100%',
-                      }}
-                    >
-                      <label htmlFor="edit-job-partial-invoice-amount" style={{ fontSize: '0.875rem', fontWeight: 500, color: '#374151' }}>
-                        Amount ($)
-                      </label>
-                      <input
-                        id="edit-job-partial-invoice-amount"
-                        type="number"
-                        min={0}
-                        step={0.01}
-                        value={newInvoiceAmount}
-                        onChange={(e) => setNewInvoiceAmount(e.target.value)}
-                        placeholder="0"
-                        title="Break off an amount to send through Ready to Bill. Job stays in Working."
-                        style={{ width: '6rem', padding: '0.375rem 0.625rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem', background: 'white' }}
-                      />
-                      <button
-                        type="button"
-                        onClick={createInvoice}
-                        disabled={creatingInvoice || !(parseFloat(newInvoiceAmount) > 0)}
-                        style={{
-                          padding: '0.5rem 1rem',
-                          fontSize: '0.875rem',
-                          fontWeight: 500,
-                          background: creatingInvoice || !(parseFloat(newInvoiceAmount) > 0) ? '#9ca3af' : '#3b82f6',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: 6,
-                          cursor: creatingInvoice || !(parseFloat(newInvoiceAmount) > 0) ? 'not-allowed' : 'pointer',
-                        }}
-                      >
-                        {creatingInvoice ? '…' : 'Create invoice'}
-                      </button>
-                    </div>
-                    <p style={{ margin: '0.5rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
-                      Break off an amount to send through Ready to Bill. Job stays in Working.
-                    </p>
-                  </div>
-                )}
               </div>
             </div>
           </div>
