@@ -1,10 +1,13 @@
 import type { CSSProperties } from 'react'
+import { useState } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
 import {
   buildStripeInvoiceEmailBody,
   buildStripeInvoiceEmailSubject,
   buildStripeInvoiceSmsText,
 } from '../../lib/stripeInvoiceShareCopy'
+import { EmailBillDraftModal } from './EmailBillDraftModal'
+import { SmsBillDraftModal } from './SmsBillDraftModal'
 
 export type StripeInvoiceSharePanelProps = {
   hostedInvoiceUrl: string
@@ -28,6 +31,16 @@ export type StripeInvoiceSharePanelProps = {
    * (Edit Job, View bill). Otherwise text buttons.
    */
   paymentLinkActionsAsIcons?: boolean
+  /** When true with `paymentLinkActionsAsIcons`, hide the “Payment Links:” label (icons only). */
+  omitPaymentLinksLabel?: boolean
+  /** No bordered gray panel; row is full-width and centered (e.g. View bill). */
+  unboxed?: boolean
+  /** When true with `unboxed`, no top margin and inner row does not stretch full width (toolbar next to sibling buttons). */
+  inlineRow?: boolean
+  /** Z-index for SMS Bill Draft modal (above parent overlays). */
+  smsDraftModalZIndex?: number
+  /** Z-index for Email Bill Draft modal; defaults to `smsDraftModalZIndex` or 1300. */
+  emailDraftModalZIndex?: number
 }
 
 function shareCopyFromProps(p: StripeInvoiceSharePanelProps) {
@@ -51,7 +64,30 @@ async function copyText(text: string, showToast: (m: string, t?: 'info' | 'error
 
 export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
   const { showToast } = useToastContext()
+  const [smsDraftOpen, setSmsDraftOpen] = useState(false)
+  const [smsDraftText, setSmsDraftText] = useState('')
+  const [emailDraftOpen, setEmailDraftOpen] = useState(false)
+  const [emailDraftSubject, setEmailDraftSubject] = useState('')
+  const [emailDraftBody, setEmailDraftBody] = useState('')
   const emailLabel = (p.emailButtonLabel ?? 'Send email…').trim() || 'Send email…'
+
+  function openSmsBillDraft() {
+    setSmsDraftText(buildStripeInvoiceSmsText(shareCopyFromProps(p)))
+    setSmsDraftOpen(true)
+  }
+
+  function openEmailBillDraft() {
+    setEmailDraftSubject(buildStripeInvoiceEmailSubject(p.jobName))
+    setEmailDraftBody(buildStripeInvoiceEmailBody(shareCopyFromProps(p)))
+    setEmailDraftOpen(true)
+  }
+
+  function openMailtoWithDraft() {
+    const to = encodeURIComponent((p.customerEmail ?? '').trim())
+    const subject = encodeURIComponent(buildStripeInvoiceEmailSubject(p.jobName))
+    const body = encodeURIComponent(buildStripeInvoiceEmailBody(shareCopyFromProps(p)))
+    window.location.href = `mailto:${to}?subject=${subject}&body=${body}`
+  }
   const url = p.hostedInvoiceUrl.trim()
   const dashUrl = `https://dashboard.stripe.com/invoices/${encodeURIComponent(p.stripeInvoiceId.trim())}`
   const pad = p.compact ? '0.35rem' : '0.5rem'
@@ -67,25 +103,33 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
   }
 
   const iconBtnStyle: CSSProperties = {
-    padding: p.compact ? '0.3rem' : '0.4rem',
+    padding: p.compact ? '2px 1px' : '0.4rem',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 4,
-    border: '1px solid #d1d5db',
-    background: 'white',
+    border: 'none',
+    background: 'transparent',
     cursor: 'pointer',
-    color: '#374151',
+    color: '#2563eb',
     lineHeight: 0,
   }
 
   const hasEmail = Boolean((p.customerEmail ?? '').trim())
-  const iconSize = p.compact ? 17 : 18
+  const iconSize = p.compact ? 22 : 24
 
   const paymentLinkCluster = p.paymentLinkActionsAsIcons ? (
     <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.35rem' }}>
-      <span style={{ color: '#374151', fontWeight: 500, marginRight: 2 }}>Payment Links:</span>
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+      {!p.omitPaymentLinksLabel ? (
+        <span style={{ color: '#374151', fontWeight: 500, marginRight: 2 }}>Payment Links:</span>
+      ) : null}
+      <span
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: p.compact ? 0 : '0.25rem',
+        }}
+      >
         <button
           type="button"
           title="Copy payment link"
@@ -102,11 +146,9 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
         </button>
         <button
           type="button"
-          title="Copy text for SMS"
-          aria-label="Copy text for SMS"
-          onClick={() =>
-            void copyText(buildStripeInvoiceSmsText(shareCopyFromProps(p)), showToast, 'Text message draft copied — paste into SMS')
-          }
+          title="SMS bill draft"
+          aria-label="SMS bill draft"
+          onClick={openSmsBillDraft}
           style={iconBtnStyle}
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={iconSize} height={iconSize} aria-hidden>
@@ -121,12 +163,7 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
             type="button"
             title={emailLabel}
             aria-label={emailLabel}
-            onClick={() => {
-              const to = encodeURIComponent((p.customerEmail ?? '').trim())
-              const subject = encodeURIComponent(buildStripeInvoiceEmailSubject(p.jobName))
-              const body = encodeURIComponent(buildStripeInvoiceEmailBody(shareCopyFromProps(p)))
-              window.location.href = `mailto:${to}?subject=${subject}&body=${body}`
-            }}
+            onClick={openEmailBillDraft}
             style={iconBtnStyle}
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={iconSize} height={iconSize} aria-hidden>
@@ -144,44 +181,74 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
       <button type="button" onClick={() => void copyText(url, showToast, 'Payment link copied')} style={btnStyle}>
         Copy payment link
       </button>
-      <button
-        type="button"
-        onClick={() =>
-          void copyText(buildStripeInvoiceSmsText(shareCopyFromProps(p)), showToast, 'Text message draft copied — paste into SMS')
-        }
-        style={btnStyle}
-      >
-        Copy text for SMS
+      <button type="button" onClick={openSmsBillDraft} style={btnStyle}>
+        SMS bill draft
       </button>
       {hasEmail ? (
-        <button
-          type="button"
-          onClick={() => {
-            const to = encodeURIComponent((p.customerEmail ?? '').trim())
-            const subject = encodeURIComponent(buildStripeInvoiceEmailSubject(p.jobName))
-            const body = encodeURIComponent(buildStripeInvoiceEmailBody(shareCopyFromProps(p)))
-            window.location.href = `mailto:${to}?subject=${subject}&body=${body}`
-          }}
-          style={btnStyle}
-        >
+        <button type="button" onClick={openEmailBillDraft} style={btnStyle}>
           {emailLabel}
         </button>
       ) : null}
     </>
   )
 
-  return (
-    <div
-      style={{
+  const unboxed = Boolean(p.unboxed)
+  const inlineRow = Boolean(p.inlineRow)
+  const outerStyle: CSSProperties = unboxed
+    ? {
+        marginTop: inlineRow ? 0 : p.omitPaymentLinksLabel ? 6 : p.compact ? 10 : 12,
+        fontSize: p.compact ? '0.75rem' : '0.8125rem',
+      }
+    : {
         marginTop: p.compact ? 6 : 8,
         padding: p.compact ? '0.5rem' : '0.75rem',
         borderRadius: 6,
         border: '1px solid #e5e7eb',
         background: '#fafafa',
         fontSize: p.compact ? '0.75rem' : '0.8125rem',
-      }}
-    >
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
+      }
+
+  const rowStyle: CSSProperties = {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '0.35rem',
+    alignItems: 'center',
+    ...(unboxed
+      ? inlineRow
+        ? { justifyContent: 'flex-start' }
+        : {
+            justifyContent: p.omitPaymentLinksLabel ? 'flex-start' : 'center',
+            width: '100%',
+          }
+      : {}),
+  }
+
+  const smsZ = p.smsDraftModalZIndex ?? 1300
+  const emailZ = p.emailDraftModalZIndex ?? p.smsDraftModalZIndex ?? 1300
+  const emailCopyText = `Subject: ${emailDraftSubject}\n\n${emailDraftBody}`
+
+  return (
+    <div style={outerStyle}>
+      <SmsBillDraftModal
+        open={smsDraftOpen}
+        onClose={() => setSmsDraftOpen(false)}
+        text={smsDraftText}
+        overlayZIndex={smsZ}
+        onCopy={() =>
+          void copyText(smsDraftText, showToast, 'Text message draft copied — paste into SMS')
+        }
+      />
+      <EmailBillDraftModal
+        open={emailDraftOpen}
+        onClose={() => setEmailDraftOpen(false)}
+        subject={emailDraftSubject}
+        body={emailDraftBody}
+        overlayZIndex={emailZ}
+        showOpenInEmailApp={hasEmail}
+        onOpenMailto={openMailtoWithDraft}
+        onCopy={() => void copyText(emailCopyText, showToast, 'Email draft copied')}
+      />
+      <div style={rowStyle}>
         {paymentLinkCluster}
         {!p.omitCustomerPayPage ? (
           <button
@@ -199,7 +266,14 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
         ) : null}
       </div>
       {hasEmail ? null : (
-        <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: '#6b7280' }}>
+        <p
+          style={{
+            margin: unboxed ? '0.5rem 0 0' : '0.35rem 0 0',
+            fontSize: '0.75rem',
+            color: '#6b7280',
+            textAlign: unboxed ? 'center' : undefined,
+          }}
+        >
           Add a customer email on the job to use “{emailLabel}”.
         </p>
       )}

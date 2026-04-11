@@ -9,6 +9,7 @@ import {
 } from '../_shared/stripeSecrets.ts'
 import { isMissingStripeCustomerError } from '../_shared/stripeStaleCustomer.ts'
 import { buildStripeInvoiceLineDescription } from '../_shared/stripeLineDescription.ts'
+import { stripeSellerDisplayName } from '../_shared/stripeSellerDisplayName.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -33,6 +34,14 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })
+}
+
+/** Match `create-stripe-invoice` so preview due dates align with finalized invoices. */
+function daysUntilDue(isoDate: string): number {
+  const due = new Date(isoDate + 'T12:00:00Z')
+  const now = new Date()
+  const ms = due.getTime() - now.getTime()
+  return Math.max(1, Math.ceil(ms / (86400 * 1000)))
 }
 
 serve(async (req) => {
@@ -83,7 +92,6 @@ serve(async (req) => {
       customer_email,
       customer_name,
       due_date,
-      memo,
       stripe_mode: stripeModeRaw,
     } = body
 
@@ -227,10 +235,13 @@ serve(async (req) => {
         customerIdForPreview = ephemeralCustomerId
       }
 
+      // createPreview does not accept invoice-level `description` (Stripe returns unknown parameter).
+      // Memo is still applied on real finalize via create-stripe-invoice (`invoices.create` description).
       preview = await stripe.invoices.createPreview({
         currency: 'usd',
         customer: customerIdForPreview,
-        description: memo?.trim() || undefined,
+        collection_method: 'send_invoice',
+        days_until_due: daysUntilDue(due_date.trim()),
         invoice_items: invoiceItems,
       })
     } finally {
@@ -250,17 +261,43 @@ serve(async (req) => {
     const rawLines = preview.lines?.data ?? []
     const lines = rawLines.map((li) => ({
       description: li.description ?? '',
-      amount: typeof li.amount === 'number' ? li.amount : 0,
+      amount: typeof li.amount === 'number' && !Number.isNaN(li.amount) ? li.amount : 0,
+      quantity:
+        typeof li.quantity === 'number' && !Number.isNaN(li.quantity) ? li.quantity : null,
     }))
 
     const previewNum = preview.number
+    const amount_paid =
+      typeof preview.amount_paid === 'number' && !Number.isNaN(preview.amount_paid)
+        ? preview.amount_paid
+        : 0
+    const total = preview.total ?? 0
+    const arRaw = preview.amount_remaining
+    const amount_remaining =
+      typeof arRaw === 'number' && !Number.isNaN(arRaw)
+        ? Math.max(0, arRaw)
+        : Math.max(0, total - amount_paid)
+
+    const dueRaw = preview.due_date
+    const due_date_unix: number | null =
+      dueRaw === null || dueRaw === undefined
+        ? null
+        : typeof dueRaw === 'number' && Number.isFinite(dueRaw)
+          ? dueRaw
+          : null
+
+    const seller_name = await stripeSellerDisplayName(stripe, preview)
 
     return jsonResponse({
       success: true,
       currency: preview.currency ?? 'usd',
       subtotal: preview.subtotal ?? 0,
-      total: preview.total ?? 0,
+      total,
       amount_due: preview.amount_due ?? preview.total ?? 0,
+      amount_paid,
+      amount_remaining,
+      due_date: due_date_unix,
+      seller_name,
       lines,
       customer_name: customer_name.trim(),
       customer_email: customer_email.trim(),

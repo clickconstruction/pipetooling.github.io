@@ -9581,7 +9581,13 @@ ${totalsHtml}
           </div>
         </div>
       )}
-      <BilledBillViewModal invoice={viewBillInvoice} onClose={() => setViewBillInvoice(null)} />
+      <BilledBillViewModal
+        invoice={viewBillInvoice}
+        onClose={() => {
+          setViewBillInvoice(null)
+          void loadJobs()
+        }}
+      />
       <BilledPaymentConfirmationModal
         mode="job"
         invoice={null}

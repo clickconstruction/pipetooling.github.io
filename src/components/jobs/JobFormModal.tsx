@@ -1,5 +1,6 @@
 /* eslint-disable react-hooks/exhaustive-deps -- mount-only init; parent remounts via key */
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { NO_CUSTOMER_TYPE_LABEL } from '../../constants/customerTypeLabels'
 import { supabase } from '../../lib/supabase'
@@ -10,14 +11,16 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { parseCustomerImport } from '../../utils/parseCustomerImport'
 import { nameSimilarity } from '../../utils/nameSimilarity'
 import { formatPostgrestOrUnknownError, withSupabaseRetry } from '../../utils/errorHandling'
+import { formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
 import CustomerAcceptanceRecordModal from '../estimates/CustomerAcceptanceRecordModal'
 import { MoneyDecimalAmountInput } from '../MoneyDecimalAmountInput'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { resolveCustomerIdForJobPayload } from '../../lib/jobLedgerCustomer'
 import { resolveEffectiveJobMasterUserId } from '../../lib/resolveEffectiveJobMasterUserId'
+import { getBillingStripeModePref, stripeModeInvokeBody } from '../../lib/billingStripeModePref'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
-import { formatInvoiceCreatedRelativePhrase } from '../../lib/invoiceCreatedRelative'
+import { invoiceCreatedCalendarDayOffset } from '../../lib/invoiceCreatedRelative'
 import { formatMercuryCardChargesPostedDate } from '../../lib/formatMercuryCardChargesPostedDate'
 import { fetchJobMaterialsCostSnapshot } from '../../lib/fetchJobMaterialsCostSnapshot'
 import { formatMercuryDebitCardIdCompact } from '../../lib/mercuryRawDebitCard'
@@ -89,16 +92,6 @@ function formatPaymentDateForDisplay(isoYmd: string | null | undefined): string 
   const d = new Date(`${t}T12:00:00`)
   if (Number.isNaN(d.getTime())) return t
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
-}
-
-function outstandingBillingLabel(inv: JobsLedgerInvoiceRow): string {
-  if ((inv.stripe_invoice_id ?? '').trim()) return 'Stripe'
-  const ch = (inv.external_send_channel ?? '').trim()
-  if (ch === 'stripe') return 'Stripe'
-  if (ch === 'housecallpro') return 'Outside (Housecall Pro)'
-  if (ch === 'physical') return 'Outside (Physical)'
-  if (ch) return `Outside (${ch})`
-  return 'Billed'
 }
 
 function parseMoneyInputToNumber(s: string): number {
@@ -184,6 +177,70 @@ export default function JobFormModal({
   const [initDone, setInitDone] = useState(false)
   const [editing, setEditing] = useState<JobWithDetails | null>(null)
   const [billViewInvoice, setBillViewInvoice] = useState<InvoiceWithJobForBillView | null>(null)
+  const editingIdRef = useRef<string | null>(null)
+  editingIdRef.current = editing?.id ?? null
+
+  const refetchEditingFromBillView = useCallback(() => {
+    const jobId = editingIdRef.current
+    if (!jobId) return
+    void fetchJobWithDetailsById(jobId).then((found) => {
+      if (found) setEditing(found)
+    })
+  }, [])
+
+  const stripeMemoBackfillKey = useMemo(() => {
+    if (!editing?.id) return null
+    const needIds = (editing.invoices ?? [])
+      .filter(
+        (i) =>
+          i.status === 'billed' &&
+          (i.stripe_invoice_id ?? '').trim() &&
+          (i.hosted_invoice_url ?? '').trim() &&
+          !(i.stripe_invoice_memo ?? '').trim(),
+      )
+      .map((i) => i.id)
+      .sort()
+      .join('|')
+    if (!needIds) return null
+    return `${editing.id}::${needIds}`
+  }, [editing?.id, editing?.invoices])
+
+  useEffect(() => {
+    if (!stripeMemoBackfillKey || !editing?.id) return
+    const jobId = editing.id
+    const targets = (editing.invoices ?? []).filter(
+      (i) =>
+        i.status === 'billed' &&
+        (i.stripe_invoice_id ?? '').trim() &&
+        (i.hosted_invoice_url ?? '').trim() &&
+        !(i.stripe_invoice_memo ?? '').trim(),
+    )
+    if (targets.length === 0) return
+
+    let cancelled = false
+    void (async () => {
+      const { data: auth } = await supabase.auth.getSession()
+      const token = auth.session?.access_token
+      if (!token || cancelled) return
+      for (const inv of targets) {
+        if (cancelled) return
+        await supabase.functions.invoke('get-stripe-invoice-details', {
+          body: {
+            jobs_ledger_invoice_id: inv.id,
+            ...stripeModeInvokeBody(getBillingStripeModePref()),
+          },
+          headers: { Authorization: `Bearer ${token}` },
+        })
+      }
+      if (cancelled) return
+      const found = await fetchJobWithDetailsById(jobId)
+      if (!cancelled && found) setEditing(found)
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [stripeMemoBackfillKey])
   const [sourceEstimateForJob, setSourceEstimateForJob] = useState<EstimatesRow | null>(null)
   const [sourceEstimateLoading, setSourceEstimateLoading] = useState(false)
   const [contractModalEstimateId, setContractModalEstimateId] = useState<string | null>(null)
@@ -2000,15 +2057,18 @@ export default function JobFormModal({
             </div>
           {editing && (
             <>
-              {((editing.invoices ?? []).filter((i) => i.status === 'ready_to_bill' || i.status === 'billed').length > 0) && (
+              {(editing.invoices ?? []).some((i) => i.status === 'ready_to_bill') && (
                 <div style={{ marginBottom: '1rem' }}>
-                  <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Open invoices</h4>
+                  <h4 style={{ margin: '0 0 0.35rem', fontSize: '0.9375rem' }}>Ready to Bill</h4>
+                  <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+                    Draft invoices not yet sent. After you bill, they move to Outstanding billing below.
+                  </p>
                   <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.875rem' }}>
                     {(editing.invoices ?? [])
-                      .filter((i) => i.status === 'ready_to_bill' || i.status === 'billed')
+                      .filter((i) => i.status === 'ready_to_bill')
                       .map((inv) => (
                         <li key={inv.id} style={{ marginBottom: '0.25rem' }}>
-                          ${formatCurrency(Number(inv.amount))} — {inv.status === 'ready_to_bill' ? 'Ready to Bill' : 'Billed'}
+                          ${formatCurrency(Number(inv.amount))} — Ready to Bill
                           <button
                             type="button"
                             onClick={() => {
@@ -2019,59 +2079,57 @@ export default function JobFormModal({
                           >
                             View in Stages
                           </button>
-                          {inv.status === 'ready_to_bill' && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (!editing) return
-                                if (!jobLedgerHasCustomerForBilling(editing.customer_id)) {
-                                  showToast('Link this job to a customer before billing.', 'error')
-                                  return
-                                }
-                                const ctx: JobBillingContext = {
-                                  id: editing.id,
-                                  master_user_id: editing.master_user_id,
-                                  hcp_number: editing.hcp_number,
-                                  job_name: editing.job_name,
-                                  customer_id: editing.customer_id,
-                                  customer_name: editing.customer_name,
-                                  customer_email: editing.customer_email,
-                                }
-                                billCustomer?.openBillCustomer({
-                                  payload: {
-                                    kind: 'invoice',
-                                    job: ctx,
-                                    invoice: {
-                                      id: inv.id,
-                                      amount: inv.amount,
-                                      status: inv.status,
-                                    },
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!editing) return
+                              if (!jobLedgerHasCustomerForBilling(editing.customer_id)) {
+                                showToast('Link this job to a customer before billing.', 'error')
+                                return
+                              }
+                              const ctx: JobBillingContext = {
+                                id: editing.id,
+                                master_user_id: editing.master_user_id,
+                                hcp_number: editing.hcp_number,
+                                job_name: editing.job_name,
+                                customer_id: editing.customer_id,
+                                customer_name: editing.customer_name,
+                                customer_email: editing.customer_email,
+                              }
+                              billCustomer?.openBillCustomer({
+                                payload: {
+                                  kind: 'invoice',
+                                  job: ctx,
+                                  invoice: {
+                                    id: inv.id,
+                                    amount: inv.amount,
+                                    status: inv.status,
                                   },
-                                  onSuccess: async () => {
-                                    onSavedRef.current?.()
-                                    const found = await fetchJobWithDetailsById(editing.id)
-                                    if (found) setEditing(found)
-                                  },
-                                  onAfterEnsureSuccess: async () => {
-                                    const found = await fetchJobWithDetailsById(editing.id)
-                                    if (found) setEditing(found)
-                                  },
-                                })
-                              }}
-                              style={{
-                                marginLeft: 8,
-                                padding: '0.15rem 0.35rem',
-                                fontSize: '0.75rem',
-                                background: '#dbeafe',
-                                border: '1px solid #93c5fd',
-                                borderRadius: 4,
-                                cursor: 'pointer',
-                                color: '#1e40af',
-                              }}
-                            >
-                              Preview / Stripe bill…
-                            </button>
-                          )}
+                                },
+                                onSuccess: async () => {
+                                  onSavedRef.current?.()
+                                  const found = await fetchJobWithDetailsById(editing.id)
+                                  if (found) setEditing(found)
+                                },
+                                onAfterEnsureSuccess: async () => {
+                                  const found = await fetchJobWithDetailsById(editing.id)
+                                  if (found) setEditing(found)
+                                },
+                              })
+                            }}
+                            style={{
+                              marginLeft: 8,
+                              padding: '0.15rem 0.35rem',
+                              fontSize: '0.75rem',
+                              background: '#dbeafe',
+                              border: '1px solid #93c5fd',
+                              borderRadius: 4,
+                              cursor: 'pointer',
+                              color: '#1e40af',
+                            }}
+                          >
+                            Preview / Stripe bill…
+                          </button>
                         </li>
                       ))}
                   </ul>
@@ -2080,118 +2138,163 @@ export default function JobFormModal({
               {(editing.invoices ?? []).some((i) => i.status === 'billed') && (
                 <div style={{ marginBottom: '1rem' }}>
                   <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Outstanding billing</h4>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                    <thead style={{ background: '#f9fafb' }}>
-                      <tr>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Label</th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Date</th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Note</th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Billed</th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Open</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(editing.invoices ?? [])
-                        .filter((i) => i.status === 'billed')
-                        .map((inv, idx, arr) => {
-                          const applied = (editing.payments ?? [])
-                            .filter((p) => p.invoice_id === inv.id)
-                            .reduce((s, p) => s + Number(p.amount ?? 0), 0)
-                          const open = Math.max(0, Number(inv.amount ?? 0) - applied)
-                          const sent =
-                            inv.sent_to_customer_at != null && String(inv.sent_to_customer_at).trim()
-                              ? String(inv.sent_to_customer_at).slice(0, 10)
-                              : '—'
-                          const note = (inv.external_send_note ?? '').trim() || '—'
-                          return (
-                            <tr
-                              key={inv.id}
-                              style={{ borderBottom: idx < arr.length - 1 ? '1px solid #e5e7eb' : 'none' }}
-                            >
-                              <td style={{ padding: '0.5rem 0.75rem', verticalAlign: 'top' }}>{outstandingBillingLabel(inv)}</td>
-                              <td style={{ padding: '0.5rem 0.75rem', verticalAlign: 'top' }}>{sent}</td>
-                              <td style={{ padding: '0.5rem 0.75rem', verticalAlign: 'top', wordBreak: 'break-word' }}>{note}</td>
-                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
-                                ${formatCurrency(Number(inv.amount ?? 0))}
-                              </td>
-                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top', fontWeight: 600 }}>
-                                ${formatCurrency(open)}
-                              </td>
-                            </tr>
-                          )
-                        })}
-                    </tbody>
-                  </table>
-                  {(() => {
-                    const stripeLinks = (editing.invoices ?? [])
-                      .filter((i) => i.status === 'billed')
-                      .filter((inv) => (inv.stripe_invoice_id ?? '').trim() && (inv.hosted_invoice_url ?? '').trim())
-                    if (stripeLinks.length === 0) return null
-                    return (
-                      <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem' }}>
-                        {stripeLinks.map((inv) => {
-                          const createdPhrase = formatInvoiceCreatedRelativePhrase(inv.created_at)
-                          return (
-                            <div key={inv.id} style={{ marginTop: 8 }}>
-                              <div
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  flexWrap: 'wrap',
-                                  gap: '0.35rem 0.5rem',
-                                  fontWeight: 600,
-                                  marginBottom: 4,
-                                }}
-                              >
-                                <span>
-                                  Stripe invoice #{inv.sequence_order} — ${formatCurrency(Number(inv.amount ?? 0))}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (!editing) return
-                                    setBillViewInvoice({ ...inv, job: editing })
-                                  }}
-                                  style={{
-                                    padding: '0.15rem 0.5rem',
-                                    fontSize: '0.75rem',
-                                    background: '#e5e7eb',
-                                    border: 'none',
-                                    borderRadius: 4,
-                                    cursor: 'pointer',
-                                    fontWeight: 500,
-                                  }}
-                                >
-                                  View Bill
-                                </button>
-                                {createdPhrase ? (
-                                  <span style={{ fontWeight: 400, color: '#6b7280', fontSize: '0.75rem' }}>{createdPhrase}</span>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table
+                      style={{
+                        width: '100%',
+                        minWidth: 480,
+                        borderCollapse: 'collapse',
+                        fontSize: '0.875rem',
+                        tableLayout: 'fixed',
+                      }}
+                    >
+                      <colgroup>
+                        <col style={{ width: '28%' }} />
+                        <col style={{ width: '24%' }} />
+                        <col style={{ width: '48%' }} />
+                      </colgroup>
+                      <thead style={{ background: '#f9fafb' }}>
+                        <tr>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Date</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Billed</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(editing.invoices ?? [])
+                          .filter((i) => i.status === 'billed')
+                          .map((inv, idx, arr) => {
+                            const sent =
+                              inv.sent_to_customer_at != null && String(inv.sent_to_customer_at).trim()
+                                ? String(inv.sent_to_customer_at).slice(0, 10)
+                                : '—'
+                            const hasStripeShare =
+                              (inv.stripe_invoice_id ?? '').trim().length > 0 &&
+                              (inv.hosted_invoice_url ?? '').trim().length > 0
+                            const createdDayOffset = invoiceCreatedCalendarDayOffset(inv.created_at)
+                            const noteLine = (inv.external_send_note ?? '').trim()
+                            const memoLine = (inv.stripe_invoice_memo ?? '').trim()
+                            const hasDetailLine = Boolean(noteLine || memoLine)
+                            const rowSep = idx < arr.length - 1 ? '1px solid #e5e7eb' : 'none'
+                            const btnGray: CSSProperties = {
+                              padding: '0.15rem 0.45rem',
+                              fontSize: '0.75rem',
+                              background: '#e5e7eb',
+                              border: 'none',
+                              borderRadius: 4,
+                              cursor: 'pointer',
+                              fontWeight: 500,
+                            }
+                            return (
+                              <Fragment key={inv.id}>
+                                <tr style={{ borderBottom: hasDetailLine ? 'none' : rowSep }}>
+                                  <td style={{ padding: '0.5rem 0.75rem', verticalAlign: 'top', wordBreak: 'break-word' }}>
+                                    <div>
+                                      {sent === '—'
+                                        ? '—'
+                                        : createdDayOffset !== null
+                                          ? `${formatWorkDateYmdMonthDayShort(sent)} (+${createdDayOffset})`
+                                          : formatWorkDateYmdMonthDayShort(sent)}
+                                    </div>
+                                  </td>
+                                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
+                                    ${formatCurrency(Number(inv.amount ?? 0))}
+                                  </td>
+                                  <td style={{ padding: '0.5rem 0.75rem', verticalAlign: 'top', textAlign: 'right' }}>
+                                    <div
+                                      style={{
+                                        display: 'flex',
+                                        flexWrap: 'wrap',
+                                        gap: '0.35rem',
+                                        alignItems: 'center',
+                                        justifyContent: 'flex-end',
+                                        width: '100%',
+                                      }}
+                                    >
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          onClose()
+                                          navigate(`/jobs?tab=stages&stagesInvoice=${encodeURIComponent(inv.id)}`)
+                                        }}
+                                        style={btnGray}
+                                      >
+                                        Stages
+                                      </button>
+                                      {hasStripeShare ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            if (!editing) return
+                                            setBillViewInvoice({ ...inv, job: editing })
+                                          }}
+                                          style={btnGray}
+                                        >
+                                          Bill
+                                        </button>
+                                      ) : null}
+                                      {hasStripeShare ? (
+                                        <StripeInvoiceSharePanel
+                                          hostedInvoiceUrl={inv.hosted_invoice_url!.trim()}
+                                          stripeInvoiceId={(inv.stripe_invoice_id ?? '').trim()}
+                                          customerEmail={editing.customer_email}
+                                          customerName={editing.customer_name}
+                                          jobName={editing.job_name}
+                                          hcpNumber={editing.hcp_number}
+                                          amountLabel={`$${formatCurrency(Number(inv.amount ?? 0))}`}
+                                          compact
+                                          paymentLinkActionsAsIcons
+                                          omitPaymentLinksLabel
+                                          unboxed
+                                          inlineRow
+                                          omitCustomerPayPage
+                                          omitOpenInStripe
+                                        />
+                                      ) : null}
+                                    </div>
+                                  </td>
+                                </tr>
+                                {hasDetailLine ? (
+                                  <tr style={{ borderBottom: rowSep }}>
+                                    <td
+                                      colSpan={3}
+                                      style={{
+                                        padding: '0.2rem 0.75rem 0.5rem',
+                                        fontSize: '0.75rem',
+                                        color: '#6b7280',
+                                        wordBreak: 'break-word',
+                                        lineHeight: 1.45,
+                                        borderTop: '1px solid #f3f4f6',
+                                      }}
+                                    >
+                                      {noteLine ? (
+                                        <div style={{ marginBottom: memoLine ? '0.3rem' : 0 }}>
+                                          <span style={{ fontWeight: 600, color: '#4b5563' }}>Note: </span>
+                                          {noteLine}
+                                        </div>
+                                      ) : null}
+                                      {memoLine ? (
+                                        <div>
+                                          <span style={{ fontWeight: 600, color: '#4b5563' }}>Memo: </span>
+                                          {memoLine}
+                                        </div>
+                                      ) : null}
+                                    </td>
+                                  </tr>
                                 ) : null}
-                              </div>
-                              <StripeInvoiceSharePanel
-                                hostedInvoiceUrl={inv.hosted_invoice_url!.trim()}
-                                stripeInvoiceId={(inv.stripe_invoice_id ?? '').trim()}
-                                customerEmail={editing.customer_email}
-                                customerName={editing.customer_name}
-                                jobName={editing.job_name}
-                                hcpNumber={editing.hcp_number}
-                                amountLabel={`$${formatCurrency(Number(inv.amount ?? 0))}`}
-                                compact
-                                paymentLinkActionsAsIcons
-                              />
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )
-                  })()}
+                              </Fragment>
+                            )
+                          })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
             </>
           )}
             <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Payments received ($)</label>
-              <div style={{ overflowX: 'auto', marginLeft: -4, marginRight: -4, paddingLeft: 4, paddingRight: 4 }}>
+              <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Payments received</h4>
+              <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', minWidth: 420, borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>
                 <colgroup>
                   <col style={{ width: '26%' }} />
@@ -2199,12 +2302,12 @@ export default function JobFormModal({
                   <col style={{ width: '26%' }} />
                   <col style={{ width: '6%' }} />
                 </colgroup>
-                <thead style={{ background: '#f9fafb' }}>
+                               <thead style={{ background: '#f9fafb' }}>
                   <tr>
-                    <th style={{ padding: '0.625rem 0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Date</th>
-                    <th style={{ padding: '0.625rem 0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Note</th>
-                    <th style={{ padding: '0.625rem 0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Amount ($)</th>
-                    <th style={{ padding: '0.625rem 0.35rem', width: 44, borderBottom: '1px solid #e5e7eb' }} />
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Date</th>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Memo</th>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Amount ($)</th>
+                    <th style={{ padding: '0.5rem 0.35rem', width: 44, borderBottom: '1px solid #e5e7eb' }} />
                   </tr>
                 </thead>
                 <tbody>
@@ -2215,12 +2318,10 @@ export default function JobFormModal({
                       key={row.id}
                       style={{
                         borderBottom: idx < payments.length - 1 ? '1px solid #e5e7eb' : 'none',
-                        ...(stripePaymentLocked
-                          ? { background: '#f8fafc', boxShadow: 'inset 3px 0 0 0 #2563eb' }
-                          : {}),
+                        ...(stripePaymentLocked ? { boxShadow: 'inset 3px 0 0 0 #2563eb' } : {}),
                       }}
                     >
-                      <td style={{ padding: '0.625rem 0.5rem', verticalAlign: 'middle', overflow: 'hidden' }}>
+                      <td style={{ padding: '0.5rem 0.75rem', verticalAlign: 'middle', overflow: 'hidden' }}>
                         {stripePaymentLocked ? (
                           <span
                             style={{ fontSize: '0.875rem', color: '#374151', fontVariantNumeric: 'tabular-nums' }}
@@ -2248,14 +2349,14 @@ export default function JobFormModal({
                           />
                         )}
                       </td>
-                      <td style={{ padding: '0.625rem 0.5rem', verticalAlign: 'middle', overflow: 'hidden' }}>
+                      <td style={{ padding: '0.5rem 0.75rem', verticalAlign: 'middle', overflow: 'hidden' }}>
                         <input
                           id={`edit-job-payment-note-${row.id}`}
                           type="text"
                           value={row.note ?? ''}
                           onChange={(e) => updatePaymentRow(row.id, { note: e.target.value === '' ? null : e.target.value })}
                           placeholder="Optional"
-                          aria-label="Payment note"
+                          aria-label="Payment memo"
                           style={{
                             width: '100%',
                             minWidth: 0,
@@ -2267,7 +2368,7 @@ export default function JobFormModal({
                           }}
                         />
                       </td>
-                      <td style={{ padding: '0.625rem 0.5rem', textAlign: 'right', verticalAlign: 'middle', overflow: 'hidden' }}>
+                      <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'middle', overflow: 'hidden' }}>
                         {stripePaymentLocked ? (
                           <div
                             style={{
@@ -2355,7 +2456,7 @@ export default function JobFormModal({
                           </div>
                         )}
                       </td>
-                      <td style={{ padding: '0.625rem 0.35rem', verticalAlign: 'middle', textAlign: 'center' }}>
+                      <td style={{ padding: '0.5rem 0.35rem', verticalAlign: 'middle', textAlign: 'center' }}>
                         {stripePaymentLocked ? null : (
                           <button
                             type="button"
@@ -2392,11 +2493,9 @@ export default function JobFormModal({
                   flexDirection: 'column',
                   gap: '0.75rem',
                   marginTop: '0.75rem',
-                  paddingTop: '0.75rem',
-                  borderTop: '1px solid #f3f4f6',
                 }}
               >
-                <div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                   <button type="button" onClick={addPaymentRow} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', fontWeight: 500, background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
                     Record Payment
                   </button>
@@ -2410,11 +2509,56 @@ export default function JobFormModal({
                       background: '#f9fafb',
                     }}
                   >
-                    <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>Partial invoice</h4>
-                    <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: '#6b7280' }}>
-                      Break off an amount to send through Ready to Bill. The job stays in Working.
-                    </p>
-                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        justifyContent: 'space-between',
+                        gap: '0.5rem',
+                        marginBottom: '0.5rem',
+                      }}
+                    >
+                      <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>Partial invoice</h4>
+                      <div style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+                        Remaining (billable): ${formatCurrency(getEditJobBillableRemaining())}
+                        {getEditJobBillableRemaining() > 0 ? (
+                          <>
+                            {' · '}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setError(null)
+                                setNewInvoiceAmount(getEditJobBillableRemaining().toFixed(2))
+                              }}
+                              aria-label="Fill partial invoice amount with full remaining billable balance"
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                padding: 0,
+                                cursor: 'pointer',
+                                color: '#2563eb',
+                                fontSize: 'inherit',
+                                fontFamily: 'inherit',
+                                textDecoration: 'underline',
+                              }}
+                            >
+                              Use full remaining
+                            </button>
+                          </>
+                        ) : null}
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexWrap: 'wrap',
+                        gap: '0.5rem',
+                        width: '100%',
+                      }}
+                    >
                       <label htmlFor="edit-job-partial-invoice-amount" style={{ fontSize: '0.875rem', fontWeight: 500, color: '#374151' }}>
                         Amount ($)
                       </label>
@@ -2447,34 +2591,9 @@ export default function JobFormModal({
                         {creatingInvoice ? '…' : 'Create invoice'}
                       </button>
                     </div>
-                    <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.35rem' }}>
-                      Remaining (billable): ${formatCurrency(getEditJobBillableRemaining())}
-                      {getEditJobBillableRemaining() > 0 ? (
-                        <>
-                          {' · '}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setError(null)
-                              setNewInvoiceAmount(getEditJobBillableRemaining().toFixed(2))
-                            }}
-                            aria-label="Fill partial invoice amount with full remaining billable balance"
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              padding: 0,
-                              cursor: 'pointer',
-                              color: '#2563eb',
-                              fontSize: 'inherit',
-                              fontFamily: 'inherit',
-                              textDecoration: 'underline',
-                            }}
-                          >
-                            Use full remaining
-                          </button>
-                        </>
-                      ) : null}
-                    </div>
+                    <p style={{ margin: '0.5rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+                      Break off an amount to send through Ready to Bill. Job stays in Working.
+                    </p>
                   </div>
                 )}
               </div>
@@ -2643,7 +2762,32 @@ export default function JobFormModal({
 
       <BilledBillViewModal
         invoice={billViewInvoice}
-        onClose={() => setBillViewInvoice(null)}
+        onAfterStripeDetailsLoaded={refetchEditingFromBillView}
+        onClose={() => {
+          const jobId = editing?.id ?? null
+          const invId = billViewInvoice?.id ?? null
+          setBillViewInvoice(null)
+          if (!jobId) return
+          void (async () => {
+            const tryRefetch = async () => {
+              const found = await fetchJobWithDetailsById(jobId)
+              if (found) setEditing(found)
+              return found
+            }
+            for (let attempt = 0; attempt < 3; attempt++) {
+              if (attempt > 0) await new Promise((r) => setTimeout(r, 280))
+              const found = await tryRefetch()
+              if (!found || !invId) break
+              const inv = found.invoices.find((x) => x.id === invId)
+              const stillNeeds =
+                inv &&
+                (inv.stripe_invoice_id ?? '').trim() &&
+                (inv.hosted_invoice_url ?? '').trim() &&
+                !(inv.stripe_invoice_memo ?? '').trim()
+              if (!stillNeeds) break
+            }
+          })()
+        }}
         overlayZIndex={JOB_FORM_BILL_VIEW_OVERLAY_Z_INDEX}
       />
       <CustomerAcceptanceRecordModal

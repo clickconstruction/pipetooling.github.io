@@ -13,17 +13,25 @@ function calendarDaysFromTo(earlierYmd: string, laterYmd: string): number {
 }
 
 /**
- * Lowercase phrase from invoice `created_at`, using company calendar days (`denverCalendarDayKey`).
- * E.g. `created today`, `created yesterday`, `created 15 days ago`.
+ * Calendar days from invoice `created_at` to today (`denverCalendarDayKey`), clamped at 0.
+ * `0` = created today, `1` = yesterday, etc. `null` if `created_at` is missing or invalid.
  */
-export function formatInvoiceCreatedRelativePhrase(createdAt: string | null | undefined): string | null {
+export function invoiceCreatedCalendarDayOffset(createdAt: string | null | undefined): number | null {
   if (createdAt == null || !String(createdAt).trim()) return null
   const ms = Date.parse(String(createdAt))
   if (Number.isNaN(ms)) return null
   const createdYmd = denverCalendarDayKey(ms)
   const todayYmd = denverCalendarDayKey(Date.now())
   const n = calendarDaysFromTo(createdYmd, todayYmd)
-  if (n <= 0) return 'created today'
-  if (n === 1) return 'created yesterday'
-  return `created ${n} days ago`
+  return n < 0 ? 0 : n
+}
+
+/**
+ * Label from invoice `created_at` using company calendar days (`denverCalendarDayKey`).
+ * `T+0` = created today, `T+1` = calendar yesterday, `T+2` = two days ago, etc.
+ */
+export function formatInvoiceCreatedRelativePhrase(createdAt: string | null | undefined): string | null {
+  const days = invoiceCreatedCalendarDayOffset(createdAt)
+  if (days === null) return null
+  return `T+${days}`
 }

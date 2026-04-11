@@ -2861,6 +2861,7 @@ export type Database = {
           sequence_order: number
           status: string
           stripe_invoice_id: string | null
+          stripe_invoice_memo: string | null
           stripe_invoice_status: string | null
         }
         Insert: {
@@ -2878,6 +2879,7 @@ export type Database = {
           sequence_order?: number
           status?: string
           stripe_invoice_id?: string | null
+          stripe_invoice_memo?: string | null
           stripe_invoice_status?: string | null
         }
         Update: {
@@ -2895,6 +2897,7 @@ export type Database = {
           sequence_order?: number
           status?: string
           stripe_invoice_id?: string | null
+          stripe_invoice_memo?: string | null
           stripe_invoice_status?: string | null
         }
         Relationships: [
