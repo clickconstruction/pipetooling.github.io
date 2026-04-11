@@ -7,19 +7,22 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-10
+last_updated: 2026-04-11
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.284 → v2.4"
+version_range: "v2.285 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.285)"
+    line: ~875
+    description: "Edit Job Billing: Outstanding billing table (date + (+n), Stages/Bill, Stripe share icons, full-width Note/Memo row); Payments received (Date, Amount ($), Memo; Stripe row vs header, Record Payment); Partial invoice layout; StripeInvoiceSharePanel inlineRow"
   - name: "Latest Version (v2.284)"
-    line: ~867
+    line: ~887
     description: "Banking: product+tab URL (Mercury Ledger/Sorting vs Stripe Invoices/Data, dev-only Stripe); BankingStripeInvoicesPanel + BankingStripeWebhookEventsPanel; Jobs Stages: narrow loadJobs customer param, thread stats chunk 200 + generation guard, 320ms debounce"
   - name: "Latest Version (v2.283)"
-    line: ~903
+    line: ~900
     description: "Bill Customer Stripe pre-create preview (preview-stripe-invoice); StripeBillPreSubmitPreview; stripeInvoiceShareCopy; BillCustomerModalProvider + Edit Job Preview/Stripe bill; modal z-index over Edit Job"
   - name: "Latest Version (v2.282)"
     line: ~890
@@ -679,6 +682,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.285 — Edit Job Billing: Outstanding billing + Payments received + Partial invoice UX; StripeInvoiceSharePanel toolbar](#latest-updates-v2285)
 **New:** [v2.284 — Banking: Mercury/Stripe tabs + URL; Stripe invoice & webhook grids; Jobs Stages thread-stats perf](#latest-updates-v2284)
 **New:** [v2.283 — Bill Customer: Stripe preview before create; global modal; Edit Job entry](#latest-updates-v2283)
 **New:** [v2.282 — Bill Customer: Stripe invoice + share panel; webhook lifecycle](#latest-updates-v2282)
@@ -866,6 +870,17 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.285)
+
+**Date**: 2026-04-11
+
+### Edit Job — **Billing**: **Outstanding billing** table; **Payments received** chrome; **Partial invoice** layout; **`StripeInvoiceSharePanel`** toolbar
+
+- **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)** — **Partial invoice** card (no **Partial invoice** title) sits **above** **Outstanding billing** (after **Ready to Bill** when present): **Make Invoice:** / **Create invoice** centered; gray helper *Break off an amount to send through Ready to Bill. Job stays in Working.* only (**Remaining (billable)** / **Use full remaining** hidden). **Outstanding billing** (billed invoices): columns **Date**, **Billed**, **Actions** (`table-layout: fixed`, spread columns). **Date**: [`formatWorkDateYmdMonthDayShort`](src/utils/dateUtils.ts) (e.g. **Apr 10**) plus **`(+n)`** from [`invoiceCreatedCalendarDayOffset`](src/lib/invoiceCreatedRelative.ts) (company calendar days since invoice **`created_at`**). **Actions**: **Stages**, **Bill** (opens View Bill when Stripe hosted invoice exists); **[`StripeInvoiceSharePanel`](src/components/jobs/StripeInvoiceSharePanel.tsx)** copy / SMS / email as compact **icons** in the same row (`omitPaymentLinksLabel`, `unboxed`, `inlineRow`); **Customer pay page** / **Open in Stripe** omitted (use **Bill**). **Outside send note** + **Stripe invoice memo**: optional **second table row**, full width (`colSpan` 3), default background (no gray “card”, no rule above the row). **Payments received**: section title **Payments received** (matches **Outstanding billing** `h4` + `overflow-x` wrapper); table columns **Date**, **Amount ($)**, **Memo**; gray **`thead`** only—body rows use default background; **Stripe-linked** payment rows: **blue left inset** only (not header-colored fill); **Record Payment** right-aligned; no divider rule between payments table and **Record Payment** block.
+- **[`StripeInvoiceSharePanel.tsx`](src/components/jobs/StripeInvoiceSharePanel.tsx)** — **`inlineRow`**: no extra top margin / inner row stretch when icons sit beside sibling buttons; **compact** payment-link icons use tighter padding and **gap: 0** so the cluster is narrow in **Actions**.
+
 ---
 
 ## Latest Updates (v2.284)
@@ -2004,7 +2019,7 @@ when_to_read:
 - **Customer gate** ([`Jobs.tsx`](src/pages/Jobs.tsx), [`Dashboard.tsx`](src/pages/Dashboard.tsx)): **Ready to Bill** **Invoice / Update** and **Ham mode** instant **billed** require **`jobs_ledger.customer_id`**. If missing: **toast**; Jobs calls **`openEdit(job, { billingCustomerHighlight: true })`** (or invoice’s parent job) so **Edit Job** opens with **Customer** expanded and a **red callout** around **Link to customer**, search, and **Create customer from job** (`billingCustomerHighlight` state, `scrollIntoView`, cleared on link or close). Dashboard blocks the modal with a toast only (no navigation).
 - **RPC**: [`20260330065236_add_customer_id_to_get_jobs_ledger_by_status.sql`](supabase/migrations/20260330065236_add_customer_id_to_get_jobs_ledger_by_status.sql) — **`get_jobs_ledger_by_status`** returns **`customer_id`** (DROP/CREATE; Postgres cannot widen **`CREATE OR REPLACE`** return row type). See [`MIGRATIONS.md`](MIGRATIONS.md).
 - **Safety nets**: [`SendRecordInvoiceModal.tsx`](src/components/jobs/SendRecordInvoiceModal.tsx) — minimal shell if **`job.customer_id`** is missing. Edge **[`create-stripe-invoice`](supabase/functions/create-stripe-invoice/index.ts)** returns **400** when the job has no linked customer or body **`customer_id`** ≠ job (**[`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md)**).
-- **Edit Job — Billing**: **Open invoices** list appears **above** **Payments received ($)**; payments action button label **Record Payment** (was Add Payment).
+- **Edit Job — Billing**: **Open invoices** list appears **above** **Payments received**; payments action button label **Record Payment** (was Add Payment). Section title is **Payments received** without **`($)`** (see v2.285).
 - **Ready to Bill copy** (Jobs **Stages** + Dashboard RTB cards): Secondary actions **Job: Send Job Back** (job row) and **Delete draft bill** (invoice-only / bundle remove draft); **Billed** section keeps **Send back** / **Remove line**. Confirmation modals use matching titles / primary buttons (`sendBackJob` **`toStatus === 'working'`**, `sendBackInvoice` **`action === 'delete'`**).
 
 ---
@@ -3029,7 +3044,7 @@ when_to_read:
 
 ### Jobs – Billing Section UX Refactor
 
-- **Payments received**: Label changed from "Payments Made ($)" to "Payments received ($)".
+- **Payments received**: Label changed from "Payments Made ($)" to "Payments received ($)"; later **Payments received** without **`($)`** (v2.285).
 - **Total Bill + Remaining**: Remaining ($) moved next to Total Bill ($) in a flex row (side by side).
 - **Create invoice inline**: Create partial invoice block compacted; Amount input and Create invoice button placed inline with Add Payment button in a single action row, with subtle separator above. Long description moved to input `title` tooltip.
 
