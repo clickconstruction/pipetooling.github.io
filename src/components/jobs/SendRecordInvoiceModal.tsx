@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useAuth } from '../../hooks/useAuth'
 import { supabase } from '../../lib/supabase'
 import {
   getBillingStripeModePref,
@@ -15,8 +16,10 @@ import {
   parseStripeInvoicePreviewResponse,
 } from '../../lib/stripeInvoicePreview'
 import { buildStripeInvoiceLineDescription } from '../../lib/stripeInvoiceLineDescription'
+import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import { StripeBillPreSubmitPreview } from './StripeBillPreSubmitPreview'
 import StripeBillingModeToggle from './StripeBillingModeToggle'
+import { HostedStripeBillPanel, type InvoiceWithJobForBillView } from './HostedStripeBillPanel'
 import { StripeInvoiceLinesSummary } from './StripeInvoiceLinesSummary'
 import { StripeInvoicePreviewMeta } from './StripeInvoicePreviewMeta'
 import { StripeInvoiceSharePanel } from './StripeInvoiceSharePanel'
@@ -106,6 +109,8 @@ export default function SendRecordInvoiceModal({
   const onAfterEnsureSuccessRef = useRef(onAfterEnsureSuccess)
   onAfterEnsureSuccessRef.current = onAfterEnsureSuccess
 
+  const { role: authRole } = useAuth()
+
   const [tab, setTab] = useState<'outside' | 'stripe'>('outside')
   const [channel, setChannel] = useState<ExternalChannel>('housecallpro')
   const [sentDate, setSentDate] = useState(todayIsoDate)
@@ -129,15 +134,14 @@ export default function SendRecordInvoiceModal({
     idempotent?: boolean
     invoice_preview: StripeInvoiceLinesSnapshot | null
   } | null>(null)
+  const [stripeSuccessInvoice, setStripeSuccessInvoice] = useState<InvoiceWithJobForBillView | null>(null)
 
   const [stripePreview, setStripePreview] = useState<StripeInvoicePreviewSuccess | null>(null)
   const [stripePreviewLoading, setStripePreviewLoading] = useState(false)
   const [stripePreviewError, setStripePreviewError] = useState<string | null>(null)
   const stripePreviewReqId = useRef(0)
   const [stripeModePref, setStripeModePref] = useState<BillingStripeModePref>(() => getBillingStripeModePref())
-
-  const STRIPE_PAY_URL_PLACEHOLDER =
-    '(Payment link will appear here after you create the Stripe invoice)'
+  const stripeModeForBilling: BillingStripeModePref = authRole === 'dev' ? stripeModePref : 'live'
 
   const open = payload !== null
   const kind = payload?.kind ?? 'job'
@@ -160,6 +164,7 @@ export default function SendRecordInvoiceModal({
     setStripeSubmitting(false)
     setStripeError(null)
     setStripeResult(null)
+    setStripeSuccessInvoice(null)
     setStripePreview(null)
     setStripePreviewLoading(false)
     setStripePreviewError(null)
@@ -233,7 +238,7 @@ export default function SendRecordInvoiceModal({
   }, [open, job?.id, kind])
 
   useEffect(() => {
-    if (!open || !job || tab !== 'stripe' || stripeResult) {
+    if (!open || !job || tab !== 'stripe' || stripeResult || stripeSuccessInvoice) {
       return
     }
 
@@ -288,7 +293,7 @@ export default function SendRecordInvoiceModal({
               customer_name: (job.customer_name ?? '').trim() || 'Customer',
               due_date: stripeDueDate.trim(),
               memo: stripeMemo.trim() || undefined,
-              ...stripeModeInvokeBody(stripeModePref),
+              ...stripeModeInvokeBody(stripeModeForBilling),
             },
             headers: { Authorization: `Bearer ${token}` },
           })
@@ -335,6 +340,7 @@ export default function SendRecordInvoiceModal({
     job?.customer_name,
     tab,
     stripeResult,
+    stripeSuccessInvoice,
     billAmountStr,
     stripeDueDate,
     stripeMemo,
@@ -343,7 +349,8 @@ export default function SendRecordInvoiceModal({
     ensuredInvoice?.id,
     ensureLoading,
     ensureError,
-    stripeModePref,
+    authRole,
+    stripeModeForBilling,
   ])
 
   async function confirmOutsideBill() {
@@ -448,7 +455,7 @@ export default function SendRecordInvoiceModal({
           customer_name: (job.customer_name ?? '').trim() || 'Customer',
           due_date: stripeDueDate.trim(),
           memo: stripeMemo.trim() || undefined,
-          ...stripeModeInvokeBody(stripeModePref),
+          ...stripeModeInvokeBody(stripeModeForBilling),
         },
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -482,13 +489,21 @@ export default function SendRecordInvoiceModal({
         }
       }
 
-      setStripeResult({
-        hosted_invoice_url: hosted,
-        stripe_invoice_id: stripeId,
-        stripe_invoice_status: typeof body?.stripe_invoice_status === 'string' ? body.stripe_invoice_status : null,
-        idempotent: body?.idempotent === true,
-        invoice_preview: parseStripeInvoiceLinesSnapshot(body?.invoice_preview),
-      })
+      const fresh = await fetchJobWithDetailsById(job.id)
+      const row = fresh?.invoices?.find((i) => i.id === invId)
+      if (fresh && row) {
+        setStripeSuccessInvoice({ ...row, job: fresh })
+        setStripeResult(null)
+      } else {
+        setStripeSuccessInvoice(null)
+        setStripeResult({
+          hosted_invoice_url: hosted,
+          stripe_invoice_id: stripeId,
+          stripe_invoice_status: typeof body?.stripe_invoice_status === 'string' ? body.stripe_invoice_status : null,
+          idempotent: body?.idempotent === true,
+          invoice_preview: parseStripeInvoiceLinesSnapshot(body?.invoice_preview),
+        })
+      }
       await onSuccess()
     } catch (e) {
       setStripeError(e instanceof Error ? e.message : 'Stripe invoice failed')
@@ -571,7 +586,7 @@ export default function SendRecordInvoiceModal({
               {invoice ? ` · RTB $${Number(invoice.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : ''}
             </p>
           </div>
-          {tab === 'stripe' && !stripeResult && (
+          {tab === 'stripe' && !stripeResult && !stripeSuccessInvoice && authRole === 'dev' && (
             <div
               style={{
                 display: 'flex',
@@ -639,9 +654,6 @@ export default function SendRecordInvoiceModal({
             {kind === 'job' && !ensureLoading && ensureError && (
               <p style={{ color: '#b91c1c', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{ensureError}</p>
             )}
-            <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: '0.75rem' }}>
-              Record what you sent the customer. Job balance is not reduced until payment is recorded.
-            </p>
             <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
               <button type="button" onClick={() => setChannel('housecallpro')} style={channelButtonStyle(channel === 'housecallpro')}>
                 HouseCall Pro
@@ -650,18 +662,39 @@ export default function SendRecordInvoiceModal({
                 Physical invoice
               </button>
             </div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>Amount ($)</label>
-            <input
-              type="text"
-              inputMode="decimal"
-              value={billAmountStr}
-              onChange={(e) => setBillAmountStr(e.target.value)}
-              disabled={!outsideReady && kind === 'job'}
-              style={{ width: '100%', padding: '0.35rem', marginBottom: '0.75rem', boxSizing: 'border-box' }}
-            />
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>Date</label>
-            <input type="date" value={sentDate} onChange={(e) => setSentDate(e.target.value)} style={{ width: '100%', padding: '0.35rem', marginBottom: '0.75rem', boxSizing: 'border-box' }} />
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>Note (optional)</label>
+            <div
+              style={{
+                display: 'flex',
+                gap: '0.75rem',
+                marginBottom: '0.75rem',
+                flexWrap: 'wrap',
+                alignItems: 'flex-start',
+              }}
+            >
+              <div style={{ flex: '1 1 8rem', minWidth: 0 }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>
+                  Amount ($)
+                </label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={billAmountStr}
+                  onChange={(e) => setBillAmountStr(e.target.value)}
+                  disabled={!outsideReady && kind === 'job'}
+                  style={{ width: '100%', padding: '0.35rem', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div style={{ flex: '1 1 10rem', minWidth: 0 }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>Date</label>
+                <input
+                  type="date"
+                  value={sentDate}
+                  onChange={(e) => setSentDate(e.target.value)}
+                  style={{ width: '100%', padding: '0.35rem', boxSizing: 'border-box' }}
+                />
+              </div>
+            </div>
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>Memo (optional)</label>
             <textarea value={externalNote} onChange={(e) => setExternalNote(e.target.value)} rows={3} style={{ width: '100%', padding: '0.35rem', marginBottom: '0.75rem', boxSizing: 'border-box', resize: 'vertical' }} />
             {outsideError && <p style={{ color: '#b91c1c', fontSize: '0.875rem' }}>{outsideError}</p>}
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
@@ -695,14 +728,34 @@ export default function SendRecordInvoiceModal({
             {kind === 'job' && !ensureLoading && ensureError && (
               <p style={{ color: '#b91c1c', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{ensureError}</p>
             )}
-            <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: '0.75rem' }}>
-              Creates a finalized Stripe invoice (hosted pay page). The job billing line moves to Billed. Payment still syncs via Stripe webhook when the customer pays.
-            </p>
-            {stripeResult ? (
+            {stripeSuccessInvoice ? (
+              <>
+                <p style={{ fontSize: '0.875rem', color: '#15803d', marginBottom: '0.75rem', fontWeight: 600 }}>
+                  Stripe invoice created
+                  {stripeSuccessInvoice.stripe_invoice_status
+                    ? ` (${stripeSuccessInvoice.stripe_invoice_status})`
+                    : ''}
+                  .
+                </p>
+                <HostedStripeBillPanel invoice={stripeSuccessInvoice} />
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                  >
+                    Done
+                  </button>
+                </div>
+              </>
+            ) : stripeResult ? (
               <>
                 <p style={{ fontSize: '0.875rem', color: '#15803d', marginBottom: '0.5rem', fontWeight: 600 }}>
                   {stripeResult.idempotent ? 'Stripe invoice already exists.' : 'Stripe invoice created.'}{' '}
                   {stripeResult.stripe_invoice_status ? `(${stripeResult.stripe_invoice_status})` : ''}
+                </p>
+                <p style={{ fontSize: '0.8125rem', color: '#b45309', marginBottom: '0.75rem' }}>
+                  Could not reload job details; showing summary from the server response.
                 </p>
                 <StripeInvoiceSharePanel
                   hostedInvoiceUrl={stripeResult.hosted_invoice_url}
@@ -751,22 +804,40 @@ export default function SendRecordInvoiceModal({
               </>
             ) : (
               <>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>Amount ($)</label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={billAmountStr}
-                  onChange={(e) => setBillAmountStr(e.target.value)}
-                  disabled={!outsideReady && kind === 'job'}
-                  style={{ width: '100%', padding: '0.35rem', marginBottom: '0.75rem', boxSizing: 'border-box' }}
-                />
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>Due date</label>
-                <input
-                  type="date"
-                  value={stripeDueDate}
-                  onChange={(e) => setStripeDueDate(e.target.value)}
-                  style={{ width: '100%', padding: '0.35rem', marginBottom: '0.75rem', boxSizing: 'border-box' }}
-                />
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: '0.75rem',
+                    marginBottom: '0.75rem',
+                    flexWrap: 'wrap',
+                    alignItems: 'flex-start',
+                  }}
+                >
+                  <div style={{ flex: '1 1 8rem', minWidth: 0 }}>
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>
+                      Amount ($)
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={billAmountStr}
+                      onChange={(e) => setBillAmountStr(e.target.value)}
+                      disabled={!outsideReady && kind === 'job'}
+                      style={{ width: '100%', padding: '0.35rem', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div style={{ flex: '1 1 10rem', minWidth: 0 }}>
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>
+                      Due date
+                    </label>
+                    <input
+                      type="date"
+                      value={stripeDueDate}
+                      onChange={(e) => setStripeDueDate(e.target.value)}
+                      style={{ width: '100%', padding: '0.35rem', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
                 <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>Memo (optional)</label>
                 <textarea
                   value={stripeMemo}
@@ -790,7 +861,6 @@ export default function SendRecordInvoiceModal({
                     }
                     dueDateYmd={stripeDueDate}
                     memo={stripeMemo}
-                    payUrlPlaceholder={STRIPE_PAY_URL_PLACEHOLDER}
                     localLineDescription={buildStripeInvoiceLineDescription(
                       (job.customer_name ?? '').trim() || 'Customer',
                       job.job_name,
@@ -835,6 +905,10 @@ export default function SendRecordInvoiceModal({
                 </div>
               </>
             )}
+            <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '1rem', marginBottom: 0 }}>
+              Creates a finalized Stripe invoice (hosted pay page). The job billing line moves to Billed. Payment still
+              syncs via Stripe webhook when the customer pays.
+            </p>
           </div>
         )}
       </div>

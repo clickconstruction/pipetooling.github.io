@@ -13,6 +13,7 @@ import {
 } from '../_shared/stripeStaleCustomer.ts'
 import { stripeInvoiceSnapshotForResponse } from '../_shared/stripeInvoiceSnapshot.ts'
 import { buildStripeInvoiceLineDescription } from '../_shared/stripeLineDescription.ts'
+import { stripeInvoiceMemoFromStripe } from '../_shared/stripeInvoiceMemoFromStripe.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -134,7 +135,9 @@ serve(async (req) => {
 
     const { data: invRow, error: invErr } = await userClient
       .from('jobs_ledger_invoices')
-      .select('id, job_id, amount, status, stripe_invoice_id, hosted_invoice_url, stripe_invoice_status')
+      .select(
+        'id, job_id, amount, status, stripe_invoice_id, hosted_invoice_url, stripe_invoice_status, stripe_invoice_memo',
+      )
       .eq('id', jobs_ledger_invoice_id)
       .maybeSingle()
 
@@ -148,6 +151,19 @@ serve(async (req) => {
       try {
         const existing = await stripe.invoices.retrieve(invRow.stripe_invoice_id, { expand: ['lines.data'] })
         invoice_preview = await stripeInvoiceSnapshotForResponse(stripe, existing)
+        const memoFromStripe = stripeInvoiceMemoFromStripe(existing)
+        const memoStored =
+          typeof invRow.stripe_invoice_memo === 'string' ? invRow.stripe_invoice_memo.trim() : ''
+        if (memoFromStripe && !memoStored) {
+          const admin = createClient(supabaseUrl, serviceKey)
+          const { error: memoUpErr } = await admin
+            .from('jobs_ledger_invoices')
+            .update({ stripe_invoice_memo: memoFromStripe })
+            .eq('id', jobs_ledger_invoice_id)
+          if (memoUpErr) {
+            console.warn('create-stripe-invoice: idempotent stripe_invoice_memo backfill failed', memoUpErr)
+          }
+        }
       } catch (e) {
         console.warn('create-stripe-invoice: idempotent invoice retrieve failed', e)
       }
@@ -270,6 +286,7 @@ serve(async (req) => {
 
     const invoice_preview = await stripeInvoiceSnapshotForResponse(stripe, finalized)
 
+    const memoTrimmed = memo?.trim() || null
     const patch: Record<string, unknown> = {
       stripe_invoice_id: finalized.id,
       stripe_invoice_status: finalized.status,
@@ -277,6 +294,7 @@ serve(async (req) => {
       status: 'billed',
       external_send_channel: 'stripe',
       sent_to_customer_at: new Date().toISOString(),
+      stripe_invoice_memo: memoTrimmed,
     }
     if (Number(invRow.amount) !== amount_dollars) {
       patch.amount = amount_dollars

@@ -205,7 +205,7 @@ type DashboardInvoiceJoinRow = JobsLedgerInvoiceRow & {
 }
 
 const DASHBOARD_INVOICES_JOBS_LEDGER_SELECT =
-  'id, job_id, amount, status, created_at, is_primary_rtb_bundle, billed_at, estimated_bill_date, external_send_channel, external_send_note, hosted_invoice_url, sent_to_customer_at, sequence_order, stripe_invoice_id, stripe_invoice_status, jobs_ledger!inner(hcp_number, job_name, job_address, google_drive_link, job_plans_link, created_at, master_user_id, customer_id, customer_name, customer_email)'
+  'id, job_id, amount, status, created_at, is_primary_rtb_bundle, billed_at, estimated_bill_date, external_send_channel, external_send_note, hosted_invoice_url, sent_to_customer_at, sequence_order, stripe_invoice_id, stripe_invoice_memo, stripe_invoice_status, jobs_ledger!inner(hcp_number, job_name, job_address, google_drive_link, job_plans_link, created_at, master_user_id, customer_id, customer_name, customer_email)'
 
 function buildPaymentsByInvoiceIdMap(payments: JobsLedgerPaymentRow[]): Map<string, JobsLedgerPaymentRow[]> {
   const m = new Map<string, JobsLedgerPaymentRow[]>()
@@ -237,6 +237,7 @@ function mapJoinedInvoiceToDashboard(
     sent_to_customer_at: r.sent_to_customer_at,
     sequence_order: r.sequence_order,
     stripe_invoice_id: r.stripe_invoice_id,
+    stripe_invoice_memo: r.stripe_invoice_memo,
     stripe_invoice_status: r.stripe_invoice_status,
     is_primary_rtb_bundle: r.is_primary_rtb_bundle,
     hcp_number: jl?.hcp_number ?? '',

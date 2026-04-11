@@ -7,6 +7,8 @@ import {
   stripeApiKeyForMode,
   type StripeBillingMode,
 } from '../_shared/stripeSecrets.ts'
+import { stripeSellerDisplayName } from '../_shared/stripeSellerDisplayName.ts'
+import { stripeInvoiceMemoFromStripe } from '../_shared/stripeInvoiceMemoFromStripe.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -36,38 +38,6 @@ function linesPayloadFromLineItems(
   }))
 }
 
-/** Hosted invoice / PDF “From” uses customer-facing branding; `account_name` is often the legal entity. */
-async function sellerDisplayName(stripe: Stripe, inv: Stripe.Invoice): Promise<string | null> {
-  const fromInvoice =
-    typeof inv.account_name === 'string' && inv.account_name.trim() ? inv.account_name.trim() : null
-
-  const issuer = inv.issuer
-  let connectAccountId: string | undefined
-  if (
-    issuer &&
-    typeof issuer === 'object' &&
-    issuer.type === 'account' &&
-    typeof issuer.account === 'string' &&
-    issuer.account.trim()
-  ) {
-    connectAccountId = issuer.account.trim()
-  }
-
-  try {
-    const acct = connectAccountId
-      ? await stripe.accounts.retrieve(connectAccountId)
-      : await stripe.accounts.retrieve()
-    const bp = acct.business_profile?.name
-    if (typeof bp === 'string' && bp.trim()) {
-      return bp.trim()
-    }
-  } catch (e) {
-    console.warn('get-stripe-invoice-details: accounts.retrieve', e)
-  }
-
-  return fromInvoice
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -82,6 +52,7 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseAnon = Deno.env.get('SUPABASE_ANON_KEY')!
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
     if (!anyStripeApiKeyConfigured()) {
       return jsonResponse(
@@ -131,7 +102,7 @@ serve(async (req) => {
 
     const { data: invRow, error: invErr } = await userClient
       .from('jobs_ledger_invoices')
-      .select('id, stripe_invoice_id')
+      .select('id, stripe_invoice_id, stripe_invoice_memo')
       .eq('id', jobsLedgerInvoiceId)
       .maybeSingle()
 
@@ -152,24 +123,59 @@ serve(async (req) => {
     const num = inv.number
     const cname = inv.customer_name
     const cemail = inv.customer_email
-    const desc = inv.description
-    const seller_name = await sellerDisplayName(stripe, inv)
+    const seller_name = await stripeSellerDisplayName(stripe, inv)
 
     const ap = inv.amount_paid
     const amount_paid = typeof ap === 'number' && !Number.isNaN(ap) ? ap : 0
 
+    const tot = typeof inv.total === 'number' && !Number.isNaN(inv.total) ? inv.total : 0
+    const arm = inv.amount_remaining
+    const amount_remaining =
+      typeof arm === 'number' && !Number.isNaN(arm) ? Math.max(0, arm) : Math.max(0, tot - amount_paid)
+
+    const paidAtRaw = inv.status_transitions?.paid_at
+    const paid_at =
+      typeof paidAtRaw === 'number' && Number.isFinite(paidAtRaw) && paidAtRaw > 0 ? paidAtRaw : null
+
+    const memoFromStripe = stripeInvoiceMemoFromStripe(inv)
+    const memoStored = typeof invRow.stripe_invoice_memo === 'string' ? invRow.stripe_invoice_memo.trim() : ''
+    if (memoFromStripe && !memoStored) {
+      if (serviceKey) {
+        const admin = createClient(supabaseUrl, serviceKey)
+        const { error: memoUpErr } = await admin
+          .from('jobs_ledger_invoices')
+          .update({ stripe_invoice_memo: memoFromStripe })
+          .eq('id', jobsLedgerInvoiceId)
+        if (memoUpErr) {
+          console.warn('get-stripe-invoice-details: stripe_invoice_memo service backfill failed', memoUpErr)
+        }
+      } else {
+        const { error: memoUpErr } = await userClient
+          .from('jobs_ledger_invoices')
+          .update({ stripe_invoice_memo: memoFromStripe })
+          .eq('id', jobsLedgerInvoiceId)
+        if (memoUpErr) {
+          console.warn('get-stripe-invoice-details: stripe_invoice_memo backfill failed', memoUpErr)
+        }
+      }
+    }
+
     return jsonResponse({
       success: true,
       currency: inv.currency ?? 'usd',
-      total: typeof inv.total === 'number' ? inv.total : 0,
+      total: tot,
       amount_due: typeof inv.amount_due === 'number' ? inv.amount_due : 0,
+      /** Balance still owed on the invoice; use this (not `amount_due`) for paid/partial UI. */
+      amount_remaining,
       amount_paid,
+      /** Unix seconds — when Stripe marked the invoice paid (`status_transitions.paid_at`). */
+      paid_at,
       due_date: typeof inv.due_date === 'number' ? inv.due_date : null,
       invoice_number: typeof num === 'string' && num.trim() ? num.trim() : null,
       customer_name: typeof cname === 'string' && cname.trim() ? cname.trim() : null,
       customer_email: typeof cemail === 'string' && cemail.trim() ? cemail.trim() : null,
       seller_name,
-      memo: typeof desc === 'string' && desc.trim() ? desc.trim() : null,
+      memo: memoFromStripe,
       lines,
     })
   } catch (e) {

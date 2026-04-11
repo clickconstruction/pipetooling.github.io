@@ -1,11 +1,7 @@
 import type { CSSProperties } from 'react'
 import type { StripeInvoicePreviewSuccess } from '../../lib/stripeInvoicePreview'
-import { StripeInvoiceLinesSummary } from './StripeInvoiceLinesSummary'
-import { StripeInvoicePreviewMeta } from './StripeInvoicePreviewMeta'
-import {
-  buildStripeInvoiceEmailBody,
-  buildStripeInvoiceSmsText,
-} from '../../lib/stripeInvoiceShareCopy'
+import { formatStripeCents } from '../../lib/stripeInvoicePreview'
+import { APP_CALENDAR_TZ, referenceDateForWorkDateYmd } from '../../utils/dateUtils'
 
 export type StripeBillPreSubmitPreviewProps = {
   customerName: string | null
@@ -15,7 +11,6 @@ export type StripeBillPreSubmitPreviewProps = {
   amountLabel: string
   dueDateYmd: string
   memo: string
-  payUrlPlaceholder: string
   localLineDescription: string
   stripePreview: StripeInvoicePreviewSuccess | null
   stripePreviewLoading: boolean
@@ -24,98 +19,228 @@ export type StripeBillPreSubmitPreviewProps = {
   previewIdleHint?: string | null
 }
 
-const preStyle: CSSProperties = {
-  margin: 0,
-  whiteSpace: 'pre-wrap',
-  fontFamily: 'ui-monospace, monospace',
-  fontSize: '0.75rem',
-  lineHeight: 1.45,
-  color: '#374151',
-  background: '#fff',
-  border: '1px solid #e5e7eb',
-  borderRadius: 4,
-  padding: '0.5rem 0.65rem',
-  maxHeight: 140,
-  overflow: 'auto',
+const metaLabel: CSSProperties = {
+  padding: '0.15rem 0.75rem 0.15rem 0',
+  verticalAlign: 'top',
+  color: '#6b7280',
+  fontSize: '0.72rem',
+  fontWeight: 500,
+  whiteSpace: 'nowrap',
 }
 
-const sectionTitle: CSSProperties = {
-  fontSize: '0.75rem',
-  fontWeight: 600,
-  color: '#374151',
-  margin: '0 0 0.35rem',
+const metaValue: CSSProperties = {
+  padding: '0.15rem 0',
+  verticalAlign: 'top',
+  fontSize: '0.875rem',
+  color: '#111827',
+  wordBreak: 'break-word',
+}
+
+const stripeHeroAmountText: CSSProperties = {
+  fontSize: '1.35rem',
+  fontWeight: 700,
+  color: '#111827',
+}
+
+function displayLineQuantity(q: number | null | undefined): number {
+  if (q != null && q > 0) return q
+  return 1
+}
+
+function formatStripeDueDateChicago(dueUnix: number): string {
+  const d = new Date(dueUnix * 1000)
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: APP_CALENDAR_TZ,
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(d)
+}
+
+function dueLabelForPreview(sp: StripeInvoicePreviewSuccess, dueDateYmd: string): string {
+  if (sp.due_date != null && Number.isFinite(sp.due_date)) {
+    return formatStripeDueDateChicago(sp.due_date)
+  }
+  const ref = referenceDateForWorkDateYmd(dueDateYmd.trim())
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: APP_CALENDAR_TZ,
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(ref)
 }
 
 export function StripeBillPreSubmitPreview(p: StripeBillPreSubmitPreviewProps) {
-  const copyBase = {
-    customerName: p.customerName,
-    payUrl: p.payUrlPlaceholder,
-    amountLabel: p.amountLabel,
-    jobName: p.jobName,
-    hcpNumber: p.hcpNumber,
-  }
-  const emailText = buildStripeInvoiceEmailBody(copyBase)
-  const smsText = buildStripeInvoiceSmsText(copyBase)
+  const sp = p.stripePreview
+  const showDraftLine = !sp && (p.stripePreviewError != null || (!p.stripePreviewLoading && !p.stripePreviewError))
+
+  const toName = sp?.customer_name?.trim() || p.customerName?.trim() || '—'
+  const toEmail = sp?.customer_email?.trim() || p.customerEmail?.trim() || ''
+  const amountRemaining = sp != null ? (sp.amount_remaining ?? Math.max(0, sp.total - (sp.amount_paid ?? 0))) : 0
+  const amountPaid = sp?.amount_paid ?? 0
 
   return (
-    <div
-      style={{
-        marginBottom: '1rem',
-        padding: '0.75rem',
-        borderRadius: 6,
-        border: '1px solid #e5e7eb',
-        background: '#f9fafb',
-        fontSize: '0.8125rem',
-      }}
-    >
+    <div style={{ marginBottom: '1rem', fontSize: '0.8125rem' }}>
       <div style={{ fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.875rem', color: '#111827' }}>Preview</div>
 
-      <div style={{ marginBottom: '0.65rem' }}>
-        <div style={sectionTitle}>Invoice (Stripe)</div>
-        <StripeInvoicePreviewMeta
-          customerName={p.customerName}
-          customerEmail={p.customerEmail}
-          invoiceNumber={p.stripePreview?.invoice_number ?? null}
-          dueYmd={p.dueDateYmd}
-          memo={p.memo}
-        />
-        {p.stripePreviewLoading && <p style={{ margin: 0, color: '#6b7280', fontSize: '0.75rem' }}>Loading totals…</p>}
-        {!p.stripePreviewLoading && p.stripePreviewError && (
-          <p style={{ margin: '0 0 0.35rem', color: '#b45309', fontSize: '0.75rem' }}>
-            Preview unavailable ({p.stripePreviewError}). Showing draft line below.
-          </p>
-        )}
-        {!p.stripePreviewLoading && p.stripePreview && (
-          <StripeInvoiceLinesSummary embedded showTitle={false} snapshot={p.stripePreview} />
-        )}
-        {!p.stripePreviewLoading && !p.stripePreview && !p.stripePreviewError && (
-          <p style={{ margin: 0, color: '#6b7280', fontSize: '0.75rem' }}>
-            {p.previewIdleHint?.trim() || 'Enter amount and due date to load preview.'}
-          </p>
-        )}
+      {p.stripePreviewLoading && (
+        <p style={{ margin: 0, color: '#6b7280', fontSize: '0.8125rem' }}>Loading invoice preview…</p>
+      )}
+
+      {!p.stripePreviewLoading && p.stripePreviewError && (
+        <p style={{ margin: '0 0 0.35rem', color: '#b45309', fontSize: '0.8125rem' }}>
+          Preview unavailable ({p.stripePreviewError}). Showing draft line below.
+        </p>
+      )}
+
+      {!p.stripePreviewLoading && !p.stripePreviewError && !sp && (
+        <p style={{ margin: 0, color: '#6b7280', fontSize: '0.8125rem' }}>
+          {p.previewIdleHint?.trim() || 'Enter amount and due date to load preview.'}
+        </p>
+      )}
+
+      {sp ? (
+        <>
+          <div
+            style={{
+              marginBottom: '0.75rem',
+              padding: '0.75rem',
+              background: '#fafafa',
+              borderRadius: 6,
+              border: '1px solid #e5e7eb',
+              fontSize: '0.875rem',
+            }}
+          >
+            <div style={{ ...stripeHeroAmountText, marginBottom: '0.25rem' }}>
+              {formatStripeCents(amountRemaining, sp.currency)}
+            </div>
+            <div style={{ fontSize: '0.875rem', color: '#374151', marginBottom: '0.65rem' }}>
+              Due {dueLabelForPreview(sp, p.dueDateYmd)}
+            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <tbody>
+                <tr>
+                  <td style={metaLabel}>To</td>
+                  <td style={metaValue}>
+                    {toName}
+                    {toEmail ? (
+                      <>
+                        <br />
+                        <span style={{ color: '#4b5563', fontSize: '0.75rem' }}>{toEmail}</span>
+                      </>
+                    ) : null}
+                  </td>
+                </tr>
+                <tr>
+                  <td style={metaLabel}>From</td>
+                  <td style={metaValue}>{sp.seller_name?.trim() ? sp.seller_name.trim() : '—'}</td>
+                </tr>
+                <tr>
+                  <td style={metaLabel}>Invoice</td>
+                  <td style={metaValue}>
+                    {sp.invoice_number?.trim() ? `#${sp.invoice_number.trim()}` : '—'}
+                  </td>
+                </tr>
+                {p.memo.trim() ? (
+                  <tr>
+                    <td style={metaLabel}>Memo</td>
+                    <td style={metaValue}>{p.memo.trim()}</td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+
+          <div
+            style={{
+              marginBottom: showDraftLine ? '0.35rem' : 0,
+              padding: '0.75rem',
+              borderRadius: 6,
+              border: '1px solid #e5e7eb',
+              background: '#fafafa',
+              fontSize: '0.875rem',
+            }}
+          >
+            {sp.lines.length === 0 ? (
+              <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+                No line items returned from Stripe.
+              </p>
+            ) : (
+              sp.lines.map((line, i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                    gap: '0.75rem',
+                    marginBottom: i < sp.lines.length - 1 ? '0.65rem' : 0,
+                    paddingBottom: i < sp.lines.length - 1 ? '0.65rem' : 0,
+                    borderBottom: i < sp.lines.length - 1 ? '1px solid #e5e7eb' : 'none',
+                  }}
+                >
+                  <div style={{ flex: '1 1 auto', minWidth: 0 }}>
+                    <div style={{ color: '#111827', marginBottom: '0.2rem' }}>
+                      {line.description.trim() || '—'}
+                    </div>
+                    <div style={{ color: '#6b7280', fontSize: '0.8125rem' }}>
+                      Qty {displayLineQuantity(line.quantity ?? null)}
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      flexShrink: 0,
+                      textAlign: 'right',
+                      whiteSpace: 'nowrap',
+                      fontSize: '0.875rem',
+                      color: '#111827',
+                    }}
+                  >
+                    {formatStripeCents(line.amount, sp.currency)}
+                  </div>
+                </div>
+              ))
+            )}
+            <div
+              style={{
+                marginTop: sp.lines.length > 0 ? '0.65rem' : 0,
+                paddingTop: '0.65rem',
+                borderTop: '1px solid #e5e7eb',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'baseline',
+                  paddingBottom: '0.65rem',
+                  borderBottom: '1px solid #e5e7eb',
+                  marginBottom: '0.65rem',
+                }}
+              >
+                <span style={{ color: '#374151' }}>Total due</span>
+                <span style={{ fontWeight: 600 }}>{formatStripeCents(sp.total, sp.currency)}</span>
+              </div>
+              <div style={{ display: 'grid', gap: '0.35rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <span style={{ color: '#374151' }}>Amount paid</span>
+                  <span style={{ fontWeight: 600 }}>{formatStripeCents(amountPaid, sp.currency)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <span style={{ color: '#374151' }}>Amount remaining</span>
+                  <span style={{ fontWeight: 600 }}>{formatStripeCents(amountRemaining, sp.currency)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      ) : null}
+
+      {showDraftLine ? (
         <div style={{ marginTop: '0.35rem', fontSize: '0.72rem', color: '#6b7280' }}>
           Draft line: {p.localLineDescription}
         </div>
-      </div>
-
-      <div style={{ marginBottom: '0.65rem' }}>
-        <div style={sectionTitle}>Payment link</div>
-        <p style={{ margin: 0, fontSize: '0.72rem', color: '#6b7280' }}>
-          The customer pay URL is created when you finalize the invoice in Stripe. Until then, use this placeholder in the
-          messages below.
-        </p>
-        <pre style={{ ...preStyle, marginTop: '0.35rem' }}>{p.payUrlPlaceholder}</pre>
-      </div>
-
-      <div style={{ marginBottom: '0.65rem' }}>
-        <div style={sectionTitle}>Email draft</div>
-        <pre style={preStyle}>{emailText}</pre>
-      </div>
-
-      <div>
-        <div style={sectionTitle}>SMS draft</div>
-        <pre style={preStyle}>{smsText}</pre>
-      </div>
+      ) : null}
     </div>
   )
 }

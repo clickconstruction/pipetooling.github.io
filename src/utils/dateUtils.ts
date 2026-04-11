@@ -327,6 +327,16 @@ export function formatWorkDateYmdFriendly(ymd: string): string {
   return `${MONTH_SHORT[mo - 1]} ${d}, ${y}`
 }
 
+/** E.g. `Apr 10` for calendar `YYYY-MM-DD` (month abbreviation + day; no year). */
+export function formatWorkDateYmdMonthDayShort(ymd: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd.trim())
+  if (!m) return ymd.trim()
+  const mo = Number(m[2])
+  const d = Number(m[3])
+  if (mo < 1 || mo > 12) return ymd.trim()
+  return `${MONTH_SHORT[mo - 1]} ${d}`
+}
+
 /** Representative instant on this company work_date (for weekday extraction). */
 function denverMsForWorkDateYmd(ymd: string): number | null {
   const trimmed = ymd.trim()

@@ -4,7 +4,15 @@ export type StripeInvoiceLinesSnapshot = {
   subtotal: number
   total: number
   amount_due: number
-  lines: Array<{ description: string; amount: number }>
+  /** Cents paid toward the preview invoice (usually 0). */
+  amount_paid?: number
+  /** Cents still owed (hero amount in View bill / pre-submit preview). */
+  amount_remaining?: number
+  /** Stripe invoice due date (unix seconds), when present. */
+  due_date?: number | null
+  /** Customer-facing “From” name (business profile / account). */
+  seller_name?: string | null
+  lines: Array<{ description: string; amount: number; quantity?: number | null }>
   /** Finalized Stripe invoice number (no # prefix). */
   invoice_number?: string | null
   customer_name?: string | null
@@ -26,20 +34,48 @@ export function parseStripeInvoiceLinesSnapshot(raw: unknown): StripeInvoiceLine
   if (typeof total !== 'number' || Number.isNaN(total)) return null
   if (typeof amount_due !== 'number' || Number.isNaN(amount_due)) return null
   if (!Array.isArray(o.lines)) return null
-  const lines: Array<{ description: string; amount: number }> = []
+  const lines: Array<{ description: string; amount: number; quantity?: number | null }> = []
   for (const item of o.lines) {
     if (item == null || typeof item !== 'object') return null
     const li = item as Record<string, unknown>
     const desc = typeof li.description === 'string' ? li.description : ''
     const amt = li.amount
     if (typeof amt !== 'number' || Number.isNaN(amt)) return null
-    lines.push({ description: desc, amount: amt })
+    const qRaw = li.quantity
+    const quantity =
+      qRaw === null || qRaw === undefined
+        ? undefined
+        : typeof qRaw === 'number' && !Number.isNaN(qRaw)
+          ? qRaw
+          : null
+    const row: { description: string; amount: number; quantity?: number | null } = { description: desc, amount: amt }
+    if (quantity !== undefined) row.quantity = quantity
+    lines.push(row)
   }
+  const ap = o.amount_paid
+  const amount_paid = typeof ap === 'number' && !Number.isNaN(ap) ? ap : 0
+  const arRaw = o.amount_remaining
+  const amount_remaining =
+    typeof arRaw === 'number' && !Number.isNaN(arRaw)
+      ? Math.max(0, arRaw)
+      : Math.max(0, total - amount_paid)
+
+  const dueRaw = o.due_date
+  const due_date: number | null =
+    dueRaw === null || dueRaw === undefined
+      ? null
+      : typeof dueRaw === 'number' && Number.isFinite(dueRaw)
+        ? dueRaw
+        : null
+
   const out: StripeInvoiceLinesSnapshot = {
     currency: currency.trim(),
     subtotal,
     total,
     amount_due,
+    amount_paid,
+    amount_remaining,
+    due_date,
     lines,
   }
   if (typeof o.invoice_number === 'string' && o.invoice_number.trim()) {
@@ -50,6 +86,12 @@ export function parseStripeInvoiceLinesSnapshot(raw: unknown): StripeInvoiceLine
   }
   if (typeof o.customer_email === 'string' && o.customer_email.trim()) {
     out.customer_email = o.customer_email.trim()
+  }
+  const sn = o.seller_name
+  if (typeof sn === 'string' && sn.trim()) {
+    out.seller_name = sn.trim()
+  } else if (sn === null) {
+    out.seller_name = null
   }
   return out
 }
