@@ -6,8 +6,9 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type ReactNode,
 } from 'react'
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import type { UserRole } from '../hooks/useAuth'
@@ -51,6 +52,7 @@ import {
 import CreateJobFromEstimateModal, {
   type LinkedCustomerPrefill,
 } from '../components/estimates/CreateJobFromEstimateModal'
+import { CustomerSnapshotModal } from '../components/customers/CustomerSnapshotModal'
 import { AcceptHeaderBrandPicker } from '../components/estimates/AcceptHeaderBrandPicker'
 import EstimateCustomerAttachmentCard from '../components/estimates/EstimateCustomerAttachmentCard'
 import EstimateCustomerAcceptLinkButtons from '../components/estimates/EstimateCustomerAcceptLinkButtons'
@@ -87,6 +89,7 @@ import {
   parseCustomerAttachmentSent,
   type CustomerAttachmentPayload,
 } from '../lib/estimateCustomerAttachment'
+import { pageUnderlineTabStyle } from '../lib/pageUnderlineTabStyle'
 
 const ESTIMATE_CATALOG_EDITOR_ROLES = new Set<UserRole>([
   'dev',
@@ -250,6 +253,28 @@ const estimatesFocusVisibleCss = `
   }
 `
 
+const ESTIMATE_LIST_CUSTOMER_SNAPSHOT_BTN_CLASS = 'estimate-customer-snapshot-cell-btn'
+
+const estimatesListCustomerSnapshotBtnCss = `
+  .${ESTIMATES_PAGE_CLASS} .${ESTIMATE_LIST_CUSTOMER_SNAPSHOT_BTN_CLASS}:hover {
+    background: #f3f4f6;
+  }
+`
+
+const estimateCustomerSearchHighlightCss = `
+  @keyframes estimateCustomerSearchPulse {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.45); }
+    50% { box-shadow: 0 0 0 5px rgba(234, 88, 12, 0.28); }
+  }
+  .estimate-customer-search-highlight {
+    border-radius: 8px;
+    transition: box-shadow 0.2s ease;
+    animation: estimateCustomerSearchPulse 1.2s ease-in-out 2;
+  }
+`
+
+const estimateDetailPageCss = `${estimatesFocusVisibleCss}\n${estimateCustomerSearchHighlightCss}`
+
 const estInputBase: CSSProperties = {
   border: '1px solid #d1d5db',
   borderRadius: 6,
@@ -405,6 +430,39 @@ async function resolveMasterUserId(
   return userId
 }
 
+type EstimateDraftCustomerGateProps = {
+  active: boolean
+  onBlockedInteraction: () => void
+  children: ReactNode
+}
+
+/** When `active`, blocks interaction with draft body until a customer is selected; overlay forwards clicks to `onBlockedInteraction`. */
+function EstimateDraftCustomerGate({ active, onBlockedInteraction, children }: EstimateDraftCustomerGateProps) {
+  if (!active) return <>{children}</>
+  return (
+    <div style={{ position: 'relative' }}>
+      <div
+        role="presentation"
+        aria-hidden
+        style={{
+          position: 'absolute',
+          inset: 0,
+          zIndex: 2,
+          cursor: 'not-allowed',
+        }}
+        onPointerDown={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          onBlockedInteraction()
+        }}
+      />
+      <div style={{ opacity: 0.58 }} {...({ inert: true as const })}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
 function defaultEstimateTitle(customerName: string): string {
   const n = customerName.trim()
   if (!n) return 'Estimate for customer'
@@ -431,27 +489,311 @@ function estimateListCustomerSubline(r: EstimateListRow): string {
   return '—'
 }
 
+/** For Follow up Customer column: name on first line, address on second (when both exist). */
+function estimateListCustomerColumnLines(r: EstimateListRow): { primary: string; secondary: string | null } {
+  const cust = r.customers
+  if (cust) {
+    const name = (cust.name ?? '').trim()
+    const address = (cust.address ?? '').trim()
+    if (name && address) return { primary: name, secondary: address }
+    if (name) return { primary: name, secondary: null }
+    if (address) return { primary: address, secondary: null }
+  }
+  const email = r.customer_email?.trim()
+  if (email) return { primary: email, secondary: null }
+  const addr = r.for_address?.trim()
+  if (addr) return { primary: addr, secondary: null }
+  return { primary: '—', secondary: null }
+}
+
+function estimateListRowMatchesSearch(r: EstimateListRow, query: string): boolean {
+  const t = query.trim().toLowerCase()
+  if (!t) return true
+  if (String(r.estimate_number).toLowerCase().includes(t)) return true
+  if ((r.title ?? '').toLowerCase().includes(t)) return true
+  if (estimateListCustomerSubline(r).toLowerCase().includes(t)) return true
+  if (statusLabel(r.status).toLowerCase().includes(t)) return true
+  if (String(r.status).toLowerCase().includes(t)) return true
+  if (formatMoney(r.total_cents).toLowerCase().includes(t)) return true
+  return false
+}
+
+function sortEstimatesByUpdatedDesc(list: EstimateListRow[]): EstimateListRow[] {
+  return [...list].sort((a, b) => (b.updated_at ?? '').localeCompare(a.updated_at ?? ''))
+}
+
+/** Follow up tab: draft → Unsent; sent + declined → Sent; customer_accepted → Accepted; superseded omitted. */
+function splitFollowupRows(source: EstimateListRow[]): {
+  unsent: EstimateListRow[]
+  sent: EstimateListRow[]
+  accepted: EstimateListRow[]
+} {
+  const unsent: EstimateListRow[] = []
+  const sent: EstimateListRow[] = []
+  const accepted: EstimateListRow[] = []
+  for (const r of source) {
+    switch (r.status) {
+      case 'draft':
+        unsent.push(r)
+        break
+      case 'sent':
+      case 'declined':
+        sent.push(r)
+        break
+      case 'customer_accepted':
+        accepted.push(r)
+        break
+      case 'superseded':
+        break
+      default:
+        break
+    }
+  }
+  return {
+    unsent: sortEstimatesByUpdatedDesc(unsent),
+    sent: sortEstimatesByUpdatedDesc(sent),
+    accepted: sortEstimatesByUpdatedDesc(accepted),
+  }
+}
+
+type EstimateListTableProps = {
+  rows: EstimateListRow[]
+  setAcceptanceModalEstimateId: (id: string | null) => void
+  setCreateJobFromListRow: (row: EstimateListRow | null) => void
+  /** When true (Follow up Unsent/Sent), show Customer as its own column; Title omits the grey subline. */
+  showCustomerColumn?: boolean
+  /** When set with a linked `customer_id`, Customer column opens CustomerSnapshotModal. */
+  onCustomerSnapshotRequest?: (customerId: string) => void
+}
+
+const estimateListCustomerCellStyle: CSSProperties = {
+  fontSize: '0.85rem',
+  color: '#6b7280',
+  overflowWrap: 'anywhere',
+  wordBreak: 'break-word',
+}
+
+const estimateListCustomerColumnNameStyle: CSSProperties = {
+  fontSize: '0.85rem',
+  fontWeight: 500,
+  color: '#111827',
+  overflowWrap: 'anywhere',
+  wordBreak: 'break-word',
+}
+
+const estimateListCustomerSnapshotButtonStyle: CSSProperties = {
+  display: 'block',
+  width: '100%',
+  margin: 0,
+  padding: 0,
+  border: 'none',
+  background: 'transparent',
+  cursor: 'pointer',
+  textAlign: 'left',
+  font: 'inherit',
+  borderRadius: 4,
+}
+
+function EstimateListTable({
+  rows,
+  setAcceptanceModalEstimateId,
+  setCreateJobFromListRow,
+  showCustomerColumn = false,
+  onCustomerSnapshotRequest,
+}: EstimateListTableProps) {
+  return (
+    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+      <thead>
+        <tr style={{ borderBottom: '1px solid #e5e7eb', textAlign: 'left' }}>
+          <th style={{ padding: '0.5rem', whiteSpace: 'nowrap' }}>#</th>
+          <th style={{ padding: '0.5rem', lineHeight: 1.3 }}>
+            <div>Title</div>
+            {showCustomerColumn ? null : (
+              <div style={{ fontSize: '0.8rem', fontWeight: 400, color: '#6b7280' }}>Customer</div>
+            )}
+          </th>
+          {showCustomerColumn ? (
+            <th style={{ padding: '0.5rem' }}>Customer</th>
+          ) : null}
+          <th style={{ padding: '0.5rem' }}>Status</th>
+          <th style={{ padding: '0.5rem' }}>Total</th>
+          <th style={{ padding: '0.5rem' }}>Updated</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r) => {
+          const updatedLines = formatEstimateListUpdatedLines(r.updated_at)
+          return (
+            <tr key={r.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+              <td style={{ padding: '0.5rem', fontVariantNumeric: 'tabular-nums' }}>{r.estimate_number}</td>
+              <td style={{ padding: '0.5rem', minWidth: 0 }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.15rem',
+                    minWidth: 0,
+                  }}
+                >
+                  <Link to={`/estimates/${r.estimate_number}`}>{r.title || '—'}</Link>
+                  {showCustomerColumn ? null : (
+                    <span style={estimateListCustomerCellStyle}>{estimateListCustomerSubline(r)}</span>
+                  )}
+                </div>
+              </td>
+              {showCustomerColumn ? (
+                <td style={{ padding: '0.5rem', minWidth: 0 }}>
+                  {(() => {
+                    const { primary, secondary } = estimateListCustomerColumnLines(r)
+                    const cust = r.customers
+                    const hasCustomerName = cust != null && (cust.name ?? '').trim() !== ''
+                    const primaryIsName = hasCustomerName && (secondary != null || (cust.address ?? '').trim() === '')
+                    const cid = r.customer_id
+                    const inner = (
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.15rem',
+                          minWidth: 0,
+                        }}
+                      >
+                        <span style={primaryIsName ? estimateListCustomerColumnNameStyle : estimateListCustomerCellStyle}>
+                          {primary}
+                        </span>
+                        {secondary ? <span style={estimateListCustomerCellStyle}>{secondary}</span> : null}
+                      </div>
+                    )
+                    if (cid && onCustomerSnapshotRequest) {
+                      const labelName = (cust?.name ?? primary).trim() || 'customer'
+                      return (
+                        <button
+                          type="button"
+                          className={ESTIMATE_LIST_CUSTOMER_SNAPSHOT_BTN_CLASS}
+                          onClick={() => onCustomerSnapshotRequest(cid)}
+                          style={estimateListCustomerSnapshotButtonStyle}
+                          aria-label={`View customer details for ${labelName}`}
+                        >
+                          {inner}
+                        </button>
+                      )
+                    }
+                    return inner
+                  })()}
+                </td>
+              ) : null}
+              <td style={{ padding: '0.5rem' }}>
+                {r.status === 'customer_accepted' ? (
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'flex-start',
+                      gap: '0.35rem',
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setAcceptanceModalEstimateId(r.id)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        cursor: 'pointer',
+                        color: '#1d4ed8',
+                        textDecoration: 'underline',
+                        font: 'inherit',
+                        textAlign: 'left',
+                      }}
+                      aria-label={`View acceptance record for estimate ${r.estimate_number}`}
+                    >
+                      Accepted — view
+                    </button>
+                    {r.job_ledger_id ? (
+                      <Link
+                        to={`/jobs?edit=${r.job_ledger_id}`}
+                        style={{ fontSize: '0.85rem', fontWeight: 500, color: '#15803d' }}
+                      >
+                        {(() => {
+                          const hcp = estimateLinkedJobHcp(r)
+                          return hcp ? `Job #${hcp}` : 'Job linked'
+                        })()}
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setCreateJobFromListRow(r)}
+                        style={estimateListCreateJobButtonStyle}
+                        title="Create a linked job from this estimate"
+                        aria-label="Create job from estimate"
+                      >
+                        Create job
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  statusLabel(r.status)
+                )}
+              </td>
+              <td style={{ padding: '0.5rem' }}>{formatMoney(r.total_cents)}</td>
+              <td style={{ padding: '0.5rem', color: '#6b7280' }}>
+                {updatedLines ? (
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.15rem',
+                      lineHeight: 1.25,
+                    }}
+                  >
+                    <span>{updatedLines.short}</span>
+                    <span style={{ fontSize: '0.85rem', color: '#9ca3af' }}>{updatedLines.relative}</span>
+                  </div>
+                ) : (
+                  '—'
+                )}
+              </td>
+            </tr>
+          )
+        })}
+      </tbody>
+    </table>
+  )
+}
+
+type EstimateListTab = 'all' | 'followup'
+
 function EstimateList() {
   const { user, role } = useAuth()
   const { showToast } = useToastContext()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  /** `load()` only filters by this URL param; matches Jobs `?customer=`. */
+  const customerParamForEstimatesReload = searchParams.get('customer')
+  const [listTab, setListTab] = useState<EstimateListTab>('all')
+  const [listSearch, setListSearch] = useState('')
   const [rows, setRows] = useState<EstimateListRow[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [acceptanceModalEstimateId, setAcceptanceModalEstimateId] = useState<string | null>(null)
   const [createJobFromListRow, setCreateJobFromListRow] = useState<EstimateListRow | null>(null)
+  const [customerSnapshotId, setCustomerSnapshotId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     if (!user?.id) return
     setLoading(true)
     try {
+      const customerFilter = customerParamForEstimatesReload?.trim() || null
       const data = await withSupabaseRetry(
-        async () =>
-          await supabase
+        async () => {
+          let q = supabase
             .from('estimates')
             .select('*, customers(name, address, contact_info), jobs_ledger(hcp_number)')
-            .order('updated_at', { ascending: false })
-            .limit(200),
+          if (customerFilter) {
+            q = q.eq('customer_id', customerFilter)
+          }
+          return await q.order('updated_at', { ascending: false }).limit(200)
+        },
         'load estimates',
       )
       setRows((data ?? []) as EstimateListRow[])
@@ -460,11 +802,18 @@ function EstimateList() {
     } finally {
       setLoading(false)
     }
-  }, [user?.id, showToast])
+  }, [user?.id, showToast, customerParamForEstimatesReload])
 
   useEffect(() => {
     void load()
   }, [load])
+
+  const filteredRows = useMemo(() => {
+    if (!listSearch.trim()) return rows
+    return rows.filter((r) => estimateListRowMatchesSearch(r, listSearch))
+  }, [rows, listSearch])
+
+  const followupBuckets = useMemo(() => splitFollowupRows(filteredRows), [filteredRows])
 
   async function createDraft() {
     if (!user?.id || creating) return
@@ -502,146 +851,212 @@ function EstimateList() {
 
   if (!user) return null
 
+  const estimatesListEmptyLabel = customerParamForEstimatesReload?.trim()
+    ? 'No estimates for this customer.'
+    : 'No estimates yet.'
+
   return (
     <div className={ESTIMATES_PAGE_CLASS} style={{ padding: '1rem', maxWidth: 1100, margin: '0 auto' }}>
-      <style>{estimatesFocusVisibleCss}</style>
+      <style>{`${estimatesFocusVisibleCss}${estimatesListCustomerSnapshotBtnCss}`}</style>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
         <h1 style={{ margin: 0 }}>Estimates</h1>
-        <button type="button" onClick={() => void createDraft()} disabled={creating} style={estPrimaryButton(creating)}>
-          {creating ? 'Creating…' : 'New estimate'}
+        {listTab === 'all' ? (
+          <button type="button" onClick={() => void createDraft()} disabled={creating} style={estPrimaryButton(creating)}>
+            {creating ? 'Creating…' : 'New estimate'}
+          </button>
+        ) : null}
+      </div>
+      <div
+        role="tablist"
+        aria-label="Estimates views"
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '0.25rem',
+          marginTop: '0.75rem',
+          borderBottom: '1px solid #e5e7eb',
+        }}
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={listTab === 'all'}
+          id="estimates-tab-all"
+          onClick={() => setListTab('all')}
+          style={pageUnderlineTabStyle(listTab === 'all')}
+        >
+          All
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={listTab === 'followup'}
+          id="estimates-tab-followup"
+          onClick={() => setListTab('followup')}
+          style={pageUnderlineTabStyle(listTab === 'followup')}
+        >
+          Follow up
         </button>
       </div>
-      <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
-        Simple proposals with a customer acceptance link. After acceptance, link a job from the estimate detail page.
-      </p>
-      {loading ? (
-        <p>Loading…</p>
+      {customerParamForEstimatesReload ? (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            marginTop: '0.75rem',
+            padding: '0.5rem 0.75rem',
+            background: '#eff6ff',
+            border: '1px solid #bfdbfe',
+            borderRadius: 6,
+            fontSize: '0.875rem',
+          }}
+        >
+          <span style={{ color: '#1e40af' }}>Filtered by customer</span>
+          <button
+            type="button"
+            onClick={() =>
+              setSearchParams((p) => {
+                const n = new URLSearchParams(p)
+                n.delete('customer')
+                return n
+              })
+            }
+            style={{
+              padding: '0.25rem 0.5rem',
+              background: 'white',
+              border: '1px solid #93c5fd',
+              borderRadius: 4,
+              cursor: 'pointer',
+              color: '#1e40af',
+              fontSize: '0.8125rem',
+            }}
+          >
+            Clear filter
+          </button>
+        </div>
+      ) : null}
+      {listTab === 'all' ? (
+        <div role="tabpanel" aria-labelledby="estimates-tab-all">
+          <div style={{ marginTop: '0.75rem', width: '100%' }}>
+            <input
+              id="estimates-list-search"
+              type="search"
+              value={listSearch}
+              onChange={(e) => setListSearch(e.target.value)}
+              placeholder="Search estimates…"
+              autoComplete="off"
+              aria-label="Search estimates"
+              style={{ ...estInputBase, width: '100%', padding: '0.5rem' }}
+            />
+          </div>
+          {loading ? (
+            <p>Loading…</p>
+          ) : rows.length === 0 ? (
+            <p style={{ marginTop: '1rem', color: '#6b7280' }}>{estimatesListEmptyLabel}</p>
+          ) : filteredRows.length === 0 ? (
+            <p style={{ marginTop: '1rem', color: '#6b7280' }}>No estimates match your search.</p>
+          ) : (
+            <div style={{ overflowX: 'auto', marginTop: '1rem' }}>
+              <EstimateListTable
+                rows={filteredRows}
+                setAcceptanceModalEstimateId={setAcceptanceModalEstimateId}
+                setCreateJobFromListRow={setCreateJobFromListRow}
+                showCustomerColumn
+                onCustomerSnapshotRequest={setCustomerSnapshotId}
+              />
+            </div>
+          )}
+        </div>
       ) : (
-        <div style={{ overflowX: 'auto', marginTop: '1rem' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid #e5e7eb', textAlign: 'left' }}>
-                <th style={{ padding: '0.5rem', whiteSpace: 'nowrap' }}>#</th>
-                <th style={{ padding: '0.5rem', lineHeight: 1.3 }}>
-                  <div>Title</div>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 400, color: '#6b7280' }}>Customer</div>
-                </th>
-                <th style={{ padding: '0.5rem' }}>Status</th>
-                <th style={{ padding: '0.5rem' }}>Total</th>
-                <th style={{ padding: '0.5rem' }}>Updated</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => {
-                const updatedLines = formatEstimateListUpdatedLines(r.updated_at)
-                return (
-                  <tr key={r.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                    <td style={{ padding: '0.5rem', fontVariantNumeric: 'tabular-nums' }}>{r.estimate_number}</td>
-                    <td style={{ padding: '0.5rem', minWidth: 0 }}>
-                      <div
-                        style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '0.15rem',
-                          minWidth: 0,
-                        }}
-                      >
-                        <Link to={`/estimates/${r.estimate_number}`}>{r.title || '—'}</Link>
-                        <span
-                          style={{
-                            fontSize: '0.85rem',
-                            color: '#6b7280',
-                            overflowWrap: 'anywhere',
-                            wordBreak: 'break-word',
-                          }}
-                        >
-                          {estimateListCustomerSubline(r)}
-                        </span>
-                      </div>
-                    </td>
-                    <td style={{ padding: '0.5rem' }}>
-                      {r.status === 'customer_accepted' ? (
-                        <div
-                          style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'flex-start',
-                            gap: '0.35rem',
-                          }}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => setAcceptanceModalEstimateId(r.id)}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              padding: 0,
-                              cursor: 'pointer',
-                              color: '#1d4ed8',
-                              textDecoration: 'underline',
-                              font: 'inherit',
-                              textAlign: 'left',
-                            }}
-                            aria-label={`View acceptance record for estimate ${r.estimate_number}`}
-                          >
-                            Accepted — view
-                          </button>
-                          {r.job_ledger_id ? (
-                            <Link
-                              to={`/jobs?edit=${r.job_ledger_id}`}
-                              style={{ fontSize: '0.85rem', fontWeight: 500, color: '#15803d' }}
-                            >
-                              {(() => {
-                                const hcp = estimateLinkedJobHcp(r)
-                                return hcp ? `Job #${hcp}` : 'Job linked'
-                              })()}
-                            </Link>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => setCreateJobFromListRow(r)}
-                              style={estimateListCreateJobButtonStyle}
-                              title="Create a linked job from this estimate"
-                              aria-label="Create job from estimate"
-                            >
-                              Create job
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        statusLabel(r.status)
-                      )}
-                    </td>
-                    <td style={{ padding: '0.5rem' }}>{formatMoney(r.total_cents)}</td>
-                    <td style={{ padding: '0.5rem', color: '#6b7280' }}>
-                      {updatedLines ? (
-                        <div
-                          style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '0.15rem',
-                            lineHeight: 1.25,
-                          }}
-                        >
-                          <span>{updatedLines.short}</span>
-                          <span style={{ fontSize: '0.85rem', color: '#9ca3af' }}>{updatedLines.relative}</span>
-                        </div>
-                      ) : (
-                        '—'
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-          {rows.length === 0 && <p style={{ marginTop: '1rem', color: '#6b7280' }}>No estimates yet.</p>}
+        <div role="tabpanel" aria-labelledby="estimates-tab-followup" style={{ marginTop: '0.75rem' }}>
+          <div style={{ width: '100%' }}>
+            <input
+              id="estimates-list-search-followup"
+              type="search"
+              value={listSearch}
+              onChange={(e) => setListSearch(e.target.value)}
+              placeholder="Search estimates…"
+              autoComplete="off"
+              aria-label="Search estimates"
+              style={{ ...estInputBase, width: '100%', padding: '0.5rem' }}
+            />
+          </div>
+          {loading ? (
+            <p style={{ marginTop: '1rem' }}>Loading…</p>
+          ) : rows.length === 0 ? (
+            <p style={{ marginTop: '1rem', color: '#6b7280' }}>{estimatesListEmptyLabel}</p>
+          ) : filteredRows.length === 0 ? (
+            <p style={{ marginTop: '1rem', color: '#6b7280' }}>No estimates match your search.</p>
+          ) : (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1.75rem',
+                marginTop: '1.25rem',
+              }}
+            >
+              <section>
+                <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.5rem', fontWeight: 600 }}>Unsent</h2>
+                {followupBuckets.unsent.length === 0 ? (
+                  <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem' }}>No estimates</p>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <EstimateListTable
+                      rows={followupBuckets.unsent}
+                      setAcceptanceModalEstimateId={setAcceptanceModalEstimateId}
+                      setCreateJobFromListRow={setCreateJobFromListRow}
+                      showCustomerColumn
+                      onCustomerSnapshotRequest={setCustomerSnapshotId}
+                    />
+                  </div>
+                )}
+              </section>
+              <section>
+                <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.5rem', fontWeight: 600 }}>Sent</h2>
+                {followupBuckets.sent.length === 0 ? (
+                  <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem' }}>No estimates</p>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <EstimateListTable
+                      rows={followupBuckets.sent}
+                      setAcceptanceModalEstimateId={setAcceptanceModalEstimateId}
+                      setCreateJobFromListRow={setCreateJobFromListRow}
+                      showCustomerColumn
+                      onCustomerSnapshotRequest={setCustomerSnapshotId}
+                    />
+                  </div>
+                )}
+              </section>
+              <section>
+                <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.5rem', fontWeight: 600 }}>Accepted</h2>
+                {followupBuckets.accepted.length === 0 ? (
+                  <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem' }}>No estimates</p>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <EstimateListTable
+                      rows={followupBuckets.accepted}
+                      setAcceptanceModalEstimateId={setAcceptanceModalEstimateId}
+                      setCreateJobFromListRow={setCreateJobFromListRow}
+                    />
+                  </div>
+                )}
+              </section>
+            </div>
+          )}
         </div>
       )}
       <CustomerAcceptanceRecordModal
         open={acceptanceModalEstimateId != null}
         estimateId={acceptanceModalEstimateId}
         onClose={() => setAcceptanceModalEstimateId(null)}
+      />
+      <CustomerSnapshotModal
+        open={customerSnapshotId != null}
+        onClose={() => setCustomerSnapshotId(null)}
+        customerId={customerSnapshotId}
+        gcBuilder={null}
       />
       <CreateJobFromEstimateModal
         open={createJobFromListRow != null}
@@ -741,6 +1156,10 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       : 'Add Note'
   const titleInputRef = useRef<HTMLInputElement>(null)
   const sendEmailOverrideInputRef = useRef<HTMLInputElement>(null)
+  const customerSearchSectionRef = useRef<HTMLDivElement>(null)
+  const lastCustomerGateToastAt = useRef(0)
+  const customerGateHighlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [customerSearchHighlight, setCustomerSearchHighlight] = useState(false)
   /** Tracks last persisted customer link for draft auto-save; `undefined` = skip first run after load/navigation. */
   const prevCustomerIdForAutosave = useRef<string | null | undefined>(undefined)
 
@@ -1116,6 +1535,38 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   }, [editCustomerModal, customerId, refetchCustomersAfterEdit])
 
   const isDraft = row?.status === 'draft'
+  const draftNeedsCustomer = isDraft && !customerId
+
+  const requestCustomerFirst = useCallback(() => {
+    if (customerId) return
+    const now = Date.now()
+    if (now - lastCustomerGateToastAt.current < 700) return
+    lastCustomerGateToastAt.current = now
+    showToast('Choose a customer before editing this estimate.', 'warning')
+    customerSearchSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    setCustomerSearchHighlight(true)
+    if (customerGateHighlightTimerRef.current) clearTimeout(customerGateHighlightTimerRef.current)
+    customerGateHighlightTimerRef.current = setTimeout(() => {
+      setCustomerSearchHighlight(false)
+      customerGateHighlightTimerRef.current = null
+    }, 2400)
+    queueMicrotask(() => {
+      const input = customerSearchSectionRef.current?.querySelector<HTMLInputElement>(
+        '.customer-search-combobox input',
+      )
+      input?.focus()
+    })
+  }, [customerId, showToast])
+
+  useEffect(() => {
+    if (!customerId) return
+    setCustomerSearchHighlight(false)
+    if (customerGateHighlightTimerRef.current) {
+      clearTimeout(customerGateHighlightTimerRef.current)
+      customerGateHighlightTimerRef.current = null
+    }
+  }, [customerId])
+
   const customerAttachmentPreview = useMemo((): CustomerAttachmentPayload | null => {
     if (isDraft) {
       const a = normalizeCustomerAttachmentDraftForDb(customerAttachmentUrl, customerAttachmentLabel)
@@ -1850,7 +2301,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   if (loading || !row) {
     return (
       <div className={ESTIMATES_PAGE_CLASS} style={{ padding: '1rem' }}>
-        <style>{estimatesFocusVisibleCss}</style>
+        <style>{estimateDetailPageCss}</style>
         <p>Loading…</p>
       </div>
     )
@@ -1858,7 +2309,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
 
   return (
     <div className={ESTIMATES_PAGE_CLASS} style={{ padding: '1rem', maxWidth: 900, margin: '0 auto' }}>
-      <style>{estimatesFocusVisibleCss}</style>
+      <style>{estimateDetailPageCss}</style>
       <div style={{ marginBottom: '1rem' }}>
         <Link to="/estimates">← Estimates</Link>
       </div>
@@ -1871,7 +2322,11 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             marginBottom: '1rem',
           }}
         >
-          <div style={{ width: '100%', maxWidth: 480, textAlign: 'left' }}>
+          <div
+            ref={customerSearchSectionRef}
+            className={customerSearchHighlight ? 'estimate-customer-search-highlight' : undefined}
+            style={{ width: '100%', maxWidth: 480, textAlign: 'left' }}
+          >
             <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.25rem' }}>Customer</span>
             <CustomerSearchCombobox
               customers={customers}
@@ -2066,27 +2521,28 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
           </div>
         </div>
       )}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '0.5rem',
-        }}
-      >
-        <div>
-          {isDraft ? (
-            <span
-              style={{
-                color: '#6b7280',
-                fontSize: '0.9rem',
-                fontWeight: 600,
-                lineHeight: 1.25,
-              }}
-            >
-              # {row.estimate_number}
-            </span>
+      <EstimateDraftCustomerGate active={draftNeedsCustomer} onBlockedInteraction={requestCustomerFirst}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '0.5rem',
+          }}
+        >
+          <div>
+            {isDraft ? (
+              <span
+                style={{
+                  color: '#6b7280',
+                  fontSize: '0.9rem',
+                  fontWeight: 600,
+                  lineHeight: 1.25,
+                }}
+              >
+                # {row.estimate_number}
+              </span>
           ) : (
             <h1 style={{ margin: 0 }}>
               <span style={{ color: '#6b7280', fontSize: '0.9rem', fontWeight: 600 }}>
@@ -2209,7 +2665,16 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             forFieldSlot={
               <>
                 {!customerId ? (
-                  <span style={{ display: 'block', fontSize: '0.85rem', color: '#6b7280', marginBottom: '0.35rem' }}>
+                  <span
+                    style={{
+                      display: 'block',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      color: '#dc2626',
+                      marginBottom: '0.35rem',
+                      textAlign: 'center',
+                    }}
+                  >
                     Select a customer to enable.
                   </span>
                 ) : null}
@@ -2249,7 +2714,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                   gap: '0.5rem',
                 }}
               >
-                <span style={{ fontWeight: 500, flexShrink: 0 }}>Expires on: </span>
+                <strong style={{ flexShrink: 0 }}>Expires on:</strong>
                 <input
                   type="date"
                   value={validUntil}
@@ -3035,7 +3500,15 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               style={{ ...estInputBase, marginTop: '0.25rem', padding: '0.5rem', fontFamily: 'inherit' }}
             />
           </label>
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1rem' }}>
+          <div
+            style={{
+              display: 'flex',
+              gap: '0.5rem',
+              flexWrap: 'wrap',
+              marginTop: '1rem',
+              justifyContent: 'center',
+            }}
+          >
             <button type="button" onClick={() => void saveDraft()} disabled={saving} style={estSecondaryButton(saving)}>
               {saving ? 'Saving…' : 'Save draft'}
             </button>
@@ -3053,6 +3526,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
           </div>
         </>
       )}
+      </EstimateDraftCustomerGate>
 
       {!isDraft && (
         <div style={{ marginTop: '1rem' }}>
@@ -3227,14 +3701,15 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
         </div>
       )}
 
-      <details
-        style={{
-          marginTop: '2rem',
-          paddingTop: '1rem',
-          borderTop: '1px solid #e5e7eb',
-        }}
-      >
-        <summary style={{ cursor: 'pointer', fontWeight: 600, userSelect: 'none' }}>Customer experience</summary>
+      <EstimateDraftCustomerGate active={draftNeedsCustomer} onBlockedInteraction={requestCustomerFirst}>
+        <details
+          style={{
+            marginTop: '2rem',
+            paddingTop: '1rem',
+            borderTop: '1px solid #e5e7eb',
+          }}
+        >
+          <summary style={{ cursor: 'pointer', fontWeight: 600, userSelect: 'none' }}>Customer experience</summary>
         <div style={{ marginTop: '1rem' }}>
           {row.status !== 'sent' ? (
             <EstimateCustomerAcceptLinkButtons
@@ -3466,7 +3941,8 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             </>
           )}
         </div>
-      </details>
+        </details>
+      </EstimateDraftCustomerGate>
 
       {createCustomerOpen && (
         <div
