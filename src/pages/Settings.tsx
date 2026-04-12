@@ -774,6 +774,8 @@ export default function Settings() {
   const [notificationTemplates, setNotificationTemplates] = useState<NotificationTemplate[]>([])
   const [notificationTemplatesSectionOpen, setNotificationTemplatesSectionOpen] = useState(false)
   const [workflowFnEmailSectionOpen, setWorkflowFnEmailSectionOpen] = useState(false)
+  const [templatesJobPartsTallySectionOpen, setTemplatesJobPartsTallySectionOpen] = useState(false)
+  const [templatesDeleteAllEstimatesSectionOpen, setTemplatesDeleteAllEstimatesSectionOpen] = useState(false)
   const [editingNotificationTemplate, setEditingNotificationTemplate] = useState<NotificationTemplate | null>(null)
   const [notificationTemplateTitle, setNotificationTemplateTitle] = useState('')
   const [notificationTemplateBody, setNotificationTemplateBody] = useState('')
@@ -791,6 +793,9 @@ export default function Settings() {
   const [jobTallyMinPostedYmdInput, setJobTallyMinPostedYmdInput] = useState('')
   const [jobTallyMinPostedYmdSaving, setJobTallyMinPostedYmdSaving] = useState(false)
   const [jobTallyMinPostedYmdError, setJobTallyMinPostedYmdError] = useState<string | null>(null)
+  const [devResetEstimatesModalOpen, setDevResetEstimatesModalOpen] = useState(false)
+  const [devResetEstimatesConfirmInput, setDevResetEstimatesConfirmInput] = useState('')
+  const [devResetEstimatesLoading, setDevResetEstimatesLoading] = useState(false)
   const [editingNonUserPerson, setEditingNonUserPerson] = useState<PersonRow | null>(null)
   const [editPersonName, setEditPersonName] = useState('')
   const [editPersonEmail, setEditPersonEmail] = useState('')
@@ -10920,78 +10925,266 @@ export default function Settings() {
       <SettingsGroup id="settings-templates" title="Templates & testing">
       {myRole === 'dev' && (
         <>
-          <div
-            style={{
-              marginBottom: '1.5rem',
-              padding: '1rem',
-              border: '1px solid #e5e7eb',
-              borderRadius: 8,
-              background: '#fafafa',
-            }}
-          >
-            <h3 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 600 }}>Job Parts Tally</h3>
-            <p style={{ margin: '0 0 0.75rem', color: '#6b7280', fontSize: '0.875rem', lineHeight: 1.5 }}>
-              Org-wide minimum posted date (Chicago calendar day). Transactions before this day are hidden on Job Parts Tally
-              for everyone. Leave empty to show all.
-            </p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
-              <label htmlFor="job-tally-min-posted-ymd" style={{ fontWeight: 500, fontSize: '0.875rem' }}>
-                Minimum posted date
-              </label>
-              <input
-                id="job-tally-min-posted-ymd"
-                type="date"
-                value={jobTallyMinPostedYmdInput}
-                onChange={(e) => {
-                  setJobTallyMinPostedYmdInput(e.target.value)
-                  setJobTallyMinPostedYmdError(null)
-                }}
-                style={{ padding: '0.35rem 0.5rem', fontSize: '0.875rem' }}
-              />
-              <button
-                type="button"
-                disabled={jobTallyMinPostedYmdSaving}
-                onClick={() => {
-                  void (async () => {
-                    const trimmed = jobTallyMinPostedYmdInput.trim()
-                    if (trimmed !== '' && !isValidYmd(trimmed)) {
-                      setJobTallyMinPostedYmdError('Use YYYY-MM-DD or clear the field.')
-                      return
-                    }
-                    setJobTallyMinPostedYmdError(null)
-                    setJobTallyMinPostedYmdSaving(true)
-                    try {
-                      await withSupabaseRetry(
-                        async () =>
-                          supabase.from('app_settings').upsert(
-                            { key: APP_SETTINGS_KEY_JOB_TALLY_MIN_POSTED_YMD, value_text: trimmed },
-                            { onConflict: 'key' },
-                          ),
-                        'save job tally min posted app setting',
-                      )
-                      showToast('Job Tally minimum posted date saved.', 'success')
-                    } catch (e) {
-                      showToast(formatErrorMessage(e), 'error')
-                    } finally {
-                      setJobTallyMinPostedYmdSaving(false)
-                    }
-                  })()
-                }}
+          <div style={{ marginBottom: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+            <button
+              type="button"
+              onClick={() => setTemplatesJobPartsTallySectionOpen((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                padding: '1rem',
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                fontWeight: 600,
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: '0.75rem' }}>{templatesJobPartsTallySectionOpen ? '▼' : '▶'}</span>
+              Job Parts Tally
+            </button>
+            {templatesJobPartsTallySectionOpen ? (
+              <div
                 style={{
-                  padding: '0.35rem 0.75rem',
-                  fontSize: '0.875rem',
-                  cursor: jobTallyMinPostedYmdSaving ? 'wait' : 'pointer',
+                  padding: '0 1rem 1rem 1rem',
+                  borderTop: '1px solid #e5e7eb',
+                  background: '#fafafa',
                 }}
               >
-                {jobTallyMinPostedYmdSaving ? 'Saving…' : 'Save'}
-              </button>
-            </div>
-            {jobTallyMinPostedYmdError ? (
-              <p style={{ margin: '0.5rem 0 0', color: '#b91c1c', fontSize: '0.8125rem' }}>
-                {jobTallyMinPostedYmdError}
-              </p>
+                <p style={{ margin: '0 0 0.75rem', color: '#6b7280', fontSize: '0.875rem', lineHeight: 1.5 }}>
+                  Org-wide minimum posted date (Chicago calendar day). Transactions before this day are hidden on Job Parts
+                  Tally for everyone. Leave empty to show all.
+                </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
+                  <label htmlFor="job-tally-min-posted-ymd" style={{ fontWeight: 500, fontSize: '0.875rem' }}>
+                    Minimum posted date
+                  </label>
+                  <input
+                    id="job-tally-min-posted-ymd"
+                    type="date"
+                    value={jobTallyMinPostedYmdInput}
+                    onChange={(e) => {
+                      setJobTallyMinPostedYmdInput(e.target.value)
+                      setJobTallyMinPostedYmdError(null)
+                    }}
+                    style={{ padding: '0.35rem 0.5rem', fontSize: '0.875rem' }}
+                  />
+                  <button
+                    type="button"
+                    disabled={jobTallyMinPostedYmdSaving}
+                    onClick={() => {
+                      void (async () => {
+                        const trimmed = jobTallyMinPostedYmdInput.trim()
+                        if (trimmed !== '' && !isValidYmd(trimmed)) {
+                          setJobTallyMinPostedYmdError('Use YYYY-MM-DD or clear the field.')
+                          return
+                        }
+                        setJobTallyMinPostedYmdError(null)
+                        setJobTallyMinPostedYmdSaving(true)
+                        try {
+                          await withSupabaseRetry(
+                            async () =>
+                              supabase.from('app_settings').upsert(
+                                { key: APP_SETTINGS_KEY_JOB_TALLY_MIN_POSTED_YMD, value_text: trimmed },
+                                { onConflict: 'key' },
+                              ),
+                            'save job tally min posted app setting',
+                          )
+                          showToast('Job Tally minimum posted date saved.', 'success')
+                        } catch (e) {
+                          showToast(formatErrorMessage(e), 'error')
+                        } finally {
+                          setJobTallyMinPostedYmdSaving(false)
+                        }
+                      })()
+                    }}
+                    style={{
+                      padding: '0.35rem 0.75rem',
+                      fontSize: '0.875rem',
+                      cursor: jobTallyMinPostedYmdSaving ? 'wait' : 'pointer',
+                    }}
+                  >
+                    {jobTallyMinPostedYmdSaving ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
+                {jobTallyMinPostedYmdError ? (
+                  <p style={{ margin: '0.5rem 0 0', color: '#b91c1c', fontSize: '0.8125rem' }}>
+                    {jobTallyMinPostedYmdError}
+                  </p>
+                ) : null}
+              </div>
             ) : null}
           </div>
+          <div style={{ marginBottom: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+            <button
+              type="button"
+              onClick={() => setTemplatesDeleteAllEstimatesSectionOpen((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                padding: '1rem',
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                fontWeight: 600,
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: '0.75rem' }}>{templatesDeleteAllEstimatesSectionOpen ? '▼' : '▶'}</span>
+              Delete all estimates (this org, dev only)
+            </button>
+            {templatesDeleteAllEstimatesSectionOpen ? (
+              <div
+                style={{
+                  padding: '0 1rem 1rem 1rem',
+                  borderTop: '1px solid #fecaca',
+                  background: '#fffbeb',
+                }}
+              >
+                <p style={{ margin: '0 0 0.75rem', color: '#78350f', fontSize: '0.875rem', lineHeight: 1.5 }}>
+                  Permanently removes every estimate for your resolved org (all statuses). Jobs are not deleted. Related
+                  thread notes and customer events are removed with each estimate. The next quote number is{' '}
+                  <strong>1</strong> only if no estimate rows remain in the database after this; if other organizations still
+                  have quotes, the next number follows the global sequence.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDevResetEstimatesConfirmInput('')
+                    setDevResetEstimatesModalOpen(true)
+                  }}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    background: '#b91c1c',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: 4,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Delete all estimates…
+                </button>
+              </div>
+            ) : null}
+          </div>
+          {devResetEstimatesModalOpen ? (
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0,0,0,0.5)',
+                zIndex: 1000,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="dev-reset-estimates-title"
+                style={{
+                  background: 'white',
+                  borderRadius: 8,
+                  padding: '1.5rem',
+                  maxWidth: '480px',
+                  width: '90%',
+                  boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
+                }}
+              >
+                <h3 id="dev-reset-estimates-title" style={{ marginTop: 0, marginBottom: '0.75rem', color: '#991b1b' }}>
+                  Confirm delete all estimates
+                </h3>
+                <p style={{ margin: '0 0 0.75rem', color: '#374151', fontSize: '0.875rem', lineHeight: 1.5 }}>
+                  This cannot be undone. Type <strong>DELETE</strong> below to confirm.
+                </p>
+                <input
+                  type="text"
+                  value={devResetEstimatesConfirmInput}
+                  onChange={(e) => setDevResetEstimatesConfirmInput(e.target.value)}
+                  placeholder="DELETE"
+                  autoComplete="off"
+                  aria-label="Type DELETE to confirm"
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    padding: '0.5rem 0.75rem',
+                    fontSize: '0.875rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: 4,
+                    marginBottom: '1rem',
+                  }}
+                />
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    disabled={devResetEstimatesLoading}
+                    onClick={() => {
+                      setDevResetEstimatesModalOpen(false)
+                      setDevResetEstimatesConfirmInput('')
+                    }}
+                    style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={devResetEstimatesLoading || devResetEstimatesConfirmInput.trim() !== 'DELETE'}
+                    onClick={() => {
+                      void (async () => {
+                        setDevResetEstimatesLoading(true)
+                        try {
+                          const deleted = await withSupabaseRetry(
+                            async () => supabase.rpc('dev_reset_estimates_for_testing'),
+                            'dev reset estimates',
+                          )
+                          const n = typeof deleted === 'number' ? deleted : 0
+                          showToast(`Deleted ${n} estimate(s). Quote numbering updated.`, 'success')
+                          setDevResetEstimatesModalOpen(false)
+                          setDevResetEstimatesConfirmInput('')
+                        } catch (e) {
+                          showToast(formatErrorMessage(e, 'Could not reset estimates'), 'error')
+                        } finally {
+                          setDevResetEstimatesLoading(false)
+                        }
+                      })()
+                    }}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      fontSize: '0.875rem',
+                      fontWeight: 600,
+                      background:
+                        devResetEstimatesLoading || devResetEstimatesConfirmInput.trim() !== 'DELETE'
+                          ? '#e5e7eb'
+                          : '#b91c1c',
+                      color:
+                        devResetEstimatesLoading || devResetEstimatesConfirmInput.trim() !== 'DELETE'
+                          ? '#6b7280'
+                          : '#ffffff',
+                      border: 'none',
+                      borderRadius: 4,
+                      cursor:
+                        devResetEstimatesLoading || devResetEstimatesConfirmInput.trim() !== 'DELETE'
+                          ? 'not-allowed'
+                          : 'pointer',
+                    }}
+                  >
+                    {devResetEstimatesLoading ? 'Deleting…' : 'Confirm delete'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
           <p style={{ marginTop: '2rem', marginBottom: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
             Choose who receives <strong>notification</strong> and <strong>email</strong> template tests (push goes to their devices; email goes to their account email).
           </p>

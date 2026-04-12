@@ -538,6 +538,8 @@ export function DashboardTeamActiveClockStrip({
   /** Strip `work_date` (YYYY-MM-DD), e.g. from my team hook `clockStripWorkDateYmd`. */
   clockStripWorkDateYmd?: string
 }) {
+  const clockStripWorkDateResolved =
+    clockStripWorkDateYmd ?? new Date().toLocaleDateString('en-CA')
   const stripRejectTitleId = useId()
   const nowMs = useIntervalNowMs(45_000)
   const [salaryMaterializeBusyUserId, setSalaryMaterializeBusyUserId] = useState<string | null>(null)
@@ -808,8 +810,6 @@ export function DashboardTeamActiveClockStrip({
     : {}
   const copyJobMixChrome = enableCopyDayJobMix === true && clockedInTodayRows.length > 0
   const showClockedInHeaderChrome = showClockedInTodayToggle || copyJobMixChrome
-  const clockStripWorkDateResolved =
-    clockStripWorkDateYmd ?? new Date().toLocaleDateString('en-CA')
   const clockedInTodayHeaderOverlay =
     showClockedInHeaderChrome ? (
       <div
@@ -1035,6 +1035,8 @@ export function DashboardTeamActiveClockStrip({
                                 unassignedTrigger="default"
                                 compactTrigger
                                 showChangeWhenAssigned={onOpenStripMyTimeEditor == null}
+                                dispatchScheduleAssigneeUserId={s.user_id}
+                                dispatchScheduleWorkDateYmd={s.work_date}
                               />
                             </span>
                           ) : null}
@@ -1099,6 +1101,8 @@ export function DashboardTeamActiveClockStrip({
                               unassignedTrigger="default"
                               compactTrigger
                               showChangeWhenAssigned={onOpenStripMyTimeEditor == null}
+                              dispatchScheduleAssigneeUserId={s.user_id}
+                              dispatchScheduleWorkDateYmd={s.work_date}
                             />
                           </span>
                         ) : null}
@@ -1537,6 +1541,8 @@ export function DashboardTeamActiveClockStrip({
                                                           unassignedTrigger="default"
                                                           compactTrigger
                                                           showChangeWhenAssigned={onOpenStripMyTimeEditor == null}
+                                                          dispatchScheduleAssigneeUserId={s.user_id}
+                                                          dispatchScheduleWorkDateYmd={clockStripWorkDateResolved}
                                                         />
                                                       </span>
                                                     ) : null}
@@ -1610,6 +1616,8 @@ export function DashboardTeamActiveClockStrip({
                                                         unassignedTrigger="default"
                                                         compactTrigger
                                                         showChangeWhenAssigned={onOpenStripMyTimeEditor == null}
+                                                        dispatchScheduleAssigneeUserId={s.user_id}
+                                                        dispatchScheduleWorkDateYmd={clockStripWorkDateResolved}
                                                       />
                                                     </span>
                                                   ) : null}

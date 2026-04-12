@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import { Fragment, useEffect, useState, type CSSProperties } from 'react'
 import {
   AssignSessionJobPopover,
   type AssignSessionJobPopoverSession,
@@ -28,6 +28,8 @@ import {
   formatDenverTimeRangeSameDay,
 } from '../../utils/dateUtils'
 import { ForceClockOutIcon } from '../icons/ForceClockOutIcon'
+import { MyTimeSegmentMergeDirectionModal } from './MyTimeSegmentMergeDirectionModal'
+import { useMyTimeCompactMergeMedia } from './useMyTimeCompactMergeMedia'
 
 function formatDurationMs(ms: number): string {
   const h = ms / 3600000
@@ -63,6 +65,8 @@ export type MyTimeDayClusterVisualProps = {
   rejectSessionBusyId?: string | null
   /** Dashboard clock preview: strip and actions non-interactive. */
   readOnlyView?: boolean
+  dispatchScheduleAssigneeUserId?: string
+  dispatchScheduleWorkDateYmd?: string
 }
 
 export function MyTimeDayClusterVisual({
@@ -93,9 +97,19 @@ export function MyTimeDayClusterVisual({
   onRejectSession,
   rejectSessionBusyId = null,
   readOnlyView = false,
+  dispatchScheduleAssigneeUserId,
+  dispatchScheduleWorkDateYmd,
 }: MyTimeDayClusterVisualProps) {
   const openLastCluster = !lastS.clocked_out_at
+  const compactMerge = useMyTimeCompactMergeMedia()
+  const [mergeDirectionModalSegIdx, setMergeDirectionModalSegIdx] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (saving) setMergeDirectionModalSegIdx(null)
+  }, [saving])
+
   return (
+    <Fragment>
     <div
       className="myTimeDaySessionRow"
       style={{
@@ -104,20 +118,21 @@ export function MyTimeDayClusterVisual({
         display: 'flex',
         flexDirection: 'row',
         alignItems: 'stretch',
-        gap: 10,
+        gap: compactMerge ? 5 : 10,
         padding: '0.5rem 0',
-        borderBottom: '1px solid #f3f4f6',
+        borderBottom: '2px solid #d1d5db',
       }}
     >
       <div
         style={{
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'center',
+          alignItems: compactMerge ? 'flex-start' : 'center',
           alignSelf: 'stretch',
           flexShrink: 0,
           gap: 4,
           minHeight: 0,
+          maxWidth: compactMerge ? 'min-content' : undefined,
         }}
       >
         <span
@@ -126,9 +141,9 @@ export function MyTimeDayClusterVisual({
             fontWeight: 500,
             color: '#6b7280',
             lineHeight: 1.15,
-            textAlign: 'center',
+            textAlign: compactMerge ? 'left' : 'center',
             pointerEvents: 'none',
-            maxWidth: '8.5rem',
+            maxWidth: compactMerge ? '6.25rem' : '8.5rem',
           }}
         >
           {formatDenverBlockWeekdayHeader(t0, t1)}
@@ -139,7 +154,7 @@ export function MyTimeDayClusterVisual({
             color: '#9ca3af',
             fontVariantNumeric: 'tabular-nums',
             lineHeight: 1.15,
-            textAlign: 'center',
+            textAlign: compactMerge ? 'left' : 'center',
             pointerEvents: 'none',
           }}
         >
@@ -153,15 +168,15 @@ export function MyTimeDayClusterVisual({
             flex: 1,
             minHeight: 88,
             minWidth: 0,
-            alignSelf: 'stretch',
-            gap: 4,
+            alignSelf: compactMerge ? 'flex-start' : 'stretch',
+            gap: compactMerge ? 2 : 4,
           }}
         >
           <div
             className="myTimeDayStripHourGutter"
             style={{
               position: 'relative',
-              width: '2.25rem',
+              width: compactMerge ? '1.5rem' : '2.25rem',
               flexShrink: 0,
               pointerEvents: 'none',
             }}
@@ -315,9 +330,10 @@ export function MyTimeDayClusterVisual({
             display: 'flex',
             flexWrap: 'wrap',
             alignItems: 'center',
-            justifyContent: 'center',
+            justifyContent: compactMerge ? 'flex-start' : 'center',
             gap: 4,
-            maxWidth: '9rem',
+            maxWidth: compactMerge ? undefined : '9rem',
+            alignSelf: compactMerge ? 'flex-start' : undefined,
           }}
         >
           <span
@@ -326,7 +342,7 @@ export function MyTimeDayClusterVisual({
               color: '#9ca3af',
               fontVariantNumeric: 'tabular-nums',
               lineHeight: 1.15,
-              textAlign: 'center',
+              textAlign: compactMerge ? 'left' : 'center',
               pointerEvents: 'none',
             }}
           >
@@ -416,6 +432,7 @@ export function MyTimeDayClusterVisual({
               !readOnlyView && onRejectSession && adjustRow && adjustRow.clocked_out_at && !saving,
             )
             const segmentRejectDisabled = Boolean(rejectSessionBusyId != null)
+            const showMergeControls = split.boundaries.length > 2 && !readOnlyView && !saving
             const visualSpanDurText: CSSProperties = {
               fontSize: '0.75rem',
               color: '#9ca3af',
@@ -438,14 +455,15 @@ export function MyTimeDayClusterVisual({
                     alignItems: 'center',
                     width: '100%',
                     minWidth: 0,
-                    flexWrap: 'nowrap',
+                    flexWrap: compactMerge ? 'wrap' : 'nowrap',
                     gap: 6,
-                    marginBottom: 6,
+                    marginBottom: compactMerge ? 4 : 6,
                   }}
                 >
                   <div
+                    className="myTimeDayVisualSegTimeCol"
                     style={{
-                      flex: 1,
+                      flex: compactMerge ? '1 1 auto' : 1,
                       minWidth: 0,
                       display: 'flex',
                       alignItems: 'center',
@@ -489,97 +507,14 @@ export function MyTimeDayClusterVisual({
                         {visualSpanAndDur}
                       </span>
                     )}
-                    {split.boundaries.length > 2 && !readOnlyView && !saving ? (
-                      <span
-                        style={{
-                          display: 'inline-flex',
-                          flexWrap: 'wrap',
-                          gap: 4,
-                          alignItems: 'center',
-                          flexShrink: 0,
-                        }}
-                      >
-                        {segIdx > 0 ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const labUp = segmentAllocationLabelsForOverlap(
-                                c,
-                                split,
-                                nowTick,
-                                segIdx - 1,
-                                jobLabels,
-                                bidLabels
-                              )
-                              if (mergeAllocChoiceRequired(allocLabels, labUp)) {
-                                onRequestMergeJobChoice?.({ direction: 'prev', segIdx })
-                                return
-                              }
-                              patchClusterAction({
-                                type: 'removeSegmentMergeWithPrev',
-                                segIndex: segIdx,
-                                nowMs: nowTick,
-                                openLastCluster,
-                              })
-                            }}
-                            style={{
-                              padding: '1px 6px',
-                              fontSize: '0.68rem',
-                              border: '1px solid #d1d5db',
-                              borderRadius: 4,
-                              background: 'white',
-                              color: '#6b7280',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            Merge up
-                          </button>
-                        ) : null}
-                        {segIdx < split.boundaries.length - 2 ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const labDn = segmentAllocationLabelsForOverlap(
-                                c,
-                                split,
-                                nowTick,
-                                segIdx + 1,
-                                jobLabels,
-                                bidLabels
-                              )
-                              if (mergeAllocChoiceRequired(allocLabels, labDn)) {
-                                onRequestMergeJobChoice?.({ direction: 'next', segIdx })
-                                return
-                              }
-                              patchClusterAction({
-                                type: 'removeSegmentMergeWithNext',
-                                segIndex: segIdx,
-                                nowMs: nowTick,
-                                openLastCluster,
-                              })
-                            }}
-                            style={{
-                              padding: '1px 6px',
-                              fontSize: '0.68rem',
-                              border: '1px solid #d1d5db',
-                              borderRadius: 4,
-                              background: 'white',
-                              color: '#6b7280',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            Merge down
-                          </button>
-                        ) : null}
-                      </span>
-                    ) : null}
                   </div>
                   <div
+                    className="myTimeDayVisualSegJobCol"
                     style={{
-                      flex: 1,
+                      flex: compactMerge ? '1 1 100%' : 1,
                       minWidth: 0,
                       display: 'flex',
-                      justifyContent: 'center',
+                      justifyContent: compactMerge ? 'flex-start' : 'center',
                       alignItems: 'center',
                     }}
                   >
@@ -590,7 +525,7 @@ export function MyTimeDayClusterVisual({
                         gap: 4,
                         alignItems: 'center',
                         minWidth: 0,
-                        justifyContent: 'center',
+                        justifyContent: compactMerge ? 'flex-start' : 'center',
                       }}
                     >
                       {showSingleUnassignedAssign && unassignedIds.length === 1 ? (
@@ -607,6 +542,8 @@ export function MyTimeDayClusterVisual({
                               resolveAssignSession ? () => resolveAssignSession(segIdx) : undefined
                             }
                             onSaved={onAssignJobSaved}
+                            dispatchScheduleAssigneeUserId={dispatchScheduleAssigneeUserId}
+                            dispatchScheduleWorkDateYmd={dispatchScheduleWorkDateYmd}
                           />
                         ) : null
                       ) : showSingleUnassignedAssign && unassignedIds.length > 1 ? (
@@ -657,7 +594,7 @@ export function MyTimeDayClusterVisual({
                           style={{
                             display: 'flex',
                             flexDirection: 'column',
-                            alignItems: 'center',
+                            alignItems: compactMerge ? 'flex-start' : 'center',
                             gap: 4,
                             width: '100%',
                           }}
@@ -668,7 +605,7 @@ export function MyTimeDayClusterVisual({
                               fontWeight: 600,
                               color: '#92400e',
                               lineHeight: 1.2,
-                              textAlign: 'center',
+                              textAlign: compactMerge ? 'left' : 'center',
                             }}
                           >
                             Multiple jobs/bids in this span
@@ -679,7 +616,7 @@ export function MyTimeDayClusterVisual({
                               flexWrap: 'wrap',
                               gap: 4,
                               alignItems: 'center',
-                              justifyContent: 'center',
+                              justifyContent: compactMerge ? 'flex-start' : 'center',
                             }}
                           >
                             {allocLabels.map((label, li) => (
@@ -748,6 +685,8 @@ export function MyTimeDayClusterVisual({
                                 resolveAssignSession ? () => resolveAssignSession(segIdx) : undefined
                               }
                               onSaved={onAssignJobSaved}
+                              dispatchScheduleAssigneeUserId={dispatchScheduleAssigneeUserId}
+                              dispatchScheduleWorkDateYmd={dispatchScheduleWorkDateYmd}
                             />
                           </span>
                         </div>
@@ -779,15 +718,147 @@ export function MyTimeDayClusterVisual({
                     </div>
                   </div>
                   <div
+                    className="myTimeDayVisualSegActionsCol"
                     style={{
-                      flex: 1,
+                      flex: compactMerge ? '0 0 auto' : 1,
                       minWidth: 0,
                       display: 'flex',
                       justifyContent: 'flex-end',
                       alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: 4,
+                      rowGap: 4,
                     }}
                   >
-                    {showSegmentReject ? (
+                    {showMergeControls ? (
+                      compactMerge ? (
+                        showSegmentReject ? (
+                          <button
+                            type="button"
+                            disabled={saving || segmentRejectDisabled}
+                            title="Segment actions: merge or reject"
+                            aria-label="Segment actions"
+                            onClick={() => setMergeDirectionModalSegIdx(segIdx)}
+                            style={{
+                              flexShrink: 0,
+                              padding: '0 4px',
+                              border: 'none',
+                              background: 'transparent',
+                              cursor: saving || segmentRejectDisabled ? 'not-allowed' : 'pointer',
+                              color: '#9ca3af',
+                              fontSize: '1rem',
+                              lineHeight: 1,
+                            }}
+                          >
+                            ×
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={saving}
+                            title="Segment actions"
+                            aria-label="Segment actions"
+                            onClick={() => setMergeDirectionModalSegIdx(segIdx)}
+                            style={{
+                              flexShrink: 0,
+                              padding: '0 4px',
+                              border: 'none',
+                              background: 'transparent',
+                              cursor: saving ? 'not-allowed' : 'pointer',
+                              color: '#9ca3af',
+                              fontSize: '1.25rem',
+                              lineHeight: 1,
+                            }}
+                          >
+                            …
+                          </button>
+                        )
+                      ) : (
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            flexWrap: 'wrap',
+                            gap: 4,
+                            alignItems: 'center',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {segIdx > 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const labUp = segmentAllocationLabelsForOverlap(
+                                  c,
+                                  split,
+                                  nowTick,
+                                  segIdx - 1,
+                                  jobLabels,
+                                  bidLabels
+                                )
+                                if (mergeAllocChoiceRequired(allocLabels, labUp)) {
+                                  onRequestMergeJobChoice?.({ direction: 'prev', segIdx })
+                                  return
+                                }
+                                patchClusterAction({
+                                  type: 'removeSegmentMergeWithPrev',
+                                  segIndex: segIdx,
+                                  nowMs: nowTick,
+                                  openLastCluster,
+                                })
+                              }}
+                              style={{
+                                padding: '1px 6px',
+                                fontSize: '0.68rem',
+                                border: '1px solid #d1d5db',
+                                borderRadius: 4,
+                                background: 'white',
+                                color: '#6b7280',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Merge up
+                            </button>
+                          ) : null}
+                          {segIdx < split.boundaries.length - 2 ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const labDn = segmentAllocationLabelsForOverlap(
+                                  c,
+                                  split,
+                                  nowTick,
+                                  segIdx + 1,
+                                  jobLabels,
+                                  bidLabels
+                                )
+                                if (mergeAllocChoiceRequired(allocLabels, labDn)) {
+                                  onRequestMergeJobChoice?.({ direction: 'next', segIdx })
+                                  return
+                                }
+                                patchClusterAction({
+                                  type: 'removeSegmentMergeWithNext',
+                                  segIndex: segIdx,
+                                  nowMs: nowTick,
+                                  openLastCluster,
+                                })
+                              }}
+                              style={{
+                                padding: '1px 6px',
+                                fontSize: '0.68rem',
+                                border: '1px solid #d1d5db',
+                                borderRadius: 4,
+                                background: 'white',
+                                color: '#6b7280',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Merge down
+                            </button>
+                          ) : null}
+                        </span>
+                      )
+                    ) : null}
+                    {showSegmentReject && !(compactMerge && showMergeControls) ? (
                       <button
                         type="button"
                         disabled={segmentRejectDisabled}
@@ -834,5 +905,65 @@ export function MyTimeDayClusterVisual({
         </div>
       </div>
     </div>
+    <MyTimeSegmentMergeDirectionModal
+      open={mergeDirectionModalSegIdx !== null}
+      onClose={() => setMergeDirectionModalSegIdx(null)}
+      mergeUpVisible={
+        mergeDirectionModalSegIdx !== null && mergeDirectionModalSegIdx > 0
+      }
+      mergeDownVisible={
+        mergeDirectionModalSegIdx !== null &&
+        mergeDirectionModalSegIdx < split.boundaries.length - 2
+      }
+      disabled={saving}
+      showReject={(() => {
+        const k = mergeDirectionModalSegIdx
+        if (k == null) return false
+        const row = clockSessionRowForSegmentAssign(c, split, nowTick, k)
+        return Boolean(
+          !readOnlyView && onRejectSession && row && row.clocked_out_at && !saving,
+        )
+      })()}
+      rejectDisabled={rejectSessionBusyId != null}
+      onReject={() => {
+        const k = mergeDirectionModalSegIdx
+        if (k == null) return
+        const row = clockSessionRowForSegmentAssign(c, split, nowTick, k)
+        if (row?.clocked_out_at) void onRejectSession?.(row)
+      }}
+      onMergeUp={() => {
+        const k = mergeDirectionModalSegIdx
+        if (k == null) return
+        const allocLabels = segmentAllocationLabelsForOverlap(c, split, nowTick, k, jobLabels, bidLabels)
+        const labUp = segmentAllocationLabelsForOverlap(c, split, nowTick, k - 1, jobLabels, bidLabels)
+        if (mergeAllocChoiceRequired(allocLabels, labUp)) {
+          onRequestMergeJobChoice?.({ direction: 'prev', segIdx: k })
+          return
+        }
+        patchClusterAction({
+          type: 'removeSegmentMergeWithPrev',
+          segIndex: k,
+          nowMs: nowTick,
+          openLastCluster,
+        })
+      }}
+      onMergeDown={() => {
+        const k = mergeDirectionModalSegIdx
+        if (k == null) return
+        const allocLabels = segmentAllocationLabelsForOverlap(c, split, nowTick, k, jobLabels, bidLabels)
+        const labDn = segmentAllocationLabelsForOverlap(c, split, nowTick, k + 1, jobLabels, bidLabels)
+        if (mergeAllocChoiceRequired(allocLabels, labDn)) {
+          onRequestMergeJobChoice?.({ direction: 'next', segIdx: k })
+          return
+        }
+        patchClusterAction({
+          type: 'removeSegmentMergeWithNext',
+          segIndex: k,
+          nowMs: nowTick,
+          openLastCluster,
+        })
+      }}
+    />
+    </Fragment>
   )
 }

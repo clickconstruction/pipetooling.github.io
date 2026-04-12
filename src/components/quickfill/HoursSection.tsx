@@ -478,6 +478,8 @@ export function HoursSection() {
                             loadPeopleHoursRef.current?.()
                           }}
                           onError={(msg) => setError(msg)}
+                          dispatchScheduleAssigneeUserId={s.user_id}
+                          dispatchScheduleWorkDateYmd={s.work_date}
                         />
                       </span>
                     )}

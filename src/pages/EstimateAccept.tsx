@@ -48,14 +48,17 @@ export default function EstimateAccept() {
       setError('This link is missing required information.')
       return
     }
-    let cancelled = false
+    const ac = new AbortController()
     async function load() {
       setLoading(true)
       setError(null)
       try {
         const res = await fetch(
           `${supabaseUrl}/functions/v1/get-estimate-for-customer?token=${encodeURIComponent(token)}`,
-          { headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` } },
+          {
+            signal: ac.signal,
+            headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
+          },
         )
         const json = (await res.json()) as {
           error?: string
@@ -63,11 +66,11 @@ export default function EstimateAccept() {
           customer_experience?: unknown
           customer_attachment?: CustomerAttachmentPayload | null
         } & Partial<PublicEstimate>
-        if (cancelled) return
+        if (ac.signal.aborted) return
         if (!res.ok) {
           if (json.code === 'already_accepted') {
             const cx = parseCustomerExperienceClient(json.customer_experience) ?? fallbackClientCustomerExperience()
-            if (!cancelled) {
+            if (!ac.signal.aborted) {
               setExperience(cx)
               setAlreadyAccepted(true)
               setEstimate(null)
@@ -81,7 +84,7 @@ export default function EstimateAccept() {
           return
         }
         const cx = parseCustomerExperienceClient(json.customer_experience) ?? fallbackClientCustomerExperience()
-        if (!cancelled) {
+        if (!ac.signal.aborted) {
           setExperience(cx)
           const fl = json.for_line
           setHeaderBrand(parseAcceptHeaderBrand((json as { accept_header_brand?: unknown }).accept_header_brand))
@@ -107,16 +110,15 @@ export default function EstimateAccept() {
             customer_attachment,
           })
         }
-      } catch {
-        if (!cancelled) setError('Could not load estimate. Check your connection.')
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return
+        if (!ac.signal.aborted) setError('Could not load estimate. Check your connection.')
       } finally {
-        if (!cancelled) setLoading(false)
+        if (!ac.signal.aborted) setLoading(false)
       }
     }
     void load()
-    return () => {
-      cancelled = true
-    }
+    return () => ac.abort()
   }, [token])
 
   async function submitAccept(payload: EstimateAcceptSubmitPayload) {

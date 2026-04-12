@@ -69,7 +69,7 @@ export const ESTIMATE_APP_SETTING_KEYS: Record<EstimateExperienceOverrideKey, st
 const OVERRIDE_KEYS = Object.keys(ESTIMATE_APP_SETTING_KEYS) as EstimateExperienceOverrideKey[]
 
 const BUILTIN_ACCEPT_PAGE_FOOTER =
-  'Reliable plumbing today, innovative solutions for tomorrow.\n' +
+  'Reliable service today, innovative solutions for tomorrow.\n' +
   'Click Plumbing and Electrical\n' +
   '12925 FM 20, Kingsbury, TX 78638\n' +
   'Ph: 512-360-0599\n' +
@@ -92,7 +92,8 @@ export function builtinEstimateExperience(): Record<EstimateExperienceOverrideKe
     accept_submit_label: 'Submit acceptance',
     accept_submitting_label: 'Submitting…',
     thank_you_title: 'Thank you',
-    thank_you_body: 'Your response has been recorded. The contractor will follow up with you.',
+    thank_you_body:
+      'Your response has been recorded. The contractor will follow up with you. We are excited to see you soon.',
     doc_title_fallback: 'Estimate',
     doc_valid_through_prefix: 'Expires on: ',
     doc_line_items_heading: 'Line items',

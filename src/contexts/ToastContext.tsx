@@ -1,21 +1,26 @@
 import { createContext, useCallback, useContext, useMemo, useState } from 'react'
-import { Toast } from '../components/Toast'
+import { Toast, type ToastAnchor } from '../components/Toast'
 
 type ToastType = 'info' | 'warning' | 'error' | 'success'
 
 type ToastContextValue = {
-  showToast: (message: string, type?: ToastType) => void
+  showToast: (message: string, type?: ToastType, durationMs?: number, anchor?: ToastAnchor) => void
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null)
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
-  const [toasts, setToasts] = useState<Array<{ id: number; message: string; type: ToastType }>>([])
+  const [toasts, setToasts] = useState<
+    Array<{ id: number; message: string; type: ToastType; durationMs?: number; anchor?: ToastAnchor }>
+  >([])
 
-  const showToast = useCallback((message: string, type: ToastType = 'info') => {
-    const id = Date.now()
-    setToasts((prev) => [...prev, { id, message, type }])
-  }, [])
+  const showToast = useCallback(
+    (message: string, type: ToastType = 'info', durationMs?: number, anchor?: ToastAnchor) => {
+      const id = Date.now()
+      setToasts((prev) => [...prev, { id, message, type, durationMs, anchor }])
+    },
+    [],
+  )
 
   const removeToast = (id: number) => {
     setToasts((prev) => prev.filter((t) => t.id !== id))
@@ -31,6 +36,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           key={toast.id}
           message={toast.message}
           type={toast.type}
+          duration={toast.durationMs}
+          anchor={toast.anchor}
           onClose={() => removeToast(toast.id)}
         />
       ))}

@@ -7,16 +7,28 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-11
+last_updated: 2026-04-12
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.285 → v2.4"
+version_range: "v2.289 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.289)"
+    line: ~885
+    description: "My Time: pairwise-overlap cluster split (one card per session), Form/Visual separators + overlap double border, compact list chrome, prior-week footer trim, time+jobs layout; Quickfill People Hours (new) mobile day nav"
+  - name: "Latest Version (v2.288)"
+    line: ~930
+    description: "Estimates accepted-detail layout, Customer activity order/defaults, thank-you + chick, terms link line, footer tagline, link-view dedupe, CustomerSnapshotModal from detail"
+  - name: "Latest Version (v2.287)"
+    line: ~920
+    description: "Estimates customer_accepted: read-only accepted snapshot (superseded layout in v2.288)"
+  - name: "Latest Version (v2.286)"
+    line: ~888
+    description: "Jobs Stages: linked quote in Job column footer (estimates.job_ledger_id); loadJobs + pickLinkedEstimateForStagesBanner; project strip unchanged"
   - name: "Latest Version (v2.285)"
-    line: ~875
+    line: ~898
     description: "Edit Job Billing: Outstanding billing table (date + (+n), Stages/Bill, Stripe share icons, full-width Note/Memo row); Payments received (Date, Amount ($), Memo; Stripe row vs header, Record Payment); Partial invoice layout; StripeInvoiceSharePanel inlineRow"
   - name: "Latest Version (v2.284)"
     line: ~887
@@ -682,6 +694,8 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.289 — My Time: overlap split cards, Form UX + separators; Quickfill People Hours (new) mobile nav](#latest-updates-v2289)
+**New:** [v2.288 — Estimates: accepted detail layout, thank-you + chick, terms/footer copy, activity dedupe](#latest-updates-v2288)
 **New:** [v2.285 — Edit Job Billing: Outstanding billing + Payments received + Partial invoice UX; StripeInvoiceSharePanel toolbar](#latest-updates-v2285)
 **New:** [v2.284 — Banking: Mercury/Stripe tabs + URL; Stripe invoice & webhook grids; Jobs Stages thread-stats perf](#latest-updates-v2284)
 **New:** [v2.283 — Bill Customer: Stripe preview before create; global modal; Edit Job entry](#latest-updates-v2283)
@@ -870,6 +884,56 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.289)
+
+**Date**: 2026-04-12
+
+### Dashboard **My Time** / **Edit time** — overlapping clusters split per session; Form/Visual chrome; prior-week gate; Quickfill **People Hours (new)** mobile nav
+
+- **Timeline clustering** — **[`myTimeDayTimeline.ts`](src/lib/myTimeDayTimeline.ts)**: optional **`splitClustersWithPairwiseOverlap`** on **`buildDayTimeline`** (same rule as **`hasPairwiseClockIntervalOverlap`** / **`CLUSTER_CONTIGUITY_EPS_MS`**) so structurally overlapping sessions never share one strip/card; **`expandClustersSplitPairwiseOverlaps`** + **`getNextSessionClusterInTimeline`** drive list expansion and Form **overlap** divider hints. Modal seeds and tick refresh use the same expansion (**[`DashboardMyTimeDayEditorModal.tsx`](src/components/DashboardMyTimeDayEditorModal.tsx)**).
+- **Form** — **[`MyTimeDayClusterForm.tsx`](src/components/my-time-day-editor/MyTimeDayClusterForm.tsx)**: block header one line **`Apr 8, 2026 | 8:00 AM – 4:00 PM`**; **time range + duration** on one line (like Visual), no separate **Span** label; long job labels **truncate** with ellipsis (**grid `minmax(0, …)`**, overflow rules in **`index.css`**); **Split** and **×** align **right** on narrow widths; job row can stack below **≤560px**. **Double** gray bottom border on a cluster when the **next** cluster **overlaps** (**`formOverlapDividerBelow`**); thicker **`#d1d5db`** separators between clusters (Form + **[`MyTimeDayClusterVisual.tsx`](src/components/my-time-day-editor/MyTimeDayClusterVisual.tsx)**). Segment divider styling in **`index.css`** (**.`myTimeDayClusterFormSegmentDivider`**).
+- **Compact list** — **`myTimeDayTimelineScroll`**: no border / no radius on the session scroll area when **`myTimeCompactLayout`** (narrow modal).
+- **Prior week** — Footer **Not coming in**, extra **Close**, and **NCNS** stay hidden on the **Editing a prior week** acknowledgment screen (**`priorWeekGateActive`**); **Cancel** / **Continue editing** and backdrop / Escape unchanged. Narrow title width when the Visual/Form header toggle is absent (**`desktopHeaderTitleNarrow`**).
+- **Quickfill** — **[`QuickfillPeopleHoursNewSection.tsx`](src/components/quickfill/QuickfillPeopleHoursNewSection.tsx)**: at **≤640px**, day line1 = full date label; line 2 = **`Previous day | Next day | Today`** (pipes); desktop layout unchanged.
+
+---
+
+## Latest Updates (v2.288)
+
+**Date**: 2026-04-12
+
+### **Estimates** & **public accept** — accepted detail UX, thank-you, terms/footer, audit dedupe
+
+- **[`Estimates.tsx`](src/pages/Estimates.tsx)** — **`customer_accepted`**: header shows **`# {estimate_number}`** + status only (no duplicate title); **For** / **Acceptance page logo** / **Line items** hidden (snapshot lives in the card); first block is a padded **[`EstimateCustomerDocument`](src/components/estimates/EstimateCustomerDocument.tsx)** + optional **`EstimateCustomerAttachmentCard`**; no standalone **Total**; **Customer:** name opens **[`CustomerSnapshotModal`](src/components/customers/CustomerSnapshotModal.tsx)**; order **Customer acceptance** → **`EstimateDetailCustomerActivitySection`** (**Customer activity**, collapsible, **default closed**) → **Job** (**centered** heading + actions); **Create job from estimate** uses primary blue (**`estimateDetailCreateJobButtonStyle`**). **`sent`**: **For** / logo / line items unchanged; **Customer activity** **default open**; activity block still before waiting copy.
+- **DB / Edge** — **[`20260412184127_dedupe_record_estimate_public_link_view.sql`](supabase/migrations/20260412184127_dedupe_record_estimate_public_link_view.sql)**: **`record_estimate_public_link_view`** skips duplicate **same IP + UA** within **5s** (+ advisory lock). **[`EstimateAccept.tsx`](src/pages/EstimateAccept.tsx)** — **`AbortController`** on load to reduce double-fetch under React Strict Mode.
+- **Thank you** — **[`EstimateCustomerThankYou.tsx`](src/components/estimates/EstimateCustomerThankYou.tsx)**: centered title + body; **`public/chick.png`** below; default body includes *We are excited to see you soon.*; **`import.meta.env.BASE_URL`** for asset path. Builtin + **[`20260412190051_update_estimate_thank_you_body_default.sql`](supabase/migrations/20260412190051_update_estimate_thank_you_body_default.sql)** update **`estimate_thank_you_body`** in **`app_settings`**.
+- **Accept page chrome** — **[`EstimateTermsHeaderNotice.tsx`](src/components/estimates/EstimateTermsHeaderNotice.tsx)**: bottom line is linked **Terms and Conditions.** only (no “Please make sure to read our…”).
+- **Footer tagline** — **`BUILTIN_ACCEPT_PAGE_FOOTER`** first line **Reliable service today…** (app + Edge **`estimateCustomerExperience`**); **[`20260412190601_update_estimate_accept_page_footer_tagline.sql`](supabase/migrations/20260412190601_update_estimate_accept_page_footer_tagline.sql)** updates **`estimate_accept_page_footer`** when the old plumbing line is present.
+
+---
+
+## Latest Updates (v2.287)
+
+**Date**: 2026-04-12
+
+### **Estimates** — **Accepted** quote snapshot (initial ship; layout refined in **v2.288**)
+
+- Introduced read-only **accepted** snapshot above **Customer acceptance** using **`EstimateCustomerDocument`**. **v2.288** removes the **`<details>`** wrapper, reorders sections, and trims duplicate header fields.
+
+---
+
+## Latest Updates (v2.286)
+
+**Date**: 2026-04-12
+
+### Jobs **Stages** — **linked quote** in **Job** column (when `estimates.job_ledger_id` matches)
+
+- **[`Jobs.tsx`](src/pages/Jobs.tsx)** — After **`loadJobs`** schedule batch, chunked **`estimates`** select by **`job_ledger_id`**; **`linkedEstimateForStages`** on **`JobWithDetails`**. **`renderStagesJobColumnEstimateFooter`**: subline at bottom of **Job** `<td>` (name / address / customer), link **`/estimates/{estimate_number}`**; **project** remains full-width **`renderStagesProjectBannerRow`** only; main row **`borderBottom`** follows project banner only. Standalone + unified Stages (job and invoice rows).
+- **[`pickLinkedEstimateForStagesBanner.ts`](src/lib/pickLinkedEstimateForStagesBanner.ts)** — Prefer **`customer_accepted`** (newest **`updated_at`**, then higher **`estimate_number`**); else newest **`updated_at`**.
+- **[`jobWithDetails.ts`](src/types/jobWithDetails.ts)** — **`JobLinkedEstimateForStages`**, **`linkedEstimateForStages`**.
+
 ---
 
 ## Latest Updates (v2.285)

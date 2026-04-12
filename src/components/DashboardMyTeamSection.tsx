@@ -756,6 +756,8 @@ export default function DashboardMyTeamSection({
                           session={s}
                           onSaved={() => void refreshPendingAfterAction()}
                           onError={(msg) => setError(msg)}
+                          dispatchScheduleAssigneeUserId={s.user_id}
+                          dispatchScheduleWorkDateYmd={s.work_date}
                         />
                       </span>
                     </div>

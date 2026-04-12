@@ -73,6 +73,20 @@ export function sameJobBid(a: DayEditorSession, b: DayEditorSession): boolean {
 }
 
 /**
+ * Whether `next` may share a time-contiguous cluster with `last` (closed row).
+ * Paired with {@link hasPairwiseClockIntervalOverlap}: reject merge when interval overlap exceeds ε;
+ * allow touch, sub-ε overlap noise, or gap ≤ ε after `last` end.
+ */
+export function timeClusterMergeAllowed(last: DayEditorSession, next: DayEditorSession): boolean {
+  if (!last.clocked_out_at) return false
+  const lastEnd = new Date(last.clocked_out_at).getTime()
+  const nextStart = new Date(next.clocked_in_at).getTime()
+  const deltaMs = nextStart - lastEnd
+  if (deltaMs < -CLUSTER_CONTIGUITY_EPS_MS) return false
+  return deltaMs <= CLUSTER_CONTIGUITY_EPS_MS
+}
+
+/**
  * Group consecutive sessions into contiguous blocks (same job/bid, next clock-in within ε of prev clock-out).
  * An open session (no clock-out) ends its cluster; nothing merges after it.
  */
@@ -81,13 +95,9 @@ export function groupContiguousSessionClusters(sortedSessions: DayEditorSession[
   for (const s of sortedSessions) {
     const cur = clusters[clusters.length - 1]
     const last = cur?.[cur.length - 1]
-    if (last && last.clocked_out_at && sameJobBid(last, s)) {
-      const lastEnd = new Date(last.clocked_out_at).getTime()
-      const nextStart = new Date(s.clocked_in_at).getTime()
-      if (nextStart <= lastEnd + CLUSTER_CONTIGUITY_EPS_MS) {
-        cur.push(s)
-        continue
-      }
+    if (last && last.clocked_out_at && sameJobBid(last, s) && timeClusterMergeAllowed(last, s)) {
+      cur.push(s)
+      continue
     }
     clusters.push([s])
   }
@@ -103,13 +113,9 @@ export function groupTimeContiguousSessionClusters(sortedSessions: DayEditorSess
   for (const s of sortedSessions) {
     const cur = clusters[clusters.length - 1]
     const last = cur?.[cur.length - 1]
-    if (last && last.clocked_out_at) {
-      const lastEnd = new Date(last.clocked_out_at).getTime()
-      const nextStart = new Date(s.clocked_in_at).getTime()
-      if (nextStart <= lastEnd + CLUSTER_CONTIGUITY_EPS_MS) {
-        cur.push(s)
-        continue
-      }
+    if (last && last.clocked_out_at && timeClusterMergeAllowed(last, s)) {
+      cur.push(s)
+      continue
     }
     clusters.push([s])
   }
@@ -186,6 +192,32 @@ export function hasPairwiseClockIntervalOverlap(
   return false
 }
 
+/**
+ * When a time-contiguous cluster has pairwise interval overlap (same threshold as
+ * {@link hasPairwiseClockIntervalOverlap}), replace it with one singleton cluster per row so the
+ * day timeline renders a separate Visual strip / Form card per overlapping session.
+ */
+export function expandClustersSplitPairwiseOverlaps(
+  clusters: DayEditorSession[][],
+  nowMs: number,
+): DayEditorSession[][] {
+  const out: DayEditorSession[][] = []
+  for (const c of clusters) {
+    if (c.length <= 1 || !hasPairwiseClockIntervalOverlap(c, nowMs)) {
+      out.push(c)
+    } else {
+      for (const s of c) {
+        out.push([s])
+      }
+    }
+  }
+  return out
+}
+
+export type BuildDayTimelineOptions = {
+  splitClustersWithPairwiseOverlap?: boolean
+}
+
 /** True if [segLo, segHi] is fully inside [rowLo, rowHi] (modulo ε). */
 export function segmentContainedInRow(
   segLo: number,
@@ -212,9 +244,32 @@ export type TimelineSessionClusterBlock = {
 }
 export type DayTimelineItem = TimelineGap | TimelineSessionClusterBlock
 
-/** Gaps between clusters + one block per time-contiguous session strip (any job/bid). */
-export function buildDayTimeline(sortedSessions: DayEditorSession[], nowMs: number): DayTimelineItem[] {
-  const clusters = groupTimeContiguousSessionClusters(sortedSessions)
+/** Next `sessionCluster` block after `index` in timeline order (skips gaps). */
+export function getNextSessionClusterInTimeline(
+  items: readonly DayTimelineItem[],
+  index: number,
+): TimelineSessionClusterBlock | null {
+  for (let j = index + 1; j < items.length; j++) {
+    const it = items[j]!
+    if (it.type === 'sessionCluster') return it
+  }
+  return null
+}
+
+/**
+ * Gaps between clusters + one block per time-contiguous session strip (any job/bid).
+ * With {@link BuildDayTimelineOptions.splitClustersWithPairwiseOverlap}, clusters that contain
+ * overlapping clock intervals are split into one block per session (My Time editor).
+ */
+export function buildDayTimeline(
+  sortedSessions: DayEditorSession[],
+  nowMs: number,
+  options?: BuildDayTimelineOptions,
+): DayTimelineItem[] {
+  let clusters = groupTimeContiguousSessionClusters(sortedSessions)
+  if (options?.splitClustersWithPairwiseOverlap) {
+    clusters = expandClustersSplitPairwiseOverlaps(clusters, nowMs)
+  }
   const items: DayTimelineItem[] = []
   for (let i = 0; i < clusters.length; i++) {
     const c = clusters[i]!

@@ -1149,25 +1149,41 @@ button.myTimeDaySpanAdjustLink:disabled {
 /* My Time day editor — Form layout: times left, jobs/notes right */
 .myTimeDayClusterFormGrid {
   display: grid;
-  grid-template-columns: minmax(12rem, 0.45fr) minmax(0, 1fr);
+  /* minmax(0, fr) so the grid can shrink inside the modal;12rem mins caused horizontal overflow */
+  grid-template-columns: minmax(0, 0.45fr) minmax(0, 1fr);
   column-gap: 12px;
-  row-gap: 8px;
+  row-gap: 2px;
   align-items: start;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.myTimeDayClusterFormGrid > * {
+  min-width: 0;
+}
+
+.myTimeDayClusterFormGrid .myTimeDaySegmentOptionBRow {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .myTimeDayClusterFormSegmentDivider {
   grid-column: 1 / -1;
   width: 100%;
   min-height: 0;
-  height: 1px;
+  height: 2px;
   margin: 12px 0 8px;
   border: 0;
   padding: 0;
   background: linear-gradient(
     90deg,
     transparent 0%,
-    #e8eaee 14%,
-    #e8eaee 86%,
+    #d1d5db 12%,
+    #d1d5db 88%,
     transparent 100%
   );
 }
@@ -1177,6 +1193,20 @@ button.myTimeDaySpanAdjustLink:disabled {
   .myTimeDaySegmentOptionBRow {
     flex-wrap: wrap;
     row-gap: 6px;
+  }
+
+  /* Visual only: line 1 = time + merge/actions; line 2 = job full width (Form uses same class — exclude) */
+  .myTimeDaySessionRow:not(.myTimeDayClusterFormGrid) .myTimeDaySegmentOptionBRow .myTimeDayVisualSegTimeCol {
+    order: 1;
+  }
+
+  .myTimeDaySessionRow:not(.myTimeDayClusterFormGrid) .myTimeDaySegmentOptionBRow .myTimeDayVisualSegActionsCol {
+    order: 2;
+    flex-shrink: 0;
+  }
+
+  .myTimeDaySessionRow:not(.myTimeDayClusterFormGrid) .myTimeDaySegmentOptionBRow .myTimeDayVisualSegJobCol {
+    order: 3;
   }
 }
 
@@ -1190,17 +1220,49 @@ button.myTimeDaySpanAdjustLink:disabled {
     align-items: stretch;
   }
 
-  .myTimeDayFormSpanLabel {
-    width: 100% !important;
-    text-align: left;
-    padding-right: 0;
+  /* Form segment: line 1 = time + Split + merge/×; line 2 = job full width */
+  .myTimeDayClusterFormGrid .myTimeDaySegmentOptionBRow {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+
+  .myTimeDayClusterFormGrid .myTimeDaySegmentOptionBRow .myTimeDayFormSegTimeCol {
+    order: 1;
+    flex: 1 1 auto !important;
+    min-width: 0;
+  }
+
+  .myTimeDayClusterFormGrid .myTimeDaySegmentOptionBRow .myTimeDayFormSegActionsCol {
+    order: 2;
+    flex: 0 0 auto !important;
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+
+  .myTimeDayClusterFormGrid .myTimeDaySegmentOptionBRow .myTimeDayFormSegJobCol {
+    order: 3;
+    flex: 1 1 100% !important;
+    min-width: 0;
+    justify-content: flex-start;
+  }
+
+  .myTimeDayClusterFormGrid .myTimeDayFormSegJobCol > div {
+    justify-content: flex-start;
   }
 }
 
-@media (max-width: 640px) {
+/* Visual strip: keep touch targets via .myTimeBoundaryHandle; strip can stay narrower than 52px for segment column space */
+@media (max-width: 520px) {
   .myTimeDayVerticalStrip {
-    width: 52px !important;
-    min-width: 52px;
+    width: 38px !important;
+    min-width: 38px;
+  }
+}
+
+@media (min-width: 521px) and (max-width: 640px) {
+  .myTimeDayVerticalStrip {
+    width: 42px !important;
+    min-width: 42px;
   }
 }
 

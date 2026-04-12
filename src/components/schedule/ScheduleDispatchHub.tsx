@@ -7,9 +7,11 @@ import { scheduleFormatWindow } from '../../lib/jobScheduleChicago'
 import {
   expectedManpowerJobGroupPayrollEstimate,
   expectedManpowerJobGroupsForDay,
+  expectedManpowerPersonHoursTotalForDayKeys,
   expectedManpowerRowsForDay,
-  expectedManpowerWeekPersonHoursTotal,
+  expectedManpowerRowsForVisibleDays,
   formatExpectedManpowerPersonHours,
+  HUB_EXPECTED_MANPOWER_ALL_WEEK,
 } from '../../lib/scheduleDispatchExpectedManpower'
 import { formatCurrency } from '../../lib/format'
 import { SCHEDULE_DISPATCH_DRAG_DISABLED_READONLY_MESSAGE } from '../../lib/scheduleDispatchDragHelp'
@@ -17,7 +19,12 @@ import { scheduleDispatchCellDroppableId } from '../../lib/scheduleDispatchDnd'
 import { ScheduleDispatchLinkedChainsIcon } from '../icons/ScheduleDispatchLinkedChainsIcon'
 import type { LinkedGroupCardAccent } from '../../lib/scheduleDispatchLinkedGroupPalette'
 import { hubPersonDayKey, type ScheduleDispatchHubJobRow } from '../../lib/scheduleDispatchHub'
-import { APP_CALENDAR_TZ, formatMmDdSlash, referenceDateForWorkDateYmd } from '../../utils/dateUtils'
+import {
+  APP_CALENDAR_TZ,
+  formatMmDdSlash,
+  formatScheduleDispatchVisibleDateRange,
+  referenceDateForWorkDateYmd,
+} from '../../utils/dateUtils'
 import { ScheduleDispatchPlusCopyMenu } from './ScheduleDispatchPlusCopyMenu'
 import { ScheduleDispatchWeekNav } from './ScheduleDispatchWeekNav'
 import type { ScheduleDispatchCardPlacementMode } from './ScheduleDispatchGrid'
@@ -812,21 +819,48 @@ function HubPeoplePanel({
   const [collapsedExpectedManpowerJobIds, setCollapsedExpectedManpowerJobIds] = useState<Set<string>>(
     () => new Set(),
   )
+  const prevHubExpectedManpowerKeyRef = useRef<string | null>(null)
 
   const expectedManpowerWeekPersonHours = useMemo(
-    () => expectedManpowerWeekPersonHoursTotal(hubWeekBlocks),
-    [hubWeekBlocks],
+    () => expectedManpowerPersonHoursTotalForDayKeys(hubWeekBlocks, visibleDayKeys),
+    [hubWeekBlocks, visibleDayKeys],
   )
 
   const expectedManpowerDayRows = useMemo(() => {
     if (hubExpectedManpowerDayKey == null) return []
+    if (hubExpectedManpowerDayKey === HUB_EXPECTED_MANPOWER_ALL_WEEK) {
+      return expectedManpowerRowsForVisibleDays(
+        hubWeekBlocks,
+        visibleDayKeys,
+        getJobDisplayTitle,
+        (uid) => hubPeopleNameById.get(uid) ?? 'Unknown',
+      )
+    }
     return expectedManpowerRowsForDay(
       hubWeekBlocks,
       hubExpectedManpowerDayKey,
       getJobDisplayTitle,
       (uid) => hubPeopleNameById.get(uid) ?? 'Unknown',
     )
-  }, [hubWeekBlocks, hubExpectedManpowerDayKey, getJobDisplayTitle, hubPeopleNameById])
+  }, [
+    hubWeekBlocks,
+    hubExpectedManpowerDayKey,
+    visibleDayKeys,
+    getJobDisplayTitle,
+    hubPeopleNameById,
+  ])
+
+  const expectedManpowerSelectionLabel = useMemo(() => {
+    if (hubExpectedManpowerDayKey == null) return ''
+    if (hubExpectedManpowerDayKey === HUB_EXPECTED_MANPOWER_ALL_WEEK) {
+      const range = formatScheduleDispatchVisibleDateRange(visibleDayKeys)
+      return range ? `All week (${range})` : 'All week'
+    }
+    return hubDayColumnHeaderLabel(hubExpectedManpowerDayKey)
+  }, [hubExpectedManpowerDayKey, visibleDayKeys])
+
+  const expectedManpowerShowDayColumn =
+    hubExpectedManpowerDayKey === HUB_EXPECTED_MANPOWER_ALL_WEEK
 
   const expectedManpowerJobGroups = useMemo(
     () => expectedManpowerJobGroupsForDay(expectedManpowerDayRows),
@@ -851,8 +885,26 @@ function HubPeoplePanel({
   }, [expectedManpowerDayRows])
 
   useEffect(() => {
-    setCollapsedExpectedManpowerJobIds(new Set())
-  }, [hubExpectedManpowerDayKey])
+    const prev = prevHubExpectedManpowerKeyRef.current
+    const cur = hubExpectedManpowerDayKey
+    prevHubExpectedManpowerKeyRef.current = cur
+
+    if (cur == null) {
+      setCollapsedExpectedManpowerJobIds(new Set())
+      return
+    }
+
+    if (cur === HUB_EXPECTED_MANPOWER_ALL_WEEK) {
+      if (prev !== HUB_EXPECTED_MANPOWER_ALL_WEEK) {
+        setCollapsedExpectedManpowerJobIds(new Set(expectedManpowerJobGroups.map((g) => g.jobId)))
+      }
+      return
+    }
+
+    if (prev !== cur) {
+      setCollapsedExpectedManpowerJobIds(new Set())
+    }
+  }, [hubExpectedManpowerDayKey, expectedManpowerJobGroups])
 
   const afterBlockFilter = useMemo(() => {
     if (!onlyWithBlocksThisWeek) return allPeopleRows
@@ -1056,7 +1108,7 @@ function HubPeoplePanel({
       {visibleDayKeys.length > 0 ? (
         <section
           style={{ marginTop: '1.25rem' }}
-          aria-label="Expected manpower for the selected day"
+          aria-label="Expected manpower for the selected day or week"
         >
           <h3
             style={{
@@ -1070,8 +1122,14 @@ function HubPeoplePanel({
           </h3>
           <div
             role="tablist"
-            aria-label="Expected manpower day"
-            style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: '0.65rem' }}
+            aria-label="Expected manpower day or all week"
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 6,
+              marginBottom: '0.65rem',
+              alignItems: 'center',
+            }}
           >
             {visibleDayKeys.map((dk) => {
               const selected = dk === hubExpectedManpowerDayKey
@@ -1107,6 +1165,34 @@ function HubPeoplePanel({
                 </button>
               )
             })}
+            {(() => {
+              const allWeekSelected = hubExpectedManpowerDayKey === HUB_EXPECTED_MANPOWER_ALL_WEEK
+              return (
+                <button
+                  type="button"
+                  role="tab"
+                  id="hub-expected-manpower-tab-all-week"
+                  aria-selected={allWeekSelected}
+                  aria-controls="hub-expected-manpower-panel"
+                  title={`Visible week: ${formatScheduleDispatchVisibleDateRange(visibleDayKeys)}`}
+                  onClick={() => onHubExpectedManpowerDayChange(HUB_EXPECTED_MANPOWER_ALL_WEEK)}
+                  style={{
+                    padding: '0.35rem 0.65rem',
+                    fontSize: '0.75rem',
+                    borderRadius: 6,
+                    border: allWeekSelected ? '2px solid #059669' : '1px solid #34d399',
+                    background: allWeekSelected ? '#d1fae5' : '#ecfdf5',
+                    color: allWeekSelected ? '#047857' : '#065f46',
+                    fontWeight: allWeekSelected ? 600 : 500,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    marginLeft: 2,
+                  }}
+                >
+                  All week
+                </button>
+              )
+            })()}
           </div>
 
           <div
@@ -1114,19 +1200,21 @@ function HubPeoplePanel({
             id="hub-expected-manpower-panel"
             aria-labelledby={
               hubExpectedManpowerDayKey
-                ? `hub-expected-manpower-tab-${hubExpectedManpowerDayKey}`
+                ? hubExpectedManpowerDayKey === HUB_EXPECTED_MANPOWER_ALL_WEEK
+                  ? 'hub-expected-manpower-tab-all-week'
+                  : `hub-expected-manpower-tab-${hubExpectedManpowerDayKey}`
                 : undefined
             }
           >
             {hubExpectedManpowerDayKey == null ? null : expectedManpowerDayRows.length === 0 ? (
               <p style={{ margin: 0, fontSize: '0.8125rem', color: '#6b7280' }}>
-                No schedule blocks on {hubDayColumnHeaderLabel(hubExpectedManpowerDayKey)}.
+                No schedule blocks for {expectedManpowerSelectionLabel}.
               </p>
             ) : (
               <>
                 {expectedManpowerDayStats ? (
                   <p style={{ margin: '0 0 0.65rem', fontSize: '0.8125rem', color: '#6b7280' }}>
-                    {hubDayColumnHeaderLabel(hubExpectedManpowerDayKey)}:{' '}
+                    {expectedManpowerSelectionLabel}:{' '}
                     <strong style={{ color: '#374151' }}>
                       {formatExpectedManpowerPersonHours(expectedManpowerDayStats.personHours)}
                     </strong>{' '}
@@ -1190,7 +1278,11 @@ function HubPeoplePanel({
                           const hasDetail = job.rows.length > 0
                           const jobDetailExpanded =
                             hasDetail && !collapsedExpectedManpowerJobIds.has(job.jobId)
-                          const jobDetailId = `hub-expected-manpower-job-${job.jobId}-${hubExpectedManpowerDayKey}`
+                          const jobDetailScope =
+                            hubExpectedManpowerDayKey === HUB_EXPECTED_MANPOWER_ALL_WEEK
+                              ? 'all-week'
+                              : hubExpectedManpowerDayKey
+                          const jobDetailId = `hub-expected-manpower-job-${job.jobId}-${jobDetailScope}`
                           const statsLabel = `${formatExpectedManpowerPersonHours(job.totalPersonHours)} person-hours, ${
                             job.distinctPeopleCount
                           } ${job.distinctPeopleCount === 1 ? 'person' : 'people'}`
@@ -1348,6 +1440,20 @@ function HubPeoplePanel({
                                         >
                                           <thead>
                                             <tr>
+                                              {expectedManpowerShowDayColumn ? (
+                                                <th
+                                                  scope="col"
+                                                  style={{
+                                                    textAlign: 'left',
+                                                    padding: '0.25rem 0.4rem 0.35rem 0',
+                                                    borderBottom: '1px solid #e5e7eb',
+                                                    fontWeight: 600,
+                                                    whiteSpace: 'nowrap',
+                                                  }}
+                                                >
+                                                  Day
+                                                </th>
+                                              ) : null}
                                               <th
                                                 scope="col"
                                                 style={{
@@ -1388,6 +1494,17 @@ function HubPeoplePanel({
                                           <tbody>
                                             {job.rows.map((r) => (
                                               <tr key={r.blockId}>
+                                                {expectedManpowerShowDayColumn ? (
+                                                  <td
+                                                    style={{
+                                                      padding: '0.3rem 0.45rem 0.3rem 0',
+                                                      verticalAlign: 'top',
+                                                      whiteSpace: 'nowrap',
+                                                    }}
+                                                  >
+                                                    {hubDayColumnHeaderLabel(r.workDate)}
+                                                  </td>
+                                                ) : null}
                                                 <td style={{ padding: '0.3rem 0.4rem 0.3rem 0', verticalAlign: 'top' }}>
                                                   {r.personName}
                                                 </td>

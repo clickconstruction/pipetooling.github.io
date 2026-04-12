@@ -616,6 +616,9 @@ export default function Dashboard() {
   const [waitingForPaymentLoading, setWaitingForPaymentLoading] = useState(false)
   const [invoiceStatusUpdatingId, setInvoiceStatusUpdatingId] = useState<string | null>(null)
   const [jobStatusUpdatingId, setJobStatusUpdatingId] = useState<string | null>(null)
+  const dashboardInvoiceMutationLockRef = useRef<string | null>(null)
+  const dashboardJobStatusMutationLockRef = useRef<string | null>(null)
+  const dashboardInvoiceSendBackConfirmLockRef = useRef(false)
   const [viewReportsJob, setViewReportsJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string } | null>(null)
   const [leaveReportJob, setLeaveReportJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string } | null>(null)
   const [viewBillDetailsJob, setViewBillDetailsJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string; revenue: number | null } | null>(null)
@@ -2220,27 +2223,35 @@ export default function Dashboard() {
   }, [authUser?.id, role])
 
   async function updateJobStatus(jobId: string, toStatus: 'working' | 'ready_to_bill' | 'billed' | 'paid') {
+    if (dashboardJobStatusMutationLockRef.current === jobId) return
+    dashboardJobStatusMutationLockRef.current = jobId
     setJobStatusUpdatingId(jobId)
-    const { data, error } = await supabase.rpc('update_job_status', { p_job_id: jobId, p_to_status: toStatus })
-    setJobStatusUpdatingId(null)
-    if (error) {
-      showToast?.(error.message, 'error')
-      return
-    }
-    const result = data as { error?: string } | null
-    if (result?.error) {
-      showToast?.(result.error, 'error')
-      return
-    }
-    showToast?.('Status updated', 'success')
-    setAssignedJobs((prev) => prev.filter((j) => j.id !== jobId))
-    setSuperintendentJobs((prev) => prev.filter((j) => j.id !== jobId))
-    refreshInvoices()
-    const { data: assignedData } = await supabase.rpc('list_assigned_jobs_for_dashboard')
-    if (assignedData) setAssignedJobs(assignedData as unknown as typeof assignedJobs)
-    if (role === 'superintendent') {
-      const { data: superintendentData } = await supabase.rpc('list_superintendent_jobs_for_dashboard')
-      if (superintendentData) setSuperintendentJobs(superintendentData as unknown as typeof superintendentJobs)
+    try {
+      const { data, error } = await supabase.rpc('update_job_status', { p_job_id: jobId, p_to_status: toStatus })
+      if (error) {
+        showToast?.(error.message, 'error')
+        return
+      }
+      const result = data as { error?: string } | null
+      if (result?.error) {
+        showToast?.(result.error, 'error')
+        return
+      }
+      showToast?.('Status updated', 'success')
+      setAssignedJobs((prev) => prev.filter((j) => j.id !== jobId))
+      setSuperintendentJobs((prev) => prev.filter((j) => j.id !== jobId))
+      refreshInvoices()
+      const { data: assignedData } = await supabase.rpc('list_assigned_jobs_for_dashboard')
+      if (assignedData) setAssignedJobs(assignedData as unknown as typeof assignedJobs)
+      if (role === 'superintendent') {
+        const { data: superintendentData } = await supabase.rpc('list_superintendent_jobs_for_dashboard')
+        if (superintendentData) setSuperintendentJobs(superintendentData as unknown as typeof superintendentJobs)
+      }
+    } finally {
+      setJobStatusUpdatingId(null)
+      if (dashboardJobStatusMutationLockRef.current === jobId) {
+        dashboardJobStatusMutationLockRef.current = null
+      }
     }
   }
 
@@ -2354,6 +2365,8 @@ export default function Dashboard() {
   }
 
   async function updateInvoiceStatus(invoiceId: string, status: 'ready_to_bill' | 'billed') {
+    if (dashboardInvoiceMutationLockRef.current === invoiceId) return
+    dashboardInvoiceMutationLockRef.current = invoiceId
     setInvoiceStatusUpdatingId(invoiceId)
     try {
       const { error } = await supabase.from('jobs_ledger_invoices').update({ status }).eq('id', invoiceId)
@@ -2364,20 +2377,37 @@ export default function Dashboard() {
       showToast?.(e instanceof Error ? e.message : 'Failed to update invoice', 'error')
     } finally {
       setInvoiceStatusUpdatingId(null)
+      if (dashboardInvoiceMutationLockRef.current === invoiceId) {
+        dashboardInvoiceMutationLockRef.current = null
+      }
     }
   }
 
   async function deleteInvoice(invoiceId: string) {
+    if (dashboardInvoiceMutationLockRef.current === invoiceId) return
+    dashboardInvoiceMutationLockRef.current = invoiceId
     setInvoiceStatusUpdatingId(invoiceId)
     try {
-      const { error } = await supabase.from('jobs_ledger_invoices').delete().eq('id', invoiceId)
-      if (error) throw error
-      showToast?.('Invoice removed', 'success')
+      const data = await withSupabaseRetry(
+        async () => await supabase.rpc('delete_ready_to_bill_invoice', { p_invoice_id: invoiceId }),
+        'delete_ready_to_bill_invoice',
+      )
+      const result = data as { ok?: boolean; deleted?: boolean; error?: string } | null
+      if (!result?.ok) {
+        showToast?.(result?.error ?? 'Failed to remove invoice', 'error')
+        return
+      }
+      if (result.deleted === true) {
+        showToast?.('Invoice removed', 'success')
+      }
       await refreshInvoices()
     } catch (e) {
       showToast?.(e instanceof Error ? e.message : 'Failed to remove invoice', 'error')
     } finally {
       setInvoiceStatusUpdatingId(null)
+      if (dashboardInvoiceMutationLockRef.current === invoiceId) {
+        dashboardInvoiceMutationLockRef.current = null
+      }
     }
   }
 
@@ -6936,7 +6966,29 @@ export default function Dashboard() {
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button type="button" onClick={() => { setSendBackInvoice(null); setSendBackChecked(false) }} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-              <button type="button" disabled={!sendBackChecked || invoiceStatusUpdatingId === sendBackInvoice.inv.id} onClick={async () => { if (!sendBackInvoice) return; if (sendBackInvoice.action === 'delete') await deleteInvoice(sendBackInvoice.inv.id); else await updateInvoiceStatus(sendBackInvoice.inv.id, 'ready_to_bill'); setSendBackInvoice(null); setSendBackChecked(false); refreshInvoices() }} style={{ padding: '0.5rem 1rem', background: sendBackChecked && invoiceStatusUpdatingId !== sendBackInvoice.inv.id ? '#3b82f6' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: sendBackChecked && invoiceStatusUpdatingId !== sendBackInvoice.inv.id ? 'pointer' : 'not-allowed' }}>{invoiceStatusUpdatingId === sendBackInvoice.inv.id ? '…' : sendBackInvoice.action === 'delete' ? DELETE_DRAFT_BILL_LABEL : 'Send back'}</button>
+              <button
+                type="button"
+                disabled={!sendBackChecked || invoiceStatusUpdatingId === sendBackInvoice.inv.id}
+                onClick={() => {
+                  void (async () => {
+                    if (!sendBackChecked || !sendBackInvoice) return
+                    if (dashboardInvoiceSendBackConfirmLockRef.current) return
+                    dashboardInvoiceSendBackConfirmLockRef.current = true
+                    const { inv, action } = sendBackInvoice
+                    setSendBackInvoice(null)
+                    setSendBackChecked(false)
+                    try {
+                      if (action === 'delete') await deleteInvoice(inv.id)
+                      else await updateInvoiceStatus(inv.id, 'ready_to_bill')
+                    } finally {
+                      dashboardInvoiceSendBackConfirmLockRef.current = false
+                    }
+                  })()
+                }}
+                style={{ padding: '0.5rem 1rem', background: sendBackChecked && invoiceStatusUpdatingId !== sendBackInvoice.inv.id ? '#3b82f6' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: sendBackChecked && invoiceStatusUpdatingId !== sendBackInvoice.inv.id ? 'pointer' : 'not-allowed' }}
+              >
+                {invoiceStatusUpdatingId === sendBackInvoice.inv.id ? '…' : sendBackInvoice.action === 'delete' ? DELETE_DRAFT_BILL_LABEL : 'Send back'}
+              </button>
             </div>
           </div>
         </div>

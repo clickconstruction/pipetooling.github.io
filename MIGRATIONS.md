@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-04-09
+last_updated: 2026-04-12
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -207,6 +207,27 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Purpose**: **`record_estimate_public_link_view`** — **`SECURITY DEFINER`** append **`public_link_view`** while the row is still **`sent`**; **`GRANT EXECUTE`** to **`service_role`**
 - **Impact**: [`get-estimate-for-customer`](supabase/functions/get-estimate-for-customer/index.ts) on each successful public **GET** **200**
 - **Category**: Estimates / Edge / Audit
+
+**`20260412184127_dedupe_record_estimate_public_link_view.sql`**
+- **Purpose**: **`CREATE OR REPLACE`** **`record_estimate_public_link_view`** — skip insert when the same **`estimate_id`**, **`client_ip`**, and **`user_agent`** already have **`public_link_view`** within **5 seconds**; **`pg_advisory_xact_lock(hashtext(estimate_id::text))`** serializes concurrent calls per quote
+- **Impact**: Fewer duplicate **Customer activity** rows from double client loads (e.g. React **Strict Mode** remount); [`get-estimate-for-customer`](supabase/functions/get-estimate-for-customer/index.ts) unchanged
+- **Category**: Estimates / Edge / Audit
+
+**`20260412190051_update_estimate_thank_you_body_default.sql`**
+- **Purpose**: **`UPDATE`** **`app_settings`** **`estimate_thank_you_body`** — append “We are excited to see you soon.” to the default thank-you paragraph (public accept / thank-you page)
+- **Impact**: [`EstimateCustomerThankYou`](src/components/estimates/EstimateCustomerThankYou.tsx); [`estimateCustomerExperience.ts`](src/lib/estimateCustomerExperience.ts) builtin default kept in sync in app + Edge
+- **Category**: Estimates / Customer experience
+
+**`20260412190601_update_estimate_accept_page_footer_tagline.sql`**
+- **Purpose**: **`UPDATE`** **`app_settings`** **`estimate_accept_page_footer`** — replace first-line tagline **Reliable plumbing today** → **Reliable service today** when the old phrase is present
+- **Impact**: [`estimateCustomerExperience.ts`](src/lib/estimateCustomerExperience.ts) **`BUILTIN_ACCEPT_PAGE_FOOTER`** + Edge shared copy; public accept footer via **`AcceptPageFooterBlock`**
+- **Category**: Estimates / Customer experience
+
+**`20260412230827_delete_ready_to_bill_invoice_idempotent.sql`**
+- **Purpose**: **`delete_ready_to_bill_invoice(p_invoice_id)`** — **`SECURITY DEFINER`** delete **`jobs_ledger_invoices`** only when **`status = 'ready_to_bill'`** and caller has the same job access as the invoice **DELETE** policy; idempotent JSON **`{ ok, deleted?, error? }`** when the row is already gone (safe double-submit)
+- **Changes**: **`GRANT EXECUTE`** to **`authenticated`**
+- **Impact**: [`Jobs.tsx`](src/pages/Jobs.tsx), [`Dashboard.tsx`](src/pages/Dashboard.tsx) **Delete draft bill**; [`database.ts`](src/types/database.ts)
+- **Category**: Jobs / Billing
 
 **`20260406173212_stale_tally_staff_job_search_scope.sql`**
 - **Purpose**: Stale tally **Assign to jobs** — **`search_jobs_for_tally_mercury_assign_as_user`** uses **`jobs_ledger_row_visible_for_tally_assign(jl.id, auth.uid())`** (staff invoker ledger scope) for **non-subcontractor** card owners; **subcontractor** targets keep **`p_for_user_id`** (team-only) so results stay aligned with **`replace_mercury_job_splits_for_linked_card_as_staff`**

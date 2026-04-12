@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useMemo, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { DashboardTeamActiveClockStrip } from '../DashboardTeamActiveClockStrip'
 import { DashboardMyTimeDayEditorModal } from '../DashboardMyTimeDayEditorModal'
 import { useAuth } from '../../hooks/useAuth'
@@ -14,6 +14,22 @@ import { recordNotComingInForUserAsStaff } from '../../lib/notComingInTimeOff'
 import type { ClockSessionRow, DashboardStripSession } from '../../types/clockSessions'
 
 const QUICKFILL_CLOCK_STRIP_SCOPE_KEY = 'quickfill_clock_strip_scope'
+
+const PEOPLE_HOURS_NAV_MOBILE_MQ = '(max-width: 640px)'
+
+function subscribePeopleHoursNavMobile(onChange: () => void): () => void {
+  const mq = window.matchMedia(PEOPLE_HOURS_NAV_MOBILE_MQ)
+  mq.addEventListener('change', onChange)
+  return () => mq.removeEventListener('change', onChange)
+}
+
+function snapshotPeopleHoursNavMobile(): boolean {
+  return window.matchMedia(PEOPLE_HOURS_NAV_MOBILE_MQ).matches
+}
+
+function usePeopleHoursNavMobileLayout(): boolean {
+  return useSyncExternalStore(subscribePeopleHoursNavMobile, snapshotPeopleHoursNavMobile, () => false)
+}
 
 function readQuickfillClockStripScope(): 'team' | 'everyone' {
   try {
@@ -51,6 +67,13 @@ const navBtnStyle: CSSProperties = {
   fontSize: '0.875rem',
 }
 
+const navMobileSepStyle: CSSProperties = {
+  color: '#9ca3af',
+  userSelect: 'none',
+  fontSize: '0.875rem',
+  padding: '0 0.15rem',
+}
+
 const assistanceNoticeStyle: CSSProperties = {
   textAlign: 'center',
   fontSize: '0.875rem',
@@ -64,6 +87,7 @@ const assistanceNoticeStyle: CSSProperties = {
 }
 
 export function QuickfillPeopleHoursNewSection() {
+  const peopleHoursNavMobile = usePeopleHoursNavMobileLayout()
   const { user: authUser, role } = useAuth()
   const { showToast } = useToastContext()
   const [selectedYmd, setSelectedYmd] = useState(() => denverCalendarDayKey(Date.now()))
@@ -184,41 +208,105 @@ export function QuickfillPeopleHoursNewSection() {
 
   return (
     <section style={{ marginBottom: '2rem' }}>
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '0.75rem',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginBottom: '0',
-        }}
-      >
-        <button
-          type="button"
-          style={navBtnStyle}
-          onClick={() => setSelectedYmd((d) => shiftWorkDateYmd(d, -1))}
+      {peopleHoursNavMobile ? (
+        <div style={{ marginBottom: 0 }}>
+          <div
+            style={{
+              fontWeight: 600,
+              fontSize: '0.9375rem',
+              textAlign: 'center',
+              width: '100%',
+              lineHeight: 1.3,
+            }}
+          >
+            {dateLabel}
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.25rem',
+              marginTop: '0.5rem',
+            }}
+          >
+            <button
+              type="button"
+              style={{ ...navBtnStyle, fontSize: '0.8125rem', padding: '0.35rem 0.5rem' }}
+              onClick={() => setSelectedYmd((d) => shiftWorkDateYmd(d, -1))}
+            >
+              Previous day
+            </button>
+            <span style={navMobileSepStyle} aria-hidden>
+              |
+            </span>
+            <button
+              type="button"
+              style={{ ...navBtnStyle, fontSize: '0.8125rem', padding: '0.35rem 0.5rem' }}
+              onClick={() => setSelectedYmd((d) => shiftWorkDateYmd(d, 1))}
+            >
+              Next day
+            </button>
+            {selectedYmd !== todayDenver ? (
+              <>
+                <span style={navMobileSepStyle} aria-hidden>
+                  |
+                </span>
+                <button
+                  type="button"
+                  style={{
+                    ...navBtnStyle,
+                    fontSize: '0.8125rem',
+                    padding: '0.35rem 0.5rem',
+                    borderColor: '#93c5fd',
+                    color: '#1d4ed8',
+                  }}
+                  onClick={() => setSelectedYmd(todayDenver)}
+                >
+                  Today
+                </button>
+              </>
+            ) : null}
+          </div>
+        </div>
+      ) : (
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '0.75rem',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '0',
+          }}
         >
-          Previous day
-        </button>
-        <span style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{dateLabel}</span>
-        <button
-          type="button"
-          style={navBtnStyle}
-          onClick={() => setSelectedYmd((d) => shiftWorkDateYmd(d, 1))}
-        >
-          Next day
-        </button>
-        {selectedYmd !== todayDenver && (
           <button
             type="button"
-            style={{ ...navBtnStyle, borderColor: '#93c5fd', color: '#1d4ed8' }}
-            onClick={() => setSelectedYmd(todayDenver)}
+            style={navBtnStyle}
+            onClick={() => setSelectedYmd((d) => shiftWorkDateYmd(d, -1))}
           >
-            Today
+            Previous day
           </button>
-        )}
-      </div>
+          <span style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{dateLabel}</span>
+          <button
+            type="button"
+            style={navBtnStyle}
+            onClick={() => setSelectedYmd((d) => shiftWorkDateYmd(d, 1))}
+          >
+            Next day
+          </button>
+          {selectedYmd !== todayDenver && (
+            <button
+              type="button"
+              style={{ ...navBtnStyle, borderColor: '#93c5fd', color: '#1d4ed8' }}
+              onClick={() => setSelectedYmd(todayDenver)}
+            >
+              Today
+            </button>
+          )}
+        </div>
+      )}
       <p style={assistanceNoticeStyle}>
         Assistance only makes sure hours are correct, they do not approve!
       </p>
@@ -246,6 +334,7 @@ export function QuickfillPeopleHoursNewSection() {
         onMaterializeSalarySession={
           showClockStripScopeToggle ? materializeSalarySessionForStrip : undefined
         }
+        clockStripWorkDateYmd={selectedYmd}
       />
       {stripMyTimeEditor && (
         <DashboardMyTimeDayEditorModal

@@ -49,6 +49,7 @@ import {
   peekReturnEditJobFromStages,
 } from '../lib/returnEditJobFromStages'
 import { DELETE_DRAFT_BILL_LABEL } from '../lib/deleteDraftBillLabel'
+import { pickLinkedEstimateForStagesBanner } from '../lib/pickLinkedEstimateForStagesBanner'
 import {
   buildJobsStagesBoardLists,
   locateStagesInvoiceSection,
@@ -763,6 +764,9 @@ export default function Jobs() {
   const [stagesSearchQuery, setStagesSearchQuery] = useState('')
   const [stagesStatusUpdatingId, setStagesStatusUpdatingId] = useState<string | null>(null)
   const [stagesInvoiceUpdatingId, setStagesInvoiceUpdatingId] = useState<string | null>(null)
+  const stagesInvoiceMutationLockRef = useRef<string | null>(null)
+  const stagesJobStatusMutationLockRef = useRef<string | null>(null)
+  const stagesInvoiceSendBackConfirmLockRef = useRef(false)
   const [viewReportsJob, setViewReportsJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string } | null>(null)
   const [readyForBillingJob, setReadyForBillingJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
   const [readyForBillingChecked1, setReadyForBillingChecked1] = useState(false)
@@ -1040,9 +1044,57 @@ export default function Jobs() {
       scheduleMaxByJobId = new Map()
     }
 
+    const ESTIMATES_STAGES_BANNER_CHUNK = 150
+    const estimateCandidatesByJobId = new Map<
+      string,
+      Array<{
+        estimate_number: number
+        title: string
+        status: Database['public']['Enums']['estimate_status']
+        updated_at: string | null
+      }>
+    >()
+    try {
+      const ids = jobsWithDetails.map((j) => j.id)
+      for (let i = 0; i < ids.length; i += ESTIMATES_STAGES_BANNER_CHUNK) {
+        const chunk = ids.slice(i, i + ESTIMATES_STAGES_BANNER_CHUNK)
+        const rows = await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('estimates')
+              .select('job_ledger_id, estimate_number, title, status, updated_at')
+              .in('job_ledger_id', chunk),
+          'load estimates for stages banner',
+        )
+        const list = (rows ?? []) as Array<{
+          job_ledger_id: string | null
+          estimate_number: number
+          title: string
+          status: Database['public']['Enums']['estimate_status']
+          updated_at: string | null
+        }>
+        for (const row of list) {
+          const jid = row.job_ledger_id
+          if (!jid) continue
+          const cur = estimateCandidatesByJobId.get(jid) ?? []
+          cur.push({
+            estimate_number: row.estimate_number,
+            title: row.title,
+            status: row.status,
+            updated_at: row.updated_at,
+          })
+          estimateCandidatesByJobId.set(jid, cur)
+        }
+      }
+    } catch (e) {
+      console.warn('loadJobs: estimates stages banner batch failed', e)
+      estimateCandidatesByJobId.clear()
+    }
+
     const jobsWithSchedule: JobWithDetails[] = jobsWithDetails.map((j) => ({
       ...j,
       last_schedule_work_date: scheduleMaxByJobId.get(j.id) ?? null,
+      linkedEstimateForStages: pickLinkedEstimateForStagesBanner(estimateCandidatesByJobId.get(j.id) ?? []),
     }))
     setJobs(jobsWithSchedule)
     setLoading(false)
@@ -1065,23 +1117,33 @@ export default function Jobs() {
   }
 
   async function updateJobStatus(jobId: string, toStatus: 'working' | 'ready_to_bill' | 'billed' | 'paid') {
+    if (stagesJobStatusMutationLockRef.current === jobId) return
+    stagesJobStatusMutationLockRef.current = jobId
     setStagesStatusUpdatingId(jobId)
     setError(null)
-    const { data, error: err } = await supabase.rpc('update_job_status', { p_job_id: jobId, p_to_status: toStatus })
-    setStagesStatusUpdatingId(null)
-    if (err) {
-      setError(err.message)
-      return
+    try {
+      const { data, error: err } = await supabase.rpc('update_job_status', { p_job_id: jobId, p_to_status: toStatus })
+      if (err) {
+        setError(err.message)
+        return
+      }
+      const result = data as { error?: string } | null
+      if (result?.error) {
+        setError(result.error)
+        return
+      }
+      await loadJobs()
+    } finally {
+      setStagesStatusUpdatingId(null)
+      if (stagesJobStatusMutationLockRef.current === jobId) {
+        stagesJobStatusMutationLockRef.current = null
+      }
     }
-    const result = data as { error?: string } | null
-    if (result?.error) {
-      setError(result.error)
-      return
-    }
-    await loadJobs()
   }
 
   async function updateInvoiceStatus(invoiceId: string, status: 'ready_to_bill' | 'billed') {
+    if (stagesInvoiceMutationLockRef.current === invoiceId) return
+    stagesInvoiceMutationLockRef.current = invoiceId
     setStagesInvoiceUpdatingId(invoiceId)
     setError(null)
     try {
@@ -1092,20 +1154,35 @@ export default function Jobs() {
       setError(e instanceof Error ? e.message : 'Failed to update invoice')
     } finally {
       setStagesInvoiceUpdatingId(null)
+      if (stagesInvoiceMutationLockRef.current === invoiceId) {
+        stagesInvoiceMutationLockRef.current = null
+      }
     }
   }
 
   async function deleteInvoice(invoiceId: string) {
+    if (stagesInvoiceMutationLockRef.current === invoiceId) return
+    stagesInvoiceMutationLockRef.current = invoiceId
     setStagesInvoiceUpdatingId(invoiceId)
     setError(null)
     try {
-      const { error: err } = await supabase.from('jobs_ledger_invoices').delete().eq('id', invoiceId)
-      if (err) throw err
+      const data = await withSupabaseRetry(
+        async () => await supabase.rpc('delete_ready_to_bill_invoice', { p_invoice_id: invoiceId }),
+        'delete_ready_to_bill_invoice',
+      )
+      const result = data as { ok?: boolean; deleted?: boolean; error?: string } | null
+      if (!result?.ok) {
+        setError(result?.error ?? 'Failed to delete invoice')
+        return
+      }
       await loadJobs()
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to delete invoice')
     } finally {
       setStagesInvoiceUpdatingId(null)
+      if (stagesInvoiceMutationLockRef.current === invoiceId) {
+        stagesInvoiceMutationLockRef.current = null
+      }
     }
   }
 
@@ -4547,14 +4624,43 @@ ${totalsHtml}
                 color: '#6b7280',
                 marginTop: '0.15rem',
               } as const
+              const jbLineButtonStyle: CSSProperties = {
+                ...lineStyle,
+                display: 'block',
+                width: '100%',
+                border: 'none',
+                background: 'transparent',
+                padding: 0,
+                cursor: 'pointer',
+                textAlign: 'inherit',
+                font: 'inherit',
+              }
               return (
                 <>
-                  <div style={lineStyle} title={jTitle ?? undefined}>
+                  <button
+                    type="button"
+                    style={jbLineButtonStyle}
+                    title={jTitle ?? undefined}
+                    aria-label="Field / job-activity date (click for explanation)"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      showToast('Field / job-activity date', 'info', 2000, { clientX: e.clientX, clientY: e.clientY })
+                    }}
+                  >
                     j: {jDisplay ?? '—'}
-                  </div>
-                  <div style={lineStyle} title={bDetail?.tooltip}>
+                  </button>
+                  <button
+                    type="button"
+                    style={jbLineButtonStyle}
+                    title={bDetail?.tooltip}
+                    aria-label="Billing-activity date (click for explanation)"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      showToast('Billing-activity date', 'info', 2000, { clientX: e.clientX, clientY: e.clientY })
+                    }}
+                  >
                     b: {bDisplay ?? '—'}
-                  </div>
+                  </button>
                 </>
               )
             }
@@ -4821,6 +4927,27 @@ ${totalsHtml}
               )
             }
 
+            const STAGES_JOB_COLUMN_ESTIMATE_TITLE_MAX = 56
+            function renderStagesJobColumnEstimateFooter(linked: JobWithDetails['linkedEstimateForStages']): React.ReactElement | null {
+              if (!linked) return null
+              const raw = linked.title?.trim() ?? ''
+              const title =
+                raw.length > STAGES_JOB_COLUMN_ESTIMATE_TITLE_MAX
+                  ? `${raw.slice(0, STAGES_JOB_COLUMN_ESTIMATE_TITLE_MAX)}…`
+                  : raw
+              return (
+                <div style={{ marginTop: '0.35rem', fontSize: '0.75rem', color: '#6b7280' }}>
+                  <Link
+                    to={`/estimates/${linked.estimate_number}`}
+                    style={{ color: '#15803d', textDecoration: 'none', fontWeight: 500 }}
+                  >
+                    Quote #{linked.estimate_number}
+                    {title ? ` — ${title}` : ''}
+                  </Link>
+                </div>
+              )
+            }
+
             function renderStagesTable(jobList: JobWithDetails[], actionLabel: React.ReactNode | null, onAction: (j: JobWithDetails) => void, showTimeOpen?: boolean, onSendBack?: (j: JobWithDetails) => void, onSendBackSimple?: (j: JobWithDetails) => void, showRemaining?: boolean, showFinalBill?: boolean, showPctComplete?: boolean) {
               const stagesTableColCount = 6 + (showPctComplete ? 1 : 0)
               return (
@@ -4990,6 +5117,7 @@ ${totalsHtml}
                                 )
                               })()}
                               {renderJobCustomerLine(j)}
+                              {renderStagesJobColumnEstimateFooter(j.linkedEstimateForStages)}
                             </td>
                             {renderStagesLastActivityCell(j)}
                             {showPctComplete && (
@@ -5486,6 +5614,7 @@ ${totalsHtml}
                                       Billing line: {formatCurrency(Number(bundleInv.amount))}
                                     </div>
                                   ) : null}
+                                  {renderStagesJobColumnEstimateFooter(j.linkedEstimateForStages)}
                                 </td>
                                 {renderStagesLastActivityCell(j)}
                                 <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
@@ -5882,6 +6011,7 @@ ${totalsHtml}
                                     )
                                   })()}
                                   {renderJobCustomerLine(job)}
+                                  {renderStagesJobColumnEstimateFooter(job.linkedEstimateForStages)}
                                 </td>
                                 {renderStagesLastActivityCell(job)}
                                 <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
@@ -9764,7 +9894,29 @@ ${totalsHtml}
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button type="button" onClick={() => { setSendBackInvoice(null); setSendBackChecked(false) }} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-              <button type="button" disabled={!sendBackChecked || stagesInvoiceUpdatingId === sendBackInvoice.inv.id} onClick={async () => { if (!sendBackInvoice) return; if (sendBackInvoice.action === 'delete') await deleteInvoice(sendBackInvoice.inv.id); else await updateInvoiceStatus(sendBackInvoice.inv.id, 'ready_to_bill'); setSendBackInvoice(null); setSendBackChecked(false); loadJobs() }} style={{ padding: '0.5rem 1rem', background: sendBackChecked && stagesInvoiceUpdatingId !== sendBackInvoice.inv.id ? '#3b82f6' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: sendBackChecked && stagesInvoiceUpdatingId !== sendBackInvoice.inv.id ? 'pointer' : 'not-allowed' }}>{stagesInvoiceUpdatingId === sendBackInvoice.inv.id ? '…' : sendBackInvoice.action === 'delete' ? DELETE_DRAFT_BILL_LABEL : 'Send back'}</button>
+              <button
+                type="button"
+                disabled={!sendBackChecked || stagesInvoiceUpdatingId === sendBackInvoice.inv.id}
+                onClick={() => {
+                  void (async () => {
+                    if (!sendBackChecked || !sendBackInvoice) return
+                    if (stagesInvoiceSendBackConfirmLockRef.current) return
+                    stagesInvoiceSendBackConfirmLockRef.current = true
+                    const { inv, action } = sendBackInvoice
+                    setSendBackInvoice(null)
+                    setSendBackChecked(false)
+                    try {
+                      if (action === 'delete') await deleteInvoice(inv.id)
+                      else await updateInvoiceStatus(inv.id, 'ready_to_bill')
+                    } finally {
+                      stagesInvoiceSendBackConfirmLockRef.current = false
+                    }
+                  })()
+                }}
+                style={{ padding: '0.5rem 1rem', background: sendBackChecked && stagesInvoiceUpdatingId !== sendBackInvoice.inv.id ? '#3b82f6' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: sendBackChecked && stagesInvoiceUpdatingId !== sendBackInvoice.inv.id ? 'pointer' : 'not-allowed' }}
+              >
+                {stagesInvoiceUpdatingId === sendBackInvoice.inv.id ? '…' : sendBackInvoice.action === 'delete' ? DELETE_DRAFT_BILL_LABEL : 'Send back'}
+              </button>
             </div>
           </div>
         </div>

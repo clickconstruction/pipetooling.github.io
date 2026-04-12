@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import type { Database } from '../types/database'
+import { scheduleFormatTimeHm } from './jobScheduleChicago'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 
 export type JobScheduleBlockRow = Database['public']['Tables']['job_schedule_blocks']['Row']
@@ -116,6 +117,96 @@ export async function fetchScheduleBlocksForAssigneesOnDay(
       'fetchScheduleBlocksForAssigneesOnDay',
     )
     return { data: (data ?? []) as JobScheduleBlockRow[], error: null }
+  } catch (e) {
+    return { data: [], error: formatErrorMessage(e) }
+  }
+}
+
+/** Formatted start/end for one `job_schedule_blocks` row (Assign popover). */
+export type DispatchScheduledWindowSpan = {
+  startLabel: string
+  endLabel: string
+}
+
+/** One job per `job_id` for Assign popover quick-picks (Dispatch schedule). */
+export type DispatchScheduledJobForAssign = {
+  jobId: string
+  hcp_number: string
+  job_name: string
+  job_address: string
+  /** One span per schedule block, same order as Dispatch (start / end display lines). */
+  windowSpans: DispatchScheduledWindowSpan[]
+  /** Joined time windows for tooltip (e.g. "9:00 AM–12:00 PM; 1:00 PM–4:00 PM"), en-dash between times. */
+  windowsLabel: string
+}
+
+const DISPATCH_ASSIGN_SELECT = `${SELECT_FIELDS}, jobs_ledger(hcp_number, job_name, job_address)`
+
+type JobScheduleBlockWithJobEmbed = JobScheduleBlockRow & {
+  jobs_ledger: { hcp_number: string | null; job_name: string | null; job_address: string | null } | null
+}
+
+/**
+ * Distinct jobs from `job_schedule_blocks` for an assignee on `work_date`, with labels for assign UI.
+ * RLS matches other schedule reads.
+ */
+export async function fetchDispatchScheduledJobsForAssigneeDay(
+  assigneeUserId: string,
+  workDateYmd: string,
+): Promise<{ data: DispatchScheduledJobForAssign[]; error: string | null }> {
+  const uid = assigneeUserId.trim()
+  const wd = workDateYmd.trim()
+  if (!uid || !wd) return { data: [], error: null }
+  try {
+    const raw = await withSupabaseRetry(
+      async () =>
+        await supabase
+          .from('job_schedule_blocks')
+          .select(DISPATCH_ASSIGN_SELECT)
+          .eq('assignee_user_id', uid)
+          .eq('work_date', wd)
+          .order('time_start', { ascending: true }),
+      'fetchDispatchScheduledJobsForAssigneeDay',
+    )
+    const rows = (raw ?? []) as JobScheduleBlockWithJobEmbed[]
+    const byJob = new Map<
+      string,
+      { jl: NonNullable<JobScheduleBlockWithJobEmbed['jobs_ledger']>; windowSpans: DispatchScheduledWindowSpan[] }
+    >()
+    const enDash = '\u2013'
+    for (const r of rows) {
+      const jl = r.jobs_ledger
+      if (!jl) continue
+      const span: DispatchScheduledWindowSpan = {
+        startLabel: scheduleFormatTimeHm(r.time_start),
+        endLabel: scheduleFormatTimeHm(r.time_end),
+      }
+      const existing = byJob.get(r.job_id)
+      if (existing) {
+        existing.windowSpans.push(span)
+      } else {
+        byJob.set(r.job_id, { jl, windowSpans: [span] })
+      }
+    }
+    const data: DispatchScheduledJobForAssign[] = []
+    for (const [jobId, { jl, windowSpans }] of byJob) {
+      data.push({
+        jobId,
+        hcp_number: (jl.hcp_number ?? '').trim(),
+        job_name: (jl.job_name ?? '').trim() || '—',
+        job_address: (jl.job_address ?? '').trim(),
+        windowSpans,
+        windowsLabel: windowSpans.map((s) => `${s.startLabel}${enDash}${s.endLabel}`).join('; '),
+      })
+    }
+    data.sort((a, b) => {
+      const ha = a.hcp_number || ''
+      const hb = b.hcp_number || ''
+      const c = hb.localeCompare(ha, undefined, { numeric: true })
+      if (c !== 0) return c
+      return a.job_name.localeCompare(b.job_name, undefined, { sensitivity: 'base' })
+    })
+    return { data, error: null }
   } catch (e) {
     return { data: [], error: formatErrorMessage(e) }
   }
