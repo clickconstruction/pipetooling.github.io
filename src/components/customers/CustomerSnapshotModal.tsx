@@ -11,6 +11,11 @@ import { formatErrorMessage, withRetry, withSupabaseRetry } from '../../utils/er
 type Customer = Database['public']['Tables']['customers']['Row']
 type BidRow = Database['public']['Tables']['bids']['Row']
 type GcBuilder = Database['public']['Tables']['bids_gc_builders']['Row']
+type EstimateStatus = Database['public']['Enums']['estimate_status']
+type EstimateSnapshotRow = Pick<
+  Database['public']['Tables']['estimates']['Row'],
+  'id' | 'estimate_number' | 'title' | 'status' | 'total_cents' | 'updated_at'
+>
 
 type Props = {
   open: boolean
@@ -29,15 +34,38 @@ function getBidStatus(bid: BidRow): string {
   return 'Pending'
 }
 
+function estimateSnapshotStatusLabel(s: EstimateStatus): string {
+  switch (s) {
+    case 'draft':
+      return 'Draft'
+    case 'sent':
+      return 'Sent'
+    case 'customer_accepted':
+      return 'Accepted'
+    case 'declined':
+      return 'Declined'
+    case 'superseded':
+      return 'Superseded'
+    default:
+      return String(s)
+  }
+}
+
+function formatUsdFromCents(cents: number): string {
+  return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(cents / 100)
+}
+
 export function CustomerSnapshotModal({ open, onClose, customerId, gcBuilder }: Props) {
   const editCustomerModal = useEditCustomerModal()
   const { role, estimatorProspectsAccess } = useAuth()
   const [refreshKey, setRefreshKey] = useState(0)
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [loadingCustomer, setLoadingCustomer] = useState(false)
-  const [counts, setCounts] = useState<{ projects: number; jobs: number; bids: number } | null>(null)
+  const [counts, setCounts] = useState<{ projects: number; jobs: number; bids: number; estimates: number } | null>(null)
   const [bids, setBids] = useState<BidRow[] | null>(null)
   const [loadingBids, setLoadingBids] = useState(false)
+  const [estimates, setEstimates] = useState<EstimateSnapshotRow[] | null>(null)
+  const [loadingEstimates, setLoadingEstimates] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -45,9 +73,11 @@ export function CustomerSnapshotModal({ open, onClose, customerId, gcBuilder }: 
       setCustomer(null)
       setCounts(null)
       setBids(null)
+      setEstimates(null)
       setError(null)
       setLoadingCustomer(false)
       setLoadingBids(false)
+      setLoadingEstimates(false)
       setRefreshKey(0)
       return
     }
@@ -56,6 +86,7 @@ export function CustomerSnapshotModal({ open, onClose, customerId, gcBuilder }: 
       setCustomer(null)
       setCounts(null)
       setBids(null)
+      setEstimates(null)
       return
     }
 
@@ -71,7 +102,7 @@ export function CustomerSnapshotModal({ open, onClose, customerId, gcBuilder }: 
         if (cancelled) return
         setCustomer(row)
 
-        const [pc, jc, bc] = await Promise.all([
+        const [pc, jc, bc, ec] = await Promise.all([
           withRetry(async () => {
             const r = await supabase.from('projects').select('id', { count: 'exact', head: true }).eq('customer_id', customerId)
             if (r.error) throw new Error(r.error.message)
@@ -90,9 +121,14 @@ export function CustomerSnapshotModal({ open, onClose, customerId, gcBuilder }: 
             if (r.error) throw new Error(r.error.message)
             return r.count ?? 0
           }),
+          withRetry(async () => {
+            const r = await supabase.from('estimates').select('id', { count: 'exact', head: true }).eq('customer_id', customerId)
+            if (r.error) throw new Error(r.error.message)
+            return r.count ?? 0
+          }),
         ])
         if (cancelled) return
-        setCounts({ projects: pc, jobs: jc, bids: bc })
+        setCounts({ projects: pc, jobs: jc, bids: bc, estimates: ec })
       } catch (e: unknown) {
         if (!cancelled) setError(formatErrorMessage(e, 'Failed to load customer'))
       } finally {
@@ -134,6 +170,35 @@ export function CustomerSnapshotModal({ open, onClose, customerId, gcBuilder }: 
     }
   }, [open, customerId, refreshKey])
 
+  useEffect(() => {
+    if (!open || !customerId) return
+    let cancelled = false
+    ;(async () => {
+      setLoadingEstimates(true)
+      try {
+        const data = await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('estimates')
+              .select('id, estimate_number, title, status, total_cents, updated_at')
+              .eq('customer_id', customerId)
+              .order('updated_at', { ascending: false })
+              .limit(100),
+          'customer snapshot estimates',
+        )
+        if (cancelled) return
+        setEstimates((data as EstimateSnapshotRow[] | null) ?? [])
+      } catch {
+        if (!cancelled) setEstimates([])
+      } finally {
+        if (!cancelled) setLoadingEstimates(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, customerId, refreshKey])
+
   if (!open) return null
 
   const overlayStyle: CSSProperties = {
@@ -162,9 +227,10 @@ export function CustomerSnapshotModal({ open, onClose, customerId, gcBuilder }: 
 
   if (customerId) {
     const { phone, email } = customer ? extractContactFromCustomer(customer) : { phone: '', email: '' }
-    const c = counts ?? { projects: 0, jobs: 0, bids: 0 }
+    const c = counts ?? { projects: 0, jobs: 0, bids: 0, estimates: 0 }
     const showProjects = isPathAllowedForRole(role, '/projects', estimatorProspectsAccess)
     const showJobs = isPathAllowedForRole(role, '/jobs', estimatorProspectsAccess)
+    const showEstimates = isPathAllowedForRole(role, '/estimates', estimatorProspectsAccess)
     const showCustomers = isPathAllowedForRole(role, '/customers', estimatorProspectsAccess)
     const navLinks: ReactNode[] = []
     if (showProjects) {
@@ -183,6 +249,18 @@ export function CustomerSnapshotModal({ open, onClose, customerId, gcBuilder }: 
       navLinks.push(
         <Link key="jobs" to={`/jobs?customer=${customerId}`} onClick={onClose} style={{ color: '#2563eb', fontWeight: 500 }}>
           Jobs ({c.jobs})
+        </Link>,
+      )
+    }
+    if (showEstimates) {
+      navLinks.push(
+        <Link
+          key="estimates"
+          to={`/estimates?customer=${customerId}`}
+          onClick={onClose}
+          style={{ color: '#2563eb', fontWeight: 500 }}
+        >
+          Estimates ({c.estimates})
         </Link>,
       )
     }
@@ -265,6 +343,61 @@ export function CustomerSnapshotModal({ open, onClose, customerId, gcBuilder }: 
                   )}
                 </div>
               ) : null}
+
+              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.35rem' }}>Estimates ({c.estimates})</div>
+              {loadingEstimates ? (
+                <p style={{ margin: '0 0 1rem', color: '#6b7280' }}>Loading estimates…</p>
+              ) : !estimates || estimates.length === 0 ? (
+                <p style={{ margin: '0 0 1rem', color: '#6b7280' }}>No estimates for this customer.</p>
+              ) : (
+                <table
+                  style={{
+                    width: '100%',
+                    borderCollapse: 'collapse',
+                    fontSize: '0.8125rem',
+                    marginBottom: '1rem',
+                  }}
+                >
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                      <th style={{ textAlign: 'left', padding: '0.5rem' }}>#</th>
+                      <th style={{ textAlign: 'left', padding: '0.5rem' }}>Title</th>
+                      <th style={{ textAlign: 'left', padding: '0.5rem' }}>Status</th>
+                      <th style={{ textAlign: 'right', padding: '0.5rem' }}>Total</th>
+                      <th style={{ textAlign: 'left', padding: '0.5rem' }}>Updated</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {estimates.map((est) => (
+                      <tr key={est.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                        <td style={{ padding: '0.5rem', fontVariantNumeric: 'tabular-nums' }}>
+                          <Link
+                            to={`/estimates/${est.estimate_number}`}
+                            onClick={onClose}
+                            style={{ color: '#2563eb', fontWeight: 500 }}
+                          >
+                            {est.estimate_number}
+                          </Link>
+                        </td>
+                        <td style={{ padding: '0.5rem', minWidth: 0, maxWidth: 220 }}>
+                          <Link
+                            to={`/estimates/${est.estimate_number}`}
+                            onClick={onClose}
+                            style={{ color: '#111827', wordBreak: 'break-word' }}
+                          >
+                            {est.title?.trim() || '—'}
+                          </Link>
+                        </td>
+                        <td style={{ padding: '0.5rem', whiteSpace: 'nowrap' }}>{estimateSnapshotStatusLabel(est.status)}</td>
+                        <td style={{ padding: '0.5rem', textAlign: 'right' }}>{formatUsdFromCents(est.total_cents)}</td>
+                        <td style={{ padding: '0.5rem', color: '#6b7280' }}>
+                          {est.updated_at ? String(est.updated_at).slice(0, 10) : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
 
               <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.35rem' }}>Bids ({c.bids})</div>
               {loadingBids ? (

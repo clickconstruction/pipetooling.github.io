@@ -387,9 +387,38 @@ export default function CreateJobFromEstimateModal({
             outline-offset: 2px;
           }
         `}</style>
-        <h2 id="create-job-from-estimate-title" style={{ margin: '0 0 0.75rem', fontSize: '1.1rem', fontWeight: 600, color: '#111827' }}>
-          Create job from estimate
-        </h2>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            gap: '0.75rem',
+            marginBottom: '0.75rem',
+          }}
+        >
+          <h2
+            id="create-job-from-estimate-title"
+            style={{
+              margin: 0,
+              flex: '1 1 auto',
+              minWidth: 0,
+              fontSize: '1.1rem',
+              fontWeight: 600,
+              color: '#111827',
+              lineHeight: 1.3,
+            }}
+          >
+            Create job from estimate
+          </h2>
+          <button
+            type="button"
+            onClick={() => onClose()}
+            disabled={busy}
+            style={{ ...secondaryButtonStyle(busy), flexShrink: 0 }}
+          >
+            Cancel
+          </button>
+        </div>
         <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280', lineHeight: 1.45 }}>
           Create a new job (HCP # required), or link an existing Jobs row using the search below.
         </p>
@@ -488,9 +517,6 @@ export default function CreateJobFromEstimateModal({
             marginBottom: showLinkSection ? '0' : '0.25rem',
           }}
         >
-          <button type="button" onClick={() => onClose()} disabled={busy} style={secondaryButtonStyle(busy)}>
-            Cancel
-          </button>
           <button type="button" onClick={() => void handleSubmit()} disabled={busy} style={primaryButtonStyle(busy)}>
             {submitting ? 'Creating…' : 'Create job'}
           </button>
@@ -506,7 +532,7 @@ export default function CreateJobFromEstimateModal({
                 textAlign: 'center',
               }}
             >
-              or
+              <strong style={{ color: '#111827' }}>or</strong>
             </p>
             <label htmlFor="create-job-from-estimate-link-search" style={{ ...labelStyle, marginTop: '0.25rem' }}>
               Link existing job
@@ -521,62 +547,75 @@ export default function CreateJobFromEstimateModal({
               style={{ ...textInputStyle(linkFieldsBusy), marginBottom: '0.5rem' }}
               autoComplete="off"
             />
-            {jobLinkSearchLoading ? (
-              <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>Searching…</p>
-            ) : null}
-            <div
-              role="list"
-              aria-label="Job search results"
-              style={{
-                maxHeight: 220,
-                overflowY: 'auto',
-                overflowX: 'hidden',
-                border: '1px solid #e5e7eb',
-                borderRadius: 6,
-                marginBottom: '0.75rem',
-              }}
-            >
-              {jobLinkResults.length === 0 && jobLinkSearchQuery.trim() && !jobLinkSearchLoading ? (
-                <p style={{ margin: '0.5rem 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>No jobs found.</p>
-              ) : null}
-              {jobLinkResults.map((row, index) => {
-                const isSelected = row.id === linkJobLedgerId.trim()
-                const hcp = (row.hcp_number ?? '').trim()
-                return (
-                  <button
-                    key={row.id}
-                    type="button"
-                    role="listitem"
-                    onClick={() => {
-                      setLinkJobLedgerId(row.id)
-                      setSelectedJobPick(row)
-                    }}
-                    disabled={linkFieldsBusy}
-                    style={{
-                      display: 'block',
-                      width: '100%',
-                      textAlign: 'left',
-                      padding: '0.5rem 0.75rem',
-                      border: 'none',
-                      borderTop: index === 0 ? 'none' : '1px solid #f3f4f6',
-                      background: isSelected ? '#eff6ff' : 'white',
-                      cursor: linkFieldsBusy ? 'not-allowed' : 'pointer',
-                      opacity: linkFieldsBusy ? 0.65 : 1,
-                      font: 'inherit',
-                      fontSize: '0.875rem',
-                      boxSizing: 'border-box',
-                    }}
-                  >
-                    <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>
-                      J{hcp || '—'} · {row.job_name?.trim() || '—'}
-                    </div>
-                    <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.15rem' }}>
-                      {row.job_address?.trim() || '—'}
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
+            {(() => {
+              const showJobLinkListBox =
+                jobLinkSearchLoading ||
+                jobLinkResults.length > 0 ||
+                (jobLinkSearchQuery.trim() !== '' && !jobLinkSearchLoading)
+
+              if (!showJobLinkListBox) return null
+
+              return (
+                <div
+                  role="list"
+                  aria-label="Job search results"
+                  style={{
+                    maxHeight: 220,
+                    overflowY: 'auto',
+                    overflowX: 'hidden',
+                    borderTop: '1px solid #e5e7eb',
+                    borderLeft: '1px solid #e5e7eb',
+                    borderRight: '1px solid #e5e7eb',
+                    borderRadius: '6px 6px 0 0',
+                    marginBottom: '0.75rem',
+                  }}
+                >
+                  {jobLinkSearchLoading ? (
+                    <p style={{ margin: '0.5rem 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>Searching…</p>
+                  ) : jobLinkResults.length === 0 && jobLinkSearchQuery.trim() ? (
+                    <p style={{ margin: '0.5rem 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>No jobs found.</p>
+                  ) : (
+                    jobLinkResults.map((row, index) => {
+                      const isSelected = row.id === linkJobLedgerId.trim()
+                      const hcp = (row.hcp_number ?? '').trim()
+                      return (
+                        <button
+                          key={row.id}
+                          type="button"
+                          role="listitem"
+                          onClick={() => {
+                            setLinkJobLedgerId(row.id)
+                            setSelectedJobPick(row)
+                          }}
+                          disabled={linkFieldsBusy}
+                          style={{
+                            display: 'block',
+                            width: '100%',
+                            textAlign: 'left',
+                            padding: '0.5rem 0.75rem',
+                            border: 'none',
+                            borderTop: index === 0 ? 'none' : '1px solid #f3f4f6',
+                            background: isSelected ? '#eff6ff' : 'white',
+                            cursor: linkFieldsBusy ? 'not-allowed' : 'pointer',
+                            opacity: linkFieldsBusy ? 0.65 : 1,
+                            font: 'inherit',
+                            fontSize: '0.875rem',
+                            boxSizing: 'border-box',
+                          }}
+                        >
+                          <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                            J{hcp || '—'} · {row.job_name?.trim() || '—'}
+                          </div>
+                          <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.15rem' }}>
+                            {row.job_address?.trim() || '—'}
+                          </div>
+                        </button>
+                      )
+                    })
+                  )}
+                </div>
+              )
+            })()}
             {selectedJobPick ? (
               <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: '#15803d' }}>
                 Selected: J{(selectedJobPick.hcp_number ?? '').trim() || '—'} ·{' '}
@@ -587,7 +626,6 @@ export default function CreateJobFromEstimateModal({
               style={{
                 display: 'flex',
                 justifyContent: 'flex-end',
-                marginBottom: '1rem',
               }}
             >
               <button
