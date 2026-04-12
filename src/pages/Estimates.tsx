@@ -2152,12 +2152,22 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                     <div
                       style={{
                         display: 'flex',
+                        flexWrap: 'wrap',
                         alignItems: 'center',
-                        gap: '0.5rem',
+                        gap: '0.35rem',
                         minWidth: 0,
                       }}
                     >
-                      <h1 style={{ margin: 0, minWidth: 0, flex: '1 1 auto' }}>{title.trim() || 'Estimate'}</h1>
+                      <h1
+                        style={{
+                          margin: 0,
+                          minWidth: 0,
+                          maxWidth: '100%',
+                          overflowWrap: 'break-word',
+                        }}
+                      >
+                        {title.trim() || 'Estimate'}
+                      </h1>
                       <button
                         type="button"
                         aria-expanded={draftTitleEditing}
@@ -2686,19 +2696,11 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                           color: '#b91c1c',
                           fontSize: '1.125rem',
                           fontWeight: 500,
-                          lineHeight: 1,
+                          lineHeight: 0,
                           cursor: 'pointer',
                         }}
                       >
-                        <span
-                          style={{
-                            display: 'inline-block',
-                            transform: 'translateY(2px)',
-                            lineHeight: 1,
-                          }}
-                        >
-                          -
-                        </span>
+                        −
                       </button>
                     </div>
                   </div>
@@ -2986,39 +2988,41 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             ) : (
               <p style={{ margin: 0, fontSize: '0.85rem', color: '#9ca3af' }}>No supporting document for this quote.</p>
             )}
-            <details style={{ margin: '0.65rem 0 0', fontSize: '0.85rem', color: '#374151' }}>
+            <details style={{ margin: '0.65rem 0 0', fontSize: '0.85rem', color: '#374151', textAlign: 'center' }}>
               <summary style={{ cursor: 'pointer', fontWeight: 500, color: '#1f2937' }}>
                 How to share a file in Google Drive
               </summary>
-              <ol style={{ margin: '0.5rem 0 0', paddingLeft: '1.25rem', lineHeight: 1.45 }}>
-                <li>Open the file in Drive, then choose Share.</li>
-                <li>
-                  Set access to <strong>Anyone with the link</strong> and role <strong>Viewer</strong> (or your org’s
-                  equivalent for external viewers).
-                </li>
-                <li>Copy the link and paste it below.</li>
-              </ol>
-              <p style={{ margin: '0.5rem 0 0', lineHeight: 1.45 }}>
-                Some <strong>Google Workspace</strong> policies prevent “anyone with the link” for people outside your
-                org. If that applies, customers may still see a sign-in wall even when the steps above are correct.
-              </p>
-              <p style={{ margin: '0.5rem 0 0', lineHeight: 1.45 }}>
-                Official help:{' '}
-                <a
-                  href="https://support.google.com/drive/answer/2494822"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Share files from Google Drive
-                </a>
-                .
-              </p>
-              <ul style={{ margin: '0.5rem 0 0', paddingLeft: '1.25rem', lineHeight: 1.45 }}>
-                <li>
-                  If you are unsure the customer can open it, open the link in a <strong>private or incognito</strong>{' '}
-                  window (signed out) to double-check.
-                </li>
-              </ul>
+              <div style={{ textAlign: 'left', marginTop: '0.5rem' }}>
+                <ol style={{ margin: 0, paddingLeft: '1.25rem', lineHeight: 1.45 }}>
+                  <li>Open the file in Drive, then choose Share.</li>
+                  <li>
+                    Set access to <strong>Anyone with the link</strong> and role <strong>Viewer</strong> (or your org’s
+                    equivalent for external viewers).
+                  </li>
+                  <li>Copy the link and paste it below.</li>
+                </ol>
+                <p style={{ margin: '0.5rem 0 0', lineHeight: 1.45 }}>
+                  Some <strong>Google Workspace</strong> policies prevent “anyone with the link” for people outside your
+                  org. If that applies, customers may still see a sign-in wall even when the steps above are correct.
+                </p>
+                <p style={{ margin: '0.5rem 0 0', lineHeight: 1.45 }}>
+                  Official help:{' '}
+                  <a
+                    href="https://support.google.com/drive/answer/2494822"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Share files from Google Drive
+                  </a>
+                  .
+                </p>
+                <ul style={{ margin: '0.5rem 0 0', paddingLeft: '1.25rem', lineHeight: 1.45 }}>
+                  <li>
+                    If you are unsure the customer can open it, open the link in a <strong>private or incognito</strong>{' '}
+                    window (signed out) to double-check.
+                  </li>
+                </ul>
+              </div>
             </details>
           </fieldset>
           <label style={{ display: 'block', marginTop: '1rem' }}>
