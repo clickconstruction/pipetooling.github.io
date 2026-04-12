@@ -11,6 +11,7 @@ import ResetPasswordConfirm from './pages/ResetPasswordConfirm'
 const Customers = lazy(() => import('./pages/Customers'))
 const Projects = lazy(() => import('./pages/Projects'))
 const ProjectForm = lazy(() => import('./pages/ProjectForm'))
+const ProjectNewGate = lazy(() => import('./pages/ProjectNewGate'))
 const Workflow = lazy(() => import('./pages/Workflow'))
 const Settings = lazy(() => import('./pages/Settings'))
 const Calendar = lazy(() => import('./pages/Calendar'))
@@ -38,6 +39,7 @@ import { ChecklistAddModalProvider } from './contexts/ChecklistAddModalContext'
 import { DispatchTaskModalProvider } from './contexts/DispatchTaskModalContext'
 import { EstimatorTaskModalProvider } from './contexts/EstimatorTaskModalContext'
 import { NewCustomerModalProvider } from './contexts/NewCustomerModalContext'
+import { NewProjectModalProvider } from './contexts/NewProjectModalContext'
 import { EditCustomerModalProvider } from './contexts/EditCustomerModalContext'
 import { BillCustomerModalProvider } from './contexts/BillCustomerModalContext'
 import { JobFormModalProvider } from './contexts/JobFormModalContext'
@@ -157,17 +159,19 @@ function AppContent() {
                   <DispatchTaskModalProvider>
                     <EstimatorTaskModalProvider>
                       <NewCustomerModalProvider>
-                        <EditCustomerModalProvider>
-                          <BillCustomerModalProvider>
-                            <JobFormModalProvider>
-                              <BidPreviewModalProvider>
-                                <DailyGoalsGateProvider>
-                                  <Layout />
-                                </DailyGoalsGateProvider>
-                              </BidPreviewModalProvider>
-                            </JobFormModalProvider>
-                          </BillCustomerModalProvider>
-                        </EditCustomerModalProvider>
+                        <NewProjectModalProvider>
+                          <EditCustomerModalProvider>
+                            <BillCustomerModalProvider>
+                              <JobFormModalProvider>
+                                <BidPreviewModalProvider>
+                                  <DailyGoalsGateProvider>
+                                    <Layout />
+                                  </DailyGoalsGateProvider>
+                                </BidPreviewModalProvider>
+                              </JobFormModalProvider>
+                            </BillCustomerModalProvider>
+                          </EditCustomerModalProvider>
+                        </NewProjectModalProvider>
                       </NewCustomerModalProvider>
                     </EstimatorTaskModalProvider>
                   </DispatchTaskModalProvider>
@@ -182,7 +186,7 @@ function AppContent() {
           <Route path="customers/new" element={<Navigate to="/customers" state={{ openNewCustomer: true }} replace />} />
           <Route path="customers/:id/edit" element={<NavigateToEditCustomer />} />
           <Route path="projects" element={<Projects />} />
-          <Route path="projects/new" element={<ProjectForm />} />
+          <Route path="projects/new" element={<ProjectNewGate />} />
           <Route path="projects/:id/edit" element={<ProjectForm />} />
           <Route path="workflows/:projectId" element={<Workflow />} />
           <Route path="jobs" element={<Jobs />} />

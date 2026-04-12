@@ -1,4 +1,12 @@
-import { useMemo, useRef, useState } from 'react'
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+} from 'react'
 import {
   customerMatchesSearch,
   customerTypeChipLabel,
@@ -12,6 +20,80 @@ const COMMERCIAL_ROW_BG = '#fffbeb'
 
 const MAX_ROWS = 50
 
+const ROOT_CLASS = 'customer-search-combobox'
+
+const focusVisibleCss = `
+  .${ROOT_CLASS} input:focus-visible,
+  .${ROOT_CLASS} button:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+  }
+`
+
+const inputStyle = (inputDisabled: boolean, withTrailingClear?: boolean): CSSProperties => ({
+  width: '100%',
+  padding: '0.5rem',
+  paddingRight: withTrailingClear ? '2.35rem' : '0.5rem',
+  boxSizing: 'border-box',
+  border: '1px solid #d1d5db',
+  borderRadius: 6,
+  fontSize: '0.875rem',
+  opacity: inputDisabled ? 0.65 : 1,
+  cursor: inputDisabled ? 'not-allowed' : 'text',
+})
+
+/** Font Awesome Free v7.2.0 rectangle-xmark — used as clear control. */
+function ClearCustomerIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden style={{ width: 18, height: 18, display: 'block' }}>
+      <path
+        fill="currentColor"
+        d="M128 176C119.2 176 112 183.2 112 192L112 448C112 456.8 119.2 464 128 464L512 464C520.8 464 528 456.8 528 448L528 192C528 183.2 520.8 176 512 176L128 176zM64 192C64 156.7 92.7 128 128 128L512 128C547.3 128 576 156.7 576 192L576 448C576 483.3 547.3 512 512 512L128 512C92.7 512 64 483.3 64 448L64 192zM398.1 241.9C407.5 251.3 407.5 266.5 398.1 275.8L354 319.9L398.1 364C407.5 373.4 407.5 388.6 398.1 397.9C388.7 407.2 373.5 407.3 364.2 397.9L320.1 353.8L276 397.9C266.6 407.3 251.4 407.3 242.1 397.9C232.8 388.5 232.7 373.3 242.1 364L286.2 319.9L242.1 275.8C232.7 266.4 232.7 251.2 242.1 241.9C251.5 232.6 266.7 232.5 276 241.9L320.1 286L364.2 241.9C373.6 232.5 388.8 232.5 398.1 241.9z"
+      />
+    </svg>
+  )
+}
+
+const panelStyle: CSSProperties = {
+  position: 'absolute',
+  left: 0,
+  right: 0,
+  top: '100%',
+  marginTop: 2,
+  maxHeight: 280,
+  overflowY: 'auto',
+  background: 'white',
+  border: '1px solid #d1d5db',
+  borderRadius: 6,
+  zIndex: 40,
+  boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.08)',
+}
+
+const smallSecondaryButtonStyle: CSSProperties = {
+  padding: '0.35rem 0.65rem',
+  fontSize: '0.8125rem',
+  fontWeight: 500,
+  border: '1px solid #d1d5db',
+  borderRadius: 4,
+  background: '#f3f4f6',
+  color: '#374151',
+  cursor: 'pointer',
+}
+
+const footerCreateStyle: CSSProperties = {
+  display: 'block',
+  width: '100%',
+  textAlign: 'left',
+  padding: '0.65rem 0.75rem',
+  border: 'none',
+  borderTop: '2px solid #e5e7eb',
+  background: '#fff7ed',
+  fontWeight: 600,
+  color: '#c2410c',
+  cursor: 'pointer',
+  fontSize: '0.875rem',
+}
+
 export type CustomerSearchComboboxProps = {
   customers: CustomerRow[]
   loading?: boolean
@@ -20,7 +102,7 @@ export type CustomerSearchComboboxProps = {
   onSearchTextChange: (text: string) => void
   onSelect: (customer: CustomerRow) => void
   onClear?: () => void
-  /** Shown left of Clear when a row is selected (e.g. open global Edit customer modal). */
+  /** Optional secondary action below the field when a row is selected (e.g. open Edit customer modal). Clear is the trailing icon on the input. */
   onRequestEditSelected?: () => void
   onRequestCreateNew?: () => void
   disabled?: boolean
@@ -42,18 +124,36 @@ export default function CustomerSearchCombobox({
   placeholder = 'Search customers…',
   'aria-label': ariaLabel = 'Search customers',
 }: CustomerSearchComboboxProps) {
+  const reactId = useId()
+  const listboxId = `${reactId}-list`
   const [open, setOpen] = useState(false)
+  const [highlightIndex, setHighlightIndex] = useState<number | null>(null)
   const blurTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const filtered = useMemo(() => {
     return customers.filter((c) => customerMatchesSearch(c, searchText)).slice(0, MAX_ROWS)
   }, [customers, searchText])
 
+  const optionCount = filtered.length
+  const hasCreateFooter = Boolean(onRequestCreateNew)
+  const totalSlots = optionCount + (hasCreateFooter ? 1 : 0)
+
+  function optionIdForCustomer(customerId: string): string {
+    return `${listboxId}-opt-${customerId}`
+  }
+
+  const createFooterId = `${listboxId}-create`
+
   function clearBlurTimeout() {
     if (blurTimeout.current) {
       clearTimeout(blurTimeout.current)
       blurTimeout.current = null
     }
+  }
+
+  function closePanel() {
+    setOpen(false)
+    setHighlightIndex(null)
   }
 
   function handleFocus() {
@@ -63,114 +163,168 @@ export default function CustomerSearchCombobox({
 
   function handleBlur() {
     blurTimeout.current = setTimeout(() => {
-      setOpen(false)
+      closePanel()
       blurTimeout.current = null
     }, 200)
   }
 
+  /** Reset keyboard highlight when the query or list changes while open. */
+  useEffect(() => {
+    if (!open || loading) return
+    if (totalSlots === 0) {
+      setHighlightIndex(null)
+      return
+    }
+    const selIdx = valueId ? filtered.findIndex((c) => c.id === valueId) : -1
+    setHighlightIndex(selIdx >= 0 ? selIdx : 0)
+  }, [searchText, customers, open, loading, valueId, filtered, totalSlots])
+
+  function moveHighlight(delta: number) {
+    if (totalSlots === 0) return
+    setHighlightIndex((prev) => {
+      const cur = prev ?? 0
+      return (cur + delta + totalSlots) % totalSlots
+    })
+  }
+
+  function applySelectionFromHighlight() {
+    if (totalSlots === 0) return
+    const hi = highlightIndex
+    if (hi === null) {
+      if (optionCount === 1) {
+        onSelect(filtered[0]!)
+        closePanel()
+      }
+      return
+    }
+    if (hi < optionCount) {
+      onSelect(filtered[hi]!)
+      closePanel()
+      return
+    }
+    if (hasCreateFooter && hi === optionCount) {
+      onRequestCreateNew?.()
+      closePanel()
+    }
+  }
+
+  function handleInputKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (disabled || loading) return
+
+    if (e.key === 'Escape') {
+      if (open) {
+        e.preventDefault()
+        closePanel()
+      }
+      return
+    }
+
+    if (!open || !totalSlots) return
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      moveHighlight(1)
+      return
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      moveHighlight(-1)
+      return
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      applySelectionFromHighlight()
+    }
+  }
+
+  const activeDescendantId =
+    open && !loading && highlightIndex != null && totalSlots > 0
+      ? highlightIndex < optionCount
+        ? optionIdForCustomer(filtered[highlightIndex]!.id)
+        : hasCreateFooter
+          ? createFooterId
+          : undefined
+      : undefined
+
+  const inputDisabled = disabled || loading
+  const showTrailingClear = Boolean(onClear && valueId && !inputDisabled)
+
   return (
-    <div style={{ position: 'relative', maxWidth: 480 }}>
-      <input
-        type="text"
-        value={searchText}
-        onChange={(e) => onSearchTextChange(e.target.value)}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-        placeholder={loading ? 'Loading customers…' : placeholder}
-        disabled={disabled || loading}
-        aria-label={ariaLabel}
-        aria-expanded={open}
-        aria-controls="customer-search-combobox-list"
-        autoComplete="off"
-        style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box', border: '1px solid #d1d5db', borderRadius: 4 }}
-      />
-      {onClear && valueId && !onRequestEditSelected && (
-        <button
-          type="button"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => {
-            onClear()
-            setOpen(false)
-          }}
-          style={{ marginTop: '0.35rem', fontSize: '0.85rem', color: '#2563eb', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-        >
-          Clear customer
-        </button>
-      )}
-      {onClear && valueId && onRequestEditSelected && (
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginTop: '0.35rem',
-            gap: '0.75rem',
-          }}
-        >
+    <div className={ROOT_CLASS} style={{ maxWidth: 480 }}>
+      <style>{focusVisibleCss}</style>
+      <div style={{ position: 'relative', width: '100%' }}>
+        <input
+          type="text"
+          value={searchText}
+          onChange={(e) => onSearchTextChange(e.target.value)}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          onKeyDown={handleInputKeyDown}
+          placeholder={loading ? 'Loading customers…' : placeholder}
+          disabled={inputDisabled}
+          aria-label={ariaLabel}
+          aria-expanded={open}
+          aria-controls={listboxId}
+          aria-activedescendant={activeDescendantId}
+          autoComplete="off"
+          role="combobox"
+          aria-autocomplete="list"
+          style={inputStyle(inputDisabled, showTrailingClear)}
+        />
+        {showTrailingClear ? (
           <button
             type="button"
+            aria-label="Clear customer"
+            title="Clear customer"
             onMouseDown={(e) => e.preventDefault()}
-            onClick={() => onRequestEditSelected()}
+            onClick={() => {
+              onClear?.()
+              closePanel()
+            }}
             style={{
-              fontSize: '0.85rem',
-              color: '#2563eb',
-              background: 'none',
-              border: 'none',
+              position: 'absolute',
+              right: 4,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 32,
+              height: 32,
               padding: 0,
+              border: 'none',
+              borderRadius: 6,
+              background: 'transparent',
+              color: '#6b7280',
               cursor: 'pointer',
             }}
           >
-            Edit customer
+            <ClearCustomerIcon />
           </button>
-          <button
-            type="button"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => {
-              onClear()
-              setOpen(false)
-            }}
-            style={{ fontSize: '0.85rem', color: '#2563eb', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-          >
-            Clear customer
-          </button>
-        </div>
-      )}
-      {open && !loading && (
-        <div
-          id="customer-search-combobox-list"
-          role="listbox"
-          style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            top: '100%',
-            marginTop: 2,
-            maxHeight: 280,
-            overflowY: 'auto',
-            background: 'white',
-            border: '1px solid #d1d5db',
-            borderRadius: 4,
-            zIndex: 40,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-          }}
-        >
+        ) : null}
+        {open && !loading && (
+          <div id={listboxId} role="listbox" style={panelStyle}>
           {filtered.length === 0 ? (
-            <div style={{ padding: '0.75rem', color: '#6b7280', fontSize: '0.9rem' }}>No matching customers.</div>
+            <div style={{ padding: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>No matching customers.</div>
           ) : (
-            filtered.map((c) => {
+            filtered.map((c, index) => {
               const selected = valueId === c.id
+              const highlighted = highlightIndex === index
               const rowBg = selected ? '#f0fdf4' : c.customer_type === 'commercial' ? COMMERCIAL_ROW_BG : 'white'
+              const rowBackground = highlighted && !selected ? '#eff6ff' : rowBg
               const chip = customerTypeChipLabel(c)
               return (
                 <button
                   key={c.id}
+                  id={optionIdForCustomer(c.id)}
                   type="button"
                   role="option"
                   aria-selected={selected}
                   onMouseDown={(e) => e.preventDefault()}
+                  onMouseEnter={() => setHighlightIndex(index)}
                   onClick={() => {
                     onSelect(c)
-                    setOpen(false)
+                    closePanel()
                   }}
                   style={{
                     display: 'block',
@@ -179,9 +333,10 @@ export default function CustomerSearchCombobox({
                     padding: '0.5rem 0.75rem',
                     border: 'none',
                     borderBottom: '1px solid #f3f4f6',
-                    background: rowBg,
+                    background: rowBackground,
                     cursor: 'pointer',
-                    fontSize: '0.9rem',
+                    fontSize: '0.875rem',
+                    boxSizing: 'border-box',
                   }}
                 >
                   <div
@@ -220,38 +375,46 @@ export default function CustomerSearchCombobox({
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{formatCustomerSecondaryLine(c)}</div>
+                  <div style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{formatCustomerSecondaryLine(c)}</div>
                 </button>
               )
             })
           )}
           {onRequestCreateNew && (
             <button
+              id={createFooterId}
               type="button"
+              role="option"
+              aria-selected={false}
               onMouseDown={(e) => e.preventDefault()}
+              onMouseEnter={() => hasCreateFooter && setHighlightIndex(optionCount)}
               onClick={() => {
                 onRequestCreateNew()
-                setOpen(false)
+                closePanel()
               }}
               style={{
-                display: 'block',
-                width: '100%',
-                textAlign: 'left',
-                padding: '0.65rem 0.75rem',
-                border: 'none',
-                borderTop: '2px solid #e5e7eb',
-                background: '#f9fafb',
-                fontWeight: 600,
-                color: '#ea580c',
-                cursor: 'pointer',
-                fontSize: '0.9rem',
+                ...footerCreateStyle,
+                ...(highlightIndex === optionCount && optionCount >= 0 ?
+                  { background: '#ffedd5' }
+                : {}),
               }}
             >
               Create new customer
             </button>
           )}
         </div>
-      )}
+        )}
+      </div>
+      {onRequestEditSelected && valueId ? (
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => onRequestEditSelected()}
+          style={{ ...smallSecondaryButtonStyle, marginTop: '0.35rem' }}
+        >
+          Edit customer
+        </button>
+      ) : null}
     </div>
   )
 }

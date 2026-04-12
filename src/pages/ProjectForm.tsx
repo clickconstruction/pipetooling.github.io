@@ -1,103 +1,37 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
-import { Pencil, ChevronUp, ChevronDown, Trash2 } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+import { useParams, useNavigate, Navigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
-import { useIsNarrowScreen } from '../hooks/useIsNarrowScreen'
 import type { Database } from '../types/database'
 
 type ProjectRow = Database['public']['Tables']['projects']['Row']
 type CustomerRow = Database['public']['Tables']['customers']['Row']
-type StepType = Database['public']['Enums']['step_type'] | null
-
-type PreviewStep = {
-  id: string
-  template_step_id: string | null
-  sequence_order: number
-  name: string
-  step_type: StepType
-  required_skill: string | null
-}
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor'
 
 const PROJECT_STATUSES: ProjectRow['status'][] = ['awaiting_start', 'active', 'completed', 'on_hold']
 
-function IconActionButton({
-  icon: Icon,
-  label,
-  onClick,
-  disabled,
-  variant = 'default',
-}: {
-  icon: LucideIcon
-  label: string
-  onClick: () => void
-  disabled?: boolean
-  variant?: 'default' | 'danger'
-}) {
-  const [hovered, setHovered] = useState(false)
-  return (
-    <button
-      type="button"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      onClick={onClick}
-      disabled={disabled}
-      title={label}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 4,
-        padding: '2px 6px',
-        fontSize: '0.75rem',
-        border: 'none',
-        background: 'transparent',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.5 : 1,
-        color: variant === 'danger' ? '#b91c1c' : 'inherit',
-      }}
-    >
-      <Icon size={14} />
-      {hovered && <span>{label}</span>}
-    </button>
-  )
-}
-
 export default function ProjectForm() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
   const { user: authUser } = useAuth()
-  const isNew = !id
 
   const [customerId, setCustomerId] = useState('')
   const [customers, setCustomers] = useState<CustomerRow[]>([])
   const [customerSearch, setCustomerSearch] = useState('')
-  const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false)
   const [address, setAddress] = useState('')
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [housecallproNumber, setHousecallproNumber] = useState('')
   const [plansLink, setPlansLink] = useState('')
   const [status, setStatus] = useState<ProjectRow['status']>('active')
-  const [templateId, setTemplateId] = useState('')
-  const [templates, setTemplates] = useState<{ id: string; name: string }[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [fetching, setFetching] = useState(!isNew)
+  const [fetching, setFetching] = useState(true)
   const [customersLoading, setCustomersLoading] = useState(true)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [myRole, setMyRole] = useState<UserRole | null>(null)
-  const [previewSteps, setPreviewSteps] = useState<PreviewStep[]>([])
-  const [previewStepsLoading, setPreviewStepsLoading] = useState(false)
-  const [editingStepId, setEditingStepId] = useState<string | null>(null)
-  const [editingStepName, setEditingStepName] = useState('')
-  const [hasModifiedSteps, setHasModifiedSteps] = useState(false)
-
-  const isNarrow = useIsNarrowScreen()
 
   useEffect(() => {
     if (!authUser?.id) return
@@ -121,23 +55,6 @@ export default function ProjectForm() {
     })()
   }, [])
 
-  // Prefill from URL params (e.g. when coming from "+ Add Project" in Edit Job modal)
-  useEffect(() => {
-    if (!isNew || customers.length === 0) return
-    const customer = searchParams.get('customer')
-    const nameParam = searchParams.get('name')
-    const addressParam = searchParams.get('address')
-    const plansParam = searchParams.get('plans')
-    const hcpParam = searchParams.get('hcp')
-    if (customer && customers.some((c) => c.id === customer)) {
-      setCustomerId(customer)
-    }
-    if (nameParam != null) setName(nameParam)
-    if (addressParam != null) setAddress(addressParam)
-    if (plansParam != null) setPlansLink(plansParam)
-    if (hcpParam != null) setHousecallproNumber(hcpParam)
-  }, [isNew, customers, searchParams])
-
   function getCustomerDisplay(customer: CustomerRow): string {
     if (customer.address) {
       return `${customer.name} - ${customer.address}`
@@ -145,201 +62,45 @@ export default function ProjectForm() {
     return customer.name
   }
 
-  // Update customer search and auto-fill address when customerId changes
-  // Also auto-set master_user_id from customer's master_user_id
-  // Skip copying customer address when coming from "+ Add Project" on a job (`job` param) or when
-  // `address` is present in the URL (including empty), so the job line is the only source for that flow.
   useEffect(() => {
     if (customerId && customers.length > 0) {
       const selectedCustomer = customers.find((c) => c.id === customerId)
       if (selectedCustomer) {
         setCustomerSearch(getCustomerDisplay(selectedCustomer))
-        const fromJobModal = Boolean(searchParams.get('job'))
-        const addressExplicitInUrl = searchParams.has('address')
-        if (!fromJobModal && !addressExplicitInUrl && (isNew || !address.trim())) {
-          setAddress(selectedCustomer.address ?? '')
-        }
-        // Project owner automatically matches customer owner - no need to set state, will use in submit
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customerId, customers, isNew, searchParams])
+  }, [customerId, customers])
 
   useEffect(() => {
-    if (isNew) {
-      supabase.from('workflow_templates').select('id, name').order('name').then(({ data }) =>
-        setTemplates((data as { id: string; name: string }[]) ?? [])
-      )
-    }
-  }, [isNew])
-
-  useEffect(() => {
-    if (!isNew || !templateId) {
-      setPreviewSteps([])
-      setPreviewStepsLoading(false)
-      setEditingStepId(null)
-      setEditingStepName('')
-      setHasModifiedSteps(false)
+    if (!id) {
+      setFetching(false)
       return
     }
-    let cancelled = false
-    setPreviewStepsLoading(true)
-    supabase
-      .from('workflow_template_steps')
-      .select('id, sequence_order, name, step_type, required_skill')
-      .eq('template_id', templateId)
-      .order('sequence_order', { ascending: true })
-      .then(({ data }) => {
-        if (cancelled) return
-        const steps: PreviewStep[] = (data ?? []).map((s: { id: string; sequence_order: number; name: string; step_type: StepType; required_skill: string | null }) => ({
-          id: s.id,
-          template_step_id: s.id,
-          sequence_order: s.sequence_order,
-          name: s.name,
-          step_type: s.step_type,
-          required_skill: s.required_skill,
-        }))
-        setPreviewSteps(steps)
-        setHasModifiedSteps(false)
-        setPreviewStepsLoading(false)
-      })
-    return () => { cancelled = true }
-  }, [isNew, templateId])
-
-  useEffect(() => {
-    if (!isNew && id) {
-      (async () => {
-        const { data, error: err } = await supabase.from('projects').select('*').eq('id', id).single()
-        if (err) {
-          setError(err.message)
-          setFetching(false)
-          return
-        }
-        const row = data as ProjectRow
-        setName(row.name)
-        setAddress(row.address ?? '')
-        setDescription(row.description ?? '')
-        setHousecallproNumber(row.housecallpro_number ?? '')
-        setPlansLink(row.plans_link ?? '')
-        setStatus(row.status)
-        setCustomerId(row.customer_id)
+    (async () => {
+      const { data, error: err } = await supabase.from('projects').select('*').eq('id', id).single()
+      if (err) {
+        setError(err.message)
         setFetching(false)
-      })()
-    }
-  }, [isNew, id])
-
-  function startEditStep(step: PreviewStep) {
-    setEditingStepId(step.id)
-    setEditingStepName(step.name)
-  }
-
-  function cancelEditStep() {
-    setEditingStepId(null)
-    setEditingStepName('')
-  }
-
-  function saveEditStep(stepId: string) {
-    if (!editingStepName.trim()) return
-    setPreviewSteps((prev) =>
-      prev.map((s) => (s.id === stepId ? { ...s, name: editingStepName.trim() } : s))
-    )
-    setHasModifiedSteps(true)
-    cancelEditStep()
-  }
-
-  function moveStepUp(index: number) {
-    if (index <= 0) return
-    setPreviewSteps((prev) => {
-      const a = prev[index - 1]
-      const b = prev[index]
-      if (!a || !b) return prev
-      const next = [...prev]
-      next[index - 1] = { ...b, sequence_order: index - 1 }
-      next[index] = { ...a, sequence_order: index }
-      return next
-    })
-    setHasModifiedSteps(true)
-  }
-
-  function moveStepDown(index: number) {
-    if (index >= previewSteps.length - 1) return
-    setPreviewSteps((prev) => {
-      const a = prev[index]
-      const b = prev[index + 1]
-      if (!a || !b) return prev
-      const next = [...prev]
-      next[index] = { ...b, sequence_order: index }
-      next[index + 1] = { ...a, sequence_order: index + 1 }
-      return next
-    })
-    setHasModifiedSteps(true)
-  }
-
-  function removeStep(stepId: string) {
-    setPreviewSteps((prev) =>
-      prev.filter((s) => s.id !== stepId).map((s, i) => ({ ...s, sequence_order: i }))
-    )
-    setHasModifiedSteps(true)
-    if (editingStepId === stepId) cancelEditStep()
-  }
-
-  function addStep() {
-    const maxOrder = previewSteps.length === 0 ? 0 : Math.max(...previewSteps.map((s) => s.sequence_order))
-    const newId = crypto.randomUUID()
-    const newStep: PreviewStep = {
-      id: newId,
-      template_step_id: null,
-      sequence_order: maxOrder + 1,
-      name: 'New step',
-      step_type: null,
-      required_skill: null,
-    }
-    setPreviewSteps((prev) => [...prev, newStep])
-    setHasModifiedSteps(true)
-    setEditingStepId(newId)
-    setEditingStepName('New step')
-  }
-
-  async function resetToTemplate() {
-    if (!templateId) return
-    setPreviewStepsLoading(true)
-    const { data } = await supabase
-      .from('workflow_template_steps')
-      .select('id, sequence_order, name, step_type, required_skill')
-      .eq('template_id', templateId)
-      .order('sequence_order', { ascending: true })
-    const steps: PreviewStep[] = (data ?? []).map((s: { id: string; sequence_order: number; name: string; step_type: StepType; required_skill: string | null }) => ({
-      id: s.id,
-      template_step_id: s.id,
-      sequence_order: s.sequence_order,
-      name: s.name,
-      step_type: s.step_type,
-      required_skill: s.required_skill,
-    }))
-    setPreviewSteps(steps)
-    setHasModifiedSteps(false)
-    setPreviewStepsLoading(false)
-    cancelEditStep()
-  }
+        return
+      }
+      const row = data as ProjectRow
+      setName(row.name)
+      setAddress(row.address ?? '')
+      setDescription(row.description ?? '')
+      setHousecallproNumber(row.housecallpro_number ?? '')
+      setPlansLink(row.plans_link ?? '')
+      setStatus(row.status)
+      setCustomerId(row.customer_id)
+      setFetching(false)
+    })()
+  }, [id])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-    if (isNew && !customerId) {
-      setError('Please select a customer.')
-      return
-    }
-    const jobId = searchParams.get('job')
+    if (!id) return
     setLoading(true)
-    
-    // Project owner automatically matches customer owner
-    let projectMasterId: string | null = null
-    if (customerId && customers.length > 0) {
-      const selectedCustomer = customers.find(c => c.id === customerId)
-      projectMasterId = selectedCustomer?.master_user_id || null
-    }
-    
-    // For editing: don't update master_user_id, keep it as-is (it should match customer)
+
     const payload: {
       name: string
       address: string | null
@@ -348,7 +109,6 @@ export default function ProjectForm() {
       plans_link: string | null
       status: ProjectRow['status']
       customer_id: string
-      master_user_id?: string | null
     } = {
       name: name.trim(),
       address: address.trim() || null,
@@ -358,119 +118,14 @@ export default function ProjectForm() {
       status,
       customer_id: customerId,
     }
-    
-    // Only set master_user_id for new projects (it matches customer owner)
-    if (isNew) {
-      payload.master_user_id = projectMasterId
+
+    const { error: err } = await supabase.from('projects').update(payload).eq('id', id)
+    if (err) {
+      setError(err.message)
+      setLoading(false)
+      return
     }
-    // For updates, don't include master_user_id - it should remain tied to the customer
-    if (isNew) {
-      const { data: inserted, error: err } = await supabase.from('projects').insert(payload).select('id').single()
-      if (err) {
-        setError(err.message)
-        setLoading(false)
-        return
-      }
-      const newId = (inserted as { id: string }).id
-      if (templateId) {
-        const wfName = `${name.trim()} workflow`
-        const { data: wf, error: wfErr } = await supabase.from('project_workflows').insert({ project_id: newId, template_id: templateId, name: wfName }).select('id').single()
-        if (wfErr) {
-          setError(wfErr.message)
-          setLoading(false)
-          return
-        }
-        const wfId = (wf as { id: string }).id
-        if (previewSteps.length > 0) {
-          for (const s of previewSteps) {
-            const { error: stepErr } = await supabase.from('project_workflow_steps').insert({
-              workflow_id: wfId,
-              template_step_id: s.template_step_id,
-              sequence_order: s.sequence_order,
-              name: s.name,
-              step_type: s.step_type,
-              assigned_skill: s.required_skill,
-              status: 'pending',
-            })
-            if (stepErr) {
-              setError(stepErr.message)
-              setLoading(false)
-              return
-            }
-          }
-        }
-        if (jobId) {
-          const { error: jobErr } = await supabase.from('jobs_ledger').update({ project_id: newId }).eq('id', jobId)
-          if (jobErr) {
-            setError(jobErr.message)
-            setLoading(false)
-            return
-          }
-          navigate(`/jobs?edit=${jobId}&tab=stages`, { replace: true })
-          setLoading(false)
-          return
-        }
-        navigate(`/workflows/${newId}`, { replace: true })
-      } else if (previewSteps.length > 0) {
-        const wfName = `${name.trim()} workflow`
-        const { data: wf, error: wfErr } = await supabase.from('project_workflows').insert({ project_id: newId, template_id: null, name: wfName }).select('id').single()
-        if (wfErr) {
-          setError(wfErr.message)
-          setLoading(false)
-          return
-        }
-        const wfId = (wf as { id: string }).id
-        for (const s of previewSteps) {
-          const { error: stepErr } = await supabase.from('project_workflow_steps').insert({
-            workflow_id: wfId,
-            template_step_id: s.template_step_id,
-            sequence_order: s.sequence_order,
-            name: s.name,
-            step_type: s.step_type,
-            assigned_skill: s.required_skill,
-            status: 'pending',
-          })
-          if (stepErr) {
-            setError(stepErr.message)
-            setLoading(false)
-            return
-          }
-        }
-        if (jobId) {
-          const { error: jobErr } = await supabase.from('jobs_ledger').update({ project_id: newId }).eq('id', jobId)
-          if (jobErr) {
-            setError(jobErr.message)
-            setLoading(false)
-            return
-          }
-          navigate(`/jobs?edit=${jobId}&tab=stages`, { replace: true })
-          setLoading(false)
-          return
-        }
-        navigate(`/workflows/${newId}`, { replace: true })
-      } else {
-        if (jobId) {
-          const { error: jobErr } = await supabase.from('jobs_ledger').update({ project_id: newId }).eq('id', jobId)
-          if (jobErr) {
-            setError(jobErr.message)
-            setLoading(false)
-            return
-          }
-          navigate(`/jobs?edit=${jobId}&tab=stages`, { replace: true })
-          setLoading(false)
-          return
-        }
-        navigate('/projects', { replace: true })
-      }
-    } else {
-      const { error: err } = await supabase.from('projects').update(payload).eq('id', id!)
-      if (err) {
-        setError(err.message)
-        setLoading(false)
-        return
-      }
-      navigate('/projects', { replace: true })
-    }
+    navigate('/projects', { replace: true })
     setLoading(false)
   }
 
@@ -488,85 +143,58 @@ export default function ProjectForm() {
     if (!id || deleteConfirm.trim() !== name.trim()) return
     setDeleting(true)
     setError(null)
-    
+
     try {
-      // Get all workflows for this project
-      const { data: wfs, error: wfsError } = await supabase
-        .from('project_workflows')
-        .select('id')
-        .eq('project_id', id)
-      
+      const { data: wfs, error: wfsError } = await supabase.from('project_workflows').select('id').eq('project_id', id)
+
       if (wfsError) {
         throw new Error(`Failed to load workflows: ${wfsError.message}`)
       }
-      
-      const wfIds = (wfs as { id: string }[] || []).map((w) => w.id)
-      
+
+      const wfIds = ((wfs as { id: string }[]) || []).map((w) => w.id)
+
       if (wfIds.length > 0) {
-        // Get all steps for these workflows
-        const { data: steps, error: stepsError } = await supabase
-          .from('project_workflow_steps')
-          .select('id')
-          .in('workflow_id', wfIds)
-        
+        const { data: steps, error: stepsError } = await supabase.from('project_workflow_steps').select('id').in('workflow_id', wfIds)
+
         if (stepsError) {
           throw new Error(`Failed to load workflow steps: ${stepsError.message}`)
         }
-        
-        const stepIds = (steps as { id: string }[] || []).map((s) => s.id)
-        
-        // Delete dependencies for each step
+
+        const stepIds = ((steps as { id: string }[]) || []).map((s) => s.id)
+
         for (const sid of stepIds) {
-          const { error: depError1 } = await supabase
-            .from('workflow_step_dependencies')
-            .delete()
-            .eq('step_id', sid)
-          
+          const { error: depError1 } = await supabase.from('workflow_step_dependencies').delete().eq('step_id', sid)
+
           if (depError1) {
             throw new Error(`Failed to delete step dependencies: ${depError1.message}`)
           }
-          
-          const { error: depError2 } = await supabase
-            .from('workflow_step_dependencies')
-            .delete()
-            .eq('depends_on_step_id', sid)
-          
+
+          const { error: depError2 } = await supabase.from('workflow_step_dependencies').delete().eq('depends_on_step_id', sid)
+
           if (depError2) {
             throw new Error(`Failed to delete reverse dependencies: ${depError2.message}`)
           }
         }
-        
-        // Delete all steps
-        const { error: stepsDelError } = await supabase
-          .from('project_workflow_steps')
-          .delete()
-          .in('workflow_id', wfIds)
-        
+
+        const { error: stepsDelError } = await supabase.from('project_workflow_steps').delete().in('workflow_id', wfIds)
+
         if (stepsDelError) {
           throw new Error(`Failed to delete workflow steps: ${stepsDelError.message}`)
         }
       }
-      
-      // Delete all workflows
-      const { error: wfsDelError } = await supabase
-        .from('project_workflows')
-        .delete()
-        .eq('project_id', id)
-      
+
+      const { error: wfsDelError } = await supabase.from('project_workflows').delete().eq('project_id', id)
+
       if (wfsDelError) {
         throw new Error(`Failed to delete workflows: ${wfsDelError.message}`)
       }
-      
-      // Finally, delete the project
-      const { error: delErr } = await supabase
-        .from('projects')
-        .delete()
-        .eq('id', id)
-      
+
+      const { error: delErr } = await supabase.from('projects').delete().eq('id', id)
+
       if (delErr) {
         throw new Error(`Failed to delete project: ${delErr.message}`)
       }
-      
+
       closeDelete()
       navigate('/projects', { replace: true })
     } catch (err) {
@@ -576,349 +204,199 @@ export default function ProjectForm() {
     }
   }
 
+  if (!id) {
+    return <Navigate to="/projects" replace />
+  }
+
   if (customersLoading) return <p>Loading…</p>
-  if (!isNew && fetching) return <p>Loading…</p>
+  if (fetching) return <p>Loading…</p>
 
   const missingFields: string[] = []
-  if (isNew && !customerId) missingFields.push('Customer')
   if (!name.trim()) missingFields.push('Project Name')
   const canSubmit = missingFields.length === 0
 
   return (
     <div>
-      <h1 style={{ marginBottom: '1rem' }}>{isNew ? 'New project' : 'Edit project'}</h1>
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: isNarrow ? 'column' : 'row',
-          gap: isNarrow ? '1.5rem' : '2rem',
-          alignItems: 'flex-start',
-        }}
-      >
-        <form onSubmit={handleSubmit} style={{ maxWidth: 400, flexShrink: 0 }}>
-        <div style={{ marginBottom: '1rem', position: 'relative' }}>
-          <label htmlFor="customer" style={{ display: 'block', marginBottom: 4 }}>Customer *</label>
-          {!isNew ? (
-            <>
-              <input
-                id="customer"
-                type="text"
-                value={customerSearch}
-                disabled
-                style={{ width: '100%', padding: '0.5rem', background: '#f3f4f6' }}
-              />
-              <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>Customer cannot be changed when editing.</div>
-            </>
-          ) : (
-            <>
-              <input
-                id="customer"
-                type="text"
-                value={customerSearch}
-                onChange={(e) => {
-                  const value = e.target.value
-                  setCustomerSearch(value)
-                  setCustomerDropdownOpen(true)
-                  // Clear customerId if search doesn't match the currently selected customer
-                  if (customerId) {
-                    const selectedCustomer = customers.find((c) => c.id === customerId)
-                    if (!selectedCustomer || !value || getCustomerDisplay(selectedCustomer).toLowerCase() !== value.toLowerCase()) {
-                      setCustomerId('')
-                    }
-                  }
-                }}
-                onFocus={() => setCustomerDropdownOpen(true)}
-                onBlur={() => {
-                  // Delay closing to allow click on dropdown item
-                  setTimeout(() => setCustomerDropdownOpen(false), 200)
-                }}
-                placeholder="Search customers..."
-                required
-                style={{ width: '100%', padding: '0.5rem' }}
-              />
-              {customerDropdownOpen && customers.length > 0 && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    right: 0,
-                    background: 'white',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: 4,
-                    maxHeight: 200,
-                    overflowY: 'auto',
-                    zIndex: 100,
-                    marginTop: 2,
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                  }}
-                >
-                  {customers
-                    .filter((c) => {
-                      const searchLower = customerSearch.toLowerCase()
-                      const nameLower = c.name.toLowerCase()
-                      const addressLower = (c.address || '').toLowerCase()
-                      return nameLower.includes(searchLower) || addressLower.includes(searchLower)
-                    })
-                    .map((c) => (
-                      <div
-                        key={c.id}
-                        onClick={() => {
-                          setCustomerId(c.id)
-                          setCustomerSearch(getCustomerDisplay(c))
-                          // Auto-fill address from customer (only in new mode, or if address is empty)
-                          if (isNew || !address) {
-                            setAddress(c.address ?? '')
-                          }
-                          setCustomerDropdownOpen(false)
-                        }}
-                        style={{
-                          padding: '0.5rem',
-                          cursor: 'pointer',
-                          borderBottom: '1px solid #f3f4f6',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = '#f3f4f6'
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = 'white'
-                        }}
-                      >
-                        <div style={{ fontWeight: 500 }}>{c.name}</div>
-                        {c.address && <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>{c.address}</div>}
-                      </div>
-                    ))}
-                  {customers.filter((c) => c.name.toLowerCase().includes(customerSearch.toLowerCase())).length === 0 && (
-                    <div style={{ padding: '0.5rem', color: '#6b7280', fontStyle: 'italic' }}>No customers found</div>
-                  )}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-        <div style={{ marginBottom: '1rem' }}>
-          <label htmlFor="address" style={{ display: 'block', marginBottom: 4 }}>Address</label>
-          <input
-            id="address"
-            type="text"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            style={{ width: '100%', padding: '0.5rem' }}
-          />
-        </div>
-        <div style={{ marginBottom: '1rem' }}>
-          <label htmlFor="name" style={{ display: 'block', marginBottom: 4 }}>Project Name *</label>
-          <input
-            id="name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            style={{ width: '100%', padding: '0.5rem' }}
-          />
-          <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>[Street / Town+Building] + [Remodel / New Build / Re-Pipe]</div>
-        </div>
-        <div style={{ marginBottom: '1rem' }}>
-          <label htmlFor="description" style={{ display: 'block', marginBottom: 4 }}>Description</label>
-          <textarea
-            id="description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={2}
-            style={{ width: '100%', padding: '0.5rem' }}
-          />
-        </div>
-        <div style={{ marginBottom: '1rem' }}>
-          <label htmlFor="housecallpro-number" style={{ display: 'block', marginBottom: 4 }}>HouseCallPro #</label>
-          <input
-            id="housecallpro-number"
-            type="text"
-            value={housecallproNumber}
-            onChange={(e) => setHousecallproNumber(e.target.value)}
-            placeholder="#777"
-            style={{ width: '100%', padding: '0.5rem' }}
-          />
-        </div>
-        <div style={{ marginBottom: '1rem' }}>
-          <label htmlFor="plans-link" style={{ display: 'block', marginBottom: 4 }}>Link to plans</label>
-          <input
-            id="plans-link"
-            type="url"
-            value={plansLink}
-            onChange={(e) => setPlansLink(e.target.value)}
-            placeholder="https://..."
-            style={{ width: '100%', padding: '0.5rem' }}
-          />
-        </div>
-        <div style={{ marginBottom: '1rem' }}>
-          <label htmlFor="status" style={{ display: 'block', marginBottom: 4 }}>Status</label>
-          <select
-            id="status"
-            value={status}
-            onChange={(e) => setStatus(e.target.value as ProjectRow['status'])}
-            style={{ width: '100%', padding: '0.5rem' }}
-          >
-            {PROJECT_STATUSES.map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
-        </div>
-        {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <button
-            type="submit"
-            disabled={!canSubmit || loading}
-            title={!canSubmit ? `Required: ${missingFields.join(', ')}` : undefined}
-            style={{ padding: '0.5rem 1rem' }}
-          >
-            {loading ? 'Saving…' : 'Save'}
-          </button>
-          {!canSubmit && !loading && missingFields.length > 0 && (
-            <span style={{ fontSize: '0.8rem', color: '#FF6600', marginLeft: '0.5rem', display: 'inline-block' }}>
+      <h1 style={{ marginBottom: '1rem' }}>Edit project</h1>
+      <div style={{ maxWidth: 400 }}>
+        <form onSubmit={handleSubmit}>
+          <div style={{ marginBottom: '1rem' }}>
+            <label htmlFor="customer" style={{ display: 'block', marginBottom: 4 }}>
+              Customer *
+            </label>
+            <input
+              id="customer"
+              type="text"
+              value={customerSearch}
+              disabled
+              style={{ width: '100%', padding: '0.5rem', background: '#f3f4f6' }}
+            />
+            <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>Customer cannot be changed when editing.</div>
+          </div>
+          <div style={{ marginBottom: '1rem' }}>
+            <label htmlFor="address" style={{ display: 'block', marginBottom: 4 }}>
+              Address
+            </label>
+            <input
+              id="address"
+              type="text"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              style={{ width: '100%', padding: '0.5rem' }}
+            />
+          </div>
+          <div style={{ marginBottom: '1rem' }}>
+            <label htmlFor="name" style={{ display: 'block', marginBottom: 4 }}>
+              Project Name *
+            </label>
+            <input
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              style={{ width: '100%', padding: '0.5rem' }}
+            />
+            <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>
+              [Street / Town+Building] + [Remodel / New Build / Re-Pipe]
+            </div>
+          </div>
+          <div style={{ marginBottom: '1rem' }}>
+            <label htmlFor="description" style={{ display: 'block', marginBottom: 4 }}>
+              Description
+            </label>
+            <textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={2}
+              style={{ width: '100%', padding: '0.5rem' }}
+            />
+          </div>
+          <div style={{ marginBottom: '1rem' }}>
+            <label htmlFor="housecallpro-number" style={{ display: 'block', marginBottom: 4 }}>
+              HouseCallPro #
+            </label>
+            <input
+              id="housecallpro-number"
+              type="text"
+              value={housecallproNumber}
+              onChange={(e) => setHousecallproNumber(e.target.value)}
+              placeholder="#777"
+              style={{ width: '100%', padding: '0.5rem' }}
+            />
+          </div>
+          <div style={{ marginBottom: '1rem' }}>
+            <label htmlFor="plans-link" style={{ display: 'block', marginBottom: 4 }}>
+              Link to plans
+            </label>
+            <input
+              id="plans-link"
+              type="url"
+              value={plansLink}
+              onChange={(e) => setPlansLink(e.target.value)}
+              placeholder="https://..."
+              style={{ width: '100%', padding: '0.5rem' }}
+            />
+          </div>
+          <div style={{ marginBottom: '1rem' }}>
+            <label htmlFor="status" style={{ display: 'block', marginBottom: 4 }}>
+              Status
+            </label>
+            <select
+              id="status"
+              value={status}
+              onChange={(e) => setStatus(e.target.value as ProjectRow['status'])}
+              style={{ width: '100%', padding: '0.5rem' }}
+            >
+              {PROJECT_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              type="submit"
+              disabled={!canSubmit || loading}
+              title={!canSubmit ? `Required: ${missingFields.join(', ')}` : undefined}
+              style={{ padding: '0.5rem 1rem' }}
+            >
+              {loading ? 'Saving…' : 'Save'}
+            </button>
+            {!canSubmit && !loading && missingFields.length > 0 && (
+              <span style={{ fontSize: '0.8rem', color: '#FF6600', marginLeft: '0.5rem', display: 'inline-block' }}>
                 <span style={{ display: 'block' }}>Required:</span>
                 {missingFields.map((f) => (
-                  <span key={f} style={{ display: 'block', marginLeft: '0.25em' }}>{f}</span>
+                  <span key={f} style={{ display: 'block', marginLeft: '0.25em' }}>
+                    {f}
+                  </span>
                 ))}
               </span>
-          )}
-          <Link to="/projects" style={{ padding: '0.5rem 1rem' }}>Cancel</Link>
-        </div>
-      </form>
+            )}
+            <Link to="/projects" style={{ padding: '0.5rem 1rem' }}>
+              Cancel
+            </Link>
+          </div>
+        </form>
 
-        {isNew && templates.length > 0 && (
+        {(myRole === 'dev' || myRole === 'master_technician') && (
+          <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid #e5e7eb' }}>
+            <button type="button" onClick={openDelete} style={{ padding: '0.5rem 1rem', color: '#b91c1c' }}>
+              Delete project
+            </button>
+          </div>
+        )}
+
+        {deleteOpen && (
           <div
             style={{
-              flex: isNarrow ? undefined : 1,
-              minWidth: 280,
-              width: isNarrow ? '100%' : undefined,
-              padding: '1rem',
-              border: '1px solid #e5e7eb',
-              borderRadius: 8,
-              background: '#fafafa',
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 10,
             }}
           >
-            <h2 style={{ marginTop: 0, marginBottom: '0.75rem', fontSize: '1rem' }}>Workflow</h2>
-            <div style={{ marginBottom: '1rem' }}>
-              <label htmlFor="template" style={{ display: 'block', marginBottom: 4 }}>Start workflow from template:</label>
-              <select
-                id="template"
-                value={hasModifiedSteps && templateId ? '__custom__' : templateId}
+            <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+              <h2 style={{ marginTop: 0 }}>Delete project</h2>
+              <p style={{ marginBottom: '1rem' }}>
+                Type the project name <strong>{name}</strong> to confirm.
+              </p>
+              <input
+                type="text"
+                value={deleteConfirm}
                 onChange={(e) => {
-                  const v = e.target.value
-                  if (v === '__custom__') return
-                  setTemplateId(v)
-                  setHasModifiedSteps(false)
+                  setDeleteConfirm(e.target.value)
+                  setError(null)
                 }}
-                style={{ width: '100%', padding: '0.5rem' }}
-              >
-                <option value="">No template (start with empty workflow)</option>
-                {hasModifiedSteps && templateId && (
-                  <option value="__custom__">Custom (from {templates.find((t) => t.id === templateId)?.name ?? 'template'})</option>
-                )}
-                {templates.map((t) => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
-              </select>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
-                {hasModifiedSteps && templateId && !previewStepsLoading && (
-                  <button type="button" onClick={resetToTemplate} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}>
-                    Reset to template
-                  </button>
-                )}
-                <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Optional. The template&apos;s steps will be copied into the new project&apos;s workflow.</span>
+                placeholder="Project name"
+                disabled={deleting}
+                style={{ width: '100%', padding: '0.5rem', marginBottom: '1rem' }}
+                autoComplete="off"
+              />
+              {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={deleting || deleteConfirm.trim() !== name.trim()}
+                  style={{ color: '#b91c1c' }}
+                >
+                  {deleting ? 'Deleting…' : 'Delete project'}
+                </button>
+                <button type="button" onClick={closeDelete} disabled={deleting}>
+                  Cancel
+                </button>
               </div>
             </div>
-            {previewStepsLoading ? (
-              <p style={{ color: '#6b7280', margin: 0 }}>Loading...</p>
-            ) : previewSteps.length === 0 ? (
-              <>
-                <p style={{ color: '#6b7280', margin: 0, marginBottom: '0.5rem', fontSize: '0.875rem' }}>
-                  {!templateId ? 'Build your workflow from scratch. Add steps below.' : 'No steps. Add steps below.'}
-                </p>
-                <button type="button" onClick={addStep} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}>
-                  + Add step
-                </button>
-              </>
-            ) : (
-              <>
-                <ol style={{ margin: 0, paddingLeft: '1.25rem', marginBottom: '0.75rem' }}>
-                  {previewSteps.map((s, i) => (
-                    <li key={s.id} style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
-                      {editingStepId === s.id ? (
-                        <>
-                          <input
-                            type="text"
-                            value={editingStepName}
-                            onChange={(e) => setEditingStepName(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') saveEditStep(s.id)
-                              if (e.key === 'Escape') cancelEditStep()
-                            }}
-                            style={{ flex: 1, padding: '0.35rem', fontSize: '0.875rem' }}
-                            autoFocus
-                          />
-                          <button type="button" onClick={() => saveEditStep(s.id)} disabled={!editingStepName.trim()} style={{ padding: '2px 6px', fontSize: '0.75rem' }}>
-                            Save
-                          </button>
-                          <button type="button" onClick={cancelEditStep} style={{ padding: '2px 6px', fontSize: '0.75rem' }}>
-                            Cancel
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <span>{s.name}</span>
-                          <div style={{ display: 'flex', gap: '0.35rem' }}>
-                            <IconActionButton icon={Pencil} label="Edit" onClick={() => startEditStep(s)} />
-                            <IconActionButton icon={ChevronUp} label="Move up" onClick={() => moveStepUp(i)} disabled={i === 0} />
-                            <IconActionButton icon={ChevronDown} label="Move down" onClick={() => moveStepDown(i)} disabled={i === previewSteps.length - 1} />
-                            <IconActionButton icon={Trash2} label="Remove" onClick={() => removeStep(s.id)} variant="danger" />
-                          </div>
-                        </>
-                      )}
-                    </li>
-                  ))}
-                </ol>
-                <button type="button" onClick={addStep} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}>
-                  + Add step
-                </button>
-              </>
-            )}
           </div>
         )}
       </div>
-
-      {!isNew && (myRole === 'dev' || myRole === 'master_technician') && (
-        <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid #e5e7eb', maxWidth: 400 }}>
-          <button type="button" onClick={openDelete} style={{ padding: '0.5rem 1rem', color: '#b91c1c' }}>
-            Delete project
-          </button>
-        </div>
-      )}
-
-      {deleteOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
-            <h2 style={{ marginTop: 0 }}>Delete project</h2>
-            <p style={{ marginBottom: '1rem' }}>Type the project name <strong>{name}</strong> to confirm.</p>
-            <input
-              type="text"
-              value={deleteConfirm}
-              onChange={(e) => { setDeleteConfirm(e.target.value); setError(null) }}
-              placeholder="Project name"
-              disabled={deleting}
-              style={{ width: '100%', padding: '0.5rem', marginBottom: '1rem' }}
-              autoComplete="off"
-            />
-            {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" onClick={handleDelete} disabled={deleting || deleteConfirm.trim() !== name.trim()} style={{ color: '#b91c1c' }}>
-                {deleting ? 'Deleting…' : 'Delete project'}
-              </button>
-              <button type="button" onClick={closeDelete} disabled={deleting}>Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

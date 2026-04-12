@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatCurrency, formatDateWithRelativeLabel } from '../lib/format'
 import { useAuth } from '../hooks/useAuth'
@@ -34,6 +34,8 @@ interface CrewJobsBlockProps {
   jobIdsFilter?: string[]
   collapsibleCrewJobs?: boolean
   hideJobCostColumn?: boolean
+  focusTeamLaborJobId?: string | null
+  onFocusTeamLaborConsumed?: () => void
 }
 
 export function CrewJobsBlock({
@@ -47,10 +49,14 @@ export function CrewJobsBlock({
   jobIdsFilter,
   collapsibleCrewJobs = false,
   hideJobCostColumn = false,
+  focusTeamLaborJobId = null,
+  onFocusTeamLaborConsumed,
 }: CrewJobsBlockProps) {
   const { user: authUser } = useAuth()
 
   const [canAccess, setCanAccess] = useState(false)
+  /** False until `loadAccess` finishes so we do not treat empty team labor as final before fetch runs. */
+  const [crewPayAccessResolved, setCrewPayAccessResolved] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [payConfig, setPayConfig] = useState<Record<string, PayConfigRow>>({})
@@ -81,6 +87,8 @@ export function CrewJobsBlock({
   const [crewBidDetailsMap, setCrewBidDetailsMap] = useState<Record<string, BidDetails>>({})
   const [teamLaborData, setTeamLaborData] = useState<TeamLaborRow[]>([])
   const [teamLaborLoading, setTeamLaborLoading] = useState(false)
+  /** Brief visual emphasis after deep-link scroll (cleared after a few seconds). */
+  const [teamLaborHighlightJobId, setTeamLaborHighlightJobId] = useState<string | null>(null)
   const [hideZeroHours, setHideZeroHours] = useState(true)
   const [crewDateHours, setCrewDateHours] = useState<Record<string, number>>({})
   const [crewJobsSectionOpen, setCrewJobsSectionOpen] = useState(true)
@@ -118,22 +126,95 @@ export function CrewJobsBlock({
     return teamLaborData.filter((r) => set.has(r.jobId))
   }, [teamLaborData, jobIdsFilter])
 
+  const onFocusTeamLaborConsumedRef = useRef(onFocusTeamLaborConsumed)
+  onFocusTeamLaborConsumedRef.current = onFocusTeamLaborConsumed
+  const teamLaborFocusHandledRef = useRef<string | null>(null)
+  /** True after first `doLoadTeamLaborData` completes, or when user cannot load team labor (no access). */
+  const teamLaborFetchFinishedRef = useRef(false)
+  const teamLaborHighlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useLayoutEffect(() => {
+    const raw = focusTeamLaborJobId?.trim() ?? ''
+    if (!raw) {
+      teamLaborFocusHandledRef.current = null
+      return
+    }
+    if (teamLaborLoading) {
+      return
+    }
+    if (teamLaborFocusHandledRef.current === raw) {
+      return
+    }
+
+    const inFiltered = filteredTeamLaborData.some((r) => r.jobId === raw)
+    if (!inFiltered) {
+      if (!teamLaborFetchFinishedRef.current) {
+        return
+      }
+      teamLaborFocusHandledRef.current = raw
+      onFocusTeamLaborConsumedRef.current?.()
+      return
+    }
+
+    const q = teamLaborSearch.trim().toLowerCase()
+    if (q) {
+      const matchesSearch = (r: TeamLaborRow) =>
+        (r.hcpNumber ?? '').toLowerCase().includes(q) ||
+        (r.jobName ?? '').toLowerCase().includes(q) ||
+        (r.jobAddress ?? '').toLowerCase().includes(q)
+      const visible = filteredTeamLaborData.some((r) => r.jobId === raw && matchesSearch(r))
+      if (!visible) {
+        setTeamLaborSearch('')
+        return
+      }
+    }
+
+    teamLaborFocusHandledRef.current = raw
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          const el = document.querySelector(`[data-team-labor-job-id="${CSS.escape(raw)}"]`)
+          el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          if (el) {
+            if (teamLaborHighlightTimerRef.current) {
+              clearTimeout(teamLaborHighlightTimerRef.current)
+              teamLaborHighlightTimerRef.current = null
+            }
+            setTeamLaborHighlightJobId(raw)
+            teamLaborHighlightTimerRef.current = setTimeout(() => {
+              teamLaborHighlightTimerRef.current = null
+              setTeamLaborHighlightJobId((cur) => (cur === raw ? null : cur))
+            }, 3200)
+          }
+          onFocusTeamLaborConsumedRef.current?.()
+        }, 0)
+      })
+    })
+  }, [focusTeamLaborJobId, teamLaborLoading, filteredTeamLaborData, teamLaborSearch, jobIdsFilter])
+
   async function loadAccess() {
-    if (!authUser?.id) return
-    const [meRes, approvedRes, sharesRes] = await Promise.all([
-      supabase.from('users').select('role').eq('id', authUser.id).single(),
-      supabase.from('pay_approved_masters').select('master_id'),
-      supabase.from('cost_matrix_teams_shares').select('shared_with_user_id').eq('shared_with_user_id', authUser.id).maybeSingle(),
-    ])
-    const role = (meRes.data as { role?: string } | null)?.role ?? null
-    const approvedIds = new Set((approvedRes.data ?? []).map((r: { master_id: string }) => r.master_id))
-    const hasCostMatrixShare = !!sharesRes.data
-    const canViewCostMatrixShared = hasCostMatrixShare
-    let canAccessPay = false
-    if (role === 'dev') canAccessPay = true
-    else if (role === 'master_technician' && approvedIds.has(authUser.id)) canAccessPay = true
-    else if (role === 'assistant') canAccessPay = true
-    setCanAccess(canAccessPay || canViewCostMatrixShared)
+    if (!authUser?.id) {
+      setCrewPayAccessResolved(true)
+      return
+    }
+    try {
+      const [meRes, approvedRes, sharesRes] = await Promise.all([
+        supabase.from('users').select('role').eq('id', authUser.id).single(),
+        supabase.from('pay_approved_masters').select('master_id'),
+        supabase.from('cost_matrix_teams_shares').select('shared_with_user_id').eq('shared_with_user_id', authUser.id).maybeSingle(),
+      ])
+      const role = (meRes.data as { role?: string } | null)?.role ?? null
+      const approvedIds = new Set((approvedRes.data ?? []).map((r: { master_id: string }) => r.master_id))
+      const hasCostMatrixShare = !!sharesRes.data
+      const canViewCostMatrixShared = hasCostMatrixShare
+      let canAccessPay = false
+      if (role === 'dev') canAccessPay = true
+      else if (role === 'master_technician' && approvedIds.has(authUser.id)) canAccessPay = true
+      else if (role === 'assistant') canAccessPay = true
+      setCanAccess(canAccessPay || canViewCostMatrixShared)
+    } finally {
+      setCrewPayAccessResolved(true)
+    }
   }
 
   async function loadPayConfig() {
@@ -225,9 +306,13 @@ export function CrewJobsBlock({
 
   async function doLoadTeamLaborData() {
     setTeamLaborLoading(true)
-    const rows = await loadTeamLaborData(supabase)
-    setTeamLaborData(rows)
-    setTeamLaborLoading(false)
+    try {
+      const rows = await loadTeamLaborData(supabase)
+      setTeamLaborData(rows)
+    } finally {
+      setTeamLaborLoading(false)
+      teamLaborFetchFinishedRef.current = true
+    }
   }
 
   const refreshCrewFromRealtimeRef = useRef<() => void>(() => {})
@@ -311,6 +396,15 @@ export function CrewJobsBlock({
   }, [authUser?.id])
 
   useEffect(() => {
+    return () => {
+      if (teamLaborHighlightTimerRef.current) {
+        clearTimeout(teamLaborHighlightTimerRef.current)
+        teamLaborHighlightTimerRef.current = null
+      }
+    }
+  }, [])
+
+  useEffect(() => {
     if (!canAccess && canEditProp === undefined) {
       setLoading(false)
       return
@@ -357,6 +451,13 @@ export function CrewJobsBlock({
   useEffect(() => {
     if (canAccess || canEditProp) doLoadTeamLaborData()
   }, [canAccess, canEditProp])
+
+  useEffect(() => {
+    if (!crewPayAccessResolved) return
+    if (!(canAccess || canEditProp)) {
+      teamLaborFetchFinishedRef.current = true
+    }
+  }, [crewPayAccessResolved, canAccess, canEditProp])
 
   useEffect(() => {
     const jobIds = new Set<string>()
@@ -682,7 +783,20 @@ export function CrewJobsBlock({
                   )
                 })
                 .map((r) => (
-                  <tr key={r.jobId} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                  <tr
+                    key={r.jobId}
+                    data-team-labor-job-id={r.jobId}
+                    style={{
+                      borderBottom: '1px solid #e5e7eb',
+                      ...(r.jobId === teamLaborHighlightJobId
+                        ? {
+                            backgroundColor: '#fef9c3',
+                            boxShadow: 'inset 4px 0 0 0 #ca8a04',
+                            transition: 'background-color 0.35s ease, box-shadow 0.35s ease',
+                          }
+                        : {}),
+                    }}
+                  >
                     <td style={{ padding: '0.75rem' }}>{r.hcpNumber || '—'}</td>
                     <td style={{ padding: '0.75rem' }}>
                       <div>{r.jobName || '—'}</div>

@@ -51,6 +51,8 @@ import {
 import CreateJobFromEstimateModal, {
   type LinkedCustomerPrefill,
 } from '../components/estimates/CreateJobFromEstimateModal'
+import { AcceptHeaderBrandPicker } from '../components/estimates/AcceptHeaderBrandPicker'
+import EstimateCustomerAttachmentCard from '../components/estimates/EstimateCustomerAttachmentCard'
 import EstimateCustomerAcceptLinkButtons from '../components/estimates/EstimateCustomerAcceptLinkButtons'
 import IpAddressMapButton from '../components/estimates/IpAddressMapButton'
 import {
@@ -175,7 +177,7 @@ const CX_OVERRIDE_SECTIONS: [CxOverrideSectionConfig, CxOverrideSectionConfig, C
   {
     title: 'Acceptance page',
     description:
-      'Quote document labels (title; line items, total, terms; accept form below)—same order customers see on the public page. The expiry date line (“Expires on” + date) appears only when Valid until is set on this estimate; the prefix field below appears only when Valid until is filled in above. The document title fallback applies only when the estimate title is empty; the fallback field below appears only when the estimate title above is empty.',
+      'Quote document labels (title; line items, total, terms; accept form below)—same order customers see on the public page. The expiry date line (“Expires on” + date) appears only when Expires on is set on this estimate; the prefix field below appears only when Expires on is filled in above. The document title fallback applies only when the estimate title is empty; the fallback field below appears only when the estimate title above is empty.',
     keys: [
       'doc_title_fallback',
       'doc_valid_through_prefix',
@@ -237,11 +239,117 @@ const estimateDetailCreateJobButtonStyle: CSSProperties = {
   fontSize: '0.8125rem',
 }
 
+const ESTIMATES_PAGE_CLASS = 'estimates-page-modern'
+
+const estimatesFocusVisibleCss = `
+  .${ESTIMATES_PAGE_CLASS} input:not([type="radio"]):not([type="checkbox"]):focus-visible,
+  .${ESTIMATES_PAGE_CLASS} textarea:focus-visible,
+  .${ESTIMATES_PAGE_CLASS} button:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+  }
+`
+
+const estInputBase: CSSProperties = {
+  border: '1px solid #d1d5db',
+  borderRadius: 6,
+  fontSize: '0.875rem',
+  boxSizing: 'border-box',
+}
+
+function estInputBlock(extra?: CSSProperties): CSSProperties {
+  return {
+    ...estInputBase,
+    display: 'block',
+    width: '100%',
+    maxWidth: 480,
+    marginTop: '0.25rem',
+    padding: '0.5rem',
+    ...extra,
+  }
+}
+
+function estPrimaryButton(disabled: boolean): CSSProperties {
+  return {
+    padding: '0.5rem 1rem',
+    background: disabled ? '#9ca3af' : '#3b82f6',
+    color: 'white',
+    border: 'none',
+    borderRadius: 4,
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    fontWeight: 500,
+    fontSize: '0.875rem',
+  }
+}
+
+function estSecondaryButton(disabled?: boolean): CSSProperties {
+  return {
+    padding: '0.5rem 1rem',
+    background: '#f3f4f6',
+    border: '1px solid #d1d5db',
+    borderRadius: 4,
+    color: '#374151',
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    fontWeight: 500,
+    fontSize: '0.875rem',
+    opacity: disabled ? 0.65 : 1,
+  }
+}
+
+function estSendButton(disabled: boolean): CSSProperties {
+  return {
+    ...estPrimaryButton(disabled),
+    background: disabled ? '#9ca3af' : '#ea580c',
+  }
+}
+
+function estDangerOutlineButton(disabled?: boolean): CSSProperties {
+  return {
+    padding: '0.5rem 1rem',
+    background: '#fef2f2',
+    border: '1px solid #fecaca',
+    borderRadius: 4,
+    color: '#b91c1c',
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    fontWeight: 500,
+    fontSize: '0.875rem',
+    opacity: disabled ? 0.65 : 1,
+  }
+}
+
+function estSmallSecondaryButton(): CSSProperties {
+  return {
+    padding: '0.35rem 0.65rem',
+    fontSize: '0.8125rem',
+    fontWeight: 500,
+    border: '1px solid #d1d5db',
+    borderRadius: 4,
+    background: '#f3f4f6',
+    color: '#374151',
+    cursor: 'pointer',
+  }
+}
+
+function estSmallPrimaryButton(disabled: boolean): CSSProperties {
+  return {
+    padding: '0.35rem 0.65rem',
+    fontSize: '0.8125rem',
+    fontWeight: 500,
+    border: 'none',
+    borderRadius: 4,
+    background: disabled ? '#9ca3af' : '#3b82f6',
+    color: 'white',
+    cursor: disabled ? 'not-allowed' : 'pointer',
+  }
+}
+
 function estimateLinkedJobHcp(r: { jobs_ledger?: { hcp_number: string } | null }): string | null {
   const t = (r.jobs_ledger?.hcp_number ?? '').trim()
   return t || null
 }
 type LineItem = { description: string; amount_cents: number }
+
+const DEFAULT_DRAFT_FIRST_LINE_DESCRIPTION = 'Custom Service Visit'
 
 function lineItemsFromJson(raw: unknown): LineItem[] {
   if (!Array.isArray(raw)) return []
@@ -375,7 +483,7 @@ function EstimateList() {
               master_user_id: masterUserId,
               created_by: user.id,
               title: '',
-              line_items_snapshot: [],
+              line_items_snapshot: [{ description: DEFAULT_DRAFT_FIRST_LINE_DESCRIPTION, amount_cents: 0 }],
               terms_snapshot: '',
               total_cents: 0,
             })
@@ -395,10 +503,11 @@ function EstimateList() {
   if (!user) return null
 
   return (
-    <div style={{ padding: '1rem', maxWidth: 1100, margin: '0 auto' }}>
+    <div className={ESTIMATES_PAGE_CLASS} style={{ padding: '1rem', maxWidth: 1100, margin: '0 auto' }}>
+      <style>{estimatesFocusVisibleCss}</style>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
         <h1 style={{ margin: 0 }}>Estimates</h1>
-        <button type="button" onClick={() => void createDraft()} disabled={creating} style={{ padding: '0.5rem 1rem' }}>
+        <button type="button" onClick={() => void createDraft()} disabled={creating} style={estPrimaryButton(creating)}>
           {creating ? 'Creating…' : 'New estimate'}
         </button>
       </div>
@@ -574,6 +683,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   const [customerId, setCustomerId] = useState<string | null>(null)
   const [customerSearch, setCustomerSearch] = useState('')
   const [sendEmailOverride, setSendEmailOverride] = useState('')
+  const [emailOverrideRevealed, setEmailOverrideRevealed] = useState(false)
   const [createCustomerOpen, setCreateCustomerOpen] = useState(false)
   const [validUntil, setValidUntil] = useState('')
   const [validUntilPreset, setValidUntilPreset] = useState<ValidUntilPresetDays | null>(null)
@@ -621,9 +731,22 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     loading: customerNotesLoading,
     refetch: refetchCustomerNotes,
   } = useCustomerContactsForCustomer(customerNotesQueryCustomerId, (m) => showToast(m, 'error'))
+  const recentNotePreviewText = customerNotesEntries[0]?.details?.trim()
+  const showRecentCustomerNotePreview =
+    (customerNotesLoading && customerNotesEntries.length === 0) || Boolean(recentNotePreviewText)
+  const draftNotesToggleLabel = customerNotesExpanded
+    ? 'Collapse'
+    : customerNotesEntries.length >= 2
+      ? 'View Notes'
+      : 'Add Note'
   const titleInputRef = useRef<HTMLInputElement>(null)
+  const sendEmailOverrideInputRef = useRef<HTMLInputElement>(null)
   /** Tracks last persisted customer link for draft auto-save; `undefined` = skip first run after load/navigation. */
   const prevCustomerIdForAutosave = useRef<string | null | undefined>(undefined)
+
+  useEffect(() => {
+    setEmailOverrideRevealed(false)
+  }, [customerId])
 
   useEffect(() => {
     setLastAcceptUrl(null)
@@ -843,7 +966,12 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       setRow(r)
       setAcceptHeaderBrand(parseAcceptHeaderBrand(r.accept_header_brand))
       setTerms(r.terms_snapshot ?? '')
-      setLines(lineItemsFromJson(r.line_items_snapshot))
+      const parsedLines = lineItemsFromJson(r.line_items_snapshot)
+      setLines(
+        r.status === 'draft' && parsedLines.length === 0 ?
+          [{ description: DEFAULT_DRAFT_FIRST_LINE_DESCRIPTION, amount_cents: 0 }]
+        : parsedLines,
+      )
       setCustomerId(r.customer_id ?? null)
       const vu = (r.valid_until ?? '').trim()
       if (r.status === 'draft') {
@@ -961,6 +1089,32 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     [user?.id, showToast],
   )
 
+  const openDraftCustomerForEdit = useCallback(() => {
+    if (!editCustomerModal || !customerId) return
+    const cid = customerId
+    editCustomerModal.openEditCustomerModal(cid, {
+      onSaved: async () => {
+        await refetchCustomersAfterEdit(cid)
+      },
+      onDeleted: (deletedId) => {
+        queueMicrotask(() => {
+          setCustomers((prev) => prev.filter((c) => c.id !== deletedId))
+          if (deletedId === cid) {
+            setCustomerId(null)
+            setCustomerSearch('')
+            setSendEmailOverride('')
+            setForAddress('')
+          }
+        })
+      },
+      onMerged: ({ removedId }) => {
+        queueMicrotask(() => {
+          setCustomers((prev) => prev.filter((c) => c.id !== removedId))
+        })
+      },
+    })
+  }, [editCustomerModal, customerId, refetchCustomersAfterEdit])
+
   const isDraft = row?.status === 'draft'
   const customerAttachmentPreview = useMemo((): CustomerAttachmentPayload | null => {
     if (isDraft) {
@@ -976,6 +1130,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     customerAttachmentUrl,
     customerAttachmentLabel,
   ])
+  const customerAttachmentUrlIsCheckable = Boolean(normalizeCustomerAttachmentUrl(customerAttachmentUrl))
   const totalCents = sumLineItems(lines)
   const selectedCustomer = customerId ? customers.find((c) => c.id === customerId) : undefined
 
@@ -1206,11 +1361,12 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                   }}
                   rows={cxOverrideFieldRows(k)}
                   style={{
+                    ...estInputBase,
                     display: 'block',
                     width: '100%',
                     marginTop: '0.25rem',
+                    padding: '0.5rem',
                     fontFamily: 'inherit',
-                    fontSize: '0.9rem',
                     boxSizing: 'border-box',
                     ...(('accept_page_footer' in cxOverrideFields &&
                       cxOverrideFields.accept_page_footer === '') ?
@@ -1243,11 +1399,12 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 }}
                 rows={cxOverrideFieldRows(k)}
                 style={{
+                  ...estInputBase,
                   display: 'block',
                   width: '100%',
                   marginTop: '0.25rem',
+                  padding: '0.5rem',
                   fontFamily: 'inherit',
-                  fontSize: '0.9rem',
                   boxSizing: 'border-box',
                 }}
               />
@@ -1603,7 +1760,10 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   }
 
   const lineItemRecentChips = useMemo(
-    () => resolveRecentChips(lineItemRecentIds, catalogLineItems),
+    () =>
+      resolveRecentChips(lineItemRecentIds, catalogLineItems).filter(
+        (c) => c.description.trim().toLowerCase() !== DEFAULT_DRAFT_FIRST_LINE_DESCRIPTION.toLowerCase(),
+      ),
     [lineItemRecentIds, catalogLineItems],
   )
 
@@ -1689,14 +1849,16 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
 
   if (loading || !row) {
     return (
-      <div style={{ padding: '1rem' }}>
+      <div className={ESTIMATES_PAGE_CLASS} style={{ padding: '1rem' }}>
+        <style>{estimatesFocusVisibleCss}</style>
         <p>Loading…</p>
       </div>
     )
   }
 
   return (
-    <div style={{ padding: '1rem', maxWidth: 900, margin: '0 auto' }}>
+    <div className={ESTIMATES_PAGE_CLASS} style={{ padding: '1rem', maxWidth: 900, margin: '0 auto' }}>
+      <style>{estimatesFocusVisibleCss}</style>
       <div style={{ marginBottom: '1rem' }}>
         <Link to="/estimates">← Estimates</Link>
       </div>
@@ -1711,9 +1873,6 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
         >
           <div style={{ width: '100%', maxWidth: 480, textAlign: 'left' }}>
             <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.25rem' }}>Customer</span>
-            <p style={{ margin: '0 0 0.5rem', fontSize: '0.85rem', color: '#6b7280' }}>
-              Search by name, address, email, or phone. Used for the acceptance email.
-            </p>
             <CustomerSearchCombobox
               customers={customers}
               loading={customersLoading}
@@ -1727,36 +1886,6 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 setSendEmailOverride('')
                 setForAddress('')
               }}
-              onRequestEditSelected={
-                editCustomerModal && customerId
-                  ? () => {
-                      const cid = customerId
-                      editCustomerModal.openEditCustomerModal(cid, {
-                        onSaved: async () => {
-                          await refetchCustomersAfterEdit(cid)
-                        },
-                        onDeleted: (deletedId) => {
-                          // Defer so we never setState on EstimateDetail during EditCustomerForm/Provider
-                          // synchronous path (nested setState in setCustomerId updater caused cross-tree warnings).
-                          queueMicrotask(() => {
-                            setCustomers((prev) => prev.filter((c) => c.id !== deletedId))
-                            if (deletedId === cid) {
-                              setCustomerId(null)
-                              setCustomerSearch('')
-                              setSendEmailOverride('')
-                              setForAddress('')
-                            }
-                          })
-                        },
-                        onMerged: ({ removedId }) => {
-                          queueMicrotask(() => {
-                            setCustomers((prev) => prev.filter((c) => c.id !== removedId))
-                          })
-                        },
-                      })
-                    }
-                  : undefined
-              }
               onRequestCreateNew={() => setCreateCustomerOpen(true)}
               placeholder="Search customers…"
             />
@@ -1773,10 +1902,93 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 }}
               >
                 <div>
-                  <strong>CRM email:</strong> {crmEmailForSelected || '—'}
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      rowGap: '0.25rem',
+                    }}
+                  >
+                    <strong>Email:</strong>{' '}
+                    {crmEmailForSelected ? (
+                      <span>{crmEmailForSelected}</span>
+                    ) : showSendEmailOverride ? (
+                      emailOverrideRevealed || sendEmailOverride.trim() ? null : (
+                        <button
+                          type="button"
+                          aria-label="Add email for acceptance delivery"
+                          onClick={() => {
+                            setEmailOverrideRevealed(true)
+                            queueMicrotask(() => sendEmailOverrideInputRef.current?.focus())
+                          }}
+                          style={{
+                            padding: 0,
+                            border: 'none',
+                            background: 'none',
+                            color: '#b91c1c',
+                            cursor: 'pointer',
+                            font: 'inherit',
+                            fontSize: '0.875rem',
+                            textDecoration: 'underline',
+                            textUnderlineOffset: '2px',
+                            maxWidth: '100%',
+                            textAlign: 'left',
+                          }}
+                        >
+                          required, click to add
+                        </button>
+                      )
+                    ) : (
+                      <span>—</span>
+                    )}
+                  </div>
+                  {showSendEmailOverride && !crmEmailForSelected && (emailOverrideRevealed || sendEmailOverride.trim()) ? (
+                    <input
+                      ref={sendEmailOverrideInputRef}
+                      type="email"
+                      autoComplete="email"
+                      value={sendEmailOverride}
+                      onChange={(e) => setSendEmailOverride(e.target.value)}
+                      placeholder="Address for acceptance link"
+                      style={estInputBlock({ marginTop: '0.35rem' })}
+                    />
+                  ) : null}
                 </div>
-                <div>
-                  <strong>Phone:</strong> {extractContactFromCustomer(selectedCustomer).phone.trim() || '—'}
+                <div
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    marginTop: '0.35rem',
+                  }}
+                >
+                  <div>
+                    <strong>Phone:</strong> {extractContactFromCustomer(selectedCustomer).phone.trim() || '—'}
+                  </div>
+                  {editCustomerModal && customerId ? (
+                    <button
+                      type="button"
+                      onClick={openDraftCustomerForEdit}
+                      style={{
+                        padding: 0,
+                        border: 'none',
+                        background: 'none',
+                        color: '#2563eb',
+                        cursor: 'pointer',
+                        font: 'inherit',
+                        fontSize: '0.875rem',
+                        textDecoration: 'underline',
+                        textUnderlineOffset: '2px',
+                        flexShrink: 0,
+                        marginLeft: 'auto',
+                      }}
+                    >
+                      Edit customer
+                    </button>
+                  ) : null}
                 </div>
                 <div style={{ marginTop: '0.5rem' }}>
                   <div
@@ -1788,41 +2000,45 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                       justifyContent: 'space-between',
                     }}
                   >
-                    <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-                      <strong>Most recent note:</strong>{' '}
-                      {customerNotesLoading && customerNotesEntries.length === 0 ? (
-                        <span style={{ color: '#6b7280' }}>Loading…</span>
-                      ) : customerNotesEntries[0]?.details?.trim() ? (
-                        <span
-                          style={{
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                            wordBreak: 'break-word',
-                          }}
-                        >
-                          {customerNotesEntries[0].details.trim()}
-                        </span>
-                      ) : (
-                        <span style={{ color: '#6b7280' }}>No notes yet.</span>
-                      )}
-                    </div>
+                    {showRecentCustomerNotePreview ? (
+                      <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+                        <strong>Most recent note:</strong>{' '}
+                        {customerNotesLoading && customerNotesEntries.length === 0 ? (
+                          <span style={{ color: '#6b7280' }}>Loading…</span>
+                        ) : (
+                          <span
+                            style={{
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                              wordBreak: 'break-word',
+                            }}
+                          >
+                            {recentNotePreviewText}
+                          </span>
+                        )}
+                      </div>
+                    ) : null}
                     <button
                       type="button"
                       aria-expanded={customerNotesExpanded}
                       onClick={() => setCustomerNotesExpanded((v) => !v)}
                       style={{
-                        background: 'none',
+                        padding: 0,
                         border: 'none',
+                        background: 'none',
                         color: '#2563eb',
                         cursor: 'pointer',
-                        padding: 0,
                         font: 'inherit',
+                        fontSize: '0.875rem',
+                        textDecoration: 'underline',
+                        textUnderlineOffset: '2px',
                         flexShrink: 0,
+                        ...(!showRecentCustomerNotePreview ? { marginLeft: 'auto' } : {}),
                       }}
                     >
-                      {customerNotesExpanded ? 'Collapse' : 'Expand'}
+                      {draftNotesToggleLabel}
                     </button>
                   </div>
                   {customerNotesExpanded && customerId ? (
@@ -1847,58 +2063,30 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 </div>
               </div>
             )}
-            {showSendEmailOverride && (
-              <label style={{ display: 'block', marginTop: '1rem' }}>
-                <span style={{ fontWeight: 500 }}>Send to email (override)</span>
-                <p style={{ margin: '0.25rem 0 0.35rem', fontSize: '0.85rem', color: '#6b7280' }}>
-                  This customer has no email on file. Enter the address to receive the acceptance link.
-                </p>
-                <input
-                  type="email"
-                  value={sendEmailOverride}
-                  onChange={(e) => setSendEmailOverride(e.target.value)}
-                  style={{ display: 'block', width: '100%', maxWidth: 480, marginTop: '0.25rem', padding: '0.5rem' }}
-                />
-              </label>
-            )}
           </div>
         </div>
       )}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '0.5rem',
+        }}
+      >
         <div>
           {isDraft ? (
-            <div
+            <span
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                flexWrap: 'wrap',
+                color: '#6b7280',
+                fontSize: '0.9rem',
+                fontWeight: 600,
+                lineHeight: 1.25,
               }}
             >
-              <h1 style={{ margin: 0 }}>
-                <span style={{ color: '#6b7280', fontSize: '0.9rem', fontWeight: 600 }}>
-                  # {row.estimate_number}
-                </span>{' '}
-                {title || 'Estimate'}
-              </h1>
-              <button
-                type="button"
-                aria-expanded={draftTitleEditing}
-                aria-controls="estimate-draft-title-field"
-                onClick={() => setDraftTitleEditing((v) => !v)}
-                style={{
-                  padding: '0.25rem 0.5rem',
-                  fontSize: '0.85rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: 6,
-                  background: '#f9fafb',
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                }}
-              >
-                {draftTitleEditing ? 'Done' : 'Edit title'}
-              </button>
-            </div>
+              # {row.estimate_number}
+            </span>
           ) : (
             <h1 style={{ margin: 0 }}>
               <span style={{ color: '#6b7280', fontSize: '0.9rem', fontWeight: 600 }}>
@@ -1930,294 +2118,165 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
 
       {isDraft && (
         <>
-          {draftTitleEditing ? (
-            <label id="estimate-draft-title-field" style={{ display: 'block', marginTop: '1rem' }}>
-              <span style={{ fontWeight: 500 }}>Title</span>
-              <input
-                ref={titleInputRef}
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                style={{ display: 'block', width: '100%', maxWidth: 480, marginTop: '0.25rem', padding: '0.5rem' }}
-              />
-            </label>
-          ) : null}
-          <label style={{ display: 'block', marginTop: '1rem' }}>
-            <span style={{ fontWeight: 500 }}>For:</span>
-            {!customerId ? (
-              <span style={{ display: 'block', fontSize: '0.85rem', color: '#6b7280', marginTop: '0.15rem' }}>
-                Select a customer to enable.
-              </span>
-            ) : null}
-            <input
-              value={forAddress}
-              onChange={(e) => setForAddress(e.target.value)}
-              disabled={!customerId}
-              placeholder={selectedCustomer?.address?.trim() || 'Customer address…'}
-              style={{ display: 'block', width: '100%', maxWidth: 480, marginTop: '0.25rem', padding: '0.5rem' }}
-            />
-          </label>
-          <label style={{ display: 'block', marginTop: '1rem' }}>
-            <span style={{ fontWeight: 500 }}>Valid until (optional)</span>
-            <div
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                alignItems: 'center',
-                gap: '0.5rem',
-                marginTop: '0.25rem',
-              }}
-            >
-              <input
-                type="date"
-                value={validUntil}
-                onChange={(e) => {
-                  const v = e.target.value
-                  setValidUntil(v)
-                  setValidUntilPreset(presetMatchingTodayOffset(v))
-                }}
-                style={{ padding: '0.5rem' }}
-              />
-              {([7, 15, 30] as const).map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  aria-pressed={validUntilPreset === n}
-                  onClick={() => {
-                    setValidUntil(addCalendarDaysYmd(n))
-                    setValidUntilPreset(n)
-                  }}
-                  style={{
-                    padding: '0.35rem 0.65rem',
-                    fontSize: '0.85rem',
-                    borderRadius: 6,
-                    border: validUntilPreset === n ? 'none' : '1px solid #d1d5db',
-                    background: validUntilPreset === n ? '#ea580c' : '#f9fafb',
-                    color: validUntilPreset === n ? 'white' : '#374151',
-                    cursor: 'pointer',
-                    fontWeight: validUntilPreset === n ? 600 : 400,
-                  }}
-                >
-                  {n} days
-                </button>
-              ))}
-            </div>
-          </label>
-          <fieldset
-            style={{
-              marginTop: '1rem',
-              border: '1px solid #e5e7eb',
-              borderRadius: 8,
-              padding: '0.75rem',
-              maxWidth: 480,
-            }}
-          >
-            <legend style={{ fontWeight: 500, padding: '0 0.35rem' }}>Acceptance page logo</legend>
-            <p style={{ margin: '0 0 0.65rem', fontSize: '0.85rem', color: '#6b7280' }}>
-              Top-right on the customer-facing quote and acceptance form.
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {(
-                [
-                  { value: null, label: 'None' },
-                  { value: 'elec', label: 'Electrical' },
-                  { value: 'plum', label: 'Plumbing' },
-                ] as { value: EstimateAcceptHeaderBrand | null; label: string }[]
-              ).map((opt) => (
-                <label
-                  key={opt.value ?? 'none'}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <input
-                    type="radio"
-                    name="acceptHeaderBrand"
-                    checked={acceptHeaderBrand === opt.value}
-                    onChange={() => setAcceptHeaderBrand(opt.value)}
-                  />
-                  <span style={{ minWidth: '5.5rem' }}>{opt.label}</span>
-                  {opt.value ? (
-                    <span
+          <AcceptHeaderBrandPicker
+            value={acceptHeaderBrand}
+            onChange={setAcceptHeaderBrand}
+            documentTitleSlot={
+              <div style={{ minWidth: 0 }}>
+                {draftTitleEditing ? (
+                  <>
+                    <label id="estimate-draft-title-field" style={{ display: 'block', marginTop: 0 }}>
+                      <span style={{ fontWeight: 500 }}>Title</span>
+                      <input
+                        ref={titleInputRef}
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        style={estInputBlock()}
+                      />
+                    </label>
+                    <div style={{ marginTop: '0.5rem' }}>
+                      <button
+                        type="button"
+                        aria-expanded={draftTitleEditing}
+                        aria-controls="estimate-draft-title-field"
+                        aria-label="Done editing title"
+                        onClick={() => setDraftTitleEditing(false)}
+                        style={{ ...estSmallSecondaryButton(), flexShrink: 0 }}
+                      >
+                        Done
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div
                       style={{
-                        width: 140,
-                        height: 56,
-                        display: 'inline-flex',
+                        display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: 6,
-                        background: '#fafafa',
-                        boxSizing: 'border-box',
+                        gap: '0.5rem',
+                        minWidth: 0,
                       }}
                     >
-                      <img
-                        src={acceptHeaderBrandImageSrc(opt.value)}
-                        alt={acceptHeaderBrandLabel(opt.value)}
-                        width={140}
-                        height={56}
+                      <h1 style={{ margin: 0, minWidth: 0, flex: '1 1 auto' }}>{title.trim() || 'Estimate'}</h1>
+                      <button
+                        type="button"
+                        aria-expanded={draftTitleEditing}
+                        aria-controls="estimate-draft-title-field"
+                        aria-label="Edit title"
+                        onClick={() => setDraftTitleEditing(true)}
                         style={{
-                          maxWidth: '100%',
-                          maxHeight: '100%',
-                          objectFit: 'contain',
-                          display: 'block',
+                          flexShrink: 0,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          margin: 0,
+                          padding: '0.25rem',
+                          border: 'none',
+                          background: 'transparent',
+                          lineHeight: 0,
+                          cursor: 'pointer',
+                          color: '#2563eb',
                         }}
-                      />
-                    </span>
-                  ) : null}
-                </label>
-              ))}
-            </div>
-          </fieldset>
-          <fieldset
-            style={{
-              marginTop: '1rem',
-              border: '1px solid #e5e7eb',
-              borderRadius: 8,
-              padding: '0.75rem',
-              maxWidth: 560,
-            }}
-          >
-            <legend style={{ fontWeight: 500, padding: '0 0.35rem' }}>Supporting document (customer)</legend>
-            <p style={{ margin: '0 0 0.65rem', fontSize: '0.85rem', color: '#6b7280' }}>
-              Optional https link (e.g. Google Drive PDF). Shown on the acceptance page. Frozen when the estimate is
-              sent.
-            </p>
-            <details style={{ margin: '0 0 0.65rem', fontSize: '0.85rem', color: '#374151' }}>
-              <summary style={{ cursor: 'pointer', fontWeight: 500, color: '#1f2937' }}>
-                How to share a file in Google Drive
-              </summary>
-              <ol style={{ margin: '0.5rem 0 0', paddingLeft: '1.25rem', lineHeight: 1.45 }}>
-                <li>Open the file in Drive, then choose Share.</li>
-                <li>
-                  Set access to <strong>Anyone with the link</strong> and role <strong>Viewer</strong> (or your org’s
-                  equivalent for external viewers).
-                </li>
-                <li>Copy the link and paste it below.</li>
-              </ol>
-              <p style={{ margin: '0.5rem 0 0', lineHeight: 1.45 }}>
-                Some <strong>Google Workspace</strong> policies prevent “anyone with the link” for people outside your
-                org. If that applies, customers may still see a sign-in wall even when the steps above are correct.
-              </p>
-              <p style={{ margin: '0.5rem 0 0', lineHeight: 1.45 }}>
-                Official help:{' '}
-                <a
-                  href="https://support.google.com/drive/answer/2494822"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Share files from Google Drive
-                </a>
-                .
-              </p>
-              <ul style={{ margin: '0.5rem 0 0', paddingLeft: '1.25rem', lineHeight: 1.45 }}>
-                <li>
-                  If you are unsure the customer can open it, open the link in a <strong>private or incognito</strong>{' '}
-                  window (signed out) to double-check.
-                </li>
-              </ul>
-            </details>
-            {isDraft ? (
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 640 640"
+                          width={18}
+                          height={18}
+                          aria-hidden
+                        >
+                          <path
+                            fill="currentColor"
+                            d="M535.6 85.7C513.7 63.8 478.3 63.8 456.4 85.7L432 110.1L529.9 208L554.3 183.6C576.2 161.7 576.2 126.3 554.3 104.4L535.6 85.7zM236.4 305.7C230.3 311.8 225.6 319.3 222.9 327.6L193.3 416.4C190.4 425 192.7 434.5 199.1 441C205.5 447.5 215 449.7 223.7 446.8L312.5 417.2C320.7 414.5 328.2 409.8 334.4 403.7L496 241.9L398.1 144L236.4 305.7zM160 128C107 128 64 171 64 224L64 480C64 533 107 576 160 576L416 576C469 576 512 533 512 480L512 384C512 366.3 497.7 352 480 352C462.3 352 448 366.3 448 384L448 480C448 497.7 433.7 512 416 512L160 512C142.3 512 128 497.7 128 480L128 224C128 206.3 142.3 192 160 192L256 192C273.7 192 288 177.7 288 160C288 142.3 273.7 128 256 128L160 128z"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            }
+            forFieldSlot={
               <>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500 }}>
-                  Label
+                {!customerId ? (
+                  <span style={{ display: 'block', fontSize: '0.85rem', color: '#6b7280', marginBottom: '0.35rem' }}>
+                    Select a customer to enable.
+                  </span>
+                ) : null}
+                <label
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                  }}
+                >
+                  <strong>For:</strong>
                   <input
-                    type="text"
-                    value={customerAttachmentLabel}
-                    onChange={(e) => setCustomerAttachmentLabel(e.target.value)}
-                    placeholder="e.g. Floor plan, Scope PDF"
-                    maxLength={200}
+                    value={forAddress}
+                    onChange={(e) => setForAddress(e.target.value)}
+                    disabled={!customerId}
+                    placeholder={selectedCustomer?.address?.trim() || 'Customer address…'}
                     style={{
-                      display: 'block',
-                      width: '100%',
-                      marginTop: '0.25rem',
-                      boxSizing: 'border-box',
-                      font: 'inherit',
+                      ...estInputBase,
+                      flex: '1 1 200px',
+                      minWidth: 0,
+                      maxWidth: 480,
+                      padding: '0.5rem',
+                      opacity: !customerId ? 0.65 : 1,
+                      cursor: !customerId ? 'not-allowed' : 'text',
                     }}
                   />
                 </label>
-                <label style={{ display: 'block', marginTop: '0.65rem', fontSize: '0.85rem', fontWeight: 500 }}>
-                  Document URL (https only)
-                  <input
-                    type="url"
-                    inputMode="url"
-                    value={customerAttachmentUrl}
-                    onChange={(e) => setCustomerAttachmentUrl(e.target.value)}
-                    placeholder="https://drive.google.com/file/d/…"
-                    style={{
-                      display: 'block',
-                      width: '100%',
-                      marginTop: '0.25rem',
-                      boxSizing: 'border-box',
-                      font: 'inherit',
-                    }}
-                  />
-                </label>
-                <div style={{ marginTop: '0.5rem', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
+              </>
+            }
+            expiresOnSlot={
+              <label
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                }}
+              >
+                <span style={{ fontWeight: 500, flexShrink: 0 }}>Expires on: </span>
+                <input
+                  type="date"
+                  value={validUntil}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    setValidUntil(v)
+                    setValidUntilPreset(presetMatchingTodayOffset(v))
+                  }}
+                  style={{ ...estInputBase, padding: '0.5rem' }}
+                />
+                {([7, 15, 30] as const).map((n) => (
                   <button
+                    key={n}
                     type="button"
-                    onClick={() => void checkCustomerAttachmentUrl()}
-                    disabled={
-                      attachmentCheckStatus === 'loading' || !normalizeCustomerAttachmentUrl(customerAttachmentUrl)
-                    }
+                    aria-pressed={validUntilPreset === n}
+                    onClick={() => {
+                      setValidUntil(addCalendarDaysYmd(n))
+                      setValidUntilPreset(n)
+                    }}
                     style={{
                       padding: '0.35rem 0.65rem',
-                      fontSize: '0.85rem',
-                      cursor:
-                        attachmentCheckStatus === 'loading' || !normalizeCustomerAttachmentUrl(customerAttachmentUrl)
-                          ? 'not-allowed'
-                          : 'pointer',
+                      fontSize: '0.8125rem',
+                      fontWeight: validUntilPreset === n ? 600 : 500,
+                      borderRadius: 4,
+                      border: validUntilPreset === n ? 'none' : '1px solid #d1d5db',
+                      background: validUntilPreset === n ? '#ea580c' : '#f3f4f6',
+                      color: validUntilPreset === n ? 'white' : '#374151',
+                      cursor: 'pointer',
                     }}
                   >
-                    {attachmentCheckStatus === 'loading' ? 'Checking…' : 'Check link'}
+                    {n} days
                   </button>
-                  <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>
-                    Drive or Docs URLs only. Does not block sending — hints only.
-                  </span>
-                </div>
-                {attachmentCheckStatus === 'success' && attachmentCheckMessage ? (
-                  <p
-                    role="status"
-                    style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: '#15803d', lineHeight: 1.45 }}
-                  >
-                    {attachmentCheckMessage}
-                  </p>
-                ) : null}
-                {attachmentCheckStatus === 'warn' && attachmentCheckMessage ? (
-                  <p
-                    role="status"
-                    style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: '#b45309', lineHeight: 1.45 }}
-                  >
-                    {attachmentCheckMessage}
-                  </p>
-                ) : null}
-                {attachmentCheckStatus === 'error' && attachmentCheckMessage ? (
-                  <p role="alert" style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: '#b91c1c', lineHeight: 1.45 }}>
-                    {attachmentCheckMessage}
-                  </p>
-                ) : null}
-              </>
-            ) : customerAttachmentPreview ? (
-              <div style={{ fontSize: '0.9rem' }}>
-                <p style={{ margin: '0 0 0.35rem', fontWeight: 600 }}>
-                  {customerAttachmentPreview.label?.trim() || 'Supporting document'}
-                </p>
-                <a
-                  href={customerAttachmentPreview.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ wordBreak: 'break-all' }}
-                >
-                  {customerAttachmentPreview.url}
-                </a>
-              </div>
-            ) : (
-              <p style={{ margin: 0, fontSize: '0.85rem', color: '#9ca3af' }}>No supporting document for this quote.</p>
-            )}
-          </fieldset>
-          <section style={{ marginTop: '1rem' }}>
+                ))}
+              </label>
+            }
+            lineItemsSlot={
+          <section style={{ marginTop: 0 }}>
             <div
               style={{
                 display: 'flex',
@@ -2227,48 +2286,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 marginBottom: '0.5rem',
               }}
             >
-              <h2 style={{ fontSize: '1rem', margin: 0 }}>Line items</h2>
-              <button
-                type="button"
-                aria-label="Open line item catalog"
-                onClick={() => setCatalogModalOpen(true)}
-                disabled={!canManageEstimateCatalog && catalogLineItems.length === 0}
-                title={
-                  !canManageEstimateCatalog && catalogLineItems.length === 0
-                    ? 'No catalog items'
-                    : canManageEstimateCatalog && catalogLineItems.length === 0
-                      ? 'Open catalog to add preset line items'
-                      : 'Preset line items (edit catalog in modal)'
-                }
-                onMouseEnter={() => {
-                  if (canManageEstimateCatalog || catalogLineItems.length > 0) setCatalogIconHovered(true)
-                }}
-                onMouseLeave={() => setCatalogIconHovered(false)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: 0,
-                  padding: 0,
-                  border: 'none',
-                  background: 'transparent',
-                  lineHeight: 0,
-                  flexShrink: 0,
-                  cursor:
-                    !canManageEstimateCatalog && catalogLineItems.length === 0 ? 'not-allowed' : 'pointer',
-                  color:
-                    !canManageEstimateCatalog && catalogLineItems.length === 0 ? '#9ca3af'
-                    : catalogIconHovered ? '#1d4ed8'
-                    : '#2563eb',
-                }}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={22} height={22} aria-hidden>
-                  <path
-                    fill="currentColor"
-                    d="M192 576L512 576C529.7 576 544 561.7 544 544C544 526.3 529.7 512 512 512L512 445.3C530.6 438.7 544 420.9 544 400L544 112C544 85.5 522.5 64 496 64L448 64L448 233.4C448 245.9 437.9 256 425.4 256C419.4 256 413.6 253.6 409.4 249.4L368 208L326.6 249.4C322.4 253.6 316.6 256 310.6 256C298.1 256 288 245.9 288 233.4L288 64L192 64C139 64 96 107 96 160L96 480C96 533 139 576 192 576zM160 480C160 462.3 174.3 448 192 448L448 448L448 512L192 512C174.3 512 160 497.7 160 480z"
-                  />
-                </svg>
-              </button>
+              <h2 style={{ fontSize: '1.1rem', margin: 0 }}>Line items</h2>
               {lineItemRecentChips.map((c) => {
                 const short =
                   c.description.length > 36 ? `${c.description.slice(0, 35)}…` : c.description || '(no description)'
@@ -2279,11 +2297,12 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                     onClick={() => applyFromCatalogEntry(c)}
                     title={`${c.description} — ${formatMoney(c.amount_cents)}`}
                     style={{
-                      padding: '0.3rem 0.55rem',
-                      fontSize: '0.8rem',
-                      borderRadius: 6,
+                      padding: '0.35rem 0.65rem',
+                      fontSize: '0.8125rem',
+                      fontWeight: 500,
+                      borderRadius: 4,
                       border: '1px solid #d1d5db',
-                      background: '#f9fafb',
+                      background: '#f3f4f6',
                       color: '#374151',
                       cursor: 'pointer',
                       maxWidth: 200,
@@ -2318,12 +2337,13 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                   style={{
                     background: '#fff',
                     borderRadius: 8,
+                    border: '1px solid #e5e7eb',
                     maxWidth: 560,
                     width: '100%',
                     maxHeight: 'min(85vh, 640px)',
                     display: 'flex',
                     flexDirection: 'column',
-                    boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 10px 40px rgba(0,0,0,0.12)',
                   }}
                   onClick={(e) => e.stopPropagation()}
                 >
@@ -2345,10 +2365,11 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                             onClick={() => setCatalogModalTab('pick')}
                             style={{
                               padding: '0.35rem 0.65rem',
-                              fontSize: '0.85rem',
-                              borderRadius: 6,
+                              fontSize: '0.8125rem',
+                              fontWeight: 500,
+                              borderRadius: 4,
                               border: catalogModalTab === 'pick' ? 'none' : '1px solid #d1d5db',
-                              background: catalogModalTab === 'pick' ? '#2563eb' : '#f9fafb',
+                              background: catalogModalTab === 'pick' ? '#3b82f6' : '#f3f4f6',
                               color: catalogModalTab === 'pick' ? 'white' : '#374151',
                               cursor: 'pointer',
                             }}
@@ -2364,10 +2385,11 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                             }}
                             style={{
                               padding: '0.35rem 0.65rem',
-                              fontSize: '0.85rem',
-                              borderRadius: 6,
+                              fontSize: '0.8125rem',
+                              fontWeight: 500,
+                              borderRadius: 4,
                               border: catalogModalTab === 'edit' ? 'none' : '1px solid #d1d5db',
-                              background: catalogModalTab === 'edit' ? '#2563eb' : '#f9fafb',
+                              background: catalogModalTab === 'edit' ? '#3b82f6' : '#f3f4f6',
                               color: catalogModalTab === 'edit' ? 'white' : '#374151',
                               cursor: 'pointer',
                             }}
@@ -2380,7 +2402,12 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                         type="button"
                         onClick={() => setCatalogModalOpen(false)}
                         aria-label="Close"
-                        style={{ marginLeft: 'auto' }}
+                        style={{
+                          ...estSmallSecondaryButton(),
+                          marginLeft: 'auto',
+                          minWidth: '2rem',
+                          lineHeight: 1,
+                        }}
                       >
                         ×
                       </button>
@@ -2391,7 +2418,13 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                         placeholder="Filter…"
                         value={catalogFilter}
                         onChange={(e) => setCatalogFilter(e.target.value)}
-                        style={{ width: '100%', marginTop: '0.75rem', padding: '0.5rem', boxSizing: 'border-box' }}
+                        style={{
+                          ...estInputBase,
+                          width: '100%',
+                          marginTop: '0.75rem',
+                          padding: '0.5rem',
+                          boxSizing: 'border-box',
+                        }}
                       />
                     ) : null}
                   </div>
@@ -2532,9 +2565,15 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                               })
                             }}
                             placeholder="Description"
-                            style={{ flex: '1 1 200px', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                            style={{
+                              ...estInputBase,
+                              flex: '1 1 200px',
+                              padding: '0.5rem',
+                              minWidth: 0,
+                            }}
                           />
                           <input
+                            className="no-spinner"
                             type="number"
                             min={0}
                             step="0.01"
@@ -2550,11 +2589,12 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                               })
                             }}
                             placeholder="Amount (USD)"
-                            style={{ width: 120, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                            style={{ ...estInputBase, width: 120, padding: '0.5rem' }}
                           />
                           <button
                             type="button"
                             onClick={() => setCatalogEditRows((prev) => prev.filter((_, j) => j !== idx))}
+                            style={estDangerOutlineButton()}
                           >
                             Remove
                           </button>
@@ -2566,6 +2606,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                           onClick={() =>
                             setCatalogEditRows((prev) => [...prev, { id: '', description: '', amount_cents: 0 }])
                           }
+                          style={estSecondaryButton()}
                         >
                           Add row
                         </button>
@@ -2574,15 +2615,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                         type="button"
                         onClick={() => void saveCatalogEdits()}
                         disabled={catalogSaveBusy}
-                        style={{
-                          padding: '0.5rem 1rem',
-                          background: '#2563eb',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: 6,
-                          cursor: catalogSaveBusy ? 'not-allowed' : 'pointer',
-                          fontWeight: 500,
-                        }}
+                        style={estPrimaryButton(catalogSaveBusy)}
                       >
                         {catalogSaveBusy ? 'Saving…' : 'Save catalog'}
                       </button>
@@ -2591,45 +2624,403 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 </div>
               </div>
             ) : null}
-            {lines.map((ln, i) => (
-              <div key={i} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-                <input
-                  placeholder="Description"
-                  value={ln.description}
-                  onChange={(e) => updateLine(i, { description: e.target.value })}
-                  style={{ flex: '1 1 200px', padding: '0.5rem' }}
-                />
-                <input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  placeholder="Amount (USD)"
-                  value={ln.amount_cents ? ln.amount_cents / 100 : ''}
-                  onChange={(e) =>
-                    updateLine(i, { amount_cents: Math.round(Number(e.target.value || '0') * 100) })
-                  }
-                  style={{ width: 120, padding: '0.5rem' }}
-                />
-                <button type="button" onClick={() => setLines((p) => p.filter((_, j) => j !== i))}>
-                  Remove
-                </button>
-              </div>
-            ))}
-            <button type="button" onClick={() => setLines((p) => [...p, { description: '', amount_cents: 0 }])}>
-              Add line
-            </button>
-            <p style={{ fontWeight: 600 }}>Total: {formatMoney(totalCents)}</p>
+            <ul
+              style={{
+                paddingLeft: '1.25rem',
+                margin: 0,
+                listStylePosition: 'outside',
+              }}
+            >
+              {lines.map((ln, i) => (
+                <li key={i} style={{ marginBottom: '0.35rem' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: '0.5rem',
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <input
+                      placeholder="Description"
+                      value={ln.description}
+                      onChange={(e) => updateLine(i, { description: e.target.value })}
+                      style={{ ...estInputBase, flex: '1 1 200px', padding: '0.5rem', minWidth: 0 }}
+                    />
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <input
+                        className="no-spinner"
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        placeholder="Amount (USD)"
+                        value={ln.amount_cents ? ln.amount_cents / 100 : ''}
+                        onChange={(e) =>
+                          updateLine(i, { amount_cents: Math.round(Number(e.target.value || '0') * 100) })
+                        }
+                        style={{ ...estInputBase, width: 120, padding: '0.5rem' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setLines((p) => p.filter((_, j) => j !== i))}
+                        aria-label="Remove line"
+                        title="Remove line"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: 28,
+                          height: 28,
+                          margin: 0,
+                          padding: 0,
+                          border: '1px solid #fca5a5',
+                          borderRadius: '50%',
+                          background: '#fef2f2',
+                          color: '#b91c1c',
+                          fontSize: '1.125rem',
+                          fontWeight: 500,
+                          lineHeight: 1,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            transform: 'translateY(2px)',
+                            lineHeight: 1,
+                          }}
+                        >
+                          -
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                </li>
+              ))}
+              <li style={{ marginBottom: '0.35rem' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    minHeight: 38,
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setLines((p) => [...p, { description: '', amount_cents: 0 }])}
+                    aria-label="Add line"
+                    title="Add line"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 28,
+                      height: 28,
+                      margin: 0,
+                      padding: 0,
+                      border: '1px solid #d1d5db',
+                      borderRadius: '50%',
+                      background: '#f9fafb',
+                      color: '#374151',
+                      fontSize: '1.125rem',
+                      fontWeight: 500,
+                      lineHeight: 1,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    +
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Open line item catalog"
+                    onClick={() => setCatalogModalOpen(true)}
+                    disabled={!canManageEstimateCatalog && catalogLineItems.length === 0}
+                    title={
+                      !canManageEstimateCatalog && catalogLineItems.length === 0
+                        ? 'No catalog items'
+                        : canManageEstimateCatalog && catalogLineItems.length === 0
+                          ? 'Open catalog to add preset line items'
+                          : 'Preset line items (edit catalog in modal)'
+                    }
+                    onMouseEnter={() => {
+                      if (canManageEstimateCatalog || catalogLineItems.length > 0) setCatalogIconHovered(true)
+                    }}
+                    onMouseLeave={() => setCatalogIconHovered(false)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      margin: 0,
+                      padding: 0,
+                      border: 'none',
+                      background: 'transparent',
+                      lineHeight: 0,
+                      flexShrink: 0,
+                      cursor:
+                        !canManageEstimateCatalog && catalogLineItems.length === 0 ? 'not-allowed' : 'pointer',
+                      color:
+                        !canManageEstimateCatalog && catalogLineItems.length === 0 ? '#9ca3af'
+                        : catalogIconHovered ? '#1d4ed8'
+                        : '#2563eb',
+                    }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={22} height={22} aria-hidden>
+                      <path
+                        fill="currentColor"
+                        d="M192 576L512 576C529.7 576 544 561.7 544 544C544 526.3 529.7 512 512 512L512 445.3C530.6 438.7 544 420.9 544 400L544 112C544 85.5 522.5 64 496 64L448 64L448 233.4C448 245.9 437.9 256 425.4 256C419.4 256 413.6 253.6 409.4 249.4L368 208L326.6 249.4C322.4 253.6 316.6 256 310.6 256C298.1 256 288 245.9 288 233.4L288 64L192 64C139 64 96 107 96 160L96 480C96 533 139 576 192 576zM160 480C160 462.3 174.3 448 192 448L448 448L448 512L192 512C174.3 512 160 497.7 160 480z"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </li>
+            </ul>
+            <p style={{ fontWeight: 600, textAlign: 'right' }}>Total: {formatMoney(totalCents)}</p>
+            {customerAttachmentPreview ?
+              <EstimateCustomerAttachmentCard attachment={customerAttachmentPreview} />
+            : (
+              <section
+                style={{
+                  marginTop: '1.5rem',
+                  padding: '1rem 1.15rem',
+                  border: '1px dashed #d1d5db',
+                  borderRadius: 8,
+                  background: '#fafafa',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                }}
+                aria-labelledby="estimate-draft-supporting-doc-placeholder-heading"
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    alignItems: 'flex-start',
+                    gap: '0.75rem 1rem',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 8,
+                      background: '#e5e7eb',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      fontSize: '1.25rem',
+                      color: '#9ca3af',
+                      fontWeight: 600,
+                    }}
+                    aria-hidden
+                  >
+                    PDF
+                  </div>
+                  <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+                    <h2
+                      id="estimate-draft-supporting-doc-placeholder-heading"
+                      style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#9ca3af' }}
+                    >
+                      Supporting document
+                    </h2>
+                    <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: '#6b7280', lineHeight: 1.45 }}>
+                      Preview — add a label and URL in Supporting document (customer) below.
+                    </p>
+                  </div>
+                </div>
+              </section>
+            )}
+            <section style={{ marginTop: '1.5rem' }}>
+              <h2
+                style={{
+                  fontSize: '1.1rem',
+                  margin: '0 0 0.5rem',
+                  color: terms.trim() ? '#111827' : '#9ca3af',
+                  transition: 'color 0.15s ease',
+                }}
+              >
+                {staffResolvedExperience?.docTermsHeading ?? 'Terms'}
+              </h2>
+              <AutosizeTextarea
+                value={terms}
+                onChange={(e) => setTerms(e.target.value)}
+                minRows={1}
+                extraLines={terms.trim() ? 1 : 0}
+                style={{
+                  ...estInputBase,
+                  display: 'block',
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  margin: 0,
+                  whiteSpace: 'pre-wrap',
+                  background: '#f9fafb',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 8,
+                  padding: '1rem',
+                  fontSize: '0.9rem',
+                  fontFamily: 'inherit',
+                }}
+              />
+            </section>
           </section>
-          <label style={{ display: 'block', marginTop: '1rem' }}>
-            <span style={{ fontWeight: 500 }}>Terms</span>
-            <AutosizeTextarea
-              value={terms}
-              onChange={(e) => setTerms(e.target.value)}
-              minRows={1}
-              extraLines={terms.trim() ? 1 : 0}
-              style={{ marginTop: '0.25rem', padding: '0.5rem', fontFamily: 'inherit' }}
-            />
-          </label>
+            }
+          />
+          <fieldset
+            style={{
+              marginTop: '1rem',
+              marginLeft: 'auto',
+              marginRight: 'auto',
+              border: '1px solid #e5e7eb',
+              borderRadius: 8,
+              padding: '0.75rem',
+              maxWidth: 560,
+              width: '100%',
+              boxSizing: 'border-box',
+            }}
+          >
+            <legend style={{ fontWeight: 500, padding: '0 0.35rem' }}>Supporting document (customer)</legend>
+            {isDraft ? (
+              <>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500 }}>
+                  Label
+                  <input
+                    type="text"
+                    value={customerAttachmentLabel}
+                    onChange={(e) => setCustomerAttachmentLabel(e.target.value)}
+                    placeholder="e.g. Floor plan, Scope PDF"
+                    maxLength={200}
+                    style={{
+                      ...estInputBase,
+                      display: 'block',
+                      width: '100%',
+                      marginTop: '0.25rem',
+                      padding: '0.5rem',
+                      boxSizing: 'border-box',
+                      font: 'inherit',
+                    }}
+                  />
+                </label>
+                <label style={{ display: 'block', marginTop: '0.65rem', fontSize: '0.85rem', fontWeight: 500 }}>
+                  Document URL (https only)
+                  <input
+                    type="url"
+                    inputMode="url"
+                    value={customerAttachmentUrl}
+                    onChange={(e) => setCustomerAttachmentUrl(e.target.value)}
+                    placeholder="https://drive.google.com/file/d/…"
+                    style={{
+                      ...estInputBase,
+                      display: 'block',
+                      width: '100%',
+                      marginTop: '0.25rem',
+                      padding: '0.5rem',
+                      boxSizing: 'border-box',
+                      font: 'inherit',
+                    }}
+                  />
+                </label>
+                <div style={{ marginTop: '0.5rem', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => void checkCustomerAttachmentUrl()}
+                    disabled={attachmentCheckStatus === 'loading' || !customerAttachmentUrlIsCheckable}
+                    style={
+                      customerAttachmentUrlIsCheckable ?
+                        estSmallPrimaryButton(attachmentCheckStatus === 'loading')
+                      : {
+                          ...estSmallSecondaryButton(),
+                          cursor: 'not-allowed',
+                          opacity: 0.65,
+                        }
+                    }
+                  >
+                    {attachmentCheckStatus === 'loading' ? 'Checking…' : 'Check link'}
+                  </button>
+                  <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>
+                    Drive or Docs URLs only. Does not block sending — hints only.
+                  </span>
+                </div>
+                {attachmentCheckStatus === 'success' && attachmentCheckMessage ? (
+                  <p
+                    role="status"
+                    style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: '#15803d', lineHeight: 1.45 }}
+                  >
+                    {attachmentCheckMessage}
+                  </p>
+                ) : null}
+                {attachmentCheckStatus === 'warn' && attachmentCheckMessage ? (
+                  <p
+                    role="status"
+                    style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: '#b45309', lineHeight: 1.45 }}
+                  >
+                    {attachmentCheckMessage}
+                  </p>
+                ) : null}
+                {attachmentCheckStatus === 'error' && attachmentCheckMessage ? (
+                  <p role="alert" style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: '#b91c1c', lineHeight: 1.45 }}>
+                    {attachmentCheckMessage}
+                  </p>
+                ) : null}
+              </>
+            ) : customerAttachmentPreview ? (
+              <div style={{ fontSize: '0.9rem' }}>
+                <p style={{ margin: '0 0 0.35rem', fontWeight: 600 }}>
+                  {customerAttachmentPreview.label?.trim() || 'Supporting document'}
+                </p>
+                <a
+                  href={customerAttachmentPreview.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ wordBreak: 'break-all' }}
+                >
+                  {customerAttachmentPreview.url}
+                </a>
+              </div>
+            ) : (
+              <p style={{ margin: 0, fontSize: '0.85rem', color: '#9ca3af' }}>No supporting document for this quote.</p>
+            )}
+            <details style={{ margin: '0.65rem 0 0', fontSize: '0.85rem', color: '#374151' }}>
+              <summary style={{ cursor: 'pointer', fontWeight: 500, color: '#1f2937' }}>
+                How to share a file in Google Drive
+              </summary>
+              <ol style={{ margin: '0.5rem 0 0', paddingLeft: '1.25rem', lineHeight: 1.45 }}>
+                <li>Open the file in Drive, then choose Share.</li>
+                <li>
+                  Set access to <strong>Anyone with the link</strong> and role <strong>Viewer</strong> (or your org’s
+                  equivalent for external viewers).
+                </li>
+                <li>Copy the link and paste it below.</li>
+              </ol>
+              <p style={{ margin: '0.5rem 0 0', lineHeight: 1.45 }}>
+                Some <strong>Google Workspace</strong> policies prevent “anyone with the link” for people outside your
+                org. If that applies, customers may still see a sign-in wall even when the steps above are correct.
+              </p>
+              <p style={{ margin: '0.5rem 0 0', lineHeight: 1.45 }}>
+                Official help:{' '}
+                <a
+                  href="https://support.google.com/drive/answer/2494822"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Share files from Google Drive
+                </a>
+                .
+              </p>
+              <ul style={{ margin: '0.5rem 0 0', paddingLeft: '1.25rem', lineHeight: 1.45 }}>
+                <li>
+                  If you are unsure the customer can open it, open the link in a <strong>private or incognito</strong>{' '}
+                  window (signed out) to double-check.
+                </li>
+              </ul>
+            </details>
+          </fieldset>
           <label style={{ display: 'block', marginTop: '1rem' }}>
             <span style={{ fontWeight: 500 }}>Internal notes</span>
             <AutosizeTextarea
@@ -2637,22 +3028,22 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               onChange={(e) => setInternalNotes(e.target.value)}
               minRows={1}
               extraLines={internalNotes.trim() ? 1 : 0}
-              style={{ marginTop: '0.25rem', padding: '0.5rem', fontFamily: 'inherit' }}
+              style={{ ...estInputBase, marginTop: '0.25rem', padding: '0.5rem', fontFamily: 'inherit' }}
             />
           </label>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1rem' }}>
-            <button type="button" onClick={() => void saveDraft()} disabled={saving}>
+            <button type="button" onClick={() => void saveDraft()} disabled={saving} style={estSecondaryButton(saving)}>
               {saving ? 'Saving…' : 'Save draft'}
             </button>
             <button
               type="button"
               onClick={() => void sendToCustomer()}
               disabled={sending}
-              style={{ background: '#ea580c', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: 6 }}
+              style={estSendButton(sending)}
             >
               {sending ? 'Sending…' : 'Send to customer'}
             </button>
-            <button type="button" onClick={() => void deleteDraft()} style={{ color: '#b91c1c' }}>
+            <button type="button" onClick={() => void deleteDraft()} style={estDangerOutlineButton()}>
               Delete draft
             </button>
           </div>
@@ -2803,14 +3194,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                       disabled={unlinkingJob || loading || saving}
                       aria-label="Remove job link from this estimate"
                       style={{
-                        background: 'none',
-                        border: '1px solid #d1d5db',
-                        borderRadius: 6,
-                        padding: '0.25rem 0.5rem',
-                        font: 'inherit',
-                        fontSize: '0.875rem',
-                        color: '#374151',
+                        ...estSmallSecondaryButton(),
                         cursor: unlinkingJob || loading || saving ? 'not-allowed' : 'pointer',
+                        opacity: unlinkingJob || loading || saving ? 0.65 : 1,
                       }}
                     >
                       {unlinkingJob ? 'Unlinking…' : 'Unlink job'}
@@ -2866,10 +3252,12 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               onClick={() => setCustomerPreviewTab('email')}
               style={{
                 padding: '0.35rem 0.75rem',
-                borderRadius: 6,
-                border: '1px solid #e5e7eb',
-                background: customerPreviewTab === 'email' ? '#f3f4f6' : 'white',
-                fontWeight: customerPreviewTab === 'email' ? 600 : 400,
+                borderRadius: 4,
+                border: '1px solid #d1d5db',
+                background: customerPreviewTab === 'email' ? '#eff6ff' : '#f9fafb',
+                color: '#374151',
+                fontWeight: customerPreviewTab === 'email' ? 600 : 500,
+                fontSize: '0.875rem',
                 cursor: 'pointer',
               }}
             >
@@ -2880,10 +3268,12 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               onClick={() => setCustomerPreviewTab('page')}
               style={{
                 padding: '0.35rem 0.75rem',
-                borderRadius: 6,
-                border: '1px solid #e5e7eb',
-                background: customerPreviewTab === 'page' ? '#f3f4f6' : 'white',
-                fontWeight: customerPreviewTab === 'page' ? 600 : 400,
+                borderRadius: 4,
+                border: '1px solid #d1d5db',
+                background: customerPreviewTab === 'page' ? '#eff6ff' : '#f9fafb',
+                color: '#374151',
+                fontWeight: customerPreviewTab === 'page' ? 600 : 500,
+                fontSize: '0.875rem',
                 cursor: 'pointer',
               }}
             >
@@ -2894,10 +3284,12 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               onClick={() => setCustomerPreviewTab('thankyou')}
               style={{
                 padding: '0.35rem 0.75rem',
-                borderRadius: 6,
-                border: '1px solid #e5e7eb',
-                background: customerPreviewTab === 'thankyou' ? '#f3f4f6' : 'white',
-                fontWeight: customerPreviewTab === 'thankyou' ? 600 : 400,
+                borderRadius: 4,
+                border: '1px solid #d1d5db',
+                background: customerPreviewTab === 'thankyou' ? '#eff6ff' : '#f9fafb',
+                color: '#374151',
+                fontWeight: customerPreviewTab === 'thankyou' ? 600 : 500,
+                fontSize: '0.875rem',
                 cursor: 'pointer',
               }}
             >
@@ -2990,6 +3382,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                           type="button"
                           onClick={() => openStaffAcceptCustomerPreview()}
                           title="Opens authenticated staff preview in a new tab (same layout as the customer page). Does not submit acceptance."
+                          style={estSecondaryButton()}
                         >
                           Preview as customer
                         </button>
@@ -3151,13 +3544,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 type="button"
                 onClick={closeUnlinkJobConfirm}
                 disabled={unlinkingJob}
-                style={{
-                  padding: '0.5rem 1rem',
-                  border: '1px solid #d1d5db',
-                  background: 'white',
-                  borderRadius: 4,
-                  cursor: unlinkingJob ? 'not-allowed' : 'pointer',
-                }}
+                style={estSecondaryButton(unlinkingJob)}
               >
                 Cancel
               </button>
@@ -3167,14 +3554,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 onClick={() => {
                   void confirmUnlinkLinkedJob()
                 }}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: unlinkingJob ? '#9ca3af' : '#3b82f6',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 4,
-                  cursor: unlinkingJob ? 'not-allowed' : 'pointer',
-                }}
+                style={estPrimaryButton(!!unlinkingJob)}
               >
                 {unlinkingJob ? 'Unlinking…' : 'Unlink'}
               </button>

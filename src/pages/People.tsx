@@ -704,6 +704,7 @@ export default function People() {
   const [reviewReports, setReviewReports] = useState<ReviewReport[]>([])
   type ReviewTask = { id: string; title: string; links?: string[] | null; scheduled_date: string; completed_at: string | null }
   const [reviewTasks, setReviewTasks] = useState<ReviewTask[]>([])
+  const [reviewTasksOutstanding, setReviewTasksOutstanding] = useState<ReviewTask[]>([])
   const [reviewJobsWorkedCollapsed, setReviewJobsWorkedCollapsed] = useState(false)
   const [reviewJobExpandedKey, setReviewJobExpandedKey] = useState<string | null>(null)
   const [reviewHoursPayCollapsed, setReviewHoursPayCollapsed] = useState(false)
@@ -5233,6 +5234,7 @@ export default function People() {
       setReviewHours([])
       setReviewReports([])
       setReviewTasks([])
+      setReviewTasksOutstanding([])
     }
 
     const userId = users.find((u) => u.name === personName)?.id ?? null
@@ -5241,7 +5243,7 @@ export default function People() {
     twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
     const lookbackStart = twoYearsAgo.toLocaleDateString('en-CA')
 
-    const [laborRes, allLaborResForCostAllTime, personLaborResAllTime, crewRes, allCrewResForCostAllTime, hoursRes, reportsRes, tasksRes, settingsRes, tallyRes, allHoursRes, allHoursResAllTime] = await Promise.all([
+    const [laborRes, allLaborResForCostAllTime, personLaborResAllTime, crewRes, allCrewResForCostAllTime, hoursRes, reportsRes, tasksRes, outstandingTasksRes, settingsRes, tallyRes, allHoursRes, allHoursResAllTime] = await Promise.all([
       supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles').eq('assigned_to_name', personName).gte('job_date', start).lte('job_date', end),
       supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles').gte('job_date', lookbackStart),
       supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles').eq('assigned_to_name', personName).gte('job_date', lookbackStart),
@@ -5257,6 +5259,14 @@ export default function People() {
             .not('completed_at', 'is', null)
             .gte('completed_at', start + 'T00:00:00')
             .lte('completed_at', end + 'T23:59:59')
+        : Promise.resolve({ data: [] }),
+      userId && !forTeamSummary
+        ? supabase
+            .from('checklist_instances')
+            .select('id, checklist_item_id, scheduled_date, completed_at, checklist_items(title, links), checklist_instance_assignees!inner(user_id)')
+            .eq('checklist_instance_assignees.user_id', userId)
+            .is('completed_at', null)
+            .order('scheduled_date', { ascending: true })
         : Promise.resolve({ data: [] }),
       supabase.from('app_settings').select('key, value_num').in('key', ['drive_mileage_cost', 'drive_time_per_mile']),
       supabase.rpc('list_tally_parts_with_po'),
@@ -5594,6 +5604,30 @@ export default function People() {
       completed_at: t.completed_at,
     }))
 
+    const outstandingInstances = (outstandingTasksRes.data ?? []) as Array<{
+      id: string
+      checklist_item_id: string
+      scheduled_date: string
+      completed_at: string | null
+      checklist_items: { title: string; links?: string[] | null } | null
+    }>
+    const outstandingTasks: ReviewTask[] = outstandingInstances
+      .map((t) => ({
+        id: t.id,
+        title: (t.checklist_items as { title: string; links?: string[] | null } | null)?.title ?? 'Untitled',
+        links: (t.checklist_items as { title: string; links?: string[] | null } | null)?.links,
+        scheduled_date: t.scheduled_date,
+        completed_at: null as string | null,
+      }))
+      .sort((a, b) => {
+        const as = (a.scheduled_date ?? '').trim()
+        const bs = (b.scheduled_date ?? '').trim()
+        if (!as && !bs) return 0
+        if (!as) return 1
+        if (!bs) return -1
+        return as.localeCompare(bs)
+      })
+
     const hoursOnJobInPeriod = new Map<string, number>()
     for (const j of laborJobs) {
       if (j.job_id) hoursOnJobInPeriod.set(j.job_id, (hoursOnJobInPeriod.get(j.job_id) ?? 0) + j.hours)
@@ -5797,6 +5831,7 @@ export default function People() {
     setReviewHours(hoursRows.map((r) => ({ work_date: r.work_date, hours: r.hours })))
     setReviewReports(reports.map((r) => ({ id: r.id, template_name: r.template_name, job_display_name: r.job_display_name, created_at: r.created_at })))
     setReviewTasks(tasks)
+    setReviewTasksOutstanding(outstandingTasks)
     setReviewLoading(false)
   }
 
@@ -11455,6 +11490,38 @@ export default function People() {
                             <td style={{ padding: '0.5rem 0.75rem' }}><ChecklistTitleWithLinks title={t.title} links={t.links} /></td>
                             <td style={{ padding: '0.5rem 0.75rem' }}>{t.scheduled_date}</td>
                             <td style={{ padding: '0.5rem 0.75rem' }}>{t.completed_at ? new Date(t.completed_at).toLocaleString() : '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+
+              <section style={{ marginBottom: '1.5rem' }}>
+                <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 600 }}>
+                  Tasks outstanding ({reviewTasksOutstanding.length})
+                </h3>
+                {reviewTasksOutstanding.length === 0 ? (
+                  <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No open tasks assigned.</p>
+                ) : (
+                  <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                      <thead style={{ background: '#f9fafb' }}>
+                        <tr>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Title</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Scheduled</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {reviewTasksOutstanding.map((t) => (
+                          <tr key={t.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                            <td style={{ padding: '0.5rem 0.75rem' }}>
+                              <ChecklistTitleWithLinks title={t.title} links={t.links} />
+                            </td>
+                            <td style={{ padding: '0.5rem 0.75rem' }}>
+                              {(t.scheduled_date ?? '').trim() ? t.scheduled_date : '—'}
+                            </td>
                           </tr>
                         ))}
                       </tbody>

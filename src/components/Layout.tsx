@@ -10,6 +10,7 @@ import ChecklistAddModal from './ChecklistAddModal'
 import DispatchTaskModal from './DispatchTaskModal'
 import EstimatorTaskModal from './EstimatorTaskModal'
 import NewCustomerModal from './NewCustomerModal'
+import NewProjectModal from './NewProjectModal'
 import EditCustomerModal from './EditCustomerModal'
 import {
   PINNABLE_PATHS,
@@ -491,21 +492,41 @@ export default function Layout() {
                   )}
                   {renderNavLinks(() => setMenuOpen(false), true)}
                   {role === 'dev' && (
-                    <NavLink
-                      to="/customers"
-                      onClick={() => setMenuOpen(false)}
-                      style={({ isActive }) => ({
-                        ...dropdownLinkStyle({ isActive }),
-                        display: 'block',
-                        padding: '0.5rem 1rem',
-                        width: '100%',
-                        boxSizing: 'border-box',
-                      })}
-                      title="Customers"
-                      aria-label="Customers"
-                    >
-                      Customers
-                    </NavLink>
+                    <>
+                      <NavLink
+                        to="/customers"
+                        onClick={() => setMenuOpen(false)}
+                        style={({ isActive }) => ({
+                          ...dropdownLinkStyle({ isActive }),
+                          display: 'block',
+                          padding: '0.5rem 1rem',
+                          width: '100%',
+                          boxSizing: 'border-box',
+                        })}
+                        title="Customers"
+                        aria-label="Customers"
+                      >
+                        Customers
+                      </NavLink>
+                      <NavLink
+                        to="/banking"
+                        onClick={() => setMenuOpen(false)}
+                        style={({ isActive }) => ({
+                          ...dropdownLinkStyle({ isActive }),
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                          padding: '0.5rem 1rem',
+                          width: '100%',
+                          boxSizing: 'border-box',
+                        })}
+                        title="Banking"
+                        aria-label="Banking"
+                      >
+                        {bankingIcon}
+                        Banking
+                      </NavLink>
+                    </>
                   )}
                 </div>
               )}
@@ -668,7 +689,8 @@ export default function Layout() {
               </svg>
             </NavLink>
               )}
-              {(role === 'dev' || role === 'assistant' || role === 'master_technician') && (
+              {(role === 'dev' || role === 'assistant' || role === 'master_technician') &&
+                !(isMobile && role === 'dev') && (
                 <NavLink
                   to="/banking"
                   style={({ isActive }) => ({
@@ -1016,6 +1038,7 @@ export default function Layout() {
       <DispatchTaskModal />
       <EstimatorTaskModal />
       <NewCustomerModal />
+      <NewProjectModal />
       <EditCustomerModal />
     </div>
     </>
