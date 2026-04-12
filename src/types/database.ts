@@ -2077,6 +2077,45 @@ export type Database = {
           },
         ]
       }
+      estimates_thread_notes: {
+        Row: {
+          author_user_id: string
+          body: string
+          created_at: string
+          estimate_id: string
+          id: string
+        }
+        Insert: {
+          author_user_id: string
+          body: string
+          created_at?: string
+          estimate_id: string
+          id?: string
+        }
+        Update: {
+          author_user_id?: string
+          body?: string
+          created_at?: string
+          estimate_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estimates_thread_notes_author_user_id_fkey"
+            columns: ["author_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estimates_thread_notes_estimate_id_fkey"
+            columns: ["estimate_id"]
+            isOneToOne: false
+            referencedRelation: "estimates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       estimator_group_members: {
         Row: {
           user_id: string
@@ -7877,6 +7916,11 @@ export type Database = {
           with_check: string
         }[]
       }
+      delete_ready_to_bill_invoice: {
+        Args: { p_invoice_id: string }
+        Returns: Json
+      }
+      dev_reset_estimates_for_testing: { Args: never; Returns: number }
       dispatch_inbox_note_stats: {
         Args: { p_request_ids: string[] }
         Returns: {
@@ -7892,6 +7936,16 @@ export type Database = {
       ensure_single_ready_to_bill_invoice_for_job: {
         Args: { p_job_id: string }
         Returns: Json
+      }
+      estimates_thread_note_stats: {
+        Args: { p_estimate_ids: string[] }
+        Returns: {
+          estimate_id: string
+          last_note_at: string
+          last_note_author_name: string
+          last_note_body: string
+          note_count: number
+        }[]
       }
       estimator_can_access_service_type: {
         Args: { p_service_type_id: string }

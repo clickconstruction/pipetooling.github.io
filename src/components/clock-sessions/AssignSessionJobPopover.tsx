@@ -1,6 +1,10 @@
 import type { CSSProperties } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import {
+  fetchDispatchScheduledJobsForAssigneeDay,
+  type DispatchScheduledJobForAssign,
+} from '../../lib/jobScheduleBlocks'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import {
@@ -37,6 +41,23 @@ type Props = {
   compactTrigger?: boolean
   /** When false and session already has job/bid, render no trigger (e.g. strip where day editor handles changes). Default true. */
   showChangeWhenAssigned?: boolean
+  /**
+   * When both set, load Dispatch (`job_schedule_blocks`) jobs for this assignee + work date and show quick-picks above search.
+   */
+  dispatchScheduleAssigneeUserId?: string
+  dispatchScheduleWorkDateYmd?: string
+}
+
+const ASSIGN_POPOVER_ESTIMATED_HEIGHT = 360
+
+function dispatchPickToUnified(p: DispatchScheduledJobForAssign): UnifiedSearchResult {
+  return {
+    source: 'job',
+    id: p.jobId,
+    hcp_number: p.hcp_number,
+    job_name: p.job_name,
+    job_address: p.job_address,
+  }
 }
 
 const assignButtonStyle = {
@@ -86,6 +107,8 @@ export function AssignSessionJobPopover({
   unassignedTrigger = 'default',
   compactTrigger = false,
   showChangeWhenAssigned = true,
+  dispatchScheduleAssigneeUserId,
+  dispatchScheduleWorkDateYmd,
 }: Props) {
   const [open, setOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
@@ -94,8 +117,14 @@ export function AssignSessionJobPopover({
   const [popoverRect, setPopoverRect] = useState<{ top: number; left: number } | null>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const [dispatchPicks, setDispatchPicks] = useState<DispatchScheduledJobForAssign[]>([])
+  const [dispatchPicksLoading, setDispatchPicksLoading] = useState(false)
+  const [dispatchPicksError, setDispatchPicksError] = useState<string | null>(null)
 
   const hasJobOrBid = !!(session.job_ledger_id || session.bid_id)
+  const dispatchScheduleEnabled =
+    (dispatchScheduleAssigneeUserId?.trim() ?? '') !== '' &&
+    (dispatchScheduleWorkDateYmd?.trim() ?? '') !== ''
 
   useEffect(() => {
     if (hasJobOrBid && !showChangeWhenAssigned) setOpen(false)
@@ -151,10 +180,48 @@ export function AssignSessionJobPopover({
   }, [open, searchText])
 
   useEffect(() => {
+    if (!open || !dispatchScheduleEnabled) {
+      setDispatchPicks([])
+      setDispatchPicksLoading(false)
+      setDispatchPicksError(null)
+      return
+    }
+    let cancelled = false
+    setDispatchPicksLoading(true)
+    setDispatchPicksError(null)
+    setDispatchPicks([])
+    void (async () => {
+      try {
+        const { data, error } = await fetchDispatchScheduledJobsForAssigneeDay(
+          dispatchScheduleAssigneeUserId!.trim(),
+          dispatchScheduleWorkDateYmd!.trim(),
+        )
+        if (cancelled) return
+        if (error) {
+          setDispatchPicksError(error)
+          setDispatchPicks([])
+        } else {
+          setDispatchPicks(data)
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setDispatchPicksError(e instanceof Error ? e.message : 'Failed to load schedule')
+          setDispatchPicks([])
+        }
+      } finally {
+        if (!cancelled) setDispatchPicksLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, dispatchScheduleEnabled, dispatchScheduleAssigneeUserId, dispatchScheduleWorkDateYmd])
+
+  useEffect(() => {
     if (open && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect()
       const spaceBelow = window.innerHeight - rect.bottom
-      const popoverHeight = 280
+      const popoverHeight = ASSIGN_POPOVER_ESTIMATED_HEIGHT
       const showAbove = spaceBelow < popoverHeight && rect.top > spaceBelow
       setPopoverRect({
         left: rect.left,
@@ -275,10 +342,10 @@ export function AssignSessionJobPopover({
           margin: 0,
           fontSize: '0.68rem',
           lineHeight: 1.2,
-          border: '1px solid #e5e7eb',
+          border: '1px solid #f59e0b',
           borderRadius: 4,
-          background: '#f9fafb',
-          color: '#374151',
+          background: '#fffbeb',
+          color: '#92400e',
           cursor: loading ? 'not-allowed' : 'pointer',
           opacity: loading ? 0.7 : 1,
           maxWidth: '100%',
@@ -292,11 +359,11 @@ export function AssignSessionJobPopover({
             width: 1,
             height: '0.9em',
             flexShrink: 0,
-            background: '#e5e7eb',
+            background: '#fbbf24',
           }}
           aria-hidden
         />
-        <span style={{ color: '#2563eb', fontWeight: 600, flexShrink: 0 }} aria-hidden>
+        <span style={{ color: '#b45309', fontWeight: 600, flexShrink: 0 }} aria-hidden>
           Add
         </span>
       </button>
@@ -339,6 +406,115 @@ export function AssignSessionJobPopover({
             <div style={{ marginBottom: '0.5rem', fontWeight: 500, fontSize: '0.875rem' }}>
               Assign job or bid
             </div>
+            {dispatchScheduleEnabled ? (
+              <div style={{ marginBottom: '0.65rem' }}>
+                <div
+                  style={{
+                    fontSize: '0.72rem',
+                    fontWeight: 600,
+                    color: '#374151',
+                    marginBottom: '0.35rem',
+                  }}
+                >
+                  Scheduled this day (Dispatch)
+                </div>
+                {dispatchPicksLoading ? (
+                  <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Loading schedule…</div>
+                ) : dispatchPicksError ? (
+                  <div style={{ fontSize: '0.72rem', color: '#92400e' }}>{dispatchPicksError}</div>
+                ) : dispatchPicks.length === 0 ? (
+                  <div style={{ fontSize: '0.72rem', color: '#6b7280' }}>
+                    No Dispatch jobs for this person on this day.
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.35rem',
+                      alignItems: 'stretch',
+                    }}
+                  >
+                    {dispatchPicks.map((p) => {
+                      const item = dispatchPickToUnified(p)
+                      const isCurrent = session.job_ledger_id === p.jobId
+                      const label = `${isCurrent ? 'Current: ' : ''}${formatUnifiedResult(item)}`
+                      const a11yRanges =
+                        p.windowSpans.length > 0
+                          ? p.windowSpans.map((s) => `${s.startLabel} to ${s.endLabel}`).join(', ')
+                          : ''
+                      const a11y =
+                        a11yRanges !== '' ? `${label}. Scheduled ${a11yRanges}.` : `${label}.`
+                      return (
+                        <button
+                          key={p.jobId}
+                          type="button"
+                          disabled={loading || isCurrent}
+                          title={
+                            isCurrent
+                              ? 'Already assigned to this job'
+                              : p.windowsLabel
+                                ? `Scheduled: ${p.windowsLabel}`
+                                : undefined
+                          }
+                          aria-label={a11y}
+                          onClick={() => void handleSelect(item)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            justifyContent: 'space-between',
+                            gap: '0.5rem',
+                            padding: '0.28rem 0.5rem',
+                            fontSize: '0.68rem',
+                            lineHeight: 1.25,
+                            border: `1px solid ${isCurrent ? '#86efac' : '#bfdbfe'}`,
+                            borderRadius: 4,
+                            background: isCurrent ? '#f0fdf4' : '#eff6ff',
+                            color: isCurrent ? '#166534' : '#1d4ed8',
+                            cursor: loading || isCurrent ? 'not-allowed' : 'pointer',
+                            width: '100%',
+                            maxWidth: '100%',
+                            textAlign: 'left',
+                          }}
+                        >
+                          <span style={{ wordBreak: 'break-word', minWidth: 0, flex: '1 1 auto' }}>
+                            {label}
+                          </span>
+                          {p.windowSpans.length > 0 ? (
+                            <span
+                              style={{
+                                flex: '0 0 auto',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'flex-end',
+                                gap: '0.2rem',
+                                textAlign: 'right',
+                                color: isCurrent ? '#15803d' : '#1e40af',
+                                fontVariantNumeric: 'tabular-nums',
+                              }}
+                            >
+                              {p.windowSpans.map((span, i) => (
+                                <span
+                                  key={i}
+                                  style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'flex-end',
+                                  }}
+                                >
+                                  <span style={{ whiteSpace: 'nowrap' }}>{span.startLabel}</span>
+                                  <span style={{ whiteSpace: 'nowrap' }}>{span.endLabel}</span>
+                                </span>
+                              ))}
+                            </span>
+                          ) : null}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            ) : null}
             <input
               ref={searchInputRef}
               type="search"

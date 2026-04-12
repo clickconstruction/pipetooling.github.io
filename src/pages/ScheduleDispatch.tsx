@@ -64,6 +64,7 @@ import {
   formatScheduleDispatchHubJobTitle,
   type ScheduleDispatchHubJobRow,
 } from '../lib/scheduleDispatchHub'
+import { HUB_EXPECTED_MANPOWER_ALL_WEEK } from '../lib/scheduleDispatchExpectedManpower'
 import { supabase } from '../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import {
@@ -433,6 +434,7 @@ export default function ScheduleDispatch() {
   useEffect(() => {
     setHubExpectedManpowerDayKey((prev) => {
       if (visibleDayKeys.length === 0) return null
+      if (prev === HUB_EXPECTED_MANPOWER_ALL_WEEK) return HUB_EXPECTED_MANPOWER_ALL_WEEK
       if (prev != null && visibleDayKeys.includes(prev)) return prev
       if (visibleDayKeys.includes(scheduleTodayYmd)) return scheduleTodayYmd
       return visibleDayKeys[0] ?? null

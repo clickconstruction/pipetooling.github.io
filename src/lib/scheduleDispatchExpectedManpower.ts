@@ -2,6 +2,9 @@ import type { JobScheduleBlockRow } from './jobScheduleBlocks'
 import { scheduleFormatWindow } from './jobScheduleChicago'
 import { scheduleBlockToRange } from './jobScheduleOverlap'
 
+/** Hub Expected Manpower tab value; not a calendar `YYYY-MM-DD`. */
+export const HUB_EXPECTED_MANPOWER_ALL_WEEK = '__hub_expected_manpower_all_week__' as const
+
 export type ExpectedManpowerDayRow = {
   blockId: string
   jobId: string
@@ -13,6 +16,8 @@ export type ExpectedManpowerDayRow = {
   windowLabel: string
   /** For stable sort */
   timeStart: string
+  /** Block `work_date` (`YYYY-MM-DD`); used for week view detail. */
+  workDate: string
 }
 
 export type ExpectedManpowerJobDayGroup = {
@@ -34,6 +39,20 @@ export function expectedManpowerWeekPersonHoursTotal(blocks: JobScheduleBlockRow
   let sum = 0
   for (const b of blocks) {
     sum += expectedManpowerBlockPersonHours(b)
+  }
+  return sum
+}
+
+/** Person-hours for blocks whose `work_date` is in `dayKeys` (e.g. visible hub columns only). */
+export function expectedManpowerPersonHoursTotalForDayKeys(
+  blocks: JobScheduleBlockRow[],
+  dayKeys: readonly string[],
+): number {
+  if (dayKeys.length === 0) return 0
+  const set = new Set(dayKeys)
+  let sum = 0
+  for (const b of blocks) {
+    if (set.has(b.work_date)) sum += expectedManpowerBlockPersonHours(b)
   }
   return sum
 }
@@ -62,11 +81,47 @@ export function expectedManpowerRowsForDay(
       personHours: expectedManpowerBlockPersonHours(b),
       windowLabel: scheduleFormatWindow(b.time_start, b.time_end),
       timeStart: b.time_start,
+      workDate: b.work_date,
     })
   }
   rows.sort((a, b) => {
     const j = a.jobTitle.localeCompare(b.jobTitle, undefined, { sensitivity: 'base' })
     if (j !== 0) return j
+    const wd = a.workDate.localeCompare(b.workDate)
+    if (wd !== 0) return wd
+    return a.timeStart.localeCompare(b.timeStart)
+  })
+  return rows
+}
+
+export function expectedManpowerRowsForVisibleDays(
+  blocks: JobScheduleBlockRow[],
+  dayKeys: readonly string[],
+  resolveJobTitle: (jobId: string) => string,
+  resolvePersonName: (userId: string) => string,
+): ExpectedManpowerDayRow[] {
+  if (dayKeys.length === 0) return []
+  const set = new Set(dayKeys)
+  const rows: ExpectedManpowerDayRow[] = []
+  for (const b of blocks) {
+    if (!set.has(b.work_date)) continue
+    rows.push({
+      blockId: b.id,
+      jobId: b.job_id,
+      assigneeUserId: b.assignee_user_id,
+      jobTitle: resolveJobTitle(b.job_id),
+      personName: resolvePersonName(b.assignee_user_id),
+      personHours: expectedManpowerBlockPersonHours(b),
+      windowLabel: scheduleFormatWindow(b.time_start, b.time_end),
+      timeStart: b.time_start,
+      workDate: b.work_date,
+    })
+  }
+  rows.sort((a, b) => {
+    const j = a.jobTitle.localeCompare(b.jobTitle, undefined, { sensitivity: 'base' })
+    if (j !== 0) return j
+    const wd = a.workDate.localeCompare(b.workDate)
+    if (wd !== 0) return wd
     return a.timeStart.localeCompare(b.timeStart)
   })
   return rows
@@ -83,6 +138,8 @@ export function expectedManpowerJobGroupsForDay(rows: ExpectedManpowerDayRow[]):
   const groups: ExpectedManpowerJobDayGroup[] = []
   for (const [, groupRows] of byJob) {
     const sortedRows = [...groupRows].sort((a, b) => {
+      const d = a.workDate.localeCompare(b.workDate)
+      if (d !== 0) return d
       const t = a.timeStart.localeCompare(b.timeStart)
       if (t !== 0) return t
       return a.personName.localeCompare(b.personName, undefined, { sensitivity: 'base' })

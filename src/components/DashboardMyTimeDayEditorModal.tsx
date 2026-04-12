@@ -29,6 +29,8 @@ import {
   CLUSTER_CONTIGUITY_EPS_MS,
   clusterIsHomogeneousJobBid,
   daySpanMs,
+  expandClustersSplitPairwiseOverlaps,
+  getNextSessionClusterInTimeline,
   groupTimeContiguousSessionClusters,
   hasPairwiseClockIntervalOverlap,
   initialClusterSplitState,
@@ -49,6 +51,7 @@ import {
 } from '../lib/myTimeDayTimeline'
 import { MyTimeDayClusterForm } from './my-time-day-editor/MyTimeDayClusterForm'
 import { MyTimeDayClusterVisual } from './my-time-day-editor/MyTimeDayClusterVisual'
+import { useMyTimeCompactMergeMedia } from './my-time-day-editor/useMyTimeCompactMergeMedia'
 import {
   MyTimeMergeSegmentsModal,
   type MergeJobAllocOption,
@@ -251,6 +254,7 @@ export function DashboardMyTimeDayEditorModal({
     setPriorWeekAck(false)
   }, [dateStr])
   const effectiveEditable = inSaveableRange && (inCurrentWeek || priorWeekAck)
+  const priorWeekGateActive = needsPriorWeekAck && !priorWeekAck
   /** Splits, merges, notes, assign prep, strip interactions (preview from clock allows these). */
   const allowTimelineEdits = effectiveEditable
   /** Adjust-times modal, force clock-out, reject, NCNS (disabled in dashboard clock preview). */
@@ -430,14 +434,6 @@ export function DashboardMyTimeDayEditorModal({
     const selfish = !subjectUserIdProp || (authUserId != null && subjectUserIdProp === authUserId)
     return selfish ? 'You' : 'Team member'
   }, [resolvedSubjectLabel, subjectUserIdProp, authUserId])
-
-  const modalTitleText = useMemo(
-    () =>
-      `${modalTitlePerson} · ${formatWorkDateYmdWeekdayLongFriendly(dateStr)}${
-        clockTimesReadOnly ? ' — punch times locked' : ''
-      }`,
-    [modalTitlePerson, dateStr, clockTimesReadOnly]
-  )
 
   useEffect(() => {
     let cancelled = false
@@ -639,8 +635,6 @@ export function DashboardMyTimeDayEditorModal({
   )
   const mergedBidLabels = useMemo(() => ({ ...bidLabels, ...extraBidLabels }), [bidLabels, extraBidLabels])
 
-  const sessionClusters = useMemo(() => groupTimeContiguousSessionClusters(sortedSessions), [sortedSessions])
-
   const sessionsKey = useMemo(
     () =>
       sortedSessions
@@ -660,7 +654,35 @@ export function DashboardMyTimeDayEditorModal({
     return () => clearInterval(t)
   }, [sortedSessions])
 
-  const timelineItems = useMemo(() => buildDayTimeline(sortedSessions, nowTick), [sortedSessions, nowTick])
+  const sessionClusters = useMemo(
+    () => expandClustersSplitPairwiseOverlaps(groupTimeContiguousSessionClusters(sortedSessions), nowTick),
+    [sortedSessions, nowTick],
+  )
+
+  const dayTotalClockedMs = useMemo(() => {
+    let total = 0
+    for (const s of sortedSessions) {
+      const start = new Date(s.clocked_in_at).getTime()
+      const end = s.clocked_out_at ? new Date(s.clocked_out_at).getTime() : nowTick
+      total += Math.max(0, end - start)
+    }
+    return total
+  }, [sortedSessions, nowTick])
+
+  const modalTitleText = useMemo(() => {
+    const hoursPart =
+      !sessionsLoading || sortedSessions.length > 0
+        ? ` • [${formatDurationMs(dayTotalClockedMs)}]`
+        : ''
+    return `${modalTitlePerson} · ${formatWorkDateYmdWeekdayLongFriendly(dateStr)}${hoursPart}${
+      clockTimesReadOnly ? ' — punch times locked' : ''
+    }`
+  }, [modalTitlePerson, dateStr, clockTimesReadOnly, sessionsLoading, sortedSessions, dayTotalClockedMs])
+
+  const timelineItems = useMemo(
+    () => buildDayTimeline(sortedSessions, nowTick, { splitClustersWithPairwiseOverlap: true }),
+    [sortedSessions, nowTick],
+  )
   const { dayStartMs, dayEndMs } = useMemo(() => daySpanMs(sortedSessions, nowTick), [sortedSessions, nowTick])
   const totalDur = Math.max(1, dayEndMs - dayStartMs)
 
@@ -687,7 +709,10 @@ export function DashboardMyTimeDayEditorModal({
     const now = Date.now()
     const next: Record<string, SplitEditorState> = {}
     const snap: Record<string, string> = {}
-    const clusters = groupTimeContiguousSessionClusters(sortedSessions)
+    const clusters = expandClustersSplitPairwiseOverlaps(
+      groupTimeContiguousSessionClusters(sortedSessions),
+      now,
+    )
     for (const c of clusters) {
       const cid = sessionClusterId(c)
       next[cid] = initialClusterSplitState(c, now)
@@ -706,7 +731,10 @@ export function DashboardMyTimeDayEditorModal({
       let changed = false
       const next = { ...prev }
       const now = nowTick
-      const clusters = groupTimeContiguousSessionClusters(sortedSessions)
+      const clusters = expandClustersSplitPairwiseOverlaps(
+        groupTimeContiguousSessionClusters(sortedSessions),
+        now,
+      )
       for (const c of clusters) {
         const last = c[c.length - 1]!
         if (!last.clocked_out_at) {
@@ -986,11 +1014,62 @@ export function DashboardMyTimeDayEditorModal({
 
   const [assignBulk, setAssignBulk] = useState<{ sessionIds: string[]; label: string } | null>(null)
   const [mergeJobChoice, setMergeJobChoice] = useState<MergeJobChoiceState | null>(null)
-  /* Mobile default Form — matches .myTimeDayClusterFormGrid single-column breakpoint (560px). */
-  const [layoutMode, setLayoutMode] = useState<'visual' | 'form'>(() => {
-    if (typeof window === 'undefined') return 'visual'
-    return window.matchMedia('(max-width: 560px)').matches ? 'form' : 'visual'
-  })
+  /** Default Visual on all viewports; Form via header toggle (wide) or beside session count (≤520px). */
+  const [layoutMode, setLayoutMode] = useState<'visual' | 'form'>('visual')
+  const myTimeCompactLayout = useMyTimeCompactMergeMedia()
+  const layoutModeToggleEl = useMemo(() => {
+    if (!effectiveEditable || resolvedSessions.length === 0) return null
+    return (
+      <div
+        role="group"
+        aria-label="Visual or form editor"
+        style={{
+          display: 'inline-flex',
+          flexShrink: 0,
+          border: '1px solid #d1d5db',
+          borderRadius: 6,
+          overflow: 'hidden',
+          fontSize: '0.75rem',
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setLayoutMode('visual')}
+          disabled={saving}
+          style={{
+            border: 'none',
+            margin: 0,
+            padding: '0.35rem 0.65rem',
+            background: layoutMode === 'visual' ? '#eff6ff' : 'white',
+            color: layoutMode === 'visual' ? '#1d4ed8' : '#374151',
+            cursor: saving ? 'not-allowed' : 'pointer',
+            fontWeight: layoutMode === 'visual' ? 600 : 400,
+          }}
+        >
+          Visual
+        </button>
+        <button
+          type="button"
+          onClick={() => setLayoutMode('form')}
+          disabled={saving}
+          style={{
+            border: 'none',
+            borderLeft: '1px solid #d1d5db',
+            margin: 0,
+            padding: '0.35rem 0.65rem',
+            background: layoutMode === 'form' ? '#eff6ff' : 'white',
+            color: layoutMode === 'form' ? '#1d4ed8' : '#374151',
+            cursor: saving ? 'not-allowed' : 'pointer',
+            fontWeight: layoutMode === 'form' ? 600 : 400,
+          }}
+        >
+          Form
+        </button>
+      </div>
+    )
+  }, [effectiveEditable, resolvedSessions.length, layoutMode, saving])
+  /** Desktop h3 only reserves ~64% when Visual/Form sits on the right; prior-week gate / empty day has no toggle. */
+  const desktopHeaderTitleNarrow = !myTimeCompactLayout && layoutModeToggleEl != null
   const stripRefs = useRef<Record<string, HTMLDivElement | null>>({})
   type DragCtx = {
     clusterId: string
@@ -1668,25 +1747,41 @@ export function DashboardMyTimeDayEditorModal({
             position: 'relative',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'flex-end',
+            justifyContent: myTimeCompactLayout ? 'flex-start' : 'flex-end',
+            gap: myTimeCompactLayout ? 0 : 8,
             minHeight: '1.75rem',
             marginBottom: '0.35rem',
+            width: '100%',
           }}
         >
           <h3
             id="dashboard-my-time-editor-title"
-            style={{
-              position: 'absolute',
-              left: 0,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              margin: 0,
-              fontSize: '1rem',
-              maxWidth: '58%',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
+            style={
+              myTimeCompactLayout
+                ? {
+                    position: 'relative',
+                    margin: 0,
+                    fontSize: '1rem',
+                    flex: 1,
+                    minWidth: 0,
+                    lineHeight: 1.25,
+                    whiteSpace: 'normal',
+                    wordBreak: 'break-word',
+                  }
+                : {
+                    position: 'absolute',
+                    left: 0,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    margin: 0,
+                    fontSize: '1rem',
+                    maxWidth: desktopHeaderTitleNarrow ? '64%' : '100%',
+                    overflow: desktopHeaderTitleNarrow ? 'hidden' : undefined,
+                    textOverflow: desktopHeaderTitleNarrow ? 'ellipsis' : undefined,
+                    whiteSpace: desktopHeaderTitleNarrow ? 'nowrap' : 'normal',
+                    wordBreak: desktopHeaderTitleNarrow ? undefined : 'break-word',
+                  }
+            }
             aria-describedby={
               needsPriorWeekAck && !priorWeekAck
                 ? 'dashboard-my-time-prior-week-notice-desc'
@@ -1697,66 +1792,19 @@ export function DashboardMyTimeDayEditorModal({
           >
             {modalTitleText}
           </h3>
-          <div
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              alignItems: 'center',
-              justifyContent: 'flex-end',
-              gap: 8,
-            }}
-          >
-            {effectiveEditable && resolvedSessions.length > 0 ? (
-              <>
-                <span style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 500 }}>Edit layout</span>
-                <div
-                  role="group"
-                  aria-label="Visual or form editor"
-                  style={{
-                    display: 'inline-flex',
-                    border: '1px solid #d1d5db',
-                    borderRadius: 6,
-                    overflow: 'hidden',
-                    fontSize: '0.75rem',
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setLayoutMode('visual')}
-                    disabled={saving}
-                    style={{
-                      border: 'none',
-                      margin: 0,
-                      padding: '0.35rem 0.65rem',
-                      background: layoutMode === 'visual' ? '#eff6ff' : 'white',
-                      color: layoutMode === 'visual' ? '#1d4ed8' : '#374151',
-                      cursor: saving ? 'not-allowed' : 'pointer',
-                      fontWeight: layoutMode === 'visual' ? 600 : 400,
-                    }}
-                  >
-                    Visual
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setLayoutMode('form')}
-                    disabled={saving}
-                    style={{
-                      border: 'none',
-                      borderLeft: '1px solid #d1d5db',
-                      margin: 0,
-                      padding: '0.35rem 0.65rem',
-                      background: layoutMode === 'form' ? '#eff6ff' : 'white',
-                      color: layoutMode === 'form' ? '#1d4ed8' : '#374151',
-                      cursor: saving ? 'not-allowed' : 'pointer',
-                      fontWeight: layoutMode === 'form' ? 600 : 400,
-                    }}
-                  >
-                    Form
-                  </button>
-                </div>
-              </>
-            ) : null}
-          </div>
+          {!myTimeCompactLayout ? (
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                gap: 8,
+              }}
+            >
+              {layoutModeToggleEl}
+            </div>
+          ) : null}
         </div>
         {sessionsSpanDenverSubtitle ? (
           <p
@@ -1823,54 +1871,55 @@ export function DashboardMyTimeDayEditorModal({
           <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>No sessions this day.</p>
         ) : (
           <>
-            <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.75rem', color: '#9ca3af' }}>
-              {sortedSessions.length} session{sortedSessions.length === 1 ? '' : 's'} ·{' '}
-              {clockTimesReadOnly ? (
-                <>
-                  Punch start/end cannot be changed with Adjust times here. You can split focus, edit segment notes, assign
-                  jobs or bids, and use Close to save when you have pending changes.
-                </>
-              ) : layoutMode === 'visual' ? (
-                <>
-                  Each block starts as one focus; tap the gray strip to add a split, then drag blue handles to adjust
-                  boundaries. Off-clock gaps are read-only.
-                </>
-              ) : (
-                <>
-                  Edit ends at inner boundaries with Ends at (same as dragging blue handles). First and last clock times stay
-                  fixed; open end-of-day rows show as open. Use Split below Span to halve a long segment. Times use your device
-                  timezone for input fields.
-                </>
-              )}
-            </p>
-            {sortedSessions.some((s) => s.approved_at) && (
-              <p
+            {myTimeCompactLayout ? (
+              <div
                 style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'space-between',
+                  gap: 8,
                   margin: '0 0 0.5rem 0',
-                  fontSize: '0.8125rem',
-                  color: '#b45309',
-                  background: '#fffbeb',
-                  padding: '0.5rem 0.6rem',
-                  borderRadius: 6,
                 }}
               >
-                Adding splits or changing segment times on approved sessions returns hours to pending until re-approved.
-                Note-only edits keep approval.
+                <p style={{ margin: 0, fontSize: '0.75rem', color: '#9ca3af', flex: 1, minWidth: 0 }}>
+                  {sortedSessions.length} session{sortedSessions.length === 1 ? '' : 's'}
+                  {clockTimesReadOnly ? (
+                    <>
+                      {' · '}
+                      Punch start/end cannot be changed with Adjust times here. You can split focus, edit segment notes,
+                      assign jobs or bids, and use Close to save when you have pending changes.
+                    </>
+                  ) : null}
+                </p>
+                {layoutModeToggleEl}
+              </div>
+            ) : (
+              <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.75rem', color: '#9ca3af' }}>
+                {sortedSessions.length} session{sortedSessions.length === 1 ? '' : 's'}
+                {clockTimesReadOnly ? (
+                  <>
+                    {' · '}
+                    Punch start/end cannot be changed with Adjust times here. You can split focus, edit segment notes, assign
+                    jobs or bids, and use Close to save when you have pending changes.
+                  </>
+                ) : null}
               </p>
             )}
             <div
               className="myTimeDayTimelineScroll"
               style={{
                 flex: 1,
+                minWidth: 0,
+                overflowX: 'hidden',
                 overflowY: 'auto',
                 minHeight: 260,
                 maxHeight: 'min(65vh, 640px)',
-                border: '1px solid #e5e7eb',
-                borderRadius: 8,
-                padding: 8,
+                border: myTimeCompactLayout ? 'none' : '1px solid #e5e7eb',
+                borderRadius: myTimeCompactLayout ? 0 : 8,
+                padding: myTimeCompactLayout ? 4 : 8,
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 6,
+                gap: myTimeCompactLayout ? 4 : 6,
               }}
             >
               {!editorInitialized ? (
@@ -1909,6 +1958,10 @@ export function DashboardMyTimeDayEditorModal({
                   const span = Math.max(1, t1 - t0)
                   const flexW = (item.endMs - item.startMs) / totalDur
                   const clusterIntervalOverlap = hasPairwiseClockIntervalOverlap(c, nowTick)
+                  const nextClusterBlock = getNextSessionClusterInTimeline(timelineItems, idx)
+                  const formOverlapDividerBelow =
+                    nextClusterBlock != null &&
+                    hasPairwiseClockIntervalOverlap([...c, ...nextClusterBlock.sessions], nowTick)
 
                   return (
                     <Fragment key={clusterId}>
@@ -1964,6 +2017,8 @@ export function DashboardMyTimeDayEditorModal({
                           onAdjustTimes={allowPunchTimeActions && !saving ? openAdjustTimes : undefined}
                           onRejectSession={allowPunchTimeActions && !saving ? handleRejectSession : undefined}
                           rejectSessionBusyId={rejectSessionBusyId}
+                          dispatchScheduleAssigneeUserId={effectiveSubjectUserId ?? undefined}
+                          dispatchScheduleWorkDateYmd={dateStr}
                         />
                       ) : (
                         <MyTimeDayClusterForm
@@ -1995,6 +2050,9 @@ export function DashboardMyTimeDayEditorModal({
                           onAdjustTimes={allowPunchTimeActions && !saving ? openAdjustTimes : undefined}
                           onRejectSession={allowPunchTimeActions && !saving ? handleRejectSession : undefined}
                           rejectSessionBusyId={rejectSessionBusyId}
+                          dispatchScheduleAssigneeUserId={effectiveSubjectUserId ?? undefined}
+                          dispatchScheduleWorkDateYmd={dateStr}
+                          overlapDividerBelow={formOverlapDividerBelow}
                         />
                       )}
                     </Fragment>
@@ -2091,7 +2149,7 @@ export function DashboardMyTimeDayEditorModal({
             </div>
           </>
         )}
-        {!effectiveEditable || resolvedSessions.length === 0 ? (
+        {(!effectiveEditable || resolvedSessions.length === 0) && !priorWeekGateActive ? (
           <div
             style={{
               display: 'flex',

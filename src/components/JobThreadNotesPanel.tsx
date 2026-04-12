@@ -16,7 +16,9 @@ type JobThreadNotesPanelProps = {
   onSubmit: () => void
   submitting: boolean
   emptyLabel?: string
-  /** When false, hide the centered "Job activity / notes" title (e.g. Job detail modal). */
+  /** Centered heading when `showSectionTitle` is true. */
+  sectionTitle?: string
+  /** When false, hide the centered section title (e.g. Job detail modal). */
   showSectionTitle?: boolean
   /** When false, no placeholder row when there are no notes yet. */
   showEmptyPlaceholder?: boolean
@@ -91,6 +93,7 @@ export function JobThreadNotesPanel({
   onSubmit,
   submitting,
   emptyLabel = 'No thread notes yet.',
+  sectionTitle = 'Job activity / notes',
   showSectionTitle = true,
   showEmptyPlaceholder = true,
   showComposerLabel = true,
@@ -109,7 +112,7 @@ export function JobThreadNotesPanel({
       {showSectionTitle ? (
         <div style={{ marginBottom: '0.5rem', textAlign: 'center' }}>
           <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151' }}>
-            Job activity / notes
+            {sectionTitle}
           </div>
         </div>
       ) : null}
@@ -200,8 +203,21 @@ export function JobThreadNotesPanel({
                 flexWrap: 'wrap',
                 alignItems: 'center',
                 gap: '0.5rem',
+                width: '100%',
               }}
             >
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  marginRight: 'auto',
+                }}
+              >
+                {scheduleAction ? <JobThreadScheduleButton action={scheduleAction} /> : null}
+                {scheduleDispatchAction ? <JobThreadWeekDispatchButton action={scheduleDispatchAction} /> : null}
+              </div>
               <button
                 type="button"
                 onClick={onSubmit}
@@ -214,12 +230,11 @@ export function JobThreadNotesPanel({
                   border: 'none',
                   borderRadius: 4,
                   cursor: submitting || draft.trim().length === 0 ? 'not-allowed' : 'pointer',
+                  flexShrink: 0,
                 }}
               >
                 {submitting ? 'Posting…' : 'Post note'}
               </button>
-              {scheduleAction ? <JobThreadScheduleButton action={scheduleAction} /> : null}
-              {scheduleDispatchAction ? <JobThreadWeekDispatchButton action={scheduleDispatchAction} /> : null}
             </div>
           ) : (
             <button
@@ -227,7 +242,7 @@ export function JobThreadNotesPanel({
               onClick={onSubmit}
               disabled={submitting || draft.trim().length === 0}
               style={{
-                alignSelf: 'flex-start',
+                alignSelf: 'flex-end',
                 padding: '0.35rem 0.75rem',
                 fontSize: '0.8125rem',
                 background: submitting || draft.trim().length === 0 ? '#e5e7eb' : '#3b82f6',
