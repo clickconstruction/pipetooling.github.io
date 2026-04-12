@@ -45,6 +45,11 @@ import {
   mergeMaxScheduleWorkDateByJobId,
 } from '../lib/stagesJobReferenceDates'
 import {
+  clearReturnEditJobFromStages,
+  peekReturnEditJobFromStages,
+} from '../lib/returnEditJobFromStages'
+import { DELETE_DRAFT_BILL_LABEL } from '../lib/deleteDraftBillLabel'
+import {
   buildJobsStagesBoardLists,
   locateStagesInvoiceSection,
   stagesInvoiceVisibleWithEmptySearch,
@@ -529,6 +534,15 @@ export default function Jobs() {
   const [searchParams, setSearchParams] = useSearchParams()
   /** `loadJobs()` only filters by this URL param; avoid refetching all jobs when unrelated search params change. */
   const customerParamForJobsReload = searchParams.get('customer')
+  const teamLaborJobParam = searchParams.get('teamLaborJob')?.trim() || null
+  const onFocusTeamLaborConsumed = useCallback(() => {
+    setSearchParams((p) => {
+      const n = new URLSearchParams(p)
+      n.delete('teamLaborJob')
+      return n
+    }, { replace: true })
+  }, [setSearchParams])
+
   const { user: authUser, role: authRole, loading: authLoading, profileName: authProfileName } = useAuth()
   const canOpenJobScheduleModal = useMemo(
     () =>
@@ -547,6 +561,8 @@ export default function Jobs() {
   const [users, setUsers] = useState<UserRow[]>([])
   const [people, setPeople] = useState<Person[]>([])
   const [loading, setLoading] = useState(true)
+  /** Set after Ready to Bill → View in Stages; cleared on timeout, dismiss, tab change, or reopening Edit Job. */
+  const [returnEditBannerJobId, setReturnEditBannerJobId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [billingSortAsc, setBillingSortAsc] = useState(false) // false = highest HCP first (desc, largest to smallest)
@@ -3266,6 +3282,31 @@ ${totalsHtml}
   }, [stagesInvoiceParam, loading, activeTab, jobs, stagesSearchQuery, showToast, setSearchParams])
 
   useEffect(() => {
+    if (activeTab !== 'stages') {
+      setReturnEditBannerJobId(null)
+      clearReturnEditJobFromStages()
+    }
+  }, [activeTab])
+
+  useEffect(() => {
+    if (activeTab !== 'stages' || loading) return
+    const tabParam = searchParams.get('tab')
+    const urlWantsStages = tabParam == null || tabParam === 'stages' || tabParam === 'billed'
+    if (!urlWantsStages) return
+    const id = peekReturnEditJobFromStages()
+    if (id) setReturnEditBannerJobId(id)
+  }, [activeTab, loading, searchParams])
+
+  useEffect(() => {
+    if (!returnEditBannerJobId) return
+    const t = window.setTimeout(() => {
+      clearReturnEditJobFromStages()
+      setReturnEditBannerJobId(null)
+    }, 10_000)
+    return () => window.clearTimeout(t)
+  }, [returnEditBannerJobId])
+
+  useEffect(() => {
     if (!stagesInvoiceFlashId) return
     const t = window.setTimeout(() => setStagesInvoiceFlashId(null), 2600)
     return () => window.clearTimeout(t)
@@ -5252,6 +5293,19 @@ ${totalsHtml}
                       transition: 'background-color 0.35s ease',
                     }
                   : {}
+              const stagesSecondaryOutlineButtonBase: CSSProperties = {
+                padding: '0.25rem 0.5rem',
+                fontSize: '0.8125rem',
+                lineHeight: 1.2,
+                textAlign: 'center',
+                background: 'none',
+                color: '#6b7280',
+                border: '1px solid #d1d5db',
+                borderRadius: 4,
+                width: 'fit-content',
+                maxWidth: '100%',
+                boxSizing: 'border-box',
+              }
               return (
                 <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
                   <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
@@ -5458,12 +5512,7 @@ ${totalsHtml}
                                             onClick={() => onJobSendBack(j)}
                                             disabled={stagesStatusUpdatingId === j.id}
                                             style={{
-                                              padding: '0.35rem 0.75rem',
-                                              fontSize: '0.8125rem',
-                                              background: 'none',
-                                              color: '#6b7280',
-                                              border: '1px solid #d1d5db',
-                                              borderRadius: 4,
+                                              ...stagesSecondaryOutlineButtonBase,
                                               cursor: stagesStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
                                             }}
                                           >
@@ -5485,12 +5534,7 @@ ${totalsHtml}
                                             disabled={stagesInvoiceUpdatingId === bundleInv.id}
                                             title="Remove this billing line (partial invoice row)"
                                             style={{
-                                              padding: '0.35rem 0.75rem',
-                                              fontSize: '0.8125rem',
-                                              background: 'none',
-                                              color: '#6b7280',
-                                              border: '1px solid #d1d5db',
-                                              borderRadius: 4,
+                                              ...stagesSecondaryOutlineButtonBase,
                                               cursor: stagesInvoiceUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer',
                                             }}
                                           >
@@ -5573,12 +5617,7 @@ ${totalsHtml}
                                           onClick={() => onJobSendBack(j)}
                                           disabled={stagesStatusUpdatingId === j.id}
                                           style={{
-                                            padding: '0.35rem 0.75rem',
-                                            fontSize: '0.8125rem',
-                                            background: 'none',
-                                            color: '#6b7280',
-                                            border: '1px solid #d1d5db',
-                                            borderRadius: 4,
+                                            ...stagesSecondaryOutlineButtonBase,
                                             cursor: stagesStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
                                           }}
                                         >
@@ -5592,12 +5631,7 @@ ${totalsHtml}
                                           disabled={stagesInvoiceUpdatingId === bundleInvWithJob.id}
                                           title="Remove billing line (partial invoice)"
                                           style={{
-                                            padding: '0.35rem 0.75rem',
-                                            fontSize: '0.8125rem',
-                                            background: 'none',
-                                            color: '#6b7280',
-                                            border: '1px solid #d1d5db',
-                                            borderRadius: 4,
+                                            ...stagesSecondaryOutlineButtonBase,
                                             cursor: stagesInvoiceUpdatingId === bundleInvWithJob.id ? 'not-allowed' : 'pointer',
                                           }}
                                         >
@@ -5863,12 +5897,7 @@ ${totalsHtml}
                                         onClick={() => onInvoiceSendBack(invWithJob)}
                                         disabled={stagesInvoiceUpdatingId === inv.id}
                                         style={{
-                                          padding: '0.35rem 0.75rem',
-                                          fontSize: '0.8125rem',
-                                          background: 'none',
-                                          color: '#6b7280',
-                                          border: '1px solid #d1d5db',
-                                          borderRadius: 4,
+                                          ...stagesSecondaryOutlineButtonBase,
                                           cursor: stagesInvoiceUpdatingId === inv.id ? 'not-allowed' : 'pointer',
                                         }}
                                       >
@@ -5922,12 +5951,7 @@ ${totalsHtml}
                                           onClick={() => onInvoiceSendBack(invWithJob)}
                                           disabled={stagesInvoiceUpdatingId === inv.id}
                                           style={{
-                                            padding: '0.35rem 0.75rem',
-                                            fontSize: '0.8125rem',
-                                            background: 'none',
-                                            color: '#6b7280',
-                                            border: '1px solid #d1d5db',
-                                            borderRadius: 4,
+                                            ...stagesSecondaryOutlineButtonBase,
                                             cursor: stagesInvoiceUpdatingId === inv.id ? 'not-allowed' : 'pointer',
                                           }}
                                         >
@@ -6138,8 +6162,8 @@ ${totalsHtml}
                   showTimeOpen: true,
                   showCreatePartialInvoice: true,
                   jobSendBackLabel: 'Job: Send Job Back',
-                  invoiceBundleActionLabel: 'Delete draft bill',
-                  invoiceStandaloneActionLabel: 'Delete draft bill',
+                  invoiceBundleActionLabel: DELETE_DRAFT_BILL_LABEL,
+                  invoiceStandaloneActionLabel: DELETE_DRAFT_BILL_LABEL,
                   flashInvoiceId: stagesInvoiceFlashId,
                 })}
 
@@ -6871,6 +6895,8 @@ ${totalsHtml}
             jobIdsFilter={jobs.map((j) => j.id)}
             showTitle={false}
             collapsibleCrewJobs
+            focusTeamLaborJobId={activeTab === 'combined-labor' ? teamLaborJobParam : null}
+            onFocusTeamLaborConsumed={onFocusTeamLaborConsumed}
           />
         </div>
       )}
@@ -9727,7 +9753,7 @@ ${totalsHtml}
       {sendBackInvoice && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
-            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>{sendBackInvoice.action === 'delete' ? 'Delete draft bill' : 'Send back'}</h2>
+            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>{sendBackInvoice.action === 'delete' ? DELETE_DRAFT_BILL_LABEL : 'Send back'}</h2>
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>{sendBackInvoice.inv.job.hcp_number || '—'} · {sendBackInvoice.inv.job.job_name || '—'} · ${Number(sendBackInvoice.inv.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem' }}>{sendBackInvoice.action === 'delete' ? 'This will remove the invoice from Ready to Bill.' : 'This will move the invoice back to Ready to Bill.'}</p>
             <div style={{ marginBottom: '1rem' }}>
@@ -9738,7 +9764,7 @@ ${totalsHtml}
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button type="button" onClick={() => { setSendBackInvoice(null); setSendBackChecked(false) }} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-              <button type="button" disabled={!sendBackChecked || stagesInvoiceUpdatingId === sendBackInvoice.inv.id} onClick={async () => { if (!sendBackInvoice) return; if (sendBackInvoice.action === 'delete') await deleteInvoice(sendBackInvoice.inv.id); else await updateInvoiceStatus(sendBackInvoice.inv.id, 'ready_to_bill'); setSendBackInvoice(null); setSendBackChecked(false); loadJobs() }} style={{ padding: '0.5rem 1rem', background: sendBackChecked && stagesInvoiceUpdatingId !== sendBackInvoice.inv.id ? '#3b82f6' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: sendBackChecked && stagesInvoiceUpdatingId !== sendBackInvoice.inv.id ? 'pointer' : 'not-allowed' }}>{stagesInvoiceUpdatingId === sendBackInvoice.inv.id ? '…' : sendBackInvoice.action === 'delete' ? 'Delete draft bill' : 'Send back'}</button>
+              <button type="button" disabled={!sendBackChecked || stagesInvoiceUpdatingId === sendBackInvoice.inv.id} onClick={async () => { if (!sendBackInvoice) return; if (sendBackInvoice.action === 'delete') await deleteInvoice(sendBackInvoice.inv.id); else await updateInvoiceStatus(sendBackInvoice.inv.id, 'ready_to_bill'); setSendBackInvoice(null); setSendBackChecked(false); loadJobs() }} style={{ padding: '0.5rem 1rem', background: sendBackChecked && stagesInvoiceUpdatingId !== sendBackInvoice.inv.id ? '#3b82f6' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: sendBackChecked && stagesInvoiceUpdatingId !== sendBackInvoice.inv.id ? 'pointer' : 'not-allowed' }}>{stagesInvoiceUpdatingId === sendBackInvoice.inv.id ? '…' : sendBackInvoice.action === 'delete' ? DELETE_DRAFT_BILL_LABEL : 'Send back'}</button>
             </div>
           </div>
         </div>
@@ -9906,6 +9932,76 @@ ${totalsHtml}
           }))}
           assigneeCandidates={users.map((u) => ({ user_id: u.id, name: u.name }))}
         />
+      ) : null}
+      {returnEditBannerJobId && activeTab === 'stages' ? (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            position: 'fixed',
+            top: '1rem',
+            right: '1rem',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.65rem 0.85rem',
+            background: '#1e40af',
+            color: 'white',
+            borderRadius: 8,
+            border: '2px solid #1d4ed8',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+            maxWidth: 'min(360px, calc(100vw - 2rem))',
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              const jid = returnEditBannerJobId
+              clearReturnEditJobFromStages()
+              setReturnEditBannerJobId(null)
+              if (!jid) return
+              jobFormModal?.openEditJob(jid, {
+                initialJob: jobs.find((j) => j.id === jid),
+                onSaved: () => {
+                  void loadJobs()
+                },
+              })
+            }}
+            style={{
+              flex: 1,
+              textAlign: 'left',
+              background: 'transparent',
+              border: 'none',
+              color: 'white',
+              fontSize: '0.9375rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              padding: '0.15rem 0',
+            }}
+          >
+            Back to Edit Job
+          </button>
+          <button
+            type="button"
+            aria-label="Dismiss"
+            onClick={() => {
+              clearReturnEditJobFromStages()
+              setReturnEditBannerJobId(null)
+            }}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'white',
+              fontSize: '1.35rem',
+              lineHeight: 1,
+              cursor: 'pointer',
+              padding: '0 0.15rem',
+            }}
+          >
+            ×
+          </button>
+        </div>
       ) : null}
     </div>
   )

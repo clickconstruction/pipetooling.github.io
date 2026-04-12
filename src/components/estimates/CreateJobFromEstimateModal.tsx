@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { defaultJobFieldsFromEstimate } from '../../lib/jobFromEstimateDefaults'
 import {
@@ -10,7 +10,88 @@ import type { JobPayloadCustomerRow } from '../../lib/jobLedgerCustomer'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
+import { resolveEffectiveJobMasterUserId } from '../../lib/resolveEffectiveJobMasterUserId'
 import type { JobSearchResult } from '../../utils/unifiedJobBidSearch'
+
+function formatCurrency(n: number): string {
+  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+function parseMoneyInputToNumber(s: string): number {
+  const t = s.replace(/,/g, '').trim()
+  if (t === '' || t === '.') return 0
+  const n = parseFloat(t)
+  return Number.isFinite(n) ? n : 0
+}
+
+function parseMoneyInputToNumberOrNull(s: string): number | null {
+  const t = s.replace(/,/g, '').trim()
+  if (t === '' || t === '.') return null
+  const n = parseFloat(t)
+  return Number.isFinite(n) ? n : null
+}
+
+function sanitizeMoneyTyping(raw: string): string {
+  const noComma = raw.replace(/,/g, '')
+  let out = ''
+  let dotSeen = false
+  for (const c of noComma) {
+    if (c >= '0' && c <= '9') out += c
+    else if (c === '.' && !dotSeen) {
+      dotSeen = true
+      out += '.'
+    }
+  }
+  return out
+}
+
+const labelStyle: CSSProperties = {
+  display: 'block',
+  fontWeight: 500,
+  fontSize: '0.875rem',
+  marginBottom: 4,
+}
+
+function textInputStyle(disabled: boolean): CSSProperties {
+  return {
+    width: '100%',
+    padding: '0.5rem',
+    border: '1px solid #d1d5db',
+    borderRadius: 6,
+    fontSize: '0.875rem',
+    boxSizing: 'border-box',
+    opacity: disabled ? 0.65 : 1,
+    cursor: disabled ? 'not-allowed' : 'text',
+  }
+}
+
+function secondaryButtonStyle(disabled: boolean): CSSProperties {
+  return {
+    padding: '0.5rem 1rem',
+    background: '#f3f4f6',
+    border: '1px solid #d1d5db',
+    borderRadius: 4,
+    color: '#374151',
+    fontWeight: 500,
+    fontSize: '0.875rem',
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    opacity: disabled ? 0.65 : 1,
+  }
+}
+
+function primaryButtonStyle(disabled: boolean): CSSProperties {
+  return {
+    padding: '0.5rem 1rem',
+    background: '#3b82f6',
+    color: 'white',
+    border: 'none',
+    borderRadius: 4,
+    fontWeight: 500,
+    fontSize: '0.875rem',
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    opacity: disabled ? 0.65 : 1,
+  }
+}
 
 export type LinkedCustomerPrefill = { name: string; address: string }
 
@@ -40,6 +121,7 @@ export default function CreateJobFromEstimateModal({
   const [jobName, setJobName] = useState('')
   const [jobAddress, setJobAddress] = useState('')
   const [revenue, setRevenue] = useState('')
+  const [revenueInputFocused, setRevenueInputFocused] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [linkJobLedgerId, setLinkJobLedgerId] = useState('')
   const [selectedJobPick, setSelectedJobPick] = useState<JobSearchResult | null>(null)
@@ -53,10 +135,10 @@ export default function CreateJobFromEstimateModal({
 
   const resetFormFromEstimate = useCallback((e: EstimateForCreateJob) => {
     const d = defaultJobFieldsFromEstimate(e)
-    setHcp('')
     setJobName(d.jobName)
     setJobAddress(d.jobAddress)
     setRevenue(d.revenue != null && !Number.isNaN(d.revenue) ? String(d.revenue) : '')
+    setRevenueInputFocused(false)
   }, [])
 
   useEffect(() => {
@@ -68,14 +150,35 @@ export default function CreateJobFromEstimateModal({
     setJobLinkResults([])
     setJobLinkSearchLoading(false)
     resetFormFromEstimate(estimate)
+    setHcp('')
+
+    let cancelled = false
+    if (user?.id) {
+      void (async () => {
+        try {
+          const master = await resolveEffectiveJobMasterUserId(supabase, user.id, estimate.project_id)
+          const suggestion = await withSupabaseRetry(
+            async () =>
+              await supabase.rpc('next_numeric_hcp_suggestion_for_master', { p_master_user_id: master }),
+            'next numeric hcp suggestion',
+          )
+          if (cancelled) return
+          setHcp(typeof suggestion === 'string' && suggestion.length > 0 ? suggestion : '1')
+        } catch {
+          if (!cancelled) setHcp('')
+        }
+      })()
+    }
 
     if (estimate.customer_id) {
       setCustomersForPayload([])
       setCustomersLoading(false)
-      return
+      return () => {
+        cancelled = true
+      }
     }
 
-    let cancelled = false
+    let customersCancelled = false
     setCustomersLoading(true)
     void (async () => {
       try {
@@ -84,22 +187,23 @@ export default function CreateJobFromEstimateModal({
             await supabase.from('customers').select('id, name, master_user_id').order('name'),
           'load customers for create job from estimate',
         )
-        if (cancelled) return
+        if (customersCancelled) return
         setCustomersForPayload((rows ?? []) as JobPayloadCustomerRow[])
       } catch (e) {
-        if (!cancelled) {
+        if (!customersCancelled) {
           showToast(formatErrorMessage(e, 'Could not load customers'), 'error')
           setCustomersForPayload([])
         }
       } finally {
-        if (!cancelled) setCustomersLoading(false)
+        if (!customersCancelled) setCustomersLoading(false)
       }
     })()
 
     return () => {
       cancelled = true
+      customersCancelled = true
     }
-  }, [open, estimate, estimate?.id, resetFormFromEstimate, showToast])
+  }, [open, estimate, estimate?.id, resetFormFromEstimate, showToast, user?.id])
 
   useEffect(() => {
     let cancelled = false
@@ -261,23 +365,32 @@ export default function CreateJobFromEstimateModal({
       }}
     >
       <div
+        className="cjfe-modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby="create-job-from-estimate-title"
         style={{
           background: 'white',
           borderRadius: 8,
+          border: '1px solid #e5e7eb',
           maxWidth: 480,
           width: '100%',
           padding: '1.25rem',
-          boxShadow: '0 16px 48px rgba(0,0,0,0.2)',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 16px 48px rgba(0,0,0,0.12)',
         }}
         onMouseDown={(ev) => ev.stopPropagation()}
       >
-        <h2 id="create-job-from-estimate-title" style={{ margin: '0 0 0.75rem', fontSize: '1.1rem' }}>
+        <style>{`
+          .cjfe-modal input:focus-visible,
+          .cjfe-modal button:focus-visible {
+            outline: 2px solid #2563eb;
+            outline-offset: 2px;
+          }
+        `}</style>
+        <h2 id="create-job-from-estimate-title" style={{ margin: '0 0 0.75rem', fontSize: '1.1rem', fontWeight: 600, color: '#111827' }}>
           Create job from estimate
         </h2>
-        <p style={{ margin: '0 0 1rem', fontSize: '0.85rem', color: '#6b7280' }}>
+        <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280', lineHeight: 1.45 }}>
           Create a new job (HCP # required), or link an existing Jobs row using the search below.
         </p>
         {hasLinkedCustomer ? (
@@ -286,23 +399,14 @@ export default function CreateJobFromEstimateModal({
               type="button"
               onClick={() => void handleFillFromCustomer()}
               disabled={busy}
-              style={{
-                padding: '0.35rem 0.65rem',
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                border: '1px solid #d1d5db',
-                borderRadius: 6,
-                background: '#f9fafb',
-                color: '#111827',
-                cursor: busy ? 'default' : 'pointer',
-              }}
+              style={secondaryButtonStyle(busy)}
             >
               {fillFromCustomerLoading ? 'Loading customer…' : 'Fill from customer'}
             </button>
           </div>
         ) : null}
         {!estimate.customer_id && customersLoading ? (
-          <p style={{ margin: '0 0 1rem', fontSize: '0.85rem', color: '#6b7280' }}>Loading customers…</p>
+          <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>Loading customers…</p>
         ) : null}
         <div
           style={{
@@ -313,10 +417,7 @@ export default function CreateJobFromEstimateModal({
           }}
         >
           <div style={{ flex: '0 0 auto', width: '5.75rem' }}>
-            <label
-              htmlFor="create-job-from-estimate-hcp"
-              style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.25rem' }}
-            >
+            <label htmlFor="create-job-from-estimate-hcp" style={labelStyle}>
               HCP #
             </label>
             <input
@@ -325,21 +426,13 @@ export default function CreateJobFromEstimateModal({
               onChange={(e) => setHcp(e.target.value)}
               disabled={busy}
               inputMode="numeric"
-              maxLength={4}
+              maxLength={8}
               autoComplete="off"
-              style={{
-                width: '100%',
-                padding: '0.5rem',
-                boxSizing: 'border-box',
-                textAlign: 'center',
-              }}
+              style={{ ...textInputStyle(busy), textAlign: 'center' }}
             />
           </div>
           <div style={{ flex: '1 1 0', minWidth: 0 }}>
-            <label
-              htmlFor="create-job-from-estimate-job-name"
-              style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.25rem' }}
-            >
+            <label htmlFor="create-job-from-estimate-job-name" style={labelStyle}>
               Job name
             </label>
             <input
@@ -347,28 +440,44 @@ export default function CreateJobFromEstimateModal({
               value={jobName}
               onChange={(e) => setJobName(e.target.value)}
               disabled={busy}
-              style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box' }}
+              style={textInputStyle(busy)}
             />
           </div>
         </div>
-        <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.25rem' }}>
+        <label htmlFor="create-job-from-estimate-job-address" style={labelStyle}>
           Job address
         </label>
         <input
+          id="create-job-from-estimate-job-address"
           value={jobAddress}
           onChange={(e) => setJobAddress(e.target.value)}
           disabled={busy}
-          style={{ width: '100%', padding: '0.5rem', marginBottom: '0.75rem', boxSizing: 'border-box' }}
+          style={{ ...textInputStyle(busy), marginBottom: '0.75rem' }}
         />
-        <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.25rem' }}>
-          Revenue (optional override)
+        <label htmlFor="create-job-from-estimate-revenue" style={labelStyle}>
+          Job Total / Bid ($)
         </label>
         <input
-          value={revenue}
-          onChange={(e) => setRevenue(e.target.value)}
+          id="create-job-from-estimate-revenue"
+          type="text"
+          inputMode="decimal"
+          value={
+            revenueInputFocused
+              ? revenue
+              : revenue.trim() === ''
+                ? ''
+                : formatCurrency(parseMoneyInputToNumber(revenue))
+          }
+          onFocus={() => setRevenueInputFocused(true)}
+          onBlur={() => {
+            setRevenueInputFocused(false)
+            const n = parseMoneyInputToNumberOrNull(revenue)
+            setRevenue(n == null ? '' : String(n))
+          }}
+          onChange={(e) => setRevenue(sanitizeMoneyTyping(e.target.value))}
           placeholder="Uses estimate total if empty"
           disabled={busy}
-          style={{ width: '100%', padding: '0.5rem', marginBottom: '0.75rem', boxSizing: 'border-box' }}
+          style={{ ...textInputStyle(busy), marginBottom: '0.75rem' }}
         />
         <div
           style={{
@@ -379,10 +488,10 @@ export default function CreateJobFromEstimateModal({
             marginBottom: showLinkSection ? '0' : '0.25rem',
           }}
         >
-          <button type="button" onClick={() => onClose()} disabled={busy}>
+          <button type="button" onClick={() => onClose()} disabled={busy} style={secondaryButtonStyle(busy)}>
             Cancel
           </button>
-          <button type="button" onClick={() => void handleSubmit()} disabled={busy}>
+          <button type="button" onClick={() => void handleSubmit()} disabled={busy} style={primaryButtonStyle(busy)}>
             {submitting ? 'Creating…' : 'Create job'}
           </button>
         </div>
@@ -399,16 +508,7 @@ export default function CreateJobFromEstimateModal({
             >
               or
             </p>
-            <label
-              htmlFor="create-job-from-estimate-link-search"
-              style={{
-                display: 'block',
-                fontWeight: 600,
-                fontSize: '0.85rem',
-                marginTop: '0.25rem',
-                marginBottom: '0.25rem',
-              }}
-            >
+            <label htmlFor="create-job-from-estimate-link-search" style={{ ...labelStyle, marginTop: '0.25rem' }}>
               Link existing job
             </label>
             <input
@@ -418,11 +518,11 @@ export default function CreateJobFromEstimateModal({
               onChange={(e) => setJobLinkSearchQuery(e.target.value)}
               placeholder="HCP, name, or address…"
               disabled={linkFieldsBusy}
-              style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem', boxSizing: 'border-box' }}
+              style={{ ...textInputStyle(linkFieldsBusy), marginBottom: '0.5rem' }}
               autoComplete="off"
             />
             {jobLinkSearchLoading ? (
-              <p style={{ margin: '0 0 0.5rem', fontSize: '0.85rem', color: '#6b7280' }}>Searching…</p>
+              <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>Searching…</p>
             ) : null}
             <div
               role="list"
@@ -430,16 +530,14 @@ export default function CreateJobFromEstimateModal({
               style={{
                 maxHeight: 220,
                 overflowY: 'auto',
-                borderLeft: '1px solid #e5e7eb',
-                borderRight: '1px solid #e5e7eb',
-                borderBottom: 'none',
-                borderTopLeftRadius: 0,
-                borderTopRightRadius: 0,
+                overflowX: 'hidden',
+                border: '1px solid #e5e7eb',
+                borderRadius: 6,
                 marginBottom: '0.75rem',
               }}
             >
               {jobLinkResults.length === 0 && jobLinkSearchQuery.trim() && !jobLinkSearchLoading ? (
-                <p style={{ margin: '0.5rem 0.75rem', fontSize: '0.85rem', color: '#6b7280' }}>No jobs found.</p>
+                <p style={{ margin: '0.5rem 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>No jobs found.</p>
               ) : null}
               {jobLinkResults.map((row, index) => {
                 const isSelected = row.id === linkJobLedgerId.trim()
@@ -462,8 +560,10 @@ export default function CreateJobFromEstimateModal({
                       border: 'none',
                       borderTop: index === 0 ? 'none' : '1px solid #f3f4f6',
                       background: isSelected ? '#eff6ff' : 'white',
-                      cursor: linkFieldsBusy ? 'default' : 'pointer',
+                      cursor: linkFieldsBusy ? 'not-allowed' : 'pointer',
+                      opacity: linkFieldsBusy ? 0.65 : 1,
                       font: 'inherit',
+                      fontSize: '0.875rem',
                       boxSizing: 'border-box',
                     }}
                   >
@@ -478,7 +578,7 @@ export default function CreateJobFromEstimateModal({
               })}
             </div>
             {selectedJobPick ? (
-              <p style={{ margin: '0 0 0.5rem', fontSize: '0.85rem', color: '#15803d' }}>
+              <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: '#15803d' }}>
                 Selected: J{(selectedJobPick.hcp_number ?? '').trim() || '—'} ·{' '}
                 {selectedJobPick.job_name?.trim() || '—'}
               </p>
@@ -494,6 +594,7 @@ export default function CreateJobFromEstimateModal({
                 type="button"
                 onClick={() => void handleSaveLink()}
                 disabled={linkFieldsBusy || !linkJobLedgerId.trim()}
+                style={primaryButtonStyle(linkFieldsBusy || !linkJobLedgerId.trim())}
               >
                 {linking ? 'Saving…' : 'Save link'}
               </button>

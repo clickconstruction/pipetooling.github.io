@@ -8409,6 +8409,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      next_numeric_hcp_suggestion_for_master: {
+        Args: { p_master_user_id: string }
+        Returns: string
+      }
       notify_dispatch_license_expiry_if_needed: {
         Args: { p_license_id: string; p_link: string }
         Returns: string

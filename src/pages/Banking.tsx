@@ -1729,12 +1729,6 @@ export default function Banking() {
             ) : null}
           </div>
 
-          <p style={{ color: '#4b5563', marginBottom: '1rem', maxWidth: 720 }}>
-            Dev-only ledger of Mercury transactions. Data is stored in <code>mercury_transactions</code> (RLS: devs). Configure{' '}
-            <code>MERCURY_API_KEY</code> and deploy <code>sync-mercury-transactions</code>; optional <code>mercury-webhook</code> for live
-            updates — see <strong>EDGE_FUNCTIONS.md</strong>.
-          </p>
-
           {error && (
             <div
               style={{

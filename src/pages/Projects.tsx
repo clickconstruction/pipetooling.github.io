@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { useNewProjectModal } from '../contexts/NewProjectModalContext'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import type { Database } from '../types/database'
 
@@ -14,9 +15,9 @@ type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 's
 
 export default function Projects() {
   const { user: authUser } = useAuth()
-  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const customerId = searchParams.get('customer')
+  const newProjectModal = useNewProjectModal()
 
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [projects, setProjects] = useState<ProjectWithCustomer[]>([])
@@ -344,7 +345,11 @@ export default function Projects() {
         <div style={{ marginBottom: '1rem' }}>
           <button
             type="button"
-            onClick={() => navigate(customerId ? `/projects/new?customer=${customerId}` : '/projects/new')}
+            onClick={() =>
+              newProjectModal?.openNewProjectModal({
+                prefill: customerId ? { customerId } : undefined,
+              })
+            }
             style={{
               padding: '0.5rem 1rem',
               background: '#3b82f6',
@@ -373,7 +378,26 @@ export default function Projects() {
               </>
             )
             : 'No projects yet. '}
-          <Link to={customerId ? `/projects/new?customer=${customerId}` : '/projects/new'}>Add one</Link>.
+          <button
+            type="button"
+            onClick={() =>
+              newProjectModal?.openNewProjectModal({
+                prefill: customerId ? { customerId } : undefined,
+              })
+            }
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              color: '#2563eb',
+              textDecoration: 'underline',
+              cursor: 'pointer',
+              font: 'inherit',
+            }}
+          >
+            Add one
+          </button>
+          .
         </p>
       ) : (
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>

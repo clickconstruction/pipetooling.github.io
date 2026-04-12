@@ -61,7 +61,7 @@ export function JobDetailMaterialsCostSection({ loading, snapshot, canExpand, bi
 
   return (
     <div style={{ marginTop: '1rem' }}>
-      <div style={{ fontWeight: 600, fontSize: '0.9375rem', marginBottom: '0.5rem' }}>Materials cost</div>
+      <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#374151', marginBottom: '0.75rem' }}>Parts Cost</div>
       <div
         style={{
           background: 'white',
