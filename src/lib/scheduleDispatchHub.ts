@@ -139,8 +139,20 @@ export function blocksToJobWeekSummaries(blocks: JobScheduleBlockRow[]): JobSche
   return blocks.map((b) => ({ job_id: b.job_id, work_date: b.work_date }))
 }
 
+const HUB_PERSON_DAY_KEY_SEP = '\t'
+
 export function hubPersonDayKey(assigneeUserId: string, workDate: string): string {
-  return `${assigneeUserId}\t${workDate}`
+  return `${assigneeUserId}${HUB_PERSON_DAY_KEY_SEP}${workDate}`
+}
+
+/** Inverse of {@link hubPersonDayKey}; `null` if malformed. */
+export function parseHubPersonDayKey(key: string): { assigneeUserId: string; workDate: string } | null {
+  const i = key.indexOf(HUB_PERSON_DAY_KEY_SEP)
+  if (i <= 0) return null
+  const assigneeUserId = key.slice(0, i)
+  const workDate = key.slice(i + HUB_PERSON_DAY_KEY_SEP.length)
+  if (!assigneeUserId.trim() || !workDate.trim()) return null
+  return { assigneeUserId, workDate }
 }
 
 /** assignee_user_id × work_date → blocks sorted by time_start */

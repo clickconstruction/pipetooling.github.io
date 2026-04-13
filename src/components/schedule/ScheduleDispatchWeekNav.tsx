@@ -52,7 +52,7 @@ export function ScheduleDispatchWeekNav({
       }}
     >
       <button type="button" onClick={() => onWeekShift(-1)} style={btnNeutral} aria-label="Previous week">
-        ← Week
+        ←
       </button>
       <span
         aria-live="polite"
@@ -77,7 +77,7 @@ export function ScheduleDispatchWeekNav({
         )}
       </span>
       <button type="button" onClick={() => onWeekShift(1)} style={btnNeutral} aria-label="Next week">
-        Week →
+        →
       </button>
       <button type="button" onClick={onThisWeek} style={btnPrimary}>
         This week

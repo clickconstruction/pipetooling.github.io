@@ -308,6 +308,7 @@ function HubPeopleBlockCard({
   block,
   workDate,
   canEdit,
+  hubMultiCellAddActive,
   linkPeerCount,
   highlightLinkedGroups,
   linkedGroupAccentByGroupId,
@@ -324,6 +325,7 @@ function HubPeopleBlockCard({
   block: JobScheduleBlockRow
   workDate: string
   canEdit: boolean
+  hubMultiCellAddActive: boolean
   linkPeerCount: number
   highlightLinkedGroups: boolean
   linkedGroupAccentByGroupId: ReadonlyMap<string, LinkedGroupCardAccent>
@@ -340,7 +342,7 @@ function HubPeopleBlockCard({
   const { showToast } = useToastContext()
   const plusButtonRef = useRef<HTMLButtonElement>(null)
   const placementPickingActive = cardPlacementMode != null
-  const dragDisabled = !canEdit
+  const dragDisabled = !canEdit || hubMultiCellAddActive
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: block.id,
     disabled: dragDisabled,
@@ -643,6 +645,9 @@ function HubPeopleDayCell({
   onDeleteBlock,
   onEmptyCellClick,
   onAddJobToScheduleForCell,
+  hubMultiCellAddActive,
+  hubMultiCellAddSelectedKeys,
+  onHubMultiCellAddToggle,
 }: {
   personUserId: string
   workDate: string
@@ -667,6 +672,9 @@ function HubPeopleDayCell({
   onDeleteBlock: (id: string) => void
   onEmptyCellClick?: (personUserId: string, workDate: string) => void
   onAddJobToScheduleForCell?: (assigneeUserId: string, workDate: string) => void
+  hubMultiCellAddActive: boolean
+  hubMultiCellAddSelectedKeys: ReadonlySet<string>
+  onHubMultiCellAddToggle?: (personUserId: string, workDate: string) => void
 }) {
   const droppableId = scheduleDispatchCellDroppableId(workDate, personUserId)
   const { isOver, setNodeRef } = useDroppable({ id: droppableId })
@@ -688,18 +696,34 @@ function HubPeopleDayCell({
 
   const cellClickable = (assignJobPickingActive || placementPickingActive) && !linkedWrongDay
   const emptyCellClickable =
-    canEdit && cellBlocks.length === 0 && onEmptyCellClick != null && !assignJobPickingActive && !placementPickingActive
+    canEdit &&
+    cellBlocks.length === 0 &&
+    onEmptyCellClick != null &&
+    !assignJobPickingActive &&
+    !placementPickingActive &&
+    !hubMultiCellAddActive
+  const multiSelectCellActive = hubMultiCellAddActive && canEdit && onHubMultiCellAddToggle != null
+  const multiSelectKey = hubPersonDayKey(personUserId, workDate)
+  const isMultiSelected = hubMultiCellAddSelectedKeys.has(multiSelectKey)
+  if (multiSelectCellActive && isMultiSelected) {
+    cellBg = isOver ? '#fcd34d' : '#fef3c7'
+  }
   const showCellAddJobTriangle =
     canEdit &&
     onAddJobToScheduleForCell != null &&
     cellBlocks.length > 0 &&
     !assignJobPickingActive &&
-    !placementPickingActive
+    !placementPickingActive &&
+    !hubMultiCellAddActive
 
   return (
     <td
       ref={setNodeRef}
       onClick={() => {
+        if (multiSelectCellActive) {
+          onHubMultiCellAddToggle(personUserId, workDate)
+          return
+        }
         if (assignJobPickingActive) {
           onHubAssignJobCellPick(personUserId, workDate)
           return
@@ -716,12 +740,13 @@ function HubPeopleDayCell({
       style={{
         position: 'relative',
         padding: '0.35rem',
-        border: '1px solid #e5e7eb',
+        border: isMultiSelected && multiSelectCellActive ? '2px solid #ca8a04' : '1px solid #e5e7eb',
         verticalAlign: 'top',
         maxHeight: 180,
         overflowY: 'auto',
         background: cellBg,
-        cursor: cellClickable || emptyCellClickable ? 'pointer' : undefined,
+        cursor:
+          multiSelectCellActive || cellClickable || emptyCellClickable ? 'pointer' : undefined,
       }}
     >
       {cellBlocks.length === 0 ? (
@@ -736,6 +761,7 @@ function HubPeopleDayCell({
               block={b}
               workDate={workDate}
               canEdit={canEdit}
+              hubMultiCellAddActive={hubMultiCellAddActive}
               linkPeerCount={linkPeerCount}
               highlightLinkedGroups={highlightLinkedGroups}
               linkedGroupAccentByGroupId={linkedGroupAccentByGroupId}
@@ -841,6 +867,11 @@ type HubPeoplePanelProps = {
   onDeleteBlock: (id: string) => void
   onEmptyCellClick?: (personUserId: string, workDate: string) => void
   onAddJobToScheduleForCell?: (assigneeUserId: string, workDate: string) => void
+  hubMultiCellAddActive: boolean
+  hubMultiCellAddSelectedKeys: ReadonlySet<string>
+  onHubMultiCellAddToggle?: (personUserId: string, workDate: string) => void
+  onRequestHubAddJob?: () => void
+  onRequestHubMultiCellAddMode?: () => void
 }
 
 function HubPeoplePanel({
@@ -881,6 +912,11 @@ function HubPeoplePanel({
   onDeleteBlock,
   onEmptyCellClick,
   onAddJobToScheduleForCell,
+  hubMultiCellAddActive,
+  hubMultiCellAddSelectedKeys,
+  onHubMultiCellAddToggle,
+  onRequestHubAddJob,
+  onRequestHubMultiCellAddMode,
 }: HubPeoplePanelProps) {
   const [search, setSearch] = useState('')
   const [onlyWithBlocksThisWeek, setOnlyWithBlocksThisWeek] = useState(false)
@@ -1025,6 +1061,43 @@ function HubPeoplePanel({
       ) : null}
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center', marginBottom: '0.75rem' }}>
+        {canEdit && !hubAssignJobPlacement && onRequestHubAddJob ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              aria-label="Add job"
+              title="Add job"
+              style={hubPeopleToolbarIconBtn}
+              onClick={onRequestHubAddJob}
+            >
+              +
+            </button>
+            {onRequestHubMultiCellAddMode ? (
+              <button
+                type="button"
+                aria-label={
+                  hubMultiCellAddActive
+                    ? 'Exit multi-cell add mode'
+                    : 'Select multiple person and day cells to add the same job'
+                }
+                title={
+                  hubMultiCellAddActive
+                    ? 'Exit multi-cell add (Esc)'
+                    : 'Select multiple cells, then choose one job for all'
+                }
+                style={{
+                  ...hubPeopleToolbarIconBtn,
+                  borderColor: hubMultiCellAddActive ? '#ca8a04' : '#2563eb',
+                  color: hubMultiCellAddActive ? '#ca8a04' : '#2563eb',
+                  background: hubMultiCellAddActive ? '#fffbeb' : '#fff',
+                }}
+                onClick={onRequestHubMultiCellAddMode}
+              >
+                ++
+              </button>
+            ) : null}
+          </div>
+        ) : null}
         <label style={{ fontSize: '0.8125rem', color: '#374151', display: 'flex', alignItems: 'center', gap: 6 }}>
           <input
             type="search"
@@ -1041,7 +1114,7 @@ function HubPeoplePanel({
             checked={onlyWithBlocksThisWeek}
             onChange={(e) => setOnlyWithBlocksThisWeek(e.target.checked)}
           />
-          Only people with blocks this week
+          Hide Inactive
         </label>
         <label style={{ fontSize: '0.8125rem', color: '#374151', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
           <input
@@ -1057,9 +1130,9 @@ function HubPeoplePanel({
             type="checkbox"
             checked={highlightLinkedGroups}
             onChange={(e) => onHighlightLinkedGroupsChange(e.target.checked)}
-            aria-label="Highlight linked schedule groups: matching border and background on mirrored crew blocks"
+            aria-label="Highlight linked: matching border and background on mirrored crew blocks"
           />
-          Highlight linked groups
+          Highlight linked
         </label>
       </div>
 
@@ -1166,6 +1239,9 @@ function HubPeoplePanel({
                         onDeleteBlock={onDeleteBlock}
                         onEmptyCellClick={onEmptyCellClick}
                         onAddJobToScheduleForCell={onAddJobToScheduleForCell}
+                        hubMultiCellAddActive={hubMultiCellAddActive}
+                        hubMultiCellAddSelectedKeys={hubMultiCellAddSelectedKeys}
+                        onHubMultiCellAddToggle={onHubMultiCellAddToggle}
                       />
                     )
                   })}
@@ -1680,6 +1756,10 @@ type Props = {
   onDeleteBlock: (id: string) => void
   onHubEmptyCellClick?: (personUserId: string, workDate: string) => void
   onHubAddJobToScheduleForCell?: (assigneeUserId: string, workDate: string) => void
+  hubMultiCellAddActive: boolean
+  hubMultiCellAddSelectedKeys: ReadonlySet<string>
+  onHubMultiCellAddToggle?: (personUserId: string, workDate: string) => void
+  onRequestHubMultiCellAddMode?: () => void
 }
 
 const HUB_PEOPLE_TOOLBAR_BTN_H = 32
@@ -1754,52 +1834,19 @@ export function ScheduleDispatchHub({
   onDeleteBlock,
   onHubEmptyCellClick,
   onHubAddJobToScheduleForCell,
+  hubMultiCellAddActive,
+  hubMultiCellAddSelectedKeys,
+  onHubMultiCellAddToggle,
+  onRequestHubMultiCellAddMode,
 }: Props) {
   return (
     <div style={{ padding: '1rem 1.25rem', maxWidth: '100%' }}>
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          gap: '0.75rem',
-          marginBottom: 0,
-        }}
-      >
-        <div style={{ flex: '1 1 240px', minWidth: 0 }}>
-          <ScheduleDispatchWeekNav
-            weekStart={weekStart}
-            onWeekShift={onWeekShift}
-            onThisWeek={onThisWeek}
-            dateRangeOverride={weekNavDateRangeOverride}
-            hideWeekend={hideWeekend}
-            onHideWeekendChange={onHideWeekendChange}
-          />
-        </div>
-        {hubTab === 'people' && canEdit && !hubAssignJobPlacement ? (
-          <div
-            style={{
-              flex: '0 0 auto',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              flexWrap: 'wrap',
-              paddingTop: 2,
-            }}
-          >
-            <button
-              type="button"
-              aria-label="Add job"
-              title="Add job"
-              style={hubPeopleToolbarIconBtn}
-              onClick={onRequestHubAddJob}
-            >
-              +
-            </button>
-          </div>
-        ) : null}
-      </div>
+      <ScheduleDispatchWeekNav
+        weekStart={weekStart}
+        onWeekShift={onWeekShift}
+        onThisWeek={onThisWeek}
+        dateRangeOverride={weekNavDateRangeOverride}
+      />
 
       <div
         role="tablist"
@@ -1897,6 +1944,11 @@ export function ScheduleDispatchHub({
           onDeleteBlock={onDeleteBlock}
           onEmptyCellClick={onHubEmptyCellClick}
           onAddJobToScheduleForCell={onHubAddJobToScheduleForCell}
+          hubMultiCellAddActive={hubMultiCellAddActive}
+          hubMultiCellAddSelectedKeys={hubMultiCellAddSelectedKeys}
+          onHubMultiCellAddToggle={onHubMultiCellAddToggle}
+          onRequestHubAddJob={onRequestHubAddJob}
+          onRequestHubMultiCellAddMode={onRequestHubMultiCellAddMode}
         />
       )}
     </div>
