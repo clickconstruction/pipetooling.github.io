@@ -1,4 +1,4 @@
-/** Visual pairing for hub People “highlight linked groups” (border + card tint). */
+/** Visual pairing for hub People “highlight linked” (border + card tint). */
 export type LinkedGroupCardAccent = {
   borderColor: string
   background: string

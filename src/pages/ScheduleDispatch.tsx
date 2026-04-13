@@ -57,11 +57,13 @@ import {
   aggregateWeekSummariesByJob,
   blocksToJobWeekSummaries,
   buildPersonDayBlockMap,
+  hubPersonDayKey,
   fetchJobsLedgerForScheduleDispatchHub,
   fetchTeamMemberUserIdsForJobIds,
   fetchUserNamesForIds,
   fetchUsersTabUserIdsForScheduleDispatchHub,
   formatScheduleDispatchHubJobTitle,
+  parseHubPersonDayKey,
   type ScheduleDispatchHubJobRow,
 } from '../lib/scheduleDispatchHub'
 import { HUB_EXPECTED_MANPOWER_ALL_WEEK } from '../lib/scheduleDispatchExpectedManpower'
@@ -117,6 +119,8 @@ type ScheduleDispatchBlockModalState =
 type HubAssignJobPlacementState = { jobId: string }
 
 type HubCellAddContextState = { assigneeUserId: string; workDate: string }
+
+type HubAssignJobPickerIntent = 'toolbar' | 'cell' | 'multi'
 
 function validateRange(timeStart: string, timeEnd: string): string | null {
   const ts = timeInputToPg(timeStart)
@@ -350,6 +354,89 @@ function AddBlockModal({
             }}
           >
             {saving ? 'Saving…' : mode === 'edit' ? 'Save changes' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function RemoveScheduleBlockConfirmModal({
+  open,
+  busy,
+  onCancel,
+  onConfirm,
+}: {
+  open: boolean
+  busy: boolean
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  if (!open) return null
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.45)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1004,
+      }}
+      onClick={() => {
+        if (!busy) onCancel()
+      }}
+      role="presentation"
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="schedule-dispatch-remove-block-title"
+        style={{
+          background: '#fff',
+          borderRadius: 8,
+          padding: '1.25rem',
+          maxWidth: 400,
+          width: '92%',
+          boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 id="schedule-dispatch-remove-block-title" style={{ margin: '0 0 0.75rem', fontSize: '1.05rem' }}>
+          Remove this scheduled block?
+        </h2>
+        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onCancel}
+            style={{
+              padding: '0.45rem 1rem',
+              fontSize: '0.875rem',
+              background: '#f3f4f6',
+              border: '1px solid #d1d5db',
+              borderRadius: 4,
+              cursor: busy ? 'not-allowed' : 'pointer',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onConfirm}
+            style={{
+              padding: '0.45rem 1rem',
+              fontSize: '0.875rem',
+              background: busy ? '#e5e7eb' : '#b91c1c',
+              color: busy ? '#6b7280' : '#fff',
+              border: 'none',
+              borderRadius: 4,
+              cursor: busy ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {busy ? 'Removing…' : 'Remove'}
           </button>
         </div>
       </div>
@@ -695,6 +782,85 @@ export default function ScheduleDispatch() {
     }
   }, [jobId, weekStart, weekEnd, role, showToast, canShowHubExpectedManpowerPayroll])
 
+  const applyHubMultiCellJob = useCallback(
+    async (targetJobId: string, selectionKeys: readonly string[]) => {
+      const createdBy = authUser?.id
+      if (!createdBy) {
+        showToast('You must be signed in to add blocks.', 'error')
+        return
+      }
+      if (selectionKeys.length === 0) {
+        showToast('No cells selected.', 'info')
+        return
+      }
+      const rangeErr = validateRange('08:00', '12:00')
+      if (rangeErr) {
+        showToast(rangeErr, 'error')
+        return
+      }
+      const ts = timeInputToPg('08:00')
+      const te = timeInputToPg('12:00')
+      const candidate = scheduleBlockToRange(ts, te)
+
+      let added = 0
+      let skippedOverlap = 0
+      let failed = 0
+
+      for (const key of selectionKeys) {
+        const parsed = parseHubPersonDayKey(key)
+        if (!parsed) {
+          failed++
+          continue
+        }
+        const { assigneeUserId, workDate } = parsed
+        const { data: dayBlocks, error: dayErr } = await fetchScheduleBlocksForAssigneesOnDay(
+          [assigneeUserId],
+          workDate,
+        )
+        if (dayErr) {
+          failed++
+          continue
+        }
+        if (scheduleOverlapsAny(candidate, dayBlocks, undefined)) {
+          skippedOverlap++
+          continue
+        }
+        const { error: insErr } = await insertJobScheduleBlock({
+          job_id: targetJobId,
+          assignee_user_id: assigneeUserId,
+          work_date: workDate,
+          time_start: ts,
+          time_end: te,
+          note: null,
+          created_by: createdBy,
+          shared_block_group_id: newJobScheduleSharedBlockGroupId(),
+        })
+        if (insErr) {
+          failed++
+        } else {
+          added++
+        }
+      }
+
+      const parts: string[] = []
+      if (added > 0) parts.push(`Added ${added} block${added === 1 ? '' : 's'}`)
+      if (skippedOverlap > 0) parts.push(`Skipped ${skippedOverlap} (overlap)`)
+      if (failed > 0) parts.push(`${failed} failed`)
+      showToast(
+        parts.length > 0 ? `${parts.join('. ')}.` : 'No blocks added.',
+        added > 0 ? 'success' : failed > 0 ? 'error' : 'info',
+      )
+
+      setHubMultiCellAddActive(false)
+      setHubMultiCellAddSelection(new Set())
+      setHubAssignJobPickerOpen(false)
+      setHubAssignJobPickerIntent('toolbar')
+      setHubCellAddContext(null)
+      await loadHub()
+    },
+    [authUser?.id, showToast, loadHub],
+  )
+
   useEffect(() => {
     if (jobId) {
       setHubLoading(false)
@@ -702,6 +868,11 @@ export default function ScheduleDispatch() {
     }
     void loadHub()
   }, [jobId, loadHub])
+
+  useEffect(() => {
+    setHubMultiCellAddActive(false)
+    setHubMultiCellAddSelection(new Set())
+  }, [weekStart])
 
   useEffect(() => {
     if (jobId) return
@@ -726,6 +897,8 @@ export default function ScheduleDispatch() {
     placeJobArmKeyRef.current = key
     setCardPlacementMode(null)
     setPlusMenuBlockId(null)
+    setHubMultiCellAddActive(false)
+    setHubMultiCellAddSelection(new Set())
     setHubAssignJobPlacement({ jobId: pj })
   }, [jobId, weekStart, hubTabIsJobs, hubLoading, searchParams, setSearchParams])
 
@@ -877,6 +1050,8 @@ export default function ScheduleDispatch() {
   )
 
   const [blockModalState, setBlockModalState] = useState<ScheduleDispatchBlockModalState | null>(null)
+  const [deleteBlockId, setDeleteBlockId] = useState<string | null>(null)
+  const [deleteBlockBusy, setDeleteBlockBusy] = useState(false)
   const [addTimeStart, setAddTimeStart] = useState('08:00')
   const [addTimeEnd, setAddTimeEnd] = useState('12:00')
   const [addNote, setAddNote] = useState('')
@@ -888,12 +1063,18 @@ export default function ScheduleDispatch() {
   const [hubAssignJobPickerOpen, setHubAssignJobPickerOpen] = useState(false)
   const [hubAssignJobPickerSearch, setHubAssignJobPickerSearch] = useState('')
   const [hubCellAddContext, setHubCellAddContext] = useState<HubCellAddContextState | null>(null)
+  const [hubAssignJobPickerIntent, setHubAssignJobPickerIntent] = useState<HubAssignJobPickerIntent>('toolbar')
+  const [hubMultiCellAddActive, setHubMultiCellAddActive] = useState(false)
+  const [hubMultiCellAddSelection, setHubMultiCellAddSelection] = useState<Set<string>>(() => new Set())
   const placeJobArmKeyRef = useRef<string>('')
   const hubAssignJobPickerSearchInputRef = useRef<HTMLInputElement>(null)
 
   const closeHubAssignJobPicker = useCallback(() => {
     setHubAssignJobPickerOpen(false)
     setHubCellAddContext(null)
+    setHubAssignJobPickerIntent('toolbar')
+    setHubMultiCellAddActive(false)
+    setHubMultiCellAddSelection(new Set())
   }, [])
 
   useEffect(() => {
@@ -930,6 +1111,27 @@ export default function ScheduleDispatch() {
     return () => window.removeEventListener('keydown', onKey)
   }, [cardPlacementMode, hubAssignJobPlacement, setSearchParams])
 
+  useEffect(() => {
+    if (deleteBlockId == null) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !deleteBlockBusy) setDeleteBlockId(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [deleteBlockId, deleteBlockBusy])
+
+  useEffect(() => {
+    if (!hubMultiCellAddActive) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setHubMultiCellAddActive(false)
+        setHubMultiCellAddSelection(new Set())
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [hubMultiCellAddActive])
+
   const stripPlaceJobFromUrl = useCallback(() => {
     setSearchParams((prev) => {
       const n = new URLSearchParams(prev)
@@ -946,6 +1148,9 @@ export default function ScheduleDispatch() {
       setHubAssignJobPlacement(null)
       setHubAssignJobPickerOpen(false)
       setHubCellAddContext(null)
+      setHubAssignJobPickerIntent('toolbar')
+      setHubMultiCellAddActive(false)
+      setHubMultiCellAddSelection(new Set())
       setBlockModalState({ kind: 'add', assigneeUserId: args.assigneeUserId, workDate: args.workDate, jobId: args.jobId })
       setAddTimeStart('08:00')
       setAddTimeEnd('12:00')
@@ -988,6 +1193,8 @@ export default function ScheduleDispatch() {
       setAddError(null)
       setPlusMenuBlockId(null)
       setHubAssignJobPlacement(null)
+      setHubMultiCellAddActive(false)
+      setHubMultiCellAddSelection(new Set())
       stripPlaceJobFromUrl()
       setCardPlacementMode({ sourceBlockId: source.id, variant })
       const extra =
@@ -1103,27 +1310,73 @@ export default function ScheduleDispatch() {
     setPlusMenuBlockId(null)
     setHubAssignJobPlacement(null)
     setHubCellAddContext(null)
+    setHubMultiCellAddActive(false)
+    setHubMultiCellAddSelection(new Set())
     stripPlaceJobFromUrl()
+    setHubAssignJobPickerIntent('toolbar')
     setHubAssignJobPickerSearch('')
     setHubAssignJobPickerOpen(true)
   }, [stripPlaceJobFromUrl])
 
   const onHubEmptyCellOpenChoice = useCallback((personUserId: string, workDate: string) => {
     setHubCellAddContext({ assigneeUserId: personUserId, workDate })
+    setHubAssignJobPickerIntent('cell')
     setHubAssignJobPickerSearch('')
     setHubAssignJobPickerOpen(true)
   }, [])
 
+  const onRequestHubMultiCellAddMode = useCallback(() => {
+    if (hubMultiCellAddActive) {
+      setHubMultiCellAddActive(false)
+      setHubMultiCellAddSelection(new Set())
+      return
+    }
+    setCardPlacementMode(null)
+    setPlusMenuBlockId(null)
+    setHubAssignJobPlacement(null)
+    setHubCellAddContext(null)
+    setHubAssignJobPickerOpen(false)
+    setHubAssignJobPickerIntent('toolbar')
+    stripPlaceJobFromUrl()
+    setHubMultiCellAddSelection(new Set())
+    setHubMultiCellAddActive(true)
+  }, [hubMultiCellAddActive, stripPlaceJobFromUrl])
+
+  const onHubMultiCellAddToggle = useCallback((personUserId: string, workDate: string) => {
+    const k = hubPersonDayKey(personUserId, workDate)
+    setHubMultiCellAddSelection((prev) => {
+      const next = new Set(prev)
+      if (next.has(k)) next.delete(k)
+      else next.add(k)
+      return next
+    })
+  }, [])
+
+  const onRequestHubMultiCellAddChooseJob = useCallback(() => {
+    if (hubMultiCellAddSelection.size === 0) return
+    setHubCellAddContext(null)
+    setHubAssignJobPickerIntent('multi')
+    setHubAssignJobPickerSearch('')
+    setHubAssignJobPickerOpen(true)
+  }, [hubMultiCellAddSelection])
+
   const onCreateNewJobFromHubJobPicker = useCallback(() => {
     if (!jobFormModal) return
     const ctx = hubCellAddContext ? { ...hubCellAddContext } : null
+    const intentSnapshot = hubAssignJobPickerIntent
+    const multiKeys =
+      intentSnapshot === 'multi' && hubMultiCellAddSelection.size > 0 ? [...hubMultiCellAddSelection] : null
     setHubAssignJobPickerOpen(false)
     setCardPlacementMode(null)
     setPlusMenuBlockId(null)
     setHubCellAddContext(null)
     jobFormModal.openNewJob({
       onCreatedJobId: (newId) => {
-        void loadHub().then(() => {
+        void loadHub().then(async () => {
+          if (multiKeys && multiKeys.length > 0) {
+            await applyHubMultiCellJob(newId, multiKeys)
+            return
+          }
           if (ctx) {
             openAddBlock({ assigneeUserId: ctx.assigneeUserId, workDate: ctx.workDate, jobId: newId })
           } else {
@@ -1134,7 +1387,16 @@ export default function ScheduleDispatch() {
       },
       onSaved: () => void loadHub(),
     })
-  }, [jobFormModal, hubCellAddContext, openAddBlock, loadHub, showToast])
+  }, [
+    jobFormModal,
+    hubCellAddContext,
+    hubAssignJobPickerIntent,
+    hubMultiCellAddSelection,
+    openAddBlock,
+    loadHub,
+    showToast,
+    applyHubMultiCellJob,
+  ])
 
   const hubAssignJobPickerRows = useMemo(() => {
     const q = hubAssignJobPickerSearch.trim().toLowerCase()
@@ -1322,23 +1584,36 @@ export default function ScheduleDispatch() {
     showToast,
   ])
 
-  const onDeleteBlock = useCallback(
-    async (id: string) => {
+  const requestDeleteBlock = useCallback(
+    (id: string) => {
       if (!canEdit) return
-      if (!window.confirm('Remove this scheduled block?')) return
+      setDeleteBlockId(id)
+    },
+    [canEdit],
+  )
+
+  const cancelRequestDeleteBlock = useCallback(() => {
+    if (deleteBlockBusy) return
+    setDeleteBlockId(null)
+  }, [deleteBlockBusy])
+
+  const confirmDeleteBlock = useCallback(async () => {
+    const id = deleteBlockId
+    if (!id || !canEdit) return
+    setDeleteBlockBusy(true)
+    try {
       const { error: delErr } = await deleteJobScheduleBlock(id)
       if (delErr) {
         showToast(delErr, 'error')
         return
       }
-      if (jobId) {
-        await load()
-      } else {
-        await loadHub()
-      }
-    },
-    [canEdit, jobId, load, loadHub, showToast],
-  )
+      setDeleteBlockId(null)
+      if (jobId) await load()
+      else await loadHub()
+    } finally {
+      setDeleteBlockBusy(false)
+    }
+  }, [deleteBlockId, canEdit, jobId, load, loadHub, showToast])
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
@@ -1401,6 +1676,8 @@ export default function ScheduleDispatch() {
         setCardPlacementMode(null)
         setPlusMenuBlockId(null)
         setHubAssignJobPlacement(null)
+        setHubMultiCellAddActive(false)
+        setHubMultiCellAddSelection(new Set())
         stripPlaceJobFromUrl()
       }
       if (t === 'people') {
@@ -1454,6 +1731,15 @@ export default function ScheduleDispatch() {
     }
     setJobPreview({ projectId: pid, dateKey: null })
   }, [scheduleJobProjectId, showToast])
+
+  const removeScheduleBlockConfirmModal = (
+    <RemoveScheduleBlockConfirmModal
+      open={deleteBlockId != null}
+      busy={deleteBlockBusy}
+      onCancel={cancelRequestDeleteBlock}
+      onConfirm={() => void confirmDeleteBlock()}
+    />
+  )
 
   if (authLoading) {
     return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>
@@ -1602,11 +1888,51 @@ export default function ScheduleDispatch() {
             hubAssignJobPlacement={hubAssignJobPlacement}
             onRequestHubAddJob={onRequestHubAddJob}
             onHubAssignJobCellPick={onHubAssignJobCellPick}
-            onDeleteBlock={(id) => void onDeleteBlock(id)}
+            onDeleteBlock={(id) => void requestDeleteBlock(id)}
             onHubEmptyCellClick={canEdit ? onHubEmptyCellOpenChoice : undefined}
             onHubAddJobToScheduleForCell={canEdit ? onHubEmptyCellOpenChoice : undefined}
+            hubMultiCellAddActive={hubMultiCellAddActive}
+            hubMultiCellAddSelectedKeys={hubMultiCellAddSelection}
+            onHubMultiCellAddToggle={canEdit ? onHubMultiCellAddToggle : undefined}
+            onRequestHubMultiCellAddMode={canEdit ? onRequestHubMultiCellAddMode : undefined}
           />
         </DndContext>
+        {hubMultiCellAddActive && !hubAssignJobPickerOpen ? (
+          <div
+            style={{
+              position: 'fixed',
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 1002,
+              display: 'flex',
+              justifyContent: 'center',
+              padding: '0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px))',
+              pointerEvents: 'none',
+            }}
+          >
+            <button
+              type="button"
+              disabled={hubMultiCellAddSelection.size === 0}
+              onClick={onRequestHubMultiCellAddChooseJob}
+              style={{
+                pointerEvents: 'auto',
+                padding: '0.65rem 1.25rem',
+                fontSize: '0.9375rem',
+                fontWeight: 600,
+                border: 'none',
+                borderRadius: 8,
+                background: hubMultiCellAddSelection.size === 0 ? '#9ca3af' : '#2563eb',
+                color: '#fff',
+                cursor: hubMultiCellAddSelection.size === 0 ? 'not-allowed' : 'pointer',
+                boxShadow: '0 4px 14px rgba(0,0,0,0.2)',
+              }}
+            >
+              Choose job for multi-cell add
+              {hubMultiCellAddSelection.size > 0 ? ` (${hubMultiCellAddSelection.size})` : ''}
+            </button>
+          </div>
+        ) : null}
         <AddBlockModal
           open={blockModalState != null}
           mode={blockModalState?.kind === 'edit' ? 'edit' : 'add'}
@@ -1624,6 +1950,7 @@ export default function ScheduleDispatch() {
           onChangeNote={setAddNote}
           onSave={() => void saveBlockModal()}
         />
+        {removeScheduleBlockConfirmModal}
         {hubAssignJobPickerOpen ? (
           <div
             style={{
@@ -1679,30 +2006,28 @@ export default function ScheduleDispatch() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     padding: '0 0.75rem',
-                    border: '1px solid #2563eb',
+                    border: '1px solid',
+                    borderColor: jobFormModal ? '#2563eb' : '#94a3b8',
                     borderRadius: 4,
-                    background: '#fff',
-                    color: '#2563eb',
+                    background: jobFormModal ? '#2563eb' : '#94a3b8',
+                    color: '#fff',
                     cursor: jobFormModal ? 'pointer' : 'not-allowed',
                     fontSize: '0.8125rem',
-                    opacity: jobFormModal ? 1 : 0.5,
                   }}
                 >
                   Create new job
                 </button>
               </div>
-              <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#4b5563' }}>
-                {hubCellAddContext ? (
-                  <>
-                    Pick a job to add a block for <strong>{hubEmptyCellChoiceSubtitle}</strong> (this week&apos;s hub
-                    list).
-                  </>
-                ) : (
-                  <>
-                    Choose a job from this week&apos;s hub list, then click a person and day on the People grid.
-                  </>
-                )}
-              </p>
+              {hubAssignJobPickerIntent === 'multi' ? (
+                <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#4b5563' }}>
+                  Adding the same job to <strong>{hubMultiCellAddSelection.size}</strong> selected person/day cell
+                  {hubMultiCellAddSelection.size === 1 ? '' : 's'} (this week&apos;s hub list).
+                </p>
+              ) : hubCellAddContext ? (
+                <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#4b5563' }}>
+                  Pick a job to add a block for <strong>{hubEmptyCellChoiceSubtitle}</strong> (this week&apos;s hub list).
+                </p>
+              ) : null}
               <input
                 ref={hubAssignJobPickerSearchInputRef}
                 type="search"
@@ -1722,6 +2047,10 @@ export default function ScheduleDispatch() {
                         <button
                           type="button"
                           onClick={() => {
+                            if (hubAssignJobPickerIntent === 'multi') {
+                              void applyHubMultiCellJob(r.id, [...hubMultiCellAddSelection])
+                              return
+                            }
                             if (hubCellAddContext) {
                               openAddBlock({
                                 assigneeUserId: hubCellAddContext.assigneeUserId,
@@ -1731,6 +2060,7 @@ export default function ScheduleDispatch() {
                               return
                             }
                             setHubAssignJobPickerOpen(false)
+                            setHubAssignJobPickerIntent('toolbar')
                             setCardPlacementMode(null)
                             setPlusMenuBlockId(null)
                             setHubAssignJobPlacement({ jobId: r.id })
@@ -1965,7 +2295,7 @@ export default function ScheduleDispatch() {
           onThisWeek={goThisWeek}
           onAddClick={(assigneeUserId, workDate) => openAddBlock({ assigneeUserId, workDate, jobId })}
           onEditBlock={openEdit}
-          onDeleteBlock={(id) => void onDeleteBlock(id)}
+          onDeleteBlock={(id) => void requestDeleteBlock(id)}
           scheduleTodayYmd={scheduleTodayYmd}
           officialJobTeamUserIds={officialJobTeamUserIds ?? undefined}
           canAddUserToJobRoster={canAddToJobRoster}
@@ -1991,6 +2321,7 @@ export default function ScheduleDispatch() {
         onChangeNote={setAddNote}
         onSave={() => void saveBlockModal()}
       />
+      {removeScheduleBlockConfirmModal}
     </div>
     {jobPreview ? (
       <PreviewJobModal

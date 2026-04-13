@@ -12,11 +12,14 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.294 → v2.4"
+version_range: "v2.295 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.295)"
+    line: ~909
+    description: "Schedule Dispatch hub People: ++ multi-cell add mode, FAB choose job, applyHubMultiCellJob bulk insert; parseHubPersonDayKey"
   - name: "Latest Version (v2.294)"
-    line: ~905
+    line: ~925
     description: "Schedule Dispatch hub People day cell: bottom-left triangle + opens Add job to schedule when cell has blocks (onHubAddJobToScheduleForCell)"
   - name: "Latest Version (v2.293)"
     line: ~915
@@ -709,6 +712,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.295 — Schedule Dispatch hub: ++ multi-cell add, FAB, bulk blocks (08:00–12:00)](#latest-updates-v2295)
 **New:** [v2.294 — Schedule Dispatch hub: People day cell triangle + → Add job to schedule (filled cell)](#latest-updates-v2294)
 **New:** [v2.293 — Schedule Dispatch hub: empty People cell → Add job to schedule directly](#latest-updates-v2293)
 **New:** [v2.292 — Clock In: On schedule (Dispatch) job rows; open-session work_date; dedupe + toast](#latest-updates-v2292)
@@ -904,6 +908,19 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.295)
+
+**Date**: 2026-04-12
+
+### Schedule Dispatch **hub** — **People** multi-cell add (**++**)
+
+- **Toolbar** — **[`ScheduleDispatchHub.tsx`](src/components/schedule/ScheduleDispatchHub.tsx)** next to **+**: **++** toggles multi-select mode (amber active styling); clears placement, assign-job arm, single-cell picker context, **`placeJob`** URL.
+- **Grid** — **[`HubPeopleDayCell`](src/components/schedule/ScheduleDispatchHub.tsx)**: click toggles selection (**[`hubPersonDayKey`](src/lib/scheduleDispatchHub.ts)** in a **`Set`**); selected cells amber border/background; **Esc** exits mode. Triangle **+** and empty-cell add are off while mode is on. **[`HubPeopleBlockCard`](src/components/schedule/ScheduleDispatchHub.tsx)** drag disabled during multi mode.
+- **FAB** — **[`ScheduleDispatch.tsx`](src/pages/ScheduleDispatch.tsx)** fixed bottom **Choose job for multi-cell add** (count); opens **Add job to schedule** with **`hubAssignJobPickerIntent`** **`multi`**; row pick runs **`applyHubMultiCellJob`** (default **08:00–12:00**, overlap skip, summary toast). **Create new job** from picker applies the new job to all selected cells via the same bulk path.
+- **Helpers** — **`parseHubPersonDayKey`** in **[`scheduleDispatchHub.ts`](src/lib/scheduleDispatchHub.ts)**. **`closeHubAssignJobPicker`** exits multi mode and clears selection.
+
 ---
 
 ## Latest Updates (v2.294)
