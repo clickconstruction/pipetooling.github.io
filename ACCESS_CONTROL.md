@@ -112,6 +112,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 - Manage **Task Dispatch** group in **Settings → People & accounts**: choose which **assistants** receive dispatch pushes and see the Dispatch inbox on Dashboard
 - Manage **Team Hours Sharing** (Settings → Dashboard & alerts): link leaders to members for My Team hours approval on Dashboard; **only dev** can set per-assignment **Leader dashboard** (full My Team vs clock strip only)
 - **Dashboard → Rejected sessions (all users)**: org-wide rejected clock sessions for review (same delete as People → Hours)
+- **People → Feedback** (`?tab=feedback`, dev-only): full team feedback admin (**`TeamFeedbackDevSettingsBlock`**) — **Enabled** persists to **`team_feedback_settings`**; **Settings** / **Eligibility** modals; raw submissions (detail modal, CSV, dev delete). Same surface as **Settings → People & accounts → Team feedback**
 - Delete reports (Jobs Reports tab); masters, assistants, primaries cannot delete reports
 
 **Use Cases**:

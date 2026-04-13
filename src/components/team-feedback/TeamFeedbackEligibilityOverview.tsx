@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 import {
   computeTeamFeedbackEligibilityDetail,
   fetchAllActiveUsersForTeamFeedbackOverview,
@@ -48,7 +49,7 @@ function badgeStyle(detail: TeamFeedbackEligibilityDetail): CSSProperties {
 
 export default function TeamFeedbackEligibilityOverview() {
   const { showToast } = useToastContext()
-  const [open, setOpen] = useState(false)
+  const [modalOpen, setModalOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
   const [settings, setSettings] = useState<TeamFeedbackSettingsRow | null>(null)
@@ -77,10 +78,17 @@ export default function TeamFeedbackEligibilityOverview() {
   }, [showToast])
 
   useEffect(() => {
-    if (open) void load()
-  }, [open, load])
+    if (modalOpen) void load()
+  }, [modalOpen, load])
 
-  const onToggle = () => setOpen((prev) => !prev)
+  useEffect(() => {
+    if (!modalOpen) return
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setModalOpen(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [modalOpen])
 
   const handleResetEligibility = useCallback(
     async (userId: string) => {
@@ -114,150 +122,227 @@ export default function TeamFeedbackEligibilityOverview() {
 
   const nowMs = Date.now()
 
-  return (
-    <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={open}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.35rem',
-          margin: 0,
-          padding: 0,
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          fontSize: '0.9375rem',
-          fontWeight: 600,
-          color: '#111827',
-        }}
-      >
-        <span style={{ fontSize: '0.75rem' }}>{open ? '▼' : '▶'}</span>
-        Eligibility overview (all users)
-      </button>
-      {open && (
-        <div style={{ marginTop: '0.75rem' }}>
-          {loading && <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>Loading…</p>}
-          {!loading && hasLoadedOnce && (
-            <>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.8125rem' }}>
-                <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.25rem', color: '#374151' }}>
-                  Filter by name or email
-                </span>
-                <input
-                  type="search"
-                  value={filter}
-                  onChange={(e) => setFilter(e.target.value)}
-                  placeholder="Search…"
-                  style={{
-                    width: '100%',
-                    maxWidth: 320,
-                    padding: '0.4rem 0.5rem',
-                    borderRadius: 6,
-                    border: '1px solid #d1d5db',
-                    fontSize: '0.875rem',
-                  }}
-                />
-              </label>
-              <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: '#9ca3af' }}>
-                Cadence: {settings?.cadence_days ?? '—'} day(s). Prompts run on clock-out when eligible.
+  const modalBody = (
+    <>
+      {loading && <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>Loading…</p>}
+      {!loading && hasLoadedOnce && (
+        <>
+          <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.8125rem' }}>
+            <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.25rem', color: '#374151' }}>
+              Filter by name or email
+            </span>
+            <input
+              type="search"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder="Search…"
+              style={{
+                width: '100%',
+                maxWidth: 320,
+                padding: '0.4rem 0.5rem',
+                borderRadius: 6,
+                border: '1px solid #d1d5db',
+                fontSize: '0.875rem',
+              }}
+            />
+          </label>
+          <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: '#9ca3af' }}>
+            Cadence: {settings?.cadence_days ?? '—'} day(s). Prompts run on clock-out when eligible.
+          </p>
+          <div
+            style={{
+              maxHeight: 'min(28rem, 60vh)',
+              overflow: 'auto',
+              border: '1px solid #e5e7eb',
+              borderRadius: 8,
+            }}
+          >
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+              <thead>
+                <tr style={{ background: '#f9fafb', textAlign: 'left' }}>
+                  <th style={{ padding: '0.5rem 0.65rem', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>
+                    User
+                  </th>
+                  <th style={{ padding: '0.5rem 0.65rem', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>
+                    Role
+                  </th>
+                  <th style={{ padding: '0.5rem 0.65rem', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>
+                    Eligibility
+                  </th>
+                  <th style={{ padding: '0.5rem 0.65rem', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredUsers.map((u) => {
+                  const state = stateByUser.get(u.id) ?? null
+                  const detail = computeTeamFeedbackEligibilityDetail(settings, state, nowMs)
+                  const { badge, line } = eligibilitySummary(detail)
+                  const hasStateRow = stateByUser.has(u.id)
+                  const resetBusy = resettingUserId === u.id
+                  return (
+                    <tr key={u.id}>
+                      <td style={{ padding: '0.45rem 0.65rem', borderBottom: '1px solid #f3f4f6', verticalAlign: 'top' }}>
+                        <div style={{ fontWeight: 500, color: '#111827' }}>{u.name || '—'}</div>
+                        <div style={{ fontSize: '0.75rem', color: '#6b7280', wordBreak: 'break-all' }}>
+                          {u.email ?? ''}
+                        </div>
+                      </td>
+                      <td style={{ padding: '0.45rem 0.65rem', borderBottom: '1px solid #f3f4f6', color: '#374151' }}>
+                        {u.role ?? '—'}
+                      </td>
+                      <td style={{ padding: '0.45rem 0.65rem', borderBottom: '1px solid #f3f4f6', verticalAlign: 'top' }}>
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            padding: '0.15rem 0.45rem',
+                            borderRadius: 4,
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            marginBottom: '0.25rem',
+                            ...badgeStyle(detail),
+                          }}
+                        >
+                          {badge}
+                        </span>
+                        <div style={{ color: '#4b5563', lineHeight: 1.35 }}>{line}</div>
+                      </td>
+                      <td style={{ padding: '0.45rem 0.65rem', borderBottom: '1px solid #f3f4f6', verticalAlign: 'top' }}>
+                        <button
+                          type="button"
+                          title="Clear snooze and cadence barriers for this user (dev only)."
+                          disabled={!hasStateRow || resetBusy}
+                          onClick={() => void handleResetEligibility(u.id)}
+                          style={{
+                            padding: '0.25rem 0.5rem',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            borderRadius: 6,
+                            border: '1px solid #d1d5db',
+                            background: !hasStateRow || resetBusy ? '#f3f4f6' : 'white',
+                            color: '#374151',
+                            cursor: !hasStateRow || resetBusy ? 'not-allowed' : 'pointer',
+                          }}
+                        >
+                          {resetBusy ? '…' : 'Reset'}
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+            {filteredUsers.length === 0 && (
+              <p style={{ margin: 0, padding: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
+                No users match this filter.
               </p>
+            )}
+          </div>
+        </>
+      )}
+    </>
+  )
+
+  return (
+    <>
+      <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+        <button
+          type="button"
+          onClick={() => setModalOpen(true)}
+          aria-haspopup="dialog"
+          style={{
+            padding: '0.35rem 0.75rem',
+            borderRadius: 6,
+            border: '1px solid #d1d5db',
+            background: '#fff',
+            fontSize: '0.875rem',
+            fontWeight: 600,
+            color: '#374151',
+            cursor: 'pointer',
+          }}
+        >
+          Eligibility
+        </button>
+      </div>
+      {modalOpen &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            role="presentation"
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 1040,
+              background: 'rgba(15, 23, 42, 0.45)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '1rem',
+              boxSizing: 'border-box',
+            }}
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) setModalOpen(false)
+            }}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="team-feedback-eligibility-modal-title"
+              onMouseDown={(e) => e.stopPropagation()}
+              style={{
+                width: '100%',
+                maxWidth: 720,
+                maxHeight: 'min(90vh, 900px)',
+                display: 'flex',
+                flexDirection: 'column',
+                background: '#fff',
+                borderRadius: 10,
+                border: '1px solid #e5e7eb',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                overflow: 'hidden',
+              }}
+            >
               <div
                 style={{
-                  maxHeight: 'min(28rem, 70vh)',
-                  overflow: 'auto',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: 8,
+                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '0.75rem',
+                  padding: '0.85rem 1rem',
+                  borderBottom: '1px solid #e5e7eb',
+                  background: '#f9fafb',
                 }}
               >
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
-                  <thead>
-                    <tr style={{ background: '#f9fafb', textAlign: 'left' }}>
-                      <th style={{ padding: '0.5rem 0.65rem', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>
-                        User
-                      </th>
-                      <th style={{ padding: '0.5rem 0.65rem', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>
-                        Role
-                      </th>
-                      <th style={{ padding: '0.5rem 0.65rem', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>
-                        Eligibility
-                      </th>
-                      <th style={{ padding: '0.5rem 0.65rem', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredUsers.map((u) => {
-                      const state = stateByUser.get(u.id) ?? null
-                      const detail = computeTeamFeedbackEligibilityDetail(settings, state, nowMs)
-                      const { badge, line } = eligibilitySummary(detail)
-                      const hasStateRow = stateByUser.has(u.id)
-                      const resetBusy = resettingUserId === u.id
-                      return (
-                        <tr key={u.id}>
-                          <td style={{ padding: '0.45rem 0.65rem', borderBottom: '1px solid #f3f4f6', verticalAlign: 'top' }}>
-                            <div style={{ fontWeight: 500, color: '#111827' }}>{u.name || '—'}</div>
-                            <div style={{ fontSize: '0.75rem', color: '#6b7280', wordBreak: 'break-all' }}>
-                              {u.email ?? ''}
-                            </div>
-                          </td>
-                          <td style={{ padding: '0.45rem 0.65rem', borderBottom: '1px solid #f3f4f6', color: '#374151' }}>
-                            {u.role ?? '—'}
-                          </td>
-                          <td style={{ padding: '0.45rem 0.65rem', borderBottom: '1px solid #f3f4f6', verticalAlign: 'top' }}>
-                            <span
-                              style={{
-                                display: 'inline-block',
-                                padding: '0.15rem 0.45rem',
-                                borderRadius: 4,
-                                fontSize: '0.75rem',
-                                fontWeight: 600,
-                                marginBottom: '0.25rem',
-                                ...badgeStyle(detail),
-                              }}
-                            >
-                              {badge}
-                            </span>
-                            <div style={{ color: '#4b5563', lineHeight: 1.35 }}>{line}</div>
-                          </td>
-                          <td style={{ padding: '0.45rem 0.65rem', borderBottom: '1px solid #f3f4f6', verticalAlign: 'top' }}>
-                            <button
-                              type="button"
-                              title="Clear snooze and cadence barriers for this user (dev only)."
-                              disabled={!hasStateRow || resetBusy}
-                              onClick={() => void handleResetEligibility(u.id)}
-                              style={{
-                                padding: '0.25rem 0.5rem',
-                                fontSize: '0.75rem',
-                                fontWeight: 600,
-                                borderRadius: 6,
-                                border: '1px solid #d1d5db',
-                                background: !hasStateRow || resetBusy ? '#f3f4f6' : 'white',
-                                color: '#374151',
-                                cursor: !hasStateRow || resetBusy ? 'not-allowed' : 'pointer',
-                              }}
-                            >
-                              {resetBusy ? '…' : 'Reset'}
-                            </button>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-                {filteredUsers.length === 0 && (
-                  <p style={{ margin: 0, padding: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
-                    No users match this filter.
-                  </p>
-                )}
+                <h2
+                  id="team-feedback-eligibility-modal-title"
+                  style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700, color: '#111827' }}
+                >
+                  Eligibility
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setModalOpen(false)}
+                  style={{
+                    padding: '0.35rem 0.65rem',
+                    borderRadius: 6,
+                    border: '1px solid #d1d5db',
+                    background: '#fff',
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    color: '#374151',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Close
+                </button>
               </div>
-            </>
-          )}
-        </div>
-      )}
-    </div>
+              <div style={{ overflow: 'auto', padding: '1rem', flex: '1 1 auto', minHeight: 0 }}>{modalBody}</div>
+            </div>
+          </div>,
+          document.body
+        )}
+    </>
   )
 }

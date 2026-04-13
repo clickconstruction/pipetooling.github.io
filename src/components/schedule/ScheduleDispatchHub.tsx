@@ -641,6 +641,8 @@ function HubPeopleDayCell({
   hubAssignJobPlacement,
   onHubAssignJobCellPick,
   onDeleteBlock,
+  onEmptyCellClick,
+  onAddJobToScheduleForCell,
 }: {
   personUserId: string
   workDate: string
@@ -663,6 +665,8 @@ function HubPeopleDayCell({
   hubAssignJobPlacement: { jobId: string } | null
   onHubAssignJobCellPick: (assigneeUserId: string, workDate: string) => void
   onDeleteBlock: (id: string) => void
+  onEmptyCellClick?: (personUserId: string, workDate: string) => void
+  onAddJobToScheduleForCell?: (assigneeUserId: string, workDate: string) => void
 }) {
   const droppableId = scheduleDispatchCellDroppableId(workDate, personUserId)
   const { isOver, setNodeRef } = useDroppable({ id: droppableId })
@@ -683,6 +687,14 @@ function HubPeopleDayCell({
   }
 
   const cellClickable = (assignJobPickingActive || placementPickingActive) && !linkedWrongDay
+  const emptyCellClickable =
+    canEdit && cellBlocks.length === 0 && onEmptyCellClick != null && !assignJobPickingActive && !placementPickingActive
+  const showCellAddJobTriangle =
+    canEdit &&
+    onAddJobToScheduleForCell != null &&
+    cellBlocks.length > 0 &&
+    !assignJobPickingActive &&
+    !placementPickingActive
 
   return (
     <td
@@ -692,18 +704,24 @@ function HubPeopleDayCell({
           onHubAssignJobCellPick(personUserId, workDate)
           return
         }
-        if (!placementPickingActive) return
-        if (linkedWrongDay) return
-        onCardPlacementCellPick(personUserId, workDate)
+        if (placementPickingActive) {
+          if (linkedWrongDay) return
+          onCardPlacementCellPick(personUserId, workDate)
+          return
+        }
+        if (emptyCellClickable) {
+          onEmptyCellClick(personUserId, workDate)
+        }
       }}
       style={{
+        position: 'relative',
         padding: '0.35rem',
         border: '1px solid #e5e7eb',
         verticalAlign: 'top',
         maxHeight: 180,
         overflowY: 'auto',
         background: cellBg,
-        cursor: cellClickable ? 'pointer' : undefined,
+        cursor: cellClickable || emptyCellClickable ? 'pointer' : undefined,
       }}
     >
       {cellBlocks.length === 0 ? (
@@ -734,6 +752,53 @@ function HubPeopleDayCell({
           )
         })
       )}
+      {showCellAddJobTriangle ? (
+        <div
+          style={{
+            position: 'absolute',
+            left: 0,
+            bottom: 0,
+            width: 24,
+            height: 24,
+            zIndex: 6,
+            pointerEvents: 'none',
+          }}
+        >
+          <button
+            type="button"
+            aria-label="Add job to schedule for this person and day"
+            title="Add job to schedule for this person and day"
+            onClick={(e) => {
+              e.stopPropagation()
+              onAddJobToScheduleForCell(personUserId, workDate)
+            }}
+            style={{
+              pointerEvents: 'auto',
+              width: '100%',
+              height: '100%',
+              padding: 0,
+              margin: 0,
+              border: 'none',
+              cursor: 'pointer',
+              clipPath: 'polygon(0 100%, 100% 100%, 0 0)',
+              background: '#1d4ed8',
+              color: '#fff',
+              fontSize: '0.7rem',
+              fontWeight: 700,
+              lineHeight: 1,
+              display: 'flex',
+              alignItems: 'flex-end',
+              justifyContent: 'flex-start',
+              paddingLeft: 3,
+              paddingBottom: 2,
+              fontFamily: 'inherit',
+              boxShadow: '0 0 0 1px rgba(255,255,255,0.35)',
+            }}
+          >
+            +
+          </button>
+        </div>
+      ) : null}
     </td>
   )
 }
@@ -774,6 +839,8 @@ type HubPeoplePanelProps = {
   hubAssignJobPlacement: { jobId: string } | null
   onHubAssignJobCellPick: (assigneeUserId: string, workDate: string) => void
   onDeleteBlock: (id: string) => void
+  onEmptyCellClick?: (personUserId: string, workDate: string) => void
+  onAddJobToScheduleForCell?: (assigneeUserId: string, workDate: string) => void
 }
 
 function HubPeoplePanel({
@@ -812,6 +879,8 @@ function HubPeoplePanel({
   hubAssignJobPlacement,
   onHubAssignJobCellPick,
   onDeleteBlock,
+  onEmptyCellClick,
+  onAddJobToScheduleForCell,
 }: HubPeoplePanelProps) {
   const [search, setSearch] = useState('')
   const [onlyWithBlocksThisWeek, setOnlyWithBlocksThisWeek] = useState(false)
@@ -1095,6 +1164,8 @@ function HubPeoplePanel({
                         hubAssignJobPlacement={hubAssignJobPlacement}
                         onHubAssignJobCellPick={onHubAssignJobCellPick}
                         onDeleteBlock={onDeleteBlock}
+                        onEmptyCellClick={onEmptyCellClick}
+                        onAddJobToScheduleForCell={onAddJobToScheduleForCell}
                       />
                     )
                   })}
@@ -1605,9 +1676,10 @@ type Props = {
   hubHourlyWageByUserId: ReadonlyMap<string, number>
   hubAssignJobPlacement: { jobId: string } | null
   onRequestHubAddJob: () => void
-  onRequestHubNewJob: () => void
   onHubAssignJobCellPick: (assigneeUserId: string, workDate: string) => void
   onDeleteBlock: (id: string) => void
+  onHubEmptyCellClick?: (personUserId: string, workDate: string) => void
+  onHubAddJobToScheduleForCell?: (assigneeUserId: string, workDate: string) => void
 }
 
 const HUB_PEOPLE_TOOLBAR_BTN_H = 32
@@ -1678,9 +1750,10 @@ export function ScheduleDispatchHub({
   hubHourlyWageByUserId,
   hubAssignJobPlacement,
   onRequestHubAddJob,
-  onRequestHubNewJob,
   onHubAssignJobCellPick,
   onDeleteBlock,
+  onHubEmptyCellClick,
+  onHubAddJobToScheduleForCell,
 }: Props) {
   return (
     <div style={{ padding: '1rem 1.25rem', maxWidth: '100%' }}>
@@ -1723,9 +1796,6 @@ export function ScheduleDispatchHub({
               onClick={onRequestHubAddJob}
             >
               +
-            </button>
-            <button type="button" style={hubPeopleToolbarBtn} onClick={onRequestHubNewJob}>
-              New job
             </button>
           </div>
         ) : null}
@@ -1825,6 +1895,8 @@ export function ScheduleDispatchHub({
           hubAssignJobPlacement={hubAssignJobPlacement}
           onHubAssignJobCellPick={onHubAssignJobCellPick}
           onDeleteBlock={onDeleteBlock}
+          onEmptyCellClick={onHubEmptyCellClick}
+          onAddJobToScheduleForCell={onHubAddJobToScheduleForCell}
         />
       )}
     </div>
