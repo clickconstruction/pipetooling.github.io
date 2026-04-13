@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import PasswordInput from '../components/PasswordInput'
+import AuthPublicLandingLayout from '../components/AuthPublicLandingLayout'
+
+const SIGNIN_INPUT_CLASS = 'auth-public-landing__signin-input'
+const SIGNIN_PASSWORD_INPUT_CLASS = `${SIGNIN_INPUT_CLASS} auth-public-landing__signin-input--password`
 
 export default function SignIn() {
   const [email, setEmail] = useState('')
@@ -49,66 +53,60 @@ export default function SignIn() {
   }
 
   return (
-    <div style={{ maxWidth: 360, margin: '4rem auto', padding: '0 1rem' }}>
-      {sessionMessage && (
-        <div style={{
-          padding: '1rem',
-          background: '#fef3c7',
-          color: '#78350f',
-          border: '1px solid #fbbf24',
-          borderRadius: '8px',
-          marginBottom: '1.5rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem'
-        }}>
-          <span style={{ fontSize: '1.25rem' }}>⚠️</span>
-          <span>{sessionMessage}</span>
+    <AuthPublicLandingLayout>
+      <div className="auth-public-landing__signin-stack">
+        <div className="auth-public-landing__signin-box">
+          {sessionMessage && (
+            <div className="auth-public-landing__signin-session" role="alert">
+              <span className="auth-public-landing__signin-session-icon" aria-hidden>
+                {'\u26A0\uFE0F'}
+              </span>
+              <span>{sessionMessage}</span>
+            </div>
+          )}
+          <form className="auth-public-landing__signin-form" onSubmit={handleSubmit}>
+            <div className="auth-public-landing__signin-field">
+              <input
+                id="email"
+                type="email"
+                className={SIGNIN_INPUT_CLASS}
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  setError(null)
+                }}
+                placeholder="Email"
+                aria-label="Email"
+                required
+                autoComplete="email"
+                autoFocus
+              />
+            </div>
+            <div className="auth-public-landing__signin-field">
+              <PasswordInput
+                id="password"
+                placeholder="Password"
+                ariaLabel="Password"
+                inputClassName={SIGNIN_PASSWORD_INPUT_CLASS}
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value)
+                  setError(null)
+                }}
+                required
+                autoComplete="current-password"
+              />
+            </div>
+            {error ? <p className="auth-public-landing__signin-error">{error}</p> : null}
+            <button type="submit" className="auth-public-landing__signin-submit" disabled={loading}>
+              {loading ? 'Signing in…' : 'Sign in'}
+            </button>
+            <p className="auth-public-landing__signin-footnote">
+              Issue logging in? Contact the office
+            </p>
+          </form>
         </div>
-      )}
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: '1rem' }}>
-          <label htmlFor="email" style={{ display: 'block', marginBottom: 4 }}>Email</label>
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value)
-              setError(null)
-            }}
-            required
-            autoComplete="email"
-            autoFocus
-            style={{ width: '100%', padding: '0.5rem' }}
-          />
-        </div>
-        <div style={{ marginBottom: '1rem' }}>
-          <PasswordInput
-            id="password"
-            label="Password"
-            value={password}
-            onChange={(e) => {
-              setPassword(e.target.value)
-              setError(null)
-            }}
-            required
-            autoComplete="current-password"
-          />
-        </div>
-        {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
-        <button type="submit" disabled={loading} style={{ width: '100%', padding: '0.5rem 1rem' }}>
-          {loading ? 'Signing in…' : 'Sign in'}
-        </button>
-        <p style={{ marginTop: '1rem', textAlign: 'center', fontSize: '0.875rem', color: '#6b7280' }}>
-          Issue logging in? Contact the office
-        </p>
-      </form>
-      <div style={{ marginTop: '2rem', padding: '1.5rem', backgroundColor: '#f9fafb', borderRadius: '0.5rem', border: '1px solid #e5e7eb' }}>
-        <p style={{ margin: 0, lineHeight: '1.6', color: '#374151', fontSize: '0.9375rem' }}>
-          PipeTooling is a web application designed to decrease the actions and thinking necessary for Plumbers, Electricians, and HVAC techs to engage and win work while reducing the comunication risk of completing that work with Assistance, Teammates, Subs, and Customers. Our mission is to reduce uncertainty so better and faster decisions can be made.
-        </p>
       </div>
-    </div>
+    </AuthPublicLandingLayout>
   )
 }

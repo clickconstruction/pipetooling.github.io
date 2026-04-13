@@ -12015,6 +12015,22 @@ export default function Settings() {
           </div>
         </div>
       )}
+      <div
+        style={{
+          marginTop: '2.5rem',
+          padding: '1.5rem',
+          backgroundColor: '#f9fafb',
+          borderRadius: '0.5rem',
+          border: '1px solid #e5e7eb',
+        }}
+      >
+        <p style={{ margin: 0, lineHeight: '1.6', color: '#374151', fontSize: '0.9375rem' }}>
+          PipeTooling is a web application designed to decrease the actions and thinking necessary for Plumbers,
+          Electricians, and HVAC techs to engage and win work while reducing the comunication risk of completing that
+          work with Assistance, Teammates, Subs, and Customers. Our mission is to reduce uncertainty so better and
+          faster decisions can be made.
+        </p>
+      </div>
     </div>
   )
 }
