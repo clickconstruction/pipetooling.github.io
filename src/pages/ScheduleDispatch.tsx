@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { useAuth } from '../hooks/useAuth'
@@ -35,15 +35,25 @@ import {
 } from '../lib/dispatchAddBlockTime'
 import {
   scheduleBlockToRange,
+  scheduleHasInternalOverlap,
   scheduleOverlapsAny,
   scheduleTimeToMinutesFromMidnight,
   validateJobScheduleBlockMinuteRange,
 } from '../lib/jobScheduleOverlap'
+import {
+  applySegmentMoveToAbsoluteStart,
+  clampNewBlockRangeToGaps,
+  defaultNewBlockRangeInFirstGap,
+  gapsFromOccupied,
+  occupiedUnionFromSegments,
+  virtualDayBlocksForOverlap,
+  type AddBlockTimelineSegment,
+} from '../lib/scheduleDispatchAddBlockTimeline'
 import { scheduleFormatWeekdayLong, scheduleFormatWindow } from '../lib/jobScheduleChicago'
 import { executeScheduleDispatchBlockReassign } from '../lib/scheduleDispatchDragEnd'
 import { insertScheduleDispatchCopiedLeg } from '../lib/scheduleDispatchMirrorInsert'
 import { fetchSalariedUserIdSetFromUserIds } from '../lib/salaryPayConfigGate'
-import { DispatchAddBlockTimeRange } from '../components/schedule/DispatchAddBlockTimeRange'
+import { DispatchAddBlockTimeRange, type DispatchOccupiedBand } from '../components/schedule/DispatchAddBlockTimeRange'
 import DetailJobModal, { type DetailJobScheduleContext } from '../components/jobs/DetailJobModal'
 import { PreviewJobModal } from '../components/calendar/PreviewJobModal'
 import { LinkedScheduleGroupModal } from '../components/schedule/LinkedScheduleGroupModal'
@@ -151,6 +161,7 @@ function AddBlockModal({
   onChangeEnd,
   onChangeNote,
   onSave,
+  addTimeline,
 }: {
   open: boolean
   mode: 'add' | 'edit'
@@ -167,11 +178,67 @@ function AddBlockModal({
   onChangeEnd: (v: string) => void
   onChangeNote: (v: string) => void
   onSave: () => void
+  addTimeline?: {
+    segments: AddBlockTimelineSegment[]
+    draftByBlockId: Record<string, { time_start: string; time_end: string }>
+    setDraftByBlockId: Dispatch<SetStateAction<Record<string, { time_start: string; time_end: string }>>>
+  }
 }) {
   const startMin = useMemo(() => timeInputToMinutesSafe(timeStart), [timeStart])
   const endMin = useMemo(() => timeInputToMinutesSafe(timeEnd), [timeEnd])
   const startSlotIndex = useMemo(() => dispatchMinutesToSlotIndex(startMin), [startMin])
   const endSlotIndex = useMemo(() => dispatchMinutesToSlotIndex(endMin), [endMin])
+
+  const occupiedBands = useMemo((): DispatchOccupiedBand[] | undefined => {
+    if (mode !== 'add' || !addTimeline?.segments.length) return undefined
+    return addTimeline.segments.map((s) => {
+      const d = addTimeline.draftByBlockId[s.blockId]
+      const ts = (d?.time_start ?? s.time_start).slice(0, 5)
+      const te = (d?.time_end ?? s.time_end).slice(0, 5)
+      const sm = timeInputToMinutesSafe(ts)
+      const em = timeInputToMinutesSafe(te)
+      return {
+        blockId: s.blockId,
+        label: s.label,
+        startSlotIndex: dispatchMinutesToSlotIndex(sm),
+        endSlotIndex: dispatchMinutesToSlotIndex(em),
+      }
+    })
+  }, [mode, addTimeline?.segments, addTimeline?.draftByBlockId])
+
+  const onOccupiedAbsoluteStart = useCallback(
+    (blockId: string, desiredStartMin: number) => {
+      if (!addTimeline || mode !== 'add') return
+      addTimeline.setDraftByBlockId((prev) => {
+        const next = applySegmentMoveToAbsoluteStart({
+          segments: addTimeline.segments,
+          draftByBlockId: prev,
+          seedBlockId: blockId,
+          desiredStartMin,
+        })
+        return next ?? prev
+      })
+    },
+    [addTimeline, mode],
+  )
+
+  const addModalTimeRef = useRef({ start: timeStart, end: timeEnd })
+  addModalTimeRef.current = { start: timeStart, end: timeEnd }
+
+  useEffect(() => {
+    if (mode !== 'add' || !addTimeline) return
+    const gaps = gapsFromOccupied(occupiedUnionFromSegments(addTimeline.segments, addTimeline.draftByBlockId))
+    const { start: ts, end: te } = addModalTimeRef.current
+    const sm = timeInputToMinutesSafe(ts)
+    const em = timeInputToMinutesSafe(te)
+    const c = clampNewBlockRangeToGaps({ desiredStartMin: sm, desiredEndMin: em, gaps })
+    const ns = dispatchMinutesToHHmm(c.startMin)
+    const ne = dispatchMinutesToHHmm(c.endMin)
+    if (ns !== ts || ne !== te) {
+      onChangeStart(ns)
+      onChangeEnd(ne)
+    }
+  }, [mode, addTimeline?.segments, addTimeline?.draftByBlockId, onChangeStart, onChangeEnd])
 
   const { durationDisplay, durationAriaLabel } = useMemo(() => {
     const dm = endMin > startMin ? endMin - startMin : Number.NaN
@@ -185,22 +252,38 @@ function AddBlockModal({
     (slotIndex: number) => {
       const sMin = dispatchSlotIndexToMinutes(slotIndex)
       const eMinCur = timeInputToMinutesSafe(timeEnd)
-      const { s, e } = clampDispatchStartEndForMinDuration(sMin, eMinCur)
+      let { s, e } = clampDispatchStartEndForMinDuration(sMin, eMinCur)
+      if (mode === 'add' && addTimeline) {
+        const gaps = gapsFromOccupied(
+          occupiedUnionFromSegments(addTimeline.segments, addTimeline.draftByBlockId),
+        )
+        const c = clampNewBlockRangeToGaps({ desiredStartMin: s, desiredEndMin: e, gaps })
+        s = c.startMin
+        e = c.endMin
+      }
       onChangeStart(dispatchMinutesToHHmm(s))
       onChangeEnd(dispatchMinutesToHHmm(e))
     },
-    [timeEnd, onChangeStart, onChangeEnd],
+    [timeEnd, onChangeStart, onChangeEnd, mode, addTimeline],
   )
 
   const onEndSliderChange = useCallback(
     (slotIndex: number) => {
       const eMin = dispatchSlotIndexToMinutes(slotIndex)
       const sMinCur = timeInputToMinutesSafe(timeStart)
-      const { s, e } = clampDispatchEndStartForMinDuration(eMin, sMinCur)
+      let { s, e } = clampDispatchEndStartForMinDuration(eMin, sMinCur)
+      if (mode === 'add' && addTimeline) {
+        const gaps = gapsFromOccupied(
+          occupiedUnionFromSegments(addTimeline.segments, addTimeline.draftByBlockId),
+        )
+        const c = clampNewBlockRangeToGaps({ desiredStartMin: s, desiredEndMin: e, gaps })
+        s = c.startMin
+        e = c.endMin
+      }
       onChangeStart(dispatchMinutesToHHmm(s))
       onChangeEnd(dispatchMinutesToHHmm(e))
     },
-    [timeStart, onChangeStart, onChangeEnd],
+    [timeStart, onChangeStart, onChangeEnd, mode, addTimeline],
   )
 
   if (!open) return null
@@ -276,6 +359,8 @@ function AddBlockModal({
             }
             disabled={saving}
             groupAriaLabel="Scheduled block time, 30-minute steps from 4:00 AM to 8:00 PM Central"
+            occupiedBands={occupiedBands}
+            onOccupiedAbsoluteStart={mode === 'add' && addTimeline ? onOccupiedAbsoluteStart : undefined}
           />
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.75rem', alignItems: 'flex-end' }}>
@@ -1057,6 +1142,10 @@ export default function ScheduleDispatch() {
   const [addNote, setAddNote] = useState('')
   const [addSaving, setAddSaving] = useState(false)
   const [addError, setAddError] = useState<string | null>(null)
+  const [addBlockTimelineSegments, setAddBlockTimelineSegments] = useState<AddBlockTimelineSegment[]>([])
+  const [addBlockDraftByBlockId, setAddBlockDraftByBlockId] = useState<
+    Record<string, { time_start: string; time_end: string }>
+  >({})
   const [cardPlacementMode, setCardPlacementMode] = useState<ScheduleDispatchCardPlacementMode | null>(null)
   const [plusMenuBlockId, setPlusMenuBlockId] = useState<string | null>(null)
   const [hubAssignJobPlacement, setHubAssignJobPlacement] = useState<HubAssignJobPlacementState | null>(null)
@@ -1152,12 +1241,39 @@ export default function ScheduleDispatch() {
       setHubMultiCellAddActive(false)
       setHubMultiCellAddSelection(new Set())
       setBlockModalState({ kind: 'add', assigneeUserId: args.assigneeUserId, workDate: args.workDate, jobId: args.jobId })
-      setAddTimeStart('08:00')
-      setAddTimeEnd('12:00')
+      const rows = jobId
+        ? blocks.filter((b) => b.assignee_user_id === args.assigneeUserId && b.work_date === args.workDate)
+        : (hubPersonDayBlocks.get(hubPersonDayKey(args.assigneeUserId, args.workDate)) ?? [])
+      const labelFor = (jid: string) =>
+        jobId ? jobTitle : hubJobTitleById.get(jid) ?? formatScheduleDispatchHubJobTitle(null, null)
+      const segments: AddBlockTimelineSegment[] = [...rows]
+        .map((b) => ({
+          blockId: b.id,
+          jobId: b.job_id,
+          label: labelFor(b.job_id),
+          time_start: b.time_start,
+          time_end: b.time_end,
+          shared_block_group_id: b.shared_block_group_id,
+        }))
+        .sort(
+          (a, b) =>
+            scheduleTimeToMinutesFromMidnight(timeInputToPg(a.time_start.slice(0, 5))) -
+            scheduleTimeToMinutesFromMidnight(timeInputToPg(b.time_start.slice(0, 5))),
+        )
+      setAddBlockTimelineSegments(segments)
+      setAddBlockDraftByBlockId({})
+      const def = defaultNewBlockRangeInFirstGap({ segments, draftByBlockId: {} })
+      if (def) {
+        setAddTimeStart(dispatchMinutesToHHmm(def.startMin))
+        setAddTimeEnd(dispatchMinutesToHHmm(def.endMin))
+      } else {
+        setAddTimeStart('08:00')
+        setAddTimeEnd('12:00')
+      }
       setAddNote('')
       setAddError(null)
     },
-    [],
+    [blocks, hubPersonDayBlocks, jobId, jobTitle, hubJobTitleById],
   )
 
   const openEdit = useCallback(
@@ -1170,6 +1286,8 @@ export default function ScheduleDispatch() {
       setAddTimeEnd(block.time_end.slice(0, 5))
       setAddNote(block.note ?? '')
       setAddError(null)
+      setAddBlockTimelineSegments([])
+      setAddBlockDraftByBlockId({})
     },
     [canEdit, jobId],
   )
@@ -1177,6 +1295,8 @@ export default function ScheduleDispatch() {
   const closeAdd = useCallback(() => {
     setBlockModalState(null)
     setAddError(null)
+    setAddBlockTimelineSegments([])
+    setAddBlockDraftByBlockId({})
     stripPlaceJobFromUrl()
   }, [stripPlaceJobFromUrl])
 
@@ -1445,6 +1565,15 @@ export default function ScheduleDispatch() {
     return b?.work_date ?? ''
   }, [blockModalState, blockById])
 
+  const addBlockModalTimeline = useMemo(() => {
+    if (blockModalState?.kind !== 'add') return undefined
+    return {
+      segments: addBlockTimelineSegments,
+      draftByBlockId: addBlockDraftByBlockId,
+      setDraftByBlockId: setAddBlockDraftByBlockId,
+    }
+  }, [blockModalState, addBlockTimelineSegments, addBlockDraftByBlockId])
+
   const saveBlockModal = useCallback(async () => {
     if (!blockModalState) return
     if (blockModalState.kind === 'edit' && !jobId) return
@@ -1469,10 +1598,53 @@ export default function ScheduleDispatch() {
         setAddError(dayErr)
         return
       }
-      if (scheduleOverlapsAny(candidate, dayBlocks, undefined)) {
+      const virtualBlocks = virtualDayBlocksForOverlap(dayBlocks, addBlockDraftByBlockId)
+      if (scheduleHasInternalOverlap(virtualBlocks)) {
+        setAddError('Draft block moves overlap each other or leave invalid gaps for this person.')
+        return
+      }
+      if (scheduleOverlapsAny(candidate, virtualBlocks, undefined)) {
         setAddError('That time overlaps another block for this person on this day.')
         return
       }
+
+      const processedGroup = new Set<string>()
+      const groupPatches: Array<{
+        jobId: string
+        groupId: string
+        time_start: string
+        time_end: string
+        note: string | null
+      }> = []
+      const soloPatches: Array<{ id: string; time_start: string; time_end: string }> = []
+
+      for (const row of dayBlocks) {
+        const d = addBlockDraftByBlockId[row.id]
+        if (!d) continue
+        const dts = timeInputToPg(d.time_start)
+        const dte = timeInputToPg(d.time_end)
+        if (dts === row.time_start && dte === row.time_end) continue
+        const gid = row.shared_block_group_id
+        if (gid) {
+          if (processedGroup.has(gid)) continue
+          processedGroup.add(gid)
+          const legWithDraft =
+            dayBlocks.find((b) => b.shared_block_group_id === gid && addBlockDraftByBlockId[b.id]) ?? row
+          const d0 = addBlockDraftByBlockId[legWithDraft.id]
+          if (!d0) continue
+          const noteLeg = dayBlocks.find((b) => b.shared_block_group_id === gid) ?? row
+          groupPatches.push({
+            jobId: legWithDraft.job_id,
+            groupId: gid,
+            time_start: timeInputToPg(d0.time_start),
+            time_end: timeInputToPg(d0.time_end),
+            note: noteLeg.note ?? null,
+          })
+        } else {
+          soloPatches.push({ id: row.id, time_start: dts, time_end: dte })
+        }
+      }
+
       setAddSaving(true)
       setAddError(null)
       const createdBy = authUser?.id
@@ -1480,6 +1652,31 @@ export default function ScheduleDispatch() {
         setAddSaving(false)
         return
       }
+
+      for (const p of groupPatches) {
+        const { error: upErr } = await updateJobScheduleBlockGroup(p.jobId, p.groupId, {
+          time_start: p.time_start,
+          time_end: p.time_end,
+          note: p.note,
+        })
+        if (upErr) {
+          setAddSaving(false)
+          setAddError(upErr)
+          return
+        }
+      }
+      for (const p of soloPatches) {
+        const { error: upErr } = await updateJobScheduleBlock(p.id, {
+          time_start: p.time_start,
+          time_end: p.time_end,
+        })
+        if (upErr) {
+          setAddSaving(false)
+          setAddError(upErr)
+          return
+        }
+      }
+
       const { error: insErr } = await insertJobScheduleBlock({
         job_id: targetJobId,
         assignee_user_id: assigneeUserId,
@@ -1576,6 +1773,7 @@ export default function ScheduleDispatch() {
     addTimeStart,
     addTimeEnd,
     addNote,
+    addBlockDraftByBlockId,
     blockById,
     blocks,
     closeAdd,
@@ -1949,6 +2147,7 @@ export default function ScheduleDispatch() {
           onChangeEnd={setAddTimeEnd}
           onChangeNote={setAddNote}
           onSave={() => void saveBlockModal()}
+          addTimeline={addBlockModalTimeline}
         />
         {removeScheduleBlockConfirmModal}
         {hubAssignJobPickerOpen ? (
@@ -2320,6 +2519,7 @@ export default function ScheduleDispatch() {
         onChangeEnd={setAddTimeEnd}
         onChangeNote={setAddNote}
         onSave={() => void saveBlockModal()}
+        addTimeline={addBlockModalTimeline}
       />
       {removeScheduleBlockConfirmModal}
     </div>
