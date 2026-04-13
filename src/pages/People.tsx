@@ -87,7 +87,13 @@ import PeopleAppActivityPanel from '../components/people/PeopleAppActivityPanel'
 import TeamFeedbackDevSettingsBlock from '../components/team-feedback/TeamFeedbackDevSettingsBlock'
 import { PeoplePayConfigModal } from '../components/people/PeoplePayConfigModal'
 import { SalariedWorkdaysBulkModal } from '../components/people/SalariedWorkdaysBulkModal'
-import { buildPeopleHoursManualDraftSession } from '../lib/peopleHoursManualDraftSession'
+import { buildPeopleHoursManualDraftSession, isDraftPeopleHoursSessionId } from '../lib/peopleHoursManualDraftSession'
+import {
+  buildJobBidLabelMapsFromClockRows,
+  collectPeopleHoursDaySessionsForScale,
+  scaleClosedSessionsToTargetHours,
+  toDayEditorSession,
+} from '../lib/peopleHoursProportionalScale'
 import type { DayEditorSession } from '../lib/myTimeDayTimeline'
 import { PayStubDeleteIcon } from '../components/pay/PayStubDeleteIcon'
 import { PayStubPaidNoteIcon } from '../components/pay/PayStubPaidNoteIcon'
@@ -422,6 +428,8 @@ export default function People() {
     dateStr: string
     draftSessions: DayEditorSession[]
     personName: string
+    jobLabels?: Record<string, string>
+    bidLabels?: Record<string, string>
   } | null>(null)
   const [hoursDaysCorrect, setHoursDaysCorrect] = useState<Set<string>>(new Set())
   const [matrixStartDate, setMatrixStartDate] = useState(() => {
@@ -4933,7 +4941,7 @@ export default function People() {
     if (error) setError(error.message)
   }
 
-  /** Hours matrix blur: open My Time with draft session (no choice modal). No matching user → grid-only save. */
+  /** Hours matrix blur: open My Time — proportional scale of existing closed sessions, else single draft. Open session → fetch modal + toast. */
   function openManualHoursDraftFromBlur(personName: string, workDate: string, hoursDecimal: number) {
     const u = users.find((x) => (x.name ?? '').trim() === personName.trim())
     if (!u?.id) {
@@ -4945,15 +4953,50 @@ export default function People() {
       setEditingHoursCell(null)
       return
     }
-    try {
-      const draft = buildPeopleHoursManualDraftSession(workDate, hoursDecimal)
-      setHoursManualDraftEditor({
+    const dayRows = collectPeopleHoursDaySessionsForScale(
+      pendingClockSessions,
+      approvedClockSessions,
+      u.id,
+      workDate,
+    )
+    if (dayRows.some((r) => !r.clocked_out_at)) {
+      showToast(
+        'Close open clock sessions before scaling hours from the grid. Edit time is open with live sessions.',
+        'info',
+      )
+      setHoursMyTimeEditor({
         subjectUserId: u.id,
         subjectDisplayName: u.name?.trim() ?? personName,
         dateStr: workDate,
-        draftSessions: [draft],
-        personName,
       })
+      setEditingHoursCell(null)
+      return
+    }
+    try {
+      const mapped = dayRows.map(toDayEditorSession)
+      mapped.sort((a, b) => new Date(a.clocked_in_at).getTime() - new Date(b.clocked_in_at).getTime())
+      const scaled = scaleClosedSessionsToTargetHours(mapped, hoursDecimal)
+      if (scaled != null && scaled.length > 0) {
+        const { jobLabels, bidLabels } = buildJobBidLabelMapsFromClockRows(dayRows)
+        setHoursManualDraftEditor({
+          subjectUserId: u.id,
+          subjectDisplayName: u.name?.trim() ?? personName,
+          dateStr: workDate,
+          draftSessions: scaled,
+          personName,
+          jobLabels,
+          bidLabels,
+        })
+      } else {
+        const draft = buildPeopleHoursManualDraftSession(workDate, hoursDecimal)
+        setHoursManualDraftEditor({
+          subjectUserId: u.id,
+          subjectDisplayName: u.name?.trim() ?? personName,
+          dateStr: workDate,
+          draftSessions: [draft],
+          personName,
+        })
+      }
       setEditingHoursCell(null)
     } catch {
       showToast('Could not build draft session for that date.', 'error')
@@ -12279,16 +12322,60 @@ export default function People() {
           sessions={hoursManualDraftEditor.draftSessions}
           subjectUserId={hoursManualDraftEditor.subjectUserId}
           subjectDisplayName={hoursManualDraftEditor.subjectDisplayName}
-          jobLabels={{}}
-          bidLabels={{}}
+          jobLabels={hoursManualDraftEditor.jobLabels ?? {}}
+          bidLabels={hoursManualDraftEditor.bidLabels ?? {}}
+          peopleHoursGridProportionalSeed={hoursManualDraftEditor.draftSessions.some(
+            (s) => !isDraftPeopleHoursSessionId(s.id),
+          )}
           allowNcnsFromMyTime={false}
           onClose={() => setHoursManualDraftEditor(null)}
           onSaved={() => {
             setHoursManualDraftEditor((prev) => {
               if (prev) {
+                const snap = {
+                  personName: prev.personName,
+                  dateStr: prev.dateStr,
+                  subjectUserId: prev.subjectUserId,
+                  draftSessions: prev.draftSessions,
+                }
                 void (async () => {
-                  // people_hours must not retain a parallel manual total: approve_clock_sessions adds session hours onto existing people_hours.
-                  await saveHours(prev.personName, prev.dateStr, 0)
+                  // Draft-only path: clear manual row so max(0, pending clock) shows new session until approve.
+                  // Real sessions (e.g. proportional scale): sync people_hours to sum of approved closed sessions only;
+                  // pending stays out of people_hours — getHoursGridDisplayHours uses max(ph, pending sum).
+                  const hadOnlyDraft = snap.draftSessions.every((s) => isDraftPeopleHoursSessionId(s.id))
+                  if (hadOnlyDraft) {
+                    await saveHours(snap.personName, snap.dateStr, 0)
+                  } else {
+                    try {
+                      const data = await withSupabaseRetry(
+                        async () =>
+                          supabase
+                            .from('clock_sessions')
+                            .select('clocked_in_at, clocked_out_at, approved_at')
+                            .eq('user_id', snap.subjectUserId)
+                            .eq('work_date', snap.dateStr)
+                            .is('rejected_at', null)
+                            .is('revoked_at', null),
+                        'people hours sync after My Time manual blur save',
+                      )
+                      let approvedSum = 0
+                      for (const row of data ?? []) {
+                        const r = row as {
+                          clocked_in_at: string
+                          clocked_out_at: string | null
+                          approved_at: string | null
+                        }
+                        if (!r.clocked_out_at || !r.approved_at) continue
+                        const h =
+                          (new Date(r.clocked_out_at).getTime() - new Date(r.clocked_in_at).getTime()) /
+                          3_600_000
+                        approvedSum += Math.max(0, h)
+                      }
+                      await saveHours(snap.personName, snap.dateStr, approvedSum)
+                    } catch {
+                      await saveHours(snap.personName, snap.dateStr, 0)
+                    }
+                  }
                   loadAllClockSessionsRef.current?.()
                   loadPeopleHoursRef.current?.()
                 })()
@@ -12302,6 +12389,17 @@ export default function People() {
           onLinkedSessionsUpdated={() => {
             loadAllClockSessionsRef.current?.()
             loadPeopleHoursRef.current?.()
+          }}
+          onPatchSeededSessionsJobBid={({ sessionId, job_ledger_id, bid_id }) => {
+            setHoursManualDraftEditor((prev) => {
+              if (!prev) return prev
+              return {
+                ...prev,
+                draftSessions: prev.draftSessions.map((s) =>
+                  s.id === sessionId ? { ...s, job_ledger_id, bid_id } : s,
+                ),
+              }
+            })
           }}
         />
       )}

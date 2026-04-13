@@ -2,7 +2,9 @@ import { Fragment, useEffect, useMemo, useState, type CSSProperties } from 'reac
 import {
   AssignSessionJobPopover,
   type AssignSessionJobPopoverSession,
+  type AssignSessionJobSavedPatch,
 } from '../clock-sessions/AssignSessionJobPopover'
+import type { UnifiedSearchResult } from '../../utils/unifiedJobBidSearch'
 import {
   clockSessionRowForSegmentAssign,
   mergeAllocChoiceRequired,
@@ -92,7 +94,7 @@ export type MyTimeDayClusterFormProps = {
   patchClusterAction: (action: SplitAction) => void
   onCommitInnerBoundary: (boundaryIndex: number, ms: number) => void
   setAssignBulk: (v: { sessionIds: string[]; label: string } | null) => void
-  onAssignJobSaved: () => void
+  onAssignJobSaved: (patch?: AssignSessionJobSavedPatch) => void
   /** My Time: persist virtual splits before assign so each segment has its own clock_sessions row. */
   resolveAssignSession?: (segIdx: number) => Promise<AssignSessionJobPopoverSession | null>
   /** When set, distinct job/bid on merge opens parent modal instead of confirm-only. */
@@ -108,6 +110,10 @@ export type MyTimeDayClusterFormProps = {
   /** Dispatch schedule quick-picks in Assign popover (optional). */
   dispatchScheduleAssigneeUserId?: string
   dispatchScheduleWorkDateYmd?: string
+  draftLocalJobBidAssign?: (
+    target: AssignSessionJobPopoverSession,
+    selection: UnifiedSearchResult | null,
+  ) => void
   /** Double gray rule under this card when the next timeline cluster overlaps in time (Form only). */
   overlapDividerBelow?: boolean
 }
@@ -138,6 +144,7 @@ export function MyTimeDayClusterForm({
   readOnlyView = false,
   dispatchScheduleAssigneeUserId,
   dispatchScheduleWorkDateYmd,
+  draftLocalJobBidAssign,
   overlapDividerBelow = false,
 }: MyTimeDayClusterFormProps) {
   const timeOnlyMode = denverSameCalendarDay(t0, t1)
@@ -409,6 +416,7 @@ export function MyTimeDayClusterForm({
                             onSaved={onAssignJobSaved}
                             dispatchScheduleAssigneeUserId={dispatchScheduleAssigneeUserId}
                             dispatchScheduleWorkDateYmd={dispatchScheduleWorkDateYmd}
+                            draftLocalJobBidAssign={draftLocalJobBidAssign}
                           />
                           </div>
                         ) : null
@@ -560,6 +568,7 @@ export function MyTimeDayClusterForm({
                               onSaved={onAssignJobSaved}
                               dispatchScheduleAssigneeUserId={dispatchScheduleAssigneeUserId}
                               dispatchScheduleWorkDateYmd={dispatchScheduleWorkDateYmd}
+                              draftLocalJobBidAssign={draftLocalJobBidAssign}
                             />
                           </span>
                         </div>

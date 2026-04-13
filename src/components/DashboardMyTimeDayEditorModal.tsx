@@ -49,6 +49,10 @@ import {
   type SplitAction,
   type SplitEditorState,
 } from '../lib/myTimeDayTimeline'
+import {
+  type AssignSessionJobPopoverSession,
+  type AssignSessionJobSavedPatch,
+} from './clock-sessions/AssignSessionJobPopover'
 import { MyTimeDayClusterForm } from './my-time-day-editor/MyTimeDayClusterForm'
 import { MyTimeDayClusterVisual } from './my-time-day-editor/MyTimeDayClusterVisual'
 import { useMyTimeCompactMergeMedia } from './my-time-day-editor/useMyTimeCompactMergeMedia'
@@ -68,6 +72,7 @@ import {
   getDefaultWeekRange,
   getThisAndLastWeekRange,
 } from '../utils/dateUtils'
+import type { UnifiedSearchResult } from '../utils/unifiedJobBidSearch'
 import { isDraftPeopleHoursSessionId } from '../lib/peopleHoursManualDraftSession'
 
 export type { DayEditorSession }
@@ -182,6 +187,34 @@ function listDirtyClusterIds(
   return dirty
 }
 
+function sessionJobBidKey(s: Pick<DayEditorSession, 'job_ledger_id' | 'bid_id'>): string {
+  return `${s.job_ledger_id ?? ''}\0${s.bid_id ?? ''}`
+}
+
+/** Clusters whose session job/bid no longer match values when the editor was seeded (split snapshot ignores job/bid). */
+function listClustersDirtyFromJobBidChange(
+  clusters: DayEditorSession[][],
+  initialBySessionId: Record<string, string>,
+  currentBySessionId: Map<string, string>,
+): string[] {
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const c of clusters) {
+    const cid = sessionClusterId(c)
+    if (seen.has(cid)) continue
+    for (const s of c) {
+      const init = initialBySessionId[s.id] ?? ''
+      const cur = currentBySessionId.get(s.id) ?? sessionJobBidKey(s)
+      if (init !== cur) {
+        seen.add(cid)
+        out.push(cid)
+        break
+      }
+    }
+  }
+  return out
+}
+
 type MergeJobChoiceState = {
   clusterId: string
   direction: 'prev' | 'next'
@@ -224,6 +257,20 @@ type Props = {
   onMarkNotComingIn?: () => void | Promise<void>
   /** Dashboard clock preview: allow splits/assign/notes; disable Adjust times, force clock-out, reject, NCNS. */
   clockTimesReadOnly?: boolean
+  /**
+   * People Hours grid: proportional scale pre-fills `sessions` so initial snapshot matches the target times.
+   * Without this, Close sees no dirty clusters and skips persist. When true, empty dirty still persists all clusters.
+   */
+  peopleHoursGridProportionalSeed?: boolean
+  /**
+   * When the modal is driven by parent-supplied sessions (e.g. People Hours draft / proportional seed),
+   * draft rows are not in `clock_sessions` yet — assign popover calls this instead of updating the DB.
+   */
+  onPatchSeededSessionsJobBid?: (args: {
+    sessionId: string
+    job_ledger_id: string | null
+    bid_id: string | null
+  }) => void
 }
 
 export function DashboardMyTimeDayEditorModal({
@@ -241,6 +288,8 @@ export function DashboardMyTimeDayEditorModal({
   showMarkNotComingIn = false,
   onMarkNotComingIn,
   clockTimesReadOnly = false,
+  peopleHoursGridProportionalSeed = false,
+  onPatchSeededSessionsJobBid,
 }: Props) {
   const { showToast } = useToastContext()
   void _editableRangeProp
@@ -301,13 +350,30 @@ export function DashboardMyTimeDayEditorModal({
   const [ncnsBusy, setNcnsBusy] = useState(false)
   const [ncnsPrecloseOpenSessions, setNcnsPrecloseOpenSessions] = useState<DayEditorSession[] | null>(null)
 
-  const onAssignJobSaved = useCallback(() => {
-    setSessionsFetchNonce((n) => n + 1)
-    onLinkedSessionsUpdated?.()
-    if (sessionsProp.length > 0) {
-      onSaved()
-    }
-  }, [sessionsProp.length, onSaved, onLinkedSessionsUpdated])
+  const draftLocalJobBidAssign = useCallback(
+    (target: AssignSessionJobPopoverSession, selection: UnifiedSearchResult | null) => {
+      onPatchSeededSessionsJobBid?.({
+        sessionId: target.id,
+        job_ledger_id: selection?.source === 'job' ? selection.id : null,
+        bid_id: selection?.source === 'bid' ? selection.id : null,
+      })
+    },
+    [onPatchSeededSessionsJobBid],
+  )
+
+  const handleAssignJobSaved = useCallback(
+    (patch?: AssignSessionJobSavedPatch) => {
+      if (patch?.sessionId && isDraftPeopleHoursSessionId(patch.sessionId)) {
+        return
+      }
+      setSessionsFetchNonce((n) => n + 1)
+      onLinkedSessionsUpdated?.()
+      if (sessionsProp.length > 0) {
+        onSaved()
+      }
+    },
+    [sessionsProp.length, onSaved, onLinkedSessionsUpdated],
+  )
 
   const onForceClockOutSaved = useCallback(() => {
     setSessionsFetchNonce((n) => n + 1)
@@ -333,10 +399,20 @@ export function DashboardMyTimeDayEditorModal({
    * Per-segment reject updates one `clock_sessions` row (same target as adjust times / assign).
    * Virtual-split overlap edge case: only that row is rejected; user may need another reject.
    */
-  const handleRejectSession = useCallback((session: DayEditorSession) => {
-    if (!session.clocked_out_at) return
-    setRejectSessionConfirm(session)
-  }, [])
+  const handleRejectSession = useCallback(
+    (session: DayEditorSession) => {
+      if (!session.clocked_out_at) return
+      if (isDraftPeopleHoursSessionId(session.id)) {
+        showToast(
+          'This block is not in the database yet (draft from People Hours). Close the editor to discard it, or save with Close.',
+          'info',
+        )
+        return
+      }
+      setRejectSessionConfirm(session)
+    },
+    [showToast],
+  )
 
   const closeRejectSessionModal = useCallback(() => {
     if (rejectSessionBusyId != null) return
@@ -346,6 +422,10 @@ export function DashboardMyTimeDayEditorModal({
   const confirmRejectSession = useCallback(
     async (session: DayEditorSession) => {
       if (!session.clocked_out_at) return
+      if (isDraftPeopleHoursSessionId(session.id)) {
+        setRejectSessionConfirm(null)
+        return
+      }
       setRejectSessionBusyId(session.id)
       setError(null)
       try {
@@ -705,11 +785,14 @@ export function DashboardMyTimeDayEditorModal({
 
   const [splitByCluster, setSplitByCluster] = useState<Record<string, SplitEditorState>>({})
   const [initialSnapshot, setInitialSnapshot] = useState<Record<string, string>>({})
+  /** Reset when `sessionsKey` changes; used so job-only edits still run persist on Close. */
+  const initialJobBidBySessionIdRef = useRef<Record<string, string>>({})
 
   useEffect(() => {
     const now = Date.now()
     const next: Record<string, SplitEditorState> = {}
     const snap: Record<string, string> = {}
+    const jobBid: Record<string, string> = {}
     const clusters = expandClustersSplitPairwiseOverlaps(
       groupTimeContiguousSessionClusters(sortedSessions),
       now,
@@ -720,6 +803,10 @@ export function DashboardMyTimeDayEditorModal({
       const last = c[c.length - 1]!
       snap[cid] = comparableSplit(last, next[cid]!)
     }
+    for (const s of sortedSessions) {
+      jobBid[s.id] = sessionJobBidKey(s)
+    }
+    initialJobBidBySessionIdRef.current = jobBid
     setSplitByCluster(next)
     setInitialSnapshot(snap)
     // Only re-seed when ids/times/approval/work_date change (`sessionsKey`). Job/bid refresh uses a
@@ -1507,13 +1594,30 @@ export function DashboardMyTimeDayEditorModal({
                 throw new DatabaseError(
                   'To change clock times for one block, add a split first (tap the gray strip) or edit in People → Hours.'
                 )
+              } else if (peopleHoursGridProportionalSeed) {
+                const p0 = payloads[0]!
+                await withSupabaseRetry(
+                  async () =>
+                    supabase
+                      .from('clock_sessions')
+                      .update({
+                        clocked_in_at: p0.clocked_in_at,
+                        clocked_out_at: p0.clocked_out_at,
+                        work_date: row.work_date,
+                        notes: p0.notes,
+                        job_ledger_id: row.job_ledger_id,
+                        bid_id: row.bid_id,
+                      })
+                      .eq('id', row.id),
+                  'update clock session times from people hours proportional seed',
+                )
               } else {
                 await withSupabaseRetry(
                   async () => supabase.from('clock_sessions').update({ notes: payloads[0]!.notes }).eq('id', row.id),
                   'update clock session notes'
                 )
               }
-            } else if (boundariesMatchOriginalRows(c, split, nowTick)) {
+            } else if (boundariesMatchOriginalRows(c, split, nowTick) && !peopleHoursGridProportionalSeed) {
               for (const row of c) {
                 await withSupabaseRetry(
                   async () =>
@@ -1594,7 +1698,15 @@ export function DashboardMyTimeDayEditorModal({
         return false
       }
     },
-    [editingSelf, sessionClusters, splitByCluster, nowTick, effectiveSubjectUserId, dateStr]
+    [
+      editingSelf,
+      sessionClusters,
+      splitByCluster,
+      nowTick,
+      effectiveSubjectUserId,
+      dateStr,
+      peopleHoursGridProportionalSeed,
+    ]
   )
 
   const requestClose = useCallback(async () => {
@@ -1629,8 +1741,21 @@ export function DashboardMyTimeDayEditorModal({
       onClose()
       return
     }
-    const dirty = listDirtyClusterIds(sessionClusters, initialSnapshot, splitByCluster)
-    if (dirty.length === 0) {
+    const splitDirty = listDirtyClusterIds(sessionClusters, initialSnapshot, splitByCluster)
+    const currentJobBid = new Map(sortedSessions.map((s) => [s.id, sessionJobBidKey(s)]))
+    const jobBidDirty = listClustersDirtyFromJobBidChange(
+      sessionClusters,
+      initialJobBidBySessionIdRef.current,
+      currentJobBid,
+    )
+    const dirty = [...new Set([...splitDirty, ...jobBidDirty])]
+    const effectiveDirty =
+      dirty.length === 0 &&
+      peopleHoursGridProportionalSeed &&
+      sessionClusters.length > 0
+        ? sessionClusters.map((c) => sessionClusterId(c))
+        : dirty
+    if (effectiveDirty.length === 0) {
       onClose()
       return
     }
@@ -1640,7 +1765,7 @@ export function DashboardMyTimeDayEditorModal({
       )
       return
     }
-    const dirtyApprovedNeedsRpc = dirty.some((cid) => {
+    const dirtyApprovedNeedsRpc = effectiveDirty.some((cid) => {
       const c = sessionClusters.find((x) => sessionClusterId(x) === cid)
       if (!c?.length || !c.some((s) => s.approved_at)) return false
       const split = splitByCluster[cid]
@@ -1657,7 +1782,7 @@ export function DashboardMyTimeDayEditorModal({
     setSaving(true)
     setError(null)
     try {
-      const ok = await persistDirtyChangesAsync(dirty)
+      const ok = await persistDirtyChangesAsync(effectiveDirty)
       if (ok) {
         onSaved()
         onClose()
@@ -1676,6 +1801,7 @@ export function DashboardMyTimeDayEditorModal({
     sessionClusters,
     initialSnapshot,
     splitByCluster,
+    sortedSessions,
     canSave,
     nowTick,
     onClose,
@@ -1683,6 +1809,7 @@ export function DashboardMyTimeDayEditorModal({
     persistDirtyChangesAsync,
     ncnsUi,
     ncnsPrecloseOpenSessions,
+    peopleHoursGridProportionalSeed,
   ])
 
   function handleBackdropClose() {
@@ -2039,7 +2166,7 @@ export function DashboardMyTimeDayEditorModal({
                           onFocusHandle={(index) => setFocusedHandle({ clusterId, index })}
                           patchClusterAction={(action) => patchCluster(clusterId, action)}
                           setAssignBulk={setAssignBulk}
-                          onAssignJobSaved={onAssignJobSaved}
+                          onAssignJobSaved={handleAssignJobSaved}
                           resolveAssignSession={(segIdx) =>
                             resolveAssignSessionForSegment(clusterId, segIdx)
                           }
@@ -2052,6 +2179,9 @@ export function DashboardMyTimeDayEditorModal({
                           rejectSessionBusyId={rejectSessionBusyId}
                           dispatchScheduleAssigneeUserId={effectiveSubjectUserId ?? undefined}
                           dispatchScheduleWorkDateYmd={dateStr}
+                          draftLocalJobBidAssign={
+                            onPatchSeededSessionsJobBid ? draftLocalJobBidAssign : undefined
+                          }
                         />
                       ) : (
                         <MyTimeDayClusterForm
@@ -2072,7 +2202,7 @@ export function DashboardMyTimeDayEditorModal({
                             commitInnerBoundary(clusterId, boundaryIndex, ms)
                           }
                           setAssignBulk={setAssignBulk}
-                          onAssignJobSaved={onAssignJobSaved}
+                          onAssignJobSaved={handleAssignJobSaved}
                           resolveAssignSession={(segIdx) =>
                             resolveAssignSessionForSegment(clusterId, segIdx)
                           }
@@ -2086,6 +2216,9 @@ export function DashboardMyTimeDayEditorModal({
                           dispatchScheduleAssigneeUserId={effectiveSubjectUserId ?? undefined}
                           dispatchScheduleWorkDateYmd={dateStr}
                           overlapDividerBelow={formOverlapDividerBelow}
+                          draftLocalJobBidAssign={
+                            onPatchSeededSessionsJobBid ? draftLocalJobBidAssign : undefined
+                          }
                         />
                       )}
                     </Fragment>
@@ -2284,7 +2417,7 @@ export function DashboardMyTimeDayEditorModal({
         overlayZIndex={1300}
         onClose={() => setAssignBulk(null)}
         onSaved={() => {
-          onAssignJobSaved()
+          handleAssignJobSaved()
           setAssignBulk(null)
         }}
       />
