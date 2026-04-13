@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import AuthPublicLandingLayout from '../components/AuthPublicLandingLayout'
 import EstimateCustomerThankYou from '../components/estimates/EstimateCustomerThankYou'
 import EstimateAcceptBody, { type EstimateAcceptSubmitPayload } from '../components/estimates/EstimateAcceptBody'
 import type { EstimateCustomerExperienceClient } from '../lib/estimateCustomerExperience'
@@ -23,6 +24,19 @@ type PublicEstimate = {
   total_cents: number
   valid_until: string | null
   customer_attachment: CustomerAttachmentPayload | null
+}
+
+function PublicEstimateShell({ children }: { children: ReactNode }) {
+  return (
+    <AuthPublicLandingLayout
+      titleLinkText="Click Plumbing and Electrical"
+      titleLinkAriaLabel="Visit Click Plumbing and Electrical (opens in new tab)"
+    >
+      <div className="auth-public-landing__signin-stack auth-public-landing__signin-stack--wide">
+        <div className="auth-public-landing__signin-box">{children}</div>
+      </div>
+    </AuthPublicLandingLayout>
+  )
 }
 
 export default function EstimateAccept() {
@@ -163,31 +177,35 @@ export default function EstimateAccept() {
 
   if (loading) {
     return (
-      <div style={{ fontFamily: 'system-ui, sans-serif', padding: '2rem', maxWidth: 640, margin: '0 auto' }}>
+      <PublicEstimateShell>
         <p>Loading…</p>
-      </div>
+      </PublicEstimateShell>
     )
   }
 
   if (done || alreadyAccepted) {
     return (
-      <EstimateCustomerThankYou title={experience.thankYouTitle} body={experience.thankYouBody} />
+      <PublicEstimateShell>
+        <div className="auth-public-landing__estimate-thankyou-inner">
+          <EstimateCustomerThankYou title={experience.thankYouTitle} body={experience.thankYouBody} />
+        </div>
+      </PublicEstimateShell>
     )
   }
 
   if (error && !estimate) {
     return (
-      <div style={{ fontFamily: 'system-ui, sans-serif', padding: '2rem', maxWidth: 640, margin: '0 auto' }}>
+      <PublicEstimateShell>
         <h1>{experience.docTitleFallback}</h1>
         <p style={{ color: '#b91c1c' }}>{error}</p>
-      </div>
+      </PublicEstimateShell>
     )
   }
 
   if (!estimate) return null
 
   return (
-    <div style={{ fontFamily: 'system-ui, sans-serif', padding: '2rem', maxWidth: 640, margin: '0 auto' }}>
+    <PublicEstimateShell>
       <EstimateAcceptBody
         variant="interactive"
         estimate={{
@@ -209,6 +227,6 @@ export default function EstimateAccept() {
         headerBrand={headerBrand}
         customerAttachment={estimate.customer_attachment}
       />
-    </div>
+    </PublicEstimateShell>
   )
 }

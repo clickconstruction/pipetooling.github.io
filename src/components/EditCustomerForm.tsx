@@ -342,10 +342,21 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
     if (customerMasterId && myRole !== 'estimator') {
       payload.master_user_id = customerMasterId
     }
-    const { error: err } = await supabase.from('customers').update(payload).eq('id', customerId)
+    const { error: err, data } = await supabase
+      .from('customers')
+      .update(payload)
+      .eq('id', customerId)
+      .select('id')
     setLoading(false)
     if (err) {
       setError(err.message)
+      return
+    }
+    // PostgREST returns no error when RLS allows the command but updates 0 rows — treat as failure.
+    if (!Array.isArray(data) || data.length === 0) {
+      setError(
+        'Could not save changes. You may not have permission to update this customer, or the record was not found.',
+      )
       return
     }
     await onSaved()
