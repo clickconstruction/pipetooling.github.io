@@ -12,14 +12,17 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.298 → v2.4"
+version_range: "v2.299 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.299)"
+    line: ~928
+    description: "Public /estimate/accept: AuthPublicLandingLayout + wide sign-in stack + white card; authPublicLanding.css --wide + thank-you inner chrome strip"
   - name: "Latest Version (v2.298)"
-    line: ~921
+    line: ~940
     description: "Estimators: /customers route + nav; UPDATE RLS + trigger lock master_user_id and stripe_customer_id; EditCustomerForm omits master on save for estimators; ACCESS_CONTROL + Settings matrix"
   - name: "Latest Version (v2.297)"
-    line: ~935
+    line: ~952
     description: "People Hours grid blur: proportional scale of closed clock_sessions into My Time (preserve share of day); open session → fetch modal + toast; draft fallback; peopleHoursProportionalScale.ts"
   - name: "Latest Version (v2.296)"
     line: ~928
@@ -721,6 +724,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.299 — Public **Estimate accept**: same landing shell as Sign-In; wide card (`/estimate/accept`)](#latest-updates-v2299)
 **New:** [v2.297 — People Hours: grid blur proportional scale into My Time (closed sessions); open session → live fetch](#latest-updates-v2297)
 **New:** [v2.296 — Schedule Dispatch: Add schedule block occupied timeline + draft moves + batch save](#latest-updates-v2296)
 **New:** [v2.295 — Schedule Dispatch hub: ++ multi-cell add, FAB, bulk blocks (08:00–12:00)](#latest-updates-v2295)
@@ -919,6 +923,17 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.299)
+
+**Date**: 2026-04-13
+
+### Public **Estimate accept** — Sign-In landing + boxed content
+
+- **UI** — [`EstimateAccept.tsx`](src/pages/EstimateAccept.tsx): [`AuthPublicLandingLayout`](src/components/AuthPublicLandingLayout.tsx) for loading, error, interactive body, and thank-you (same hero/header/icons as `/sign-in`). Content sits in **`auth-public-landing__signin-box`** inside **`auth-public-landing__signin-stack--wide`** (640px). Staff/in-app flows using [`EstimateAcceptBody`](src/components/estimates/EstimateAcceptBody.tsx) / [`EstimateCustomerThankYou`](src/components/estimates/EstimateCustomerThankYou.tsx) unchanged.
+- **CSS** — [`authPublicLanding.css`](src/components/authPublicLanding.css): **`.auth-public-landing__signin-stack--wide`**; **`.auth-public-landing__estimate-thankyou-inner`** strips redundant outer padding on thank-you when nested in the card.
+
 ---
 
 ## Latest Updates (v2.298)

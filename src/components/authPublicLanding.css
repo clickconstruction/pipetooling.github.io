@@ -148,6 +148,19 @@
   margin: 1.25rem auto 0;
 }
 
+.auth-public-landing .auth-public-landing__signin-stack--wide {
+  max-width: 640px;
+  width: 100%;
+}
+
+/* Public estimate accept: thank-you root is nested inside signin-box */
+.auth-public-landing .auth-public-landing__estimate-thankyou-inner > div {
+  padding: 0;
+  max-width: none;
+  margin: 0;
+  font-family: inherit;
+}
+
 .auth-public-landing .auth-public-landing__signin-box {
   border: 1px solid #e5e7eb;
   border-radius: 12px;
