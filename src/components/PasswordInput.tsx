@@ -10,7 +10,13 @@ interface PasswordInputProps {
   minLength?: number
   disabled?: boolean
   label?: string
+  /** Accessible name when `label` is not shown (e.g. placeholder-only fields). */
+  ariaLabel?: string
   style?: React.CSSProperties
+  /** When set, default input padding is omitted so stylesheets can control the field (e.g. sign-in). */
+  inputClassName?: string
+  /** When set, default label block styles are omitted. */
+  labelClassName?: string
 }
 
 export default function PasswordInput({
@@ -23,18 +29,31 @@ export default function PasswordInput({
   minLength,
   disabled,
   label,
+  ariaLabel,
   style = {},
+  inputClassName,
+  labelClassName,
 }: PasswordInputProps) {
   const [show, setShow] = useState(false)
 
   return (
     <div style={{ marginBottom: label ? undefined : 0 }}>
       {label && (
-        <label htmlFor={id} style={{ display: 'block', marginBottom: 4 }}>
+        <label
+          htmlFor={id}
+          className={labelClassName}
+          style={labelClassName ? undefined : { display: 'block', marginBottom: 4 }}
+        >
           {label}
         </label>
       )}
-      <div style={{ position: 'relative', display: 'flex' }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr',
+          alignItems: 'center',
+        }}
+      >
         <input
           id={id}
           type={show ? 'text' : 'password'}
@@ -45,10 +64,15 @@ export default function PasswordInput({
           required={required}
           minLength={minLength}
           disabled={disabled}
+          className={inputClassName}
+          aria-label={label ? undefined : ariaLabel}
           style={{
+            gridColumn: 1,
+            gridRow: 1,
             width: '100%',
-            padding: '0.5rem',
-            paddingRight: '2.5rem',
+            ...(inputClassName
+              ? {}
+              : { padding: '0.5rem', paddingRight: '2.5rem' }),
             ...style,
           }}
         />
@@ -59,15 +83,21 @@ export default function PasswordInput({
           tabIndex={-1}
           disabled={disabled}
           style={{
-            position: 'absolute',
-            right: 4,
-            top: '50%',
-            transform: 'translateY(-50%)',
+            gridColumn: 1,
+            gridRow: 1,
+            justifySelf: 'end',
+            alignSelf: 'center',
+            marginRight: 4,
             background: 'none',
             border: 'none',
             cursor: disabled ? 'not-allowed' : 'pointer',
             padding: 4,
             opacity: disabled ? 0.5 : 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            lineHeight: 0,
+            color: '#9ca3af',
           }}
         >
           {show ? (
