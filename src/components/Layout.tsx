@@ -20,6 +20,7 @@ import {
   togglePinned,
   addPinForUser,
 } from '../lib/pinnedTabs'
+import { isEstimatorPathAllowed } from '../lib/layoutRouteAccess'
 import DailyGoalsGateOverlay from './DailyGoalsGateOverlay'
 import { useDailyGoalsGate } from '../contexts/DailyGoalsGateContext'
 import { useAppActivityHeartbeat } from '../hooks/useAppActivityHeartbeat'
@@ -65,11 +66,6 @@ export default function Layout() {
   const location = useLocation()
   const { user: authUser, role, profileName, estimatorProspectsAccess } = useAuth()
   useAppActivityHeartbeat(authUser?.id)
-  const estimatorAllowedPaths = useMemo(
-    () =>
-      ['/dashboard', '/materials', '/estimates', '/bids', ...(estimatorProspectsAccess ? ['/prospects'] : []), '/calendar', '/checklist', '/people', '/settings', '/tally'],
-    [estimatorProspectsAccess],
-  )
   const { gateOpen: dailyGoalsGateOpen } = useDailyGoalsGate()
   const [impersonating, setImpersonating] = useState(
     () => typeof window !== 'undefined' && !!localStorage.getItem(IMPERSONATION_KEY)
@@ -139,7 +135,7 @@ export default function Layout() {
     if (role === 'subcontractor' && !SUBCONTRACTOR_PATHS.includes(location.pathname)) {
       navigate('/dashboard', { replace: true })
     }
-    if (role === 'estimator' && (location.pathname === '/' || !estimatorAllowedPaths.includes(location.pathname))) {
+    if (role === 'estimator' && (location.pathname === '/' || !isEstimatorPathAllowed(location.pathname, estimatorProspectsAccess))) {
       navigate('/bids', { replace: true })
     }
     if (role === 'primary' && (location.pathname === '/' || (!PRIMARY_PATHS.includes(location.pathname) && !location.pathname.startsWith('/workflows/')))) {
@@ -148,7 +144,7 @@ export default function Layout() {
     if (role === 'superintendent' && (location.pathname === '/' || (!SUPERINTENDENT_PATHS.includes(location.pathname) && !location.pathname.startsWith('/workflows/')))) {
       navigate('/dashboard', { replace: true })
     }
-  }, [role, location.pathname, navigate, estimatorAllowedPaths])
+  }, [role, location.pathname, navigate, estimatorProspectsAccess])
 
   useEffect(() => {
     const handler = () => setPinsVersion((v) => v + 1)
@@ -289,6 +285,7 @@ export default function Layout() {
           <NavLink to="/materials" style={linkStyle} onClick={onNavClick}>Materials</NavLink>
           <NavLink to="/estimates" style={linkStyle} onClick={onNavClick}>Estimates</NavLink>
           <NavLink to="/bids" style={linkStyle} onClick={onNavClick}>Bids</NavLink>
+          <NavLink to="/customers" style={linkStyle} onClick={onNavClick}>Customers</NavLink>
           {estimatorProspectsAccess && (
             <NavLink to="/prospects" style={linkStyle} onClick={onNavClick}>Prospects</NavLink>
           )}

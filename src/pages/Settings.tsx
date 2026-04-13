@@ -150,7 +150,7 @@ function displayLabelForGoalPickerUser(userId: string, users: GoalPickerUserRow[
 
 const PAGE_ACCESS: Array<{ page: string; dev: string; master: string; assistant: string; sub: string; estimator: string; primary: string; superintendent: string }> = [
   { page: 'Dashboard', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'yes', estimator: 'yes', primary: 'yes', superintendent: 'yes' },
-  { page: 'Customers', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', estimator: 'no', primary: 'no', superintendent: 'no' },
+  { page: 'Customers', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', estimator: 'yes limited', primary: 'no', superintendent: 'no' },
   { page: 'Projects', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', estimator: 'no', primary: 'no', superintendent: 'yes' },
   { page: 'Workflow', dev: 'yes', master: 'yes', assistant: 'yes limited', sub: 'no', estimator: 'no', primary: 'no', superintendent: 'yes limited' },
   { page: 'People', dev: 'yes', master: 'yes', assistant: 'yes limited', sub: 'no', estimator: 'no', primary: 'no', superintendent: 'no' },

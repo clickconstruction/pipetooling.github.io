@@ -306,8 +306,9 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 **Purpose**: Bid estimation and material pricing specialist
 
 **Access**:
-- Dashboard, Bids, Materials, Calendar, Checklist, Settings
-- **Blocked**: Customers, Projects, People, Jobs, Templates
+- Dashboard, Materials, Estimates, Bids, Calendar, Checklist, People, Settings, Tally, Prospects (if enabled)
+- **Customers** (`/customers`): list, search, notes, create (master required), edit **basic fields** (name, address, contact, customer type, date met). **Advanced** (customer owner), **merge**, and **delete** are not available in the UI; DB blocks changing **owner** (`master_user_id`) and **Stripe** (`stripe_customer_id`) on save.
+- **Blocked**: Projects, People, Jobs, Templates
 
 **Service Type Filtering**:
 - Devs can restrict an estimator to specific service types (e.g., Electrical only, Plumbing only)
@@ -326,10 +327,10 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 - Manage labor book and price book assignments
 - Track submissions and outcomes
 - Can see all customers in GC/Builder dropdown (RLS SELECT permission)
-- **Can create new customers** via "+ Add new customer" modal:
+- **Can create new customers** via "+ Add new customer" modal or **Customers** page:
   - Must assign Customer Owner (Master) - sees all masters and devs in dropdown (RLS policy `allow_estimators_see_masters`)
-  - Cannot access `/customers` page directly
   - RLS allows INSERT when `master_user_id` set to valid master
+- **Can edit existing customers** from **Customers** page or edit modal: UPDATE RLS + trigger forbid changing `master_user_id` or `stripe_customer_id`
 
 **Materials - Full Access**:
 - Same permissions as master_technician
@@ -346,17 +347,17 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 - Cannot access ongoing project management
 - Cannot view or edit workflows
 - Cannot assign people to stages
-- Cannot access customer management page
+- Cannot change **customer owner**, **Stripe** link, **merge**, or **delete** customers
 - No user management (can change own password via Settings)
 
 **Use Cases**:
 - Dedicated estimators who only handle bids
 - Separation of estimation from project execution
-- Can create customers for bids without full customer access
+- Can create and edit customers within the limits above (no owner/Stripe/merge/delete)
 - Focused interface for bid workflows
 
 **Layout Behavior**:
-- Navigation shows: Dashboard, Materials, Bids, Calendar, Checklist
+- Navigation shows: Dashboard, Materials, Estimates, Bids, **Customers**, Prospects (if enabled), Calendar, Checklist, People (mobile menu / icons per layout)
 - Attempts to access blocked pages redirect to `/bids`
 
 ---
@@ -476,7 +477,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 | Page | dev | master | assistant | sub | estimator | primary | superintendent |
 |------|-----|--------|-----------|-----|-----------|---------|-----------------|
 | **Dashboard** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Customers** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Customers** | ✅ | ✅ | ✅ | ❌ | ✅ limited | ❌ | ❌ |
 | **Projects** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ assigned only |
 | **Workflow** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ | ✅ limited |
 | **People** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ | ❌ |
@@ -498,7 +499,7 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 
 **Subcontractors**: Any page except Dashboard/Calendar/Checklist/Settings/Tally → `/dashboard`
 
-**Estimators**: Any page except Dashboard/Materials/Estimates/Bids/Calendar/Checklist/Settings → `/bids`
+**Estimators**: Any page except Dashboard/Materials/Estimates/Bids/**Customers**/Calendar/Checklist/People/Settings/Tally/Prospects (if enabled) → `/bids`
 
 **Primary**: Any page except Dashboard/Materials/Estimates/Jobs/Bids/Prospects/Calendar/Checklist/Settings → `/dashboard`; Jobs shows Reports and Billing tabs only; Bids full access (all tabs); Projects hidden
 
@@ -544,12 +545,12 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 
 | Feature | dev | master | assistant | sub | estimator | primary | superintendent |
 |---------|-----|--------|-----------|-----|-----------|---------|----------------|
-| View customers | ✅ All | ✅ Own | ✅ Adopted | ❌ | ✅ Via Bids | ❌ | ❌ |
-| Create customers | ✅ | ✅ | ✅ Must select master | ❌ | ✅ Via Bids modal | ❌ | ✅ Via Bids modal |
-| Edit customers | ✅ | ✅ Own | ✅ Adopted | ❌ | ❌ | ❌ | ❌ |
+| View customers | ✅ All | ✅ Own | ✅ Adopted | ❌ | ✅ `/customers` + Bids | ❌ | ❌ |
+| Create customers | ✅ | ✅ | ✅ Must select master | ❌ | ✅ Bids modal + Customers page | ❌ | ✅ Via Bids modal |
+| Edit customers | ✅ | ✅ Own | ✅ Adopted | ❌ | ✅ Basic fields only | ❌ | ❌ |
 | Delete customers | ✅ | ✅ Own | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Change customer owner | ✅ | ✅ Own | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Quick Fill | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Quick Fill | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
 
 ### Project Management
 
@@ -781,27 +782,31 @@ master_user_id = auth.uid()
 - Assistants/subs can only act on stages where `assigned_to_name` matches their name
 - Masters/devs can act on any stage
 
-### Estimator Customer Creation
+### Estimator Customers (create and limited edit)
 
-**Special Case**: Estimators can create customers without full customer access
+**Special Case**: Estimators have **Customers** page access for everyday fields, not full customer admin.
 
 **Mechanism**:
-- **SELECT RLS**: Allows estimators to see all customers (for dropdowns)
-- **INSERT RLS**: Allows when `master_user_id` set to valid master
-- **No UPDATE/DELETE**: Estimators cannot modify existing customers
-- **No Page Access**: Cannot navigate to `/customers` page
+- **SELECT RLS**: Estimators see all customers (dropdowns + `/customers` list)
+- **INSERT RLS**: Allowed when `master_user_id` is set to a valid master (dev or master_technician)
+- **UPDATE RLS**: Policy **Estimators can update customers**; **`BEFORE UPDATE` trigger** `customers_estimator_update_immutable_fields` on `public.customers` (function **`enforce_customers_estimator_update_immutable_fields`**) rejects changes to `master_user_id` or `stripe_customer_id` when the caller is an estimator
+- **DELETE**: Not granted; UI shows no delete for estimators
+- **UI**: No **Advanced** (owner), **merge**, or **delete** in edit modal
 
-**Workflow**:
+**Workflow (Bids)**:
 1. Estimator opens "+ Add new customer" modal in Bids
 2. Selects master from dropdown (all masters shown)
 3. Fills customer details
 4. Saves - customer created with selected master as owner
 5. New customer automatically selected as bid's GC/Builder
 
+**Workflow (Customers page)**:
+1. Open `/customers`, search, add or edit in modal
+2. Saves update only **basic** columns; owner and Stripe stay fixed
+
 **Benefits**:
-- Estimators can handle new customers during bid process
-- Maintains proper ownership (customer assigned to master)
-- Separation of concerns (estimation vs. ongoing management)
+- Estimators can maintain customer records without project/workflow access
+- Ownership and billing identifiers stay protected
 
 ---
 

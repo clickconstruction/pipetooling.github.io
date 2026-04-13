@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { useAuth } from '../hooks/useAuth'
+import { useAuth, type UserRole } from '../hooks/useAuth'
 import { useToastContext } from '../contexts/ToastContext'
 import type { Database } from '../types/database'
 import type { Json } from '../types/database'
@@ -13,7 +13,6 @@ import {
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
-type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor'
 
 type MergeField = 'name' | 'address' | 'contact_info' | 'customer_type' | 'date_met' | 'master_user_id'
 
@@ -340,7 +339,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
       customer_type: customerType,
       date_met: dateMet.trim() || null,
     }
-    if (customerMasterId) {
+    if (customerMasterId && myRole !== 'estimator') {
       payload.master_user_id = customerMasterId
     }
     const { error: err } = await supabase.from('customers').update(payload).eq('id', customerId)
