@@ -509,6 +509,7 @@ export default function Settings() {
   const [estimateCxSaving, setEstimateCxSaving] = useState(false)
   const [estimatePublicTermsSaving, setEstimatePublicTermsSaving] = useState(false)
   const [estimatePublicTermsBody, setEstimatePublicTermsBody] = useState('')
+  const [estimatePublicTermsSectionOpen, setEstimatePublicTermsSectionOpen] = useState(false)
   const [estimateLineItemCatalogSectionOpen, setEstimateLineItemCatalogSectionOpen] = useState(false)
   const [estimateLineItemCatalogSaving, setEstimateLineItemCatalogSaving] = useState(false)
   const [estimateLineItemCatalogRows, setEstimateLineItemCatalogRows] = useState<EstimateCatalogLineItem[]>([])
@@ -9447,55 +9448,72 @@ export default function Settings() {
             )}
           </div>
 
-          <div
-            style={{
-              marginTop: '2rem',
-              marginBottom: '2rem',
-              border: '1px solid #e5e7eb',
-              borderRadius: 8,
-              padding: '1rem',
-            }}
-          >
-            <h3 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 600 }}>
+          <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+            <button
+              type="button"
+              onClick={() => setEstimatePublicTermsSectionOpen((prev) => !prev)}
+              aria-expanded={estimatePublicTermsSectionOpen}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                padding: '1rem',
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                fontWeight: 600,
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: '0.75rem' }} aria-hidden>
+                {estimatePublicTermsSectionOpen ? '\u25BC' : '\u25B6'}
+              </span>
               Public estimate Terms and Conditions (plain text)
-            </h3>
-            <p style={{ margin: '0 0 1rem', color: '#6b7280', fontSize: '0.875rem' }}>
-              Shown at <code>/estimate/terms</code> to anyone (no login). Linked from the estimate acceptance page.
-            </p>
-            <form onSubmit={saveEstimatePublicTerms}>
-              <textarea
-                value={estimatePublicTermsBody}
-                onChange={(e) =>
-                  setEstimatePublicTermsBody(e.target.value.slice(0, ESTIMATE_EXPERIENCE_FIELD_MAX_LEN))
-                }
-                rows={8}
-                style={{
-                  width: '100%',
-                  padding: '0.5rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: 4,
-                  fontSize: '0.875rem',
-                  fontFamily: 'inherit',
-                  boxSizing: 'border-box',
-                }}
-              />
-              <button
-                type="submit"
-                disabled={estimatePublicTermsSaving}
-                style={{
-                  marginTop: '0.75rem',
-                  padding: '0.5rem 1rem',
-                  background: '#3b82f6',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 4,
-                  cursor: estimatePublicTermsSaving ? 'not-allowed' : 'pointer',
-                  fontWeight: 500,
-                }}
-              >
-                {estimatePublicTermsSaving ? 'Saving…' : 'Save'}
-              </button>
-            </form>
+            </button>
+            {estimatePublicTermsSectionOpen && (
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+                <p style={{ margin: '0 0 1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+                  Shown at <code>/estimate/terms</code> to anyone (no login). Linked from the estimate acceptance page.
+                </p>
+                <form onSubmit={saveEstimatePublicTerms}>
+                  <textarea
+                    value={estimatePublicTermsBody}
+                    onChange={(e) =>
+                      setEstimatePublicTermsBody(e.target.value.slice(0, ESTIMATE_EXPERIENCE_FIELD_MAX_LEN))
+                    }
+                    rows={8}
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: 4,
+                      fontSize: '0.875rem',
+                      fontFamily: 'inherit',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={estimatePublicTermsSaving}
+                    style={{
+                      marginTop: '0.75rem',
+                      padding: '0.5rem 1rem',
+                      background: '#3b82f6',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 4,
+                      cursor: estimatePublicTermsSaving ? 'not-allowed' : 'pointer',
+                      fontWeight: 500,
+                    }}
+                  >
+                    {estimatePublicTermsSaving ? 'Saving…' : 'Save'}
+                  </button>
+                </form>
+              </div>
+            )}
           </div>
         </>
       )}

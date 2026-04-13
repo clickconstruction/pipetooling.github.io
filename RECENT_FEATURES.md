@@ -12,11 +12,26 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.289 → v2.4"
+version_range: "v2.294 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.294)"
+    line: ~905
+    description: "Schedule Dispatch hub People day cell: bottom-left triangle + opens Add job to schedule when cell has blocks (onHubAddJobToScheduleForCell)"
+  - name: "Latest Version (v2.293)"
+    line: ~915
+    description: "Schedule Dispatch hub: empty People cell opens Add job to schedule directly (hubCellAddContext); picker Create new job; no Add schedule block modal"
+  - name: "Latest Version (v2.292)"
+    line: ~910
+    description: "Clock In / Update Focus / Review before clock out: On schedule Dispatch job quick-picks (fetchDispatchScheduledJobsForAssigneeDay); work_date on open session for clock-out day; dedupe assigned list; info toast only when no assignments and no schedule"
+  - name: "Latest Version (v2.291)"
+    line: ~910
+    description: "People Hours matrix: blur with hours>0 opens My Time draft (8am APP_CALENDAR_TZ) directly—no choice modal; draft INSERT in DashboardMyTimeDayEditorModal; grid max(people_hours, pending clock); saveHours(0) after draft save; no NCNS in that modal; roster name without users match → toast + grid-only save; peopleHoursManualDraftSession.ts"
+  - name: "Latest Version (v2.290)"
+    line: ~905
+    description: "People dev-only Feedback tab (?tab=feedback): TeamFeedbackDevSettingsBlock standalone — Enabled persists to team_feedback_settings; Settings + Eligibility modals; raw submissions detail modal, CSV, dev delete; same block as Settings People & accounts"
   - name: "Latest Version (v2.289)"
-    line: ~885
+    line: ~915
     description: "My Time: pairwise-overlap cluster split (one card per session), Form/Visual separators + overlap double border, compact list chrome, prior-week footer trim, time+jobs layout; Quickfill People Hours (new) mobile day nav"
   - name: "Latest Version (v2.288)"
     line: ~930
@@ -694,6 +709,11 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.294 — Schedule Dispatch hub: People day cell triangle + → Add job to schedule (filled cell)](#latest-updates-v2294)
+**New:** [v2.293 — Schedule Dispatch hub: empty People cell → Add job to schedule directly](#latest-updates-v2293)
+**New:** [v2.292 — Clock In: On schedule (Dispatch) job rows; open-session work_date; dedupe + toast](#latest-updates-v2292)
+**New:** [v2.291 — People Hours: manual cell blur → My Time draft session (no modal); NCNS off for that path](#latest-updates-v2291)
+**New:** [v2.290 — People Feedback tab (dev): team feedback modals, Enabled DB persist, raw detail + CSV](#latest-updates-v2290)
 **New:** [v2.289 — My Time: overlap split cards, Form UX + separators; Quickfill People Hours (new) mobile nav](#latest-updates-v2289)
 **New:** [v2.288 — Estimates: accepted detail layout, thank-you + chick, terms/footer copy, activity dedupe](#latest-updates-v2288)
 **New:** [v2.285 — Edit Job Billing: Outstanding billing + Payments received + Partial invoice UX; StripeInvoiceSharePanel toolbar](#latest-updates-v2285)
@@ -884,6 +904,69 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.294)
+
+**Date**: 2026-04-12
+
+### Schedule Dispatch **hub** — **People** day cell: add another job for the same person and day
+
+- **UX** — **[`HubPeopleDayCell`](src/components/schedule/ScheduleDispatchHub.tsx)** (`<td>`): when **`canEdit`**, the cell **has at least one block**, assign-job and copy/placement picking are off, a **single** **bottom-left** right-triangle control with **+** (**`position: absolute`**, **`left: 0`**, **`bottom: 0`**, **`zIndex: 6`**) opens **Add job to schedule** with the same **`hubCellAddContext`** as an empty cell (**[`ScheduleDispatch.tsx`](src/pages/ScheduleDispatch.tsx)** **`onHubAddJobToScheduleForCell`** → **`onHubEmptyCellOpenChoice`**), using the row **`personUserId`** and column **`workDate`**. The control **overlaps** block cards in the corner. Distinct **`aria-label` / `title`** from each block card’s bottom-right **+** (copy to another cell).
+
+---
+
+## Latest Updates (v2.293)
+
+**Date**: 2026-04-12
+
+### Schedule Dispatch **hub** — empty **People** cell opens **Add job to schedule** directly
+
+- **UX** — **[`ScheduleDispatchHub.tsx`](src/components/schedule/ScheduleDispatchHub.tsx)** **`HubPeopleDayCell`**: when **`canEdit`**, the cell has no blocks, and placement / assign-job modes are off, click opens **Add job to schedule** immediately (**[`ScheduleDispatch.tsx`](src/pages/ScheduleDispatch.tsx)** **`onHubEmptyCellOpenChoice`**) with person + date subtitle; no separate **Add schedule block** choice modal.
+- **Context** — **`hubCellAddContext`** stores **`assigneeUserId`** + **`work_date`**; picking or **Create new job** (picker header) calls **`openAddBlock`** or placement + toast as before. Toolbar **+** only opens the job list (no preset cell).
+- **Picker** — **`closeHubAssignJobPicker`** clears context on cancel; row select branches on **`hubCellAddContext`**. **Add job to schedule** dialog header includes **Create new job** (**`onCreateNewJobFromHubJobPicker`**) — placement + toast when no cell context, or empty-cell **`openAddBlock`** when **`hubCellAddContext`** is set. Hub toolbar **New job** removed (use **+** then **Create new job**).
+
+---
+
+## Latest Updates (v2.292)
+
+**Date**: 2026-04-12
+
+### Dashboard **Clock In/Out** — **On schedule** job quick-picks (Schedule Dispatch)
+
+- **Data** — **[`ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx)**: Parallel load **`list_assigned_jobs_for_dashboard`** and **`fetchDispatchScheduledJobsForAssigneeDay`** (**[`jobScheduleBlocks.ts`](src/lib/jobScheduleBlocks.ts)**) for company-calendar **today** on **Clock In** and **Update Focus**, and for the **open session `work_date`** on **Review before clock out** ( **`OpenSession.work_date`** on the open-session select, with **`clocked_in_at`** fallback when null).
+- **Dedupe** — Assigned jobs that already appear on the Dispatch schedule for that day are omitted from the default search dropdown list so each job shows once (**On schedule** block first).
+- **UI** — Below **Use last**, bordered rows **On schedule:** + unified job label; optional **`windowsLabel`** as subtitle and **`title`**; click sets **`selectedAssociation`** like a search result and clears the search field.
+- **Toast** — One-time info toast only when **both** the deduped assigned list and the schedule list are empty (copy mentions assignments and Dispatch schedule).
+
+---
+
+## Latest Updates (v2.291)
+
+**Date**: 2026-04-12
+
+### People **Hours** matrix — manual entry opens **My Time** with a **draft clock session** (no intermediate modal)
+
+- **Blur flow** — **[`People.tsx`](src/pages/People.tsx)**: When an editable hours cell blurs with **hours &gt; 0**, the day is **not** marked **Correct**, and the user has pay/hours access, **`openManualHoursDraftFromBlur`** runs immediately (no **Save to grid vs My Time** modal). **`users.find`** matches roster **`person_name`** to **`users.name`** (trim).
+- **No user match** — Toast explains hours are **saved to the grid only**; **`saveHours`** runs so the typed total is kept.
+- **Draft session** — **[`peopleHoursManualDraftSession.ts`](src/lib/peopleHoursManualDraftSession.ts)**: **`buildPeopleHoursManualDraftSession`**: 8:00 AM wall (**`APP_CALENDAR_TZ`**) on **`work_date`**, duration from entered hours; id prefix **`draft:people-hours:`** + UUID; default notes so the day editor can save. Modal receives **`sessions={[draft]}`** (fetch skipped).
+- **Persist** — **[`DashboardMyTimeDayEditorModal.tsx`](src/components/DashboardMyTimeDayEditorModal.tsx)**: **`persistDirtyChangesAsync`** **`INSERT`**s **`clock_sessions`** for draft ids; splitting a draft before first save is blocked with a clear error.
+- **After successful draft save** — **`onSaved`** in People calls **`saveHours(personName, work_date, 0)`** so stale **`people_hours`** does not stack with **`approve_clock_sessions`** (RPC **adds** session hours onto existing grid totals). Then refresh clock + **`people_hours`** lists.
+- **Grid display** — **`getHoursGridDisplayHours`**: **`max(people_hours, sum of closed pending clock hours)`** for the matrix so cells do not show **0** while a session is pending approval.
+- **NCNS** — The **manual-draft** **`DashboardMyTimeDayEditorModal`** instance sets **`allowNcnsFromMyTime={false}`** so **NCNS** is hidden for this entry path; opening My Time from a clock session row (**`hoursMyTimeEditor`**) still uses the role-based NCNS flag.
+
+---
+
+## Latest Updates (v2.290)
+
+**Date**: 2026-04-12
+
+### People — dev-only **Feedback** tab (`?tab=feedback`); **Team feedback** UX parity with Settings
+
+- **Route** — **[`People.tsx`](src/pages/People.tsx)**: **`PeopleTab`** includes **`feedback`**; dev-only tab after **Review**; renders **[`TeamFeedbackDevSettingsBlock`](src/components/team-feedback/TeamFeedbackDevSettingsBlock.tsx)** with **`layout="standalone"`** (same admin surface as **Settings → People & accounts**).
+- **Header** — **Enabled** toggles **`team_feedback_settings.enabled`** (and **`updated_at`**) via Supabase update + **`withSupabaseRetry`** so the switch persists across reloads. **Last collected** and **Settings** (opens modal) sit on the right.
+- **Modals** — **Settings**: full **[`TeamFeedbackSettingsSection`](src/components/team-feedback/TeamFeedbackSettingsSection.tsx)** in a portal (**`hideEnabled`** in modal). **Eligibility**: **[`TeamFeedbackEligibilityOverview`](src/components/team-feedback/TeamFeedbackEligibilityOverview.tsx)** — **Eligibility** button opens overview + per-user **Reset** in a portal. **Raw submissions**: **[`TeamFeedbackDevReports`](src/components/team-feedback/TeamFeedbackDevReports.tsx)** — row click opens **`TeamFeedbackSubmissionDetailModal`** (same file; Q&A, long-form, peer ratings from **`team_feedback_peer_ratings`**); dev row delete (existing RLS); **Refresh** top-right; **Include reviewer_user_id** + **Download CSV** bottom-right.
+
 ---
 
 ## Latest Updates (v2.289)

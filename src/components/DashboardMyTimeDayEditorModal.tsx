@@ -68,6 +68,7 @@ import {
   getDefaultWeekRange,
   getThisAndLastWeekRange,
 } from '../utils/dateUtils'
+import { isDraftPeopleHoursSessionId } from '../lib/peopleHoursManualDraftSession'
 
 export type { DayEditorSession }
 
@@ -1473,18 +1474,45 @@ export function DashboardMyTimeDayEditorModal({
               `Block ${formatDenverBlockDateHeader(new Date(first.clocked_in_at).getTime(), new Date(last.clocked_out_at || nowTick).getTime())} (${formatDenverTimeOnly(new Date(first.clocked_in_at).getTime())} – ${formatDenverTimeOnly(new Date(last.clocked_out_at || nowTick).getTime())}): add notes and ensure at least 0.01 hours per part.`
             )
           }
+          if (c.some((s) => isDraftPeopleHoursSessionId(s.id)) && payloads.length > 1) {
+            throw new DatabaseError(
+              'Splitting a draft session before its first save is not supported yet. Save once, then edit splits.',
+            )
+          }
           if (payloads.length === 1) {
             if (c.length === 1) {
               const row = c[0]!
-              if (!singleSegmentTimesMatchSession(row, split)) {
+              if (isDraftPeopleHoursSessionId(row.id)) {
+                const p0 = payloads[0]!
+                if (!p0.clocked_out_at) {
+                  throw new DatabaseError('Draft session must be clocked out before saving.')
+                }
+                if (!effectiveSubjectUserId) {
+                  throw new DatabaseError('Missing subject user for new clock session.')
+                }
+                await withSupabaseRetry(
+                  async () =>
+                    supabase.from('clock_sessions').insert({
+                      user_id: effectiveSubjectUserId,
+                      work_date: dateStr,
+                      clocked_in_at: p0.clocked_in_at,
+                      clocked_out_at: p0.clocked_out_at,
+                      notes: p0.notes,
+                      job_ledger_id: row.job_ledger_id,
+                      bid_id: row.bid_id,
+                    }),
+                  'insert draft clock session from people hours',
+                )
+              } else if (!singleSegmentTimesMatchSession(row, split)) {
                 throw new DatabaseError(
                   'To change clock times for one block, add a split first (tap the gray strip) or edit in People → Hours.'
                 )
+              } else {
+                await withSupabaseRetry(
+                  async () => supabase.from('clock_sessions').update({ notes: payloads[0]!.notes }).eq('id', row.id),
+                  'update clock session notes'
+                )
               }
-              await withSupabaseRetry(
-                async () => supabase.from('clock_sessions').update({ notes: payloads[0]!.notes }).eq('id', row.id),
-                'update clock session notes'
-              )
             } else if (boundariesMatchOriginalRows(c, split, nowTick)) {
               for (const row of c) {
                 await withSupabaseRetry(
@@ -1498,6 +1526,11 @@ export function DashboardMyTimeDayEditorModal({
               await runReplaceMixed(c.map((s) => s.id), mixed)
             }
           } else if (c.length === 1) {
+            if (isDraftPeopleHoursSessionId(c[0]!.id)) {
+              throw new DatabaseError(
+                'Splitting a draft session before its first save is not supported yet. Save once, then edit splits.',
+              )
+            }
             await runSplitSeg(c[0]!.id, payloads.map(stripJobBidForSegmentRpc))
           } else if (clusterIsHomogeneousJobBid(c)) {
             await runSplitCluster(c.map((s) => s.id), payloads.map(stripJobBidForSegmentRpc))
@@ -1561,7 +1594,7 @@ export function DashboardMyTimeDayEditorModal({
         return false
       }
     },
-    [editingSelf, sessionClusters, splitByCluster, nowTick]
+    [editingSelf, sessionClusters, splitByCluster, nowTick, effectiveSubjectUserId, dateStr]
   )
 
   const requestClose = useCallback(async () => {

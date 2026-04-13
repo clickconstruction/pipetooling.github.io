@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useDailyGoalsGate } from '../contexts/DailyGoalsGateContext'
@@ -13,6 +13,10 @@ import {
 import { getTeamFeedbackEligibility } from '../lib/teamFeedback'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { denverCalendarDayKey } from '../utils/dateUtils'
+import {
+  fetchDispatchScheduledJobsForAssigneeDay,
+  type DispatchScheduledJobForAssign,
+} from '../lib/jobScheduleBlocks'
 import { syncSalaryClockSessionsForUserDay } from '../lib/salaryScheduleSync'
 import TeamFeedbackWizard from './team-feedback/TeamFeedbackWizard'
 
@@ -26,6 +30,7 @@ function formatElapsed(seconds: number): string {
 type OpenSession = {
   id: string
   clocked_in_at: string
+  work_date: string
   notes: string
   job_ledger_id: string | null
   bid_id: string | null
@@ -35,10 +40,21 @@ type TodaySession = {
   id: string
   clocked_in_at: string
   clocked_out_at: string | null
+  work_date?: string
   notes: string
   origin?: string
   job_ledger_id: string | null
   bid_id: string | null
+}
+
+function dispatchScheduledJobToUnified(d: DispatchScheduledJobForAssign): UnifiedSearchResult {
+  return {
+    source: 'job',
+    id: d.jobId,
+    hcp_number: d.hcp_number,
+    job_name: d.job_name,
+    job_address: d.job_address,
+  }
 }
 
 function computeTotalSecondsToday(sessions: TodaySession[]): number {
@@ -96,6 +112,12 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
   const unifiedSearchTextRef = useRef(unifiedSearchText)
   unifiedSearchTextRef.current = unifiedSearchText
   const [assignedJobsListLoading, setAssignedJobsListLoading] = useState(false)
+  const [scheduledDispatchJobs, setScheduledDispatchJobs] = useState<DispatchScheduledJobForAssign[]>([])
+  const lastDefaultUnifiedResultsRef = useRef<UnifiedSearchResult[]>([])
+  const useLastHiddenBySchedule = useMemo(() => {
+    if (lastSelectedJobBid?.source !== 'job') return false
+    return scheduledDispatchJobs.some((d) => d.jobId === lastSelectedJobBid.id)
+  }, [lastSelectedJobBid, scheduledDispatchJobs])
   const [teamFeedbackOpen, setTeamFeedbackOpen] = useState(false)
   const [salaryUiActive, setSalaryUiActive] = useState(false)
 
@@ -156,7 +178,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
             async () =>
               supabase
                 .from('clock_sessions')
-                .select('id, clocked_in_at, clocked_out_at, notes, job_ledger_id, bid_id, origin')
+                .select('id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, bid_id, origin')
                 .eq('user_id', userId)
                 .is('clocked_out_at', null)
                 .is('rejected_at', null)
@@ -207,6 +229,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
         setOpenSession({
           id: open.id,
           clocked_in_at: open.clocked_in_at,
+          work_date: open.work_date?.trim() || denverCalendarDayKey(new Date(open.clocked_in_at).getTime()),
           notes: open.notes ?? '',
           job_ledger_id: open.job_ledger_id,
           bid_id: open.bid_id,
@@ -326,22 +349,34 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
   }, [updateFocusModalOpen])
 
   useEffect(() => {
-    if (!clockInModalOpen && !updateFocusModalOpen && !clockOutReviewOpen) {
+       if (!clockInModalOpen && !updateFocusModalOpen && !clockOutReviewOpen) {
       setAssignedJobsListLoading(false)
+      setScheduledDispatchJobs([])
       noAssignedJobsInfoToastShownRef.current = false
       return
     }
     const requestId = ++assignedJobsFetchGenRef.current
     assignedJobsShownRef.current = true
     setAssignedJobsListLoading(true)
+    setScheduledDispatchJobs([])
+    const scheduleYmd =
+      clockOutReviewOpen && openSession
+        ? openSession.work_date.trim() || denverCalendarDayKey(new Date(openSession.clocked_in_at).getTime())
+        : denverCalendarDayKey(Date.now())
     void (async () => {
       try {
-        const data = await withSupabaseRetry(
-          async () => await supabase.rpc('list_assigned_jobs_for_dashboard'),
-          'ClockInOutButton list_assigned_jobs_for_dashboard'
-        )
+        const [data, dispatchRes] = await Promise.all([
+          withSupabaseRetry(
+            async () => await supabase.rpc('list_assigned_jobs_for_dashboard'),
+            'ClockInOutButton list_assigned_jobs_for_dashboard'
+          ),
+          fetchDispatchScheduledJobsForAssigneeDay(userId, scheduleYmd),
+        ])
         if (requestId !== assignedJobsFetchGenRef.current) return
         if (unifiedSearchTextRef.current.trim() !== '') return
+        const dispatchRows = dispatchRes.error ? [] : dispatchRes.data
+        setScheduledDispatchJobs(dispatchRows)
+        const onScheduleIds = new Set(dispatchRows.map((d) => d.jobId))
         const jobs = (data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>
         const mapped: UnifiedSearchResult[] = jobs.map((j) => ({
           source: 'job' as const,
@@ -350,15 +385,23 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
           job_name: j.job_name ?? '',
           job_address: j.job_address ?? '',
         }))
-        setUnifiedSearchResults(mapped)
-        assignedJobsShownRef.current = mapped.length > 0
-        if (mapped.length === 0 && !noAssignedJobsInfoToastShownRef.current) {
+        const mappedFiltered = mapped.filter((r) => r.source !== 'job' || !onScheduleIds.has(r.id))
+        lastDefaultUnifiedResultsRef.current = mappedFiltered
+        setUnifiedSearchResults(mappedFiltered)
+        assignedJobsShownRef.current = mappedFiltered.length > 0 || dispatchRows.length > 0
+        if (
+          mappedFiltered.length === 0 &&
+          dispatchRows.length === 0 &&
+          !noAssignedJobsInfoToastShownRef.current
+        ) {
           noAssignedJobsInfoToastShownRef.current = true
-          showToastRef.current('You have no assigned jobs', 'info')
+          showToastRef.current('No quick picks from your job assignments or Dispatch schedule for this day.', 'info')
         }
       } catch {
         if (requestId !== assignedJobsFetchGenRef.current) return
         assignedJobsShownRef.current = false
+        lastDefaultUnifiedResultsRef.current = []
+        setScheduledDispatchJobs([])
         setUnifiedSearchResults([])
         showToastRef.current('Could not load your jobs', 'error')
       } finally {
@@ -371,7 +414,15 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
       assignedJobsFetchGenRef.current++
     }
     // showToast via ref only — including showToast here caused a loop when any toast updated ToastProvider and gave consumers a new reference chain in some builds.
-  }, [clockInModalOpen, updateFocusModalOpen, clockOutReviewOpen])
+  }, [
+    clockInModalOpen,
+    updateFocusModalOpen,
+    clockOutReviewOpen,
+    userId,
+    openSession?.work_date,
+    openSession?.clocked_in_at,
+    openSession?.id,
+  ])
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -379,6 +430,11 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
       if (!unifiedSearchText.trim()) {
         if (assignedJobsShownRef.current) {
           assignedJobsShownRef.current = false
+          return
+        }
+        if (lastDefaultUnifiedResultsRef.current.length > 0) {
+          setUnifiedSearchResults(lastDefaultUnifiedResultsRef.current)
+          assignedJobsShownRef.current = true
           return
         }
         setUnifiedSearchResults([])
@@ -803,6 +859,74 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
     }
   }
 
+  function renderScheduledDispatchPicks(disabled: boolean, useLastLike: 'clockIn' | 'focusOrReview') {
+    if (scheduledDispatchJobs.length === 0) return null
+    const base =
+      useLastLike === 'clockIn'
+        ? {
+            border: '1px solid #fed7aa',
+            borderRadius: 6,
+            background: '#fff7ed',
+          }
+        : {
+            border: '1px solid #d1d5db',
+            borderRadius: 4,
+            background: 'white',
+          }
+    const selected =
+      useLastLike === 'clockIn'
+        ? { border: '1px solid #fdba74', background: '#ffedd5' }
+        : { border: '1px solid #9ca3af', background: '#f3f4f6' }
+    return (
+      <div
+        style={{
+          maxHeight: 160,
+          overflow: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+          marginTop: '0.25rem',
+          marginBottom: '0.5rem',
+        }}
+      >
+        {scheduledDispatchJobs.map((d) => {
+          const u = dispatchScheduledJobToUnified(d)
+          const win = d.windowsLabel?.trim()
+          const isSelected = selectedAssociation?.source === 'job' && selectedAssociation.id === d.jobId
+          return (
+            <button
+              key={d.jobId}
+              type="button"
+              disabled={disabled}
+              title={win || undefined}
+              onClick={() => {
+                setSelectedAssociation(u)
+                setUnifiedSearchResults([])
+                setUnifiedSearchText('')
+                assignedJobsShownRef.current = true
+              }}
+              style={{
+                display: 'block',
+                width: '100%',
+                padding: '0.25rem 0.5rem',
+                textAlign: 'left',
+                boxSizing: 'border-box',
+                fontSize: '0.8125rem',
+                cursor: disabled ? 'not-allowed' : 'pointer',
+                ...(isSelected ? { ...base, ...selected } : base),
+              }}
+            >
+              On schedule: {formatUnifiedResult(u)}
+              {win ? (
+                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{win}</div>
+              ) : null}
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div style={{ padding: '0.5rem 1rem', color: '#6b7280', fontSize: '0.875rem' }}>
@@ -1006,7 +1130,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
             <div style={{ marginBottom: '0.5rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
                 <span style={{ fontWeight: 500 }}>Link to a job or bid (optional)</span>
-                {lastSelectedJobBid && (
+                {lastSelectedJobBid && !useLastHiddenBySchedule && (
                   <button
                     type="button"
                     onClick={() => setSelectedAssociation(lastSelectedJobBid)}
@@ -1017,6 +1141,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
                   </button>
                 )}
               </div>
+              {renderScheduledDispatchPicks(actionLoading, 'clockIn')}
               {selectedAssociation && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                   <span style={{ flex: 1, padding: '0.5rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -1151,7 +1276,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
             <div style={{ marginBottom: '0.5rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
                 <span style={{ fontWeight: 500 }}>Job or Bid (optional)</span>
-                {lastSelectedJobBid && (
+                {lastSelectedJobBid && !useLastHiddenBySchedule && (
                   <button
                     type="button"
                     onClick={() => setSelectedAssociation(lastSelectedJobBid)}
@@ -1162,6 +1287,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
                   </button>
                 )}
               </div>
+              {renderScheduledDispatchPicks(updateFocusLoading, 'focusOrReview')}
               {selectedAssociation && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                   <span style={{ flex: 1, padding: '0.5rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -1297,7 +1423,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
             <div style={{ marginBottom: '0.5rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
                 <span style={{ fontWeight: 500 }}>Job or Bid (optional)</span>
-                {lastSelectedJobBid && (
+                {lastSelectedJobBid && !useLastHiddenBySchedule && (
                   <button
                     type="button"
                     onClick={() => setSelectedAssociation(lastSelectedJobBid)}
@@ -1308,6 +1434,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
                   </button>
                 )}
               </div>
+              {renderScheduledDispatchPicks(clockOutSaving, 'focusOrReview')}
               {selectedAssociation && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                   <span style={{ flex: 1, padding: '0.5rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>

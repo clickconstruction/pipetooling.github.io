@@ -18,6 +18,8 @@ type ClockSessionsSectionProps = {
   open?: boolean
   onToggle?: () => void
   emptyMessage?: string
+  enableDurationColumnSort?: boolean
+  onDurationClick?: (session: ClockSessionRow) => void
 }
 
 export function ClockSessionsSection({
@@ -32,6 +34,8 @@ export function ClockSessionsSection({
   open: controlledOpen,
   onToggle: controlledOnToggle,
   emptyMessage = 'No sessions',
+  enableDurationColumnSort = false,
+  onDurationClick,
 }: ClockSessionsSectionProps) {
   const [internalOpen, setInternalOpen] = useState(!collapsedByDefault)
   const isControlled = controlledOpen !== undefined && controlledOnToggle !== undefined
@@ -55,6 +59,8 @@ export function ClockSessionsSection({
         renderActions={renderActions}
         renderDuration={renderDuration}
         emptyMessage={emptyMessage}
+        enableDurationColumnSort={enableDurationColumnSort}
+        onDurationClick={onDurationClick}
       />
     </CollapsibleSection>
   )

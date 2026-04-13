@@ -72,6 +72,7 @@ import { useToastContext } from '../contexts/ToastContext'
 import { HoursUnassignedModal } from '../components/HoursUnassignedModal'
 import { PeopleHoursDayAuditModal } from '../components/PeopleHoursDayAuditModal'
 import { ClockSessionEditSplitModal } from '../components/ClockSessionEditSplitModal'
+import { DashboardMyTimeDayEditorModal } from '../components/DashboardMyTimeDayEditorModal'
 import { PersonTimeDetailModal } from '../components/PersonTimeDetailModal'
 import { ReviewHoursModal } from '../components/ReviewHoursModal'
 import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
@@ -83,8 +84,11 @@ import {
   RejectedClockSessionsSection,
 } from '../components/clock-sessions'
 import PeopleAppActivityPanel from '../components/people/PeopleAppActivityPanel'
+import TeamFeedbackDevSettingsBlock from '../components/team-feedback/TeamFeedbackDevSettingsBlock'
 import { PeoplePayConfigModal } from '../components/people/PeoplePayConfigModal'
 import { SalariedWorkdaysBulkModal } from '../components/people/SalariedWorkdaysBulkModal'
+import { buildPeopleHoursManualDraftSession } from '../lib/peopleHoursManualDraftSession'
+import type { DayEditorSession } from '../lib/myTimeDayTimeline'
 import { PayStubDeleteIcon } from '../components/pay/PayStubDeleteIcon'
 import { PayStubPaidNoteIcon } from '../components/pay/PayStubPaidNoteIcon'
 import type { ClockSessionRow } from '../types/clockSessions'
@@ -190,6 +194,7 @@ type PeopleTab =
   | 'contracts'
   | 'writeups'
   | 'review'
+  | 'feedback'
   | 'activity'
 
 type Vehicle = { id: string; year: number | null; make: string; model: string; vin: string | null; weekly_insurance_cost: number; weekly_registration_cost: number; created_at: string | null; updated_at: string | null }
@@ -406,6 +411,18 @@ export default function People() {
   const [selectedJobHighlight, setSelectedJobHighlight] = useState<HoursGridJobHighlightPick | null>(null)
   const hoursGridJobHighlightBlurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [editClockSession, setEditClockSession] = useState<ClockSessionRow | null>(null)
+  const [hoursMyTimeEditor, setHoursMyTimeEditor] = useState<{
+    subjectUserId: string
+    subjectDisplayName: string
+    dateStr: string
+  } | null>(null)
+  const [hoursManualDraftEditor, setHoursManualDraftEditor] = useState<{
+    subjectUserId: string
+    subjectDisplayName: string
+    dateStr: string
+    draftSessions: DayEditorSession[]
+    personName: string
+  } | null>(null)
   const [hoursDaysCorrect, setHoursDaysCorrect] = useState<Set<string>>(new Set())
   const [matrixStartDate, setMatrixStartDate] = useState(() => {
     const d = new Date()
@@ -872,6 +889,7 @@ export default function People() {
       tab === 'contracts' ||
       tab === 'writeups' ||
       tab === 'review' ||
+      tab === 'feedback' ||
       tab === 'activity'
     ) {
       if (tab === 'activity' && activityAccessResolved && !canSeeActivityTab) {
@@ -1106,6 +1124,18 @@ export default function People() {
   }, [isDev, activeTab])
 
   const canEditCrewJobs = canAccessPay || (authUserRole === 'assistant' && canAccessHours)
+
+  const openHoursMyTimeFromSession = useCallback((s: ClockSessionRow) => {
+    if (!s.user_id?.trim()) return
+    setHoursMyTimeEditor({
+      subjectUserId: s.user_id,
+      subjectDisplayName: s.users?.name?.trim() ?? 'Unknown',
+      dateStr: s.work_date,
+    })
+  }, [])
+
+  const hoursAllowNcnsFromMyTime =
+    isDev || authUserRole === 'master_technician' || authUserRole === 'assistant'
 
   useEffect(() => {
     if (!canSeePushStatus) return
@@ -4903,6 +4933,34 @@ export default function People() {
     if (error) setError(error.message)
   }
 
+  /** Hours matrix blur: open My Time with draft session (no choice modal). No matching user → grid-only save. */
+  function openManualHoursDraftFromBlur(personName: string, workDate: string, hoursDecimal: number) {
+    const u = users.find((x) => (x.name ?? '').trim() === personName.trim())
+    if (!u?.id) {
+      showToast(
+        'No user account matches this roster name — hours saved to the grid only. Link the name to open My Time next time.',
+        'error',
+      )
+      void saveHours(personName, workDate, hoursDecimal)
+      setEditingHoursCell(null)
+      return
+    }
+    try {
+      const draft = buildPeopleHoursManualDraftSession(workDate, hoursDecimal)
+      setHoursManualDraftEditor({
+        subjectUserId: u.id,
+        subjectDisplayName: u.name?.trim() ?? personName,
+        dateStr: workDate,
+        draftSessions: [draft],
+        personName,
+      })
+      setEditingHoursCell(null)
+    } catch {
+      showToast('Could not build draft session for that date.', 'error')
+      setEditingHoursCell(null)
+    }
+  }
+
   async function addTeam() {
     if (!canAccessPay) return
     const { data, error } = await supabase.from('people_teams').insert({ name: 'New Team', sequence_order: teams.length }).select('id').single()
@@ -4955,6 +5013,27 @@ export default function People() {
     const cfg = payConfig[personName]
     if (cfg?.is_salary && !(cfg?.record_hours_but_salary ?? false)) return getEffectiveHours(personName, workDate)
     return getHoursForPersonDate(personName, workDate)
+  }
+
+  /** Pending (unapproved) closed clock sessions on the Hours grid: avoids showing 0 after creating a session from manual entry until approval merges into people_hours. */
+  function sumClosedPendingClockHoursForPersonDate(personName: string, workDate: string): number {
+    const uid = users.find((u) => (u.name ?? '').trim() === personName.trim())?.id
+    if (!uid) return 0
+    let sum = 0
+    for (const s of pendingClockSessions) {
+      if (s.user_id !== uid || s.work_date !== workDate || s.clocked_out_at == null) continue
+      const a = new Date(s.clocked_in_at).getTime()
+      const b = new Date(s.clocked_out_at).getTime()
+      sum += Math.max(0, (b - a) / 3_600_000)
+    }
+    return sum
+  }
+
+  /** Hours matrix: max(people_hours, pending clock) so manual-offer → session path stays visible; salary-only rows unchanged. */
+  function getHoursGridDisplayHours(personName: string, workDate: string): number {
+    const cfg = payConfig[personName]
+    if (cfg?.is_salary && !(cfg?.record_hours_but_salary ?? false)) return getEffectiveHours(personName, workDate)
+    return Math.max(getHoursForPersonDate(personName, workDate), sumClosedPendingClockHoursForPersonDate(personName, workDate))
   }
 
   function getCostForPersonDate(personName: string, workDate: string): number {
@@ -6267,6 +6346,22 @@ export default function People() {
             style={tabStyle(activeTab === 'review')}
           >
             Review
+          </button>
+        )}
+        {isDev && (
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('feedback')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'feedback')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'feedback')}
+          >
+            Feedback
           </button>
         )}
         {canSeeActivityTab && (
@@ -9037,6 +9132,8 @@ export default function People() {
               sessions={activeClockSessionsFiltered}
               showActionsColumn
               locationVariant="full"
+              enableDurationColumnSort
+              onDurationClick={openHoursMyTimeFromSession}
               emptyMessage={hoursClockSessionsSearching ? 'No matching sessions' : 'No active sessions'}
               renderNotesSecondary={(s) => {
                 const label = formatClockSessionJobOrBidLabel(s)
@@ -9094,6 +9191,8 @@ export default function People() {
               sessions={pendingApprovalClockSessionsFiltered}
               showActionsColumn
               locationVariant="full"
+              enableDurationColumnSort
+              onDurationClick={openHoursMyTimeFromSession}
               emptyMessage={hoursClockSessionsSearching ? 'No matching sessions' : 'No sessions awaiting approval'}
               renderNotesSecondary={(s) => {
                 const label = formatClockSessionJobOrBidLabel(s)
@@ -9165,6 +9264,8 @@ export default function People() {
           <ClockSessionsSection
             title="Approved Sessions"
             sessions={approvedClockSessionsFiltered}
+            enableDurationColumnSort
+            onDurationClick={openHoursMyTimeFromSession}
             headerCountLabel={
               hoursClockSessionsSearching
                 ? `${approvedClockSessionsFiltered.length} of ${approvedClockSessions.length} matching`
@@ -9492,7 +9593,7 @@ export default function People() {
                               }}
                             >
                               {!canEdit ? (
-                                <span style={{ color: '#6b7280' }}>{decimalToHms(getDisplayHours(personName, d)) || '-'}</span>
+                                <span style={{ color: '#6b7280' }}>{decimalToHms(getHoursGridDisplayHours(personName, d)) || '-'}</span>
                               ) : dayLocked ? (
                                 canEdit ? (
                                   <button
@@ -9513,29 +9614,38 @@ export default function People() {
                                       font: 'inherit',
                                     }}
                                   >
-                                    {decimalToHms(getDisplayHours(personName, d)) || '-'}
+                                    {decimalToHms(getHoursGridDisplayHours(personName, d)) || '-'}
                                   </button>
                                 ) : (
                                   <span style={{ color: '#6b7280' }} title="Day marked Correct — locked">
-                                    {decimalToHms(getDisplayHours(personName, d)) || '-'}
+                                    {decimalToHms(getHoursGridDisplayHours(personName, d)) || '-'}
                                   </span>
                                 )
                               ) : (
                                 <input
                                   type="text"
                                   inputMode="numeric"
-                                  value={editingHoursCell?.personName === personName && editingHoursCell?.workDate === d ? editingHoursValue : decimalToHms(getHoursForPersonDate(personName, d))}
+                                  value={editingHoursCell?.personName === personName && editingHoursCell?.workDate === d ? editingHoursValue : decimalToHms(getHoursGridDisplayHours(personName, d))}
                                   placeholder="-"
                                   onClick={(e) => e.stopPropagation()}
                                   onFocus={(e) => {
                                     setEditingHoursCell({ personName, workDate: d })
-                                    setEditingHoursValue(decimalToHms(getHoursForPersonDate(personName, d)) || '')
+                                    setEditingHoursValue(decimalToHms(getHoursGridDisplayHours(personName, d)) || '')
                                     e.target.select()
                                   }}
                                   onChange={(e) => setEditingHoursValue(e.target.value)}
                                   onBlur={() => {
                                     const v = hmsToDecimal(editingHoursValue)
-                                    saveHours(personName, d, v)
+                                    const shouldOfferManualSession =
+                                      v > 0 &&
+                                      (canAccessHours || canAccessPay) &&
+                                      canEditHours(personName) &&
+                                      !hoursDaysCorrect.has(d)
+                                    if (shouldOfferManualSession) {
+                                      openManualHoursDraftFromBlur(personName, d, v)
+                                      return
+                                    }
+                                    void saveHours(personName, d, v)
                                     setEditingHoursCell(null)
                                   }}
                                   style={{ width: 72, padding: '0.25rem 0.35rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'right' }}
@@ -9545,10 +9655,10 @@ export default function People() {
                           )
                         })}
                         <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>
-                          {decimalToHms(hoursDays.reduce((s, d) => s + getDisplayHours(personName, d), 0)) || '-'}
+                          {decimalToHms(hoursDays.reduce((s, d) => s + getHoursGridDisplayHours(personName, d), 0)) || '-'}
                         </td>
                         <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>
-                          {(hoursDays.reduce((s, d) => s + getDisplayHours(personName, d), 0)).toFixed(2)}
+                          {(hoursDays.reduce((s, d) => s + getHoursGridDisplayHours(personName, d), 0)).toFixed(2)}
                         </td>
                       </tr>
                     )
@@ -9556,7 +9666,7 @@ export default function People() {
                 </tbody>
                 <tfoot style={{ background: '#f9fafb', fontWeight: 600 }}>
                   {(() => {
-                    const grandTotal = showPeopleForHours.reduce((s, p) => s + hoursDays.reduce((ds, d) => ds + getDisplayHours(p, d), 0), 0)
+                    const grandTotal = showPeopleForHours.reduce((s, p) => s + hoursDays.reduce((ds, d) => ds + getHoursGridDisplayHours(p, d), 0), 0)
                     return (
                       <>
                         <tr>
@@ -9574,7 +9684,7 @@ export default function People() {
                             {HOURS_GRID_FIRST_COL_LABEL}
                           </td>
                           {hoursDays.map((d) => {
-                            const daySum = showPeopleForHours.reduce((s, p) => s + getDisplayHours(p, d), 0)
+                            const daySum = showPeopleForHours.reduce((s, p) => s + getHoursGridDisplayHours(p, d), 0)
                             return (
                               <td
                                 key={d}
@@ -9611,7 +9721,7 @@ export default function People() {
                             Total (Decimal):
                           </td>
                           {hoursDays.map((d) => {
-                            const daySum = showPeopleForHours.reduce((s, p) => s + getDisplayHours(p, d), 0)
+                            const daySum = showPeopleForHours.reduce((s, p) => s + getHoursGridDisplayHours(p, d), 0)
                             return (
                               <td
                                 key={d}
@@ -11536,6 +11646,12 @@ export default function People() {
         </div>
       )}
 
+      {activeTab === 'feedback' && isDev && (
+        <div>
+          <TeamFeedbackDevSettingsBlock layout="standalone" />
+        </div>
+      )}
+
       {activeTab === 'activity' && (
         <div>
           {!activityAccessResolved ? (
@@ -12157,6 +12273,60 @@ export default function People() {
         />
       )}
 
+      {hoursManualDraftEditor && (
+        <DashboardMyTimeDayEditorModal
+          dateStr={hoursManualDraftEditor.dateStr}
+          sessions={hoursManualDraftEditor.draftSessions}
+          subjectUserId={hoursManualDraftEditor.subjectUserId}
+          subjectDisplayName={hoursManualDraftEditor.subjectDisplayName}
+          jobLabels={{}}
+          bidLabels={{}}
+          allowNcnsFromMyTime={false}
+          onClose={() => setHoursManualDraftEditor(null)}
+          onSaved={() => {
+            setHoursManualDraftEditor((prev) => {
+              if (prev) {
+                void (async () => {
+                  // people_hours must not retain a parallel manual total: approve_clock_sessions adds session hours onto existing people_hours.
+                  await saveHours(prev.personName, prev.dateStr, 0)
+                  loadAllClockSessionsRef.current?.()
+                  loadPeopleHoursRef.current?.()
+                })()
+              } else {
+                loadAllClockSessionsRef.current?.()
+                loadPeopleHoursRef.current?.()
+              }
+              return null
+            })
+          }}
+          onLinkedSessionsUpdated={() => {
+            loadAllClockSessionsRef.current?.()
+            loadPeopleHoursRef.current?.()
+          }}
+        />
+      )}
+
+      {hoursMyTimeEditor && (
+        <DashboardMyTimeDayEditorModal
+          dateStr={hoursMyTimeEditor.dateStr}
+          sessions={[]}
+          subjectUserId={hoursMyTimeEditor.subjectUserId}
+          subjectDisplayName={hoursMyTimeEditor.subjectDisplayName}
+          jobLabels={{}}
+          bidLabels={{}}
+          allowNcnsFromMyTime={hoursAllowNcnsFromMyTime}
+          onClose={() => setHoursMyTimeEditor(null)}
+          onSaved={() => {
+            setHoursMyTimeEditor(null)
+            loadAllClockSessionsRef.current?.()
+            loadPeopleHoursRef.current?.()
+          }}
+          onLinkedSessionsUpdated={() => {
+            loadAllClockSessionsRef.current?.()
+            loadPeopleHoursRef.current?.()
+          }}
+        />
+      )}
 
       {payStubCalendarPerson && (
         <div

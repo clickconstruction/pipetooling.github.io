@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
+import { useMemo, useState } from 'react'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { formatClockSessionJobOrBidLabel, type ClockSessionRow } from '../../types/clockSessions'
 import { ClockSessionLocationCell } from './ClockSessionLocationCell'
@@ -15,6 +16,22 @@ type ClockSessionsTableProps = {
   renderDuration?: (session: ClockSessionRow) => ReactNode
   locationVariant?: 'compact' | 'full'
   emptyMessage?: string
+  /** People Hours: click Time & location header (or narrow toolbar) to sort by duration, longest first. */
+  enableDurationColumnSort?: boolean
+  /** People Hours: click bold duration to open My Time day editor for that user/day. */
+  onDurationClick?: (session: ClockSessionRow) => void
+}
+
+const durationLinkButtonStyle: CSSProperties = {
+  margin: 0,
+  padding: 0,
+  border: 'none',
+  background: 'none',
+  font: 'inherit',
+  fontWeight: 600,
+  color: '#2563eb',
+  cursor: 'pointer',
+  textDecoration: 'underline',
 }
 
 const timeOpts: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit' }
@@ -43,7 +60,38 @@ export function sessionDecimalHours(s: ClockSessionRow): number {
   return (outDate.getTime() - inDate.getTime()) / (1000 * 3600)
 }
 
-function defaultRenderDuration(s: ClockSessionRow): ReactNode {
+function compareSessionsByDurationDescThenClockInThenId(a: ClockSessionRow, b: ClockSessionRow): number {
+  const d = sessionDecimalHours(b) - sessionDecimalHours(a)
+  if (d !== 0) return d
+  const ta = new Date(b.clocked_in_at).getTime() - new Date(a.clocked_in_at).getTime()
+  if (ta !== 0) return ta
+  return a.id.localeCompare(b.id)
+}
+
+function renderDurationBoldSegment(
+  s: ClockSessionRow,
+  durationStr: string,
+  onDurationClick?: (session: ClockSessionRow) => void,
+): ReactNode {
+  if (onDurationClick && s.user_id?.trim()) {
+    return (
+      <button
+        type="button"
+        style={durationLinkButtonStyle}
+        aria-label={`Open My Time editor for ${s.work_date}`}
+        onClick={(e) => {
+          e.stopPropagation()
+          onDurationClick(s)
+        }}
+      >
+        {durationStr}
+      </button>
+    )
+  }
+  return <span style={{ fontWeight: 600 }}>{durationStr}</span>
+}
+
+function renderDefaultDuration(s: ClockSessionRow, onDurationClick?: (session: ClockSessionRow) => void): ReactNode {
   const hrs = sessionDecimalHours(s)
   const isActive = s.clocked_out_at == null
   const inDate = new Date(s.clocked_in_at)
@@ -53,13 +101,15 @@ function defaultRenderDuration(s: ClockSessionRow): ReactNode {
   const durationStr = `${hrs.toFixed(2)}h`
   return (
     <>
-      {inStr} | {outStr} | <span style={{ fontWeight: 600 }}>{durationStr}</span>
+      {inStr} | {outStr} | {renderDurationBoldSegment(s, durationStr, onDurationClick)}
     </>
   )
 }
 
-/** Same math as defaultRenderDuration; order: duration | clock-in | clock-out (My Team Clock activity). */
-export function renderDurationDurationFirst(s: ClockSessionRow): ReactNode {
+function renderDurationDurationFirstImpl(
+  s: ClockSessionRow,
+  onDurationClick?: (session: ClockSessionRow) => void,
+): ReactNode {
   const hrs = sessionDecimalHours(s)
   const isActive = s.clocked_out_at == null
   const inDate = new Date(s.clocked_in_at)
@@ -69,9 +119,14 @@ export function renderDurationDurationFirst(s: ClockSessionRow): ReactNode {
   const durationStr = `${hrs.toFixed(2)}h`
   return (
     <>
-      <span style={{ fontWeight: 600 }}>{durationStr}</span> | {inStr} | {outStr}
+      {renderDurationBoldSegment(s, durationStr, onDurationClick)} | {inStr} | {outStr}
     </>
   )
+}
+
+/** Same math as table default; order: duration | clock-in | clock-out (My Team Clock activity). */
+export function renderDurationDurationFirst(s: ClockSessionRow): ReactNode {
+  return renderDurationDurationFirstImpl(s, undefined)
 }
 
 function formatAccountability(s: ClockSessionRow): string {
@@ -332,18 +387,50 @@ export function ClockSessionsTable({
   renderDuration: renderDurationProp,
   locationVariant = 'compact',
   emptyMessage = 'No sessions',
+  enableDurationColumnSort = false,
+  onDurationClick,
 }: ClockSessionsTableProps) {
-  const renderDurationForTable = renderDurationProp ?? defaultRenderDuration
-  const renderDurationForNarrow =
-    renderDurationProp === undefined || renderDurationProp === defaultRenderDuration
-      ? renderDurationDurationFirst
-      : renderDurationProp
+  const [durationSortActive, setDurationSortActive] = useState(false)
+
+  const displaySessions = useMemo(() => {
+    if (!enableDurationColumnSort || !durationSortActive) return sessions
+    return [...sessions].sort(compareSessionsByDurationDescThenClockInThenId)
+  }, [sessions, enableDurationColumnSort, durationSortActive])
+
+  const renderDurationForTable = useMemo(() => {
+    if (renderDurationProp != null) return renderDurationProp
+    return (s: ClockSessionRow) => renderDefaultDuration(s, onDurationClick)
+  }, [renderDurationProp, onDurationClick])
+
+  const renderDurationForNarrow = useMemo(() => {
+    if (renderDurationProp != null) return renderDurationProp
+    return (s: ClockSessionRow) => renderDurationDurationFirstImpl(s, onDurationClick)
+  }, [renderDurationProp, onDurationClick])
 
   const isNarrow = useNarrowViewport640()
 
   if (isNarrow) {
     return (
       <div style={{ fontSize: '0.875rem' }}>
+        {enableDurationColumnSort && sessions.length > 0 ? (
+          <div style={{ marginBottom: '0.5rem' }}>
+            <button
+              type="button"
+              onClick={() => setDurationSortActive((p) => !p)}
+              style={{
+                padding: '0.25rem 0.5rem',
+                fontSize: '0.8125rem',
+                border: '1px solid #d1d5db',
+                borderRadius: 4,
+                background: durationSortActive ? '#eff6ff' : 'white',
+                cursor: 'pointer',
+                color: '#374151',
+              }}
+            >
+              {durationSortActive ? 'Default order' : 'Sort by duration (longest first)'}
+            </button>
+          </div>
+        ) : null}
         {sessions.length === 0 ? (
           <div
             style={{
@@ -357,7 +444,7 @@ export function ClockSessionsTable({
             {emptyMessage}
           </div>
         ) : (
-          sessions.map((s) => (
+          displaySessions.map((s) => (
             <ClockSessionCard
               key={s.id}
               s={s}
@@ -381,7 +468,36 @@ export function ClockSessionsTable({
           <tr>
             <th style={thStyle}>Person</th>
             <th style={thStyle}>Work day</th>
-            <th style={thStyle}>Time & location</th>
+            <th
+              style={thStyle}
+              aria-sort={enableDurationColumnSort && durationSortActive ? 'descending' : undefined}
+            >
+              {enableDurationColumnSort ? (
+                <button
+                  type="button"
+                  onClick={() => setDurationSortActive((p) => !p)}
+                  title="Toggle sort by session duration (longest first)"
+                  style={{
+                    margin: 0,
+                    padding: 0,
+                    border: 'none',
+                    background: 'none',
+                    font: 'inherit',
+                    color: 'inherit',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.25rem',
+                  }}
+                >
+                  Time & location
+                  {durationSortActive ? <span aria-hidden="true">{'\u25bc'}</span> : null}
+                </button>
+              ) : (
+                'Time & location'
+              )}
+            </th>
             <th style={thStyle} colSpan={2} title="Notes and job or bid assignment">
               Notes &amp; job
             </th>
@@ -397,7 +513,7 @@ export function ClockSessionsTable({
               </td>
             </tr>
           ) : (
-            sessions.map((s) => {
+            displaySessions.map((s) => {
               const personName = s.users?.name?.trim() ?? 'Unknown'
               return (
                 <tr key={s.id} style={{ borderBottom: '1px solid #e5e7eb', verticalAlign: 'top' }}>

@@ -116,6 +116,8 @@ type ScheduleDispatchBlockModalState =
 
 type HubAssignJobPlacementState = { jobId: string }
 
+type HubCellAddContextState = { assigneeUserId: string; workDate: string }
+
 function validateRange(timeStart: string, timeEnd: string): string | null {
   const ts = timeInputToPg(timeStart)
   const te = timeInputToPg(timeEnd)
@@ -885,7 +887,22 @@ export default function ScheduleDispatch() {
   const [hubAssignJobPlacement, setHubAssignJobPlacement] = useState<HubAssignJobPlacementState | null>(null)
   const [hubAssignJobPickerOpen, setHubAssignJobPickerOpen] = useState(false)
   const [hubAssignJobPickerSearch, setHubAssignJobPickerSearch] = useState('')
+  const [hubCellAddContext, setHubCellAddContext] = useState<HubCellAddContextState | null>(null)
   const placeJobArmKeyRef = useRef<string>('')
+  const hubAssignJobPickerSearchInputRef = useRef<HTMLInputElement>(null)
+
+  const closeHubAssignJobPicker = useCallback(() => {
+    setHubAssignJobPickerOpen(false)
+    setHubCellAddContext(null)
+  }, [])
+
+  useEffect(() => {
+    if (!hubAssignJobPickerOpen) return
+    const id = window.requestAnimationFrame(() => {
+      hubAssignJobPickerSearchInputRef.current?.focus()
+    })
+    return () => window.cancelAnimationFrame(id)
+  }, [hubAssignJobPickerOpen])
 
   const placementSourceBlock = useMemo(() => {
     if (!cardPlacementMode) return null
@@ -900,6 +917,7 @@ export default function ScheduleDispatch() {
         setCardPlacementMode(null)
         setPlusMenuBlockId(null)
         setHubAssignJobPlacement(null)
+        setHubCellAddContext(null)
         setSearchParams((prev) => {
           const n = new URLSearchParams(prev)
           if (!n.has('placeJob')) return prev
@@ -926,6 +944,8 @@ export default function ScheduleDispatch() {
       setCardPlacementMode(null)
       setPlusMenuBlockId(null)
       setHubAssignJobPlacement(null)
+      setHubAssignJobPickerOpen(false)
+      setHubCellAddContext(null)
       setBlockModalState({ kind: 'add', assigneeUserId: args.assigneeUserId, workDate: args.workDate, jobId: args.jobId })
       setAddTimeStart('08:00')
       setAddTimeEnd('12:00')
@@ -1082,26 +1102,39 @@ export default function ScheduleDispatch() {
     setCardPlacementMode(null)
     setPlusMenuBlockId(null)
     setHubAssignJobPlacement(null)
+    setHubCellAddContext(null)
     stripPlaceJobFromUrl()
     setHubAssignJobPickerSearch('')
     setHubAssignJobPickerOpen(true)
   }, [stripPlaceJobFromUrl])
 
-  const onRequestHubNewJob = useCallback(() => {
+  const onHubEmptyCellOpenChoice = useCallback((personUserId: string, workDate: string) => {
+    setHubCellAddContext({ assigneeUserId: personUserId, workDate })
+    setHubAssignJobPickerSearch('')
+    setHubAssignJobPickerOpen(true)
+  }, [])
+
+  const onCreateNewJobFromHubJobPicker = useCallback(() => {
     if (!jobFormModal) return
+    const ctx = hubCellAddContext ? { ...hubCellAddContext } : null
+    setHubAssignJobPickerOpen(false)
     setCardPlacementMode(null)
     setPlusMenuBlockId(null)
-    setHubAssignJobPickerOpen(false)
+    setHubCellAddContext(null)
     jobFormModal.openNewJob({
       onCreatedJobId: (newId) => {
         void loadHub().then(() => {
-          setHubAssignJobPlacement({ jobId: newId })
-          showToast('Click a person day cell to add the first block for this job.', 'info')
+          if (ctx) {
+            openAddBlock({ assigneeUserId: ctx.assigneeUserId, workDate: ctx.workDate, jobId: newId })
+          } else {
+            setHubAssignJobPlacement({ jobId: newId })
+            showToast('Click a person day cell to add the first block for this job.', 'info')
+          }
         })
       },
       onSaved: () => void loadHub(),
     })
-  }, [jobFormModal, loadHub, showToast])
+  }, [jobFormModal, hubCellAddContext, openAddBlock, loadHub, showToast])
 
   const hubAssignJobPickerRows = useMemo(() => {
     const q = hubAssignJobPickerSearch.trim().toLowerCase()
@@ -1116,6 +1149,12 @@ export default function ScheduleDispatch() {
     }
     return list
   }, [hubMergedRows, hubAssignJobPickerSearch])
+
+  const hubEmptyCellChoiceSubtitle = useMemo(() => {
+    if (!hubCellAddContext) return ''
+    const name = hubPeopleNameById.get(hubCellAddContext.assigneeUserId) ?? 'Unknown'
+    return `${name} · ${scheduleFormatWeekdayLong(hubCellAddContext.workDate)} (${hubCellAddContext.workDate})`
+  }, [hubCellAddContext, hubPeopleNameById])
 
   const blockModalPersonLabel = useMemo(() => {
     if (!blockModalState) return ''
@@ -1562,9 +1601,10 @@ export default function ScheduleDispatch() {
             hubHourlyWageByUserId={hubHourlyWageByUserId}
             hubAssignJobPlacement={hubAssignJobPlacement}
             onRequestHubAddJob={onRequestHubAddJob}
-            onRequestHubNewJob={onRequestHubNewJob}
             onHubAssignJobCellPick={onHubAssignJobCellPick}
             onDeleteBlock={(id) => void onDeleteBlock(id)}
+            onHubEmptyCellClick={canEdit ? onHubEmptyCellOpenChoice : undefined}
+            onHubAddJobToScheduleForCell={canEdit ? onHubEmptyCellOpenChoice : undefined}
           />
         </DndContext>
         <AddBlockModal
@@ -1595,7 +1635,7 @@ export default function ScheduleDispatch() {
               justifyContent: 'center',
               zIndex: 1003,
             }}
-            onClick={() => setHubAssignJobPickerOpen(false)}
+            onClick={closeHubAssignJobPicker}
             role="presentation"
           >
             <div
@@ -1615,13 +1655,56 @@ export default function ScheduleDispatch() {
               }}
               onClick={(e) => e.stopPropagation()}
             >
-              <h2 id="hub-assign-job-picker-title" style={{ margin: '0 0 0.75rem', fontSize: '1.05rem' }}>
-                Add job to schedule
-              </h2>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '0.75rem',
+                  flexWrap: 'wrap',
+                  marginBottom: '0.75rem',
+                }}
+              >
+                <h2 id="hub-assign-job-picker-title" style={{ margin: 0, fontSize: '1.05rem' }}>
+                  Add job to schedule
+                </h2>
+                <button
+                  type="button"
+                  onClick={onCreateNewJobFromHubJobPicker}
+                  disabled={!jobFormModal}
+                  style={{
+                    boxSizing: 'border-box',
+                    height: 32,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '0 0.75rem',
+                    border: '1px solid #2563eb',
+                    borderRadius: 4,
+                    background: '#fff',
+                    color: '#2563eb',
+                    cursor: jobFormModal ? 'pointer' : 'not-allowed',
+                    fontSize: '0.8125rem',
+                    opacity: jobFormModal ? 1 : 0.5,
+                  }}
+                >
+                  Create new job
+                </button>
+              </div>
               <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#4b5563' }}>
-                Choose a job from this week&apos;s hub list, then click a person and day on the People grid.
+                {hubCellAddContext ? (
+                  <>
+                    Pick a job to add a block for <strong>{hubEmptyCellChoiceSubtitle}</strong> (this week&apos;s hub
+                    list).
+                  </>
+                ) : (
+                  <>
+                    Choose a job from this week&apos;s hub list, then click a person and day on the People grid.
+                  </>
+                )}
               </p>
               <input
+                ref={hubAssignJobPickerSearchInputRef}
                 type="search"
                 value={hubAssignJobPickerSearch}
                 onChange={(e) => setHubAssignJobPickerSearch(e.target.value)}
@@ -1639,6 +1722,14 @@ export default function ScheduleDispatch() {
                         <button
                           type="button"
                           onClick={() => {
+                            if (hubCellAddContext) {
+                              openAddBlock({
+                                assigneeUserId: hubCellAddContext.assigneeUserId,
+                                workDate: hubCellAddContext.workDate,
+                                jobId: r.id,
+                              })
+                              return
+                            }
                             setHubAssignJobPickerOpen(false)
                             setCardPlacementMode(null)
                             setPlusMenuBlockId(null)
@@ -1665,7 +1756,7 @@ export default function ScheduleDispatch() {
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.75rem' }}>
                 <button
                   type="button"
-                  onClick={() => setHubAssignJobPickerOpen(false)}
+                  onClick={closeHubAssignJobPicker}
                   style={{
                     padding: '0.45rem 1rem',
                     fontSize: '0.875rem',
