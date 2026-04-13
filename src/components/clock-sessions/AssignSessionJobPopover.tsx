@@ -15,6 +15,7 @@ import {
   type UnifiedSearchResult,
 } from '../../utils/unifiedJobBidSearch'
 import type { ClockSessionRow } from '../../types/clockSessions'
+import { isDraftPeopleHoursSessionId } from '../../lib/peopleHoursManualDraftSession'
 
 export type AssignSessionJobPopoverSession = Pick<ClockSessionRow, 'id' | 'job_ledger_id' | 'bid_id'>
 
@@ -46,6 +47,13 @@ type Props = {
    */
   dispatchScheduleAssigneeUserId?: string
   dispatchScheduleWorkDateYmd?: string
+  /**
+   * People Hours draft rows are not in `clock_sessions` yet. When set, assign/clear updates parent state only (no DB).
+   */
+  draftLocalJobBidAssign?: (
+    target: AssignSessionJobPopoverSession,
+    selection: UnifiedSearchResult | null,
+  ) => void
 }
 
 const ASSIGN_POPOVER_ESTIMATED_HEIGHT = 360
@@ -109,6 +117,7 @@ export function AssignSessionJobPopover({
   showChangeWhenAssigned = true,
   dispatchScheduleAssigneeUserId,
   dispatchScheduleWorkDateYmd,
+  draftLocalJobBidAssign,
 }: Props) {
   const [open, setOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
@@ -263,6 +272,18 @@ export function AssignSessionJobPopover({
         if (!resolved) return
         target = resolved
       }
+      if (isDraftPeopleHoursSessionId(target.id)) {
+        if (!draftLocalJobBidAssign) {
+          onError?.('This block is not saved yet. Close the editor to save the session, then assign a job.')
+          return
+        }
+        draftLocalJobBidAssign(target, item)
+        setOpen(false)
+        setSearchText('')
+        setSearchResults([])
+        onSaved({ sessionId: target.id, selection: item })
+        return
+      }
       await withSupabaseRetry(
         async () =>
           supabase
@@ -293,6 +314,18 @@ export function AssignSessionJobPopover({
         const resolved = await resolveSessionForAssign()
         if (!resolved) return
         target = resolved
+      }
+      if (isDraftPeopleHoursSessionId(target.id)) {
+        if (!draftLocalJobBidAssign) {
+          onError?.('This block is not saved yet. Close the editor to save the session, then clear or change the job.')
+          return
+        }
+        draftLocalJobBidAssign(target, null)
+        setOpen(false)
+        setSearchText('')
+        setSearchResults([])
+        onSaved({ sessionId: target.id, selection: null })
+        return
       }
       await withSupabaseRetry(
         async () =>

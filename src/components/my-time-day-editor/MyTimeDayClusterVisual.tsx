@@ -2,7 +2,9 @@ import { Fragment, useEffect, useState, type CSSProperties } from 'react'
 import {
   AssignSessionJobPopover,
   type AssignSessionJobPopoverSession,
+  type AssignSessionJobSavedPatch,
 } from '../clock-sessions/AssignSessionJobPopover'
+import type { UnifiedSearchResult } from '../../utils/unifiedJobBidSearch'
 import {
   clockSessionRowForSegmentAssign,
   clusterHasMultipleAllocations,
@@ -56,7 +58,7 @@ export type MyTimeDayClusterVisualProps = {
   onFocusHandle: (index: number) => void
   patchClusterAction: (action: SplitAction) => void
   setAssignBulk: (v: { sessionIds: string[]; label: string } | null) => void
-  onAssignJobSaved: () => void
+  onAssignJobSaved: (patch?: AssignSessionJobSavedPatch) => void
   resolveAssignSession?: (segIdx: number) => Promise<AssignSessionJobPopoverSession | null>
   onRequestMergeJobChoice?: (payload: { direction: 'prev' | 'next'; segIdx: number }) => void
   onForceClockOut?: (session: DayEditorSession) => void
@@ -67,6 +69,10 @@ export type MyTimeDayClusterVisualProps = {
   readOnlyView?: boolean
   dispatchScheduleAssigneeUserId?: string
   dispatchScheduleWorkDateYmd?: string
+  draftLocalJobBidAssign?: (
+    target: AssignSessionJobPopoverSession,
+    selection: UnifiedSearchResult | null,
+  ) => void
 }
 
 export function MyTimeDayClusterVisual({
@@ -99,6 +105,7 @@ export function MyTimeDayClusterVisual({
   readOnlyView = false,
   dispatchScheduleAssigneeUserId,
   dispatchScheduleWorkDateYmd,
+  draftLocalJobBidAssign,
 }: MyTimeDayClusterVisualProps) {
   const openLastCluster = !lastS.clocked_out_at
   const compactMerge = useMyTimeCompactMergeMedia()
@@ -544,6 +551,7 @@ export function MyTimeDayClusterVisual({
                             onSaved={onAssignJobSaved}
                             dispatchScheduleAssigneeUserId={dispatchScheduleAssigneeUserId}
                             dispatchScheduleWorkDateYmd={dispatchScheduleWorkDateYmd}
+                            draftLocalJobBidAssign={draftLocalJobBidAssign}
                           />
                         ) : null
                       ) : showSingleUnassignedAssign && unassignedIds.length > 1 ? (
@@ -687,6 +695,7 @@ export function MyTimeDayClusterVisual({
                               onSaved={onAssignJobSaved}
                               dispatchScheduleAssigneeUserId={dispatchScheduleAssigneeUserId}
                               dispatchScheduleWorkDateYmd={dispatchScheduleWorkDateYmd}
+                              draftLocalJobBidAssign={draftLocalJobBidAssign}
                             />
                           </span>
                         </div>

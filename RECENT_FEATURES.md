@@ -7,16 +7,22 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-12
+last_updated: 2026-04-13
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.295 → v2.4"
+version_range: "v2.297 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.297)"
+    line: ~917
+    description: "People Hours grid blur: proportional scale of closed clock_sessions into My Time (preserve share of day); open session → fetch modal + toast; draft fallback; peopleHoursProportionalScale.ts"
+  - name: "Latest Version (v2.296)"
+    line: ~928
+    description: "Schedule Dispatch Add schedule block: occupied timeline (person-day), drag existing blocks as drafts, gap-clamped new range, batch save updates+insert; scheduleDispatchAddBlockTimeline.ts"
   - name: "Latest Version (v2.295)"
-    line: ~909
+    line: ~925
     description: "Schedule Dispatch hub People: ++ multi-cell add mode, FAB choose job, applyHubMultiCellJob bulk insert; parseHubPersonDayKey"
   - name: "Latest Version (v2.294)"
     line: ~925
@@ -712,6 +718,8 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.297 — People Hours: grid blur proportional scale into My Time (closed sessions); open session → live fetch](#latest-updates-v2297)
+**New:** [v2.296 — Schedule Dispatch: Add schedule block occupied timeline + draft moves + batch save](#latest-updates-v2296)
 **New:** [v2.295 — Schedule Dispatch hub: ++ multi-cell add, FAB, bulk blocks (08:00–12:00)](#latest-updates-v2295)
 **New:** [v2.294 — Schedule Dispatch hub: People day cell triangle + → Add job to schedule (filled cell)](#latest-updates-v2294)
 **New:** [v2.293 — Schedule Dispatch hub: empty People cell → Add job to schedule directly](#latest-updates-v2293)
@@ -908,6 +916,37 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.297)
+
+**Date**: 2026-04-13
+
+### People **Hours** — grid blur **proportional** session scale in **My Time**
+
+- **Behavior** — Entering a new total in the matrix and blurring opens **[`DashboardMyTimeDayEditorModal`](src/components/DashboardMyTimeDayEditorModal.tsx)** with that day’s **closed** `clock_sessions` **scaled** so each segment keeps the same **share** of the previous total (e.g. 2h + 6h → enter 4h →1h + 3h). Segments are **packed contiguously** from the **original** clock-in of the **earliest** session. Durations use **integer ms** with **largest-remainder** so the sum matches the entered hours and each segment stays at least **[`MIN_SEGMENT_MS`](src/lib/myTimeDayTimeline.ts)** when physically possible.
+- **Open session** — If any session that day has no `clocked_out_at`, **no** proportional seed: **info** toast and the usual **fetch** My Time modal (**[`hoursMyTimeEditor`](src/pages/People.tsx)** with `sessions={[]}`).
+- **Fallback** — No closed sessions (or target too small for min segment count) → same **single draft** block as v2.291 ([`buildPeopleHoursManualDraftSession`](src/lib/peopleHoursManualDraftSession.ts)).
+- **Labels** — Job/bid labels for the modal are filled from list row embeds when scaling ([`buildJobBidLabelMapsFromClockRows`](src/lib/peopleHoursProportionalScale.ts)).
+- **Manual QA** — (1) Two closed sessions 2h + 6h, enter 4h → 1h + 3h contiguous. (2) Single 8h → 4h. (3) No sessions → 8:00 draft. (4) One open session that day → toast + fetch editor. (5) Many tiny segments + low target → draft fallback if `n * MIN_SEGMENT_MS` exceeds target.
+- **Fix** — After **Save** from this modal, **`people_hours`** was always cleared (`saveHours(0)`). That is correct for **draft-only** inserts (grid uses `max(people_hours, pending)`). For **real** sessions (proportional scale / edits to existing rows), **`people_hours`** is now set to the sum of **approved** closed session durations for that day (pending stays out of `people_hours`); see **`onSaved`** on **`hoursManualDraftEditor`** in [`People.tsx`](src/pages/People.tsx).
+- **Fix** — **Close** on proportional seed saw **no dirty** clusters (initial snapshot matched scaled props), so nothing persisted. **`peopleHoursGridProportionalSeed`** on [`DashboardMyTimeDayEditorModal`](src/components/DashboardMyTimeDayEditorModal.tsx) forces persist of all clusters when **Close** would otherwise skip; set from [`People.tsx`](src/pages/People.tsx) when any session is not a draft id.
+- **Fix** — After that, persist still used the **note-only** branch because `singleSegmentTimesMatchSession` compared **seeded** props to the split (both scaled), while **Postgres** still had old clock times—so **`people_hours`** sync read stale durations (e.g. ~10h vs modal 7h). When **`peopleHoursGridProportionalSeed`**, single-segment save now **`UPDATE`s `clocked_in_at` / `clocked_out_at`** (same fields as **Adjust times**); multi-row “boundaries unchanged” note-only path is skipped so **`leader_replace_clock_session_cluster_mixed`** runs instead.
+- **Fix** — **Reject** in **My Time** called `UPDATE … WHERE id = …` with **`draft:people-hours:`** ids (not UUIDs). Draft blocks now show an **info** toast instead; **`confirmRejectSession`** no-ops for draft ids.
+
+---
+
+## Latest Updates (v2.296)
+
+**Date**: 2026-04-13
+
+### Schedule Dispatch — **Add schedule block** occupied timeline (job week + hub)
+
+- **UX** — **[`AddBlockModal`](src/pages/ScheduleDispatch.tsx)** (add mode only): the time slider shows **this person’s other blocks that day** as orange **occupied** segments with **job title** (HCP · name) above each band. **Drag** a band (or **ArrowLeft** / **ArrowRight** on the band) to **draft** a new start/end for that block without saving yet. **Linked** rows (**`shared_block_group_id`**) on the same person-day move together (same as group edit semantics).
+- **New block range** — Dual thumbs stay in **free gaps** between occupied intervals (4:00–20:00 Central, 30-minute steps). Opening the modal picks the **first gap** that fits the default duration (~4h) when possible, otherwise falls back to 08:00–12:00. You can still place the new block **before** existing blocks if a gap exists (not “must be after all blocks”).
+- **Save** — **[`saveBlockModal`](src/pages/ScheduleDispatch.tsx)** (add path): validates **draft** times against overlap (`virtualDayBlocksForOverlap`, `scheduleHasInternalOverlap`, `scheduleOverlapsAny`); applies **`updateJobScheduleBlock`** / **`updateJobScheduleBlockGroup`** for moved rows (stop on first error); then **`insertJobScheduleBlock`** for the new assignment.
+- **Code** — **[`scheduleDispatchAddBlockTimeline.ts`](src/lib/scheduleDispatchAddBlockTimeline.ts)** (gaps, clamp, segment drag); **[`DispatchAddBlockTimeRange.tsx`](src/components/schedule/DispatchAddBlockTimeRange.tsx)** (`occupiedBands`, `onOccupiedAbsoluteStart`).
+
 ---
 
 ## Latest Updates (v2.295)
