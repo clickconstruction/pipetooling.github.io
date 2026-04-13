@@ -41,6 +41,7 @@ function estimatorAllowedPaths(estimatorProspectsAccess: boolean): string[] {
     '/materials',
     '/estimates',
     '/bids',
+    '/customers',
     ...(estimatorProspectsAccess ? ['/prospects'] : []),
     '/calendar',
     '/checklist',
@@ -48,6 +49,22 @@ function estimatorAllowedPaths(estimatorProspectsAccess: boolean): string[] {
     '/settings',
     '/tally',
   ]
+}
+
+function normalizeAppPathname(pathname: string): string {
+  if (pathname.length > 1 && pathname.endsWith('/')) return pathname.slice(0, -1)
+  return pathname
+}
+
+/**
+ * Estimator Layout guard: exact allowed path or a subpath (e.g. `/estimates/:id`, `/customers/.../edit`),
+ * plus trailing-slash normalization. Must stay in sync with Layout estimator redirect `useEffect`.
+ */
+export function isEstimatorPathAllowed(pathname: string, estimatorProspectsAccess: boolean): boolean {
+  const p = normalizeAppPathname(pathname)
+  if (p === '/') return false
+  const allowed = estimatorAllowedPaths(estimatorProspectsAccess)
+  return allowed.some((root) => p === root || p.startsWith(`${root}/`))
 }
 
 /** Whether `pathname` is allowed for `role` without Layout redirecting away (see Layout `useEffect` on `location.pathname`). */
@@ -63,7 +80,7 @@ export function isPathAllowedForRole(
     return (SUBCONTRACTOR_PATHS as readonly string[]).includes(pathname)
   }
   if (role === 'estimator') {
-    return pathname !== '/' && estimatorAllowedPaths(estimatorProspectsAccess).includes(pathname)
+    return isEstimatorPathAllowed(pathname, estimatorProspectsAccess)
   }
   if (role === 'primary') {
     return (

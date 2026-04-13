@@ -111,7 +111,7 @@ export default function SendRecordInvoiceModal({
 
   const { role: authRole } = useAuth()
 
-  const [tab, setTab] = useState<'outside' | 'stripe'>('outside')
+  const [tab, setTab] = useState<'outside' | 'stripe'>('stripe')
   const [channel, setChannel] = useState<ExternalChannel>('housecallpro')
   const [sentDate, setSentDate] = useState(todayIsoDate)
   const [externalNote, setExternalNote] = useState('')
@@ -150,7 +150,8 @@ export default function SendRecordInvoiceModal({
 
   useEffect(() => {
     if (!open || !job) return
-    setTab('outside')
+    const hasCustomerEmail = (job.customer_email ?? '').trim().length > 0
+    setTab(hasCustomerEmail ? 'stripe' : 'outside')
     setChannel('housecallpro')
     setSentDate(todayIsoDate())
     setExternalNote('')
@@ -174,7 +175,7 @@ export default function SendRecordInvoiceModal({
     } else {
       setBillAmountStr('')
     }
-  }, [open, job?.id, invoice?.id])
+  }, [open, job?.id, job?.customer_email, invoice?.id])
 
   // Ensure primary RTB line when opening for a job row (shared for Outside submit).
   useEffect(() => {
@@ -615,21 +616,6 @@ export default function SendRecordInvoiceModal({
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', borderBottom: '1px solid #e5e7eb' }}>
           <button
             type="button"
-            onClick={() => setTab('outside')}
-            style={{
-              padding: '0.5rem 0.75rem',
-              border: 'none',
-              background: 'none',
-              cursor: 'pointer',
-              fontWeight: tab === 'outside' ? 600 : 400,
-              borderBottom: tab === 'outside' ? '2px solid #3b82f6' : '2px solid transparent',
-              marginBottom: -1,
-            }}
-          >
-            Outside bill
-          </button>
-          <button
-            type="button"
             onClick={() => setTab('stripe')}
             style={{
               padding: '0.5rem 0.75rem',
@@ -643,6 +629,22 @@ export default function SendRecordInvoiceModal({
             }}
           >
             Stripe bill
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('outside')}
+            style={{
+              padding: '0.5rem 0.75rem',
+              border: 'none',
+              background: 'none',
+              cursor: 'pointer',
+              fontWeight: tab === 'outside' ? 600 : 400,
+              borderBottom: tab === 'outside' ? '2px solid #3b82f6' : '2px solid transparent',
+              marginBottom: -1,
+              color: tab === 'outside' ? 'inherit' : '#6b7280',
+            }}
+          >
+            Outside bill
           </button>
         </div>
 

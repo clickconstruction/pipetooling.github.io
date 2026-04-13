@@ -424,6 +424,7 @@ function getAllowedPathsForRole(role: string | null, estimatorProspectsAccess?: 
       '/dashboard',
       '/materials',
       '/bids',
+      '/customers',
       ...(estimatorProspectsAccess ? ['/prospects'] : []),
       '/calendar',
       '/checklist',

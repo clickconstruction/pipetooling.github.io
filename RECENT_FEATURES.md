@@ -12,11 +12,14 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.297 → v2.4"
+version_range: "v2.298 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.298)"
+    line: ~921
+    description: "Estimators: /customers route + nav; UPDATE RLS + trigger lock master_user_id and stripe_customer_id; EditCustomerForm omits master on save for estimators; ACCESS_CONTROL + Settings matrix"
   - name: "Latest Version (v2.297)"
-    line: ~917
+    line: ~935
     description: "People Hours grid blur: proportional scale of closed clock_sessions into My Time (preserve share of day); open session → fetch modal + toast; draft fallback; peopleHoursProportionalScale.ts"
   - name: "Latest Version (v2.296)"
     line: ~928
@@ -916,6 +919,19 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.298)
+
+**Date**: 2026-04-13
+
+### Estimators — **Customers** page (limited edit, no Advanced / delete)
+
+- **Routing** — [`Layout.tsx`](src/components/Layout.tsx) and [`layoutRouteAccess.ts`](src/lib/layoutRouteAccess.ts): `/customers` on estimator allowlist (no redirect to `/bids`). [`Dashboard.tsx`](src/pages/Dashboard.tsx) pinned-path set includes `/customers`. Estimator nav: **Customers** link next to Bids.
+- **DB** — Migration [`20260413194354_estimator_customers_update_safe.sql`](supabase/migrations/20260413194354_estimator_customers_update_safe.sql): policy **Estimators can update customers**; **`BEFORE UPDATE`** trigger **`customers_estimator_update_immutable_fields`** calls **`enforce_customers_estimator_update_immutable_fields`** to block **`master_user_id`** or **`stripe_customer_id`** changes when the caller is an estimator.
+- **Client** — [`EditCustomerForm.tsx`](src/components/EditCustomerForm.tsx): estimators do not send **`master_user_id`** on update (defense in depth). UI already hides Advanced, merge, and delete for estimators.
+- **Docs / Settings** — [`ACCESS_CONTROL.md`](ACCESS_CONTROL.md) matrices and estimator section; Settings **PAGE_ACCESS** Customers row: estimator **yes limited**.
+
 ---
 
 ## Latest Updates (v2.297)
