@@ -24,6 +24,7 @@ export type StripeInvoicePreviewMetaProps = {
   invoiceNumber: string | null
   dueYmd?: string | null
   memo?: string | null
+  footer?: string | null
 }
 
 export function StripeInvoicePreviewMeta(p: StripeInvoicePreviewMetaProps) {
@@ -33,6 +34,7 @@ export function StripeInvoicePreviewMeta(p: StripeInvoicePreviewMetaProps) {
   const inv = invRaw ? `#${invRaw}` : '—'
   const due = (p.dueYmd ?? '').trim()
   const memo = (p.memo ?? '').trim()
+  const footer = (p.footer ?? '').trim()
 
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '0.5rem' }}>
@@ -63,6 +65,12 @@ export function StripeInvoicePreviewMeta(p: StripeInvoicePreviewMetaProps) {
           <tr>
             <td style={labelCell}>Memo</td>
             <td style={valueCell}>{memo}</td>
+          </tr>
+        ) : null}
+        {footer ? (
+          <tr>
+            <td style={labelCell}>Footer</td>
+            <td style={valueCell}>{footer}</td>
           </tr>
         ) : null}
       </tbody>

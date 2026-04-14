@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { supabase } from '../../lib/supabase'
 import {
@@ -15,7 +15,17 @@ import {
   parseStripeInvoiceLinesSnapshot,
   parseStripeInvoicePreviewResponse,
 } from '../../lib/stripeInvoicePreview'
-import { buildStripeInvoiceLineDescription } from '../../lib/stripeInvoiceLineDescription'
+import {
+  buildStripeInvoiceLineDescription,
+  STRIPE_INVOICE_LINE_DESCRIPTION_MAX,
+} from '../../lib/stripeInvoiceLineDescription'
+import {
+  getStripeInvoiceFooterDefaultOnOpen,
+  getStripeInvoiceFooterPresetElectrical,
+  getStripeInvoiceFooterPresetPlumbing,
+  STRIPE_INVOICE_FOOTER_MAX_CHARS,
+  stripeInvoiceFooterActivePreset,
+} from '../../lib/stripeInvoiceFooter'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import { StripeBillPreSubmitPreview } from './StripeBillPreSubmitPreview'
 import StripeBillingModeToggle from './StripeBillingModeToggle'
@@ -23,6 +33,7 @@ import { HostedStripeBillPanel, type InvoiceWithJobForBillView } from './HostedS
 import { StripeInvoiceLinesSummary } from './StripeInvoiceLinesSummary'
 import { StripeInvoicePreviewMeta } from './StripeInvoicePreviewMeta'
 import { StripeInvoiceSharePanel } from './StripeInvoiceSharePanel'
+import { StripeInvoiceSendFromStripeButton } from './StripeInvoiceSendFromStripeButton'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -56,6 +67,32 @@ function channelButtonStyle(selected: boolean): CSSProperties {
   }
 }
 
+/** Match Edit Job / JobFormModal field styling */
+const BILL_CUSTOMER_FIELD_LABEL_STYLE: CSSProperties = {
+  display: 'block',
+  marginBottom: 4,
+  fontWeight: 500,
+  fontSize: '0.875rem',
+  color: '#374151',
+}
+
+const BILL_CUSTOMER_CONTROL_STYLE: CSSProperties = {
+  width: '100%',
+  padding: '0.5rem',
+  border: '1px solid #d1d5db',
+  borderRadius: 4,
+  fontSize: '0.875rem',
+  boxSizing: 'border-box',
+  background: '#fff',
+}
+
+const BILL_CUSTOMER_TEXTAREA_STYLE: CSSProperties = {
+  ...BILL_CUSTOMER_CONTROL_STYLE,
+  resize: 'vertical',
+  lineHeight: 1.4,
+  minHeight: '4.25rem',
+}
+
 function todayIsoDate(): string {
   const d = new Date()
   const y = d.getFullYear()
@@ -75,6 +112,24 @@ function isoDatePlusDays(days: number): string {
 
 function jobLedgerHasCustomerForBilling(customerId: string | null | undefined): boolean {
   return customerId != null && String(customerId).trim().length > 0
+}
+
+function defaultStripeLineDescriptionFromJob(j: JobBillingContext): string {
+  return buildStripeInvoiceLineDescription(
+    (j.customer_name ?? '').trim() || 'Customer',
+    j.job_name,
+    j.hcp_number,
+  )
+}
+
+function stripeInvoiceFooterSummaryLine(
+  footer: string,
+  activePreset: ReturnType<typeof stripeInvoiceFooterActivePreset>,
+): string {
+  if (footer === '') return 'Stripe default'
+  if (activePreset === 'plumbing') return 'Plumbing'
+  if (activePreset === 'electrical') return 'Electrical'
+  return 'Custom'
 }
 
 type CreateStripeInvoiceFnResponse = {
@@ -124,7 +179,12 @@ export default function SendRecordInvoiceModal({
   const [ensureLoading, setEnsureLoading] = useState(false)
 
   const [stripeDueDate, setStripeDueDate] = useState(() => isoDatePlusDays(30))
+  const [editDueDateOpen, setEditDueDateOpen] = useState(false)
+  const [draftDueYmd, setDraftDueYmd] = useState('')
+  const [stripeLineDescription, setStripeLineDescription] = useState('')
   const [stripeMemo, setStripeMemo] = useState('')
+  const [stripeInvoiceFooter, setStripeInvoiceFooter] = useState(() => getStripeInvoiceFooterDefaultOnOpen())
+  const [stripeFooterSectionOpen, setStripeFooterSectionOpen] = useState(false)
   const [stripeSubmitting, setStripeSubmitting] = useState(false)
   const [stripeError, setStripeError] = useState<string | null>(null)
   const [stripeResult, setStripeResult] = useState<{
@@ -140,6 +200,8 @@ export default function SendRecordInvoiceModal({
   const [stripePreviewLoading, setStripePreviewLoading] = useState(false)
   const [stripePreviewError, setStripePreviewError] = useState<string | null>(null)
   const stripePreviewReqId = useRef(0)
+  /** Keeps last known “had a preview” for stale-while-revalidate (timeout closure reads current value). */
+  const stripePreviewExistsRef = useRef(false)
   const [stripeModePref, setStripeModePref] = useState<BillingStripeModePref>(() => getBillingStripeModePref())
   const stripeModeForBilling: BillingStripeModePref = authRole === 'dev' ? stripeModePref : 'live'
 
@@ -148,8 +210,24 @@ export default function SendRecordInvoiceModal({
   const job = payload?.job ?? null
   const invoice = payload?.kind === 'invoice' ? payload.invoice : null
 
+  const activeStripeFooterPreset = stripeInvoiceFooterActivePreset(stripeInvoiceFooter)
+
+  useLayoutEffect(() => {
+    if (!open) {
+      stripePreviewExistsRef.current = false
+      return
+    }
+    stripePreviewExistsRef.current = stripePreview != null
+  }, [open, stripePreview])
+
   useEffect(() => {
-    if (!open || !job) return
+    if (!open) {
+      setEnsuredInvoice(null)
+      setEnsureError(null)
+      setEnsureLoading(false)
+      return
+    }
+    if (!job) return
     const hasCustomerEmail = (job.customer_email ?? '').trim().length > 0
     setTab(hasCustomerEmail ? 'stripe' : 'outside')
     setChannel('housecallpro')
@@ -161,7 +239,12 @@ export default function SendRecordInvoiceModal({
     setEnsureError(null)
     setEnsureLoading(false)
     setStripeDueDate(isoDatePlusDays(30))
+    setEditDueDateOpen(false)
+    setDraftDueYmd('')
+    setStripeLineDescription(defaultStripeLineDescriptionFromJob(job))
     setStripeMemo('')
+    setStripeInvoiceFooter(getStripeInvoiceFooterDefaultOnOpen())
+    setStripeFooterSectionOpen(false)
     setStripeSubmitting(false)
     setStripeError(null)
     setStripeResult(null)
@@ -212,7 +295,7 @@ export default function SendRecordInvoiceModal({
             return
           }
           setEnsuredInvoice({ jobId: job.id, id: obj.invoice_id, amount: amt })
-          setBillAmountStr((prev) => (prev.trim() === '' ? String(amt) : prev))
+          setBillAmountStr(String(amt))
           setEnsureError(null)
           try {
             await onAfterEnsureSuccessRef.current?.()
@@ -270,7 +353,9 @@ export default function SendRecordInvoiceModal({
       const req = ++stripePreviewReqId.current
       setStripePreviewLoading(true)
       setStripePreviewError(null)
-      setStripePreview(null)
+      if (!stripePreviewExistsRef.current) {
+        setStripePreview(null)
+      }
 
       void (async () => {
         try {
@@ -285,6 +370,7 @@ export default function SendRecordInvoiceModal({
           }
           if (stripePreviewReqId.current !== req) return
 
+          const lineDescTrim = stripeLineDescription.trim()
           const { data: raw, error: fnErr } = await supabase.functions.invoke('preview-stripe-invoice', {
             body: {
               jobs_ledger_invoice_id: invId,
@@ -293,7 +379,7 @@ export default function SendRecordInvoiceModal({
               customer_email: (job.customer_email ?? '').trim(),
               customer_name: (job.customer_name ?? '').trim() || 'Customer',
               due_date: stripeDueDate.trim(),
-              memo: stripeMemo.trim() || undefined,
+              ...(lineDescTrim ? { line_description: lineDescTrim } : {}),
               ...stripeModeInvokeBody(stripeModeForBilling),
             },
             headers: { Authorization: `Bearer ${token}` },
@@ -344,7 +430,6 @@ export default function SendRecordInvoiceModal({
     stripeSuccessInvoice,
     billAmountStr,
     stripeDueDate,
-    stripeMemo,
     kind,
     invoice?.id,
     ensuredInvoice?.id,
@@ -352,6 +437,7 @@ export default function SendRecordInvoiceModal({
     ensureError,
     authRole,
     stripeModeForBilling,
+    stripeLineDescription,
   ])
 
   async function confirmOutsideBill() {
@@ -367,7 +453,7 @@ export default function SendRecordInvoiceModal({
     try {
       if (kind === 'invoice' && invoice) {
         await withSupabaseRetry(
-          async () =>
+          () =>
             supabase
               .from('jobs_ledger_invoices')
               .update({
@@ -386,7 +472,7 @@ export default function SendRecordInvoiceModal({
           throw new Error(ensureError || 'Could not prepare invoice line for this job')
         }
         await withSupabaseRetry(
-          async () =>
+          () =>
             supabase
               .from('jobs_ledger_invoices')
               .update({
@@ -400,7 +486,7 @@ export default function SendRecordInvoiceModal({
           'record outside bill on ensured invoice'
         )
         const data = await withSupabaseRetry(
-          async () => supabase.rpc('update_job_status', { p_job_id: job.id, p_to_status: 'billed' }),
+          () => supabase.rpc('update_job_status', { p_job_id: job.id, p_to_status: 'billed' }),
           'job status billed after outside bill'
         )
         const res = data as { error?: string } | null
@@ -447,6 +533,7 @@ export default function SendRecordInvoiceModal({
       }
 
       let body: CreateStripeInvoiceFnResponse | null
+      const lineDescTrim = stripeLineDescription.trim()
       const { data: invokeData, error: fnErr } = await supabase.functions.invoke('create-stripe-invoice', {
         body: {
           jobs_ledger_invoice_id: invId,
@@ -456,6 +543,8 @@ export default function SendRecordInvoiceModal({
           customer_name: (job.customer_name ?? '').trim() || 'Customer',
           due_date: stripeDueDate.trim(),
           memo: stripeMemo.trim() || undefined,
+          footer: stripeInvoiceFooter.trim() || undefined,
+          ...(lineDescTrim ? { line_description: lineDescTrim } : {}),
           ...stripeModeInvokeBody(stripeModeForBilling),
         },
         headers: { Authorization: `Bearer ${token}` },
@@ -480,7 +569,7 @@ export default function SendRecordInvoiceModal({
 
       if (kind === 'job') {
         const dataRpc = await withSupabaseRetry(
-          async () => supabase.rpc('update_job_status', { p_job_id: job.id, p_to_status: 'billed' }),
+          () => supabase.rpc('update_job_status', { p_job_id: job.id, p_to_status: 'billed' }),
           'job status billed after stripe invoice',
         )
         const res = dataRpc as { error?: string } | null
@@ -516,6 +605,8 @@ export default function SendRecordInvoiceModal({
   if (!open || !job) return null
 
   const busy = jobUpdating || invoiceUpdating || outsideSubmitting || stripeSubmitting
+  const stripeFallbackLedgerInvoiceId =
+    kind === 'invoice' ? (invoice?.id ?? '') : (ensuredInvoice?.id ?? '')
 
   if (!jobLedgerHasCustomerForBilling(job.customer_id)) {
     return (
@@ -557,18 +648,24 @@ export default function SendRecordInvoiceModal({
       ? invoice != null
       : kind === 'job' && ensuredInvoice != null && !ensureLoading && !ensureError
 
+  const billDateInputStyle: CSSProperties = {
+    ...BILL_CUSTOMER_CONTROL_STYLE,
+    colorScheme: 'light',
+  }
+
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.4)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: overlayZIndex,
-      }}
-    >
+    <Fragment>
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.4)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: overlayZIndex,
+        }}
+      >
       <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 420, maxWidth: 520, maxHeight: '90vh', overflow: 'auto' }}>
         <div
           style={{
@@ -584,7 +681,11 @@ export default function SendRecordInvoiceModal({
             <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>Bill Customer</h2>
             <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
               {job.hcp_number ?? '—'} · {job.job_name ?? '—'}
-              {invoice ? ` · RTB $${Number(invoice.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : ''}
+              {invoice
+                ? ` · RTB $${Number(invoice.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+                : kind === 'job' && ensuredInvoice && !ensureLoading && !ensureError
+                  ? ` · RTB $${Number(ensuredInvoice.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+                  : ''}
             </p>
           </div>
           {tab === 'stripe' && !stripeResult && !stripeSuccessInvoice && authRole === 'dev' && (
@@ -664,42 +765,19 @@ export default function SendRecordInvoiceModal({
                 Physical invoice
               </button>
             </div>
-            <div
-              style={{
-                display: 'flex',
-                gap: '0.75rem',
-                marginBottom: '0.75rem',
-                flexWrap: 'wrap',
-                alignItems: 'flex-start',
-              }}
-            >
-              <div style={{ flex: '1 1 8rem', minWidth: 0 }}>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>
-                  Amount ($)
-                </label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={billAmountStr}
-                  onChange={(e) => setBillAmountStr(e.target.value)}
-                  disabled={!outsideReady && kind === 'job'}
-                  style={{ width: '100%', padding: '0.35rem', boxSizing: 'border-box' }}
-                />
-              </div>
-              <div style={{ flex: '1 1 10rem', minWidth: 0 }}>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>Date</label>
-                <input
-                  type="date"
-                  value={sentDate}
-                  onChange={(e) => setSentDate(e.target.value)}
-                  style={{ width: '100%', padding: '0.35rem', boxSizing: 'border-box' }}
-                />
-              </div>
+            <div style={{ marginBottom: '0.75rem' }}>
+              <label style={BILL_CUSTOMER_FIELD_LABEL_STYLE}>Date</label>
+              <input type="date" value={sentDate} onChange={(e) => setSentDate(e.target.value)} style={billDateInputStyle} />
             </div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>Memo (optional)</label>
-            <textarea value={externalNote} onChange={(e) => setExternalNote(e.target.value)} rows={3} style={{ width: '100%', padding: '0.35rem', marginBottom: '0.75rem', boxSizing: 'border-box', resize: 'vertical' }} />
+            <label style={BILL_CUSTOMER_FIELD_LABEL_STYLE}>Memo (optional)</label>
+            <textarea
+              value={externalNote}
+              onChange={(e) => setExternalNote(e.target.value)}
+              rows={3}
+              style={{ ...BILL_CUSTOMER_TEXTAREA_STYLE, marginBottom: '0.75rem' }}
+            />
             {outsideError && <p style={{ color: '#b91c1c', fontSize: '0.875rem' }}>{outsideError}</p>}
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
               <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>
                 Cancel
               </button>
@@ -768,6 +846,14 @@ export default function SendRecordInvoiceModal({
                   hcpNumber={job.hcp_number}
                   amountLabel={`$${Number(billAmountStr).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                 />
+                {stripeFallbackLedgerInvoiceId ? (
+                  <StripeInvoiceSendFromStripeButton
+                    jobsLedgerInvoiceId={stripeFallbackLedgerInvoiceId}
+                    stripeInvoiceId={stripeResult.stripe_invoice_id}
+                    customerEmail={job.customer_email}
+                    stripeModeForBilling={stripeModeForBilling}
+                  />
+                ) : null}
                 {stripeResult.invoice_preview ? (
                   <div style={{ marginTop: '0.75rem' }}>
                     <div
@@ -790,6 +876,7 @@ export default function SendRecordInvoiceModal({
                       invoiceNumber={stripeResult.invoice_preview.invoice_number ?? null}
                       dueYmd={stripeDueDate}
                       memo={stripeMemo}
+                      footer={stripeInvoiceFooter}
                     />
                     <StripeInvoiceLinesSummary snapshot={stripeResult.invoice_preview} showTitle={false} />
                   </div>
@@ -808,45 +895,257 @@ export default function SendRecordInvoiceModal({
               <>
                 <div
                   style={{
-                    display: 'flex',
-                    gap: '0.75rem',
+                    background: '#f9fafb',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: 8,
+                    padding: '0.75rem 1rem',
                     marginBottom: '0.75rem',
-                    flexWrap: 'wrap',
-                    alignItems: 'flex-start',
                   }}
                 >
-                  <div style={{ flex: '1 1 8rem', minWidth: 0 }}>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>
-                      Amount ($)
-                    </label>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={billAmountStr}
-                      onChange={(e) => setBillAmountStr(e.target.value)}
-                      disabled={!outsideReady && kind === 'job'}
-                      style={{ width: '100%', padding: '0.35rem', boxSizing: 'border-box' }}
-                    />
+                  <div
+                    style={{
+                      fontSize: '0.875rem',
+                      fontWeight: 600,
+                      color: '#111827',
+                      marginBottom: '0.65rem',
+                      textAlign: 'center',
+                    }}
+                  >
+                    What appears on the invoice
                   </div>
-                  <div style={{ flex: '1 1 10rem', minWidth: 0 }}>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>
-                      Due date
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '0.5rem',
+                      marginBottom: 4,
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <label
+                      htmlFor="bill-customer-stripe-line-description"
+                      style={{
+                        ...BILL_CUSTOMER_FIELD_LABEL_STYLE,
+                        marginBottom: 0,
+                        minWidth: 0,
+                      }}
+                    >
+                      Line on bill
+                      <span
+                        style={{
+                          fontSize: '0.72rem',
+                          color: '#6b7280',
+                          fontWeight: 400,
+                        }}
+                      >
+                        {' '}
+                        ({stripeLineDescription.length} / {STRIPE_INVOICE_LINE_DESCRIPTION_MAX})
+                      </span>
                     </label>
-                    <input
-                      type="date"
-                      value={stripeDueDate}
-                      onChange={(e) => setStripeDueDate(e.target.value)}
-                      style={{ width: '100%', padding: '0.35rem', boxSizing: 'border-box' }}
-                    />
+                    <button
+                      type="button"
+                      onClick={() => job && setStripeLineDescription(defaultStripeLineDescriptionFromJob(job))}
+                      disabled={!job}
+                      title="Reset line on bill to default"
+                      aria-label="Reset line on bill to default"
+                      style={{
+                        padding: 0,
+                        border: 'none',
+                        background: 'none',
+                        color: '#2563eb',
+                        cursor: job ? 'pointer' : 'not-allowed',
+                        fontSize: '0.8125rem',
+                        textDecoration: 'underline',
+                        textUnderlineOffset: '2px',
+                        flexShrink: 0,
+                      }}
+                    >
+                      default
+                    </button>
+                  </div>
+                  <textarea
+                    id="bill-customer-stripe-line-description"
+                    value={stripeLineDescription}
+                    onChange={(e) =>
+                      setStripeLineDescription(
+                        e.target.value.slice(0, STRIPE_INVOICE_LINE_DESCRIPTION_MAX),
+                      )
+                    }
+                    rows={2}
+                    style={{
+                      ...BILL_CUSTOMER_TEXTAREA_STYLE,
+                      marginBottom: '0.65rem',
+                      minHeight: '3.5rem',
+                    }}
+                  />
+                  <label style={BILL_CUSTOMER_FIELD_LABEL_STYLE}>Memo (optional)</label>
+                  <textarea
+                    value={stripeMemo}
+                    onChange={(e) => setStripeMemo(e.target.value)}
+                    rows={2}
+                    style={{ ...BILL_CUSTOMER_TEXTAREA_STYLE, marginBottom: '0.65rem', minHeight: '3.5rem' }}
+                  />
+                  <button
+                    type="button"
+                    aria-expanded={stripeFooterSectionOpen}
+                    aria-controls="bill-customer-footer-section-panel"
+                    onClick={() => setStripeFooterSectionOpen((v) => !v)}
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '0.5rem',
+                      width: '100%',
+                      marginBottom: stripeFooterSectionOpen ? '0.35rem' : '0.65rem',
+                      padding: '0.4rem 0.25rem',
+                      border: 'none',
+                      borderRadius: 4,
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      font: 'inherit',
+                      color: 'inherit',
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0 }}>
+                      <span style={{ fontSize: '0.75rem', flexShrink: 0 }} aria-hidden>
+                        {stripeFooterSectionOpen ? '▼' : '▶'}
+                      </span>
+                      <span
+                        id="bill-customer-footer-disclosure-heading"
+                        style={{
+                          fontWeight: 500,
+                          fontSize: '0.875rem',
+                          color: '#374151',
+                        }}
+                      >
+                        Footer (optional)
+                      </span>
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '0.75rem',
+                        color: '#6b7280',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {stripeInvoiceFooterSummaryLine(stripeInvoiceFooter, activeStripeFooterPreset)}
+                    </span>
+                  </button>
+                  <div
+                    id="bill-customer-footer-section-panel"
+                    role="region"
+                    aria-labelledby="bill-customer-footer-disclosure-heading"
+                    hidden={!stripeFooterSectionOpen}
+                    style={{ marginBottom: '0.65rem' }}
+                  >
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '0.5rem',
+                          marginBottom: '0.35rem',
+                        }}
+                      >
+                        <span
+                          id="bill-customer-stripe-invoice-footer-count"
+                          style={{
+                            fontSize: '0.72rem',
+                            color: '#6b7280',
+                            fontWeight: 400,
+                            flex: '1 1 auto',
+                            minWidth: 0,
+                          }}
+                        >
+                          ({stripeInvoiceFooter.length} / {STRIPE_INVOICE_FOOTER_MAX_CHARS})
+                        </span>
+                        <div
+                          style={{
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: '0.35rem',
+                            alignItems: 'center',
+                            flexShrink: 0,
+                          }}
+                        >
+                          <button
+                            type="button"
+                            aria-pressed={activeStripeFooterPreset === 'plumbing'}
+                            onClick={() => {
+                              if (activeStripeFooterPreset === 'plumbing') {
+                                setStripeInvoiceFooter('')
+                                return
+                              }
+                              setStripeInvoiceFooter(
+                                getStripeInvoiceFooterPresetPlumbing().slice(0, STRIPE_INVOICE_FOOTER_MAX_CHARS),
+                              )
+                            }}
+                            title="Plumbing footer (click again to clear and use Stripe default)"
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              fontSize: '0.75rem',
+                              border:
+                                activeStripeFooterPreset === 'plumbing'
+                                  ? '2px solid #2563eb'
+                                  : '1px solid #d1d5db',
+                              borderRadius: 4,
+                              background: activeStripeFooterPreset === 'plumbing' ? '#eff6ff' : '#f9fafb',
+                              color: '#374151',
+                              cursor: 'pointer',
+                              fontWeight: activeStripeFooterPreset === 'plumbing' ? 600 : 500,
+                            }}
+                          >
+                            Plumbing
+                          </button>
+                          <button
+                            type="button"
+                            aria-pressed={activeStripeFooterPreset === 'electrical'}
+                            onClick={() => {
+                              if (activeStripeFooterPreset === 'electrical') {
+                                setStripeInvoiceFooter('')
+                                return
+                              }
+                              setStripeInvoiceFooter(
+                                getStripeInvoiceFooterPresetElectrical().slice(0, STRIPE_INVOICE_FOOTER_MAX_CHARS),
+                              )
+                            }}
+                            title="Electrical footer (click again to clear and use Stripe default)"
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              fontSize: '0.75rem',
+                              border:
+                                activeStripeFooterPreset === 'electrical'
+                                  ? '2px solid #2563eb'
+                                  : '1px solid #d1d5db',
+                              borderRadius: 4,
+                              background: activeStripeFooterPreset === 'electrical' ? '#eff6ff' : '#f9fafb',
+                              color: '#374151',
+                              cursor: 'pointer',
+                              fontWeight: activeStripeFooterPreset === 'electrical' ? 600 : 500,
+                            }}
+                          >
+                            Electrical
+                          </button>
+                        </div>
+                      </div>
+                      <textarea
+                        id="bill-customer-stripe-invoice-footer"
+                        aria-labelledby="bill-customer-footer-disclosure-heading"
+                        aria-describedby="bill-customer-stripe-invoice-footer-count"
+                        value={stripeInvoiceFooter}
+                        onChange={(e) =>
+                          setStripeInvoiceFooter(e.target.value.slice(0, STRIPE_INVOICE_FOOTER_MAX_CHARS))
+                        }
+                        rows={3}
+                        style={{ ...BILL_CUSTOMER_TEXTAREA_STYLE, marginBottom: 0, minHeight: '4.5rem' }}
+                      />
                   </div>
                 </div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>Memo (optional)</label>
-                <textarea
-                  value={stripeMemo}
-                  onChange={(e) => setStripeMemo(e.target.value)}
-                  rows={2}
-                  style={{ width: '100%', padding: '0.35rem', marginBottom: '0.75rem', boxSizing: 'border-box', resize: 'vertical' }}
-                />
                 {job ? (
                   <StripeBillPreSubmitPreview
                     customerName={job.customer_name}
@@ -863,11 +1162,10 @@ export default function SendRecordInvoiceModal({
                     }
                     dueDateYmd={stripeDueDate}
                     memo={stripeMemo}
-                    localLineDescription={buildStripeInvoiceLineDescription(
-                      (job.customer_name ?? '').trim() || 'Customer',
-                      job.job_name,
-                      job.hcp_number,
-                    )}
+                    footer={stripeFooterSectionOpen ? stripeInvoiceFooter : ''}
+                    localLineDescription={
+                      stripeLineDescription.trim() || defaultStripeLineDescriptionFromJob(job)
+                    }
                     stripePreview={stripePreview}
                     stripePreviewLoading={stripePreviewLoading}
                     stripePreviewError={stripePreviewError}
@@ -875,13 +1173,17 @@ export default function SendRecordInvoiceModal({
                       kind === 'job' && ensureLoading
                         ? 'Preparing billing line…'
                         : kind === 'job' && !ensureLoading && ensureError
-                          ? 'Fix the billing line error above, then enter amount and due date.'
+                          ? 'Fix the billing line error above, then edit due date from Preview when ready.'
                           : null
                     }
+                    onEditDueDate={() => {
+                      setDraftDueYmd(stripeDueDate)
+                      setEditDueDateOpen(true)
+                    }}
                   />
                 ) : null}
                 {stripeError && <p style={{ color: '#b91c1c', fontSize: '0.875rem', marginBottom: '0.5rem' }}>{stripeError}</p>}
-                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
                   <button
                     type="button"
                     onClick={onClose}
@@ -907,13 +1209,80 @@ export default function SendRecordInvoiceModal({
                 </div>
               </>
             )}
-            <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '1rem', marginBottom: 0 }}>
-              Creates a finalized Stripe invoice (hosted pay page). The job billing line moves to Billed. Payment still
-              syncs via Stripe webhook when the customer pays.
-            </p>
           </div>
         )}
       </div>
     </div>
+    {editDueDateOpen ? (
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.45)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: overlayZIndex + 20,
+          padding: '1rem',
+        }}
+        role="presentation"
+        onMouseDown={(e) => {
+          if (e.target === e.currentTarget) setEditDueDateOpen(false)
+        }}
+      >
+        <div
+          role="dialog"
+          aria-labelledby="edit-stripe-due-date-title"
+          style={{
+            background: 'white',
+            padding: '1.25rem',
+            borderRadius: 8,
+            minWidth: 280,
+            maxWidth: 400,
+            boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <h2 id="edit-stripe-due-date-title" style={{ margin: '0 0 0.75rem', fontSize: '1.1rem', fontWeight: 600 }}>
+            Edit Due Date
+          </h2>
+          <label style={{ ...BILL_CUSTOMER_FIELD_LABEL_STYLE, display: 'block' }}>Due date</label>
+          <input
+            type="date"
+            value={draftDueYmd}
+            onChange={(e) => setDraftDueYmd(e.target.value)}
+            style={{ ...billDateInputStyle, marginBottom: '1rem' }}
+          />
+          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={() => setEditDueDateOpen(false)}
+              style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setStripeDueDate(draftDueYmd.trim())
+                setEditDueDateOpen(false)
+              }}
+              style={{
+                padding: '0.5rem 1rem',
+                background: '#2563eb',
+                color: 'white',
+                border: 'none',
+                borderRadius: 4,
+                cursor: 'pointer',
+                fontWeight: 600,
+              }}
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
+    ) : null}
+    </Fragment>
   )
 }

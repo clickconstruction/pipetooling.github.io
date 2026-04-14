@@ -25,7 +25,7 @@ export default function TeamFeedbackMasterAggregates() {
     setLoading(true)
     try {
       const data = await withSupabaseRetry(
-        async () => supabase.rpc('team_feedback_aggregates_by_manager'),
+        () => supabase.rpc('team_feedback_aggregates_by_manager'),
         'team_feedback_aggregates_by_manager master'
       )
       setRows((data ?? []) as AggRow[])

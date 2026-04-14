@@ -55,7 +55,7 @@ export async function fetchJobMaterialsCostSnapshot(jobId: string): Promise<JobM
   let supplyRpcFailed = false
   try {
     const invRows = await withSupabaseRetry(
-      async () => supabase.rpc('get_invoice_amounts_for_jobs', { p_job_ids: [jobId] }),
+      () => supabase.rpc('get_invoice_amounts_for_jobs', { p_job_ids: [jobId] }),
       'job materials cost snapshot invoice amounts',
     )
     const arr = (invRows ?? []) as { job_id: string; invoice_amount: string | number }[]
@@ -147,7 +147,7 @@ export async function fetchJobMaterialsCostSnapshot(jobId: string): Promise<JobM
   let tallyFailed = false
   try {
     const raw = await withSupabaseRetry(
-      async () => supabase.rpc('list_tally_parts_with_po'),
+      () => supabase.rpc('list_tally_parts_with_po'),
       'job materials cost snapshot tally parts',
     )
     type TallyPoRow = Database['public']['Functions']['list_tally_parts_with_po']['Returns'][number]

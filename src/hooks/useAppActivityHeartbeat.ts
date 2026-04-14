@@ -24,7 +24,7 @@ export function useAppActivityHeartbeat(userId: string | undefined): void {
 
     const tick = () => {
       void withSupabaseRetry(
-        async () => supabase.rpc('bump_user_app_activity', { p_seconds: 60 }),
+        () => supabase.rpc('bump_user_app_activity', { p_seconds: 60 }),
         'bump_user_app_activity'
       ).catch(() => {
         /* ignore heartbeat errors */

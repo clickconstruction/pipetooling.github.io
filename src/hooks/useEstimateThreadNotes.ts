@@ -137,7 +137,7 @@ export function useEstimateThreadNotes(
     if (ids.length === 0) return
     try {
       const data = await withSupabaseRetry(
-        async () => supabase.rpc('estimates_thread_note_stats', { p_estimate_ids: ids }),
+        () => supabase.rpc('estimates_thread_note_stats', { p_estimate_ids: ids }),
         'estimates_thread_note_stats merge',
       )
       const rows = (data as unknown[] | null) ?? []
@@ -167,7 +167,7 @@ export function useEstimateThreadNotes(
         if (threadStatsRefreshGenRef.current !== gen) return
         const slice = ids.slice(i, i + THREAD_STATS_ESTIMATE_IDS_CHUNK)
         const data = await withSupabaseRetry(
-          async () => supabase.rpc('estimates_thread_note_stats', { p_estimate_ids: slice }),
+          () => supabase.rpc('estimates_thread_note_stats', { p_estimate_ids: slice }),
           'estimates_thread_note_stats batch',
         )
         if (threadStatsRefreshGenRef.current !== gen) return
@@ -268,7 +268,7 @@ export function useEstimateThreadNotes(
         })
         inFlightThreadNoteRef.current = null
         const stats = await withSupabaseRetry(
-          async () => supabase.rpc('estimates_thread_note_stats', { p_estimate_ids: [estimateId] }),
+          () => supabase.rpc('estimates_thread_note_stats', { p_estimate_ids: [estimateId] }),
           'estimates_thread_note_stats after insert',
         )
         const statRow = (stats as unknown[] | null)?.[0]

@@ -2884,6 +2884,38 @@ export type Database = {
           },
         ]
       }
+      jobs_ledger_invoice_stripe_email_sends: {
+        Row: {
+          created_at: string | null
+          id: string
+          jobs_ledger_invoice_id: string
+          sent_at: string
+          stripe_invoice_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          jobs_ledger_invoice_id: string
+          sent_at: string
+          stripe_invoice_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          jobs_ledger_invoice_id?: string
+          sent_at?: string
+          stripe_invoice_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_ledger_invoice_stripe_email_se_jobs_ledger_invoice_id_fkey"
+            columns: ["jobs_ledger_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jobs_ledger_invoices: {
         Row: {
           amount: number
@@ -2899,6 +2931,7 @@ export type Database = {
           sent_to_customer_at: string | null
           sequence_order: number
           status: string
+          stripe_invoice_footer: string | null
           stripe_invoice_id: string | null
           stripe_invoice_memo: string | null
           stripe_invoice_status: string | null
@@ -2917,6 +2950,7 @@ export type Database = {
           sent_to_customer_at?: string | null
           sequence_order?: number
           status?: string
+          stripe_invoice_footer?: string | null
           stripe_invoice_id?: string | null
           stripe_invoice_memo?: string | null
           stripe_invoice_status?: string | null
@@ -2935,6 +2969,7 @@ export type Database = {
           sent_to_customer_at?: string | null
           sequence_order?: number
           status?: string
+          stripe_invoice_footer?: string | null
           stripe_invoice_id?: string | null
           stripe_invoice_memo?: string | null
           stripe_invoice_status?: string | null
@@ -2993,6 +3028,8 @@ export type Database = {
           job_id: string
           note: string | null
           paid_on: string | null
+          payment_type: string | null
+          reference_number: string | null
           sequence_order: number
         }
         Insert: {
@@ -3003,6 +3040,8 @@ export type Database = {
           job_id: string
           note?: string | null
           paid_on?: string | null
+          payment_type?: string | null
+          reference_number?: string | null
           sequence_order?: number
         }
         Update: {
@@ -3013,6 +3052,8 @@ export type Database = {
           job_id?: string
           note?: string | null
           paid_on?: string | null
+          payment_type?: string | null
+          reference_number?: string | null
           sequence_order?: number
         }
         Relationships: [
@@ -7916,6 +7957,10 @@ export type Database = {
           with_check: string
         }[]
       }
+      delete_billed_invoice_on_send_back: {
+        Args: { p_invoice_id: string }
+        Returns: Json
+      }
       delete_ready_to_bill_invoice: {
         Args: { p_invoice_id: string }
         Returns: Json
@@ -8421,11 +8466,19 @@ export type Database = {
           p_invoice_id: string
           p_note?: string
           p_paid_on?: string
+          p_payment_type?: string
+          p_reference_number?: string
         }
         Returns: Json
       }
       mark_invoice_paid_from_stripe: {
-        Args: { p_invoice_id: string }
+        Args: {
+          p_internal_note?: string
+          p_invoice_id: string
+          p_paid_on?: string
+          p_payment_type?: string
+          p_reference_number?: string
+        }
         Returns: Json
       }
       mark_job_paid:
@@ -8435,6 +8488,8 @@ export type Database = {
               p_job_id: string
               p_note?: string
               p_paid_on?: string
+              p_payment_type?: string
+              p_reference_number?: string
             }
             Returns: Json
           }

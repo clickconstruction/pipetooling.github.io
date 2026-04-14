@@ -238,7 +238,7 @@ export function peerCandidateKey(c: PeerCandidate): string {
 
 export async function fetchPeerCandidates(): Promise<PeerCandidate[]> {
   const data = await withSupabaseRetry(
-    async () => supabase.rpc('list_feedback_peer_candidates'),
+    () => supabase.rpc('list_feedback_peer_candidates'),
     'list_feedback_peer_candidates'
   )
   const rows = (data ?? []) as PeerCandidate[]

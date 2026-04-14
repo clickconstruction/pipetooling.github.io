@@ -656,11 +656,17 @@ Cached calendar **`work_date`**: the latest among **approved**, non-rejected, no
 ### Last manual bill date (`jobs_ledger.last_bill_date`)
 **UI label** in **Edit Job** / **Detail Job**: **Last manual bill date** (database column **`last_bill_date`**). Business date for billing / Stages aging / partial-invoice defaults—**entered by the user**, not auto-updated when an invoice is sent. Set in **Edit Job** and **When Billed** / **Missing Billed Date** on Jobs **Ready to Bill** when unset. Former column name **`estimated_completion_date`**. Future **Stripe** webhooks may set or align this field. Included in the **Stages `b:`** line (`max` with invoice/payment activity; see below).
 
+### Primary remainder vs partial Ready-to-Bill lines (`jobs_ledger_invoices`)
+For jobs in **Ready to Bill**, **`jobs_ledger_invoices`** can have **multiple** rows with **`status = ready_to_bill`**. Exactly one row should have **`is_primary_rtb_bundle = true`**: the **remainder** line whose **`amount`** is kept in sync with unallocated balance (**revenue − payments − sum of ready_to_bill and billed invoice amounts**) by **`ensure_single_ready_to_bill_invoice_for_job`**. User-created **partial** lines use **`is_primary_rtb_bundle = false`**; their amounts are **not** overwritten by that RPC. **Bill Customer** from the **job** row targets the **primary** remainder; billing a **partial** amount uses **Bill Customer** on that **invoice** row.
+
 ### Other job charges (Jobs — manual materials)
 User-facing label for **manual job materials** lines stored on **`jobs_ledger_materials`** in **Edit Job** and **Job Detail** materials cost accordions (and in Jobs **Parts** totals / Quickfill copy). Replaces the older **Billed materials** wording. See **`RECENT_FEATURES.md`** → v2.277; **`JobFormModal.tsx`**, **`JobDetailMaterialsCostSection.tsx`**.
 
 ### Stages lines `j:` and `b:` (Jobs Stages tab)
 Read-only **T±n (weekday)** summaries under **Assigned / HCP**: **`j:`** (job / field) = calendar-latest of **`last_work_date`** (approved clock sessions cache) and max **`job_schedule_blocks.work_date`** for the job; **`b:`** (billing reference) = calendar-**latest** of **last manual bill date** (**`last_bill_date`**) and invoice **`sent_to_customer_at`** / **`billed_at`** and payment **`paid_on`**—**`—`** only when all of those are empty. Helpers: **`src/lib/stagesJobReferenceDates.ts`**.
+
+### Stages Last activity — Stripe emailed customer (Jobs)
+When **Jobs** **Stages** **Last activity** shows **Stripe emailed customer** plus a time line and **Resend invoice email**, the job has exactly **one** matching **billed** Stripe invoice line with **`sent_to_customer_at`** set (**`stagesJobLevelStripeEmailedHintInvoice`** in **`Jobs.tsx`**); multiple billed Stripe lines hide the block. **Resend** invokes Edge **`send-stripe-invoice`** (same as **Send Email invoice from Stripe** in **Bill Customer** / hosted bill). **`jobs_ledger_invoices.sent_to_customer_at`** holds the **latest** send timestamp; append-only **`jobs_ledger_invoice_stripe_email_sends`** records each successful **PipeTooling** send for history in the confirm modal. See **`RECENT_FEATURES.md`** → v2.303, v2.304.
 
 ### pay_stub_payments
 Physical installment rows against a generated pay stub: amount sent, optional sent-on date, optional memo. A database trigger prevents the sum of installment amounts from exceeding **Net Pay** (stub **gross_pay** minus **`pay_stub_deductions`** plus **`pay_stub_additional_lines`** `line_total`, within a small rounding tolerance).

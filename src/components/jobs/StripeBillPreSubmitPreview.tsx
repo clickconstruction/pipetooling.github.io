@@ -11,12 +11,16 @@ export type StripeBillPreSubmitPreviewProps = {
   amountLabel: string
   dueDateYmd: string
   memo: string
+  /** Optional Stripe invoice footer; shown in preview meta only (not from Stripe createPreview). */
+  footer?: string
   localLineDescription: string
   stripePreview: StripeInvoicePreviewSuccess | null
   stripePreviewLoading: boolean
   stripePreviewError: string | null
   /** When set, replaces the default “Enter amount…” idle hint (e.g. while RTB line is being ensured). */
   previewIdleHint?: string | null
+  /** Opens Bill Customer “Edit Due Date” dialog (e.g. from SendRecordInvoiceModal). */
+  onEditDueDate?: () => void
 }
 
 const metaLabel: CSSProperties = {
@@ -61,6 +65,10 @@ function dueLabelForPreview(sp: StripeInvoicePreviewSuccess, dueDateYmd: string)
   if (sp.due_date != null && Number.isFinite(sp.due_date)) {
     return formatStripeDueDateChicago(sp.due_date)
   }
+  return dueLabelFromYmd(dueDateYmd)
+}
+
+function dueLabelFromYmd(dueDateYmd: string): string {
   const ref = referenceDateForWorkDateYmd(dueDateYmd.trim())
   return new Intl.DateTimeFormat('en-US', {
     timeZone: APP_CALENDAR_TZ,
@@ -68,6 +76,20 @@ function dueLabelForPreview(sp: StripeInvoicePreviewSuccess, dueDateYmd: string)
     day: 'numeric',
     year: 'numeric',
   }).format(ref)
+}
+
+const dueDateEditButtonStyle: CSSProperties = {
+  display: 'inline',
+  padding: 0,
+  margin: 0,
+  border: 'none',
+  background: 'none',
+  font: 'inherit',
+  color: 'inherit',
+  cursor: 'pointer',
+  textAlign: 'left',
+  textDecoration: 'underline',
+  textUnderlineOffset: '2px',
 }
 
 export function StripeBillPreSubmitPreview(p: StripeBillPreSubmitPreviewProps) {
@@ -81,11 +103,27 @@ export function StripeBillPreSubmitPreview(p: StripeBillPreSubmitPreviewProps) {
 
   return (
     <div style={{ marginBottom: '1rem', fontSize: '0.8125rem' }}>
-      <div style={{ fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.875rem', color: '#111827' }}>Preview</div>
+      <div
+        style={{
+          fontWeight: 600,
+          marginBottom: '0.5rem',
+          fontSize: '0.875rem',
+          color: '#111827',
+          display: 'flex',
+          alignItems: 'baseline',
+          gap: '0.5rem',
+          flexWrap: 'wrap',
+        }}
+      >
+        Preview
+        {p.stripePreviewLoading && sp ? (
+          <span style={{ fontWeight: 400, fontSize: '0.75rem', color: '#6b7280' }}>Updating…</span>
+        ) : null}
+      </div>
 
-      {p.stripePreviewLoading && (
+      {p.stripePreviewLoading && !sp ? (
         <p style={{ margin: 0, color: '#6b7280', fontSize: '0.8125rem' }}>Loading invoice preview…</p>
-      )}
+      ) : null}
 
       {!p.stripePreviewLoading && p.stripePreviewError && (
         <p style={{ margin: '0 0 0.35rem', color: '#b45309', fontSize: '0.8125rem' }}>
@@ -95,9 +133,22 @@ export function StripeBillPreSubmitPreview(p: StripeBillPreSubmitPreviewProps) {
 
       {!p.stripePreviewLoading && !p.stripePreviewError && !sp && (
         <p style={{ margin: 0, color: '#6b7280', fontSize: '0.8125rem' }}>
-          {p.previewIdleHint?.trim() || 'Enter amount and due date to load preview.'}
+          {p.previewIdleHint?.trim() || 'Preview loads when billing is ready.'}
         </p>
       )}
+
+      {p.onEditDueDate && p.dueDateYmd.trim() && !sp && !p.stripePreviewLoading ? (
+        <div style={{ margin: '0.35rem 0 0.5rem', fontSize: '0.875rem', color: '#374151' }}>
+          <button
+            type="button"
+            onClick={p.onEditDueDate}
+            style={dueDateEditButtonStyle}
+            aria-label="Edit due date"
+          >
+            Due {dueLabelFromYmd(p.dueDateYmd)}
+          </button>
+        </div>
+      ) : null}
 
       {sp ? (
         <>
@@ -109,13 +160,26 @@ export function StripeBillPreSubmitPreview(p: StripeBillPreSubmitPreviewProps) {
               borderRadius: 6,
               border: '1px solid #e5e7eb',
               fontSize: '0.875rem',
+              opacity: p.stripePreviewLoading ? 0.72 : 1,
+              transition: 'opacity 0.15s ease',
             }}
           >
             <div style={{ ...stripeHeroAmountText, marginBottom: '0.25rem' }}>
               {formatStripeCents(amountRemaining, sp.currency)}
             </div>
             <div style={{ fontSize: '0.875rem', color: '#374151', marginBottom: '0.65rem' }}>
-              Due {dueLabelForPreview(sp, p.dueDateYmd)}
+              {p.onEditDueDate ? (
+                <button
+                  type="button"
+                  onClick={p.onEditDueDate}
+                  style={dueDateEditButtonStyle}
+                  aria-label="Edit due date"
+                >
+                  Due {dueLabelForPreview(sp, p.dueDateYmd)}
+                </button>
+              ) : (
+                <>Due {dueLabelForPreview(sp, p.dueDateYmd)}</>
+              )}
             </div>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <tbody>
@@ -147,6 +211,12 @@ export function StripeBillPreSubmitPreview(p: StripeBillPreSubmitPreviewProps) {
                     <td style={metaValue}>{p.memo.trim()}</td>
                   </tr>
                 ) : null}
+                {(p.footer ?? '').trim() ? (
+                  <tr>
+                    <td style={metaLabel}>Footer</td>
+                    <td style={metaValue}>{(p.footer ?? '').trim()}</td>
+                  </tr>
+                ) : null}
               </tbody>
             </table>
           </div>
@@ -159,6 +229,8 @@ export function StripeBillPreSubmitPreview(p: StripeBillPreSubmitPreviewProps) {
               border: '1px solid #e5e7eb',
               background: '#fafafa',
               fontSize: '0.875rem',
+              opacity: p.stripePreviewLoading ? 0.72 : 1,
+              transition: 'opacity 0.15s ease',
             }}
           >
             {sp.lines.length === 0 ? (

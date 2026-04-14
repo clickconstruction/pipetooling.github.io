@@ -26,6 +26,7 @@ import { type JobBillingContext } from '../components/jobs/SendRecordInvoiceModa
 import { useBillCustomerModal } from '../contexts/BillCustomerModalContext'
 import BilledPaymentConfirmationModal from '../components/jobs/BilledPaymentConfirmationModal'
 import BilledBillViewModal from '../components/jobs/BilledBillViewModal'
+import { StripeInvoiceSendFromStripeButton } from '../components/jobs/StripeInvoiceSendFromStripeButton'
 import { JobThreadNotesPanel } from '../components/JobThreadNotesPanel'
 import DetailJobModal, { type DetailJobModalAssignedJobRow } from '../components/jobs/DetailJobModal'
 import { ScheduleJobModal } from '../components/jobs/ScheduleJobModal'
@@ -49,11 +50,23 @@ import {
   peekReturnEditJobFromStages,
 } from '../lib/returnEditJobFromStages'
 import { DELETE_DRAFT_BILL_LABEL } from '../lib/deleteDraftBillLabel'
+import {
+  ensureLedgerInvoiceRemovedAfterStripeSendBack,
+  invoiceNeedsStripeVoidForRevert,
+  invokeVoidStripeInvoiceForRevert,
+  prepareBilledInvoicesBeforeJobRevertToReadyToBill,
+  stripeModeForBillingFromRole,
+} from '../lib/voidStripeInvoiceForRevert'
+import { syncJobToReadyToBillIfNoBilledInvoicesRemain } from '../lib/syncJobToReadyToBillIfNoBilledInvoicesRemain'
 import { pickLinkedEstimateForStagesBanner } from '../lib/pickLinkedEstimateForStagesBanner'
 import {
+  buildBilledStageRows,
   buildJobsStagesBoardLists,
+  jobBillingUnallocatedDollars,
   locateStagesInvoiceSection,
+  readyToBillRowsExposureTotal,
   stagesInvoiceVisibleWithEmptySearch,
+  stagesMergedBillingInvoiceId,
   type InvoiceWithJob,
   type StageRow,
 } from '../lib/jobsStagesBoard'
@@ -83,20 +96,6 @@ function jobBillingContextFromJob(j: JobWithDetails): JobBillingContext {
 /** Jobs ledger row must be linked to a customers row before Invoice/Update or instant billed. */
 function jobLedgerHasCustomerForBilling(customerId: string | null | undefined): boolean {
   return customerId != null && String(customerId).trim().length > 0
-}
-
-function readyToBillSectionTotal(rows: StageRow[]): number {
-  let sum = 0
-  for (const r of rows) {
-    if (r.kind === 'job') {
-      sum += Math.max(0, Number(r.job.revenue ?? 0) - Number(r.job.payments_made ?? 0))
-    } else if (r.kind === 'invoice') {
-      sum += Number(r.inv.amount ?? 0)
-    } else {
-      sum += Number(r.inv.amount ?? 0)
-    }
-  }
-  return sum
 }
 
 type TallyPartRow = {
@@ -302,6 +301,11 @@ function formatCurrencyNoCents(n: number): string {
   return Math.round(n).toLocaleString('en-US', { maximumFractionDigits: 0 })
 }
 
+/** Integer USD for Stages Paid / Left / Bid lines (leading $, no cents). */
+function formatUsdNoCents(n: number): string {
+  return `$${formatCurrencyNoCents(n)}`
+}
+
 /** Calendar whole days from an ISO date/timestamp to now in UTC (avoids DST edge cases). */
 function calendarDaysSinceDateUtc(dateIso: string, now = new Date()): number {
   const d = new Date(dateIso)
@@ -337,6 +341,19 @@ function formatTimeSince(iso: string | null): string {
   if (diffWeeks < 4) return `${diffWeeks} week${diffWeeks !== 1 ? 's' : ''}`
   if (diffMonths < 12) return `${diffMonths} month${diffMonths !== 1 ? 's' : ''}`
   return `${Math.floor(diffMonths / 12)} year${Math.floor(diffMonths / 12) !== 1 ? 's' : ''}`
+}
+
+/** Stages table headers: one visual line per phrase when the table is narrow (no mid-phrase wrap). */
+const stagesThreeLineHeaderLineStyle: CSSProperties = { display: 'block', whiteSpace: 'nowrap' }
+
+function renderStagesThreeLineHeader(line1: string, line2: string, line3: string) {
+  return (
+    <>
+      <span style={stagesThreeLineHeaderLineStyle}>{line1}</span>
+      <span style={stagesThreeLineHeaderLineStyle}>{line2}</span>
+      <span style={stagesThreeLineHeaderLineStyle}>{line3}</span>
+    </>
+  )
 }
 
 function formatEstimatedCompletionDisplay(estimatedCompletionDate: string | null): string | null {
@@ -381,9 +398,6 @@ function stageRowBilledRemainingAmount(r: StageRow): number {
   if (r.kind === 'job') {
     return Number(r.job.revenue ?? 0) - Number(r.job.payments_made ?? 0)
   }
-  if (r.kind === 'job_with_primary_rtb') {
-    return invoiceOpenRemainingOnJob(r.inv, r.job)
-  }
   return invoiceOpenRemainingOnJob(r.inv, r.job)
 }
 
@@ -401,7 +415,7 @@ function stageRowBilledAgeDays(r: StageRow, now = new Date()): number | null {
 function stageRowBilledLineLabel(r: StageRow): string {
   const hcp = r.job.hcp_number || '—'
   if (r.kind === 'job') return `${hcp} · Job balance`
-  if (r.kind === 'job_with_primary_rtb') return `${hcp} · Primary billing line`
+  if (r.kind === 'job_with_merged_billed') return `${hcp} · Billed line`
   return `${hcp} · Invoice #${r.inv.sequence_order}`
 }
 
@@ -432,14 +446,6 @@ function printBilledRowReferenceDate(r: StageRow, now = new Date()): { display: 
     const days = calendarDaysSinceDateUtc(iso, now)
     if (days < 0) return { display: formatYmdOrIsoDateForPrintDisplay(iso), ageDays: null }
     return { display: formatYmdOrIsoDateForPrintDisplay(iso), ageDays: days }
-  }
-  if (r.kind === 'job_with_primary_rtb') {
-    const est = effectiveInvoiceEstBillDate(r.inv, r.job)
-    if (!est) return { display: '—', ageDays: null }
-    const days = calendarDaysSinceDateUtc(est, now)
-    const display = `${formatYmdOrIsoDateForPrintDisplay(est)} (est.)`
-    if (days < 0) return { display, ageDays: null }
-    return { display, ageDays: days }
   }
   const billedAt = r.inv.billed_at?.trim()
   if (billedAt) {
@@ -528,6 +534,36 @@ function formatJobNameTwoLines(name: string | null): { line1: string; line2?: st
     return { line1, line2: line2 || undefined }
   }
   return { line1: a }
+}
+
+/** Stages jump chips: open RTB / billed billing lines only, same rows as the board. */
+function jobStagesActiveBillingInvoices(job: JobWithDetails): JobsLedgerInvoice[] {
+  return (job.invoices ?? [])
+    .filter((i) => i.status === 'ready_to_bill' || i.status === 'billed')
+    .slice()
+    .sort((a, b) => a.sequence_order - b.sequence_order)
+}
+
+/** Jump targets: standalone invoice rows only (omit line merged into the job shell on Stages). */
+function jobStagesInvoiceJumpChipTargets(job: JobWithDetails): JobsLedgerInvoice[] {
+  const all = jobStagesActiveBillingInvoices(job)
+  const merged = stagesMergedBillingInvoiceId(job)
+  if (merged == null) return all
+  return all.filter((i) => i.id !== merged)
+}
+
+/** Stages Last activity: one billed Stripe line with recorded customer email only (skip when ambiguous). */
+function stagesJobLevelStripeEmailedHintInvoice(job: JobWithDetails): JobsLedgerInvoice | undefined {
+  const matches = (job.invoices ?? []).filter(
+    (i) =>
+      i.status === 'billed' &&
+      i.external_send_channel === 'stripe' &&
+      String(i.stripe_invoice_id ?? '').trim() !== '' &&
+      i.sent_to_customer_at != null &&
+      String(i.sent_to_customer_at).trim() !== '',
+  )
+  if (matches.length !== 1) return undefined
+  return matches[0]
 }
 
 export default function Jobs() {
@@ -871,33 +907,21 @@ export default function Jobs() {
     const filtered = stagesFilteredJobs
     const billedJobsList = filtered.filter((j) => st(j) === 'billed')
     const billedInvoicesList = filtered.flatMap((j) =>
-      (j.invoices ?? []).filter((i) => i.status === 'billed').map((inv) => ({ ...inv, job: j }))
+      (j.invoices ?? []).filter((i) => i.status === 'billed').map((inv) => ({ ...inv, job: j })),
     )
+    const billedRowsAging = buildBilledStageRows(billedJobsList, billedInvoicesList)
     const now = new Date()
     let count30_90 = 0
     let sum30_90 = 0
     let count90 = 0
     let sum90 = 0
-    for (const j of billedJobsList) {
-      const iso = j.last_bill_date
+    for (const r of billedRowsAging) {
+      const iso =
+        r.kind === 'job' ? r.job.last_bill_date ?? null : effectiveInvoiceEstBillDate(r.inv, r.job)
       if (!iso) continue
       const days = calendarDaysSinceDateUtc(iso, now)
       if (days < 30) continue
-      const amount = Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)
-      if (days < 90) {
-        count30_90++
-        sum30_90 += amount
-      } else {
-        count90++
-        sum90 += amount
-      }
-    }
-    for (const inv of billedInvoicesList) {
-      const iso = effectiveInvoiceEstBillDate(inv, inv.job)
-      if (!iso) continue
-      const days = calendarDaysSinceDateUtc(iso, now)
-      if (days < 30) continue
-      const amount = invoiceOpenRemainingOnJob(inv, inv.job)
+      const amount = stageRowBilledRemainingAmount(r)
       if (amount <= 0) continue
       if (days < 90) {
         count30_90++
@@ -1116,8 +1140,8 @@ export default function Jobs() {
     })
   }
 
-  async function updateJobStatus(jobId: string, toStatus: 'working' | 'ready_to_bill' | 'billed' | 'paid') {
-    if (stagesJobStatusMutationLockRef.current === jobId) return
+  async function updateJobStatus(jobId: string, toStatus: 'working' | 'ready_to_bill' | 'billed' | 'paid'): Promise<boolean> {
+    if (stagesJobStatusMutationLockRef.current === jobId) return false
     stagesJobStatusMutationLockRef.current = jobId
     setStagesStatusUpdatingId(jobId)
     setError(null)
@@ -1125,14 +1149,15 @@ export default function Jobs() {
       const { data, error: err } = await supabase.rpc('update_job_status', { p_job_id: jobId, p_to_status: toStatus })
       if (err) {
         setError(err.message)
-        return
+        return false
       }
       const result = data as { error?: string } | null
       if (result?.error) {
         setError(result.error)
-        return
+        return false
       }
       await loadJobs()
+      return true
     } finally {
       setStagesStatusUpdatingId(null)
       if (stagesJobStatusMutationLockRef.current === jobId) {
@@ -1141,20 +1166,91 @@ export default function Jobs() {
     }
   }
 
-  async function updateInvoiceStatus(invoiceId: string, status: 'ready_to_bill' | 'billed') {
-    if (stagesInvoiceMutationLockRef.current === invoiceId) return
-    stagesInvoiceMutationLockRef.current = invoiceId
-    setStagesInvoiceUpdatingId(invoiceId)
+  /** Void Stripe (or revert non-Stripe) on all billed lines, then move job to Ready to Bill. */
+  async function moveJobToReadyToBillWithStripePrep(jobId: string): Promise<boolean> {
+    const { data: auth } = await supabase.auth.getSession()
+    const token = auth.session?.access_token
+    if (!token) {
+      setError('Not signed in')
+      return false
+    }
+    const prep = await prepareBilledInvoicesBeforeJobRevertToReadyToBill({
+      jobId,
+      authRole,
+      accessToken: token,
+    })
+    if (!prep.ok) {
+      setError(prep.message)
+      return false
+    }
+    return updateJobStatus(jobId, 'ready_to_bill')
+  }
+
+  /** Send back from Billed: void Stripe when needed, else delete billed row (RPC). */
+  async function revertBilledInvoiceToReadyToBill(inv: InvoiceWithJob) {
+    if (!invoiceNeedsStripeVoidForRevert(inv)) {
+      if (stagesInvoiceMutationLockRef.current === inv.id) return
+      stagesInvoiceMutationLockRef.current = inv.id
+      setStagesInvoiceUpdatingId(inv.id)
+      setError(null)
+      try {
+        const data = await withSupabaseRetry(
+          async () => await supabase.rpc('delete_billed_invoice_on_send_back', { p_invoice_id: inv.id }),
+          'delete_billed_invoice_on_send_back',
+        )
+        const result = data as { ok?: boolean; deleted?: boolean; error?: string } | null
+        if (!result?.ok) {
+          setError(result?.error ?? 'Failed to send back invoice')
+          return
+        }
+        const sync = await syncJobToReadyToBillIfNoBilledInvoicesRemain(supabase, inv.job_id)
+        if (!sync.ok) {
+          setError(sync.message)
+        }
+        await loadJobs()
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : 'Failed to send back invoice')
+      } finally {
+        setStagesInvoiceUpdatingId(null)
+        if (stagesInvoiceMutationLockRef.current === inv.id) {
+          stagesInvoiceMutationLockRef.current = null
+        }
+      }
+      return
+    }
+    if (stagesInvoiceMutationLockRef.current === inv.id) return
+    stagesInvoiceMutationLockRef.current = inv.id
+    setStagesInvoiceUpdatingId(inv.id)
     setError(null)
     try {
-      const { error: err } = await supabase.from('jobs_ledger_invoices').update({ status }).eq('id', invoiceId)
-      if (err) throw err
+      const { data: auth } = await supabase.auth.getSession()
+      const token = auth.session?.access_token
+      if (!token) {
+        setError('Not signed in')
+        return
+      }
+      const r = await invokeVoidStripeInvoiceForRevert({
+        invoiceId: inv.id,
+        stripeModeForBilling: stripeModeForBillingFromRole(authRole),
+        accessToken: token,
+      })
+      if (!r.ok) {
+        setError(r.message)
+        return
+      }
+      const cleaned = await ensureLedgerInvoiceRemovedAfterStripeSendBack(inv.id)
+      if (!cleaned.ok) {
+        setError(cleaned.message)
+        return
+      }
+      const sync = await syncJobToReadyToBillIfNoBilledInvoicesRemain(supabase, inv.job_id)
+      if (!sync.ok) {
+        setError(sync.message)
+      }
       await loadJobs()
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to update invoice')
     } finally {
       setStagesInvoiceUpdatingId(null)
-      if (stagesInvoiceMutationLockRef.current === invoiceId) {
+      if (stagesInvoiceMutationLockRef.current === inv.id) {
         stagesInvoiceMutationLockRef.current = null
       }
     }
@@ -3000,7 +3096,8 @@ ${totalsHtml}
         const linesHtml = sortedRows
           .map((r) => {
             const j = r.job
-            const detail = r.kind === 'job' ? 'Job balance' : `Invoice #${r.inv.sequence_order}`
+            const detail =
+              r.kind === 'job' ? 'Job balance' : r.kind === 'job_with_merged_billed' ? 'Billed line' : `Invoice #${r.inv.sequence_order}`
             const amt = stageRowBilledRemainingAmount(r)
             const { display: dateDisplay, ageDays } = printBilledRowReferenceDate(r)
             return `<tr>
@@ -3321,42 +3418,45 @@ ${totalsHtml}
     return () => clearTimeout(timer)
   }, [pendingScrollToPartsJobId, expandedPartsJobIds])
 
+  const applyStagesInvoiceFocus = useCallback(
+    (invoiceId: string): boolean => {
+      const raw = invoiceId.trim()
+      if (!raw) return false
+      const { readyToBillRows, billedRows } = buildJobsStagesBoardLists(jobs, stagesSearchQuery)
+      const section = locateStagesInvoiceSection(raw, readyToBillRows, billedRows)
+      if (section == null) {
+        if (stagesInvoiceVisibleWithEmptySearch(raw, jobs)) {
+          showToast('Clear the Stages search to see this invoice.', 'info')
+        } else {
+          showToast('That invoice isn’t on the Stages board right now.', 'info')
+        }
+        return false
+      }
+      if (section === 'readyToBill') {
+        setStagesSectionOpen((prev) => ({ ...prev, readyToBill: true }))
+      } else {
+        setStagesSectionOpen((prev) => ({ ...prev, billed: true }))
+      }
+      setPendingStagesInvoiceFocusId(raw)
+      setStagesInvoiceFlashId(raw)
+      return true
+    },
+    [jobs, stagesSearchQuery, showToast],
+  )
+
   const stagesInvoiceParam = searchParams.get('stagesInvoice')
   useEffect(() => {
     const raw = stagesInvoiceParam?.trim()
     if (!raw || loading || activeTab !== 'stages') return
 
-    const { readyToBillRows, billedRows } = buildJobsStagesBoardLists(jobs, stagesSearchQuery)
-    const section = locateStagesInvoiceSection(raw, readyToBillRows, billedRows)
-
-    if (section == null) {
-      if (stagesInvoiceVisibleWithEmptySearch(raw, jobs)) {
-        showToast('Clear the Stages search to see this invoice.', 'info')
-      } else {
-        showToast('That invoice isn’t on the Stages board right now.', 'info')
-      }
-      setSearchParams((p) => {
-        const next = new URLSearchParams(p)
-        next.delete('stagesInvoice')
-        return next
-      }, { replace: true })
-      return
-    }
-
-    if (section === 'readyToBill') {
-      setStagesSectionOpen((prev) => ({ ...prev, readyToBill: true }))
-    } else {
-      setStagesSectionOpen((prev) => ({ ...prev, billed: true }))
-    }
-    setPendingStagesInvoiceFocusId(raw)
-    setStagesInvoiceFlashId(raw)
+    applyStagesInvoiceFocus(raw)
     setSearchParams((p) => {
       const next = new URLSearchParams(p)
       next.delete('stagesInvoice')
       if (!next.get('tab')) next.set('tab', 'stages')
       return next
     }, { replace: true })
-  }, [stagesInvoiceParam, loading, activeTab, jobs, stagesSearchQuery, showToast, setSearchParams])
+  }, [stagesInvoiceParam, loading, activeTab, applyStagesInvoiceFocus, setSearchParams])
 
   useEffect(() => {
     if (activeTab !== 'stages') {
@@ -3887,8 +3987,38 @@ ${totalsHtml}
       return
     }
     const remaining = Math.max(0, (Number(createPartialInvoiceJob.revenue ?? 0) - Number(createPartialInvoiceJob.payments_made ?? 0)))
-    if (amount > remaining) {
-      setError(`Amount cannot exceed Remaining ($${formatCurrency(remaining)})`)
+    const amountToUseCents = Math.min(Math.round(amount * 100), Math.round(remaining * 100))
+    const amountToUse = amountToUseCents / 100
+    if (!(amountToUse > 0)) {
+      setError('No remaining balance to bill')
+      return
+    }
+    if (amountToUseCents < Math.round(amount * 100)) {
+      showToast(`Adjusted to remaining balance ($${formatCurrency(amountToUse)})`, 'info')
+      setCreatePartialInvoiceAmount(String(amountToUse))
+    }
+    if (
+      createPartialInvoiceJob.status === 'ready_to_bill' &&
+      Math.round(amountToUse * 100) === Math.round(remaining * 100)
+    ) {
+      const job = createPartialInvoiceJob
+      setCreatePartialInvoiceJob(null)
+      setCreatePartialInvoiceAmount('')
+      setError(null)
+      if (!jobLedgerHasCustomerForBilling(job.customer_id)) {
+        showToast('Link this job to a customer before billing.', 'error')
+        openEdit(job, { billingCustomerHighlight: true })
+        return
+      }
+      billCustomer?.openBillCustomer({
+        payload: { kind: 'job', job: jobBillingContextFromJob(job) },
+        onSuccess: async () => {
+          await loadJobs()
+        },
+        onAfterEnsureSuccess: async () => {
+          await loadJobs()
+        },
+      })
       return
     }
     setCreatingPartialInvoiceFromModal(true)
@@ -3897,15 +4027,32 @@ ${totalsHtml}
       const nextOrder = (createPartialInvoiceJob.invoices ?? []).length
       const estBillModal =
         createPartialInvoiceJob.last_bill_date?.trim().slice(0, 10) ?? null
-      const { error: err } = await supabase.from('jobs_ledger_invoices').insert({
-        job_id: createPartialInvoiceJob.id,
-        amount,
-        status: 'ready_to_bill',
-        sequence_order: nextOrder,
-        estimated_bill_date: estBillModal,
-        is_primary_rtb_bundle: false,
-      })
+      const { error: err } = await supabase
+        .from('jobs_ledger_invoices')
+        .insert({
+          job_id: createPartialInvoiceJob.id,
+          amount: amountToUse,
+          status: 'ready_to_bill',
+          sequence_order: nextOrder,
+          estimated_bill_date: estBillModal,
+          is_primary_rtb_bundle: false,
+        })
+        .select('id')
+        .single()
       if (err) throw err
+      if (createPartialInvoiceJob.status === 'ready_to_bill') {
+        const raw = await withSupabaseRetry(
+          () =>
+            supabase.rpc('ensure_single_ready_to_bill_invoice_for_job', {
+              p_job_id: createPartialInvoiceJob.id,
+            }),
+          'ensure RTB remainder after partial invoice'
+        )
+        const obj = raw as Record<string, unknown> | null
+        if (obj && typeof obj.error === 'string' && obj.error.length > 0) {
+          throw new Error(obj.error)
+        }
+      }
       setCreatePartialInvoiceJob(null)
       setCreatePartialInvoiceAmount('')
       setError(null)
@@ -4600,7 +4747,7 @@ ${totalsHtml}
             </button>
           </div>
           {(() => {
-            const { working, paid, billedJobs, billedInvoices, readyToBillRows, billedRows } = stagesBoardLists
+            const { working, paid, readyToBillRows, billedRows } = stagesBoardLists
 
             function toggleStages(key: keyof typeof stagesSectionOpen) {
               setStagesSectionOpen((prev) => ({ ...prev, [key]: !prev[key] }))
@@ -4756,7 +4903,10 @@ ${totalsHtml}
               )
             }
 
-            function renderStagesLastActivityCell(job: JobWithDetails) {
+            function renderStagesLastActivityCell(
+              job: JobWithDetails,
+              billingLineForStripeHint?: JobsLedgerInvoice | null,
+            ) {
               const jobId = job.id
               const stat = jobThreadStatsByJobId[jobId]
               const count = stat?.note_count ?? 0
@@ -4768,12 +4918,86 @@ ${totalsHtml}
               const expanded = expandedJobThreadId === jobId
               const scheduleNoTeam = (job.team_members?.length ?? 0) === 0
 
+              const stagesInvoiceJumpAmountChipStyle: CSSProperties = {
+                padding: '0.15rem 0.4rem',
+                fontSize: '0.6875rem',
+                fontWeight: 600,
+                border: '1px solid rgba(255,255,255,0.5)',
+                borderRadius: 4,
+                background: '#16a34a',
+                color: 'white',
+                cursor: 'pointer',
+                lineHeight: 1.2,
+                fontFamily: 'inherit',
+              }
+
+              function renderStagesInvoiceJumpChips(forJob: JobWithDetails) {
+                const invs = jobStagesInvoiceJumpChipTargets(forJob)
+                if (invs.length === 0) return null
+                return (
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
+                      gap: '0.3rem',
+                      marginTop: 'auto',
+                      flexShrink: 0,
+                      alignSelf: 'stretch',
+                      maxWidth: '100%',
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: '0.6875rem',
+                        fontWeight: 500,
+                        color: '#374151',
+                        lineHeight: 1.2,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {invs.length === 1 ? 'Open Invoice:' : 'Open Invoices:'}
+                    </span>
+                    {invs.map((inv) => {
+                      const amt = formatUsdNoCents(Number(inv.amount ?? 0))
+                      const openCents = Math.round(invoiceOpenRemainingOnJob(inv, forJob) * 100)
+                      const paidLabel = openCents === 0 ? 'Paid' : 'Unpaid'
+                      const statusLabel = inv.status === 'billed' ? 'Billed' : 'Ready to bill'
+                      return (
+                        <button
+                          key={inv.id}
+                          type="button"
+                          onClick={() => {
+                            applyStagesInvoiceFocus(inv.id)
+                          }}
+                          title={`Go to this invoice row on Stages (${statusLabel}, ${paidLabel})`}
+                          aria-label={`Go to invoice ${inv.sequence_order} for ${amt}, ${paidLabel}, on Stages`}
+                          style={stagesInvoiceJumpAmountChipStyle}
+                        >
+                          {amt}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )
+              }
+
+              const lastActivityMainColumnStyle: CSSProperties = {
+                flex: 1,
+                minWidth: 0,
+                alignSelf: 'stretch',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.25rem',
+                alignItems: 'stretch',
+              }
+
               const tdShellStyle: CSSProperties = {
                 padding: '0.75rem',
                 verticalAlign: 'top',
                 display: 'flex',
                 flexDirection: 'row',
-                alignItems: 'flex-start',
+                alignItems: 'stretch',
                 gap: '0.35rem',
               }
 
@@ -4786,6 +5010,7 @@ ${totalsHtml}
                       alignItems: 'flex-start',
                       gap: 2,
                       flexShrink: 0,
+                      alignSelf: 'flex-start',
                     }}
                   >
                     {canOpenJobScheduleModal ? (
@@ -4854,12 +5079,63 @@ ${totalsHtml}
                 }
               }
 
+              function renderStagesStripeEmailedCustomerHint(): ReactNode {
+                const line = billingLineForStripeHint
+                if (!line) return null
+                if (line.external_send_channel !== 'stripe') return null
+                if (!String(line.stripe_invoice_id ?? '').trim()) return null
+                const sentRaw = line.sent_to_customer_at
+                if (sentRaw == null || !String(sentRaw).trim()) return null
+                const sentMeta = getDispatchNoteDisplayMeta(String(sentRaw))
+                const stripePaid =
+                  String(line.stripe_invoice_status ?? '').toLowerCase() === 'paid'
+                return (
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '0.2rem',
+                      width: '100%',
+                      fontSize: '0.6875rem',
+                      color: '#6b7280',
+                      lineHeight: 1.2,
+                      textAlign: 'center',
+                    }}
+                  >
+                    <span>Stripe emailed customer</span>
+                    <span>
+                      {sentMeta.weekdayTimeChicago} ({sentMeta.daysAgoLabel})
+                    </span>
+                    <StripeInvoiceSendFromStripeButton
+                      jobsLedgerInvoiceId={line.id}
+                      stripeInvoiceId={String(line.stripe_invoice_id).trim()}
+                      customerEmail={job.customer_email ?? null}
+                      stripeModeForBilling={stripeModeForBillingFromRole(authRole)}
+                      onSent={() => void loadJobs()}
+                      compact
+                      micro
+                      unboxed
+                      hideInlineSuccessLine
+                      recordedLastSendAt={line.sent_to_customer_at}
+                      buttonLabel="Resend invoice email"
+                      sendDisabled={stripePaid}
+                      sendDisabledTitle="This Stripe invoice is paid; Stripe will not send another email."
+                    />
+                  </div>
+                )
+              }
+
               if (count === 0 || !stat?.last_note_at) {
                 return (
                   <td style={tdShellStyle}>
                     {renderStagesLastActivityLeadingControls()}
-                    <div {...lastActivityBodyInteractiveProps(titleForEmpty)}>
-                      <span style={{ fontSize: '0.8125rem', color: '#9ca3af' }}>—</span>
+                    <div style={lastActivityMainColumnStyle}>
+                      <div {...lastActivityBodyInteractiveProps(titleForEmpty)}>
+                        <span style={{ fontSize: '0.8125rem', color: '#9ca3af' }}>—</span>
+                      </div>
+                      {renderStagesStripeEmailedCustomerHint()}
+                      {renderStagesInvoiceJumpChips(job)}
                     </div>
                   </td>
                 )
@@ -4871,26 +5147,30 @@ ${totalsHtml}
               return (
                 <td style={{ ...tdShellStyle, maxWidth: 280 }}>
                   {renderStagesLastActivityLeadingControls()}
-                  <div {...lastActivityBodyInteractiveProps(titleWithNotes)}>
-                    <div style={{ fontSize: '0.6875rem', color: '#6b7280', marginBottom: '0.2rem' }}>
-                      {author ? <span>{author}</span> : null}
-                      {author ? <span style={{ margin: '0 0.35rem' }}>·</span> : null}
-                      <span>{meta.weekdayTimeChicago}</span>
-                      <span style={{ marginLeft: '0.35rem' }}>({meta.daysAgoLabel})</span>
+                  <div style={lastActivityMainColumnStyle}>
+                    <div {...lastActivityBodyInteractiveProps(titleWithNotes)}>
+                      <div style={{ fontSize: '0.6875rem', color: '#6b7280', marginBottom: '0.2rem' }}>
+                        {author ? <span>{author}</span> : null}
+                        {author ? <span style={{ margin: '0 0.35rem' }}>·</span> : null}
+                        <span>{meta.weekdayTimeChicago}</span>
+                        <span style={{ marginLeft: '0.35rem' }}>({meta.daysAgoLabel})</span>
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '0.8125rem',
+                          color: '#374151',
+                          lineHeight: 1.35,
+                          wordBreak: 'break-word',
+                          whiteSpace: 'pre-wrap',
+                          maxHeight: '4.2em',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        {body || '—'}
+                      </div>
                     </div>
-                    <div
-                      style={{
-                        fontSize: '0.8125rem',
-                        color: '#374151',
-                        lineHeight: 1.35,
-                        wordBreak: 'break-word',
-                        whiteSpace: 'pre-wrap',
-                        maxHeight: '4.2em',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      {body || '—'}
-                    </div>
+                    {renderStagesStripeEmailedCustomerHint()}
+                    {renderStagesInvoiceJumpChips(job)}
                   </div>
                 </td>
               )
@@ -4955,13 +5235,44 @@ ${totalsHtml}
                   <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                     <thead style={{ background: '#f9fafb' }}>
                       <tr>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Assigned<br />HCP</th>
+                        <th
+                          style={{
+                            padding: '0.75rem',
+                            textAlign: 'left',
+                            borderBottom: '1px solid #e5e7eb',
+                            minWidth: '6.75rem',
+                          }}
+                        >
+                          {renderStagesThreeLineHeader('Assigned', 'HCP', 'Last-Activity')}
+                        </th>
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job</th>
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', minWidth: 200 }}>Last activity</th>
                         {showPctComplete && (
-                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>% Complete<br />/ Value Created</th>
+                          <th
+                            style={{
+                              padding: '0.75rem',
+                              textAlign: 'center',
+                              borderBottom: '1px solid #e5e7eb',
+                              minWidth: '8.5rem',
+                            }}
+                          >
+                            {renderStagesThreeLineHeader('% Complete', 'Value Created', 'Could Bill')}
+                          </th>
                         )}
-                        <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>{showRemaining ? <>Remaining<br />/ Total Bill</> : showFinalBill ? 'Final Bill' : 'Revenue'}</th>
+                        <th
+                          style={{
+                            padding: '0.75rem',
+                            textAlign: 'center',
+                            borderBottom: '1px solid #e5e7eb',
+                            ...(showRemaining ? { minWidth: '7rem' } : {}),
+                          }}
+                        >
+                          {showRemaining
+                            ? renderStagesThreeLineHeader('Paid', 'Left', 'Total Bill')
+                            : showFinalBill
+                              ? 'Final Bill'
+                              : 'Revenue'}
+                        </th>
                         <th style={{ padding: '0.75rem', width: 140, borderBottom: '1px solid #e5e7eb' }} />
                         <th style={{ padding: '0.75rem', width: 120, borderBottom: '1px solid #e5e7eb' }}>View<br />Reports</th>
                       </tr>
@@ -5119,7 +5430,7 @@ ${totalsHtml}
                               {renderJobCustomerLine(j)}
                               {renderStagesJobColumnEstimateFooter(j.linkedEstimateForStages)}
                             </td>
-                            {renderStagesLastActivityCell(j)}
+                            {renderStagesLastActivityCell(j, stagesJobLevelStripeEmailedHintInvoice(j))}
                             {showPctComplete && (
                               <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
@@ -5163,7 +5474,7 @@ ${totalsHtml}
                                   </div>
                                   <div style={{ fontSize: '0.8125rem' }}>
                                     {j.pct_complete != null
-                                      ? `${formatCurrencyNoCents((Number(j.revenue ?? 0) * j.pct_complete) / 100)} done`
+                                      ? `${formatUsdNoCents((Number(j.revenue ?? 0) * j.pct_complete) / 100)} done`
                                       : '—'}
                                   </div>
                                   {(() => {
@@ -5173,7 +5484,7 @@ ${totalsHtml}
                                     const toBill = valueCreated - (totalBill - remaining)
                                     return (
                                       <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>
-                                        {valueCreated === 0 || toBill === 0 ? '—' : `${formatCurrencyNoCents(toBill)} to bill`}
+                                        {valueCreated === 0 || toBill === 0 ? '—' : `${formatUsdNoCents(toBill)} to bill`}
                                       </div>
                                     )
                                   })()}
@@ -5187,9 +5498,9 @@ ${totalsHtml}
                                     const pm = j.payments_made != null ? Number(j.payments_made) : 0
                                     return (
                                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                                        <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{pm > 0 ? `${formatCurrencyNoCents(pm)} paid` : '—'}</span>
-                                        <span>{rev > 0 || pm > 0 ? `${formatCurrencyNoCents(rev - pm)} left` : '—'}</span>
-                                        <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{j.revenue != null ? `${formatCurrencyNoCents(Number(j.revenue))} bid` : '—'}</span>
+                                        <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{pm > 0 ? `${formatUsdNoCents(pm)} paid` : '—'}</span>
+                                        <span>{rev > 0 || pm > 0 ? `${formatUsdNoCents(rev - pm)} left` : '—'}</span>
+                                        <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{j.revenue != null ? `${formatUsdNoCents(Number(j.revenue))} bid` : '—'}</span>
                                       </div>
                                     )
                                   })()
@@ -5439,10 +5750,28 @@ ${totalsHtml}
                   <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                     <thead style={{ background: '#f9fafb' }}>
                       <tr>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Assigned<br />HCP</th>
+                        <th
+                          style={{
+                            padding: '0.75rem',
+                            textAlign: 'left',
+                            borderBottom: '1px solid #e5e7eb',
+                            minWidth: '6.75rem',
+                          }}
+                        >
+                          {renderStagesThreeLineHeader('Assigned', 'HCP', 'Last-Activity')}
+                        </th>
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job</th>
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', minWidth: 200 }}>Last activity</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Remaining<br />/ Total Bill</th>
+                        <th
+                          style={{
+                            padding: '0.75rem',
+                            textAlign: 'center',
+                            borderBottom: '1px solid #e5e7eb',
+                            minWidth: '7rem',
+                          }}
+                        >
+                          {renderStagesThreeLineHeader('Paid', 'Left', 'Total Bill')}
+                        </th>
                         <th style={{ padding: '0.75rem', width: 140, borderBottom: '1px solid #e5e7eb' }} />
                         <th style={{ padding: '0.75rem', width: 120, borderBottom: '1px solid #e5e7eb' }}>View<br />Reports</th>
                       </tr>
@@ -5456,13 +5785,26 @@ ${totalsHtml}
                         </tr>
                       ) : (
                         rows.map((row) => {
-                          if (row.kind === 'job' || row.kind === 'job_with_primary_rtb') {
+                          if (
+                            row.kind === 'job' ||
+                            row.kind === 'job_with_merged_billed' ||
+                            row.kind === 'job_with_primary_rtb'
+                          ) {
                             const j = row.job
-                            const bundleInv = row.kind === 'job_with_primary_rtb' ? row.inv : null
+                            const bundleInv =
+                              row.kind === 'job_with_merged_billed' || row.kind === 'job_with_primary_rtb'
+                                ? row.inv
+                                : null
                             const bundleInvWithJob: InvoiceWithJob | null =
                               bundleInv != null ? { ...bundleInv, job: j } : null
+                            const bundleRowKey =
+                              bundleInv != null
+                                ? row.kind === 'job_with_primary_rtb'
+                                  ? `job-${j.id}-rtb-${bundleInv.id}`
+                                  : `job-${j.id}-billed-${bundleInv.id}`
+                                : `job-${j.id}`
                             return (
-                              <Fragment key={bundleInv != null ? `job-${j.id}-rtb-${bundleInv.id}` : `job-${j.id}`}>
+                              <Fragment key={bundleRowKey}>
                               <tr
                                 data-stages-invoice-id={bundleInv != null ? bundleInv.id : undefined}
                                 style={{
@@ -5611,30 +5953,43 @@ ${totalsHtml}
                                       style={{ fontSize: '0.75rem', color: '#1e40af', marginTop: '0.25rem' }}
                                       title="Single billing line for this job (Stripe or external send)"
                                     >
-                                      Billing line: {formatCurrency(Number(bundleInv.amount))}
+                                      {row.kind === 'job_with_merged_billed' ? (
+                                        <>
+                                          Billed line: {formatCurrency(invoiceOpenRemainingOnJob(bundleInv, j))} open
+                                        </>
+                                      ) : (
+                                        <>Billing line: {formatCurrency(Number(bundleInv.amount))}</>
+                                      )}
                                     </div>
                                   ) : null}
                                   {renderStagesJobColumnEstimateFooter(j.linkedEstimateForStages)}
                                 </td>
-                                {renderStagesLastActivityCell(j)}
+                                {renderStagesLastActivityCell(j, bundleInv ?? undefined)}
                                 <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
                                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                                     {!bundleInv ? (
                                       <>
                                         {showRemaining && (() => {
                                           const pm = j.payments_made != null ? Number(j.payments_made) : 0
-                                          return <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{pm > 0 ? `${formatCurrencyNoCents(pm)} paid` : '—'}</span>
+                                          return <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{pm > 0 ? `${formatUsdNoCents(pm)} paid` : '—'}</span>
                                         })()}
                                         <span>
                                           {showRemaining
                                             ? (() => {
+                                                const u = jobBillingUnallocatedDollars(j)
                                                 const rev = j.revenue != null ? Number(j.revenue) : 0
                                                 const pm = j.payments_made != null ? Number(j.payments_made) : 0
-                                                return rev > 0 || pm > 0 ? `${formatCurrencyNoCents(rev - pm)} left` : '—'
+                                                return rev > 0 || pm > 0 || u > 0 ? (
+                                                  <span title="Left on the job after draft and billed invoice lines">
+                                                    {`${formatUsdNoCents(u)} left`}
+                                                  </span>
+                                                ) : (
+                                                  '—'
+                                                )
                                               })()
                                             : (j.revenue != null ? formatCurrencyNoCents(Number(j.revenue)) : '—')}
                                         </span>
-                                        <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{j.revenue != null ? `${formatCurrencyNoCents(Number(j.revenue))} bid` : '—'}</span>
+                                        <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{j.revenue != null ? `${formatUsdNoCents(Number(j.revenue))} bid` : '—'}</span>
                                         {sendBackBelowRemaining && onJobSendBack && (
                                           <button
                                             type="button"
@@ -5652,10 +6007,21 @@ ${totalsHtml}
                                     ) : (
                                       <>
                                         <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
-                                          {Number(j.payments_made ?? 0) > 0 ? `${formatCurrencyNoCents(Number(j.payments_made ?? 0))} paid` : '—'}
+                                          {row.kind === 'job_with_merged_billed'
+                                            ? (() => {
+                                                const ap = sumInvoiceAppliedFromJobPayments(j, bundleInv.id)
+                                                return ap > 0 ? `${formatUsdNoCents(ap)} paid` : '—'
+                                              })()
+                                            : Number(j.payments_made ?? 0) > 0
+                                              ? `${formatUsdNoCents(Number(j.payments_made ?? 0))} paid`
+                                              : '—'}
                                         </span>
-                                        <span>{`${formatCurrencyNoCents(Number(bundleInv.amount))} left`}</span>
-                                        <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{j.revenue != null ? `${formatCurrencyNoCents(Number(j.revenue))} bid` : '—'}</span>
+                                        <span>
+                                          {row.kind === 'job_with_merged_billed'
+                                            ? `${formatUsdNoCents(invoiceOpenRemainingOnJob(bundleInv, j))} left`
+                                            : `${formatUsdNoCents(Number(bundleInv.amount))} remainder`}
+                                        </span>
+                                        <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{j.revenue != null ? `${formatUsdNoCents(Number(j.revenue))} bid` : '—'}</span>
                                         {sendBackBelowRemaining && onInvoiceSendBack && bundleInvWithJob != null && (
                                           <button
                                             type="button"
@@ -5676,6 +6042,24 @@ ${totalsHtml}
                                 </td>
                                 <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
                                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                                    {onViewBill && bundleInvWithJob != null && row.kind === 'job_with_merged_billed' ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => onViewBill(bundleInvWithJob)}
+                                        style={{
+                                          padding: '0.35rem 0.75rem',
+                                          fontSize: '0.8125rem',
+                                          background: 'white',
+                                          color: '#2563eb',
+                                          border: '1px solid #2563eb',
+                                          borderRadius: 4,
+                                          cursor: 'pointer',
+                                          fontWeight: 500,
+                                        }}
+                                      >
+                                        View Bill
+                                      </button>
+                                    ) : null}
                                     {onViewBill && !bundleInv && (j.invoices ?? []).filter((i) => i.status === 'billed').length === 1 ? (
                                       <button
                                         type="button"
@@ -5698,7 +6082,37 @@ ${totalsHtml}
                                       </button>
                                     ) : null}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                                      {actionLabel && (
+                                      {actionLabel && bundleInvWithJob != null ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => onInvoiceAction(bundleInvWithJob)}
+                                          disabled={
+                                            stagesStatusUpdatingId === j.id ||
+                                            stagesInvoiceUpdatingId === bundleInvWithJob.id
+                                          }
+                                          title="Billing action for this invoice line (job + invoice merged row)"
+                                          style={{
+                                            padding: '0.35rem 0.75rem',
+                                            paddingLeft: '0.6rem',
+                                            fontSize: '0.8125rem',
+                                            background: '#3b82f6',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderLeft: '4px solid #16a34a',
+                                            borderRadius: 4,
+                                            cursor:
+                                              stagesStatusUpdatingId === j.id ||
+                                              stagesInvoiceUpdatingId === bundleInvWithJob.id
+                                                ? 'not-allowed'
+                                                : 'pointer',
+                                          }}
+                                        >
+                                          {stagesStatusUpdatingId === j.id ||
+                                          stagesInvoiceUpdatingId === bundleInvWithJob.id
+                                            ? '…'
+                                            : actionLabel}
+                                        </button>
+                                      ) : actionLabel ? (
                                         <button
                                           type="button"
                                           onClick={() => onJobAction(j)}
@@ -5715,26 +6129,7 @@ ${totalsHtml}
                                         >
                                           {stagesStatusUpdatingId === j.id ? '…' : actionLabel}
                                         </button>
-                                      )}
-                                      {actionLabel && bundleInvWithJob != null && (
-                                        <button
-                                          type="button"
-                                          onClick={() => onInvoiceAction(bundleInvWithJob)}
-                                          disabled={stagesInvoiceUpdatingId === bundleInvWithJob.id}
-                                          title="Invoice / Update for the billing line (e.g. Stripe)"
-                                          style={{
-                                            padding: '0.35rem 0.75rem',
-                                            fontSize: '0.8125rem',
-                                            background: '#16a34a',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: 4,
-                                            cursor: stagesInvoiceUpdatingId === bundleInvWithJob.id ? 'not-allowed' : 'pointer',
-                                          }}
-                                        >
-                                          {stagesInvoiceUpdatingId === bundleInvWithJob.id ? '…' : actionLabel}
-                                        </button>
-                                      )}
+                                      ) : null}
                                       {showTimeOpen && (
                                         <span style={{ fontSize: '0.8125rem', color: '#6b7280', display: 'block', textAlign: 'center', minWidth: '5rem' }} title="Time since job created">
                                           Open {formatTimeSince(j.created_at ?? null)}
@@ -6013,14 +6408,22 @@ ${totalsHtml}
                                   {renderJobCustomerLine(job)}
                                   {renderStagesJobColumnEstimateFooter(job.linkedEstimateForStages)}
                                 </td>
-                                {renderStagesLastActivityCell(job)}
+                                {renderStagesLastActivityCell(job, inv)}
                                 <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
                                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                                     <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
-                                      {Number(job.payments_made ?? 0) > 0 ? `${formatCurrencyNoCents(Number(job.payments_made ?? 0))} paid` : '—'}
+                                      {Number(job.payments_made ?? 0) > 0 ? `${formatUsdNoCents(Number(job.payments_made ?? 0))} paid` : '—'}
                                     </span>
-                                    <span>{`${formatCurrencyNoCents(Number(inv.amount))} left`}</span>
-                                    <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{job.revenue != null ? `${formatCurrencyNoCents(Number(job.revenue))} bid` : '—'}</span>
+                                    <span title="Amount on this draft billing line">{`${formatUsdNoCents(Number(inv.amount))} draft`}</span>
+                                    {showRemaining ? (() => {
+                                      const u = jobBillingUnallocatedDollars(job)
+                                      return u > 0 ? (
+                                        <span style={{ fontSize: '0.8125rem', color: '#6b7280' }} title="Left on the job after all draft and billed lines">
+                                          {`${formatUsdNoCents(u)} left`}
+                                        </span>
+                                      ) : null
+                                    })() : null}
+                                    <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{job.revenue != null ? `${formatUsdNoCents(Number(job.revenue))} bid` : '—'}</span>
                                     {sendBackBelowRemaining && (
                                       <button
                                         type="button"
@@ -6198,10 +6601,8 @@ ${totalsHtml}
               const toBill = valueCreated - (totalBill - remaining)
               return s + Math.max(0, toBill)
             }, 0)
-            const readyToBillTotal = readyToBillSectionTotal(readyToBillRows)
-            const billedTotal =
-              billedJobs.reduce((s, j) => s + (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)), 0) +
-              billedInvoices.reduce((s, i) => s + invoiceOpenRemainingOnJob(i, i.job), 0)
+            const readyToBillTotal = readyToBillRowsExposureTotal(readyToBillRows)
+            const billedTotal = billedRows.reduce((s, r) => s + stageRowBilledRemainingAmount(r), 0)
             return (
               <>
                 <div id="stages-working" style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
@@ -6225,7 +6626,10 @@ ${totalsHtml}
                 {stagesSectionOpen.working && renderStagesTable(
                   working,
                   'Ready to Bill',
-                  (j) => stagesHamMode ? updateJobStatus(j.id, 'ready_to_bill') : (setReadyForBillingChecked1(false), setReadyForBillingChecked2(false), setReadyForBillingJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—' })),
+                  (j) =>
+                    stagesHamMode
+                      ? void moveJobToReadyToBillWithStripePrep(j.id)
+                      : (setReadyForBillingChecked1(false), setReadyForBillingChecked2(false), setReadyForBillingJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—' })),
                   true, undefined, undefined, true, undefined, true
                 )}
 
@@ -6239,13 +6643,7 @@ ${totalsHtml}
                   Ready to Bill ({readyToBillRows.length}) - ${formatCurrency(readyToBillTotal)}
                 </button>
                 {stagesSectionOpen.readyToBill && renderUnifiedStagesTable(readyToBillRows, {
-                  actionLabel: (
-                    <>
-                      Invoice /
-                      <br />
-                      Update
-                    </>
-                  ),
+                  actionLabel: 'Bill Customer',
                   onJobAction: (j) => {
                     if (!jobLedgerHasCustomerForBilling(j.customer_id)) {
                       showToast('Link this job to a customer before billing.', 'error')
@@ -6306,7 +6704,7 @@ ${totalsHtml}
                       style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                     >
                       <span aria-hidden>{stagesSectionOpen.billed ? '\u25BC' : '\u25B6'}</span>
-                      Billed Awaiting Payment ({billedJobs.length + billedInvoices.length}) - ${formatCurrency(billedTotal)}
+                      Billed Awaiting Payment ({billedRows.length}) - ${formatCurrency(billedTotal)}
                     </button>
                     <span style={{ fontSize: '0.875rem', fontWeight: 400, color: '#6b7280' }}>
                       {`30+ days: ${billedAgingBuckets.count30_90} | $${formatCurrency(billedAgingBuckets.sum30_90)} — 90+ days: ${billedAgingBuckets.count90} | $${formatCurrency(billedAgingBuckets.sum90)} · est. bill date`}
@@ -6349,12 +6747,19 @@ ${totalsHtml}
                   onJobAction: (j) => setMarkPaidJob(j),
                   onInvoiceAction: (inv) => setMarkPaidInvoice(inv),
                   onViewBill: (inv) => setViewBillInvoice(inv),
-                  onJobSendBack: (j) => stagesHamMode ? updateJobStatus(j.id, 'ready_to_bill') : (setSendBackChecked(false), setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'ready_to_bill' })),
-                  onInvoiceSendBack: (inv) => stagesHamMode ? updateInvoiceStatus(inv.id, 'ready_to_bill') : (setSendBackChecked(false), setSendBackInvoice({ inv, action: 'revert' })),
+                  onJobSendBack: (j) =>
+                    stagesHamMode
+                      ? void moveJobToReadyToBillWithStripePrep(j.id)
+                      : (setSendBackChecked(false), setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'ready_to_bill' })),
+                  onInvoiceSendBack: (inv) =>
+                    stagesHamMode
+                      ? void revertBilledInvoiceToReadyToBill(inv)
+                      : (setSendBackChecked(false), setSendBackInvoice({ inv, action: 'revert' })),
                   showRemaining: true,
                   showTimeOpen: true,
                   sendBackBelowRemaining: true,
                   showCreatePartialInvoice: false,
+                  invoiceBundleActionLabel: 'Send back',
                   flashInvoiceId: stagesInvoiceFlashId,
                 })}
 
@@ -6494,7 +6899,8 @@ ${totalsHtml}
                                                 const amt = stageRowBilledRemainingAmount(r)
                                                 const days = stageRowBilledAgeDays(r)
                                                 const ageLabel = days == null ? '—' : `${days} day${days !== 1 ? 's' : ''}`
-                                                const rowKey = r.kind === 'job' ? `job-${r.job.id}` : `inv-${r.inv.id}`
+                                                const rowKey =
+                                                  r.kind === 'job' ? `job-${r.job.id}` : `inv-${r.inv.id}`
                                                 const addr = (r.job.job_address ?? '').trim() || '—'
                                                 const isLastBillInGroup = detailIdx === detailRows.length - 1
                                                 return (
@@ -9704,7 +10110,7 @@ ${totalsHtml}
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button type="button" onClick={() => { setReadyForBillingJob(null); setReadyForBillingChecked1(false); setReadyForBillingChecked2(false) }} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-              <button type="button" disabled={!readyForBillingChecked1 || !readyForBillingChecked2 || stagesStatusUpdatingId === readyForBillingJob.id} onClick={async () => { if (!readyForBillingJob) return; await updateJobStatus(readyForBillingJob.id, 'ready_to_bill'); setReadyForBillingJob(null); setReadyForBillingChecked1(false); setReadyForBillingChecked2(false); loadJobs() }} style={{ padding: '0.5rem 1rem', background: readyForBillingChecked1 && readyForBillingChecked2 && stagesStatusUpdatingId !== readyForBillingJob.id ? '#3b82f6' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: readyForBillingChecked1 && readyForBillingChecked2 && stagesStatusUpdatingId !== readyForBillingJob.id ? 'pointer' : 'not-allowed' }}>{stagesStatusUpdatingId === readyForBillingJob.id ? '…' : 'Confirm'}</button>
+              <button type="button" disabled={!readyForBillingChecked1 || !readyForBillingChecked2 || stagesStatusUpdatingId === readyForBillingJob.id} onClick={async () => { if (!readyForBillingJob) return; const ok = await moveJobToReadyToBillWithStripePrep(readyForBillingJob.id); if (!ok) return; setReadyForBillingJob(null); setReadyForBillingChecked1(false); setReadyForBillingChecked2(false) }} style={{ padding: '0.5rem 1rem', background: readyForBillingChecked1 && readyForBillingChecked2 && stagesStatusUpdatingId !== readyForBillingJob.id ? '#3b82f6' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: readyForBillingChecked1 && readyForBillingChecked2 && stagesStatusUpdatingId !== readyForBillingJob.id ? 'pointer' : 'not-allowed' }}>{stagesStatusUpdatingId === readyForBillingJob.id ? '…' : 'Confirm'}</button>
             </div>
           </div>
         </div>
@@ -9724,6 +10130,21 @@ ${totalsHtml}
                   step={0.01}
                   value={createPartialInvoiceAmount}
                   onChange={(e) => setCreatePartialInvoiceAmount(e.target.value)}
+                  onBlur={() => {
+                    if (!createPartialInvoiceJob) return
+                    const rem = Math.max(
+                      0,
+                      Number(createPartialInvoiceJob.revenue ?? 0) - Number(createPartialInvoiceJob.payments_made ?? 0)
+                    )
+                    const raw = parseFloat(createPartialInvoiceAmount)
+                    if (!Number.isFinite(raw)) return
+                    const useCents = Math.min(Math.round(raw * 100), Math.round(rem * 100))
+                    const clamped = useCents / 100
+                    if (Math.round(raw * 100) !== useCents) {
+                      setCreatePartialInvoiceAmount(String(clamped))
+                      setError(null)
+                    }
+                  }}
                   placeholder="0"
                   style={{ width: '100%', marginTop: 4, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
                 />
@@ -9759,6 +10180,7 @@ ${totalsHtml}
               }
             : null
         }
+        stripeModeForBilling={stripeModeForBillingFromRole(authRole)}
         onClose={() => setMarkPaidJob(null)}
         onSuccess={async () => {
           await loadJobs()
@@ -9769,6 +10191,7 @@ ${totalsHtml}
         invoice={markPaidInvoice}
         payments={markPaidInvoice?.job.payments}
         job={null}
+        stripeModeForBilling={stripeModeForBillingFromRole(authRole)}
         onClose={() => setMarkPaidInvoice(null)}
         onSuccess={async () => {
           await loadJobs()
@@ -9885,11 +10308,18 @@ ${totalsHtml}
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
             <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>{sendBackInvoice.action === 'delete' ? DELETE_DRAFT_BILL_LABEL : 'Send back'}</h2>
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>{sendBackInvoice.inv.job.hcp_number || '—'} · {sendBackInvoice.inv.job.job_name || '—'} · ${Number(sendBackInvoice.inv.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem' }}>{sendBackInvoice.action === 'delete' ? 'This will remove the invoice from Ready to Bill.' : 'This will move the invoice back to Ready to Bill.'}</p>
+            {sendBackInvoice.action === 'delete' && (
+              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem' }}>This will remove the invoice from Ready to Bill.</p>
+            )}
+            {sendBackInvoice.action === 'revert' && invoiceNeedsStripeVoidForRevert(sendBackInvoice.inv) && (
+              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#92400e' }}>
+                This bill was sent via Stripe. We will void or remove the Stripe invoice so the customer cannot pay an unpaid bill. If it is already paid in Stripe, send back will fail until you resolve it there.
+              </p>
+            )}
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
                 <input type="checkbox" checked={sendBackChecked} onChange={(e) => setSendBackChecked(e.target.checked)} style={{ marginTop: 4 }} />
-                <span>I am going to call the Subcontractor and explain why</span>
+                <span>I am going to call the Subcontractor and explain why I am voiding this bill and another will have to be issued</span>
               </label>
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
@@ -9907,7 +10337,7 @@ ${totalsHtml}
                     setSendBackChecked(false)
                     try {
                       if (action === 'delete') await deleteInvoice(inv.id)
-                      else await updateInvoiceStatus(inv.id, 'ready_to_bill')
+                      else await revertBilledInvoiceToReadyToBill(inv)
                     } finally {
                       stagesInvoiceSendBackConfirmLockRef.current = false
                     }
@@ -9931,6 +10361,11 @@ ${totalsHtml}
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem' }}>
               {sendBackJob.toStatus === 'working' ? 'This will move the job back to Assigned Jobs (Working).' : 'This will move the job back to Ready to Bill.'}
             </p>
+            {sendBackJob.toStatus === 'ready_to_bill' && (
+              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#92400e' }}>
+                Billed lines on this job will be removed (Stripe invoices voided first where applicable). Lines with recorded payments block send back until adjusted. Paid Stripe invoices block until resolved in Stripe.
+              </p>
+            )}
             {sendBackSentBy != null && (
               <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
                 Sent by: {sendBackSentBy}
@@ -9944,7 +10379,7 @@ ${totalsHtml}
                   onChange={(e) => setSendBackChecked(e.target.checked)}
                   style={{ marginTop: 4 }}
                 />
-                <span>I am going to call the Subcontractor and explain why</span>
+                <span>I am going to call the Subcontractor and explain why I am voiding this bill and another will have to be issued</span>
               </label>
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
@@ -9963,7 +10398,25 @@ ${totalsHtml}
                 disabled={!sendBackChecked || stagesStatusUpdatingId === sendBackJob.id}
                 onClick={async () => {
                   if (!sendBackJob) return
-                  await updateJobStatus(sendBackJob.id, sendBackJob.toStatus)
+                  if (sendBackJob.toStatus === 'ready_to_bill') {
+                    const { data: auth } = await supabase.auth.getSession()
+                    const token = auth.session?.access_token
+                    if (!token) {
+                      setError('Not signed in')
+                      return
+                    }
+                    const prep = await prepareBilledInvoicesBeforeJobRevertToReadyToBill({
+                      jobId: sendBackJob.id,
+                      authRole,
+                      accessToken: token,
+                    })
+                    if (!prep.ok) {
+                      setError(prep.message)
+                      return
+                    }
+                  }
+                  const ok = await updateJobStatus(sendBackJob.id, sendBackJob.toStatus)
+                  if (!ok) return
                   setSendBackJob(null)
                   setSendBackChecked(false)
                 }}
@@ -10002,7 +10455,8 @@ ${totalsHtml}
                 disabled={stagesStatusUpdatingId === confirmJobStatusJob.id}
                 onClick={async () => {
                   if (!confirmJobStatusJob) return
-                  await updateJobStatus(confirmJobStatusJob.id, confirmJobStatusJob.toStatus)
+                  const ok = await updateJobStatus(confirmJobStatusJob.id, confirmJobStatusJob.toStatus)
+                  if (!ok) return
                   setConfirmJobStatusJob(null)
                 }}
                 style={{
@@ -10040,7 +10494,8 @@ ${totalsHtml}
                 disabled={stagesStatusUpdatingId === sendBackConfirmJob.id}
                 onClick={async () => {
                   if (!sendBackConfirmJob) return
-                  await updateJobStatus(sendBackConfirmJob.id, sendBackConfirmJob.toStatus)
+                  const ok = await updateJobStatus(sendBackConfirmJob.id, sendBackConfirmJob.toStatus)
+                  if (!ok) return
                   setSendBackConfirmJob(null)
                 }}
                 style={{

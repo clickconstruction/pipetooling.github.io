@@ -7,22 +7,133 @@ export type InvoiceWithJob = JobsLedgerInvoice & { job: JobWithDetails }
 
 export type StageRow =
   | { kind: 'job'; job: JobWithDetails }
+  | { kind: 'job_with_merged_billed'; job: JobWithDetails; inv: JobsLedgerInvoice }
   | { kind: 'job_with_primary_rtb'; job: JobWithDetails; inv: JobsLedgerInvoice }
   | { kind: 'invoice'; inv: JobsLedgerInvoice; job: JobWithDetails }
 
-export function buildReadyToBillStageRows(readyToBillJobs: JobWithDetails[], readyToBillInvoices: InvoiceWithJob[]): StageRow[] {
-  const bundledIds = new Set<string>()
+/** Gross billable remainder in cents (revenue − payments), same basis as ensure RPC inputs. */
+function jobGrossRemainingCentsJob(job: Pick<JobWithDetails, 'revenue' | 'payments_made'>): number {
+  const remaining = Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0))
+  return Math.round(remaining * 100)
+}
+
+/** Billing-unallocated cents: gross − sum(ready_to_bill + billed invoice amounts) on the job. */
+function jobBillingUnallocCentsJob(job: JobWithDetails): number {
+  const g = jobGrossRemainingCentsJob(job)
+  let alloc = 0
+  for (const i of job.invoices ?? []) {
+    if (i.status === 'ready_to_bill' || i.status === 'billed') {
+      alloc += Math.round(Number(i.amount ?? 0) * 100)
+    }
+  }
+  return Math.max(0, g - alloc)
+}
+
+/** Gross remainder not yet allocated to RTB/billed lines (dollars); same basis as ensure_single_ready_to_bill_invoice_for_job. */
+export function jobBillingUnallocatedDollars(job: JobWithDetails): number {
+  return jobBillingUnallocCentsJob(job) / 100
+}
+
+function invoiceAmountCents(inv: Pick<JobsLedgerInvoice, 'amount'>): number {
+  return Math.round(Number(inv.amount ?? 0) * 100)
+}
+
+/**
+ * Invoice id merged into `job_with_primary_rtb` for this job, or null when the board uses a bare `{ kind: 'job' }`
+ * row plus separate invoice rows (split case: sole RTB + unallocated gap, or multiple RTB without legacy single-line bundle).
+ */
+export function readyToBillMergedPrimaryInvoiceId(job: JobWithDetails): string | null {
+  const rtbList = (job.invoices ?? [])
+    .filter((i) => i.status === 'ready_to_bill')
+    .slice()
+    .sort((a, b) => a.sequence_order - b.sequence_order)
+  const u = jobBillingUnallocatedDollars(job)
+  const primary = rtbList.find((i) => i.is_primary_rtb_bundle === true)
+  if (primary) {
+    if (rtbList.length === 1 && u > 0) return null
+    return primary.id
+  }
+  const remCents = jobGrossRemainingCentsJob(job)
+  if (rtbList.length === 1 && invoiceAmountCents(rtbList[0]!) === remCents) {
+    return rtbList[0]!.id
+  }
+  return null
+}
+
+/** Invoice id shown on the merged job shell row on Stages (RTB primary bundle or sole billed line); null if none. */
+export function stagesMergedBillingInvoiceId(job: JobWithDetails): string | null {
+  const status = (job.status ?? 'working') as string
+  if (status === 'billed') {
+    const billed = (job.invoices ?? []).filter((i) => i.status === 'billed')
+    return billed.length === 1 ? billed[0]!.id : null
+  }
+  if (status === 'ready_to_bill') {
+    return readyToBillMergedPrimaryInvoiceId(job)
+  }
+  return null
+}
+
+/** Sum of billable exposure for Ready to Bill: job row = unallocated; merged primary = line amount; each invoice row = line amount. */
+export function readyToBillRowsExposureTotal(rows: StageRow[]): number {
+  let sum = 0
+  for (const r of rows) {
+    if (r.kind === 'job') {
+      sum += jobBillingUnallocatedDollars(r.job)
+    } else if (r.kind === 'job_with_primary_rtb') {
+      sum += Number(r.inv.amount ?? 0)
+    } else if (r.kind === 'invoice') {
+      sum += Number(r.inv.amount ?? 0)
+    }
+  }
+  return sum
+}
+
+/**
+ * Ready to Bill rows: mirrors Dashboard `buildReadyToBillDashboardUnits` bundling so the primary remainder
+ * stays a merged job row when it is not the “single RTB + unallocated gap” case.
+ */
+export function buildReadyToBillStageRows(readyToBillJobs: JobWithDetails[]): StageRow[] {
   const rows: StageRow[] = []
   for (const job of readyToBillJobs) {
-    const primary = (job.invoices ?? []).find((i) => i.status === 'ready_to_bill' && i.is_primary_rtb_bundle === true)
-    if (primary) {
-      rows.push({ kind: 'job_with_primary_rtb', job, inv: primary })
-      bundledIds.add(primary.id)
+    const rtbList = (job.invoices ?? [])
+      .filter((i) => i.status === 'ready_to_bill')
+      .slice()
+      .sort((a, b) => a.sequence_order - b.sequence_order)
+    const mergedId = readyToBillMergedPrimaryInvoiceId(job)
+    const bundledIds = mergedId != null ? new Set<string>([mergedId]) : new Set<string>()
+
+    if (mergedId != null) {
+      const inv = rtbList.find((i) => i.id === mergedId)
+      if (inv != null) rows.push({ kind: 'job_with_primary_rtb', job, inv })
+      else rows.push({ kind: 'job', job })
     } else {
       rows.push({ kind: 'job', job })
     }
+
+    for (const inv of rtbList) {
+      if (!bundledIds.has(inv.id)) {
+        rows.push({ kind: 'invoice', inv, job })
+      }
+    }
   }
-  for (const iw of readyToBillInvoices) {
+  return rows
+}
+
+/** One row per display unit: sole billed invoice merges with job; 2+ invoices → invoice rows only; no invoices → job row. */
+export function buildBilledStageRows(billedJobs: JobWithDetails[], billedInvoices: InvoiceWithJob[]): StageRow[] {
+  const bundledIds = new Set<string>()
+  const rows: StageRow[] = []
+  for (const job of billedJobs) {
+    const billedList = (job.invoices ?? []).filter((i) => i.status === 'billed')
+    if (billedList.length === 1) {
+      const inv = billedList[0]!
+      rows.push({ kind: 'job_with_merged_billed', job, inv })
+      bundledIds.add(inv.id)
+    } else if (billedList.length === 0) {
+      rows.push({ kind: 'job', job })
+    }
+  }
+  for (const iw of billedInvoices) {
     if (bundledIds.has(iw.id)) continue
     const { job, ...inv } = iw
     rows.push({ kind: 'invoice', inv: inv as JobsLedgerInvoice, job })
@@ -66,11 +177,8 @@ export function buildJobsStagesBoardLists(jobs: JobWithDetails[], stagesSearchQu
   const billedInvoices: InvoiceWithJob[] = filtered.flatMap((j) =>
     (j.invoices ?? []).filter((i) => i.status === 'billed').map((inv) => ({ ...inv, job: j })),
   )
-  const readyToBillRows = buildReadyToBillStageRows(readyToBillJobs, readyToBillInvoices)
-  const billedRows: StageRow[] = [
-    ...billedJobs.map((j) => ({ kind: 'job' as const, job: j })),
-    ...billedInvoices.map(({ job, ...inv }) => ({ kind: 'invoice' as const, inv, job })),
-  ]
+  const readyToBillRows = buildReadyToBillStageRows(readyToBillJobs)
+  const billedRows = buildBilledStageRows(billedJobs, billedInvoices)
   return {
     filtered,
     working,
@@ -96,6 +204,7 @@ export function locateStagesInvoiceSection(
   }
   for (const r of billedRows) {
     if (r.kind === 'invoice' && r.inv.id === invoiceId) return 'billed'
+    if (r.kind === 'job_with_merged_billed' && r.inv.id === invoiceId) return 'billed'
   }
   return null
 }

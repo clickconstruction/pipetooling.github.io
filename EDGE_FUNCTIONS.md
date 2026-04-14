@@ -99,7 +99,11 @@ when_to_read:
    - [claim-dev](#claim-dev)
    - [test-email](#test-email)
    - [create-stripe-invoice](#create-stripe-invoice)
+   - [send-stripe-invoice](#send-stripe-invoice)
+   - [get-stripe-invoice-details](#get-stripe-invoice-details)
+   - [record-stripe-invoice-out-of-band-payment](#record-stripe-invoice-out-of-band-payment)
    - [preview-stripe-invoice](#preview-stripe-invoice)
+   - [void-stripe-invoice-for-revert](#void-stripe-invoice-for-revert)
    - [stripe-webhook](#stripe-webhook)
 4. [Error Handling](#error-handling)
 5. [Deployment](#deployment)
@@ -1377,6 +1381,10 @@ interface CreateStripeInvoiceBody {
   customer_name: string
   due_date: string // YYYY-MM-DD (local calendar day; server derives days_until_due)
   memo?: string
+  /** Optional: Stripe Invoice `footer` (max **5000** chars). Omit or empty = Stripe account default footer. */
+  footer?: string
+  /** Optional: Stripe invoice **line item** `description`. Max **500** characters. Omit to use the default `Customer · Job · HCP n` string from the job. */
+  line_description?: string
 }
 ```
 
@@ -1428,14 +1436,94 @@ If **`stripe_invoice_id`** and **`hosted_invoice_url`** are already set, returns
 
 - **`Job must be linked to a customer before creating a Stripe invoice.`** — **`jobs_ledger.customer_id`** is null.
 - **`Customer must match the job linked customer.`** — body **`customer_id`** does not equal the job’s **`customer_id`**.
+- **`Line description too long (max 500 characters)`** — **`line_description`** exceeds the limit.
+- **`Invoice footer too long (max 5000 characters)`** — **`footer`** exceeds the limit.
 
 #### Implementation notes
 
 1. Loads job and customer with **service role**; requires **`jobs_ledger.customer_id`** and matches body **`customer_id`** to it; ensures **`customers.master_user_id`** matches **`jobs_ledger.master_user_id`**.
 2. Creates or reuses **`customers.stripe_customer_id`** on Stripe; updates Stripe customer email/name.
-3. Creates draft invoice + invoice item, **finalize**s, then **UPDATE** **`jobs_ledger_invoices`** (**`status = 'billed'`**) and Stripe columns, plus **`external_send_channel = 'stripe'`** and **`sent_to_customer_at`** (timestamp of finalize).
+3. Stripe invoice **`number`** is **digits-only HCP**, a hyphen, **`YYMMDD`** from bill due date, then **`HHmm`** (24-hour) in **`America/Chicago`** at finalize time (e.g. `11-2605140020`; customer email may show a **`#`** prefix). **`preview-stripe-invoice`** uses the same rule at preview time; if the user waits between preview and create, the time suffix may differ.
+4. Creates draft invoice + invoice item, **finalize**s, then **UPDATE** **`jobs_ledger_invoices`** (**`status = 'billed'`**) and Stripe columns, plus **`external_send_channel = 'stripe'`**, **`stripe_invoice_memo`** (from **`memo`** → Stripe **`description`**), and **`stripe_invoice_footer`** (from optional **`footer`** → Stripe **`footer`**; **`null`** when omitted). **`sent_to_customer_at`** is **not** set here; it is recorded when **[send-stripe-invoice](#send-stripe-invoice)** successfully calls Stripe **`invoices.sendInvoice`** (customer email from Stripe).
 
 **Gateway JWT**: [`supabase/config.toml`](supabase/config.toml) sets **`verify_jwt = false`**. Deploy with **`supabase functions deploy create-stripe-invoice --no-verify-jwt`** when the hosted gateway still enforces JWT.
+
+---
+
+### send-stripe-invoice
+
+**Purpose**: Call Stripe **`invoices.sendInvoice`** for an open billed line so Stripe emails the customer the payment link. After Stripe accepts the send, updates **`jobs_ledger_invoices`** with **`sent_to_customer_at`** (now) and **`stripe_invoice_status`** from the returned invoice (service role; retries a few times on transient DB errors). Each successful send **overwrites** **`sent_to_customer_at`** (latest send only). On success, also **INSERT** into **`jobs_ledger_invoice_stripe_email_sends`** (append-only log for the confirm modal **Most recent sends** list; insert failure is **logged** only—the HTTP response still **200** if the invoice row updated). Used for the primary **Send Email invoice from Stripe** control and for **Resend invoice email** on Jobs **Stages** **Last activity** ([`StripeInvoiceSendFromStripeButton`](src/components/jobs/StripeInvoiceSendFromStripeButton.tsx)).
+
+**Endpoint**: `POST /functions/v1/send-stripe-invoice`
+
+**Authentication**: Bearer JWT + RLS **`SELECT`** on the invoice (**`verify_jwt = false`** on the gateway).
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, **`SUPABASE_SERVICE_ROLE_KEY`**, Stripe secret for the chosen mode (`STRIPE_SECRET_KEY_TEST` / `STRIPE_SECRET_KEY_LIVE` or legacy key).
+
+#### Request body
+
+```typescript
+interface SendStripeInvoiceBody {
+  jobs_ledger_invoice_id: string
+  /** Optional: `test` | `live` — same as other Stripe billing functions. */
+  stripe_mode?: 'test' | 'live'
+}
+```
+
+#### Errors after a successful Stripe send
+
+If the DB persist fails, the function may return **502** with **`stripe_may_have_sent: true`** and a message to check Stripe before resending (duplicate customer emails).
+
+**Gateway JWT**: Deploy with **`supabase functions deploy send-stripe-invoice --no-verify-jwt`** when the hosted gateway still enforces JWT.
+
+---
+
+### get-stripe-invoice-details
+
+**Purpose**: **`invoices.retrieve`** + line items for a billed **`jobs_ledger_invoices`** row with **`stripe_invoice_id`**. Used by **Hosted bill** UI.
+
+**Endpoint**: `POST /functions/v1/get-stripe-invoice-details`
+
+**Authentication**: Bearer JWT + RLS **`SELECT`** on the invoice (**`verify_jwt = false`** on the gateway).
+
+**Success body** (partial): includes **`memo`** (Stripe **`description`**) and **`footer`** (Stripe **`footer`**) as separate strings when present. May service-backfill **`stripe_invoice_memo`** / **`stripe_invoice_footer`** on the ledger row when empty.
+
+**Gateway JWT**: Deploy with **`supabase functions deploy get-stripe-invoice-details --no-verify-jwt`** when the hosted gateway still enforces JWT.
+
+---
+
+### record-stripe-invoice-out-of-band-payment
+
+**Purpose**: Mark a **Stripe** invoice as paid **outside Stripe** (check, cash, wire, etc.): merges bookkeeping metadata onto the Stripe Invoice, calls **`invoices.pay` with `paid_out_of_band: true`** (no charge through Stripe), then the **`stripe-webhook`** **`invoice.paid`** / **`invoice.payment_succeeded`** handler updates **`jobs_ledger_payments`** via **`mark_invoice_paid_from_stripe`** (including **`payment_type`**, **`reference_number`**, effective date, internal note when present in metadata).
+
+**Endpoint**: `POST /functions/v1/record-stripe-invoice-out-of-band-payment`
+
+**Authentication**: Bearer JWT + RLS **`SELECT`** on **`jobs_ledger_invoices`** (**`verify_jwt = false`** on the gateway; JWT validated in-function).
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, Stripe secret for the chosen mode (`STRIPE_SECRET_KEY_TEST` / `STRIPE_SECRET_KEY_LIVE` or legacy key).
+
+#### Request body
+
+```typescript
+interface RecordStripeInvoiceOobBody {
+  jobs_ledger_invoice_id: string
+  /** Must equal Stripe’s full open balance (`amount_remaining` in dollars). Partial pay is rejected. */
+  amount_dollars: number
+  paid_on: string // YYYY-MM-DD (effective date)
+  payment_type: string // e.g. Cash, Check
+  reference_number?: string
+  internal_note?: string
+  stripe_mode?: 'test' | 'live'
+}
+```
+
+**Stripe does not move money** in this flow; it only updates invoice state to **paid** to match an external receipt.
+
+#### Errors (400)
+
+- **`Amount must match the full open balance on the Stripe invoice`** — v1 requires **`amount_dollars`** (in cents when compared) to match Stripe **`amount_remaining`** exactly.
+
+**Gateway JWT**: [`supabase/config.toml`](supabase/config.toml) **`verify_jwt = false`**. Deploy with **`supabase functions deploy record-stripe-invoice-out-of-band-payment --no-verify-jwt`** if the hosted gateway still enforces JWT.
 
 ---
 
@@ -1451,7 +1539,7 @@ If **`stripe_invoice_id`** and **`hosted_invoice_url`** are already set, returns
 
 #### Request body
 
-Same fields as **create-stripe-invoice** (`jobs_ledger_invoice_id`, `customer_id`, `amount_dollars`, `customer_email`, `customer_name`, `due_date`, optional `memo`).
+Same fields as **create-stripe-invoice** (`jobs_ledger_invoice_id`, `customer_id`, `amount_dollars`, `customer_email`, `customer_name`, `due_date`, optional `memo`, optional **`line_description`** — same 500-char cap and default as create).
 
 #### Success response (200)
 
@@ -1473,8 +1561,57 @@ Amounts are in **cents**, matching Stripe invoice objects.
 - Validates job/customer ownership via service role (same rules as create).
 - If **`customers.stripe_customer_id`** is set, previews as that **`customer`**; otherwise uses **`customer_details`** from the body (no `cus_` creation).
 - **`collection_method`**, **`days_until_due`**, memo/line description mirror **create-stripe-invoice**.
+- Invoice **`number`** in the preview matches **create-stripe-invoice** (`{hcp}-{YYMMDD}{HHmm}` in Chicago time at request time); a later create may use a different **`HHmm`** if the clock has moved.
 
 **Gateway JWT**: **`verify_jwt = false`** in [`supabase/config.toml`](supabase/config.toml). Deploy with **`supabase functions deploy preview-stripe-invoice --no-verify-jwt`** if needed.
+
+---
+
+### void-stripe-invoice-for-revert
+
+**Purpose**: When sending a **billed** **`jobs_ledger_invoices`** row back to **Ready to Bill**, void or delete the Stripe invoice (draft delete, open → void), then clear Stripe columns and set **`status = ready_to_bill`**. Prevents leaving a collectible Stripe invoice after the in-app send-back.
+
+**Endpoint**: `POST /functions/v1/void-stripe-invoice-for-revert`
+
+**Authentication**: Bearer JWT + RLS **`SELECT`** on the invoice (same pattern as **create-stripe-invoice**). **`verify_jwt = false`** on the gateway.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, Stripe secret keys (test/live per **`stripe_mode`**).
+
+#### Request body
+
+```typescript
+interface Body {
+  jobs_ledger_invoice_id: string
+  stripe_mode?: 'test' | 'live'
+}
+```
+
+#### Success (200)
+
+```json
+{ "success": true, "stripe_action": "void" }
+```
+
+**`stripe_action`**: `delete_draft` | `void` | `noop` | `noop_missing` | `db_only_no_stripe_id` (Stripe channel but no stored `stripe_invoice_id`).
+
+#### Errors
+
+- **400** — Not **`billed`**, missing Stripe id when not Stripe channel, etc.
+- **403** — Invoice not found / RLS.
+- **409** — Stripe invoice **paid** or has **`amount_paid` &gt; 0**, or status not voidable automatically.
+- **502** — Stripe API error (other than missing invoice).
+
+#### Behavior
+
+1. Requires row **`status = billed`** and Stripe-backed (**`stripe_invoice_id`** set and/or **`external_send_channel = stripe`**).
+2. If channel is Stripe but **`stripe_invoice_id`** is empty, clears Stripe-related DB fields and sets **RTB** only (**no** Stripe API call).
+3. Otherwise **retrieve** invoice: **draft** → **delete**; **open** (and **`amount_paid === 0`**) → **void**; **void** / **uncollectible** → DB update only; **paid** / payments → **409**.
+4. If Stripe returns **resource missing** for the invoice id, still clears DB (idempotent).
+5. Service-role **UPDATE** clears **`stripe_invoice_id`**, **`hosted_invoice_url`**, **`stripe_invoice_status`**, **`stripe_invoice_memo`**, **`external_send_channel`**, **`external_send_note`**, **`sent_to_customer_at`**, **`billed_at`**, sets **`ready_to_bill`**.
+
+**Client**: [`src/lib/voidStripeInvoiceForRevert.ts`](src/lib/voidStripeInvoiceForRevert.ts); Jobs/Dashboard send-back and job-level billed → RTB pre-flight.
+
+**Deploy**: `supabase functions deploy void-stripe-invoice-for-revert --no-verify-jwt` if the hosted gateway still enforces JWT.
 
 ---
 
