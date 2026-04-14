@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react'
+import { FunctionsHttpError } from '@supabase/functions-js'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import type { Database } from '../../types/database'
+import type { BillingStripeModePref } from '../../lib/billingStripeModePref'
+import { stripeModeInvokeBody } from '../../lib/billingStripeModePref'
+import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 type JobsLedgerPayment = Database['public']['Tables']['jobs_ledger_payments']['Row']
@@ -15,6 +19,8 @@ export type JobLikeForPayment = {
 }
 
 export type InvoiceWithJobLike = JobsLedgerInvoice & { job: JobLikeForPayment }
+
+const PAYMENT_TYPES = ['Cash', 'Check', 'Wire', 'ACH', 'Card (external)', 'Other'] as const
 
 function todayIsoDate(): string {
   const d = new Date()
@@ -37,12 +43,28 @@ function formatMoney(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+function formatEffectiveDatePreviewYmd(ymd: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return ''
+  const parts = ymd.split('-')
+  const y = Number(parts[0])
+  const mo = Number(parts[1])
+  const d = Number(parts[2])
+  if (!Number.isFinite(y) || !Number.isFinite(mo) || !Number.isFinite(d)) return ''
+  const dt = new Date(y, mo - 1, d)
+  return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+function amountsMatchForStripeFullPay(a: number, b: number): boolean {
+  return Math.abs(a - b) < 0.005
+}
+
 /** Confirmation when recording cash received for a billed invoice (partial pay supported) or a whole job in Billed status. */
 export default function BilledPaymentConfirmationModal({
   mode,
   invoice,
   payments,
   job,
+  stripeModeForBilling,
   onClose,
   onSuccess,
 }: {
@@ -50,13 +72,17 @@ export default function BilledPaymentConfirmationModal({
   invoice: InvoiceWithJobLike | null
   payments: JobsLedgerPayment[] | undefined
   job: JobLikeForPayment | null
+  /** Used when marking a Stripe-linked invoice paid out-of-band (Edge → Stripe + webhook). */
+  stripeModeForBilling: BillingStripeModePref
   onClose: () => void
   onSuccess: () => void | Promise<void>
 }) {
   const open = mode === 'invoice' ? invoice !== null : job !== null
   const [amountStr, setAmountStr] = useState('')
   const [paidOn, setPaidOn] = useState(todayIsoDate())
-  const [note, setNote] = useState('')
+  const [paymentType, setPaymentType] = useState<(typeof PAYMENT_TYPES)[number]>('Cash')
+  const [referenceNumber, setReferenceNumber] = useState('')
+  const [internalNote, setInternalNote] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -73,11 +99,16 @@ export default function BilledPaymentConfirmationModal({
       : 0
   const defaultPayAmount = mode === 'invoice' ? invoiceRemaining : jobRemaining
 
+  const stripeInvoicePath =
+    mode === 'invoice' && inv && (inv.stripe_invoice_id ?? '').trim().length > 0
+
   useEffect(() => {
     if (!open) return
     setAmountStr(defaultPayAmount > 0 ? String(defaultPayAmount) : '')
     setPaidOn(todayIsoDate())
-    setNote('')
+    setPaymentType('Cash')
+    setReferenceNumber('')
+    setInternalNote('')
     setError(null)
   }, [open, inv?.id, jb?.id, defaultPayAmount])
 
@@ -95,20 +126,66 @@ export default function BilledPaymentConfirmationModal({
       setSubmitting(false)
       return
     }
+    if (!paymentType) {
+      setError('Payment type is required')
+      setSubmitting(false)
+      return
+    }
     try {
       if (mode === 'invoice' && inv) {
-        const data = await withSupabaseRetry(
-          async () =>
-            supabase.rpc('mark_invoice_paid', {
-              p_invoice_id: inv.id,
-              p_amount: amt,
-              p_paid_on: paidOn.trim(),
-              p_note: note.trim() || undefined,
-            }),
-          'mark_invoice_paid'
-        )
-        const result = data as { error?: string } | null
-        if (result && typeof result === 'object' && result.error) throw new Error(result.error)
+        if (stripeInvoicePath) {
+          if (!amountsMatchForStripeFullPay(amt, invoiceRemaining)) {
+            setError(
+              'For Stripe invoices, the amount must match the full open balance on this invoice. Partial off-Stripe pay is not supported for Stripe-hosted invoices.',
+            )
+            setSubmitting(false)
+            return
+          }
+          const { data: sessionData } = await supabase.auth.getSession()
+          const token = sessionData.session?.access_token
+          if (!token) throw new Error('Not signed in')
+
+          const { data: invokeData, error: fnErr } = await supabase.functions.invoke(
+            'record-stripe-invoice-out-of-band-payment',
+            {
+              headers: { Authorization: `Bearer ${token}` },
+              body: {
+                jobs_ledger_invoice_id: inv.id,
+                amount_dollars: amt,
+                paid_on: paidOn.trim(),
+                payment_type: paymentType,
+                reference_number: referenceNumber.trim() || undefined,
+                internal_note: internalNote.trim() || undefined,
+                ...stripeModeInvokeBody(stripeModeForBilling),
+              },
+            },
+          )
+
+          if (fnErr) {
+            const detail = await readEdgeFunctionErrorBody(fnErr)
+            throw new Error(detail ?? (fnErr instanceof Error ? fnErr.message : 'Edge function failed'))
+          }
+          const payload = invokeData as { error?: string; success?: boolean } | null
+          if (payload && typeof payload === 'object' && typeof payload.error === 'string' && payload.error) {
+            throw new Error(payload.error)
+          }
+          await new Promise((r) => setTimeout(r, 700))
+        } else {
+          const data = await withSupabaseRetry(
+            async () =>
+              supabase.rpc('mark_invoice_paid', {
+                p_invoice_id: inv.id,
+                p_amount: amt,
+                p_paid_on: paidOn.trim(),
+                p_note: internalNote.trim() || undefined,
+                p_payment_type: paymentType,
+                p_reference_number: referenceNumber.trim() || undefined,
+              }),
+            'mark_invoice_paid',
+          )
+          const result = data as { error?: string } | null
+          if (result && typeof result === 'object' && result.error) throw new Error(result.error)
+        }
       } else if (mode === 'job' && jb) {
         const data = await withSupabaseRetry(
           async () =>
@@ -116,9 +193,11 @@ export default function BilledPaymentConfirmationModal({
               p_job_id: jb.id,
               p_amount: amt,
               p_paid_on: paidOn.trim(),
-              p_note: note.trim() || undefined,
+              p_note: internalNote.trim() || undefined,
+              p_payment_type: paymentType,
+              p_reference_number: referenceNumber.trim() || undefined,
             }),
-          'mark_job_paid'
+          'mark_job_paid',
         )
         const result = data as { error?: string } | null
         if (result && typeof result === 'object' && result.error) throw new Error(result.error)
@@ -126,7 +205,12 @@ export default function BilledPaymentConfirmationModal({
       await onSuccess()
       onClose()
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to record payment')
+      if (e instanceof FunctionsHttpError) {
+        const detail = await readEdgeFunctionErrorBody(e)
+        setError(detail ?? (e instanceof Error ? e.message : 'Failed to record payment'))
+      } else {
+        setError(e instanceof Error ? e.message : 'Failed to record payment')
+      }
     } finally {
       setSubmitting(false)
     }
@@ -135,7 +219,11 @@ export default function BilledPaymentConfirmationModal({
   if (!open) return null
 
   const title =
-    mode === 'invoice' ? 'Outside Bill Paid Confirmation' : 'Record payment'
+    mode === 'invoice' && stripeInvoicePath
+      ? 'Record off-Stripe payment'
+      : mode === 'invoice'
+        ? 'Outside Bill Paid Confirmation'
+        : 'Record payment'
 
   const subtitle =
     mode === 'invoice' && inv
@@ -150,6 +238,8 @@ export default function BilledPaymentConfirmationModal({
         ? 'Stripe'
         : 'Outside Bill'
       : null
+
+  const effectivePreview = formatEffectiveDatePreviewYmd(paidOn.trim())
 
   return (
     <div
@@ -200,6 +290,12 @@ export default function BilledPaymentConfirmationModal({
               <div>
                 <span style={{ color: '#6b7280' }}>Open on invoice: </span>${formatMoney(invoiceRemaining)}
               </div>
+              {stripeInvoicePath && (
+                <p style={{ margin: '0.35rem 0 0', color: '#92400e', fontSize: '0.8125rem' }}>
+                  Stripe does not move money for this action. The invoice is marked paid in Stripe to match payment
+                  received outside Stripe (check, cash, etc.).
+                </p>
+              )}
               {inv.sent_to_customer_at && (
                 <div>
                   <span style={{ color: '#6b7280' }}>Sent: </span>
@@ -254,25 +350,71 @@ export default function BilledPaymentConfirmationModal({
           inputMode="decimal"
           value={amountStr}
           onChange={(e) => setAmountStr(e.target.value)}
-          style={{ width: '100%', padding: '0.35rem', marginBottom: '0.75rem', boxSizing: 'border-box' }}
+          disabled={Boolean(stripeInvoicePath)}
+          title={stripeInvoicePath ? 'Full open balance is required for Stripe invoices' : undefined}
+          style={{
+            width: '100%',
+            padding: '0.35rem',
+            marginBottom: '0.75rem',
+            boxSizing: 'border-box',
+            ...(stripeInvoicePath ? { background: '#f3f4f6', color: '#374151' } : {}),
+          }}
         />
 
         <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>
-          Payment date
+          Effective date
         </label>
         <input
           type="date"
           value={paidOn}
           onChange={(e) => setPaidOn(e.target.value)}
+          style={{ width: '100%', padding: '0.35rem', marginBottom: '0.25rem', boxSizing: 'border-box' }}
+        />
+        {effectivePreview ? (
+          <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#6b7280' }}>Example: {effectivePreview}</p>
+        ) : (
+          <div style={{ marginBottom: '0.75rem' }} />
+        )}
+
+        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>
+          Payment type
+        </label>
+        <select
+          value={paymentType}
+          onChange={(e) => setPaymentType(e.target.value as (typeof PAYMENT_TYPES)[number])}
+          style={{
+            width: '100%',
+            padding: '0.35rem',
+            marginBottom: '0.75rem',
+            boxSizing: 'border-box',
+            fontSize: '0.875rem',
+          }}
+        >
+          {PAYMENT_TYPES.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
+
+        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>
+          Reference number (optional)
+        </label>
+        <input
+          type="text"
+          value={referenceNumber}
+          onChange={(e) => setReferenceNumber(e.target.value)}
+          placeholder="e.g. check number"
           style={{ width: '100%', padding: '0.35rem', marginBottom: '0.75rem', boxSizing: 'border-box' }}
         />
 
         <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>
-          Note (optional)
+          Internal notes (optional)
         </label>
         <textarea
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
+          value={internalNote}
+          onChange={(e) => setInternalNote(e.target.value)}
+          placeholder="e.g. Picked up"
           rows={2}
           style={{ width: '100%', padding: '0.35rem', marginBottom: '0.75rem', boxSizing: 'border-box', resize: 'vertical' }}
         />

@@ -5,11 +5,11 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-04-12
+last_updated: 2026-04-14
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: ~87
+total_migrations: ~88
 date_range: "Through March 24, 2027"
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -91,6 +91,20 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ## Recent Migrations
 
 ### April 2026
+
+#### April 14, 2026
+
+**`20260414064105_jobs_ledger_invoice_stripe_email_sends.sql`**
+- **Purpose**: Append-only log of successful **`send-stripe-invoice`** emails (one row per send); **SELECT** RLS aligned with **`jobs_ledger_invoices`**; **service role** inserts after invoice row update
+- **Changes**: Table **`jobs_ledger_invoice_stripe_email_sends`** (`jobs_ledger_invoice_id`, **`sent_at`**, optional **`stripe_invoice_id`**); index on **`(jobs_ledger_invoice_id, sent_at DESC)`**; **ON DELETE CASCADE** from invoice
+- **Impact**: [`send-stripe-invoice`](supabase/functions/send-stripe-invoice/index.ts), [`StripeInvoiceSendFromStripeButton.tsx`](src/components/jobs/StripeInvoiceSendFromStripeButton.tsx), types
+- **Category**: Jobs / Billing / Stripe
+
+**`20260414031557_ensure_rtb_primary_remainder_and_partials.sql`**
+- **Purpose**: Multiple **Ready to Bill** invoice rows per job: **`is_primary_rtb_bundle`** marks the single **remainder** line whose **`amount`** **`ensure_single_ready_to_bill_invoice_for_job`** keeps in sync; **partial** RTB lines stay fixed.
+- **Changes**: **`CREATE OR REPLACE`** **`ensure_single_ready_to_bill_invoice_for_job`** — drop “only one RTB” error; primary-only **UPDATE** / **INSERT**; error if &gt; one primary
+- **Impact**: [`Jobs.tsx`](src/pages/Jobs.tsx), [`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx), [`SendRecordInvoiceModal.tsx`](src/components/jobs/SendRecordInvoiceModal.tsx); **`GLOSSARY.md`** (primary vs partial RTB)
+- **Category**: Jobs / Billing
 
 #### April 9, 2026
 

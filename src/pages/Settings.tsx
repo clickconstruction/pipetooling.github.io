@@ -27,6 +27,7 @@ import type { PayConfigRow } from '../types/peoplePayConfig'
 import { buildSalariedWorkdayPickerRows } from '../lib/buildSalariedWorkdayPickerRows'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import TeamFeedbackDevSettingsBlock from '../components/team-feedback/TeamFeedbackDevSettingsBlock'
+import StripeInvoiceFooterDevSettingsBlock from '../components/settings/StripeInvoiceFooterDevSettingsBlock'
 import TeamFeedbackMasterAggregates from '../components/team-feedback/TeamFeedbackMasterAggregates'
 import type { Database } from '../types/database'
 import { APP_SETTINGS_KEY_JOB_TALLY_MIN_POSTED_YMD, isValidYmd } from '../lib/appSettingsKeys'
@@ -1831,7 +1832,7 @@ export default function Settings() {
         (async (): Promise<JobCountByMasterRow[]> => {
           try {
             const rows = await withSupabaseRetry(
-              async () => supabase.rpc('list_job_counts_by_master_for_dev_settings'),
+              () => supabase.rpc('list_job_counts_by_master_for_dev_settings'),
               'list_job_counts_by_master_for_dev_settings',
             )
             return rows ?? []
@@ -10943,6 +10944,7 @@ export default function Settings() {
       <SettingsGroup id="settings-templates" title="Templates & testing">
       {myRole === 'dev' && (
         <>
+          <StripeInvoiceFooterDevSettingsBlock />
           <div style={{ marginBottom: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
             <button
               type="button"
@@ -11163,7 +11165,7 @@ export default function Settings() {
                         setDevResetEstimatesLoading(true)
                         try {
                           const deleted = await withSupabaseRetry(
-                            async () => supabase.rpc('dev_reset_estimates_for_testing'),
+                            () => supabase.rpc('dev_reset_estimates_for_testing'),
                             'dev reset estimates',
                           )
                           const n = typeof deleted === 'number' ? deleted : 0

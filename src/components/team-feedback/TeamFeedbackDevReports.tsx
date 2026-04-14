@@ -329,7 +329,7 @@ export default function TeamFeedbackDevReports() {
             'team_feedback_submissions list'
           ),
           withSupabaseRetry(
-            async () => supabase.rpc('team_feedback_aggregates_by_manager'),
+            () => supabase.rpc('team_feedback_aggregates_by_manager'),
             'team_feedback_aggregates_by_manager'
           ),
         ])

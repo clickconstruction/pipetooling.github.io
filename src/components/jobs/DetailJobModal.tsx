@@ -1033,6 +1033,12 @@ export default function DetailJobModal({
                       }}
                     >
                       {formatCurrency(Number(p.amount ?? 0))}
+                      {p.payment_type?.trim() ? (
+                        <span style={{ color: '#6b7280', marginLeft: 8 }}>Type: {p.payment_type.trim()}</span>
+                      ) : null}
+                      {p.reference_number?.trim() ? (
+                        <span style={{ color: '#6b7280', marginLeft: 8 }}>Ref: {p.reference_number.trim()}</span>
+                      ) : null}
                       {p.note?.trim() ? <span style={{ color: '#6b7280', marginLeft: 8 }}>{p.note.trim()}</span> : null}
                     </li>
                   ))}

@@ -1,14 +1,17 @@
 /** Keep in sync with `supabase/functions/_shared/stripeLineDescription.ts` (Edge). */
+export const STRIPE_INVOICE_LINE_DESCRIPTION_MAX = 500
+
+/** Default Stripe invoice line item description when the user has not overridden it. */
+export const DEFAULT_STRIPE_INVOICE_LINE_DESCRIPTION = 'Custom service.'
+
+/**
+ * Legacy signature preserved for call sites; returns the fixed default line description.
+ * (Previously: `Customer · Job · HCP n`.)
+ */
 export function buildStripeInvoiceLineDescription(
-  customerName: string,
-  jobName: string | null,
-  hcpNumber: string | null,
+  _customerName: string,
+  _jobName: string | null,
+  _hcpNumber: string | null,
 ): string {
-  const name = customerName.trim() || 'Customer'
-  const job = (jobName ?? '').trim() || 'Job'
-  const hcp = (hcpNumber ?? '').trim() || '—'
-  if (name === job) {
-    return `${name} · HCP ${hcp}`
-  }
-  return `${name} · ${job} · HCP ${hcp}`
+  return DEFAULT_STRIPE_INVOICE_LINE_DESCRIPTION
 }

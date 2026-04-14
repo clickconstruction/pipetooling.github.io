@@ -318,11 +318,11 @@ export default function JobTally() {
     try {
       const [txData, cardData] = await Promise.all([
         withSupabaseRetry(
-          async () => supabase.rpc('list_my_linked_mercury_transactions_for_tally'),
+          () => supabase.rpc('list_my_linked_mercury_transactions_for_tally'),
           'list tally linked mercury transactions',
         ),
         withSupabaseRetry(
-          async () => supabase.rpc('list_my_linked_mercury_debit_cards_for_tally'),
+          () => supabase.rpc('list_my_linked_mercury_debit_cards_for_tally'),
           'list tally linked debit cards',
         ),
       ])

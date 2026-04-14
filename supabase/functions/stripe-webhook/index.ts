@@ -8,6 +8,7 @@ import {
   stripeWebhookEnvFingerprints,
   stripeWebhookSecretsOrdered,
 } from '../_shared/stripeSecrets.ts'
+import { parseOobPaymentMetadataFromStripe } from '../_shared/pipetoolingStripeOobPaymentMetadata.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -119,9 +120,22 @@ async function handleStripeInvoicePaidEvent(
   if (row.status === 'paid') {
     await admin.from('jobs_ledger_invoices').update({ stripe_invoice_status: 'paid' }).eq('id', row.id)
   } else {
-    const { data: rpcData, error: rpcErr } = await admin.rpc('mark_invoice_paid_from_stripe', {
-      p_invoice_id: row.id,
-    })
+    const md = inv.metadata && typeof inv.metadata === 'object' && !Array.isArray(inv.metadata)
+      ? (inv.metadata as Record<string, string>)
+      : undefined
+    const oob = parseOobPaymentMetadataFromStripe(md)
+    const rpcArgs: {
+      p_invoice_id: string
+      p_payment_type?: string
+      p_reference_number?: string
+      p_paid_on?: string
+      p_internal_note?: string
+    } = { p_invoice_id: row.id }
+    if (oob.p_payment_type) rpcArgs.p_payment_type = oob.p_payment_type
+    if (oob.p_reference_number) rpcArgs.p_reference_number = oob.p_reference_number
+    if (oob.p_paid_on) rpcArgs.p_paid_on = oob.p_paid_on
+    if (oob.p_internal_note) rpcArgs.p_internal_note = oob.p_internal_note
+    const { data: rpcData, error: rpcErr } = await admin.rpc('mark_invoice_paid_from_stripe', rpcArgs)
 
     if (rpcErr) {
       webhookLog('error', eventForLog, 'mark_invoice_paid_from_stripe rpc failed', rpcErr)

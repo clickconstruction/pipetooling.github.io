@@ -1073,7 +1073,7 @@ export default function Banking() {
     void (async () => {
       try {
         const data = await withSupabaseRetry(
-          async () => supabase.rpc('list_users_for_banking_attribution'),
+          () => supabase.rpc('list_users_for_banking_attribution'),
           'list users banking attribution',
         )
         if (cancelled) return

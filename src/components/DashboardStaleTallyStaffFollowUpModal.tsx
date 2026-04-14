@@ -157,7 +157,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
       setBackchargeBusyTxId(r.mercury_transaction_id)
       try {
         const officeRows = await withSupabaseRetry(
-          async () => supabase.rpc('get_jobs_ledger_office'),
+          () => supabase.rpc('get_jobs_ledger_office'),
           'get jobs ledger office',
         )
         const officeId = Array.isArray(officeRows) && officeRows.length > 0 ? officeRows[0]?.id : null

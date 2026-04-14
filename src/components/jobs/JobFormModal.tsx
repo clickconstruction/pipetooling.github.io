@@ -49,6 +49,8 @@ type PaymentRow = {
   amount: number
   paid_on: string | null
   note: string | null
+  payment_type: string | null
+  reference_number: string | null
   /** Set when loaded from DB; payments applied to an invoice cannot be removed in this form. */
   invoice_id: string | null
 }
@@ -63,7 +65,15 @@ function localDateYYYYMMDD(): string {
 }
 
 function newEmptyPaymentRow(): PaymentRow {
-  return { id: crypto.randomUUID(), amount: 0, paid_on: localDateYYYYMMDD(), note: null, invoice_id: null }
+  return {
+    id: crypto.randomUUID(),
+    amount: 0,
+    paid_on: localDateYYYYMMDD(),
+    note: null,
+    payment_type: null,
+    reference_number: null,
+    invoice_id: null,
+  }
 }
 
 function paymentRowLinkedToInvoice(row: PaymentRow): boolean {
@@ -269,7 +279,7 @@ export default function JobFormModal({
           i.status === 'billed' &&
           (i.stripe_invoice_id ?? '').trim() &&
           (i.hosted_invoice_url ?? '').trim() &&
-          !(i.stripe_invoice_memo ?? '').trim(),
+          (!(i.stripe_invoice_memo ?? '').trim() || !(i.stripe_invoice_footer ?? '').trim()),
       )
       .map((i) => i.id)
       .sort()
@@ -286,7 +296,7 @@ export default function JobFormModal({
         i.status === 'billed' &&
         (i.stripe_invoice_id ?? '').trim() &&
         (i.hosted_invoice_url ?? '').trim() &&
-        !(i.stripe_invoice_memo ?? '').trim(),
+        (!(i.stripe_invoice_memo ?? '').trim() || !(i.stripe_invoice_footer ?? '').trim()),
     )
     if (targets.length === 0) return
 
@@ -500,6 +510,8 @@ export default function JobFormModal({
             amount: Number(p.amount),
             paid_on: p.paid_on ? String(p.paid_on).slice(0, 10) : null,
             note: p.note ?? null,
+            payment_type: p.payment_type ?? null,
+            reference_number: p.reference_number ?? null,
             invoice_id: p.invoice_id ?? null,
           }))
         : [newEmptyPaymentRow()],
@@ -984,8 +996,43 @@ export default function JobFormModal({
       return
     }
     const remaining = getEditJobBillableRemaining()
-    if (amount > remaining) {
-      setError(`Amount cannot exceed Remaining ($${formatCurrency(remaining)})`)
+    const amountToUseCents = Math.min(Math.round(amount * 100), Math.round(remaining * 100))
+    const amountToUse = amountToUseCents / 100
+    if (!(amountToUse > 0)) {
+      setError('No remaining balance to bill')
+      return
+    }
+    if (amountToUseCents < Math.round(amount * 100)) {
+      showToast(`Adjusted to remaining balance ($${formatCurrency(amountToUse)})`, 'info')
+      setNewInvoiceAmount(String(amountToUse))
+    }
+    if (editing.status === 'ready_to_bill' && Math.round(amountToUse * 100) === Math.round(remaining * 100)) {
+      if (!jobLedgerHasCustomerForBilling(editing.customer_id)) {
+        showToast('Link this job to a customer before billing.', 'error')
+        return
+      }
+      const jobId = editing.id
+      const ctx: JobBillingContext = {
+        id: editing.id,
+        master_user_id: editing.master_user_id,
+        hcp_number: editing.hcp_number,
+        job_name: editing.job_name,
+        customer_id: editing.customer_id,
+        customer_name: editing.customer_name,
+        customer_email: editing.customer_email,
+      }
+      billCustomer?.openBillCustomer({
+        payload: { kind: 'job', job: ctx },
+        onSuccess: async () => {
+          onSavedRef.current?.()
+          const found = await fetchJobWithDetailsById(jobId)
+          if (found) setEditing(found)
+        },
+        onAfterEnsureSuccess: async () => {
+          const found = await fetchJobWithDetailsById(jobId)
+          if (found) setEditing(found)
+        },
+      })
       return
     }
     setCreatingInvoice(true)
@@ -993,15 +1040,32 @@ export default function JobFormModal({
     try {
       const nextOrder = (editing.invoices ?? []).length
       const estBill = editing.last_bill_date?.trim().slice(0, 10) ?? null
-      const { error: err } = await supabase.from('jobs_ledger_invoices').insert({
-        job_id: editing.id,
-        amount,
-        status: 'ready_to_bill',
-        sequence_order: nextOrder,
-        estimated_bill_date: estBill,
-        is_primary_rtb_bundle: false,
-      })
+      const { error: err } = await supabase
+        .from('jobs_ledger_invoices')
+        .insert({
+          job_id: editing.id,
+          amount: amountToUse,
+          status: 'ready_to_bill',
+          sequence_order: nextOrder,
+          estimated_bill_date: estBill,
+          is_primary_rtb_bundle: false,
+        })
+        .select('id')
+        .single()
       if (err) throw err
+      if (editing.status === 'ready_to_bill') {
+        const raw = await withSupabaseRetry(
+          () =>
+            supabase.rpc('ensure_single_ready_to_bill_invoice_for_job', {
+              p_job_id: editing.id,
+            }),
+          'ensure RTB remainder after partial invoice'
+        )
+        const obj = raw as Record<string, unknown> | null
+        if (obj && typeof obj.error === 'string' && obj.error.length > 0) {
+          throw new Error(obj.error)
+        }
+      }
       const found = await fetchJobWithDetailsById(editing.id)
       if (found) {
         setEditing(found)
@@ -1249,6 +1313,8 @@ export default function JobFormModal({
             sequence_order: i,
             paid_on: p.paid_on?.trim() ? p.paid_on.trim() : null,
             note: p.note?.trim() ? p.note.trim() : null,
+            payment_type: p.payment_type?.trim() ? p.payment_type.trim() : null,
+            reference_number: p.reference_number?.trim() ? p.reference_number.trim() : null,
             invoice_id: p.invoice_id,
           })
         }
@@ -1320,6 +1386,8 @@ export default function JobFormModal({
               sequence_order: i,
               paid_on: p.paid_on?.trim() ? p.paid_on.trim() : null,
               note: p.note?.trim() ? p.note.trim() : null,
+              payment_type: p.payment_type?.trim() ? p.payment_type.trim() : null,
+              reference_number: p.reference_number?.trim() ? p.reference_number.trim() : null,
               invoice_id: p.invoice_id,
             })
           }
@@ -2401,7 +2469,14 @@ export default function JobFormModal({
                       onBlur={() => {
                         setNewInvoiceAmountInputFocused(false)
                         const n = parseMoneyInputToNumberOrNull(newInvoiceAmount)
-                        setNewInvoiceAmount(n == null ? '' : String(n))
+                        if (n == null) {
+                          setNewInvoiceAmount('')
+                          return
+                        }
+                        const rem = getEditJobBillableRemaining()
+                        const useCents = Math.min(Math.round(n * 100), Math.round(rem * 100))
+                        const clamped = useCents / 100
+                        setNewInvoiceAmount(String(clamped))
                       }}
                       onChange={(e) => setNewInvoiceAmount(sanitizeMoneyTyping(e.target.value))}
                       placeholder="$0"
@@ -2578,7 +2653,8 @@ export default function JobFormModal({
                             const createdDayOffset = invoiceCreatedCalendarDayOffset(inv.created_at)
                             const noteLine = (inv.external_send_note ?? '').trim()
                             const memoLine = (inv.stripe_invoice_memo ?? '').trim()
-                            const hasDetailLine = Boolean(noteLine || memoLine)
+                            const footerLine = (inv.stripe_invoice_footer ?? '').trim()
+                            const hasDetailLine = Boolean(noteLine || memoLine || footerLine)
                             const rowSep = idx < arr.length - 1 ? '1px solid #e5e7eb' : 'none'
                             const btnGray: CSSProperties = {
                               padding: '0.15rem 0.45rem',
@@ -2675,15 +2751,25 @@ export default function JobFormModal({
                                       }}
                                     >
                                       {noteLine ? (
-                                        <div style={{ marginBottom: memoLine ? '0.15rem' : 0 }}>
+                                        <div
+                                          style={{
+                                            marginBottom: memoLine || footerLine ? '0.15rem' : 0,
+                                          }}
+                                        >
                                           <span style={{ fontWeight: 600, color: '#4b5563' }}>Note: </span>
                                           {noteLine}
                                         </div>
                                       ) : null}
                                       {memoLine ? (
-                                        <div>
+                                        <div style={{ marginBottom: footerLine ? '0.15rem' : 0 }}>
                                           <span style={{ fontWeight: 600, color: '#4b5563' }}>Memo: </span>
                                           {memoLine}
+                                        </div>
+                                      ) : null}
+                                      {footerLine ? (
+                                        <div>
+                                          <span style={{ fontWeight: 600, color: '#4b5563' }}>Footer: </span>
+                                          {footerLine}
                                         </div>
                                       ) : null}
                                     </td>
@@ -2737,7 +2823,10 @@ export default function JobFormModal({
                     return payments.map((row, idx) => {
                     const stripePaymentLocked = Boolean(stripeBillInvoiceForPaymentRow(row, editing))
                     const noteTrim = (row.note ?? '').trim()
-                    const hasMemoSubRow = !stripePaymentLocked || noteTrim.length > 0
+                    const ptTrim = (row.payment_type ?? '').trim()
+                    const refTrim = (row.reference_number ?? '').trim()
+                    const hasMemoSubRow =
+                      !stripePaymentLocked || noteTrim.length > 0 || ptTrim.length > 0 || refTrim.length > 0
                     const rowSep = idx < payments.length - 1 ? '1px solid #e5e7eb' : 'none'
                     const parentCellPad = hasMemoSubRow ? '0.5rem 0.75rem 0.1rem' : '0.5rem 0.75rem'
                     const paymentDateCellStyle = {
@@ -2933,36 +3022,119 @@ export default function JobFormModal({
                           <tr style={{ borderBottom: rowSep }}>
                             <td colSpan={3} style={PAYMENT_MEMO_SUB_ROW_CELL_STYLE}>
                               {stripePaymentLocked ? (
-                                <div>
-                                  <span style={{ fontWeight: 600, color: '#4b5563' }}>Memo: </span>
-                                  {noteTrim}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                  {(ptTrim || refTrim) ? (
+                                    <div style={{ fontSize: '0.75rem', color: '#374151' }}>
+                                      {ptTrim ? (
+                                        <span style={{ marginRight: '0.75rem' }}>
+                                          <span style={{ fontWeight: 600, color: '#4b5563' }}>Type: </span>
+                                          {ptTrim}
+                                        </span>
+                                      ) : null}
+                                      {refTrim ? (
+                                        <span>
+                                          <span style={{ fontWeight: 600, color: '#4b5563' }}>Ref: </span>
+                                          {refTrim}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                  ) : null}
+                                  <div>
+                                    <span style={{ fontWeight: 600, color: '#4b5563' }}>Memo: </span>
+                                    {noteTrim || '—'}
+                                  </div>
                                 </div>
                               ) : (
-                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem', flexWrap: 'wrap' }}>
-                                  <span style={{ fontWeight: 600, color: '#4b5563', flexShrink: 0 }}>Memo: </span>
-                                  <input
-                                    id={`edit-job-payment-note-${row.id}`}
-                                    type="text"
-                                    value={row.note ?? ''}
-                                    onChange={(e) =>
-                                      updatePaymentRow(row.id, { note: e.target.value === '' ? null : e.target.value })
-                                    }
-                                    placeholder="Optional"
-                                    aria-label="Payment memo"
-                                    style={{
-                                      flex: '1 1 12rem',
-                                      minWidth: 0,
-                                      maxWidth: '100%',
-                                      boxSizing: 'border-box',
-                                      padding: '0.2rem 0.35rem',
-                                      border: '1px solid #d1d5db',
-                                      borderRadius: 4,
-                                      fontSize: '0.75rem',
-                                      color: '#374151',
-                                      background: 'white',
-                                      lineHeight: 1.35,
-                                    }}
-                                  />
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '0.35rem',
+                                    width: '100%',
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem', flexWrap: 'wrap' }}>
+                                    <span style={{ fontWeight: 600, color: '#4b5563', flexShrink: 0 }}>Type: </span>
+                                    <input
+                                      id={`edit-job-payment-type-${row.id}`}
+                                      type="text"
+                                      value={row.payment_type ?? ''}
+                                      onChange={(e) =>
+                                        updatePaymentRow(row.id, {
+                                          payment_type: e.target.value === '' ? null : e.target.value,
+                                        })
+                                      }
+                                      placeholder="Optional"
+                                      aria-label="Payment type"
+                                      style={{
+                                        flex: '1 1 8rem',
+                                        minWidth: 0,
+                                        maxWidth: '100%',
+                                        boxSizing: 'border-box',
+                                        padding: '0.2rem 0.35rem',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: 4,
+                                        fontSize: '0.75rem',
+                                        color: '#374151',
+                                        background: 'white',
+                                        lineHeight: 1.35,
+                                      }}
+                                    />
+                                  </div>
+                                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem', flexWrap: 'wrap' }}>
+                                    <span style={{ fontWeight: 600, color: '#4b5563', flexShrink: 0 }}>Ref: </span>
+                                    <input
+                                      id={`edit-job-payment-ref-${row.id}`}
+                                      type="text"
+                                      value={row.reference_number ?? ''}
+                                      onChange={(e) =>
+                                        updatePaymentRow(row.id, {
+                                          reference_number: e.target.value === '' ? null : e.target.value,
+                                        })
+                                      }
+                                      placeholder="Optional"
+                                      aria-label="Payment reference"
+                                      style={{
+                                        flex: '1 1 10rem',
+                                        minWidth: 0,
+                                        maxWidth: '100%',
+                                        boxSizing: 'border-box',
+                                        padding: '0.2rem 0.35rem',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: 4,
+                                        fontSize: '0.75rem',
+                                        color: '#374151',
+                                        background: 'white',
+                                        lineHeight: 1.35,
+                                      }}
+                                    />
+                                  </div>
+                                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem', flexWrap: 'wrap' }}>
+                                    <span style={{ fontWeight: 600, color: '#4b5563', flexShrink: 0 }}>Memo: </span>
+                                    <input
+                                      id={`edit-job-payment-note-${row.id}`}
+                                      type="text"
+                                      value={row.note ?? ''}
+                                      onChange={(e) =>
+                                        updatePaymentRow(row.id, { note: e.target.value === '' ? null : e.target.value })
+                                      }
+                                      placeholder="Optional"
+                                      aria-label="Payment memo"
+                                      style={{
+                                        flex: '1 1 12rem',
+                                        minWidth: 0,
+                                        maxWidth: '100%',
+                                        boxSizing: 'border-box',
+                                        padding: '0.2rem 0.35rem',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: 4,
+                                        fontSize: '0.75rem',
+                                        color: '#374151',
+                                        background: 'white',
+                                        lineHeight: 1.35,
+                                      }}
+                                    />
+                                  </div>
                                 </div>
                               )}
                             </td>
@@ -3599,7 +3771,7 @@ export default function JobFormModal({
                 inv &&
                 (inv.stripe_invoice_id ?? '').trim() &&
                 (inv.hosted_invoice_url ?? '').trim() &&
-                !(inv.stripe_invoice_memo ?? '').trim()
+                (!(inv.stripe_invoice_memo ?? '').trim() || !(inv.stripe_invoice_footer ?? '').trim())
               if (!stillNeeds) break
             }
           })()

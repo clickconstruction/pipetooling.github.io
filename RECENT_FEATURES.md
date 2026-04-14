@@ -7,16 +7,31 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-13
+last_updated: 2026-04-14
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.299 → v2.4"
+version_range: "v2.304 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.299)"
+  - name: "Latest Version (v2.304)"
+    line: ~939
+    description: "Stripe send confirm modal: PipeTooling send history from jobs_ledger_invoice_stripe_email_sends; Edge log append"
+  - name: "Latest Version (v2.303)"
+    line: ~955
+    description: "Jobs Stages Last activity: Stripe emailed customer + Resend invoice email (send-stripe-invoice); StripeInvoiceSendFromStripeButton variants"
+  - name: "Latest Version (v2.302)"
+    line: ~947
+    description: "Jobs Stages Ready to Bill: row amounts (unallocated / draft / remainder) + exposure total; jobsStagesBoard helpers + tests"
+  - name: "Latest Version (v2.301)"
     line: ~928
+    description: "Partial RTB + primary remainder: ensure_single_ready_to_bill_invoice_for_job multi-row; Jobs/Edit Job call ensure after partial insert"
+  - name: "Latest Version (v2.300)"
+    line: ~928
+    description: "Send back from Billed: void-stripe-invoice-for-revert Edge + Jobs/Dashboard/ham + job-level pre-flight"
+  - name: "Latest Version (v2.299)"
+    line: ~940
     description: "Public /estimate/accept: AuthPublicLandingLayout + wide sign-in stack + white card; authPublicLanding.css --wide + thank-you inner chrome strip"
   - name: "Latest Version (v2.298)"
     line: ~940
@@ -724,6 +739,10 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.304 — **Send Email invoice from Stripe?** modal: recent sends list (DB log)](#latest-updates-v2304)
+**New:** [v2.303 — Jobs Stages **Last activity**: Stripe emailed customer + **Resend invoice email**](#latest-updates-v2303)
+**New:** [v2.302 — Jobs Stages **Ready to Bill**: unallocated row amounts, draft/remainder labels, exposure total](#latest-updates-v2302)
+**New:** [v2.301 — Partial **Ready to Bill**: primary remainder line + fixed partials; `ensure` + Jobs / Edit Job](#latest-updates-v2301)
 **New:** [v2.299 — Public **Estimate accept**: same landing shell as Sign-In; wide card (`/estimate/accept`)](#latest-updates-v2299)
 **New:** [v2.297 — People Hours: grid blur proportional scale into My Time (closed sessions); open session → live fetch](#latest-updates-v2297)
 **New:** [v2.296 — Schedule Dispatch: Add schedule block occupied timeline + draft moves + batch save](#latest-updates-v2296)
@@ -923,6 +942,68 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.304)
+
+**Date**: 2026-04-14
+
+### **Send Email invoice from Stripe?** — recent sends in confirm modal
+
+- **DB** — [`20260414064105_jobs_ledger_invoice_stripe_email_sends.sql`](supabase/migrations/20260414064105_jobs_ledger_invoice_stripe_email_sends.sql): **`jobs_ledger_invoice_stripe_email_sends`** append-only rows (**`sent_at`**, **`stripe_invoice_id`**); **SELECT** RLS matches **`jobs_ledger_invoices`** job visibility.
+- **Edge** — [`send-stripe-invoice`](supabase/functions/send-stripe-invoice/index.ts): after successful **`jobs_ledger_invoices`** update, **INSERT** log row (failure **logs only**; send still **200**).
+- **UI** — [`StripeInvoiceSendFromStripeButton.tsx`](src/components/jobs/StripeInvoiceSendFromStripeButton.tsx): on modal open, **`withSupabaseRetry`** loads up to **20** sends; **Most recent sends (PipeTooling)** list (**`getDispatchNoteDisplayMeta`**, Chicago); empty state + optional **`recordedLastSendAt`** fallback when log has no rows (pre-log **sends**); wider dialog (**480px**). **`recordedLastSendAt`** passed from [`Jobs.tsx`](src/pages/Jobs.tsx) Stages resend, [`HostedStripeBillPanel.tsx`](src/components/jobs/HostedStripeBillPanel.tsx).
+
+---
+
+## Latest Updates (v2.303)
+
+**Date**: 2026-04-14
+
+### Jobs **Stages** — **Last activity**: Stripe send hint + resend
+
+- **When it shows** — [`stagesJobLevelStripeEmailedHintInvoice`](src/pages/Jobs.tsx): exactly **one** **billed** line per job with **`external_send_channel === 'stripe'`**, non-empty **`stripe_invoice_id`**, and **`sent_to_customer_at`** set (ambiguous multi-line jobs omit the block).
+- **UI** — [`renderStagesStripeEmailedCustomerHint`](src/pages/Jobs.tsx): three centered lines — **Stripe emailed customer**; Central Time + days-ago from [`getDispatchNoteDisplayMeta`](src/utils/dispatchNoteDisplay.ts); **[`StripeInvoiceSendFromStripeButton`](src/components/jobs/StripeInvoiceSendFromStripeButton.tsx)** with **`buttonLabel="Resend invoice email"`**, **`micro`**, **`unboxed`**, **`hideInlineSuccessLine`** (success toast only; avoids duplicating the hint), **`sendDisabled`** when **`stripe_invoice_status`** is **paid** (tooltip explains Stripe will not resend). Same Edge **`send-stripe-invoice`** path and confirm modal as **Send Email invoice from Stripe** elsewhere (**[`HostedStripeBillPanel`](src/components/jobs/HostedStripeBillPanel.tsx)**, **`SendRecordInvoiceModal`**). **`onSent`** → **`loadJobs()`** so **`sent_to_customer_at`** refreshes.
+- **Shared button** — Optional props: **`buttonLabel`**, **`unboxed`**, **`micro`** (tiny inline control), **`sendDisabled`** / **`sendDisabledTitle`**, **`hideInlineSuccessLine`**, **`stripeModeForBilling`** via [`stripeModeForBillingFromRole`](src/lib/voidStripeInvoiceForRevert.ts) on Stages.
+- **Data note** — **`jobs_ledger_invoices.sent_to_customer_at`** stores the **latest** send only (each **`send-stripe-invoice`** success overwrites it). Per-send history for the confirm modal lives in **`jobs_ledger_invoice_stripe_email_sends`** ([v2.304](#latest-updates-v2304)).
+
+---
+
+## Latest Updates (v2.302)
+
+**Date**: 2026-04-14
+
+### Jobs **Stages** — Ready to Bill amounts and section total
+
+- **Lib** — [`jobsStagesBoard.ts`](src/lib/jobsStagesBoard.ts): **`jobBillingUnallocatedDollars`**, **`readyToBillRowsExposureTotal`** (aligned with **`ensure_single_ready_to_bill_invoice_for_job`** allocation).
+- **UI** — [`Jobs.tsx`](src/pages/Jobs.tsx) **`renderUnifiedStagesTable`**: bare job row middle line = **unallocated** (tooltip); standalone RTB invoice row = **draft** + optional **unallocated** subline; primary bundle middle line = **remainder**; section header total uses exposure sum (no gross + draft double-count).
+- **Tests** — [`jobsStagesBoard.test.ts`](src/lib/jobsStagesBoard.test.ts): **`readyToBillRowsExposureTotal`** cases.
+
+---
+
+## Latest Updates (v2.301)
+
+**Date**: 2026-04-14
+
+### Partial **Ready to Bill** — remainder line + fixed partial amounts
+
+- **DB** — [`20260414031557_ensure_rtb_primary_remainder_and_partials.sql`](supabase/migrations/20260414031557_ensure_rtb_primary_remainder_and_partials.sql): **`ensure_single_ready_to_bill_invoice_for_job`** allows multiple **`ready_to_bill`** rows; syncs **`amount`** only on **`is_primary_rtb_bundle = true`**; inserts that row when missing and **`v_unalloc` &gt; 0**; errors if more than one primary; does not change partial rows.
+- **Client** — [`Jobs.tsx`](src/pages/Jobs.tsx) **Create Partial Invoice** and [`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx) **Partial invoice**: inserts with **`is_primary_rtb_bundle: false`**, then **`ensure_single_ready_to_bill_invoice_for_job`** (with **`withSupabaseRetry`**); removed “first RTB line becomes primary” behavior so partials are never overwritten.
+- **Dashboard** — [`buildReadyToBillDashboardUnits`](src/lib/buildReadyToBillDashboardUnits.ts) already prefers **`is_primary_rtb_bundle`**; test covers **job_bundle** + standalone **invoice** for primary + partial.
+- **Manual QA** — (1) Job RTB: add partial $X → two rows, partial fixed, primary remainder = unallocated balance; **Bill Customer** from job bills primary only. (2) Stages: job row + separate row for partial. (3) Legacy single primary RTB: **ensure** still updates amount. (4) Duplicate **`is_primary_rtb_bundle`** on two rows → RPC error until data fixed.
+
+---
+
+## Latest Updates (v2.300)
+
+**Date**: 2026-04-13
+
+### **Billed** send back — void Stripe invoice + clear billing row
+
+- **Edge** — [`void-stripe-invoice-for-revert`](supabase/functions/void-stripe-invoice-for-revert/index.ts): for **`jobs_ledger_invoices`** in **billed** with Stripe, **delete** draft / **void** open (unpaid) in Stripe, then **UPDATE** to **ready_to_bill** and null Stripe columns. **409** if paid / **`amount_paid` &gt; 0**. Idempotent if Stripe invoice already missing.
+- **Client** — [`voidStripeInvoiceForRevert.ts`](src/lib/voidStripeInvoiceForRevert.ts): **`prepareBilledInvoicesBeforeJobRevertToReadyToBill`** before **`update_job_status`** (**billed** → **ready_to_bill**) on Jobs + Dashboard. Invoice-line send back / ham mode use the same Edge path when **`stripe_invoice_id`** or **`external_send_channel === 'stripe'`**.
+- **Docs** — [`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md) **void-stripe-invoice-for-revert**; [`supabase/config.toml`](supabase/config.toml) **`verify_jwt = false`**.
+
 ---
 
 ## Latest Updates (v2.299)

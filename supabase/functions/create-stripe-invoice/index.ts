@@ -12,8 +12,13 @@ import {
   isMissingStripeCustomerError,
 } from '../_shared/stripeStaleCustomer.ts'
 import { stripeInvoiceSnapshotForResponse } from '../_shared/stripeInvoiceSnapshot.ts'
-import { buildStripeInvoiceLineDescription } from '../_shared/stripeLineDescription.ts'
-import { stripeInvoiceMemoFromStripe } from '../_shared/stripeInvoiceMemoFromStripe.ts'
+import { resolveInvoiceLineDescription } from '../_shared/stripeLineDescription.ts'
+import { STRIPE_INVOICE_FOOTER_MAX_CHARS } from '../_shared/stripeInvoiceFooter.ts'
+import {
+  stripeInvoiceDescriptionFromStripe,
+  stripeInvoiceFooterFromStripe,
+} from '../_shared/stripeInvoiceMemoFromStripe.ts'
+import { buildPipetoolingStripeInvoiceNumber } from '../_shared/pipetoolingStripeInvoiceNumber.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -29,6 +34,10 @@ interface CreateStripeInvoiceBody {
   customer_name: string
   due_date: string
   memo?: string
+  /** Optional: Stripe Invoice `footer` (max 5000 chars). Omit or empty = account default footer. */
+  footer?: string
+  /** Optional: overrides default line item description (max 500 chars). */
+  line_description?: string
   /** Optional: `test` | `live`. Omit to use server default (legacy / non-UI callers). */
   stripe_mode?: StripeBillingMode
 }
@@ -45,6 +54,23 @@ function daysUntilDue(isoDate: string): number {
   const now = new Date()
   const ms = due.getTime() - now.getTime()
   return Math.max(1, Math.ceil(ms / (86400 * 1000)))
+}
+
+function isStripeDuplicateInvoiceNumberError(e: unknown): boolean {
+  if (!e || typeof e !== 'object') return false
+  const err = e as { type?: string; code?: string; message?: string }
+  const msg = typeof err.message === 'string' ? err.message.toLowerCase() : ''
+  const code = typeof err.code === 'string' ? err.code : ''
+  if (
+    code === 'invoice_number_already_exists' ||
+    code === 'duplicate_invoice_number' ||
+    code === 'invoice_number_conflict'
+  ) {
+    return true
+  }
+  if (msg.includes('invoice number') && (msg.includes('already') || msg.includes('duplicate'))) return true
+  if (msg.includes('number') && msg.includes('already been taken')) return true
+  return false
 }
 
 serve(async (req) => {
@@ -96,8 +122,19 @@ serve(async (req) => {
       customer_name,
       due_date,
       memo,
+      footer: footerRaw,
+      line_description: lineDescriptionRaw,
       stripe_mode: stripeModeRaw,
     } = body
+
+    const footerStr = typeof footerRaw === 'string' ? footerRaw : ''
+    if (footerStr.length > STRIPE_INVOICE_FOOTER_MAX_CHARS) {
+      return jsonResponse(
+        { error: `Invoice footer too long (max ${STRIPE_INVOICE_FOOTER_MAX_CHARS} characters)` },
+        400,
+      )
+    }
+    const footerTrimmedForStripe = footerStr.trim() || null
 
     if (
       !jobs_ledger_invoice_id ||
@@ -136,7 +173,7 @@ serve(async (req) => {
     const { data: invRow, error: invErr } = await userClient
       .from('jobs_ledger_invoices')
       .select(
-        'id, job_id, amount, status, stripe_invoice_id, hosted_invoice_url, stripe_invoice_status, stripe_invoice_memo',
+        'id, job_id, amount, status, stripe_invoice_id, hosted_invoice_url, stripe_invoice_status, stripe_invoice_memo, stripe_invoice_footer',
       )
       .eq('id', jobs_ledger_invoice_id)
       .maybeSingle()
@@ -151,17 +188,22 @@ serve(async (req) => {
       try {
         const existing = await stripe.invoices.retrieve(invRow.stripe_invoice_id, { expand: ['lines.data'] })
         invoice_preview = await stripeInvoiceSnapshotForResponse(stripe, existing)
-        const memoFromStripe = stripeInvoiceMemoFromStripe(existing)
+        const descFromStripe = stripeInvoiceDescriptionFromStripe(existing)
+        const footFromStripe = stripeInvoiceFooterFromStripe(existing)
         const memoStored =
           typeof invRow.stripe_invoice_memo === 'string' ? invRow.stripe_invoice_memo.trim() : ''
-        if (memoFromStripe && !memoStored) {
+        const footerStored = invRow.stripe_invoice_footer?.trim() ?? ''
+        const backfill: Record<string, string> = {}
+        if (descFromStripe && !memoStored) backfill.stripe_invoice_memo = descFromStripe
+        if (footFromStripe && !footerStored) backfill.stripe_invoice_footer = footFromStripe
+        if (Object.keys(backfill).length > 0) {
           const admin = createClient(supabaseUrl, serviceKey)
-          const { error: memoUpErr } = await admin
+          const { error: bfErr } = await admin
             .from('jobs_ledger_invoices')
-            .update({ stripe_invoice_memo: memoFromStripe })
+            .update(backfill)
             .eq('id', jobs_ledger_invoice_id)
-          if (memoUpErr) {
-            console.warn('create-stripe-invoice: idempotent stripe_invoice_memo backfill failed', memoUpErr)
+          if (bfErr) {
+            console.warn('create-stripe-invoice: idempotent memo/footer backfill failed', bfErr)
           }
         }
       } catch (e) {
@@ -215,6 +257,12 @@ serve(async (req) => {
       return jsonResponse({ error: 'Customer does not belong to this job master' }, 400)
     }
 
+    const pipetInvoiceNumber = buildPipetoolingStripeInvoiceNumber(jobRow.hcp_number, due_date.trim())
+    if (!pipetInvoiceNumber.ok) {
+      return jsonResponse({ error: pipetInvoiceNumber.error }, 400)
+    }
+    const stripeInvoiceNumber = pipetInvoiceNumber.number
+
     let stripeCustomerId = custRow.stripe_customer_id?.trim() || null
     if (stripeCustomerId) {
       try {
@@ -252,29 +300,52 @@ serve(async (req) => {
       return jsonResponse({ error: 'Amount too small' }, 400)
     }
 
+    const lineResolved = resolveInvoiceLineDescription({
+      override: lineDescriptionRaw,
+      customerName: customer_name.trim(),
+      jobName: jobRow.job_name,
+      hcpNumber: jobRow.hcp_number,
+    })
+    if (!lineResolved.ok) {
+      return jsonResponse({ error: lineResolved.error }, 400)
+    }
+    const lineDesc = lineResolved.lineDesc
+
     const d = daysUntilDue(due_date.trim())
 
-    const invoice = await stripe.invoices.create({
-      customer: stripeCustomerId!,
-      collection_method: 'send_invoice',
-      days_until_due: d,
-      description: memo?.trim() || undefined,
-      metadata: {
-        pipetooling_invoice_id: jobs_ledger_invoice_id,
-        pipetooling_job_id: invRow.job_id,
-      },
-    })
+    let invoice: Stripe.Invoice
+    try {
+      invoice = await stripe.invoices.create({
+        customer: stripeCustomerId!,
+        collection_method: 'send_invoice',
+        days_until_due: d,
+        description: memo?.trim() || undefined,
+        footer: footerTrimmedForStripe ?? undefined,
+        number: stripeInvoiceNumber,
+        metadata: {
+          pipetooling_invoice_id: jobs_ledger_invoice_id,
+          pipetooling_job_id: invRow.job_id,
+        },
+      })
+    } catch (e) {
+      if (isStripeDuplicateInvoiceNumberError(e)) {
+        return jsonResponse(
+          {
+            error:
+              'That Stripe invoice number is already in use. Change the due date or resolve the existing Stripe invoice.',
+          },
+          409,
+        )
+      }
+      throw e
+    }
 
     await stripe.invoiceItems.create({
       customer: stripeCustomerId!,
       invoice: invoice.id,
       amount: amountCents,
       currency: 'usd',
-      description: buildStripeInvoiceLineDescription(
-        customer_name.trim(),
-        jobRow.job_name,
-        jobRow.hcp_number,
-      ),
+      description: lineDesc,
     })
 
     const finalized = await stripe.invoices.finalizeInvoice(invoice.id)
@@ -293,8 +364,8 @@ serve(async (req) => {
       hosted_invoice_url: hostedUrl,
       status: 'billed',
       external_send_channel: 'stripe',
-      sent_to_customer_at: new Date().toISOString(),
       stripe_invoice_memo: memoTrimmed,
+      stripe_invoice_footer: footerTrimmedForStripe,
     }
     if (Number(invRow.amount) !== amount_dollars) {
       patch.amount = amount_dollars

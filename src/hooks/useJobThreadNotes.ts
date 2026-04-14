@@ -139,7 +139,7 @@ export function useJobThreadNotes(
     if (ids.length === 0) return
     try {
       const data = await withSupabaseRetry(
-        async () => supabase.rpc('jobs_ledger_thread_note_stats', { p_job_ids: ids }),
+        () => supabase.rpc('jobs_ledger_thread_note_stats', { p_job_ids: ids }),
         'jobs_ledger_thread_note_stats merge',
       )
       const rows = (data as unknown[] | null) ?? []
@@ -169,7 +169,7 @@ export function useJobThreadNotes(
         if (threadStatsRefreshGenRef.current !== gen) return
         const slice = ids.slice(i, i + THREAD_STATS_JOB_IDS_CHUNK)
         const data = await withSupabaseRetry(
-          async () => supabase.rpc('jobs_ledger_thread_note_stats', { p_job_ids: slice }),
+          () => supabase.rpc('jobs_ledger_thread_note_stats', { p_job_ids: slice }),
           'jobs_ledger_thread_note_stats batch',
         )
         if (threadStatsRefreshGenRef.current !== gen) return
@@ -271,7 +271,7 @@ export function useJobThreadNotes(
         })
         inFlightThreadNoteRef.current = null
         const stats = await withSupabaseRetry(
-          async () => supabase.rpc('jobs_ledger_thread_note_stats', { p_job_ids: [jobId] }),
+          () => supabase.rpc('jobs_ledger_thread_note_stats', { p_job_ids: [jobId] }),
           'jobs_ledger_thread_note_stats after insert',
         )
         const statRow = (stats as unknown[] | null)?.[0]

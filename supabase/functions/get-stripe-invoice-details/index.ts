@@ -8,7 +8,10 @@ import {
   type StripeBillingMode,
 } from '../_shared/stripeSecrets.ts'
 import { stripeSellerDisplayName } from '../_shared/stripeSellerDisplayName.ts'
-import { stripeInvoiceMemoFromStripe } from '../_shared/stripeInvoiceMemoFromStripe.ts'
+import {
+  stripeInvoiceDescriptionFromStripe,
+  stripeInvoiceFooterFromStripe,
+} from '../_shared/stripeInvoiceMemoFromStripe.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -102,7 +105,7 @@ serve(async (req) => {
 
     const { data: invRow, error: invErr } = await userClient
       .from('jobs_ledger_invoices')
-      .select('id, stripe_invoice_id, stripe_invoice_memo')
+      .select('id, stripe_invoice_id, stripe_invoice_memo, stripe_invoice_footer')
       .eq('id', jobsLedgerInvoiceId)
       .maybeSingle()
 
@@ -137,25 +140,30 @@ serve(async (req) => {
     const paid_at =
       typeof paidAtRaw === 'number' && Number.isFinite(paidAtRaw) && paidAtRaw > 0 ? paidAtRaw : null
 
-    const memoFromStripe = stripeInvoiceMemoFromStripe(inv)
+    const memoFromStripe = stripeInvoiceDescriptionFromStripe(inv)
+    const footerFromStripe = stripeInvoiceFooterFromStripe(inv)
     const memoStored = typeof invRow.stripe_invoice_memo === 'string' ? invRow.stripe_invoice_memo.trim() : ''
-    if (memoFromStripe && !memoStored) {
+    const footerStored = invRow.stripe_invoice_footer?.trim() ?? ''
+    const backfill: Record<string, string> = {}
+    if (memoFromStripe && !memoStored) backfill.stripe_invoice_memo = memoFromStripe
+    if (footerFromStripe && !footerStored) backfill.stripe_invoice_footer = footerFromStripe
+    if (Object.keys(backfill).length > 0) {
       if (serviceKey) {
         const admin = createClient(supabaseUrl, serviceKey)
-        const { error: memoUpErr } = await admin
+        const { error: bfErr } = await admin
           .from('jobs_ledger_invoices')
-          .update({ stripe_invoice_memo: memoFromStripe })
+          .update(backfill)
           .eq('id', jobsLedgerInvoiceId)
-        if (memoUpErr) {
-          console.warn('get-stripe-invoice-details: stripe_invoice_memo service backfill failed', memoUpErr)
+        if (bfErr) {
+          console.warn('get-stripe-invoice-details: memo/footer service backfill failed', bfErr)
         }
       } else {
-        const { error: memoUpErr } = await userClient
+        const { error: bfErr } = await userClient
           .from('jobs_ledger_invoices')
-          .update({ stripe_invoice_memo: memoFromStripe })
+          .update(backfill)
           .eq('id', jobsLedgerInvoiceId)
-        if (memoUpErr) {
-          console.warn('get-stripe-invoice-details: stripe_invoice_memo backfill failed', memoUpErr)
+        if (bfErr) {
+          console.warn('get-stripe-invoice-details: memo/footer backfill failed', bfErr)
         }
       }
     }
@@ -176,6 +184,7 @@ serve(async (req) => {
       customer_email: typeof cemail === 'string' && cemail.trim() ? cemail.trim() : null,
       seller_name,
       memo: memoFromStripe,
+      footer: footerFromStripe,
       lines,
     })
   } catch (e) {

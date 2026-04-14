@@ -172,24 +172,34 @@ export function checkSupabaseError<T>(
   }
 }
 
+/** Shape returned by awaited Supabase `.from` / `.rpc` builders (thenables). */
+export type SupabaseClientResult<T> = {
+  data: T | null
+  error: { message: string; code?: string; details?: string } | null
+}
+
 /**
  * Wraps a Supabase operation with retry logic and error checking
- * 
- * @param operation - The Supabase operation to execute
+ *
+ * @param operation - Must return a thenable that resolves to `{ data, error }` (e.g. `() => supabase.from(...).select()` or `() => supabase.rpc(...)`).
  * @param operationName - Description for error messages
  * @param options - Retry configuration
  * @returns Promise resolving to the operation data
- * 
+ *
  * @example
  * ```ts
  * const users = await withSupabaseRetry(
  *   () => supabase.from('users').select('*'),
  *   'fetch users'
  * )
+ * const row = await withSupabaseRetry(
+ *   () => supabase.rpc('my_fn', { p_id: id }),
+ *   'run my_fn'
+ * )
  * ```
  */
 export async function withSupabaseRetry<T>(
-  operation: () => Promise<{ data: T | null; error: { message: string; code?: string; details?: string } | null }>,
+  operation: () => PromiseLike<SupabaseClientResult<T>>,
   operationName: string,
   options: RetryOptions = {}
 ): Promise<T> {

@@ -664,13 +664,13 @@ export function DashboardMyTimeDayEditorModal({
         const [jobsData, bidsData] = await Promise.all([
           needJobs.length > 0
             ? withSupabaseRetry(
-                async () => supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: needJobs }),
+                () => supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: needJobs }),
                 'my time editor job labels'
               )
             : Promise.resolve([]),
           needBids.length > 0
             ? withSupabaseRetry(
-                async () => supabase.rpc('get_bids_by_ids', { p_bid_ids: needBids }),
+                () => supabase.rpc('get_bids_by_ids', { p_bid_ids: needBids }),
                 'my time editor bid labels'
               )
             : Promise.resolve([]),

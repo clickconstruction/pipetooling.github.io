@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react'
 import { useEffect, useRef, useState } from 'react'
+import { useAuth } from '../../hooks/useAuth'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { supabase } from '../../lib/supabase'
@@ -9,6 +10,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { APP_CALENDAR_TZ, denverCalendarDayKey, referenceDateForWorkDateYmd } from '../../utils/dateUtils'
 import { formatStripeCents } from '../../lib/stripeInvoicePreview'
 import { StripeInvoiceSharePanel } from './StripeInvoiceSharePanel'
+import { StripeInvoiceSendFromStripeButton } from './StripeInvoiceSendFromStripeButton'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 type JobsLedgerPayment = Database['public']['Tables']['jobs_ledger_payments']['Row']
@@ -35,6 +37,7 @@ type StripeInvoiceDetailsSuccess = {
   customer_email: string | null
   seller_name: string | null
   memo: string | null
+  footer: string | null
   lines: StripeInvoiceLineDetail[]
 }
 
@@ -110,6 +113,7 @@ function parseStripeInvoiceDetailsResponse(raw: unknown): StripeInvoiceDetailsSu
     customer_email: str('customer_email'),
     seller_name: str('seller_name'),
     memo: str('memo'),
+    footer: str('footer'),
     lines,
   }
 }
@@ -247,12 +251,16 @@ export function HostedStripeBillPanel({
   /** Runs after a successful `get-stripe-invoice-details` (server backfill has returned). */
   onAfterStripeDetailsLoaded?: () => void
 }) {
+  const { role: authRole } = useAuth()
+  const stripeModeForBilling = authRole === 'dev' ? getBillingStripeModePref() : 'live'
+
   const onLoadedRef = useRef(onAfterStripeDetailsLoaded)
   onLoadedRef.current = onAfterStripeDetailsLoaded
 
   const [stripeDetail, setStripeDetail] = useState<StripeInvoiceDetailsSuccess | null>(null)
   const [stripeLoading, setStripeLoading] = useState(false)
   const [stripeError, setStripeError] = useState<string | null>(null)
+  const [stripeDetailsGeneration, setStripeDetailsGeneration] = useState(0)
 
   const inv = invoice
   const job = invoice.job
@@ -276,6 +284,7 @@ export function HostedStripeBillPanel({
     }
 
     let cancelled = false
+    const ac = new AbortController()
     setStripeDetail(null)
     setStripeError(null)
     setStripeLoading(true)
@@ -295,12 +304,13 @@ export function HostedStripeBillPanel({
         const { data: invokeData, error: fnErr } = await supabase.functions.invoke('get-stripe-invoice-details', {
           body: {
             jobs_ledger_invoice_id: inv.id,
-            ...stripeModeInvokeBody(getBillingStripeModePref()),
+            ...stripeModeInvokeBody(stripeModeForBilling),
           },
           headers: { Authorization: `Bearer ${token}` },
+          signal: ac.signal,
         })
 
-        if (cancelled) return
+        if (ac.signal.aborted || cancelled) return
 
         const data = invokeData as Record<string, unknown> | null
         if (fnErr) {
@@ -324,19 +334,21 @@ export function HostedStripeBillPanel({
           setStripeDetail(null)
         }
       } catch (e) {
-        if (!cancelled) {
+        if (e instanceof DOMException && e.name === 'AbortError') return
+        if (!cancelled && !ac.signal.aborted) {
           setStripeError(formatErrorMessage(e, 'Could not load Stripe invoice'))
           setStripeDetail(null)
         }
       } finally {
-        if (!cancelled) setStripeLoading(false)
+        if (!cancelled && !ac.signal.aborted) setStripeLoading(false)
       }
     })()
 
     return () => {
       cancelled = true
+      ac.abort()
     }
-  }, [inv.id, isStripeHosted])
+  }, [inv.id, isStripeHosted, stripeModeForBilling, stripeDetailsGeneration])
 
   const fallbackPaidUnixSecFromApp = fallbackPaidUnixSecFromJobPayments(job.payments, invoice.id)
 
@@ -427,6 +439,12 @@ export function HostedStripeBillPanel({
                     <tr>
                       <td style={metaLabel}>Memo</td>
                       <td style={metaValue}>{stripeDetail.memo}</td>
+                    </tr>
+                  ) : null}
+                  {stripeDetail.footer ? (
+                    <tr>
+                      <td style={metaLabel}>Footer</td>
+                      <td style={metaValue}>{stripeDetail.footer}</td>
                     </tr>
                   ) : null}
                 </tbody>
@@ -599,6 +617,17 @@ export function HostedStripeBillPanel({
             paymentLinkActionsAsIcons
             unboxed
           />
+          {stripeDetail && !stripeError && stripeDetail.amount_remaining > 0 ? (
+            <StripeInvoiceSendFromStripeButton
+              jobsLedgerInvoiceId={inv.id}
+              stripeInvoiceId={stripeId}
+              customerEmail={stripeDetail.customer_email ?? job.customer_email}
+              stripeModeForBilling={stripeModeForBilling}
+              onSent={() => setStripeDetailsGeneration((g) => g + 1)}
+              compact
+              recordedLastSendAt={inv.sent_to_customer_at}
+            />
+          ) : null}
         </>
       ) : (
         <div
