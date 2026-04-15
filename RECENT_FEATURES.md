@@ -12,11 +12,17 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.306 → v2.4"
+version_range: "v2.308 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.308)"
+    line: ~959
+    description: "Quickfill Schedule: hide assistants/estimators toggle + fetchUsersTabRosterForScheduleDispatchHub (id, role)"
+  - name: "Latest Version (v2.307)"
+    line: ~972
+    description: "Quickfill Schedule: client-side search by person or job (filteredSortedUsers, Clear)"
   - name: "Latest Version (v2.306)"
-    line: ~953
+    line: ~985
     description: "Quickfill Schedule section: per-user read-only DispatchAddBlockTimeRange day preview + Schedule Dispatch link"
   - name: "Latest Version (v2.305)"
     line: ~983
@@ -745,6 +751,8 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.308 — Quickfill **Schedule**: hide assistants and estimators (`fetchUsersTabRosterForScheduleDispatchHub`)](#latest-updates-v2308)
+**New:** [v2.307 — Quickfill **Schedule**: search by person or job (client-side filter)](#latest-updates-v2307)
 **New:** [v2.306 — Quickfill **Schedule**: per-user read-only dispatch timeline + day nav](#latest-updates-v2306)
 **New:** [v2.305 — **Sub Labor** modal: crew search, **Add Sub**, line items + action bar UX](#latest-updates-v2305)
 **New:** [v2.304 — **Send Email invoice from Stripe?** modal: recent sends list (DB log)](#latest-updates-v2304)
@@ -950,6 +958,27 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.308)
+
+**Date**: 2026-04-15
+
+### Quickfill **Schedule** — hide assistants and estimators (`scheduleDispatchHub.ts`, `QuickfillScheduleSection.tsx`)
+
+- **`fetchUsersTabRosterForScheduleDispatchHub`** — same hub cohort as **`fetchUsersTabUserIdsForScheduleDispatchHub`** with **`id`** + **`role`**; Quickfill loads roster via this helper; blocks still fetched for the **full** id list.
+- **Toggle** — **Hide assistants and estimators** (`aria-pressed`, **`localStorage`** **`quickfill_schedule_hide_assistant_estimator`**); **`rosterFilteredUsers`** then search; empty copy when everyone is filtered out; section **metric** unchanged (full **`sortedUsers`**).
+
+---
+
+## Latest Updates (v2.307)
+
+**Date**: 2026-04-15
+
+### Quickfill **Schedule** — search by person or job (`QuickfillScheduleSection.tsx`)
+
+- **`type="search"`** above day nav; **`filteredSortedUsers`** — case-insensitive substring on display name or any block’s hub job title (**`jobTitleById.get(job_id) ?? formatScheduleDispatchHubJobTitle(null, null)`**); **Clear** when non-empty; **No people match this search.** when the roster is non-empty but the filter matches nobody. Section **metric** unchanged (roster users with no blocks that day).
+
 ---
 
 ## Latest Updates (v2.306)

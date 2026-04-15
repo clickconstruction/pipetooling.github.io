@@ -109,6 +109,58 @@ export async function fetchUsersTabUserIdsForScheduleDispatchHub(
   }
 }
 
+export type ScheduleDispatchHubRosterRow = { id: string; role: string }
+
+/** Same cohort as {@link fetchUsersTabUserIdsForScheduleDispatchHub}, with `role` for each user (e.g. Quickfill Schedule filters). */
+export async function fetchUsersTabRosterForScheduleDispatchHub(
+  includeDevUsers: boolean,
+): Promise<{ data: ScheduleDispatchHubRosterRow[]; error: string | null }> {
+  try {
+    const baseRows = await withSupabaseRetry(
+      async () =>
+        await supabase
+          .from('users')
+          .select('id, role')
+          .is('archived_at', null)
+          .in('role', [
+            'assistant',
+            'master_technician',
+            'subcontractor',
+            'estimator',
+            'primary',
+            'superintendent',
+          ]),
+      'fetchUsersTabRosterForScheduleDispatchHub',
+    )
+    const seen = new Set<string>()
+    const out: ScheduleDispatchHubRosterRow[] = []
+    for (const row of (baseRows ?? []) as Array<{ id: string; role: string | null }>) {
+      const id = row.id
+      const roleVal = row.role
+      if (!id || seen.has(id) || typeof roleVal !== 'string' || roleVal === '') continue
+      seen.add(id)
+      out.push({ id, role: roleVal })
+    }
+    if (includeDevUsers) {
+      const devRows = await withSupabaseRetry(
+        async () =>
+          await supabase.from('users').select('id, role').is('archived_at', null).eq('role', 'dev'),
+        'fetchUsersTabRosterForScheduleDispatchHubDev',
+      )
+      for (const row of (devRows ?? []) as Array<{ id: string; role: string | null }>) {
+        const id = row.id
+        const roleVal = row.role
+        if (!id || seen.has(id) || typeof roleVal !== 'string' || roleVal === '') continue
+        seen.add(id)
+        out.push({ id, role: roleVal })
+      }
+    }
+    return { data: out, error: null }
+  } catch (e) {
+    return { data: [], error: formatErrorMessage(e) }
+  }
+}
+
 export type JobScheduleBlockWeekSummaryRow = {
   job_id: string
   work_date: string

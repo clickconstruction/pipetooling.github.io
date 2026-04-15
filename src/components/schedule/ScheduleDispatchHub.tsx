@@ -25,11 +25,17 @@ import {
   formatScheduleDispatchVisibleDateRange,
   referenceDateForWorkDateYmd,
 } from '../../utils/dateUtils'
+import { QuickfillScheduleSection } from '../quickfill/QuickfillScheduleSection'
 import { ScheduleDispatchPlusCopyMenu } from './ScheduleDispatchPlusCopyMenu'
 import { ScheduleDispatchWeekNav } from './ScheduleDispatchWeekNav'
 import type { ScheduleDispatchCardPlacementMode } from './ScheduleDispatchGrid'
-
-const SCHEDULE_DISPATCH_TODAY_COLUMN_BG = '#fefce8'
+import {
+  SCHEDULE_DISPATCH_TODAY_COLUMN_BG,
+  scheduleDispatchDayColumnCellIdleBg,
+  scheduleDispatchDayColumnHeaderStyle,
+  scheduleDispatchDayColumnJobsSummaryCellBg,
+  useScrollScheduleDispatchColumnIntoView,
+} from '../../lib/scheduleDispatchColumnFocus'
 
 const hubExpectedManpowerSrOnly: CSSProperties = {
   position: 'absolute',
@@ -89,6 +95,8 @@ type HubJobsPanelProps = {
   onHideWeekendChange: (hide: boolean) => void
   onOpenJob: (jobId: string) => void
   scheduleTodayYmd: string
+  columnFocusDayYmd: string
+  columnScrollKey: string
 }
 
 function HubJobsPanel({
@@ -101,7 +109,17 @@ function HubJobsPanel({
   onHideWeekendChange,
   onOpenJob,
   scheduleTodayYmd,
+  columnFocusDayYmd,
+  columnScrollKey,
 }: HubJobsPanelProps) {
+  const jobsScrollRef = useRef<HTMLDivElement>(null)
+  useScrollScheduleDispatchColumnIntoView({
+    columnFocusDayYmd,
+    loading,
+    scrollRootRef: jobsScrollRef,
+    scrollKey: columnScrollKey,
+  })
+
   const [search, setSearch] = useState('')
   const [onlyWithBlocks, setOnlyWithBlocks] = useState(true)
 
@@ -161,7 +179,7 @@ function HubJobsPanel({
 
       {loading ? <p style={{ color: '#6b7280' }}>Loading…</p> : null}
 
-      <div style={{ overflowX: 'auto' }}>
+      <div ref={jobsScrollRef} style={{ overflowX: 'auto' }}>
         <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.8125rem' }}>
           <thead>
             <tr>
@@ -192,11 +210,12 @@ function HubJobsPanel({
               {visibleDayKeys.map((dk) => (
                 <th
                   key={dk}
+                  data-schedule-column-day={dk}
                   style={{
                     textAlign: 'center',
                     padding: '0.35rem',
                     border: '1px solid #e5e7eb',
-                    background: dk === scheduleTodayYmd ? SCHEDULE_DISPATCH_TODAY_COLUMN_BG : '#f3f4f6',
+                    ...scheduleDispatchDayColumnHeaderStyle(dk, { scheduleTodayYmd, columnFocusDayYmd }, '#f3f4f6'),
                     fontSize: '0.75rem',
                     minWidth: 88,
                   }}
@@ -264,7 +283,10 @@ function HubJobsPanel({
                         padding: '0.35rem',
                         border: '1px solid #e5e7eb',
                         color: '#4b5563',
-                        background: dk === scheduleTodayYmd ? SCHEDULE_DISPATCH_TODAY_COLUMN_BG : undefined,
+                        background: scheduleDispatchDayColumnJobsSummaryCellBg(dk, {
+                          scheduleTodayYmd,
+                          columnFocusDayYmd,
+                        }),
                       }}
                     >
                       {r.byDay[dk] ?? '—'}
@@ -625,6 +647,7 @@ function HubPeopleDayCell({
   personUserId,
   workDate,
   scheduleTodayYmd,
+  columnFocusDayYmd,
   cellBlocks,
   canEdit,
   cardPlacementMode,
@@ -652,6 +675,7 @@ function HubPeopleDayCell({
   personUserId: string
   workDate: string
   scheduleTodayYmd: string
+  columnFocusDayYmd: string
   cellBlocks: JobScheduleBlockRow[]
   canEdit: boolean
   cardPlacementMode: ScheduleDispatchCardPlacementMode | null
@@ -678,7 +702,10 @@ function HubPeopleDayCell({
 }) {
   const droppableId = scheduleDispatchCellDroppableId(workDate, personUserId)
   const { isOver, setNodeRef } = useDroppable({ id: droppableId })
-  const idleBg = workDate === scheduleTodayYmd ? SCHEDULE_DISPATCH_TODAY_COLUMN_BG : '#fafafa'
+  const idleBg = scheduleDispatchDayColumnCellIdleBg(workDate, {
+    scheduleTodayYmd,
+    columnFocusDayYmd,
+  })
   const assignJobPickingActive = hubAssignJobPlacement != null && canEdit
   const placementPickingActive = cardPlacementMode != null && canEdit
   const linkedWrongDay =
@@ -872,6 +899,8 @@ type HubPeoplePanelProps = {
   onHubMultiCellAddToggle?: (personUserId: string, workDate: string) => void
   onRequestHubAddJob?: () => void
   onRequestHubMultiCellAddMode?: () => void
+  columnFocusDayYmd: string
+  columnScrollKey: string
 }
 
 function HubPeoplePanel({
@@ -885,6 +914,8 @@ function HubPeoplePanel({
   getJobDisplayTitle,
   groupMemberCountByGroupId,
   scheduleTodayYmd,
+  columnFocusDayYmd,
+  columnScrollKey,
   canEdit,
   loading,
   jobsError,
@@ -918,6 +949,14 @@ function HubPeoplePanel({
   onRequestHubAddJob,
   onRequestHubMultiCellAddMode,
 }: HubPeoplePanelProps) {
+  const peopleScrollRef = useRef<HTMLDivElement>(null)
+  useScrollScheduleDispatchColumnIntoView({
+    columnFocusDayYmd,
+    loading,
+    scrollRootRef: peopleScrollRef,
+    scrollKey: columnScrollKey,
+  })
+
   const [search, setSearch] = useState('')
   const [onlyWithBlocksThisWeek, setOnlyWithBlocksThisWeek] = useState(false)
   const [expectedManpowerByJobSectionCollapsed, setExpectedManpowerByJobSectionCollapsed] = useState(false)
@@ -1138,7 +1177,7 @@ function HubPeoplePanel({
 
       {loading ? <p style={{ color: '#6b7280' }}>Loading…</p> : null}
 
-      <div style={{ overflowX: 'auto' }}>
+      <div ref={peopleScrollRef} style={{ overflowX: 'auto' }}>
         <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.8125rem' }}>
           <thead>
             <tr>
@@ -1159,11 +1198,12 @@ function HubPeoplePanel({
               {visibleDayKeys.map((dk) => (
                 <th
                   key={dk}
+                  data-schedule-column-day={dk}
                   style={{
                     textAlign: 'center',
                     padding: '0.35rem',
                     border: '1px solid #e5e7eb',
-                    background: dk === scheduleTodayYmd ? SCHEDULE_DISPATCH_TODAY_COLUMN_BG : '#f3f4f6',
+                    ...scheduleDispatchDayColumnHeaderStyle(dk, { scheduleTodayYmd, columnFocusDayYmd }, '#f3f4f6'),
                     fontSize: '0.75rem',
                     minWidth: 104,
                   }}
@@ -1219,6 +1259,7 @@ function HubPeoplePanel({
                         personUserId={person.userId}
                         workDate={dk}
                         scheduleTodayYmd={scheduleTodayYmd}
+                        columnFocusDayYmd={columnFocusDayYmd}
                         cellBlocks={cellBlocks}
                         canEdit={canEdit}
                         cardPlacementMode={cardPlacementMode}
@@ -1715,13 +1756,15 @@ type Props = {
   hideWeekend: boolean
   onHideWeekendChange: (hide: boolean) => void
   weekNavDateRangeOverride?: string
+  /** URL `day` when in the visible week; column tint + scroll. */
+  columnFocusDayYmd?: string
   /** Sorted full list (before search / filter). */
   rows: ScheduleDispatchHubMergedRow[]
   loading: boolean
   jobsError: string | null
   summariesError: string | null
-  hubTab: 'jobs' | 'people'
-  onHubTabChange: (t: 'jobs' | 'people') => void
+  hubTab: 'jobs' | 'people' | 'day'
+  onHubTabChange: (t: 'jobs' | 'people' | 'day') => void
   personDayBlocks: Map<string, JobScheduleBlockRow[]>
   allPeopleRows: { userId: string; displayName: string }[]
   userIdsWithBlocksThisWeek: ReadonlySet<string>
@@ -1794,6 +1837,7 @@ export function ScheduleDispatchHub({
   hideWeekend,
   onHideWeekendChange,
   weekNavDateRangeOverride,
+  columnFocusDayYmd = '',
   rows,
   loading,
   jobsError,
@@ -1839,6 +1883,9 @@ export function ScheduleDispatchHub({
   onHubMultiCellAddToggle,
   onRequestHubMultiCellAddMode,
 }: Props) {
+  const hubJobsColumnScrollKey = `${weekStart}-${columnFocusDayYmd}-jobs-${hubTab}`
+  const hubPeopleColumnScrollKey = `${weekStart}-${columnFocusDayYmd}-people-${hubTab}`
+
   return (
     <div style={{ padding: '1rem 1.25rem', maxWidth: '100%' }}>
       <ScheduleDispatchWeekNav
@@ -1891,9 +1938,30 @@ export function ScheduleDispatchHub({
         >
           Jobs
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={hubTab === 'day'}
+          onClick={() => onHubTabChange('day')}
+          style={{
+            padding: '0.5rem 0.9rem',
+            fontSize: '0.875rem',
+            border: 'none',
+            borderBottom: hubTab === 'day' ? '2px solid #2563eb' : '2px solid transparent',
+            marginBottom: -3,
+            background: 'none',
+            cursor: 'pointer',
+            color: hubTab === 'day' ? '#1d4ed8' : '#6b7280',
+            fontWeight: hubTab === 'day' ? 600 : 400,
+          }}
+        >
+          Day
+        </button>
       </div>
 
-      {hubTab === 'jobs' ? (
+      {hubTab === 'day' ? (
+        <QuickfillScheduleSection />
+      ) : hubTab === 'jobs' ? (
         <HubJobsPanel
           rows={rows}
           loading={loading}
@@ -1904,6 +1972,8 @@ export function ScheduleDispatchHub({
           onHideWeekendChange={onHideWeekendChange}
           onOpenJob={onOpenJob}
           scheduleTodayYmd={scheduleTodayYmd}
+          columnFocusDayYmd={columnFocusDayYmd}
+          columnScrollKey={hubJobsColumnScrollKey}
         />
       ) : (
         <HubPeoplePanel
@@ -1917,6 +1987,8 @@ export function ScheduleDispatchHub({
           getJobDisplayTitle={getJobDisplayTitle}
           groupMemberCountByGroupId={groupMemberCountByGroupId}
           scheduleTodayYmd={scheduleTodayYmd}
+          columnFocusDayYmd={columnFocusDayYmd}
+          columnScrollKey={hubPeopleColumnScrollKey}
           canEdit={canEdit}
           loading={loading}
           jobsError={jobsError}

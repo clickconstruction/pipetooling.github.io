@@ -1,5 +1,10 @@
 import type { CSSProperties, KeyboardEvent, MouseEvent } from 'react'
 import { useRef } from 'react'
+import {
+  scheduleDispatchDayColumnCellIdleBg,
+  scheduleDispatchDayColumnHeaderStyle,
+  useScrollScheduleDispatchColumnIntoView,
+} from '../../lib/scheduleDispatchColumnFocus'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { useToastContext } from '../../contexts/ToastContext'
 import { ScheduleDispatchLinkedChainsIcon } from '../icons/ScheduleDispatchLinkedChainsIcon'
@@ -22,9 +27,6 @@ function formatDayHeader(dateKey: string): { dow: string; md: string } {
 function cellKey(assigneeUserId: string, workDate: string): string {
   return `${assigneeUserId}\t${workDate}`
 }
-
-/** Light yellow column tint for company “today” (`denverCalendarDayKey`). */
-const SCHEDULE_DISPATCH_TODAY_COLUMN_BG = '#fefce8'
 
 const scheduleGridSalarySuffix: CSSProperties = {
   marginLeft: '0.15rem',
@@ -276,6 +278,7 @@ function ScheduleDispatchCell({
   assigneeUserId,
   workDate,
   scheduleTodayYmd,
+  columnFocusDayYmd,
   blocks,
   cardPlacementMode,
   placementSourceWorkDate,
@@ -292,6 +295,7 @@ function ScheduleDispatchCell({
   assigneeUserId: string
   workDate: string
   scheduleTodayYmd: string
+  columnFocusDayYmd: string
   blocks: JobScheduleBlockRow[]
   cardPlacementMode: ScheduleDispatchCardPlacementMode | null
   placementSourceWorkDate: string | null
@@ -307,7 +311,10 @@ function ScheduleDispatchCell({
 }) {
   const droppableId = scheduleDispatchCellDroppableId(workDate, assigneeUserId)
   const { isOver, setNodeRef } = useDroppable({ id: droppableId })
-  const idleBg = workDate === scheduleTodayYmd ? SCHEDULE_DISPATCH_TODAY_COLUMN_BG : '#fafafa'
+  const idleBg = scheduleDispatchDayColumnCellIdleBg(workDate, {
+    scheduleTodayYmd,
+    columnFocusDayYmd,
+  })
   const placementPickingActive = cardPlacementMode != null && canEdit
   const linkedWrongDay =
     cardPlacementMode?.variant === 'linked' &&
@@ -390,6 +397,8 @@ export type ScheduleDispatchGridProps = {
   hideWeekend: boolean
   onHideWeekendChange: (hide: boolean) => void
   weekNavDateRangeOverride?: string
+  /** URL `day` when in the visible week; column tint + scroll. */
+  columnFocusDayYmd?: string
   cardPlacementMode: ScheduleDispatchCardPlacementMode | null
   placementSourceWorkDate: string | null
   plusMenuBlockId: string | null
@@ -422,6 +431,7 @@ export function ScheduleDispatchGrid({
   hideWeekend,
   onHideWeekendChange,
   weekNavDateRangeOverride,
+  columnFocusDayYmd = '',
   cardPlacementMode,
   placementSourceWorkDate,
   plusMenuBlockId,
@@ -445,6 +455,14 @@ export function ScheduleDispatchGrid({
   onAddUserToJobRoster,
   addToJobBusyUserId = null,
 }: ScheduleDispatchGridProps) {
+  const scrollRootRef = useRef<HTMLDivElement>(null)
+  useScrollScheduleDispatchColumnIntoView({
+    columnFocusDayYmd,
+    loading,
+    scrollRootRef,
+    scrollKey: `${weekStart}-${columnFocusDayYmd}`,
+  })
+
   const sortedMembers = [...teamMembers].sort((a, b) => {
     const an = (a.name ?? '').trim().toLowerCase()
     const bn = (b.name ?? '').trim().toLowerCase()
@@ -452,7 +470,7 @@ export function ScheduleDispatchGrid({
   })
 
   return (
-    <div style={{ width: '100%', overflowX: 'auto' }}>
+    <div ref={scrollRootRef} style={{ width: '100%', overflowX: 'auto' }}>
       <ScheduleDispatchWeekNav
         weekStart={weekStart}
         onWeekShift={onWeekShift}
@@ -483,13 +501,16 @@ export function ScheduleDispatchGrid({
             </th>
             {visibleDayKeys.map((dk) => {
               const { dow, md } = formatDayHeader(dk)
-              const thBg = dk === scheduleTodayYmd ? SCHEDULE_DISPATCH_TODAY_COLUMN_BG : '#f3f4f6'
               return (
                 <th
                   key={dk}
                   title={dk}
+                  data-schedule-column-day={dk}
                   style={{
-                    background: thBg,
+                    ...scheduleDispatchDayColumnHeaderStyle(dk, {
+                      scheduleTodayYmd,
+                      columnFocusDayYmd,
+                    }, '#f3f4f6'),
                     border: '1px solid #e5e7eb',
                     padding: '0.5rem',
                     textAlign: 'center',
@@ -575,6 +596,7 @@ export function ScheduleDispatchGrid({
                     assigneeUserId={m.user_id}
                     workDate={dk}
                     scheduleTodayYmd={scheduleTodayYmd}
+                    columnFocusDayYmd={columnFocusDayYmd}
                     blocks={blocksByCell.get(cellKey(m.user_id, dk)) ?? []}
                     cardPlacementMode={cardPlacementMode}
                     placementSourceWorkDate={placementSourceWorkDate}

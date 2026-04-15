@@ -16,6 +16,7 @@ import { HoursSection } from '../components/quickfill/HoursSection'
 import { QuickfillPeopleHoursNewSection } from '../components/quickfill/QuickfillPeopleHoursNewSection'
 import { QuickfillEmailInboxSection } from '../components/quickfill/QuickfillEmailInboxSection'
 import { QuickfillTextsSection } from '../components/quickfill/QuickfillTextsSection'
+import { QuickfillPhysicalInboxSection } from '../components/quickfill/QuickfillPhysicalInboxSection'
 import { QuickfillOfficeSection } from '../components/quickfill/QuickfillOfficeSection'
 import { QuickfillScheduleSection } from '../components/quickfill/QuickfillScheduleSection'
 import { DispatchInboxSection } from '../components/DispatchInboxSection'
@@ -52,6 +53,7 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-schedule', sectionId: 'schedule', label: 'Schedule' },
   { id: 'quickfill-email-inbox', sectionId: 'email-inbox', label: 'Email' },
   { id: 'quickfill-texts', sectionId: 'texts', label: 'Texts' },
+  { id: 'quickfill-physical-inbox', sectionId: 'physical-inbox', label: 'Physical inbox' },
   { id: 'quickfill-office-leaving', sectionId: 'office-leaving', label: 'Office Leaving' },
 ]
 
@@ -914,6 +916,30 @@ function QuickfillPage() {
                 border: BUTTON_BORDER[getButtonColor(sectionMarks['texts']?.marked_at ?? null)],
               }}
               onConfirmMark={(note) => void markSectionUpToDate('texts', { noteText: note })}
+            />
+          </QuickfillSectionWrapper>
+        )
+      case 'physical-inbox':
+        return (
+          <QuickfillSectionWrapper
+            id={id}
+            sectionId={sectionId}
+            label={label}
+            withTopDivider={withTopDivider}
+            color={getButtonColor(sectionMarks['physical-inbox']?.marked_at ?? null)}
+            collapsed={isCollapsed('physical-inbox') && !forceExpandedSections.has('physical-inbox')}
+            mark={sectionMarks['physical-inbox']}
+            omitDefaultMarkButton
+            onMarkUpToDate={() => undefined}
+            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'physical-inbox']))}
+            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'physical-inbox', label: 'Physical inbox' })}
+          >
+            <QuickfillPhysicalInboxSection
+              markButtonPalette={{
+                bg: BUTTON_BG[getButtonColor(sectionMarks['physical-inbox']?.marked_at ?? null)],
+                border: BUTTON_BORDER[getButtonColor(sectionMarks['physical-inbox']?.marked_at ?? null)],
+              }}
+              onConfirmMark={(note) => void markSectionUpToDate('physical-inbox', { noteText: note })}
             />
           </QuickfillSectionWrapper>
         )

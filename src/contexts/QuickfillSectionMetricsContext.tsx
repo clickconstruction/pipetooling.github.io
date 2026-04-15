@@ -70,20 +70,21 @@ export function useQuickfillSectionMetric(sectionId: string): QuickfillSectionMe
   return metrics[sectionId] ?? { count: null, loading: false, onOutstandingClick: undefined }
 }
 
-/** Registers backlog count for a Quickfill section; clears on unmount. */
+/** Registers backlog count for a Quickfill section; clears on unmount. No-ops when used outside a provider (e.g. Schedule Dispatch Day tab). */
 export function useReportQuickfillSectionMetric(
   sectionId: string,
   count: number | null,
   loading: boolean,
   onOutstandingClick?: (() => void) | null,
 ): void {
-  const { setSectionMetric } = useQuickfillSectionMetricsContext()
+  const ctx = useContext(QuickfillSectionMetricsContext)
   useEffect(() => {
-    setSectionMetric(sectionId, {
+    if (!ctx) return
+    ctx.setSectionMetric(sectionId, {
       count,
       loading,
       onOutstandingClick: onOutstandingClick ?? undefined,
     })
-    return () => setSectionMetric(sectionId, null)
-  }, [sectionId, count, loading, onOutstandingClick, setSectionMetric])
+    return () => ctx.setSectionMetric(sectionId, null)
+  }, [sectionId, count, loading, onOutstandingClick, ctx])
 }

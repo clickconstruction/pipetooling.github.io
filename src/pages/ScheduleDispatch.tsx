@@ -79,6 +79,7 @@ import {
 import { HUB_EXPECTED_MANPOWER_ALL_WEEK } from '../lib/scheduleDispatchExpectedManpower'
 import { supabase } from '../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import { pickDayForScheduleDispatchUrl } from '../lib/scheduleDispatchColumnFocus'
 import {
   companyWeekStartSundayContaining,
   denverCalendarDayKey,
@@ -199,6 +200,7 @@ function AddBlockModal({
       const em = timeInputToMinutesSafe(te)
       return {
         blockId: s.blockId,
+        jobId: s.jobId,
         label: s.label,
         startSlotIndex: dispatchMinutesToSlotIndex(sm),
         endSlotIndex: dispatchMinutesToSlotIndex(em),
@@ -537,7 +539,13 @@ export default function ScheduleDispatch() {
   const [searchParams, setSearchParams] = useSearchParams()
   const jobId = searchParams.get('jobId')?.trim() ?? ''
   const weekRaw = searchParams.get('week')?.trim() ?? ''
-  const hubTabIsJobs = searchParams.get('hubTab') === 'jobs'
+  const dayRaw = searchParams.get('day')?.trim() ?? ''
+  const hubTab = useMemo((): 'people' | 'jobs' | 'day' => {
+    const v = searchParams.get('hubTab')?.trim()
+    if (v === 'jobs') return 'jobs'
+    if (v === 'day') return 'day'
+    return 'people'
+  }, [searchParams])
 
   const defaultWeekStart = useMemo(() => getDefaultWeekRange().start, [])
   const weekStart = useMemo(() => {
@@ -545,6 +553,8 @@ export default function ScheduleDispatch() {
     const n = companyWeekStartSundayContaining(weekRaw)
     return n ?? defaultWeekStart
   }, [weekRaw, defaultWeekStart])
+
+  const [hideWeekend, setHideWeekend] = useState(readScheduleDispatchHideWeekend)
 
   useEffect(() => {
     if (!weekRaw) return
@@ -555,23 +565,33 @@ export default function ScheduleDispatch() {
           const next = new URLSearchParams(prev)
           next.set('jobId', jobId)
           next.set('week', n)
+          const d = prev.get('day')?.trim() ?? ''
+          if (d) {
+            if (getScheduleDispatchVisibleDayKeys(n, hideWeekend).includes(d)) next.set('day', d)
+            else next.delete('day')
+          }
           return next
         }, { replace: true })
       } else {
         setSearchParams((prev) => {
           const next = new URLSearchParams(prev)
           next.set('week', n)
-          if (hubTabIsJobs) next.set('hubTab', 'jobs')
+          const ht = prev.get('hubTab')?.trim()
+          if (ht === 'jobs' || ht === 'day') next.set('hubTab', ht)
           else next.delete('hubTab')
+          const d = prev.get('day')?.trim() ?? ''
+          if (d) {
+            if (getScheduleDispatchVisibleDayKeys(n, hideWeekend).includes(d)) next.set('day', d)
+            else next.delete('day')
+          }
           return next
         }, { replace: true })
       }
     }
-  }, [jobId, weekRaw, setSearchParams, hubTabIsJobs])
+  }, [jobId, weekRaw, setSearchParams, hideWeekend])
 
   const weekEnd = useMemo(() => ymdAddDays(weekStart, 6), [weekStart])
 
-  const [hideWeekend, setHideWeekend] = useState(readScheduleDispatchHideWeekend)
   useEffect(() => {
     try {
       window.localStorage.setItem(SCHEDULE_DISPATCH_HIDE_WEEKEND_STORAGE_KEY, hideWeekend ? '1' : '0')
@@ -598,6 +618,22 @@ export default function ScheduleDispatch() {
     () => getScheduleDispatchVisibleDayKeys(weekStart, hideWeekend),
     [weekStart, hideWeekend],
   )
+  const columnFocusDayYmd = useMemo(
+    () => (dayRaw && visibleDayKeys.includes(dayRaw) ? dayRaw : ''),
+    [dayRaw, visibleDayKeys],
+  )
+
+  useEffect(() => {
+    if (!dayRaw) return
+    if (!visibleDayKeys.includes(dayRaw)) {
+      setSearchParams((prev) => {
+        const n = new URLSearchParams(prev)
+        n.delete('day')
+        return n
+      }, { replace: true })
+    }
+  }, [dayRaw, visibleDayKeys, setSearchParams])
+
   const scheduleTodayYmd = denverCalendarDayKey(Date.now())
   const dispatchWeekNavDateRangeOverride = useMemo(
     () => (hideWeekend ? formatScheduleDispatchVisibleDateRange(visibleDayKeys) : undefined),
@@ -966,7 +1002,7 @@ export default function ScheduleDispatch() {
       placeJobArmKeyRef.current = ''
       return
     }
-    if (hubTabIsJobs) {
+    if (hubTab === 'jobs') {
       setSearchParams((prev) => {
         const n = new URLSearchParams(prev)
         n.set('week', weekStart)
@@ -985,7 +1021,7 @@ export default function ScheduleDispatch() {
     setHubMultiCellAddActive(false)
     setHubMultiCellAddSelection(new Set())
     setHubAssignJobPlacement({ jobId: pj })
-  }, [jobId, weekStart, hubTabIsJobs, hubLoading, searchParams, setSearchParams])
+  }, [jobId, weekStart, hubTab, hubLoading, searchParams, setSearchParams])
 
   const load = useCallback(async () => {
     if (!jobId) return
@@ -1305,7 +1341,7 @@ export default function ScheduleDispatch() {
       if (!canEdit) return
       if (jobId) {
         if (source.job_id !== jobId) return
-      } else if (hubTabIsJobs) {
+      } else if (hubTab !== 'people') {
         showToast('Switch to the People tab to place a copy on the grid.', 'info')
         return
       }
@@ -1323,7 +1359,7 @@ export default function ScheduleDispatch() {
           : ' Solo copies can go on any day in this week.'
       showToast(`Click a team member's day cell to add the copy. Press Esc to cancel.${extra}`, 'info')
     },
-    [canEdit, jobId, hubTabIsJobs, showToast, stripPlaceJobFromUrl],
+    [canEdit, jobId, hubTab, showToast, stripPlaceJobFromUrl],
   )
 
   const onCardPlacementPickCell = useCallback(
@@ -1844,32 +1880,42 @@ export default function ScheduleDispatch() {
       setHubAssignJobPlacement(null)
       placeJobArmKeyRef.current = ''
       const next = ymdAddDays(weekStart, deltaWeeks * 7)
+      const dayKeep = pickDayForScheduleDispatchUrl(dayRaw, next, hideWeekend)
       if (jobId) {
-        setSearchParams({ jobId, week: next }, { replace: false })
+        const p: Record<string, string> = { jobId, week: next }
+        if (dayKeep) p.day = dayKeep
+        setSearchParams(p, { replace: false })
       } else {
         const p: Record<string, string> = { week: next }
-        if (hubTabIsJobs) p.hubTab = 'jobs'
+        if (hubTab === 'jobs') p.hubTab = 'jobs'
+        else if (hubTab === 'day') p.hubTab = 'day'
+        if (dayKeep) p.day = dayKeep
         setSearchParams(p, { replace: false })
       }
     },
-    [jobId, weekStart, setSearchParams, hubTabIsJobs],
+    [jobId, weekStart, setSearchParams, hubTab, dayRaw, hideWeekend],
   )
 
   const goThisWeek = useCallback(() => {
     setHubAssignJobPlacement(null)
     placeJobArmKeyRef.current = ''
     const s = getDefaultWeekRange().start
+    const dayKeep = pickDayForScheduleDispatchUrl(dayRaw, s, hideWeekend)
     if (jobId) {
-      setSearchParams({ jobId, week: s }, { replace: false })
+      const p: Record<string, string> = { jobId, week: s }
+      if (dayKeep) p.day = dayKeep
+      setSearchParams(p, { replace: false })
     } else {
       const p: Record<string, string> = { week: s }
-      if (hubTabIsJobs) p.hubTab = 'jobs'
+      if (hubTab === 'jobs') p.hubTab = 'jobs'
+      else if (hubTab === 'day') p.hubTab = 'day'
+      if (dayKeep) p.day = dayKeep
       setSearchParams(p, { replace: false })
     }
-  }, [jobId, setSearchParams, hubTabIsJobs])
+  }, [jobId, setSearchParams, hubTab, dayRaw, hideWeekend])
 
   const setHubTab = useCallback(
-    (t: 'jobs' | 'people') => {
+    (t: 'jobs' | 'people' | 'day') => {
       if (t === 'jobs') {
         setCardPlacementMode(null)
         setPlusMenuBlockId(null)
@@ -1877,6 +1923,21 @@ export default function ScheduleDispatch() {
         setHubMultiCellAddActive(false)
         setHubMultiCellAddSelection(new Set())
         stripPlaceJobFromUrl()
+      }
+      if (t === 'day') {
+        setCardPlacementMode(null)
+        setPlusMenuBlockId(null)
+        setHubAssignJobPlacement(null)
+        setHubMultiCellAddActive(false)
+        setHubMultiCellAddSelection(new Set())
+        stripPlaceJobFromUrl()
+        setSearchParams((prev) => {
+          const n = new URLSearchParams(prev)
+          n.set('week', weekStart)
+          n.set('hubTab', 'day')
+          return n
+        }, { replace: true })
+        return
       }
       if (t === 'people') {
         setSearchParams((prev) => {
@@ -1899,9 +1960,12 @@ export default function ScheduleDispatch() {
 
   const openJobWeekGrid = useCallback(
     (id: string) => {
-      setSearchParams({ jobId: id, week: weekStart }, { replace: false })
+      const dayKeep = pickDayForScheduleDispatchUrl(dayRaw, weekStart, hideWeekend)
+      const p: Record<string, string> = { jobId: id, week: weekStart }
+      if (dayKeep) p.day = dayKeep
+      setSearchParams(p, { replace: false })
     },
-    [setSearchParams, weekStart],
+    [setSearchParams, weekStart, dayRaw, hideWeekend],
   )
 
   const openHubJobDetail = useCallback(
@@ -2047,11 +2111,12 @@ export default function ScheduleDispatch() {
             hideWeekend={hideWeekend}
             onHideWeekendChange={setHideWeekend}
             weekNavDateRangeOverride={dispatchWeekNavDateRangeOverride}
+            columnFocusDayYmd={columnFocusDayYmd}
             rows={hubMergedRows}
             loading={hubLoading}
             jobsError={hubJobsError}
             summariesError={hubSummariesError}
-            hubTab={hubTabIsJobs ? 'jobs' : 'people'}
+            hubTab={hubTab}
             onHubTabChange={setHubTab}
             personDayBlocks={hubPersonDayBlocks}
             allPeopleRows={hubAllPeopleRows}
@@ -2476,6 +2541,7 @@ export default function ScheduleDispatch() {
           hideWeekend={hideWeekend}
           onHideWeekendChange={setHideWeekend}
           weekNavDateRangeOverride={dispatchWeekNavDateRangeOverride}
+          columnFocusDayYmd={columnFocusDayYmd}
           cardPlacementMode={cardPlacementMode}
           placementSourceWorkDate={placementSourceBlock?.work_date ?? null}
           plusMenuBlockId={plusMenuBlockId}
