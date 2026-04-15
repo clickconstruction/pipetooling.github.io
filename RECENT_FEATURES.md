@@ -12,11 +12,17 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.309 → v2.4"
+version_range: "v2.311 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.311)"
+    line: ~971
+    description: "Bids Pricing price book New/Edit entry: decimal dollars (step 0.01, inputMode decimal)"
+  - name: "Latest Version (v2.310)"
+    line: ~1000
+    description: "Quickfill Schedule/Office/Email/Texts/Physical UX + stale tally Assign modal seed fix; DispatchAddBlockTimeRange session strip sizing"
   - name: "Latest Version (v2.309)"
-    line: ~963
+    line: ~1030
     description: "Quickfill Physical inbox section + Schedule Dispatch hub Day tab (hubTab=day, day= URL focus)"
   - name: "Latest Version (v2.308)"
     line: ~980
@@ -754,6 +760,8 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.311 — Bids **Pricing** price book **New/Edit entry**: **decimal** dollars (`step` 0.01)](#latest-updates-v2311)
+**New:** [v2.310 — Quickfill **Schedule** / **Office** / **Email** / **Texts** / **Physical** UX + **stale tally Assign** input fix](#latest-updates-v2310)
 **New:** [v2.309 — Quickfill **Physical inbox** + Schedule Dispatch hub **Day** tab (`hubTab=day`, `day=`)](#latest-updates-v2309)
 **New:** [v2.308 — Quickfill **Schedule**: hide assistants and estimators (`fetchUsersTabRosterForScheduleDispatchHub`)](#latest-updates-v2308)
 **New:** [v2.307 — Quickfill **Schedule**: search by person or job (client-side filter)](#latest-updates-v2307)
@@ -962,6 +970,31 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.311)
+
+**Date**: 2026-04-15
+
+### Bids **Pricing** — price book **New entry** / **Edit entry** modal ([`Bids.tsx`](src/pages/Bids.tsx))
+
+- **Rough In**, **Top Out**, **Trim Set**, and **Total** number inputs use **`step={0.01}`** (was **`step={1}`**) so values like **5.54** pass HTML5 constraint validation; DB columns were already **`numeric(10,2)`**.
+- Editable stage fields use **`inputMode="decimal"`** for mobile decimal entry.
+
+---
+
+## Latest Updates (v2.310)
+
+**Date**: 2026-04-15
+
+### Quickfill — **Schedule**, **Office**, **inbox sections**, **`DispatchAddBlockTimeRange`**
+
+- **Schedule** ([`QuickfillScheduleSection.tsx`](src/components/quickfill/QuickfillScheduleSection.tsx), [`Quickfill.tsx`](src/pages/Quickfill.tsx)) — Section header **omits** the **N open** line and **Mark history** icon (**`QuickfillSectionWrapper`** **`showOutstandingInHeader={false}`** **`showMarkHistoryButton={false}`** on the **`schedule`** case only). **`useReportQuickfillSectionMetric('schedule', null, false)`** so **`quickfill_section_mark_events.outstanding_count`** is not filled with the old “roster users with no blocks” number. **Conflicts** prompt (*Are there any obvious schedule conflicts?*) is a **centered amber** callout (`role="note"`).
+- **Timeline** ([`DispatchAddBlockTimeRange.tsx`](src/components/schedule/DispatchAddBlockTimeRange.tsx)) — **Secondary** (clock session) bands use the same **bar height** and **label font size** as **occupied** (schedule block) bands; shared constants **`DISPATCH_TIMELINE_STRIP_BAR_HEIGHT_PX`** / **`DISPATCH_TIMELINE_STRIP_LABEL_FONT_SIZE`**; **`SECONDARY_STRIP_EXTRA_BASE_PX`** and **`trackH`** math updated so nothing clips.
+- **Office Arriving / Office Leaving** ([`QuickfillOfficeSection.tsx`](src/components/quickfill/QuickfillOfficeSection.tsx)) — **Dev** **Edit checklist** / **Done editing** for **both** variants (separate **`localStorage`** keys per variant); default off: normal checklist; on: drag reorder, **Remove**, dev add panel. Checklist rows **`alignItems: 'center'`** (checkbox inline with label). **Edit checklist** control **right-aligned** (**`justifyContent: 'flex-end'`**).
+- **Email / Texts / Physical inbox** — Outer **`section`** **grey border** removed ([`QuickfillEmailInboxSection.tsx`](src/components/quickfill/QuickfillEmailInboxSection.tsx), [`QuickfillTextsSection.tsx`](src/components/quickfill/QuickfillTextsSection.tsx), [`QuickfillPhysicalInboxSection.tsx`](src/components/quickfill/QuickfillPhysicalInboxSection.tsx)). **Email** / **Texts** use one **intro row**: *Open Gmail \| Still in inbox - …* / *Open SMS \| Still to text - …* (flex wrap; **`id`** preserved for **`aria-describedby`**).
+- **Stale tally follow-up → Assign to jobs** ([`MercuryTransactionAllocationsModal.tsx`](src/components/MercuryTransactionAllocationsModal.tsx), [`DashboardStaleTallyStaffFollowUpModal.tsx`](src/components/DashboardStaleTallyStaffFollowUpModal.tsx)) — Split-line **seed** **`useEffect`** depends on **`open`**, **`transaction?.id`**, **`initialUserId`** only (not unstable **`transaction`** / **`initialAllocations`** / **`jobLabelById`** refs), so typing in **job splits** is not reset every parent re-render; stale modal memoizes **`parseTallyJobSplitsJson`** and uses **`EMPTY_JOB_LABEL_BY_ID`**.
+
 ---
 
 ## Latest Updates (v2.309)
