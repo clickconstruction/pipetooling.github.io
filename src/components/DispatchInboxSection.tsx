@@ -29,6 +29,9 @@ export type DispatchThreadNoteRow = {
   author: { name: string | null } | null
 }
 
+/** Dismissed archive row: same as inbox row plus when this user dismissed it. */
+export type DispatchInboxDismissedRow = DispatchInboxRow & { dismissed_at: string }
+
 function formatDatetime(iso: string | null): string {
   if (!iso) return 'unknown'
   const date = new Date(iso)
@@ -38,6 +41,8 @@ function formatDatetime(iso: string | null): string {
 }
 
 type DispatchInboxSectionProps = {
+  /** Dashboard: bordered card + collapsible header. Quickfill: body only (parent supplies title). */
+  variant?: 'card' | 'embedded'
   sectionOpen: boolean
   onToggleSection: () => void
   requests: DispatchInboxRow[]
@@ -54,9 +59,11 @@ type DispatchInboxSectionProps = {
   onSubmitNote: (requestId: string) => void
   onSubmitNoteAndClose: (requestId: string) => void
   onDismiss: (requestId: string) => void
+  onOpenDismissedArchive?: () => void
 }
 
 export function DispatchInboxSection({
+  variant = 'card',
   sectionOpen,
   onToggleSection,
   requests,
@@ -73,37 +80,16 @@ export function DispatchInboxSection({
   onSubmitNote,
   onSubmitNoteAndClose,
   onDismiss,
+  onOpenDismissedArchive,
 }: DispatchInboxSectionProps) {
-  return (
-    <div style={{ marginBottom: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
-      <button
-        type="button"
-        onClick={onToggleSection}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.35rem',
-          width: '100%',
-          padding: '0.75rem 1rem',
-          margin: 0,
-          background: '#f9fafb',
-          border: 'none',
-          cursor: 'pointer',
-          fontSize: '1rem',
-          fontWeight: 600,
-          textAlign: 'left',
-        }}
-      >
-        <span aria-hidden>{sectionOpen ? '▼' : '▶'}</span>
-        Dispatch inbox
-        {!loading && requests.length > 0 ? (
-          <span style={{ marginLeft: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: '#2563eb' }}>
-            ({requests.filter((r) => r.status === 'open').length} open)
-          </span>
-        ) : null}
-      </button>
-      {sectionOpen && (
-        <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+  const body = (
+        <div
+          style={
+            variant === 'embedded'
+              ? { padding: 0 }
+              : { padding: '0.75rem 1rem', borderTop: '1px solid #e5e7eb' }
+          }
+        >
           {loading ? (
             <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
           ) : requests.length === 0 ? (
@@ -502,8 +488,67 @@ export function DispatchInboxSection({
               })}
             </ul>
           )}
+          {onOpenDismissedArchive ? (
+            <div
+              style={{
+                marginTop: '0.75rem',
+                paddingTop: '0.75rem',
+                borderTop: '1px solid #e5e7eb',
+              }}
+            >
+              <button
+                type="button"
+                onClick={onOpenDismissedArchive}
+                style={{
+                  padding: '0.4rem 0.75rem',
+                  fontSize: '0.875rem',
+                  background: '#f3f4f6',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  color: '#374151',
+                }}
+              >
+                View dismissed…
+              </button>
+            </div>
+          ) : null}
         </div>
-      )}
+  )
+
+  if (variant === 'embedded') {
+    return sectionOpen ? body : null
+  }
+
+  return (
+    <div style={{ marginBottom: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
+      <button
+        type="button"
+        onClick={onToggleSection}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.35rem',
+          width: '100%',
+          padding: '0.75rem 1rem',
+          margin: 0,
+          background: '#f9fafb',
+          border: 'none',
+          cursor: 'pointer',
+          fontSize: '1rem',
+          fontWeight: 600,
+          textAlign: 'left',
+        }}
+      >
+        <span aria-hidden>{sectionOpen ? '▼' : '▶'}</span>
+        Dispatch inbox
+        {!loading && requests.length > 0 ? (
+          <span style={{ marginLeft: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: '#2563eb' }}>
+            ({requests.filter((r) => r.status === 'open').length} open)
+          </span>
+        ) : null}
+      </button>
+      {sectionOpen && body}
     </div>
   )
 }

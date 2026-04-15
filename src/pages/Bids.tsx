@@ -83,6 +83,11 @@ function isBidEligibleForWorkingBoard(bid: BidWithBuilder, userId: string | unde
   )
 }
 
+function formatBidStaffDisplayName(u: EstimatorUser | null | undefined): string {
+  if (!u) return '—'
+  return (u.name?.trim() || u.email || '—').slice(0, 200)
+}
+
 const BID_DATE_SENT_ATTESTATION_NULLS: Record<
   | 'bid_date_sent_attested_at'
   | 'bid_date_sent_attested_by'
@@ -14961,6 +14966,12 @@ export default function Bids() {
               </div>
               <div style={{ marginBottom: '1rem', fontSize: '0.875rem' }}>
                 <p style={{ margin: '0.25rem 0' }}><strong>Bid Size</strong> {formatCompactCurrency(selectedBidForSubmission.bid_value != null ? Number(selectedBidForSubmission.bid_value) : null)}</p>
+                <p style={{ margin: '0.25rem 0' }}>
+                  <strong>Account Man</strong> {formatBidStaffDisplayName(selectedBidForSubmission.account_manager)}
+                </p>
+                <p style={{ margin: '0.25rem 0' }}>
+                  <strong>Estimator</strong> {formatBidStaffDisplayName(selectedBidForSubmission.estimator)}
+                </p>
                 <p style={{ margin: '1.5rem 0' }} />
                 {(selectedBidForSubmission.customers || selectedBidForSubmission.bids_gc_builders) ? (
                   <>

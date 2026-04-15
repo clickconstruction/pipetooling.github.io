@@ -534,6 +534,12 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 | **Salary schedule (green)**: **`scheduled`** chips / modal workday only when **`work_date` > today**; **unpaid time off (`time_off`)** purple chip **all dates** | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
 | **Recorded time** on Calendar: aggregate own **`clock_sessions`** in visible month (toggle) | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 
+### Quickfill (`/quickfill`)
+
+| Feature | dev | master | assistant | sub | estimator | primary | superintendent |
+|---------|-----|--------|-----------|-----|-----------|---------|----------------|
+| **Schedule** section — read-only per-user day row (**`DispatchAddBlockTimeRange`**, same window as Add schedule block); roster + **`job_schedule_blocks`** for selected **`work_date`**; link to **`/schedule-dispatch`**; **`quickfill_section_marks.section_id` = `schedule`** (shown only for **dev**, **master_technician**, **assistant**, **superintendent** — same gate as **`sectionWouldRenderOnPage`** in **`Quickfill.tsx`**) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ |
+
 ### Settings (selected)
 
 | Feature | dev | master | assistant | sub | estimator | primary | superintendent |

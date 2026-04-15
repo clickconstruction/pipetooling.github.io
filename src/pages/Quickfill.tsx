@@ -16,6 +16,10 @@ import { HoursSection } from '../components/quickfill/HoursSection'
 import { QuickfillPeopleHoursNewSection } from '../components/quickfill/QuickfillPeopleHoursNewSection'
 import { QuickfillEmailInboxSection } from '../components/quickfill/QuickfillEmailInboxSection'
 import { QuickfillTextsSection } from '../components/quickfill/QuickfillTextsSection'
+import { QuickfillOfficeSection } from '../components/quickfill/QuickfillOfficeSection'
+import { QuickfillScheduleSection } from '../components/quickfill/QuickfillScheduleSection'
+import { DispatchInboxSection } from '../components/DispatchInboxSection'
+import { DispatchDismissedItemsModal } from '../components/DispatchDismissedItemsModal'
 import {
   QuickfillSectionMetricsProvider,
   useQuickfillSectionMetric,
@@ -25,6 +29,7 @@ import {
 import { useToastContext } from '../contexts/ToastContext'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { useDispatchInbox } from '../hooks/useDispatchInbox'
 import { useUnpricedFixturesCount } from '../hooks/useUnpricedFixturesCount'
 import { useStaleTallyStaffFollowUp } from '../hooks/useStaleTallyStaffFollowUp'
 import { TALLY_STALE_MIN_AGE_DAYS } from '../lib/tallyStaleMinAgeDays'
@@ -33,6 +38,7 @@ import { withSupabaseRetry } from '../utils/errorHandling'
 
 const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-warnings', sectionId: 'warnings', label: 'Warnings' },
+  { id: 'quickfill-office-arriving', sectionId: 'office-arriving', label: 'Office Arriving' },
   { id: 'quickfill-hours', sectionId: 'hours', label: 'People Hours (Old)' },
   { id: 'quickfill-people-hours-new', sectionId: 'people-hours-new', label: 'People Hours (new)' },
   { id: 'quickfill-banking-sorting', sectionId: 'banking-sorting', label: 'Banking sorting' },
@@ -42,14 +48,25 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-cant-reach', sectionId: 'cant-reach', label: 'Unreachable Prospects' },
   { id: 'quickfill-supply-houses', sectionId: 'supply-houses', label: 'Supply Houses' },
   { id: 'quickfill-jobs-billing', sectionId: 'jobs-billing', label: 'Jobs Billing' },
+  { id: 'quickfill-dispatch-inbox', sectionId: 'dispatch-inbox', label: 'Dispatch inbox' },
+  { id: 'quickfill-schedule', sectionId: 'schedule', label: 'Schedule' },
   { id: 'quickfill-email-inbox', sectionId: 'email-inbox', label: 'Email' },
   { id: 'quickfill-texts', sectionId: 'texts', label: 'Texts' },
+  { id: 'quickfill-office-leaving', sectionId: 'office-leaving', label: 'Office Leaving' },
 ]
 
 const APP_SETTINGS_KEY_QUICKFILL_HIDDEN = 'quickfill_hidden_section_ids'
 const APP_SETTINGS_KEY_QUICKFILL_MIN_HCP = 'quickfill_jobs_billing_min_hcp'
 const APP_SETTINGS_KEY_QUICKFILL_SECTION_ORDER = 'quickfill_section_order'
 const DEFAULT_JOBS_BILLING_MIN_HCP = 406
+
+/** Same cohort as Schedule Dispatch page; gates Quickfill Schedule section visibility. */
+const CAN_USE_SCHEDULE_DISPATCH_FOR_QUICKFILL_SCHEDULE = new Set([
+  'dev',
+  'master_technician',
+  'assistant',
+  'superintendent',
+])
 
 const DEFAULT_SECTION_ORDER_IDS = SECTIONS.map((s) => s.sectionId)
 
@@ -274,6 +291,23 @@ function QuickfillDevSectionSortableRow({
 function QuickfillPage() {
   const { user: authUser, role } = useAuth()
   const { showToast } = useToastContext()
+  const {
+    dispatchInboxEligible,
+    dispatchRequests,
+    dispatchRequestsLoading,
+    dispatchRequestDismissingId,
+    expandedDispatchRequestId,
+    dispatchThreadNotesByRequestId,
+    dispatchNotesLoadingRequestId,
+    dispatchNoteSubmitRequestId,
+    dispatchNoteDraft,
+    setDispatchNoteDraft,
+    toggleExpandDispatchRequest,
+    submitDispatchNote,
+    submitDispatchNoteAndClose,
+    dismissDispatchRequest,
+    fetchDismissedDispatchInboxRows,
+  } = useDispatchInbox()
   const { getOutstandingCount } = useQuickfillSectionMetricsContext()
   const unpricedFixturesCount = useUnpricedFixturesCount()
   const {
@@ -289,6 +323,7 @@ function QuickfillPage() {
   const [jobsBillingMinHcp, setJobsBillingMinHcp] = useState<number>(DEFAULT_JOBS_BILLING_MIN_HCP)
   const [markHistoryModal, setMarkHistoryModal] = useState<{ sectionId: string; label: string } | null>(null)
   const [sectionOrderIds, setSectionOrderIds] = useState<string[]>(() => [...DEFAULT_SECTION_ORDER_IDS])
+  const [dispatchDismissedModalOpen, setDispatchDismissedModalOpen] = useState(false)
 
   const persistHiddenSectionIds = useCallback(async (hidden: Set<string>) => {
     try {
@@ -435,9 +470,13 @@ function QuickfillPage() {
       if (!isSectionVisible(sectionId)) return false
       if (sectionId === 'warnings') return warningsSectionOnPage
       if (sectionId === 'unpriced-fixtures') return unpricedFixturesCount > 0
+      if (sectionId === 'dispatch-inbox') return dispatchInboxEligible
+      if (sectionId === 'schedule') {
+        return role != null && CAN_USE_SCHEDULE_DISPATCH_FOR_QUICKFILL_SCHEDULE.has(role)
+      }
       return true
     },
-    [hiddenSectionIds, warningsSectionOnPage, unpricedFixturesCount],
+    [hiddenSectionIds, warningsSectionOnPage, unpricedFixturesCount, dispatchInboxEligible, role],
   )
 
   const orderedSections = useMemo(() => {
@@ -578,6 +617,40 @@ function QuickfillPage() {
               minAgeDays={TALLY_STALE_MIN_AGE_DAYS}
               onDataChanged={() => void refetchStaleTallyStaffFollowUp()}
             />
+          </QuickfillSectionWrapper>
+        )
+      case 'office-arriving':
+        return (
+          <QuickfillSectionWrapper
+            id={id}
+            sectionId={sectionId}
+            label={label}
+            withTopDivider={withTopDivider}
+            color={getButtonColor(sectionMarks['office-arriving']?.marked_at ?? null)}
+            collapsed={isCollapsed('office-arriving') && !forceExpandedSections.has('office-arriving')}
+            mark={sectionMarks['office-arriving']}
+            onMarkUpToDate={() => void markSectionUpToDate('office-arriving')}
+            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'office-arriving']))}
+            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'office-arriving', label: 'Office Arriving' })}
+          >
+            <QuickfillOfficeSection variant="arriving" />
+          </QuickfillSectionWrapper>
+        )
+      case 'office-leaving':
+        return (
+          <QuickfillSectionWrapper
+            id={id}
+            sectionId={sectionId}
+            label={label}
+            withTopDivider={withTopDivider}
+            color={getButtonColor(sectionMarks['office-leaving']?.marked_at ?? null)}
+            collapsed={isCollapsed('office-leaving') && !forceExpandedSections.has('office-leaving')}
+            mark={sectionMarks['office-leaving']}
+            onMarkUpToDate={() => void markSectionUpToDate('office-leaving')}
+            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'office-leaving']))}
+            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'office-leaving', label: 'Office Leaving' })}
+          >
+            <QuickfillOfficeSection variant="leaving" />
           </QuickfillSectionWrapper>
         )
       case 'hours':
@@ -732,6 +805,68 @@ function QuickfillPage() {
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'jobs-billing', label: 'Jobs Billing' })}
           >
             <JobsBillingReminderSection minHcpNumber={jobsBillingMinHcp} />
+          </QuickfillSectionWrapper>
+        )
+      case 'dispatch-inbox':
+        return (
+          <QuickfillSectionWrapper
+            id={id}
+            sectionId={sectionId}
+            label={label}
+            withTopDivider={withTopDivider}
+            color={getButtonColor(sectionMarks['dispatch-inbox']?.marked_at ?? null)}
+            collapsed={isCollapsed('dispatch-inbox') && !forceExpandedSections.has('dispatch-inbox')}
+            mark={sectionMarks['dispatch-inbox']}
+            onMarkUpToDate={() => void markSectionUpToDate('dispatch-inbox')}
+            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'dispatch-inbox']))}
+            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'dispatch-inbox', label: 'Dispatch inbox' })}
+          >
+            <QuickfillMetricReporter
+              sectionId="dispatch-inbox"
+              count={
+                dispatchRequestsLoading
+                  ? null
+                  : dispatchRequests.filter((r) => r.status === 'open').length
+              }
+              loading={dispatchRequestsLoading}
+            />
+            <DispatchInboxSection
+              variant="embedded"
+              sectionOpen={!isCollapsed('dispatch-inbox') || forceExpandedSections.has('dispatch-inbox')}
+              onToggleSection={() => undefined}
+              requests={dispatchRequests}
+              loading={dispatchRequestsLoading}
+              expandedRequestId={expandedDispatchRequestId}
+              onToggleExpandRequest={toggleExpandDispatchRequest}
+              notesByRequestId={dispatchThreadNotesByRequestId}
+              notesLoadingRequestId={dispatchNotesLoadingRequestId}
+              noteSubmitRequestId={dispatchNoteSubmitRequestId}
+              canAddNotes={dispatchInboxEligible}
+              dispatchRequestDismissingId={dispatchRequestDismissingId}
+              noteDraft={dispatchNoteDraft}
+              onNoteDraftChange={setDispatchNoteDraft}
+              onSubmitNote={submitDispatchNote}
+              onSubmitNoteAndClose={submitDispatchNoteAndClose}
+              onDismiss={dismissDispatchRequest}
+              onOpenDismissedArchive={() => setDispatchDismissedModalOpen(true)}
+            />
+          </QuickfillSectionWrapper>
+        )
+      case 'schedule':
+        return (
+          <QuickfillSectionWrapper
+            id={id}
+            sectionId={sectionId}
+            label={label}
+            withTopDivider={withTopDivider}
+            color={getButtonColor(sectionMarks['schedule']?.marked_at ?? null)}
+            collapsed={isCollapsed('schedule') && !forceExpandedSections.has('schedule')}
+            mark={sectionMarks['schedule']}
+            onMarkUpToDate={() => void markSectionUpToDate('schedule')}
+            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'schedule']))}
+            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'schedule', label: 'Schedule' })}
+          >
+            <QuickfillScheduleSection />
           </QuickfillSectionWrapper>
         )
       case 'email-inbox':
@@ -914,6 +1049,13 @@ function QuickfillPage() {
         sectionId={markHistoryModal?.sectionId ?? null}
         sectionLabel={markHistoryModal?.label ?? null}
       />
+      {authUser?.id && dispatchInboxEligible && (
+        <DispatchDismissedItemsModal
+          open={dispatchDismissedModalOpen}
+          onClose={() => setDispatchDismissedModalOpen(false)}
+          loadRows={fetchDismissedDispatchInboxRows}
+        />
+      )}
     </div>
   )
 }

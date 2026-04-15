@@ -12,11 +12,14 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.305 → v2.4"
+version_range: "v2.306 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.306)"
+    line: ~953
+    description: "Quickfill Schedule section: per-user read-only DispatchAddBlockTimeRange day preview + Schedule Dispatch link"
   - name: "Latest Version (v2.305)"
-    line: ~955
+    line: ~983
     description: "Jobs Sub Labor modal: crew search UX, Add Sub, line items + footer layout, Itemize label, collapsed section headers"
   - name: "Latest Version (v2.304)"
     line: ~970
@@ -742,6 +745,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.306 — Quickfill **Schedule**: per-user read-only dispatch timeline + day nav](#latest-updates-v2306)
 **New:** [v2.305 — **Sub Labor** modal: crew search, **Add Sub**, line items + action bar UX](#latest-updates-v2305)
 **New:** [v2.304 — **Send Email invoice from Stripe?** modal: recent sends list (DB log)](#latest-updates-v2304)
 **New:** [v2.303 — Jobs Stages **Last activity**: Stripe emailed customer + **Resend invoice email**](#latest-updates-v2303)
@@ -946,6 +950,21 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.306)
+
+**Date**: 2026-04-15
+
+### Quickfill **Schedule** — per-person day timeline (`QuickfillScheduleSection.tsx`, `Quickfill.tsx`)
+
+- **Section** — **`schedule`** in **`SECTIONS`** (after **Dispatch inbox**): roster from **`fetchUsersTabUserIdsForScheduleDispatchHub`**, batched **`fetchScheduleBlocksForAssigneesOnDay`**, job labels from **`fetchJobsLedgerForScheduleDispatchHub`**; each row uses **`DispatchAddBlockTimeRange`** (**`compact`**, **`disabled`**) with **`occupiedBands`** and default thumb span from **`defaultNewBlockRangeInFirstGap`** (else **08:00–12:00**).
+- **Day nav** — Previous / Next / Today; company calendar copy via **`denverCalendarDayKey`** / **`formatDenverCalendarDayWithWeekdayAndYear`**.
+- **Link** — **`/schedule-dispatch?week=`** Sunday (**`companyWeekStartSundayContaining`**) for the selected day.
+- **Visibility** — **`sectionWouldRenderOnPage`**: **`dev`**, **`master_technician`**, **`assistant`**, **`superintendent`** (same gate as Schedule Dispatch).
+- **Metric** — **`useReportQuickfillSectionMetric('schedule', …)`**: count of roster users with **no** blocks that day.
+- **Realtime** — **`job_schedule_blocks`** changes for the selected **`work_date`** refetch the section.
+
 ---
 
 ## Latest Updates (v2.305)
