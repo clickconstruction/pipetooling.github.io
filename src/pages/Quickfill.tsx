@@ -867,6 +867,8 @@ function QuickfillPage() {
             onMarkUpToDate={() => void markSectionUpToDate('schedule')}
             onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'schedule']))}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'schedule', label: 'Schedule' })}
+            showOutstandingInHeader={false}
+            showMarkHistoryButton={false}
           >
             <QuickfillScheduleSection />
           </QuickfillSectionWrapper>
@@ -1103,6 +1105,8 @@ function QuickfillSectionWrapper({
   collapsed,
   mark,
   omitDefaultMarkButton = false,
+  showOutstandingInHeader = true,
+  showMarkHistoryButton = true,
   onMarkUpToDate,
   onOpenNow,
   onOpenHistory,
@@ -1116,6 +1120,10 @@ function QuickfillSectionWrapper({
   collapsed: boolean
   mark: { marked_at: string; marked_by?: string; marked_by_name?: string | null } | undefined
   omitDefaultMarkButton?: boolean
+  /** When false, omit the “N open” / backlog column (e.g. Schedule uses a non-backlog metric). */
+  showOutstandingInHeader?: boolean
+  /** When false, omit the Mark history control. */
+  showMarkHistoryButton?: boolean
   onMarkUpToDate: () => void
   onOpenNow: () => void
   onOpenHistory: () => void
@@ -1142,57 +1150,58 @@ function QuickfillSectionWrapper({
         }}
       >
         <h2 style={{ ...QUICKFILL_SECTION_TITLE_STYLE, margin: 0, flex: '1 1 auto', minWidth: '12rem' }}>{label}</h2>
-        {!metric.loading &&
-        metric.count !== null &&
-        metric.count > 0 &&
-        metric.onOutstandingClick ? (
-          <button
-            type="button"
-            onClick={() => metric.onOutstandingClick?.()}
-            title="Show breakdown by day"
-            aria-label={`Show pending approvals by day, ${metric.count} open`}
-            style={{
-              fontSize: '0.875rem',
-              color: '#1d4ed8',
-              fontWeight: 500,
-              background: 'none',
-              border: 'none',
-              padding: 0,
-              cursor: 'pointer',
-              textDecoration: 'underline',
-              textUnderlineOffset: '2px',
-            }}
-          >
-            {outstandingLabel}
-          </button>
-        ) : (
-          <span style={{ fontSize: '0.875rem', color: '#475569', fontWeight: 500 }} title="Outstanding items (when tracked)">
-            {outstandingLabel}
-          </span>
-        )}
+        {showOutstandingInHeader ? (
+          !metric.loading && metric.count !== null && metric.count > 0 && metric.onOutstandingClick ? (
+            <button
+              type="button"
+              onClick={() => metric.onOutstandingClick?.()}
+              title="Show breakdown by day"
+              aria-label={`Show pending approvals by day, ${metric.count} open`}
+              style={{
+                fontSize: '0.875rem',
+                color: '#1d4ed8',
+                fontWeight: 500,
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                textUnderlineOffset: '2px',
+              }}
+            >
+              {outstandingLabel}
+            </button>
+          ) : (
+            <span style={{ fontSize: '0.875rem', color: '#475569', fontWeight: 500 }} title="Outstanding items (when tracked)">
+              {outstandingLabel}
+            </span>
+          )
+        ) : null}
         <span style={{ fontSize: '0.8125rem', color: '#64748b' }} title="Last time this section was marked up to date">
           Last marked: {formatHeaderLastMarked(mark?.marked_at ?? null)}
         </span>
-        <button
-          type="button"
-          onClick={onOpenHistory}
-          title="Mark history"
-          aria-label={`Mark history for ${label}`}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '0.35rem',
-            borderRadius: 6,
-            border: '1px solid #cbd5e1',
-            background: '#f8fafc',
-            color: '#334155',
-            cursor: 'pointer',
-            lineHeight: 0,
-          }}
-        >
-          <QuickfillSectionHistoryIcon />
-        </button>
+        {showMarkHistoryButton ? (
+          <button
+            type="button"
+            onClick={onOpenHistory}
+            title="Mark history"
+            aria-label={`Mark history for ${label}`}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0.35rem',
+              borderRadius: 6,
+              border: '1px solid #cbd5e1',
+              background: '#f8fafc',
+              color: '#334155',
+              cursor: 'pointer',
+              lineHeight: 0,
+            }}
+          >
+            <QuickfillSectionHistoryIcon />
+          </button>
+        ) : null}
       </div>
       {collapsed ? (
         <div

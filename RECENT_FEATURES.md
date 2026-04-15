@@ -12,11 +12,14 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.308 → v2.4"
+version_range: "v2.309 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.309)"
+    line: ~963
+    description: "Quickfill Physical inbox section + Schedule Dispatch hub Day tab (hubTab=day, day= URL focus)"
   - name: "Latest Version (v2.308)"
-    line: ~959
+    line: ~980
     description: "Quickfill Schedule: hide assistants/estimators toggle + fetchUsersTabRosterForScheduleDispatchHub (id, role)"
   - name: "Latest Version (v2.307)"
     line: ~972
@@ -751,6 +754,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.309 — Quickfill **Physical inbox** + Schedule Dispatch hub **Day** tab (`hubTab=day`, `day=`)](#latest-updates-v2309)
 **New:** [v2.308 — Quickfill **Schedule**: hide assistants and estimators (`fetchUsersTabRosterForScheduleDispatchHub`)](#latest-updates-v2308)
 **New:** [v2.307 — Quickfill **Schedule**: search by person or job (client-side filter)](#latest-updates-v2307)
 **New:** [v2.306 — Quickfill **Schedule**: per-user read-only dispatch timeline + day nav](#latest-updates-v2306)
@@ -958,6 +962,26 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.309)
+
+**Date**: 2026-04-15
+
+### Quickfill **Physical inbox** ([`QuickfillPhysicalInboxSection.tsx`](src/components/quickfill/QuickfillPhysicalInboxSection.tsx), [`Quickfill.tsx`](src/pages/Quickfill.tsx))
+
+- **Section** — **`physical-inbox`** in **`SECTIONS`** (after **Texts**, before **Office Leaving**); same chrome as **Email** / **Texts** (**`omitDefaultMarkButton`**, inner **Mark Physical inbox up to date!**).
+- **Prompts** — Physical inbox clarity + reminder to add tasks for items that cannot be cleared quickly.
+- **Actions** — Inline **Task Dispatch**, **Estimator Inbox**, and **Task** icon buttons (same colors and modal hooks as [`Layout.tsx`](src/components/Layout.tsx): **`useDispatchTaskModal`**, **`useEstimatorTaskModal`**, **`useChecklistAddModal`**); role gates match the header (**Task**: dev / master_technician / assistant / primary / estimator; **Dispatch** + **Estimator**: dev / master_technician / assistant / estimator).
+- **Note + mark** — Textarea (**Still in physical inbox**); empty mark → warning toast; **`markSectionUpToDate('physical-inbox', { noteText })`** → **`quickfill_section_marks`** / **`quickfill_section_mark_events`** (no migration; **`section_id`** is free text).
+- **Metric** — **`useReportQuickfillSectionMetric('physical-inbox', …)`** (line count from textarea).
+
+### Schedule Dispatch hub — **Day** tab ([`ScheduleDispatchHub.tsx`](src/components/schedule/ScheduleDispatchHub.tsx), [`ScheduleDispatch.tsx`](src/pages/ScheduleDispatch.tsx))
+
+- **Tabs** — **People** | **Jobs** | **Day**; URL **`hubTab=people|jobs|day`**.
+- **Day** — Renders **[`QuickfillScheduleSection`](src/components/quickfill/QuickfillScheduleSection.tsx)** (read-only day timeline) inside the hub.
+- **URL** — Optional **`day=YYYY-MM-DD`** (Chicago calendar day): column tint + scroll on **People** / **Jobs**; **Dispatch** link from Quickfill Schedule includes **`week`** + **`day`** (and **`jobId`** when opening from an occupied band).
+
 ---
 
 ## Latest Updates (v2.308)
@@ -1603,7 +1627,7 @@ when_to_read:
 
 ### Schedule dispatch — Week hub (all visible jobs, Scope B)
 
-- **Landing** (`/schedule-dispatch` without **`jobId`**): **[`ScheduleDispatchHub.tsx`](src/components/schedule/ScheduleDispatchHub.tsx)** — **People** (default) | **Jobs** tabs; URL **`hubTab=jobs`** preserved with **`week`** when Jobs is selected; week nav; **`jobs_ledger`** + one week-wide blocks fetch ([`fetchJobsLedgerForScheduleDispatchHub`](src/lib/scheduleDispatchHub.ts), [`fetchJobScheduleBlocksForHubDateRange`](src/lib/jobScheduleBlocks.ts)); derive per-job counts via [`blocksToJobWeekSummaries`](src/lib/scheduleDispatchHub.ts) + [`aggregateWeekSummariesByJob`](src/lib/scheduleDispatchHub.ts). **Jobs** tab: per-job **total** and **Sun–Sat** columns; search; **Only jobs with blocks this week** (on by default); sort by block count then HCP. **People** tab: roster = hub job team members ([`fetchTeamMemberUserIdsForJobIds`](src/lib/scheduleDispatchHub.ts)) plus block assignees, names via [`fetchUserNamesForIds`](src/lib/scheduleDispatchHub.ts); **Only people with blocks this week** (on by default); uncheck to show full roster with empty cells; muted **· Salary** suffix from [`fetchSalariedUserIdSetFromUserIds`](src/lib/salaryPayConfigGate.ts) (`people_pay_config.is_salary` by user name); Sun–Sat stacked chips open **`jobId`** + **`week`** grid.
+- **Landing** (`/schedule-dispatch` without **`jobId`**): **[`ScheduleDispatchHub.tsx`](src/components/schedule/ScheduleDispatchHub.tsx)** — **People** (default) | **Jobs** | **Day** tabs; URL **`hubTab=people|jobs|day`** preserved with **`week`**; **Day** embeds **[`QuickfillScheduleSection`](src/components/quickfill/QuickfillScheduleSection.tsx)** (see [v2.309](#latest-updates-v2309)); optional **`day=`** for column focus on People/Jobs. Week nav; **`jobs_ledger`** + one week-wide blocks fetch ([`fetchJobsLedgerForScheduleDispatchHub`](src/lib/scheduleDispatchHub.ts), [`fetchJobScheduleBlocksForHubDateRange`](src/lib/jobScheduleBlocks.ts)); derive per-job counts via [`blocksToJobWeekSummaries`](src/lib/scheduleDispatchHub.ts) + [`aggregateWeekSummariesByJob`](src/lib/scheduleDispatchHub.ts). **Jobs** tab: per-job **total** and **Sun–Sat** columns; search; **Only jobs with blocks this week** (on by default); sort by block count then HCP. **People** tab: roster = hub job team members ([`fetchTeamMemberUserIdsForJobIds`](src/lib/scheduleDispatchHub.ts)) plus block assignees, names via [`fetchUserNamesForIds`](src/lib/scheduleDispatchHub.ts); **Only people with blocks this week** (on by default); uncheck to show full roster with empty cells; muted **· Salary** suffix from [`fetchSalariedUserIdSetFromUserIds`](src/lib/salaryPayConfigGate.ts) (`people_pay_config.is_salary` by user name); Sun–Sat stacked chips open **`jobId`** + **`week`** grid.
 - **Detail**: **Week overview (all jobs)** link returns to hub with same **`week`**. **`week`** in URL normalized when hub or detail loads ([`ScheduleDispatch.tsx`](src/pages/ScheduleDispatch.tsx)).
 - **Errors**: schedule summary fetch failure → toast + **0** counts; jobs fetch failure → inline error.
 

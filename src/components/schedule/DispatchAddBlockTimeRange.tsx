@@ -81,8 +81,12 @@ export type DispatchSecondaryBand = {
   sessionUserId?: string
 }
 
+/** Schedule blocks and clock-session strips use the same bar height and label size (Quickfill Schedule). */
+const DISPATCH_TIMELINE_STRIP_BAR_HEIGHT_PX = 8
+const DISPATCH_TIMELINE_STRIP_LABEL_FONT_SIZE = '0.65rem' as const
+
 /** Space reserved below primary rail when secondary bands use bottom anchoring (no occupied blocks). */
-const SECONDARY_STRIP_EXTRA_BASE_PX = 6
+const SECONDARY_STRIP_EXTRA_BASE_PX = 8
 /** Extra height for session displayLabel row. */
 const SECONDARY_STRIP_LABEL_ADDON_PX = 10
 /** Rail is top: trackCenterTop (38 when occupied), marginTop -3, height 6 → lower edge at 41px. */
@@ -165,7 +169,7 @@ export function DispatchAddBlockTimeRange({
           0,
           SECONDARY_ANCHOR_TOP_BELOW_RAIL_OCCUPIED +
             (hasSecondaryDisplayLabel ? 13 : 0) +
-            6 +
+            DISPATCH_TIMELINE_STRIP_BAR_HEIGHT_PX +
             2 -
             (hasOccupied ? 50 : 36),
         )
@@ -428,7 +432,7 @@ export function DispatchAddBlockTimeRange({
                   left: 0,
                   right: 0,
                   top: 10,
-                  height: 8,
+                  height: DISPATCH_TIMELINE_STRIP_BAR_HEIGHT_PX,
                   borderRadius: 3,
                   background: '#fed7aa',
                   border: '1px solid #ea580c',
@@ -444,7 +448,7 @@ export function DispatchAddBlockTimeRange({
                   left: 0,
                   right: 0,
                   top: 0,
-                  fontSize: '0.65rem',
+                  fontSize: DISPATCH_TIMELINE_STRIP_LABEL_FONT_SIZE,
                   fontWeight: 600,
                   color: '#9a3412',
                   lineHeight: 1.1,
@@ -537,7 +541,7 @@ export function DispatchAddBlockTimeRange({
               <div
                 aria-hidden
                 style={{
-                  fontSize: '0.6rem',
+                  fontSize: DISPATCH_TIMELINE_STRIP_LABEL_FONT_SIZE,
                   fontWeight: 600,
                   color: '#0f766e',
                   lineHeight: 1.1,
@@ -553,7 +557,7 @@ export function DispatchAddBlockTimeRange({
           const barEl = (
             <div
               style={{
-                height: 6,
+                height: DISPATCH_TIMELINE_STRIP_BAR_HEIGHT_PX,
                 borderRadius: 3,
                 background: '#5eead4',
                 border: '1px solid #0d9488',

@@ -9,7 +9,9 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter
       future={{
-        v7_startTransition: true,
+        // Keep false: v7_startTransition can leave router context (Outlet, useSearchParams) one
+        // transition behind the real URL until a full reload — see remix-run/react-router#12546, #12552.
+        v7_startTransition: false,
         v7_relativeSplatPath: true,
       }}
     >

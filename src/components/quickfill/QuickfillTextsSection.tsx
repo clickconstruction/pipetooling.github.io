@@ -11,11 +11,15 @@ type QuickfillTextsSectionProps = {
   onConfirmMark: (trimmedNote: string) => void
 }
 
-const hintStyle: CSSProperties = {
-  fontSize: '0.875rem',
-  color: '#475569',
+const introRowStyle: CSSProperties = {
   margin: '0 0 0.75rem',
+  fontSize: '0.875rem',
   lineHeight: 1.45,
+  color: '#475569',
+  display: 'flex',
+  flexWrap: 'wrap',
+  alignItems: 'baseline',
+  gap: '0.35rem',
 }
 
 const linkStyle: CSSProperties = {
@@ -49,26 +53,12 @@ export function QuickfillTextsSection({ markButtonPalette, onConfirmMark }: Quic
   return (
     <section
       style={{
-        border: '1px solid #e5e7eb',
         borderRadius: 8,
         padding: '1rem 1.25rem',
         background: '#fafafa',
       }}
     >
-      <p id={promptId} style={hintStyle}>
-        Before marking complete, list threads or people you still owe a text (one item per line or free text). This is
-        saved in mark history only—not synced to your phone.
-      </p>
-      <div
-        style={{
-          margin: '0 0 0.35rem',
-          fontSize: '0.875rem',
-          display: 'flex',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '0.35rem',
-        }}
-      >
+      <div id={promptId} style={introRowStyle}>
         <a href="sms:" style={linkStyle}>
           Open SMS
         </a>
@@ -81,6 +71,9 @@ export function QuickfillTextsSection({ markButtonPalette, onConfirmMark }: Quic
         >
           Still to text
         </label>
+        <span>
+          {' - Before marking complete, list threads or people you still owe a text (one item per line or free text).'}
+        </span>
       </div>
       <textarea
         id="quickfill-texts-textarea"

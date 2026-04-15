@@ -11,11 +11,15 @@ type QuickfillEmailInboxSectionProps = {
   onConfirmMark: (trimmedNote: string) => void
 }
 
-const hintStyle: CSSProperties = {
-  fontSize: '0.875rem',
-  color: '#475569',
+const introRowStyle: CSSProperties = {
   margin: '0 0 0.75rem',
+  fontSize: '0.875rem',
   lineHeight: 1.45,
+  color: '#475569',
+  display: 'flex',
+  flexWrap: 'wrap',
+  alignItems: 'baseline',
+  gap: '0.35rem',
 }
 
 const linkStyle: CSSProperties = {
@@ -49,26 +53,12 @@ export function QuickfillEmailInboxSection({ markButtonPalette, onConfirmMark }:
   return (
     <section
       style={{
-        border: '1px solid #e5e7eb',
         borderRadius: 8,
         padding: '1rem 1.25rem',
         background: '#fafafa',
       }}
     >
-      <p id={promptId} style={hintStyle}>
-        Before marking complete, list what is still in your inbox (one item per line or free text). This is saved in
-        mark history—no connection to Gmail.
-      </p>
-      <div
-        style={{
-          margin: '0 0 0.35rem',
-          fontSize: '0.875rem',
-          display: 'flex',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '0.35rem',
-        }}
-      >
+      <div id={promptId} style={introRowStyle}>
         <a href="https://mail.google.com/mail/u/0/#inbox" target="_blank" rel="noopener noreferrer" style={linkStyle}>
           Open Gmail
         </a>
@@ -81,6 +71,7 @@ export function QuickfillEmailInboxSection({ markButtonPalette, onConfirmMark }:
         >
           Still in inbox
         </label>
+        <span>{' - Before marking complete, list what is still in your inbox (one item per line or free text).'}</span>
       </div>
       <textarea
         id="quickfill-email-inbox-textarea"

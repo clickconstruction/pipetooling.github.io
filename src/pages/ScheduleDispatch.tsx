@@ -592,6 +592,9 @@ export default function ScheduleDispatch() {
 
   const weekEnd = useMemo(() => ymdAddDays(weekStart, 6), [weekStart])
 
+  /** Identity for the current job-week URL; used to avoid showing an empty grid before `load()` runs (first paint / Strict Mode). */
+  const jobWeekListKey = useMemo(() => (jobId ? `${jobId}|${weekStart}` : null), [jobId, weekStart])
+
   useEffect(() => {
     try {
       window.localStorage.setItem(SCHEDULE_DISPATCH_HIDE_WEEKEND_STORAGE_KEY, hideWeekend ? '1' : '0')
@@ -659,10 +662,14 @@ export default function ScheduleDispatch() {
   )
   const [loading, setLoading] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+  /** Set in `load()` finally when the latest request finishes so the grid does not flash “no roster” before data arrives. */
+  const [jobWeekHydratedKey, setJobWeekHydratedKey] = useState<string | null>(null)
 
   const [hubLoading, setHubLoading] = useState(false)
   /** Monotonic id so only the latest `loadHub` run clears `hubLoading` (overlapping week/job navigations). */
   const hubLoadSeqRef = useRef(0)
+  /** Monotonic id so overlapping `load()` runs (Strict Mode / rapid URL changes) do not clobber state or `loading`. */
+  const jobWeekLoadSeqRef = useRef(0)
   const [hubJobsError, setHubJobsError] = useState<string | null>(null)
   const [hubSummariesError, setHubSummariesError] = useState<string | null>(null)
   const [hubJobs, setHubJobs] = useState<ScheduleDispatchHubJobRow[]>([])
@@ -686,6 +693,29 @@ export default function ScheduleDispatch() {
 
   const canEdit = role != null && CAN_USE_SCHEDULE_DISPATCH.has(role)
   const canAddToJobRoster = role != null && CAN_ADD_TO_JOB_ROSTER.has(role)
+
+  const jobWeekGridLoading =
+    Boolean(jobId) && loadError == null && (loading || jobWeekHydratedKey !== jobWeekListKey)
+
+  useEffect(() => {
+    if (!jobWeekListKey) {
+      setJobWeekHydratedKey(null)
+      return
+    }
+    setJobWeekHydratedKey(null)
+  }, [jobWeekListKey])
+
+  useEffect(() => {
+    if (jobId) return
+    setJobTitle('')
+    setTeamMembers([])
+    setBlocks([])
+    setJobScheduleSalariedUserIds(new Set())
+    setScheduleJobProjectId(null)
+    setOfficialJobTeamUserIds(null)
+    setLoading(false)
+    setLoadError(null)
+  }, [jobId])
 
   useEffect(() => {
     if (!authUser?.id) {
@@ -1025,55 +1055,75 @@ export default function ScheduleDispatch() {
 
   const load = useCallback(async () => {
     if (!jobId) return
+    const seq = ++jobWeekLoadSeqRef.current
     setLoading(true)
     setLoadError(null)
     setJobScheduleSalariedUserIds(new Set())
     setScheduleJobProjectId(null)
     setOfficialJobTeamUserIds(null)
-    const [ctx, blk] = await Promise.all([
-      fetchScheduleJobContext(jobId),
-      fetchJobScheduleBlocksForJobDateRange(jobId, weekStart, weekEnd),
-    ])
-    if (ctx.error || !ctx.data) {
-      setLoadError(ctx.error ?? 'Could not load job.')
-      setJobTitle('')
-      setTeamMembers([])
-      setBlocks([])
-      setScheduleJobProjectId(null)
-      setOfficialJobTeamUserIds(null)
-    } else {
-      setJobTitle(ctx.data.jobTitle)
-      setScheduleJobProjectId(ctx.data.project_id)
-      setOfficialJobTeamUserIds(new Set(ctx.data.teamMembers.map((t) => t.user_id)))
-      let blocksData: JobScheduleBlockRow[] = []
-      if (blk.error) {
-        setLoadError(blk.error)
+    try {
+      const [ctx, blk] = await Promise.all([
+        fetchScheduleJobContext(jobId),
+        fetchJobScheduleBlocksForJobDateRange(jobId, weekStart, weekEnd),
+      ])
+      if (seq !== jobWeekLoadSeqRef.current) return
+      if (ctx.error || !ctx.data) {
+        setLoadError(ctx.error ?? 'Could not load job.')
+        setJobTitle('')
+        setTeamMembers([])
         setBlocks([])
+        setScheduleJobProjectId(null)
+        setOfficialJobTeamUserIds(null)
       } else {
-        blocksData = blk.data
-        setBlocks(blk.data)
+        setJobTitle(ctx.data.jobTitle)
+        setScheduleJobProjectId(ctx.data.project_id)
+        setOfficialJobTeamUserIds(new Set(ctx.data.teamMembers.map((t) => t.user_id)))
+        let blocksData: JobScheduleBlockRow[] = []
+        if (blk.error) {
+          setLoadError(blk.error)
+          setBlocks([])
+        } else {
+          blocksData = blk.data
+          setBlocks(blk.data)
+        }
+        const teamIds = ctx.data.teamMembers.map((t) => t.user_id)
+        const assigneeIds = blocksData.map((b) => b.assignee_user_id)
+        const rosterIds = [...new Set([...teamIds, ...assigneeIds])].filter(Boolean)
+        const teamById = new Map(ctx.data.teamMembers.map((t) => [t.user_id, t]))
+        const { data: nameMap, error: nameErr } = await fetchUserNamesForIds(rosterIds)
+        if (seq !== jobWeekLoadSeqRef.current) return
+        if (nameErr) showToast(`People names: ${nameErr}`, 'warning')
+        const mergedRoster: ScheduleTeamMember[] = rosterIds.map((uid) => {
+          const fromTeam = teamById.get(uid)
+          if (fromTeam) return fromTeam
+          return { user_id: uid, name: nameMap.get(uid) ?? null }
+        })
+        setTeamMembers(mergedRoster)
+        try {
+          const salaried = await fetchSalariedUserIdSetFromUserIds(rosterIds)
+          if (seq !== jobWeekLoadSeqRef.current) return
+          setJobScheduleSalariedUserIds(salaried)
+        } catch (e) {
+          if (seq !== jobWeekLoadSeqRef.current) return
+          setJobScheduleSalariedUserIds(new Set())
+          showToast(`Salary flags: ${formatErrorMessage(e)}`, 'warning')
+        }
       }
-      const teamIds = ctx.data.teamMembers.map((t) => t.user_id)
-      const assigneeIds = blocksData.map((b) => b.assignee_user_id)
-      const rosterIds = [...new Set([...teamIds, ...assigneeIds])].filter(Boolean)
-      const teamById = new Map(ctx.data.teamMembers.map((t) => [t.user_id, t]))
-      const { data: nameMap, error: nameErr } = await fetchUserNamesForIds(rosterIds)
-      if (nameErr) showToast(`People names: ${nameErr}`, 'warning')
-      const mergedRoster: ScheduleTeamMember[] = rosterIds.map((uid) => {
-        const fromTeam = teamById.get(uid)
-        if (fromTeam) return fromTeam
-        return { user_id: uid, name: nameMap.get(uid) ?? null }
-      })
-      setTeamMembers(mergedRoster)
-      try {
-        const salaried = await fetchSalariedUserIdSetFromUserIds(rosterIds)
-        setJobScheduleSalariedUserIds(salaried)
-      } catch (e) {
-        setJobScheduleSalariedUserIds(new Set())
-        showToast(`Salary flags: ${formatErrorMessage(e)}`, 'warning')
+    } catch (e) {
+      if (seq === jobWeekLoadSeqRef.current) {
+        setLoadError(formatErrorMessage(e, 'Could not load schedule.'))
+        setJobTitle('')
+        setTeamMembers([])
+        setBlocks([])
+        setScheduleJobProjectId(null)
+        setOfficialJobTeamUserIds(null)
+      }
+    } finally {
+      if (seq === jobWeekLoadSeqRef.current) {
+        setLoading(false)
+        setJobWeekHydratedKey(`${jobId}|${weekStart}`)
       }
     }
-    setLoading(false)
   }, [jobId, weekStart, weekEnd, showToast])
 
   useEffect(() => {
@@ -2429,7 +2479,7 @@ export default function ScheduleDispatch() {
           <button
             type="button"
             onClick={openJobPreviewFromJobWeek}
-            disabled={loading}
+            disabled={jobWeekGridLoading}
             title={jobTitle}
             aria-label={`Job preview: ${jobTitle}`}
             style={{
@@ -2437,7 +2487,7 @@ export default function ScheduleDispatch() {
               margin: 0,
               border: 'none',
               background: 'none',
-              cursor: loading ? 'not-allowed' : 'pointer',
+              cursor: jobWeekGridLoading ? 'not-allowed' : 'pointer',
               font: 'inherit',
               fontSize: '0.9375rem',
               color: '#374151',
@@ -2554,7 +2604,7 @@ export default function ScheduleDispatch() {
           salariedUserIds={jobScheduleSalariedUserIds}
           teamMembers={teamMembers}
           blocksByCell={blocksByCell}
-          loading={loading}
+          loading={jobWeekGridLoading}
           canEdit={canEdit}
           onWeekShift={shiftWeek}
           onThisWeek={goThisWeek}

@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
@@ -53,6 +53,20 @@ const QUICKFILL_SCHEDULE_HIDE_ASSISTANT_ESTIMATOR_KEY = 'quickfill_schedule_hide
 /** Matches per-row name column so shared 8 AM / 12 PM / 4 PM labels align with each timeline. */
 const QUICKFILL_SCHEDULE_NAME_COL_WIDTH = 'clamp(5.5rem, 24vw, 8.5rem)'
 const QUICKFILL_SCHEDULE_ROW_GAP = '0.5rem'
+
+const scheduleConflictPromptBoxStyle: CSSProperties = {
+  margin: '0 0 0.75rem',
+  padding: '0.65rem 1rem',
+  textAlign: 'center',
+  fontSize: '0.875rem',
+  fontWeight: 600,
+  lineHeight: 1.45,
+  color: '#854d0e',
+  background: '#fef9c3',
+  border: '1px solid #facc15',
+  borderRadius: 8,
+  boxSizing: 'border-box',
+}
 
 function readHideAssistantsEstimatorsFromStorage(): boolean {
   try {
@@ -190,7 +204,7 @@ const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
 
 /**
  * Quickfill overview: one read-only Add-block-style timeline per user (Schedule Dispatch roster) for a chosen day.
- * Edits happen on Schedule Dispatch; metric = count of roster users with no blocks that day.
+ * Edits happen on Schedule Dispatch. Section header does not show a Quickfill “open” backlog count (not comparable to inbox-style sections).
  */
 export function QuickfillScheduleSection() {
   const navigate = useNavigate()
@@ -222,16 +236,6 @@ export function QuickfillScheduleSection() {
     rows.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
     return rows
   }, [userIds, nameById])
-
-  const usersWithNoBlocksCount = useMemo(() => {
-    if (sortedUsers.length === 0) return 0
-    let n = 0
-    for (const { id } of sortedUsers) {
-      const blocks = blocksByUserId.get(id)
-      if (!blocks || blocks.length === 0) n++
-    }
-    return n
-  }, [sortedUsers, blocksByUserId])
 
   /** Visible roster after role filter; then search runs in filteredSortedUsers. */
   const rosterFilteredUsers = useMemo(() => {
@@ -279,7 +283,7 @@ export function QuickfillScheduleSection() {
     setScheduleMyTimeEditor({ subjectUserId: uid, subjectDisplayName: name })
   }, [])
 
-  useReportQuickfillSectionMetric('schedule', loading ? null : usersWithNoBlocksCount, loading)
+  useReportQuickfillSectionMetric('schedule', null, false)
 
   const dayLabel = useMemo(() => {
     const ms = referenceDateForWorkDateYmd(workDate).getTime()
@@ -296,9 +300,8 @@ export function QuickfillScheduleSection() {
       const jid = band.jobId?.trim()
       if (!jid) return
       const weekStart = companyWeekStartSundayContaining(workDate) ?? getDefaultWeekRange().start
-      navigate(
-        `/schedule-dispatch?jobId=${encodeURIComponent(jid)}&week=${encodeURIComponent(weekStart)}&day=${encodeURIComponent(workDate)}`,
-      )
+      const target = `/schedule-dispatch?jobId=${encodeURIComponent(jid)}&week=${encodeURIComponent(weekStart)}&day=${encodeURIComponent(workDate)}`
+      navigate(target)
     },
     [navigate, workDate],
   )
@@ -494,6 +497,9 @@ export function QuickfillScheduleSection() {
 
   return (
     <div>
+      <div role="note" style={scheduleConflictPromptBoxStyle}>
+        Are there any obvious schedule conflicts?
+      </div>
       <div
         style={{
           display: 'flex',

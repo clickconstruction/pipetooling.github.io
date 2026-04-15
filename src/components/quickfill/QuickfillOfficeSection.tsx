@@ -1,4 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
@@ -6,6 +9,20 @@ import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSection
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 
 export type QuickfillOfficeSectionVariant = 'arriving' | 'leaving'
+
+const QUICKFILL_OFFICE_DEV_EDIT_STORAGE_KEY: Record<QuickfillOfficeSectionVariant, string> = {
+  arriving: 'quickfill_office_arriving_dev_edit',
+  leaving: 'quickfill_office_leaving_dev_edit',
+}
+
+function readDevOfficeEditFromStorage(variant: QuickfillOfficeSectionVariant): boolean {
+  try {
+    if (typeof localStorage === 'undefined') return false
+    return localStorage.getItem(QUICKFILL_OFFICE_DEV_EDIT_STORAGE_KEY[variant]) === '1'
+  } catch {
+    return false
+  }
+}
 
 const VARIANT_KEYS: Record<
   QuickfillOfficeSectionVariant,
@@ -59,6 +76,97 @@ function parseOfficeDone(raw: string | null | undefined): Record<string, boolean
   }
 }
 
+function SortableOfficeChecklistRow({
+  item,
+  domPrefix,
+  done,
+  savingDoneId,
+  savingItems,
+  onToggleItem,
+  onRemoveItem,
+}: {
+  item: OfficeItem
+  domPrefix: string
+  done: Record<string, boolean>
+  savingDoneId: string | null
+  savingItems: boolean
+  onToggleItem: (itemId: string, checked: boolean) => void
+  onRemoveItem: (itemId: string) => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.85 : 1,
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    padding: '0.35rem 0',
+    borderBottom: '1px solid #f3f4f6',
+    position: 'relative',
+    zIndex: isDragging ? 2 : undefined,
+  }
+  return (
+    <li ref={setNodeRef} style={style}>
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        disabled={savingItems}
+        aria-label={`Drag to reorder: ${item.label}`}
+        title="Drag to reorder"
+        style={{
+          flexShrink: 0,
+          cursor: savingItems ? 'not-allowed' : 'grab',
+          touchAction: 'none',
+          padding: '0.25rem 0.45rem',
+          border: '1px solid #d1d5db',
+          borderRadius: 4,
+          background: '#fff',
+          color: '#64748b',
+          fontSize: '0.75rem',
+          lineHeight: 1,
+          letterSpacing: '-0.05em',
+        }}
+      >
+        {'\u22EE\u22EE'}
+      </button>
+      <input
+        type="checkbox"
+        id={`${domPrefix}-${item.id}`}
+        checked={done[item.id] === true}
+        disabled={savingDoneId === item.id}
+        onChange={(e) => void onToggleItem(item.id, e.target.checked)}
+        style={{ flexShrink: 0 }}
+      />
+      <label
+        htmlFor={`${domPrefix}-${item.id}`}
+        style={{ flex: 1, fontSize: '0.875rem', cursor: 'pointer' }}
+      >
+        {item.label}
+      </label>
+      <button
+        type="button"
+        onClick={() => void onRemoveItem(item.id)}
+        disabled={savingItems}
+        title="Remove task"
+        style={{
+          flexShrink: 0,
+          padding: '0.2rem 0.45rem',
+          fontSize: '0.75rem',
+          color: '#b91c1c',
+          background: '#fef2f2',
+          border: '1px solid #fecaca',
+          borderRadius: 4,
+          cursor: savingItems ? 'not-allowed' : 'pointer',
+        }}
+      >
+        Remove
+      </button>
+    </li>
+  )
+}
+
 export function QuickfillOfficeSection({ variant }: { variant: QuickfillOfficeSectionVariant }) {
   const { itemsKey, doneKey, metricSectionId } = VARIANT_KEYS[variant]
   const domPrefix = `quickfill-office-${variant}`
@@ -70,8 +178,14 @@ export function QuickfillOfficeSection({ variant }: { variant: QuickfillOfficeSe
   const [savingDoneId, setSavingDoneId] = useState<string | null>(null)
   const [savingItems, setSavingItems] = useState(false)
   const [newLabelDraft, setNewLabelDraft] = useState('')
+  const [devOfficeChecklistEditMode, setDevOfficeChecklistEditMode] = useState(() =>
+    readDevOfficeEditFromStorage(variant),
+  )
 
   const isDev = role === 'dev'
+  const officeSortable = isDev && devOfficeChecklistEditMode && items.length > 0
+  const showDevOfficeItemTools = isDev && devOfficeChecklistEditMode
+  const officeDragSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
   const loadOfficeSettings = useCallback(async () => {
     const rows = await withSupabaseRetry(
@@ -199,6 +313,26 @@ export function QuickfillOfficeSection({ variant }: { variant: QuickfillOfficeSe
     }
   }
 
+  async function onOfficeItemsDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const a = String(active.id)
+    const o = String(over.id)
+    const oldIndex = items.findIndex((i) => i.id === a)
+    const newIndex = items.findIndex((i) => i.id === o)
+    if (oldIndex < 0 || newIndex < 0) return
+    const next = arrayMove(items, oldIndex, newIndex)
+    setSavingItems(true)
+    try {
+      await persistItems(next)
+      setItems(next)
+    } catch (e: unknown) {
+      showToast(formatErrorMessage(e, 'Could not reorder tasks'), 'error')
+    } finally {
+      setSavingItems(false)
+    }
+  }
+
   const intro =
     variant === 'arriving'
       ? 'Start the day with the workspace ready—clear surfaces, systems on, and a calm first impression for anyone walking in.'
@@ -216,8 +350,31 @@ export function QuickfillOfficeSection({ variant }: { variant: QuickfillOfficeSe
         <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
       ) : items.length === 0 ? (
         <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>
-          {isDev ? 'No tasks yet. Add checklist items below.' : emptyNonDev}
+          {isDev && !devOfficeChecklistEditMode
+            ? 'No tasks yet. Turn on Edit checklist below to add items.'
+            : isDev
+              ? 'No tasks yet. Add checklist items below.'
+              : emptyNonDev}
         </p>
+      ) : officeSortable ? (
+        <DndContext sensors={officeDragSensors} onDragEnd={(e) => void onOfficeItemsDragEnd(e)}>
+          <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 1rem' }}>
+              {items.map((item) => (
+                <SortableOfficeChecklistRow
+                  key={item.id}
+                  item={item}
+                  domPrefix={domPrefix}
+                  done={done}
+                  savingDoneId={savingDoneId}
+                  savingItems={savingItems}
+                  onToggleItem={onToggleItem}
+                  onRemoveItem={onRemoveItem}
+                />
+              ))}
+            </ul>
+          </SortableContext>
+        </DndContext>
       ) : (
         <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 1rem' }}>
           {items.map((item) => (
@@ -225,7 +382,7 @@ export function QuickfillOfficeSection({ variant }: { variant: QuickfillOfficeSe
               key={item.id}
               style={{
                 display: 'flex',
-                alignItems: 'flex-start',
+                alignItems: 'center',
                 gap: '0.5rem',
                 padding: '0.35rem 0',
                 borderBottom: '1px solid #f3f4f6',
@@ -237,15 +394,15 @@ export function QuickfillOfficeSection({ variant }: { variant: QuickfillOfficeSe
                 checked={done[item.id] === true}
                 disabled={savingDoneId === item.id}
                 onChange={(e) => void onToggleItem(item.id, e.target.checked)}
-                style={{ marginTop: 3, flexShrink: 0 }}
+                style={{ flexShrink: 0 }}
               />
               <label
                 htmlFor={`${domPrefix}-${item.id}`}
-                style={{ flex: 1, fontSize: '0.875rem', cursor: 'pointer', paddingTop: 2 }}
+                style={{ flex: 1, fontSize: '0.875rem', cursor: 'pointer' }}
               >
                 {item.label}
               </label>
-              {isDev ? (
+              {showDevOfficeItemTools ? (
                 <button
                   type="button"
                   onClick={() => void onRemoveItem(item.id)}
@@ -269,7 +426,7 @@ export function QuickfillOfficeSection({ variant }: { variant: QuickfillOfficeSe
           ))}
         </ul>
       )}
-      {isDev ? (
+      {showDevOfficeItemTools ? (
         <div
           style={{
             marginTop: '0.5rem',
@@ -321,6 +478,37 @@ export function QuickfillOfficeSection({ variant }: { variant: QuickfillOfficeSe
               Add
             </button>
           </div>
+        </div>
+      ) : null}
+      {isDev ? (
+        <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'flex-end' }}>
+          <button
+            type="button"
+            aria-pressed={devOfficeChecklistEditMode}
+            onClick={() => {
+              setDevOfficeChecklistEditMode((prev) => {
+                const next = !prev
+                try {
+                  localStorage.setItem(QUICKFILL_OFFICE_DEV_EDIT_STORAGE_KEY[variant], next ? '1' : '0')
+                } catch {
+                  /* ignore quota / private mode */
+                }
+                return next
+              })
+            }}
+            style={{
+              padding: '0.4rem 0.75rem',
+              fontSize: '0.8125rem',
+              border: devOfficeChecklistEditMode ? '1px solid #2563eb' : '1px solid #d1d5db',
+              borderRadius: 4,
+              background: devOfficeChecklistEditMode ? '#eff6ff' : '#fff',
+              color: devOfficeChecklistEditMode ? '#1d4ed8' : '#374151',
+              cursor: 'pointer',
+              fontWeight: devOfficeChecklistEditMode ? 600 : 400,
+            }}
+          >
+            {devOfficeChecklistEditMode ? 'Done editing' : 'Edit checklist'}
+          </button>
         </div>
       ) : null}
     </div>

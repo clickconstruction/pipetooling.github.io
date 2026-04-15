@@ -11,6 +11,8 @@ import { useAuth } from '../hooks/useAuth'
 import { useMercuryLedgerNicknames } from '../hooks/useMercuryLedgerNicknames'
 import { APP_CALENDAR_TZ, denverCalendarDayKey } from '../utils/dateUtils'
 
+const EMPTY_JOB_LABEL_BY_ID: Record<string, string> = {}
+
 type StaleStaffRow = Database['public']['Functions']['list_stale_unlinked_mercury_transactions_for_tally_staff']['Returns'][number]
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 
@@ -191,6 +193,11 @@ export function DashboardStaleTallyStaffFollowUpModal({
       }
     },
     [authUser?.id, showToast, load, onDataChanged],
+  )
+
+  const staleFollowUpInitialAllocations = useMemo(
+    () => (allocRow ? parseTallyJobSplitsJson(allocRow.job_splits) : []),
+    [allocRow?.mercury_transaction_id, allocRow?.job_splits],
   )
 
   const groups = useMemo(() => {
@@ -476,10 +483,10 @@ export function DashboardStaleTallyStaffFollowUpModal({
         open={allocRow !== null}
         onClose={() => setAllocRow(null)}
         transaction={allocRow ? mercuryTxRowFromStaffListRow(allocRow) : null}
-        initialAllocations={allocRow ? parseTallyJobSplitsJson(allocRow.job_splits) : []}
+        initialAllocations={staleFollowUpInitialAllocations}
         initialPersonId={null}
         initialUserId={null}
-        jobLabelById={{}}
+        jobLabelById={EMPTY_JOB_LABEL_BY_ID}
         usersOptions={[]}
         tallySelfService
         tallyActAsUserId={allocRow?.target_user_id ?? null}

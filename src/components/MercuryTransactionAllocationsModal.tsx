@@ -276,8 +276,10 @@ export function MercuryTransactionAllocationsModal({
   const displayTotal = Math.abs(txAmount)
   const allocationSign = (txAmount === 0 ? 1 : Math.sign(txAmount)) as 1 | -1
 
+  // Re-seed only when the modal opens or the transaction / user identity changes — not when the parent
+  // passes new object/array refs for the same row (e.g. stale tally follow-up rebuilds `transaction` each render).
   useEffect(() => {
-    if (!open || !transaction) return
+    if (!open || !transaction?.id) return
     setLines(
       initialAllocations.map((a) => {
         const display = round2(Math.abs(Number(a.amount)))
@@ -294,7 +296,8 @@ export function MercuryTransactionAllocationsModal({
     setStripAttribution(false)
     setJobSearch('')
     setJobResults([])
-  }, [open, transaction, initialAllocations, initialUserId, jobLabelById])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: `initialAllocations` / `jobLabelById` / `transaction` identity churn must not wipe in-progress edits
+  }, [open, transaction?.id, initialUserId])
 
   useEffect(() => {
     if (!open) return
