@@ -19,6 +19,7 @@ import {
 import type { SearchableSelectOption } from '../SearchableSelect'
 import type { Database } from '../../types/database'
 import { useAuth } from '../../hooks/useAuth'
+import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
 import { fetchAttributionsByMercuryTxIds, fetchJobAllocationsByMercuryTxIds } from '../../lib/fetchMercuryRelationsByTxIds'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 
@@ -381,6 +382,12 @@ export function BankingSortingSnapshotSection() {
   const showPager = visibleLen > PAGE_SIZE
   const rangeFrom = visibleLen === 0 ? 0 : pageStart + 1
   const rangeTo = visibleLen === 0 ? 0 : Math.min(pageStart + PAGE_SIZE, visibleLen)
+
+  useReportQuickfillSectionMetric(
+    'banking-sorting',
+    !canAccessBanking || !authUser?.id ? null : loading || error ? null : visibleLen,
+    !!(canAccessBanking && authUser?.id && loading),
+  )
 
   if (!canAccessBanking) return null
 

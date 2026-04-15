@@ -1,7 +1,8 @@
-import { useCallback, useMemo, useState, useSyncExternalStore, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { DashboardTeamActiveClockStrip } from '../DashboardTeamActiveClockStrip'
 import { DashboardMyTimeDayEditorModal } from '../DashboardMyTimeDayEditorModal'
 import { useAuth } from '../../hooks/useAuth'
+import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
 import { useDashboardMyTeamSectionState } from '../../hooks/useDashboardMyTeamSectionState'
 import { useToastContext } from '../../contexts/ToastContext'
 import {
@@ -58,6 +59,39 @@ function shiftWorkDateYmd(ymd: string, deltaDays: number): string {
   return `${yy}-${mm}-${dd}`
 }
 
+/**
+ * Sunday–Saturday week (en-CA YYYY-MM-DD) containing the given civil date,
+ * matching `weekStartEndEnCA` in useDashboardMyTeamSectionState.
+ */
+function enCaWeekRangeContainingYmd(ymd: string): { start: string; end: string } {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd.trim())
+  if (!m) {
+    const d = new Date()
+    const day = d.getDay()
+    const start = new Date(d)
+    start.setDate(d.getDate() - day)
+    const end = new Date(d)
+    end.setDate(d.getDate() - day + 6)
+    return { start: start.toLocaleDateString('en-CA'), end: end.toLocaleDateString('en-CA') }
+  }
+  const y = Number(m[1])
+  const mo = Number(m[2]) - 1
+  const d = Number(m[3])
+  const base = new Date(y, mo, d)
+  const day = base.getDay()
+  const start = new Date(base)
+  start.setDate(base.getDate() - day)
+  const end = new Date(start)
+  end.setDate(start.getDate() + 6)
+  return { start: start.toLocaleDateString('en-CA'), end: end.toLocaleDateString('en-CA') }
+}
+
+function closedSessionDurationHours(clockedIn: string, clockedOut: string): number {
+  const inMs = new Date(clockedIn).getTime()
+  const outMs = new Date(clockedOut).getTime()
+  return Math.max(0, (outMs - inMs) / 3600000)
+}
+
 const navBtnStyle: CSSProperties = {
   padding: '0.35rem 0.65rem',
   border: '1px solid #d1d5db',
@@ -111,10 +145,66 @@ export function QuickfillPeopleHoursNewSection() {
   const showStripSubjectMyTimeEditor = showClockStripScopeToggle || role === 'superintendent'
   const orgWideStripEnabled = showClockStripScopeToggle && clockStripScope === 'everyone'
 
+  const pendingWorkDateRange = useMemo(() => enCaWeekRangeContainingYmd(selectedYmd), [selectedYmd])
+
   const myTeam = useDashboardMyTeamSectionState(authUser?.id, {
     orgWideStripEnabled,
     stripWorkDateYmd: selectedYmd,
+    pendingWorkDateRange,
   })
+
+  const [pendingBreakdownOpen, setPendingBreakdownOpen] = useState(false)
+
+  const pendingApprovalSessions = useMemo(() => {
+    if (!authUser?.id) return []
+    const base = orgWideStripEnabled ? myTeam.orgWidePendingSessions : myTeam.pendingSessions
+    return base.filter(
+      (s) =>
+        s.clocked_out_at != null && s.approved_at == null && s.rejected_at == null,
+    )
+  }, [authUser?.id, orgWideStripEnabled, myTeam.orgWidePendingSessions, myTeam.pendingSessions])
+
+  const pendingApprovalBreakdown = useMemo(() => {
+    const byDay = new Map<string, { count: number; hours: number }>()
+    for (const s of pendingApprovalSessions) {
+      const wd = s.work_date
+      const cur = byDay.get(wd) ?? { count: 0, hours: 0 }
+      cur.count += 1
+      if (s.clocked_out_at) {
+        cur.hours += closedSessionDurationHours(s.clocked_in_at, s.clocked_out_at)
+      }
+      byDay.set(wd, cur)
+    }
+    const rows = [...byDay.entries()].map(([workDate, v]) => ({
+      workDate,
+      count: v.count,
+      hours: v.hours,
+    }))
+    rows.sort((a, b) => b.workDate.localeCompare(a.workDate))
+    return rows
+  }, [pendingApprovalSessions])
+
+  const pendingApprovalTotal = pendingApprovalSessions.length
+
+  const openPendingBreakdown = useCallback(() => {
+    setPendingBreakdownOpen(true)
+  }, [])
+
+  useReportQuickfillSectionMetric(
+    'people-hours-new',
+    !authUser?.id ? null : myTeam.loadingSessions ? null : pendingApprovalTotal,
+    !!(authUser?.id && myTeam.loadingSessions),
+    pendingApprovalTotal > 0 ? openPendingBreakdown : null,
+  )
+
+  useEffect(() => {
+    if (!pendingBreakdownOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPendingBreakdownOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [pendingBreakdownOpen])
 
   const todayDenver = denverCalendarDayKey(Date.now())
   const showLiveCurrentlyIn = selectedYmd === todayDenver
@@ -208,6 +298,108 @@ export function QuickfillPeopleHoursNewSection() {
 
   return (
     <section style={{ marginBottom: '2rem' }}>
+      {pendingBreakdownOpen && (
+        <div
+          role="presentation"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.45)',
+            zIndex: 10000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem',
+          }}
+          onClick={() => setPendingBreakdownOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="quickfill-pending-breakdown-title"
+            style={{
+              background: 'white',
+              borderRadius: 10,
+              maxWidth: 420,
+              width: '100%',
+              maxHeight: 'min(70vh, 520px)',
+              overflow: 'auto',
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+              border: '1px solid #e2e8f0',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                padding: '1rem 1.25rem',
+                borderBottom: '1px solid #e2e8f0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '0.75rem',
+              }}
+            >
+              <h2
+                id="quickfill-pending-breakdown-title"
+                style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: '#0f172a' }}
+              >
+                Pending approvals by day
+              </h2>
+              <button
+                type="button"
+                onClick={() => setPendingBreakdownOpen(false)}
+                aria-label="Close"
+                style={{
+                  padding: '0.35rem 0.6rem',
+                  borderRadius: 6,
+                  border: '1px solid #cbd5e1',
+                  background: '#f8fafc',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                }}
+              >
+                Close
+              </button>
+            </div>
+            <div style={{ padding: '0.75rem 1.25rem 1.25rem' }}>
+              {pendingApprovalBreakdown.length === 0 ? (
+                <p style={{ margin: 0, color: '#64748b', fontSize: '0.875rem' }}>No pending approvals in this week.</p>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign: 'left', padding: '0.5rem 0.35rem', color: '#475569', fontWeight: 600 }}>
+                        Day
+                      </th>
+                      <th style={{ textAlign: 'right', padding: '0.5rem 0.35rem', color: '#475569', fontWeight: 600 }}>
+                        Sessions
+                      </th>
+                      <th style={{ textAlign: 'right', padding: '0.5rem 0.35rem', color: '#475569', fontWeight: 600 }}>
+                        Hours
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pendingApprovalBreakdown.map((row) => (
+                      <tr key={row.workDate} style={{ borderTop: '1px solid #f1f5f9' }}>
+                        <td style={{ padding: '0.5rem 0.35rem', color: '#0f172a' }}>
+                          {formatDenverCalendarDayWithWeekdayAndYear(
+                            referenceDateForWorkDateYmd(row.workDate).getTime(),
+                          )}
+                        </td>
+                        <td style={{ textAlign: 'right', padding: '0.5rem 0.35rem', color: '#334155' }}>{row.count}</td>
+                        <td style={{ textAlign: 'right', padding: '0.5rem 0.35rem', color: '#334155' }}>
+                          {row.hours.toFixed(1)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       {peopleHoursNavMobile ? (
         <div style={{ marginBottom: 0 }}>
           <div

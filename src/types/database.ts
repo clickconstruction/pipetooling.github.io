@@ -5806,6 +5806,41 @@ export type Database = {
         }
         Relationships: []
       }
+      quickfill_section_mark_events: {
+        Row: {
+          id: string
+          marked_at: string
+          marked_by: string | null
+          note_text: string | null
+          outstanding_count: number | null
+          section_id: string
+        }
+        Insert: {
+          id?: string
+          marked_at?: string
+          marked_by?: string | null
+          note_text?: string | null
+          outstanding_count?: number | null
+          section_id: string
+        }
+        Update: {
+          id?: string
+          marked_at?: string
+          marked_by?: string | null
+          note_text?: string | null
+          outstanding_count?: number | null
+          section_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quickfill_section_mark_events_marked_by_fkey"
+            columns: ["marked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quickfill_section_marks: {
         Row: {
           marked_at: string

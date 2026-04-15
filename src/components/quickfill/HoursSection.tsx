@@ -5,6 +5,7 @@ import { approveClockSessions } from '../../lib/approveClockSessions'
 import { supabase } from '../../lib/supabase'
 import { HOURS_GRID_FIRST_COL_LABEL } from '../../constants/hoursGridFirstCol'
 import { useAuth } from '../../hooks/useAuth'
+import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
 import { useHoursGridFirstColWidthPx } from '../../hooks/useHoursGridFirstColWidthPx'
 import { HoursUnassignedModal } from '../HoursUnassignedModal'
 import { PeopleHoursDayAuditModal } from '../PeopleHoursDayAuditModal'
@@ -423,6 +424,12 @@ export function HoursSection() {
   function hasUnassignedCorrectDays(personName: string): boolean {
     return hoursDays.some((d) => isCorrectDayMissingJob(personName, d))
   }
+
+  useReportQuickfillSectionMetric(
+    'hours',
+    !canAccessHours || !authUser?.id ? null : loading ? null : pendingClockSessions.length,
+    !!(canAccessHours && authUser?.id && loading),
+  )
 
   if (!canAccessHours) {
     return (

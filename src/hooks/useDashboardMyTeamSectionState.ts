@@ -225,6 +225,11 @@ export type DashboardMyTeamSectionOptions = {
    * and align salary strip meta. When unset, team/org loaders use browser-local today (unchanged).
    */
   stripWorkDateYmd?: string
+  /**
+   * When set, `loadPending` / `loadOrgWidePending` use this work_date range instead of the dashboard week.
+   * Other loaders (hours summary, etc.) still use the dashboard `dateStart`/`dateEnd`.
+   */
+  pendingWorkDateRange?: { start: string; end: string }
 }
 
 export function useDashboardMyTeamSectionState(
@@ -233,6 +238,9 @@ export function useDashboardMyTeamSectionState(
 ) {
   const orgWideStripEnabled = options?.orgWideStripEnabled === true
   const stripWorkDateYmd = options?.stripWorkDateYmd
+  const [{ start: dateStart, end: dateEnd }, setDateRange] = useState(weekStartEndEnCA)
+  const pendingQueryStart = options?.pendingWorkDateRange?.start ?? dateStart
+  const pendingQueryEnd = options?.pendingWorkDateRange?.end ?? dateEnd
   const [memberUserIds, setMemberUserIds] = useState<string[]>([])
   const [teamMemberRoster, setTeamMemberRoster] = useState<TeamMemberRosterRow[]>([])
   const [hoursSummaryByUserId, setHoursSummaryByUserId] = useState<Record<string, TeamHoursSummary>>({})
@@ -263,7 +271,6 @@ export function useDashboardMyTeamSectionState(
   const loadPendingGenerationRef = useRef(0)
   const [error, setError] = useState<string | null>(null)
   const [myTeamExpanded, setMyTeamExpanded] = useState(false)
-  const [{ start: dateStart, end: dateEnd }, setDateRange] = useState(weekStartEndEnCA)
 
   /** Team strip: members plus viewer (leader is not in `team_leader_assignments` as member). */
   const stripTeamUserIds = useMemo(
@@ -478,8 +485,8 @@ export function useDashboardMyTeamSectionState(
               .is('approved_at', null)
               .is('rejected_at', null)
               .is('revoked_at', null)
-              .gte('work_date', dateStart)
-              .lte('work_date', dateEnd)
+              .gte('work_date', pendingQueryStart)
+              .lte('work_date', pendingQueryEnd)
               .order('work_date', { ascending: false })
               .order('clocked_in_at', { ascending: false }),
           'load org-wide pending clock sessions',
@@ -493,8 +500,8 @@ export function useDashboardMyTeamSectionState(
               .is('clocked_out_at', null)
               .is('rejected_at', null)
               .is('revoked_at', null)
-              .gte('work_date', dateStart)
-              .lte('work_date', dateEnd)
+              .gte('work_date', pendingQueryStart)
+              .lte('work_date', pendingQueryEnd)
               .order('work_date', { ascending: false })
               .order('clocked_in_at', { ascending: false }),
           'load org-wide open approved salary clock sessions',
@@ -513,7 +520,7 @@ export function useDashboardMyTeamSectionState(
       setOrgWidePendingSessions([])
       setTodaySessionsRowsOrg([])
     }
-  }, [authUserId, dateStart, dateEnd, loadTodayClockSessionsOrg, loadSalaryStripContext])
+  }, [authUserId, pendingQueryStart, pendingQueryEnd, loadTodayClockSessionsOrg, loadSalaryStripContext])
 
   const loadTeamHoursSummary = useCallback(async () => {
     const fullDetailIds = teamMemberRoster
@@ -651,8 +658,8 @@ export function useDashboardMyTeamSectionState(
               .is('approved_at', null)
               .is('rejected_at', null)
               .is('revoked_at', null)
-              .gte('work_date', dateStart)
-              .lte('work_date', dateEnd)
+              .gte('work_date', pendingQueryStart)
+              .lte('work_date', pendingQueryEnd)
               .order('work_date', { ascending: false })
               .order('clocked_in_at', { ascending: false }),
           'load team pending clock sessions',
@@ -667,8 +674,8 @@ export function useDashboardMyTeamSectionState(
               .is('clocked_out_at', null)
               .is('rejected_at', null)
               .is('revoked_at', null)
-              .gte('work_date', dateStart)
-              .lte('work_date', dateEnd)
+              .gte('work_date', pendingQueryStart)
+              .lte('work_date', pendingQueryEnd)
               .order('work_date', { ascending: false })
               .order('clocked_in_at', { ascending: false }),
           'load team open approved salary clock sessions',
@@ -703,8 +710,8 @@ export function useDashboardMyTeamSectionState(
   }, [
     authUserId,
     stripTeamUserIds,
-    dateStart,
-    dateEnd,
+    pendingQueryStart,
+    pendingQueryEnd,
     loadTeamHoursSummary,
     loadTodayClockSessions,
     orgWideStripEnabled,
@@ -744,7 +751,7 @@ export function useDashboardMyTeamSectionState(
       return
     }
     void loadOrgWidePending()
-  }, [orgWideStripEnabled, authUserId, dateStart, dateEnd, loadOrgWidePending])
+  }, [orgWideStripEnabled, authUserId, loadOrgWidePending])
 
   const loadLedger = useCallback(async () => {
     const fullDetailIds = teamMemberRoster

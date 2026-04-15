@@ -130,7 +130,7 @@ pipetooling.github.io/
 - **`src/pages/Materials.tsx`** (~7k lines) - Price book, templates, purchase orders
 - **`src/pages/Checklist.tsx`** - Recurring checklist (Today, History, Manage tabs)
 - **`src/components/ChecklistTitleWithLinks.tsx`** - Renders checklist titles with [1], [2], etc. as clickable links
-- **`src/pages/Jobs.tsx`** - Jobs (Reports, Stages, Billing, Team Labor, Sub Labor, Parts, Job Summary, Inspections, Teams Summary tabs)
+- **`src/pages/Jobs.tsx`** - Jobs (Reports, Stages, Billing, Team Labor, Sub Labor, Parts, Job Summary, Inspections, Teams Summary tabs); **Sub Labor** New/Edit modal UX (**RECENT_FEATURES** v2.305): crew search filters, **Add Sub**, line-items + footer layout
 - **`src/pages/ScheduleDispatch.tsx`** - Week hub (**People** / **Jobs**) + job grid; **Add schedule block** modal with occupied timeline + draft moves ([`scheduleDispatchAddBlockTimeline.ts`](src/lib/scheduleDispatchAddBlockTimeline.ts), [`DispatchAddBlockTimeRange.tsx`](src/components/schedule/DispatchAddBlockTimeRange.tsx); **RECENT_FEATURES** v2.296)
 - **`src/pages/Prospects.tsx`** - Lead management (Convert tab, callbacks, Team tab for dev/assistant)
 - **`src/pages/Quickfill.tsx`** - Billing workflow: **`QuickfillSectionWrapper`** per block (left **`h2`** titles, **`2px`** dividers); Crew Jobs / Bids: **`CrewJobsBlock.tsx`** (Realtime on **`people_crew_jobs`** / **`people_crew_bids`**, **`CrewJobsSection.tsx`**); Billed; **Banking sorting** snapshot (**`BankingSortingSnapshotSection.tsx`**, inline **Link…** in table); **People Hours (new)** + **Jobs Billing** min HCP (**RECENT_FEATURES** v2.224; **People Hours (new)** mobile day nav v2.289)

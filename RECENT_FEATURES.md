@@ -7,19 +7,22 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-14
+last_updated: 2026-04-15
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.304 → v2.4"
+version_range: "v2.305 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.305)"
+    line: ~955
+    description: "Jobs Sub Labor modal: crew search UX, Add Sub, line items + footer layout, Itemize label, collapsed section headers"
   - name: "Latest Version (v2.304)"
-    line: ~939
+    line: ~970
     description: "Stripe send confirm modal: PipeTooling send history from jobs_ledger_invoice_stripe_email_sends; Edge log append"
   - name: "Latest Version (v2.303)"
-    line: ~955
+    line: ~978
     description: "Jobs Stages Last activity: Stripe emailed customer + Resend invoice email (send-stripe-invoice); StripeInvoiceSendFromStripeButton variants"
   - name: "Latest Version (v2.302)"
     line: ~947
@@ -739,6 +742,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.305 — **Sub Labor** modal: crew search, **Add Sub**, line items + action bar UX](#latest-updates-v2305)
 **New:** [v2.304 — **Send Email invoice from Stripe?** modal: recent sends list (DB log)](#latest-updates-v2304)
 **New:** [v2.303 — Jobs Stages **Last activity**: Stripe emailed customer + **Resend invoice email**](#latest-updates-v2303)
 **New:** [v2.302 — Jobs Stages **Ready to Bill**: unallocated row amounts, draft/remainder labels, exposure total](#latest-updates-v2302)
@@ -942,6 +946,20 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.305)
+
+**Date**: 2026-04-15
+
+### Jobs **Sub Labor** — New / Edit modal UX (`Jobs.tsx`)
+
+- **Search for crew** — Centered search field; no separate label above the box (**placeholder** + **`aria-label`**). When the search string is non-empty, **External Subs**, **Internal Subs**, and **Office Team** each render only if that group has at least one name match; if all three are empty, a single muted line **No crew match this search** appears (no per-section empty chrome).
+- **Add Sub** — External list action and add-person modal title use the short label **Add Sub** (was **Add Subcontractor**).
+- **Specific Work (Line Items)** — **Add line item** sits **below** the bordered table. **Itemize hours and rate** (totals row checkbox) uses a **muted grey** label (**`#6b7280`**).
+- **Internal Subs** / **Office Team** — Collapse headers are **full-width**; when **collapsed** (**▶**), the triangle + title are **centered**; when **expanded** (**▼**), the header aligns **left** above the checkbox list.
+- **Modal footer** — Primary actions on the **right**, order **Cancel** → **Print** → **Save** → (**Required:** missing-field list when Save is disabled, immediately **right of Save**) → **Delete** (when editing an existing job).
+
 ---
 
 ## Latest Updates (v2.304)

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
+import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
 import { formatCurrency } from '../../lib/format'
 import type { Database } from '../../types/database'
 
@@ -134,6 +135,11 @@ export function BilledAwaitingPaymentSection() {
   }, [authUser?.id])
 
   const canAccess = role === 'dev' || role === 'master_technician' || role === 'assistant'
+  useReportQuickfillSectionMetric(
+    'billed-awaiting',
+    !canAccess || !authUser?.id ? null : loading ? null : error ? null : rows.length,
+    !!(canAccess && authUser?.id && loading),
+  )
   if (!canAccess) return null
 
   if (loading) return null

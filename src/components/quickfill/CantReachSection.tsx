@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
+import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
 
 type Prospect = {
   id: string
@@ -75,6 +76,12 @@ export function CantReachSection() {
   useEffect(() => {
     if (canAccess && authUser?.id) loadCantReach()
   }, [canAccess, authUser?.id])
+
+  useReportQuickfillSectionMetric(
+    'cant-reach',
+    !canAccess || !authUser?.id ? null : loading ? null : prospects.length,
+    !!(canAccess && authUser?.id && loading),
+  )
 
   if (!canAccess) return null
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
+import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
 import type { Database } from '../../types/database'
 
 type JobsLedgerRow = Database['public']['Tables']['jobs_ledger']['Row']
@@ -102,6 +103,13 @@ export function JobsBillingReminderSection({ minHcpNumber }: { minHcpNumber: num
   }, [authUser?.id, minHcpNumber])
 
   const canAccess = role === 'dev' || role === 'master_technician' || role === 'assistant'
+  const jobBillingOutstanding =
+    counts == null ? null : counts.specificWork + counts.billedMaterials + counts.totalBill
+  useReportQuickfillSectionMetric(
+    'jobs-billing',
+    !canAccess || !authUser?.id ? null : loading ? null : jobBillingOutstanding,
+    !!(canAccess && authUser?.id && loading),
+  )
   if (!canAccess) return null
 
   if (loading) return null
