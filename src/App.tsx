@@ -29,6 +29,7 @@ const Checklist = lazy(() => import('./pages/Checklist'))
 const JobTally = lazy(() => import('./pages/JobTally'))
 const ScheduleDispatch = lazy(() => import('./pages/ScheduleDispatch'))
 const Estimates = lazy(() => import('./pages/Estimates'))
+const Documents = lazy(() => import('./pages/Documents'))
 const EstimateAcceptStaffPreview = lazy(() => import('./pages/EstimateAcceptStaffPreview'))
 import EstimateAccept from './pages/EstimateAccept'
 import EstimatePublicTerms from './pages/EstimatePublicTerms'
@@ -199,6 +200,7 @@ function AppContent() {
           <Route path="materials" element={<Materials />} />
           <Route path="estimates" element={<Estimates />} />
           <Route path="estimates/:id" element={<Estimates />} />
+          <Route path="documents" element={<Documents />} />
           <Route path="duplicates" element={<Duplicates />} />
           <Route path="bids" element={<Bids />} />
           <Route path="prospects" element={<Prospects />} />

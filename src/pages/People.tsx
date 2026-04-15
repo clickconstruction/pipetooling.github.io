@@ -584,6 +584,7 @@ export default function People() {
   const [offsetApplyModalOpen, setOffsetApplyModalOpen] = useState(false)
   const [offsetToApply, setOffsetToApply] = useState<PersonOffset | null>(null)
   const [offsetApplyPayStubId, setOffsetApplyPayStubId] = useState('')
+  const [offsetsTabSearch, setOffsetsTabSearch] = useState('')
   const [possessionUserId, setPossessionUserId] = useState('')
   const [possessionStartDate, setPossessionStartDate] = useState(() => new Date().toLocaleDateString('en-CA'))
   const [possessionEndDate, setPossessionEndDate] = useState('')
@@ -5202,6 +5203,43 @@ export default function People() {
     if (!q) return payStubs
     return payStubs.filter((s) => s.person_name.toLowerCase().includes(q))
   }, [payStubs, ledgerPersonSearch])
+
+  const offsetsTabSearching = offsetsTabSearch.trim().length > 0
+  const filteredOffsets = useMemo(() => {
+    const q = offsetsTabSearch.trim().toLowerCase()
+    if (!q) return offsets
+    function offsetTypeLabel(o: PersonOffset): string {
+      return o.type === 'backcharge'
+        ? 'Backcharge'
+        : o.type === 'damage'
+          ? 'Damage'
+          : o.type === 'employee_credit'
+            ? 'Employee credit'
+            : o.type
+    }
+    return offsets.filter((o) => {
+      const stub = o.pay_stub_id ? payStubs.find((s) => s.id === o.pay_stub_id) : null
+      const statusParts =
+        o.pay_stub_id
+          ? stub
+            ? ['applied', `${stub.period_start} – ${stub.period_end}`, `applied (${stub.period_start} – ${stub.period_end})`]
+            : ['applied']
+          : ['pending']
+      const blob = [
+        o.person_name,
+        o.type,
+        offsetTypeLabel(o),
+        o.description ?? '',
+        o.occurred_date,
+        String(o.amount),
+        formatCurrency(o.amount),
+        ...statusParts,
+      ]
+        .join(' ')
+        .toLowerCase()
+      return blob.includes(q)
+    })
+  }, [offsets, offsetsTabSearch, payStubs])
 
   const ledgerOpenBalanceSummary = useMemo(() => {
     let openCount = 0
@@ -10125,11 +10163,48 @@ export default function People() {
               + Add Offset
             </button>
           </div>
+          <div style={{ marginBottom: '0.75rem', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
+            <input
+              type="search"
+              value={offsetsTabSearch}
+              onChange={(e) => setOffsetsTabSearch(e.target.value)}
+              placeholder="Search person, type, description, date, status…"
+              aria-label="Search offsets"
+              style={{
+                flex: '1 1 220px',
+                minWidth: 160,
+                padding: '0.35rem 0.5rem',
+                border: '1px solid #d1d5db',
+                borderRadius: 4,
+                fontSize: '0.875rem',
+              }}
+            />
+            {offsetsTabSearching ? (
+              <button
+                type="button"
+                onClick={() => setOffsetsTabSearch('')}
+                style={{
+                  padding: '0.35rem 0.5rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  background: 'white',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                }}
+              >
+                Clear
+              </button>
+            ) : null}
+          </div>
           {offsetsError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{offsetsError}</p>}
           {offsetsLoading ? (
             <p style={{ color: '#6b7280' }}>Loading…</p>
           ) : (
-            <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+            <>
+              {offsetsTabSearching && offsets.length > 0 && filteredOffsets.length === 0 ? (
+                <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>No offsets match this search.</p>
+              ) : null}
+              <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                 <thead style={{ background: '#f9fafb' }}>
                   <tr>
@@ -10143,7 +10218,7 @@ export default function People() {
                   </tr>
                 </thead>
                 <tbody>
-                  {offsets.map((o) => {
+                  {filteredOffsets.map((o) => {
                     const stub = o.pay_stub_id ? payStubs.find((s) => s.id === o.pay_stub_id) : null
                     const offsetTypeLabel =
                       o.type === 'backcharge' ? 'Backcharge' : o.type === 'damage' ? 'Damage' : o.type === 'employee_credit' ? 'Employee credit' : o.type
@@ -10245,6 +10320,7 @@ export default function People() {
                 </p>
               )}
             </div>
+            </>
           )}
         </div>
       )}

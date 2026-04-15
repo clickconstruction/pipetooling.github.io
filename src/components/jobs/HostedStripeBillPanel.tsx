@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { supabase } from '../../lib/supabase'
+import { getAccessTokenForEdgeFunctions } from '../../lib/supabaseAccessTokenForEdge'
 import { getBillingStripeModePref, stripeModeInvokeBody } from '../../lib/billingStripeModePref'
 import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -291,8 +292,7 @@ export function HostedStripeBillPanel({
 
     void (async () => {
       try {
-        const { data: auth } = await supabase.auth.getSession()
-        const token = auth.session?.access_token
+        const token = await getAccessTokenForEdgeFunctions()
         if (!token) {
           if (!cancelled) {
             setStripeError('Not signed in')

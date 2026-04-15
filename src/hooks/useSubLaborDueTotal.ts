@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { laborItemsSubtotal } from '../lib/peopleLaborJobItemLineCost'
 import { supabase } from '../lib/supabase'
 
 /** Fetches and computes Sub Labor Due total (for use outside React, e.g. Settings). */
@@ -14,7 +15,7 @@ export async function fetchSubLaborDueTotal(): Promise<number> {
   const [itemsRes, paymentsRes] = await Promise.all([
     supabase
       .from('people_labor_job_items')
-      .select('job_id, fixture, count, hrs_per_unit, is_fixed, labor_rate')
+      .select('job_id, fixture, count, hrs_per_unit, is_fixed, labor_rate, direct_labor_amount')
       .in('job_id', jobIds)
       .order('sequence_order', { ascending: true }),
     supabase
@@ -42,12 +43,7 @@ export async function fetchSubLaborDueTotal(): Promise<number> {
   for (const job of jobs as LaborJobRow[]) {
     const jobRate = job.labor_rate ?? 0
     const jobItems = itemsByJob.get(job.id) ?? []
-    const laborTotal = jobItems.reduce((s, i) => {
-      const hrs = Number(i.hrs_per_unit) || 0
-      const laborHrs = (i.is_fixed ?? false) ? hrs : (Number(i.count) || 0) * hrs
-      const rate = i.labor_rate != null ? Number(i.labor_rate) : jobRate
-      return s + laborHrs * rate
-    }, 0)
+    const laborTotal = laborItemsSubtotal(jobItems, jobRate)
     let totalCost = laborTotal
     const jobPayments = paymentsByJob.get(job.id) ?? []
     const paid = jobPayments
@@ -81,6 +77,7 @@ type LaborItemRow = {
   hrs_per_unit: number
   is_fixed?: boolean
   labor_rate?: number | null
+  direct_labor_amount?: number | null
 }
 
 type LaborPaymentRow = {
@@ -123,7 +120,7 @@ export function useSubLaborDueTotal(
         const [itemsRes, paymentsRes] = await Promise.all([
           supabase
             .from('people_labor_job_items')
-            .select('job_id, fixture, count, hrs_per_unit, is_fixed, labor_rate')
+            .select('job_id, fixture, count, hrs_per_unit, is_fixed, labor_rate, direct_labor_amount')
             .in('job_id', jobIds)
             .order('sequence_order', { ascending: true }),
           supabase
@@ -153,12 +150,7 @@ export function useSubLaborDueTotal(
         for (const job of jobs as LaborJobRow[]) {
           const jobRate = job.labor_rate ?? 0
           const jobItems = itemsByJob.get(job.id) ?? []
-          const laborTotal = jobItems.reduce((s, i) => {
-            const hrs = Number(i.hrs_per_unit) || 0
-            const laborHrs = (i.is_fixed ?? false) ? hrs : (Number(i.count) || 0) * hrs
-            const rate = i.labor_rate != null ? Number(i.labor_rate) : jobRate
-            return s + laborHrs * rate
-          }, 0)
+          const laborTotal = laborItemsSubtotal(jobItems, jobRate)
           let totalCost = laborTotal
           const jobPayments = paymentsByJob.get(job.id) ?? []
           const paid = jobPayments

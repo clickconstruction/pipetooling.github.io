@@ -17,6 +17,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useMercuryLedgerNicknames } from '../hooks/useMercuryLedgerNicknames'
 import { useToastContext } from '../contexts/ToastContext'
 import { withSupabaseRetry } from '../utils/errorHandling'
+import { laborItemsSubtotal, lineLaborCost } from '../lib/peopleLaborJobItemLineCost'
 import { getDispatchNoteDisplayMeta } from '../utils/dispatchNoteDisplay'
 import NewReportModal from '../components/NewReportModal'
 import JobReportsModal from '../components/JobReportsModal'
@@ -57,6 +58,7 @@ import {
   prepareBilledInvoicesBeforeJobRevertToReadyToBill,
   stripeModeForBillingFromRole,
 } from '../lib/voidStripeInvoiceForRevert'
+import { getAccessTokenForEdgeFunctions } from '../lib/supabaseAccessTokenForEdge'
 import { syncJobToReadyToBillIfNoBilledInvoicesRemain } from '../lib/syncJobToReadyToBillIfNoBilledInvoicesRemain'
 import { pickLinkedEstimateForStagesBanner } from '../lib/pickLinkedEstimateForStagesBanner'
 import {
@@ -144,9 +146,36 @@ type ServiceType = { id: string; name: string; description: string | null; color
 type LaborBookVersion = Database['public']['Tables']['labor_book_versions']['Row']
 type LaborBookEntry = Database['public']['Tables']['labor_book_entries']['Row']
 type LaborBookEntryWithFixture = LaborBookEntry & { fixture_types?: { name: string } | null }
-type LaborFixtureRow = { id: string; fixture: string; count: number; hrs_per_unit: number; is_fixed: boolean; labor_rate: number }
+type LaborFixtureRow = {
+  id: string
+  fixture: string
+  count: number
+  hrs_per_unit: number
+  is_fixed: boolean
+  labor_rate: number
+  direct_labor_amount: number | null
+}
 type LaborJobPayment = { id: string; amount: number; memo: string | null; created_at: string }
-type LaborJob = { id: string; assigned_to_name: string; address: string; job_number: string | null; labor_rate: number | null; job_date: string | null; created_at: string | null; distance_miles?: number | null; paid_at?: string | null; items?: Array<{ fixture: string; count: number; hrs_per_unit: number; is_fixed?: boolean; labor_rate?: number | null }>; payments?: LaborJobPayment[] }
+type LaborJob = {
+  id: string
+  assigned_to_name: string
+  address: string
+  job_number: string | null
+  labor_rate: number | null
+  job_date: string | null
+  created_at: string | null
+  distance_miles?: number | null
+  paid_at?: string | null
+  items?: Array<{
+    fixture: string
+    count: number
+    hrs_per_unit: number
+    is_fixed?: boolean
+    labor_rate?: number | null
+    direct_labor_amount?: number | null
+  }>
+  payments?: LaborJobPayment[]
+}
 type CrewJobAssignment = { job_id: string; pct: number }
 type CrewJobRow = { crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }
 type TeamLaborBreakdownEntry = {
@@ -280,21 +309,24 @@ const jobSummaryCostSectionBodyStyle: CSSProperties = {
   borderLeft: '2px solid #e5e7eb',
 }
 
-/** Sub labor book row cost (hours × rate + drive); matches jobSummaryData / laborCostByHcp aggregation. */
+/** Sub labor book row cost (line totals + drive); matches jobSummaryData / laborCostByHcp aggregation. */
 function laborJobSubCost(lj: LaborJob, mileageCost: number, timePerMile: number): number {
-  const totalHrs = (lj.items ?? []).reduce((s, i) => {
-    const hrs = Number(i.hrs_per_unit) || 0
-    return s + ((i.is_fixed ?? false) ? hrs : (Number(i.count) || 0) * hrs)
-  }, 0)
-  const rate = lj.labor_rate ?? 0
+  const jobRate = lj.labor_rate ?? 0
+  const lineTotal = laborItemsSubtotal(lj.items, jobRate)
   const miles = Number(lj.distance_miles) || 0
   const driveCost =
-    miles > 0 && rate > 0
-      ? miles * mileageCost + miles * timePerMile * rate
+    miles > 0 && jobRate > 0
+      ? miles * mileageCost + miles * timePerMile * jobRate
       : miles > 0
         ? miles * mileageCost
         : 0
-  return totalHrs * rate + driveCost
+  return lineTotal + driveCost
+}
+
+/** Sub Labor modal crew search: empty query leaves list unchanged. */
+function filterLaborCrewNames(names: string[], queryLower: string): string[] {
+  if (!queryLower) return names
+  return names.filter((n) => n.toLowerCase().includes(queryLower))
 }
 
 function formatCurrencyNoCents(n: number): string {
@@ -639,7 +671,10 @@ export default function Jobs() {
   const [laborDistance, setLaborDistance] = useState('0')
   const [laborJobNumber, setLaborJobNumber] = useState('')
   const [laborDate, setLaborDate] = useState(() => new Date().toLocaleDateString('en-CA'))
-  const [laborFixtureRows, setLaborFixtureRows] = useState<LaborFixtureRow[]>([{ id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false, labor_rate: 20 }])
+  const [laborFixtureEntryMode, setLaborFixtureEntryMode] = useState<'simple' | 'itemized'>('simple')
+  const [laborFixtureRows, setLaborFixtureRows] = useState<LaborFixtureRow[]>([
+    { id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false, labor_rate: 20, direct_labor_amount: null },
+  ])
   const [laborSaving, setLaborSaving] = useState(false)
   // Sub Sheet Ledger state
   const [laborJobs, setLaborJobs] = useState<LaborJob[]>([])
@@ -667,6 +702,9 @@ export default function Jobs() {
   const [editPaymentSaving, setEditPaymentSaving] = useState(false)
   const [editingLaborJob, setEditingLaborJob] = useState<LaborJob | null>(null)
   const [laborModalOpen, setLaborModalOpen] = useState(false)
+  const [laborModalInternalSubsOpen, setLaborModalInternalSubsOpen] = useState(false)
+  const [laborModalOfficeTeamOpen, setLaborModalOfficeTeamOpen] = useState(false)
+  const [laborCrewSearch, setLaborCrewSearch] = useState('')
   const [driveSettingsOpen, setDriveSettingsOpen] = useState(false)
   const [driveMileageCost, setDriveMileageCost] = useState<number | null>(null)
   const [driveTimePerMile, setDriveTimePerMile] = useState<number | null>(null)
@@ -684,11 +722,24 @@ export default function Jobs() {
   if (laborAssignedTo.length === 0) laborMissingFields.push('Assigned')
   if (!laborAddress.trim()) laborMissingFields.push('Address')
   if (laborDistance.trim() === '' || isNaN(parseFloat(laborDistance)) || parseFloat(laborDistance) < 0) laborMissingFields.push('Distance')
-  if (laborFixtureRows.every((r) => {
-    const hasFixture = (r.fixture ?? '').trim()
-    const isFixed = r.is_fixed ?? false
-    return !hasFixture || (!isFixed && Number(r.count) <= 0)
-  })) laborMissingFields.push('Fixtures')
+  if (laborFixtureEntryMode === 'simple') {
+    if (
+      laborFixtureRows.every((r) => {
+        const hasFixture = (r.fixture ?? '').trim()
+        return !hasFixture || !(Number(r.direct_labor_amount) > 0)
+      })
+    ) {
+      laborMissingFields.push('Fixtures')
+    }
+  } else if (
+    laborFixtureRows.every((r) => {
+      const hasFixture = (r.fixture ?? '').trim()
+      const isFixed = r.is_fixed ?? false
+      return !hasFixture || (!isFixed && Number(r.count) <= 0)
+    })
+  ) {
+    laborMissingFields.push('Fixtures')
+  }
   const laborCanSubmit = laborMissingFields.length === 0
 
   // Combined Labor tab (Team Job Labor) state
@@ -812,6 +863,7 @@ export default function Jobs() {
   const [viewBillInvoice, setViewBillInvoice] = useState<InvoiceWithJob | null>(null)
   const [sendBackJob, setSendBackJob] = useState<{ id: string; hcpNumber: string; jobName: string; toStatus: 'working' | 'ready_to_bill' } | null>(null)
   const [sendBackInvoice, setSendBackInvoice] = useState<{ inv: InvoiceWithJob; action: 'delete' | 'revert' } | null>(null)
+  const [sendBackInvoiceStripeExplainerAfterFailure, setSendBackInvoiceStripeExplainerAfterFailure] = useState(false)
   const [sendBackChecked, setSendBackChecked] = useState(false)
   const [sendBackSentBy, setSendBackSentBy] = useState<string | null>(null)
   const [sendBackConfirmJob, setSendBackConfirmJob] = useState<{ id: string; toStatus: 'ready_to_bill' | 'billed' } | null>(null)
@@ -991,7 +1043,8 @@ export default function Jobs() {
         jobs_ledger_invoices(*),
         jobs_ledger_team_members(*, users(name)),
         reports(job_ledger_id),
-        projects:project_id(id, name)
+        projects:project_id(id, name),
+        bids:bid_id(id, project_name, bid_number)
       `
       )
       .order('hcp_number', { ascending: false })
@@ -1013,6 +1066,7 @@ export default function Jobs() {
         jobs_ledger_team_members?: (JobsLedgerTeamMember & { users: { name: string } | null })[]
         reports?: Array<{ job_ledger_id: string | null }>
         projects?: { id: string; name: string } | null
+        bids?: { id: string; project_name: string | null; bid_number: string | null } | null
       }
     >
     if (rows.length === 0) {
@@ -1029,6 +1083,7 @@ export default function Jobs() {
         jobs_ledger_team_members: team,
         reports: rep,
         projects: proj,
+        bids: bidEmbed,
         ...job
       } = row
       return {
@@ -1040,6 +1095,7 @@ export default function Jobs() {
         team_members: team ?? [],
         report_count: (rep ?? []).length,
         project: proj ?? null,
+        linkedBid: bidEmbed ?? null,
         last_schedule_work_date: null,
       }
     })
@@ -1168,8 +1224,7 @@ export default function Jobs() {
 
   /** Void Stripe (or revert non-Stripe) on all billed lines, then move job to Ready to Bill. */
   async function moveJobToReadyToBillWithStripePrep(jobId: string): Promise<boolean> {
-    const { data: auth } = await supabase.auth.getSession()
-    const token = auth.session?.access_token
+    const token = await getAccessTokenForEdgeFunctions()
     if (!token) {
       setError('Not signed in')
       return false
@@ -1187,9 +1242,9 @@ export default function Jobs() {
   }
 
   /** Send back from Billed: void Stripe when needed, else delete billed row (RPC). */
-  async function revertBilledInvoiceToReadyToBill(inv: InvoiceWithJob) {
+  async function revertBilledInvoiceToReadyToBill(inv: InvoiceWithJob): Promise<boolean> {
     if (!invoiceNeedsStripeVoidForRevert(inv)) {
-      if (stagesInvoiceMutationLockRef.current === inv.id) return
+      if (stagesInvoiceMutationLockRef.current === inv.id) return false
       stagesInvoiceMutationLockRef.current = inv.id
       setStagesInvoiceUpdatingId(inv.id)
       setError(null)
@@ -1201,33 +1256,34 @@ export default function Jobs() {
         const result = data as { ok?: boolean; deleted?: boolean; error?: string } | null
         if (!result?.ok) {
           setError(result?.error ?? 'Failed to send back invoice')
-          return
+          return false
         }
         const sync = await syncJobToReadyToBillIfNoBilledInvoicesRemain(supabase, inv.job_id)
         if (!sync.ok) {
           setError(sync.message)
+          return false
         }
         await loadJobs()
+        return true
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : 'Failed to send back invoice')
+        return false
       } finally {
         setStagesInvoiceUpdatingId(null)
         if (stagesInvoiceMutationLockRef.current === inv.id) {
           stagesInvoiceMutationLockRef.current = null
         }
       }
-      return
     }
-    if (stagesInvoiceMutationLockRef.current === inv.id) return
+    if (stagesInvoiceMutationLockRef.current === inv.id) return false
     stagesInvoiceMutationLockRef.current = inv.id
     setStagesInvoiceUpdatingId(inv.id)
     setError(null)
     try {
-      const { data: auth } = await supabase.auth.getSession()
-      const token = auth.session?.access_token
+      const token = await getAccessTokenForEdgeFunctions()
       if (!token) {
         setError('Not signed in')
-        return
+        return false
       }
       const r = await invokeVoidStripeInvoiceForRevert({
         invoiceId: inv.id,
@@ -1236,18 +1292,20 @@ export default function Jobs() {
       })
       if (!r.ok) {
         setError(r.message)
-        return
+        return false
       }
       const cleaned = await ensureLedgerInvoiceRemovedAfterStripeSendBack(inv.id)
       if (!cleaned.ok) {
         setError(cleaned.message)
-        return
+        return false
       }
       const sync = await syncJobToReadyToBillIfNoBilledInvoicesRemain(supabase, inv.job_id)
       if (!sync.ok) {
         setError(sync.message)
+        return false
       }
       await loadJobs()
+      return true
     } finally {
       setStagesInvoiceUpdatingId(null)
       if (stagesInvoiceMutationLockRef.current === inv.id) {
@@ -1301,6 +1359,12 @@ export default function Jobs() {
         setSendBackSentBy(row?.users?.name ?? null)
       })
   }, [sendBackJob])
+
+  useEffect(() => {
+    if (sendBackInvoice) {
+      setSendBackInvoiceStripeExplainerAfterFailure(false)
+    }
+  }, [sendBackInvoice])
 
   useEffect(() => {
     if (!assignedEditJobId) return
@@ -1787,6 +1851,15 @@ export default function Jobs() {
     return result
   }
 
+  const laborCrewSearchLower = laborCrewSearch.trim().toLowerCase()
+  const laborCrewSearchActive = laborCrewSearch.trim().length > 0
+  const laborModalExternalSubsAll = rosterSubcontractorsWithoutAccount()
+  const laborModalExternalSubsShown = filterLaborCrewNames(laborModalExternalSubsAll, laborCrewSearchLower)
+  const laborModalInternalSubsAll = rosterSubcontractorsWithAccount()
+  const laborModalInternalSubsShown = filterLaborCrewNames(laborModalInternalSubsAll, laborCrewSearchLower)
+  const laborModalOfficeTeamAll = rosterNamesEveryoneElse()
+  const laborModalOfficeTeamShown = filterLaborCrewNames(laborModalOfficeTeamAll, laborCrewSearchLower)
+
   async function loadServiceTypes() {
     const { data, error } = await supabase.from('service_types' as any).select('*').order('sequence_order', { ascending: true })
     if (error) {
@@ -1855,7 +1928,7 @@ export default function Jobs() {
       const [itemsRes, paymentsRes, ledgerRes] = await Promise.all([
         supabase
           .from('people_labor_job_items')
-          .select('job_id, fixture, count, hrs_per_unit, is_fixed, labor_rate')
+          .select('job_id, fixture, count, hrs_per_unit, is_fixed, labor_rate, direct_labor_amount')
           .in('job_id', jobIds)
           .order('sequence_order', { ascending: true }),
         supabase
@@ -1868,10 +1941,35 @@ export default function Jobs() {
       const { data: items } = itemsRes
       const { data: paymentsData } = paymentsRes
       const { data: ledgerJobs } = ledgerRes
-      const itemsByJob = new Map<string, Array<{ fixture: string; count: number; hrs_per_unit: number; is_fixed?: boolean; labor_rate?: number | null }>>()
-      for (const it of (items ?? []) as Array<{ job_id: string; fixture: string; count: number; hrs_per_unit: number; is_fixed?: boolean; labor_rate?: number | null }>) {
+      const itemsByJob = new Map<
+        string,
+        Array<{
+          fixture: string
+          count: number
+          hrs_per_unit: number
+          is_fixed?: boolean
+          labor_rate?: number | null
+          direct_labor_amount?: number | null
+        }>
+      >()
+      for (const it of (items ?? []) as Array<{
+        job_id: string
+        fixture: string
+        count: number
+        hrs_per_unit: number
+        is_fixed?: boolean
+        labor_rate?: number | null
+        direct_labor_amount?: number | null
+      }>) {
         if (!itemsByJob.has(it.job_id)) itemsByJob.set(it.job_id, [])
-        itemsByJob.get(it.job_id)!.push({ fixture: it.fixture, count: it.count, hrs_per_unit: it.hrs_per_unit, is_fixed: it.is_fixed, labor_rate: it.labor_rate })
+        itemsByJob.get(it.job_id)!.push({
+          fixture: it.fixture,
+          count: it.count,
+          hrs_per_unit: it.hrs_per_unit,
+          is_fixed: it.is_fixed,
+          labor_rate: it.labor_rate,
+          direct_labor_amount: it.direct_labor_amount,
+        })
       }
       const paymentsByJob = new Map<string, LaborJobPayment[]>()
       for (const p of (paymentsData ?? []) as Array<{ job_id: string; id: string; amount: number; memo: string | null; created_at: string }>) {
@@ -2116,7 +2214,7 @@ export default function Jobs() {
           const fixtureName = (row.fixture ?? '').trim()
           if (!fixtureName) return row
           const matchedTotal = entriesByFixtureName.get(fixtureName.toLowerCase())
-          if (matchedTotal != null) return { ...row, hrs_per_unit: matchedTotal }
+          if (matchedTotal != null) return { ...row, hrs_per_unit: matchedTotal, direct_labor_amount: null }
           return row
         })
       )
@@ -2275,7 +2373,18 @@ export default function Jobs() {
 
   function addLaborFixtureRow() {
     const defaultRate = defaultLaborRateValue.trim() !== '' && !isNaN(parseFloat(defaultLaborRateValue)) ? parseFloat(defaultLaborRateValue) || 20 : 20
-    setLaborFixtureRows((prev) => [...prev, { id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false, labor_rate: defaultRate }])
+    setLaborFixtureRows((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        fixture: '',
+        count: 1,
+        hrs_per_unit: 0,
+        is_fixed: false,
+        labor_rate: defaultRate,
+        direct_labor_amount: null,
+      },
+    ])
   }
 
   function removeLaborFixtureRow(id: string) {
@@ -2305,27 +2414,45 @@ export default function Jobs() {
     }
     const validRows = laborFixtureRows.filter((r) => {
       const hasFixture = (r.fixture ?? '').trim()
+      if (!hasFixture) return false
+      if (laborFixtureEntryMode === 'simple') {
+        return Number(r.direct_labor_amount) > 0
+      }
       const isFixed = r.is_fixed ?? false
-      return hasFixture && (isFixed ? Number(r.hrs_per_unit) >= 0 : Number(r.count) > 0)
+      return isFixed ? Number(r.hrs_per_unit) >= 0 : Number(r.count) > 0
     })
     if (validRows.length === 0) {
-      const hasAnyFixture = laborFixtureRows.some((r) => (r.fixture ?? '').trim())
-      const hasInvalidCount = laborFixtureRows.some((r) => {
-        const isFixed = r.is_fixed ?? false
-        return (r.fixture ?? '').trim() && !isFixed && (Number(r.count) || 0) <= 0
-      })
-      const hasInvalidHrs = laborFixtureRows.some((r) => {
-        const isFixed = r.is_fixed ?? false
-        return (r.fixture ?? '').trim() && isFixed && Number(r.hrs_per_unit) < 0
-      })
-      if (!hasAnyFixture) {
-        errors.push('Add at least one fixture or tie-in with a name.')
-      } else if (hasInvalidCount) {
-        errors.push('For each fixture (non-fixed), enter a count greater than 0.')
-      } else if (hasInvalidHrs) {
-        errors.push('For fixed fixtures, enter hours per unit of 0 or more.')
+      if (laborFixtureEntryMode === 'simple') {
+        const hasAnyFixture = laborFixtureRows.some((r) => (r.fixture ?? '').trim())
+        const hasInvalidCost = laborFixtureRows.some(
+          (r) => (r.fixture ?? '').trim() && !(Number(r.direct_labor_amount) > 0),
+        )
+        if (!hasAnyFixture) {
+          errors.push('Add at least one line item with a description.')
+        } else if (hasInvalidCost) {
+          errors.push('For each line item, enter a cost greater than 0.')
+        } else {
+          errors.push('Add at least one valid line item.')
+        }
       } else {
-        errors.push('Add at least one fixture or tie-in with a name and valid count or hours.')
+        const hasAnyFixture = laborFixtureRows.some((r) => (r.fixture ?? '').trim())
+        const hasInvalidCount = laborFixtureRows.some((r) => {
+          const isFixed = r.is_fixed ?? false
+          return (r.fixture ?? '').trim() && !isFixed && (Number(r.count) || 0) <= 0
+        })
+        const hasInvalidHrs = laborFixtureRows.some((r) => {
+          const isFixed = r.is_fixed ?? false
+          return (r.fixture ?? '').trim() && isFixed && Number(r.hrs_per_unit) < 0
+        })
+        if (!hasAnyFixture) {
+          errors.push('Add at least one fixture or tie-in with a name.')
+        } else if (hasInvalidCount) {
+          errors.push('For each fixture (non-fixed), enter a count greater than 0.')
+        } else if (hasInvalidHrs) {
+          errors.push('For fixed fixtures, enter hours per unit of 0 or more.')
+        } else {
+          errors.push('Add at least one fixture or tie-in with a name and valid count or hours.')
+        }
       }
     }
     if (errors.length > 0) {
@@ -2358,10 +2485,11 @@ export default function Jobs() {
       const { error: itemErr } = await supabase.from('people_labor_job_items').insert({
         job_id: job.id,
         fixture: r.fixture.trim(),
-        count: Number(r.count) || 1,
-        hrs_per_unit: Number(r.hrs_per_unit) || 0,
-        is_fixed: r.is_fixed ?? false,
-        labor_rate: r.labor_rate != null ? Number(r.labor_rate) : null,
+        count: laborFixtureEntryMode === 'simple' ? 1 : Number(r.count) || 1,
+        hrs_per_unit: laborFixtureEntryMode === 'simple' ? 0 : Number(r.hrs_per_unit) || 0,
+        is_fixed: laborFixtureEntryMode === 'simple' ? false : r.is_fixed ?? false,
+        labor_rate: laborFixtureEntryMode === 'simple' ? null : r.labor_rate != null ? Number(r.labor_rate) : null,
+        direct_labor_amount: laborFixtureEntryMode === 'simple' ? Number(r.direct_labor_amount) : null,
         sequence_order: i + 1,
       })
       if (itemErr) {
@@ -2376,7 +2504,10 @@ export default function Jobs() {
     setLaborJobNumber('')
     setLaborDate(new Date().toLocaleDateString('en-CA'))
     const defaultRate = defaultLaborRateValue.trim() !== '' && !isNaN(parseFloat(defaultLaborRateValue)) ? parseFloat(defaultLaborRateValue) || 20 : 20
-    setLaborFixtureRows([{ id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false, labor_rate: defaultRate }])
+    setLaborFixtureEntryMode('simple')
+    setLaborFixtureRows([
+      { id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false, labor_rate: defaultRate, direct_labor_amount: null },
+    ])
     setLaborSaving(false)
     setActiveTab('sub_sheet_ledger')
     closeLaborModal()
@@ -2464,6 +2595,32 @@ export default function Jobs() {
     else await loadLaborJobs()
   }
 
+  function handleLaborFixtureEntryModeToggle(nextItemized: boolean) {
+    const jobLevelFallback = editingLaborJob?.labor_rate ?? laborFixtureRows[0]?.labor_rate ?? 20
+    if (nextItemized) {
+      setLaborFixtureRows((prev) => prev.map((r) => ({ ...r, direct_labor_amount: null })))
+      setLaborFixtureEntryMode('itemized')
+    } else {
+      // Itemized → simple: preserve dollar totals as direct line amounts.
+      setLaborFixtureRows((prev) =>
+        prev.map((r) => ({
+          ...r,
+          direct_labor_amount: lineLaborCost(
+            {
+              count: r.count,
+              hrs_per_unit: r.hrs_per_unit,
+              is_fixed: r.is_fixed,
+              labor_rate: r.labor_rate,
+              direct_labor_amount: null,
+            },
+            jobLevelFallback,
+          ),
+        })),
+      )
+      setLaborFixtureEntryMode('simple')
+    }
+  }
+
   function resetLaborForm() {
     setLaborAssignedTo([])
     setLaborAddress('')
@@ -2471,7 +2628,13 @@ export default function Jobs() {
     setLaborJobNumber('')
     setLaborDate(new Date().toLocaleDateString('en-CA'))
     const defaultRate = defaultLaborRateValue.trim() !== '' && !isNaN(parseFloat(defaultLaborRateValue)) ? parseFloat(defaultLaborRateValue) || 20 : 20
-    setLaborFixtureRows([{ id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false, labor_rate: defaultRate }])
+    setLaborFixtureEntryMode('simple')
+    setLaborFixtureRows([
+      { id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false, labor_rate: defaultRate, direct_labor_amount: null },
+    ])
+    setLaborModalInternalSubsOpen(false)
+    setLaborModalOfficeTeamOpen(false)
+    setLaborCrewSearch('')
   }
 
   function closeLaborModal() {
@@ -2485,6 +2648,9 @@ export default function Jobs() {
   }
 
   function openEditLaborJob(job: LaborJob) {
+    setLaborModalInternalSubsOpen(false)
+    setLaborModalOfficeTeamOpen(false)
+    setLaborCrewSearch('')
     setEditingLaborJob(job)
     const names = job.assigned_to_name
       ? job.assigned_to_name.split(LABOR_ASSIGNED_DELIMITER).map((s) => s.trim()).filter(Boolean)
@@ -2495,16 +2661,26 @@ export default function Jobs() {
     setLaborJobNumber(job.job_number ?? '')
     setLaborDate(job.job_date ?? new Date().toLocaleDateString('en-CA'))
     const jobRate = job.labor_rate ?? 0
-    const rows = (job.items ?? []).map((i) => ({
+    const items = job.items ?? []
+    const allDirect =
+      items.length > 0 &&
+      items.every((i) => i.direct_labor_amount != null && Number.isFinite(Number(i.direct_labor_amount)))
+    setLaborFixtureEntryMode(allDirect ? 'simple' : 'itemized')
+    const rows = items.map((i) => ({
       id: crypto.randomUUID(),
       fixture: i.fixture ?? '',
       count: Number(i.count) || 1,
       hrs_per_unit: Number(i.hrs_per_unit) || 0,
       is_fixed: i.is_fixed ?? false,
       labor_rate: i.labor_rate != null ? Number(i.labor_rate) : jobRate,
+      direct_labor_amount: i.direct_labor_amount != null ? Number(i.direct_labor_amount) : null,
     }))
     const defaultRate = defaultLaborRateValue.trim() !== '' && !isNaN(parseFloat(defaultLaborRateValue)) ? parseFloat(defaultLaborRateValue) || 20 : 20
-    setLaborFixtureRows(rows.length > 0 ? rows : [{ id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false, labor_rate: defaultRate }])
+    setLaborFixtureRows(
+      rows.length > 0
+        ? rows
+        : [{ id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false, labor_rate: defaultRate, direct_labor_amount: null }],
+    )
     setError(null)
   }
 
@@ -2535,27 +2711,45 @@ export default function Jobs() {
     }
     const validRows = laborFixtureRows.filter((r) => {
       const hasFixture = (r.fixture ?? '').trim()
+      if (!hasFixture) return false
+      if (laborFixtureEntryMode === 'simple') {
+        return Number(r.direct_labor_amount) > 0
+      }
       const isFixed = r.is_fixed ?? false
-      return hasFixture && (isFixed ? Number(r.hrs_per_unit) >= 0 : Number(r.count) > 0)
+      return isFixed ? Number(r.hrs_per_unit) >= 0 : Number(r.count) > 0
     })
     if (validRows.length === 0) {
-      const hasAnyFixture = laborFixtureRows.some((r) => (r.fixture ?? '').trim())
-      const hasInvalidCount = laborFixtureRows.some((r) => {
-        const isFixed = r.is_fixed ?? false
-        return (r.fixture ?? '').trim() && !isFixed && (Number(r.count) || 0) <= 0
-      })
-      const hasInvalidHrs = laborFixtureRows.some((r) => {
-        const isFixed = r.is_fixed ?? false
-        return (r.fixture ?? '').trim() && isFixed && Number(r.hrs_per_unit) < 0
-      })
-      if (!hasAnyFixture) {
-        errors.push('Add at least one fixture or tie-in with a name.')
-      } else if (hasInvalidCount) {
-        errors.push('For each fixture (non-fixed), enter a count greater than 0.')
-      } else if (hasInvalidHrs) {
-        errors.push('For fixed fixtures, enter hours per unit of 0 or more.')
+      if (laborFixtureEntryMode === 'simple') {
+        const hasAnyFixture = laborFixtureRows.some((r) => (r.fixture ?? '').trim())
+        const hasInvalidCost = laborFixtureRows.some(
+          (r) => (r.fixture ?? '').trim() && !(Number(r.direct_labor_amount) > 0),
+        )
+        if (!hasAnyFixture) {
+          errors.push('Add at least one line item with a description.')
+        } else if (hasInvalidCost) {
+          errors.push('For each line item, enter a cost greater than 0.')
+        } else {
+          errors.push('Add at least one valid line item.')
+        }
       } else {
-        errors.push('Add at least one fixture or tie-in with a name and valid count or hours.')
+        const hasAnyFixture = laborFixtureRows.some((r) => (r.fixture ?? '').trim())
+        const hasInvalidCount = laborFixtureRows.some((r) => {
+          const isFixed = r.is_fixed ?? false
+          return (r.fixture ?? '').trim() && !isFixed && (Number(r.count) || 0) <= 0
+        })
+        const hasInvalidHrs = laborFixtureRows.some((r) => {
+          const isFixed = r.is_fixed ?? false
+          return (r.fixture ?? '').trim() && isFixed && Number(r.hrs_per_unit) < 0
+        })
+        if (!hasAnyFixture) {
+          errors.push('Add at least one fixture or tie-in with a name.')
+        } else if (hasInvalidCount) {
+          errors.push('For each fixture (non-fixed), enter a count greater than 0.')
+        } else if (hasInvalidHrs) {
+          errors.push('For fixed fixtures, enter hours per unit of 0 or more.')
+        } else {
+          errors.push('Add at least one fixture or tie-in with a name and valid count or hours.')
+        }
       }
     }
     if (errors.length > 0) {
@@ -2592,10 +2786,11 @@ export default function Jobs() {
       const { error: itemErr } = await supabase.from('people_labor_job_items').insert({
         job_id: editingLaborJob.id,
         fixture: r.fixture.trim(),
-        count: Number(r.count) || 1,
-        hrs_per_unit: Number(r.hrs_per_unit) || 0,
-        is_fixed: r.is_fixed ?? false,
-        labor_rate: r.labor_rate != null ? Number(r.labor_rate) : null,
+        count: laborFixtureEntryMode === 'simple' ? 1 : Number(r.count) || 1,
+        hrs_per_unit: laborFixtureEntryMode === 'simple' ? 0 : Number(r.hrs_per_unit) || 0,
+        is_fixed: laborFixtureEntryMode === 'simple' ? false : r.is_fixed ?? false,
+        labor_rate: laborFixtureEntryMode === 'simple' ? null : r.labor_rate != null ? Number(r.labor_rate) : null,
+        direct_labor_amount: laborFixtureEntryMode === 'simple' ? Number(r.direct_labor_amount) : null,
         sequence_order: i + 1,
       })
       if (itemErr) {
@@ -2616,27 +2811,28 @@ export default function Jobs() {
     const title = escapeHtml(assignedLabel) + ' — ' + escapeHtml(laborAddress || 'Job') + ' — ' + dateStr
 
     const validRows = laborFixtureRows.filter((r) => (r.fixture ?? '').trim())
+    const printFallbackRate = laborFixtureRows[0]?.labor_rate ?? 20
     const laborRowsHtml =
       validRows.length === 0
         ? '<tr><td colspan="5" style="text-align:center; color:#6b7280;">No labor rows</td></tr>'
         : validRows
             .map((row) => {
+              const totalCost = lineLaborCost(row, printFallbackRate)
+              const isDirect =
+                row.direct_labor_amount != null && Number.isFinite(Number(row.direct_labor_amount))
+              if (isDirect) {
+                return `<tr><td>${escapeHtml(row.fixture ?? '')}</td><td style="text-align:center">—</td><td style="text-align:right">—</td><td style="text-align:right">—</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr>`
+              }
               const hrs = Number(row.hrs_per_unit) || 0
               const laborHrs = (row.is_fixed ?? false) ? hrs : (Number(row.count) || 0) * hrs
               const rate = row.labor_rate ?? 0
-              const totalCost = rate * laborHrs
               return `<tr><td>${escapeHtml(row.fixture ?? '')}</td><td style="text-align:center">${Number(row.count)}</td><td style="text-align:right">${laborHrs.toFixed(2)}</td><td style="text-align:right">$${rate.toFixed(2)}</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr>`
             })
             .join('')
 
     let totalCost = 0
     if (validRows.length > 0) {
-      totalCost = validRows.reduce((sum, row) => {
-        const hrs = Number(row.hrs_per_unit) || 0
-        const laborHrs = (row.is_fixed ?? false) ? hrs : (Number(row.count) || 0) * hrs
-        const rate = row.labor_rate ?? 0
-        return sum + rate * laborHrs
-      }, 0)
+      totalCost = validRows.reduce((sum, row) => sum + lineLaborCost(row, printFallbackRate), 0)
     }
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
@@ -2675,22 +2871,22 @@ export default function Jobs() {
         ? '<tr><td colspan="5" style="text-align:center; color:#6b7280;">No labor rows</td></tr>'
         : items
             .map((i) => {
+              const totalCost = lineLaborCost(i, jobRate)
+              const isDirect =
+                i.direct_labor_amount != null && Number.isFinite(Number(i.direct_labor_amount))
+              if (isDirect) {
+                return `<tr><td>${escapeHtml(i.fixture ?? '')}</td><td style="text-align:center">—</td><td style="text-align:right">—</td><td style="text-align:right">—</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr>`
+              }
               const hrs = Number(i.hrs_per_unit) || 0
               const laborHrs = (i.is_fixed ?? false) ? hrs : (Number(i.count) || 0) * hrs
               const rate = i.labor_rate ?? jobRate
-              const totalCost = rate * laborHrs
               return `<tr><td>${escapeHtml(i.fixture ?? '')}</td><td style="text-align:center">${Number(i.count)}</td><td style="text-align:right">${laborHrs.toFixed(2)}</td><td style="text-align:right">$${rate.toFixed(2)}</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr>`
             })
             .join('')
 
     let totalCost = 0
     if (items.length > 0) {
-      totalCost = items.reduce((sum, i) => {
-        const hrs = Number(i.hrs_per_unit) || 0
-        const laborHrs = (i.is_fixed ?? false) ? hrs : (Number(i.count) || 0) * hrs
-        const rate = i.labor_rate ?? jobRate
-        return sum + rate * laborHrs
-      }, 0)
+      totalCost = items.reduce((sum, i) => sum + lineLaborCost(i, jobRate), 0)
     }
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
@@ -3511,6 +3707,13 @@ ${totalsHtml}
   }, [authUser?.id, laborModalOpen, editingLaborJob])
 
   useEffect(() => {
+    if (!(laborModalOpen || editingLaborJob)) return
+    if (!laborCrewSearch.trim()) return
+    setLaborModalInternalSubsOpen(true)
+    setLaborModalOfficeTeamOpen(true)
+  }, [laborCrewSearch, laborModalOpen, editingLaborJob])
+
+  useEffect(() => {
     if ((laborModalOpen || editingLaborJob) && selectedServiceTypeId && authUser?.id) {
       setLaborBookEntriesVersionId(null)
       loadFixtureTypes()
@@ -3763,18 +3966,7 @@ ${totalsHtml}
     }
 
     for (const job of laborJobs) {
-      const totalHrs = (job.items ?? []).reduce((s, i) => {
-        const hrs = Number(i.hrs_per_unit) || 0
-        return s + ((i.is_fixed ?? false) ? hrs : (Number(i.count) || 0) * hrs)
-      }, 0)
-      const rate = job.labor_rate ?? 0
-      const miles = Number(job.distance_miles) || 0
-      const mileageCost = driveMileageCost ?? 0.70
-      const timePerMile = driveTimePerMile ?? 0.02
-      const driveCost = miles > 0 && rate > 0
-        ? miles * mileageCost + miles * timePerMile * rate
-        : miles > 0 ? miles * mileageCost : 0
-      const laborCost = totalHrs * rate + driveCost
+      const laborCost = laborJobSubCost(job, driveMileageCost ?? 0.70, driveTimePerMile ?? 0.02)
       const names = (job.assigned_to_name ?? '')
         .split(LABOR_ASSIGNED_DELIMITER)
         .map((n) => n.trim())
@@ -3806,13 +3998,7 @@ ${totalsHtml}
     )
     const laborHcps = new Set(
       laborJobs
-        .filter((job) => {
-          const totalHrs = (job.items ?? []).reduce((s, i) => {
-            const hrs = Number(i.hrs_per_unit) || 0
-            return s + ((i.is_fixed ?? false) ? hrs : (Number(i.count) || 0) * hrs)
-          }, 0)
-          return totalHrs > 0 && (job.labor_rate ?? 0) > 0
-        })
+        .filter((job) => laborItemsSubtotal(job.items, job.labor_rate ?? 0) > 0)
         .map((j) => (j.job_number ?? '').trim().toLowerCase())
     )
     const matchedHcps = new Set([...billingHcps].filter((h) => h && laborHcps.has(h)))
@@ -3830,16 +4016,7 @@ ${totalsHtml}
     for (const job of laborJobs) {
       const hcp = (job.job_number ?? '').trim().toLowerCase()
       if (!hcp || !matchedHcps.has(hcp)) continue
-      const totalHrs = (job.items ?? []).reduce((s, i) => {
-        const hrs = Number(i.hrs_per_unit) || 0
-        return s + ((i.is_fixed ?? false) ? hrs : (Number(i.count) || 0) * hrs)
-      }, 0)
-      const rate = job.labor_rate ?? 0
-      const miles = Number(job.distance_miles) || 0
-      const driveCost = miles > 0 && rate > 0
-        ? miles * mileageCost + miles * timePerMile * rate
-        : miles > 0 ? miles * mileageCost : 0
-      matchedLaborTotal += totalHrs * rate + driveCost
+      matchedLaborTotal += laborJobSubCost(job, mileageCost, timePerMile)
     }
     for (const row of teamLaborData) {
       const hcp = hcpByJobId.get(row.jobId)
@@ -3920,12 +4097,7 @@ ${totalsHtml}
     })
     return filtered.reduce((sum, job) => {
       const jobRate = job.labor_rate ?? 0
-      const laborTotal = (job.items ?? []).reduce((s, i) => {
-        const hrs = Number(i.hrs_per_unit) || 0
-        const laborHrs = (i.is_fixed ?? false) ? hrs : (Number(i.count) || 0) * hrs
-        const rate = i.labor_rate != null ? Number(i.labor_rate) : jobRate
-        return s + laborHrs * rate
-      }, 0)
+      const laborTotal = laborItemsSubtotal(job.items, jobRate)
       let totalCost = laborTotal
       const jobPayments = job.payments ?? []
       const paid = jobPayments.filter((p) => Number(p.amount) >= 0).reduce((s, p) => s + Number(p.amount), 0)
@@ -7190,12 +7362,7 @@ ${totalsHtml}
                     })
                     .flatMap((job) => {
                     const jobRate = job.labor_rate ?? 0
-                    const laborTotal = (job.items ?? []).reduce((s, i) => {
-                      const hrs = Number(i.hrs_per_unit) || 0
-                      const laborHrs = (i.is_fixed ?? false) ? hrs : (Number(i.count) || 0) * hrs
-                      const rate = i.labor_rate != null ? Number(i.labor_rate) : jobRate
-                      return s + laborHrs * rate
-                    }, 0)
+                    const laborTotal = laborItemsSubtotal(job.items, jobRate)
                     let totalCost = laborTotal
                     const jobPayments = job.payments ?? []
                     const paid = jobPayments.filter((p) => Number(p.amount) >= 0).reduce((s, p) => s + Number(p.amount), 0)
@@ -7364,14 +7531,16 @@ ${totalsHtml}
                                           const hrs = Number(i.hrs_per_unit) || 0
                                           const laborHrs = (i.is_fixed ?? false) ? hrs : (Number(i.count) || 0) * hrs
                                           const rate = i.labor_rate != null ? Number(i.labor_rate) : jobRate
-                                          const cost = laborHrs * rate
+                                          const cost = lineLaborCost(i, jobRate)
+                                          const isDirect =
+                                            i.direct_labor_amount != null && Number.isFinite(Number(i.direct_labor_amount))
                                           return (
                                             <tr key={idx} style={{ borderBottom: '1px solid #e5e7eb' }}>
                                               <td style={{ padding: '0.5rem 0.75rem' }}>{i.fixture ?? '—'}</td>
-                                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>{Number(i.count)}</td>
-                                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>{hrs.toFixed(2)}</td>
-                                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>{laborHrs.toFixed(2)}</td>
-                                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${rate.toFixed(2)}</td>
+                                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>{isDirect ? '—' : Number(i.count)}</td>
+                                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>{isDirect ? '—' : hrs.toFixed(2)}</td>
+                                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>{isDirect ? '—' : laborHrs.toFixed(2)}</td>
+                                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{isDirect ? '—' : `$${rate.toFixed(2)}`}</td>
                                               <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(cost)}</td>
                                             </tr>
                                           )
@@ -9246,7 +9415,11 @@ ${totalsHtml}
               }}
             >
               {error && <p style={{ color: '#b91c1c', marginBottom: '1rem', whiteSpace: 'pre-line' }}>{error}</p>}
-              <p style={{ color: '#6b7280', fontSize: '0.8125rem', margin: 0, marginBottom: '0.5rem' }}>Required: Address, Distance (mi), at least one contractor (External Subs, Internal Subs, or Office Team), and at least one fixture with a name and count &gt; 0 (or hrs/unit for fixed items).</p>
+              <p style={{ color: '#6b7280', fontSize: '0.8125rem', margin: 0, marginBottom: '0.5rem' }}>
+                {laborFixtureEntryMode === 'simple'
+                  ? 'Required: Address, Distance (mi), at least one contractor (External Subs, Internal Subs, or Office Team), and at least one line item with a description and cost greater than 0.'
+                  : 'Required: Address, Distance (mi), at least one contractor (External Subs, Internal Subs, or Office Team), and at least one fixture with a name and count > 0 (or hrs/unit for fixed items).'}
+              </p>
               <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                 <div style={{ flex: '0 0 120px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 4 }}>
@@ -9330,205 +9503,404 @@ ${totalsHtml}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   <div>
                     <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.25rem' }}>Subcontractors <span style={{ color: '#b91c1c' }}>*</span></div>
-                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.25rem', marginTop: '0.5rem' }}>External Subs</div>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch' }}>
+                    <input
+                      id="labor-crew-search"
+                      type="search"
+                      value={laborCrewSearch}
+                      onChange={(e) => setLaborCrewSearch(e.target.value)}
+                      placeholder="Search for crew"
+                      aria-label="Search for crew"
+                      autoComplete="off"
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        maxWidth: '24rem',
+                        marginTop: '0.35rem',
+                        marginLeft: 'auto',
+                        marginRight: 'auto',
+                        marginBottom: '0.5rem',
+                        padding: '0.4rem 0.5rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: 4,
+                        fontSize: '0.875rem',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                    {laborCrewSearchActive &&
+                      laborModalExternalSubsShown.length === 0 &&
+                      laborModalInternalSubsShown.length === 0 &&
+                      laborModalOfficeTeamShown.length === 0 && (
+                      <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: '#9ca3af', textAlign: 'center' }}>No crew match this search</p>
+                    )}
+                    {(!laborCrewSearchActive || laborModalExternalSubsShown.length > 0) && (
+                      <>
+                        <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.25rem', marginTop: '0.5rem' }}>External Subs</div>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, maxHeight: 100, overflowY: 'auto', flex: 1, minWidth: 0 }}>
+                            {laborModalExternalSubsShown.map((n) => (
+                              <label key={n} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={laborAssignedTo.includes(n)}
+                                  onChange={() => setLaborAssignedTo((prev) => (prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n]))}
+                                  style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
+                                />
+                                <span>{n}</span>
+                              </label>
+                            ))}
+                            {laborModalExternalSubsAll.length === 0 && <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>None</span>}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setShowAddSubcontractorModal(true)}
+                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', flexShrink: 0 }}
+                          >
+                            Add Sub
+                          </button>
+                        </div>
+                      </>
+                    )}
+                    {(!laborCrewSearchActive || laborModalInternalSubsShown.length > 0) && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setLaborModalInternalSubsOpen((prev) => !prev)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: laborModalInternalSubsOpen ? 'flex-start' : 'center',
+                            width: '100%',
+                            gap: '0.35rem',
+                            margin: 0,
+                            marginTop: '0.5rem',
+                            marginBottom: laborModalInternalSubsOpen ? '0.25rem' : 0,
+                            padding: 0,
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '0.8125rem',
+                            fontWeight: 600,
+                            color: '#6b7280',
+                          }}
+                        >
+                          <span style={{ fontSize: '0.75rem' }}>{laborModalInternalSubsOpen ? '▼' : '▶'}</span>
+                          Internal Subs
+                        </button>
+                        {laborModalInternalSubsOpen && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, maxHeight: 100, overflowY: 'auto' }}>
+                            {laborModalInternalSubsShown.map((n) => (
+                              <label key={n} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={laborAssignedTo.includes(n)}
+                                  onChange={() => setLaborAssignedTo((prev) => (prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n]))}
+                                  style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
+                                />
+                                <span>{n}</span>
+                              </label>
+                            ))}
+                            {laborModalInternalSubsAll.length === 0 && <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>None</span>}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  {(!laborCrewSearchActive || laborModalOfficeTeamShown.length > 0) && (
+                    <div>
                       <button
                         type="button"
-                        onClick={() => setShowAddSubcontractorModal(true)}
-                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', flexShrink: 0 }}
+                        onClick={() => setLaborModalOfficeTeamOpen((prev) => !prev)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: laborModalOfficeTeamOpen ? 'flex-start' : 'center',
+                          width: '100%',
+                          gap: '0.35rem',
+                          margin: 0,
+                          marginBottom: laborModalOfficeTeamOpen ? '0.25rem' : 0,
+                          padding: 0,
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: '0.8125rem',
+                          fontWeight: 600,
+                          color: '#6b7280',
+                        }}
                       >
-                        Add Subcontractor
+                        <span style={{ fontSize: '0.75rem' }}>{laborModalOfficeTeamOpen ? '▼' : '▶'}</span>
+                        Office Team
                       </button>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, maxHeight: 100, overflowY: 'auto', flex: 1, minWidth: 0 }}>
-                        {rosterSubcontractorsWithoutAccount().map((n) => (
-                          <label key={n} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                            <input
-                              type="checkbox"
-                              checked={laborAssignedTo.includes(n)}
-                              onChange={() => setLaborAssignedTo((prev) => (prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n]))}
-                              style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
-                            />
-                            <span>{n}</span>
-                          </label>
-                        ))}
-                        {rosterSubcontractorsWithoutAccount().length === 0 && <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>None</span>}
-                      </div>
+                      {laborModalOfficeTeamOpen && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, maxHeight: 100, overflowY: 'auto' }}>
+                          {laborModalOfficeTeamShown.map((n) => (
+                            <label key={n} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                              <input
+                                type="checkbox"
+                                checked={laborAssignedTo.includes(n)}
+                                onChange={() => setLaborAssignedTo((prev) => (prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n]))}
+                                style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
+                              />
+                              <span>{n}</span>
+                            </label>
+                          ))}
+                          {laborModalOfficeTeamAll.length === 0 && <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>None</span>}
+                        </div>
+                      )}
                     </div>
-                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.25rem', marginTop: '0.5rem' }}>Internal Subs</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, maxHeight: 100, overflowY: 'auto' }}>
-                      {rosterSubcontractorsWithAccount().map((n) => (
-                        <label key={n} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                          <input
-                            type="checkbox"
-                            checked={laborAssignedTo.includes(n)}
-                            onChange={() => setLaborAssignedTo((prev) => (prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n]))}
-                            style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
-                          />
-                          <span>{n}</span>
-                        </label>
-                      ))}
-                      {rosterSubcontractorsWithAccount().length === 0 && <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>None</span>}
+                  )}
                     </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.25rem' }}>Office Team</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, maxHeight: 100, overflowY: 'auto' }}>
-                      {rosterNamesEveryoneElse().map((n) => (
-                        <label key={n} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                          <input
-                            type="checkbox"
-                            checked={laborAssignedTo.includes(n)}
-                            onChange={() => setLaborAssignedTo((prev) => (prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n]))}
-                            style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
-                          />
-                          <span>{n}</span>
-                        </label>
-                      ))}
-                      {rosterNamesEveryoneElse().length === 0 && <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>None</span>}
-                    </div>
-                  </div>
                 </div>
               </div>
               <div style={{ marginTop: '1rem' }}>
-                <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                    <thead style={{ background: '#f9fafb' }}>
-                      <tr>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Specific Work (Line Items) <span style={{ color: '#b91c1c' }}>*</span></th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Count</th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>hrs/unit</th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>_</th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Labor Hours</th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Rate ($/hr)</th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Cost</th>
-                        <th style={{ padding: '0.5rem 0.75rem', width: 60, borderBottom: '1px solid #e5e7eb' }} />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {laborFixtureRows.map((row) => {
-                        const hrsPerUnit = Number(row.hrs_per_unit) || 0
-                        const laborHrs = (row.is_fixed ?? false) ? hrsPerUnit : (Number(row.count) || 0) * hrsPerUnit
-                        return (
-                          <tr key={row.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>
-                              <input
-                                type="text"
-                                value={row.fixture}
-                                onChange={(e) => updateLaborFixtureRow(row.id, { fixture: e.target.value })}
-                                placeholder="e.g. Toilet, Sink"
-                                style={{ width: '100%', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                              />
-                            </td>
-                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
-                              <input
-                                type="number"
-                                min={0}
-                                step={1}
-                                value={row.count || ''}
-                                onChange={(e) => updateLaborFixtureRow(row.id, { count: parseFloat(e.target.value) || 0 })}
-                                onWheel={(e) => e.currentTarget.blur()}
-                                style={{ width: '4rem', padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
-                              />
-                            </td>
-                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
-                              <input
-                                type="number"
-                                min={0}
-                                step={0.25}
-                                value={row.hrs_per_unit || ''}
-                                onChange={(e) => updateLaborFixtureRow(row.id, { hrs_per_unit: parseFloat(e.target.value) || 0 })}
-                                onWheel={(e) => e.currentTarget.blur()}
-                                style={{ width: '4rem', padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
-                              />
-                            </td>
-                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
-                              <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.1rem', fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                                <input
-                                  type="checkbox"
-                                  checked={!!row.is_fixed}
-                                  onChange={(e) => updateLaborFixtureRow(row.id, { is_fixed: e.target.checked })}
-                                  style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
-                                />
-                                <span style={{ color: '#6b7280' }}>fixed</span>
-                              </label>
-                            </td>
-                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 500 }}>{laborHrs.toFixed(2)}</td>
-                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
-                              <input
-                                type="number"
-                                min={0}
-                                step={0.01}
-                                value={row.labor_rate != null && row.labor_rate !== 0 ? row.labor_rate : ''}
-                                onChange={(e) => updateLaborFixtureRow(row.id, { labor_rate: parseFloat(e.target.value) || 0 })}
-                                onWheel={(e) => e.currentTarget.blur()}
-                                placeholder="0"
-                                style={{ width: '5rem', padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
-                              />
-                            </td>
-                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 500 }}>
-                              ${formatCurrency(laborHrs * (row.labor_rate ?? 0))}
-                            </td>
-                            <td style={{ padding: '0.5rem' }}>
-                              <button type="button" onClick={() => removeLaborFixtureRow(row.id)} disabled={laborFixtureRows.length <= 1} style={{ padding: '0.25rem', background: '#fee2e2', color: '#991b1c', border: 'none', borderRadius: 4, cursor: laborFixtureRows.length <= 1 ? 'not-allowed' : 'pointer', fontSize: '0.8125rem' }}>
-                                Remove
-                              </button>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                      <tr style={{ background: '#f9fafb', fontWeight: 600 }}>
-                        <td style={{ padding: '0.5rem 0.75rem' }}>Totals</td>
-                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }} />
-                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }} />
-                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }} />
-                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
-                          {laborFixtureRows.reduce((s, r) => {
-                            const hrs = Number(r.hrs_per_unit) || 0
-                            return s + ((r.is_fixed ?? false) ? hrs : (Number(r.count) || 0) * hrs)
-                          }, 0).toFixed(2)} hrs
-                        </td>
-                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }} />
-                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>
-                          ${formatCurrency(
-                            laborFixtureRows.reduce((s, r) => {
-                              const hrs = Number(r.hrs_per_unit) || 0
-                              const laborHrs = (r.is_fixed ?? false) ? hrs : (Number(r.count) || 0) * hrs
-                              return s + laborHrs * (r.labor_rate ?? 0)
-                            }, 0)
-                          )}
-                        </td>
-                        <td style={{ padding: '0.5rem' }} />
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', marginTop: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  <button
-                    type="button"
-                    onClick={addLaborFixtureRow}
-                    style={{
-                      padding: '0.5rem 1.25rem',
-                      background: '#fff',
-                      color: '#374151',
-                      border: '1px solid #d1d5db',
-                      borderRadius: 6,
-                      fontSize: '0.875rem',
-                      fontWeight: 500,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Add additional fixture or tie-in
-                  </button>
-                </div>
+                {(() => {
+                  const laborModalLineFallbackRate =
+                    editingLaborJob?.labor_rate ??
+                    laborFixtureRows.find((r) => r.labor_rate != null && r.labor_rate !== 0)?.labor_rate ??
+                    20
+                  const laborModalLinesSubtotal = laborFixtureRows.reduce(
+                    (s, r) => s + lineLaborCost(r, laborModalLineFallbackRate),
+                    0
+                  )
+                  const itemizeTotalsFirstCell = (
+                    <td style={{ padding: '0.5rem 0.75rem', verticalAlign: 'middle' }}>
+                      <label
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          fontSize: '0.875rem',
+                          cursor: 'pointer',
+                          userSelect: 'none',
+                          margin: 0,
+                          fontWeight: 500,
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={laborFixtureEntryMode === 'itemized'}
+                          onChange={(e) => handleLaborFixtureEntryModeToggle(e.target.checked)}
+                          style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
+                        />
+                        <span>Itemize hours and rate</span>
+                      </label>
+                    </td>
+                  )
+                  return (
+                    <>
+                      <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                        {laborFixtureEntryMode === 'simple' ? (
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                            <thead style={{ background: '#f9fafb' }}>
+                              <tr>
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>
+                                  Specific Work (Line Items) <span style={{ color: '#b91c1c' }}>*</span>
+                                </th>
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>
+                                  Cost ($) <span style={{ color: '#b91c1c' }}>*</span>
+                                </th>
+                                <th style={{ padding: '0.5rem 0.75rem', width: 60, borderBottom: '1px solid #e5e7eb' }} />
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {laborFixtureRows.map((row) => (
+                                <tr key={row.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                  <td style={{ padding: '0.5rem 0.75rem' }}>
+                                    <input
+                                      type="text"
+                                      value={row.fixture}
+                                      onChange={(e) => updateLaborFixtureRow(row.id, { fixture: e.target.value })}
+                                      placeholder="e.g. Toilet, Sink"
+                                      style={{ width: '100%', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                                    />
+                                  </td>
+                                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      step={0.01}
+                                      value={row.direct_labor_amount != null && row.direct_labor_amount !== 0 ? row.direct_labor_amount : ''}
+                                      onChange={(e) => {
+                                        const v = e.target.value.trim()
+                                        updateLaborFixtureRow(row.id, {
+                                          direct_labor_amount: v === '' ? null : parseFloat(v) || 0,
+                                        })
+                                      }}
+                                      onWheel={(e) => e.currentTarget.blur()}
+                                      placeholder="0"
+                                      style={{ width: '6rem', padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
+                                    />
+                                  </td>
+                                  <td style={{ padding: '0.5rem' }}>
+                                    <button
+                                      type="button"
+                                      onClick={() => removeLaborFixtureRow(row.id)}
+                                      disabled={laborFixtureRows.length <= 1}
+                                      style={{
+                                        padding: '0.25rem',
+                                        background: '#fee2e2',
+                                        color: '#991b1c',
+                                        border: 'none',
+                                        borderRadius: 4,
+                                        cursor: laborFixtureRows.length <= 1 ? 'not-allowed' : 'pointer',
+                                        fontSize: '0.8125rem',
+                                      }}
+                                    >
+                                      Remove
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                              <tr style={{ background: '#f9fafb', fontWeight: 600 }}>
+                                {itemizeTotalsFirstCell}
+                                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(laborModalLinesSubtotal)}</td>
+                                <td style={{ padding: '0.5rem' }} />
+                              </tr>
+                            </tbody>
+                          </table>
+                        ) : (
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                            <thead style={{ background: '#f9fafb' }}>
+                              <tr>
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Specific Work (Line Items) <span style={{ color: '#b91c1c' }}>*</span></th>
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Count</th>
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>hrs/unit</th>
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>_</th>
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Labor Hours</th>
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Rate ($/hr)</th>
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Cost</th>
+                                <th style={{ padding: '0.5rem 0.75rem', width: 60, borderBottom: '1px solid #e5e7eb' }} />
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {laborFixtureRows.map((row) => {
+                                const hrsPerUnit = Number(row.hrs_per_unit) || 0
+                                const laborHrs = (row.is_fixed ?? false) ? hrsPerUnit : (Number(row.count) || 0) * hrsPerUnit
+                                return (
+                                  <tr key={row.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                    <td style={{ padding: '0.5rem 0.75rem' }}>
+                                      <input
+                                        type="text"
+                                        value={row.fixture}
+                                        onChange={(e) => updateLaborFixtureRow(row.id, { fixture: e.target.value })}
+                                        placeholder="e.g. Toilet, Sink"
+                                        style={{ width: '100%', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                                      />
+                                    </td>
+                                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        step={1}
+                                        value={row.count || ''}
+                                        onChange={(e) => updateLaborFixtureRow(row.id, { count: parseFloat(e.target.value) || 0 })}
+                                        onWheel={(e) => e.currentTarget.blur()}
+                                        style={{ width: '4rem', padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
+                                      />
+                                    </td>
+                                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        step={0.25}
+                                        value={row.hrs_per_unit || ''}
+                                        onChange={(e) => updateLaborFixtureRow(row.id, { hrs_per_unit: parseFloat(e.target.value) || 0 })}
+                                        onWheel={(e) => e.currentTarget.blur()}
+                                        style={{ width: '4rem', padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
+                                      />
+                                    </td>
+                                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                                      <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.1rem', fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                        <input
+                                          type="checkbox"
+                                          checked={!!row.is_fixed}
+                                          onChange={(e) => updateLaborFixtureRow(row.id, { is_fixed: e.target.checked })}
+                                          style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
+                                        />
+                                        <span style={{ color: '#6b7280' }}>fixed</span>
+                                      </label>
+                                    </td>
+                                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 500 }}>{laborHrs.toFixed(2)}</td>
+                                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        step={0.01}
+                                        value={row.labor_rate != null && row.labor_rate !== 0 ? row.labor_rate : ''}
+                                        onChange={(e) => updateLaborFixtureRow(row.id, { labor_rate: parseFloat(e.target.value) || 0 })}
+                                        onWheel={(e) => e.currentTarget.blur()}
+                                        placeholder="0"
+                                        style={{ width: '5rem', padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
+                                      />
+                                    </td>
+                                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 500 }}>
+                                      ${formatCurrency(lineLaborCost(row, laborModalLineFallbackRate))}
+                                    </td>
+                                    <td style={{ padding: '0.5rem' }}>
+                                      <button type="button" onClick={() => removeLaborFixtureRow(row.id)} disabled={laborFixtureRows.length <= 1} style={{ padding: '0.25rem', background: '#fee2e2', color: '#991b1c', border: 'none', borderRadius: 4, cursor: laborFixtureRows.length <= 1 ? 'not-allowed' : 'pointer', fontSize: '0.8125rem' }}>
+                                        Remove
+                                      </button>
+                                    </td>
+                                  </tr>
+                                )
+                              })}
+                              <tr style={{ background: '#f9fafb', fontWeight: 600 }}>
+                                {itemizeTotalsFirstCell}
+                                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }} />
+                                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }} />
+                                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }} />
+                                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                                  {laborFixtureRows.reduce((s, r) => {
+                                    const hrs = Number(r.hrs_per_unit) || 0
+                                    return s + ((r.is_fixed ?? false) ? hrs : (Number(r.count) || 0) * hrs)
+                                  }, 0).toFixed(2)} hrs
+                                </td>
+                                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }} />
+                                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(laborModalLinesSubtotal)}</td>
+                                <td style={{ padding: '0.5rem' }} />
+                              </tr>
+                            </tbody>
+                          </table>
+                        )}
+                      </div>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'flex-end',
+                          flexWrap: 'wrap',
+                          gap: '0.75rem',
+                          marginTop: '0.75rem',
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={addLaborFixtureRow}
+                          style={{
+                            padding: '0.5rem 1.25rem',
+                            background: '#fff',
+                            color: '#374151',
+                            border: '1px solid #d1d5db',
+                            borderRadius: 6,
+                            fontSize: '0.875rem',
+                            fontWeight: 500,
+                            cursor: 'pointer',
+                            flexShrink: 0,
+                          }}
+                        >
+                          Add line item
+                        </button>
+                      </div>
+                    </>
+                  )
+                })()}
                 {laborFixtureRows.some((r) => (r.fixture ?? '').trim()) && (
                   <p style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
                     Total labor cost: ${formatCurrency(
-                      laborFixtureRows.reduce((s, r) => {
-                        const hrs = Number(r.hrs_per_unit) || 0
-                        const laborHrs = (r.is_fixed ?? false) ? hrs : (Number(r.count) || 0) * hrs
-                        const rate = r.labor_rate ?? 0
-                        return s + laborHrs * rate
-                      }, 0)
+                      laborItemsSubtotal(
+                        laborFixtureRows,
+                        editingLaborJob?.labor_rate ??
+                          laborFixtureRows.find((r) => r.labor_rate != null && r.labor_rate !== 0)?.labor_rate ??
+                          20,
+                      )
                     )}
                   </p>
                 )}
@@ -9537,11 +9909,11 @@ ${totalsHtml}
                 <div style={{ marginTop: '1.5rem', borderTop: '1px solid #e5e7eb', paddingTop: '1rem' }}>
                   <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Payments</h4>
                   {(() => {
-                    const laborTotal = laborFixtureRows.reduce((s, r) => {
-                      const hrs = Number(r.hrs_per_unit) || 0
-                      const laborHrs = (r.is_fixed ?? false) ? hrs : (Number(r.count) || 0) * hrs
-                      return s + laborHrs * (r.labor_rate ?? 0)
-                    }, 0)
+                    const laborModalPayFallback =
+                      editingLaborJob?.labor_rate ??
+                      laborFixtureRows.find((r) => r.labor_rate != null && r.labor_rate !== 0)?.labor_rate ??
+                      20
+                    const laborTotal = laborItemsSubtotal(laborFixtureRows, laborModalPayFallback)
                     let totalCost = laborTotal
                     const payments = editingLaborJob.payments ?? []
                     const paid = payments.filter((p) => Number(p.amount) >= 0).reduce((s, p) => s + Number(p.amount), 0)
@@ -9630,16 +10002,34 @@ ${totalsHtml}
                       <button
                         type="button"
                         onClick={applyLaborBookHoursToPeople}
-                        disabled={applyingLaborBookHours || !selectedLaborBookVersionId || !laborFixtureRows.some((r) => (r.fixture ?? '').trim())}
+                        disabled={
+                          applyingLaborBookHours ||
+                          laborFixtureEntryMode === 'simple' ||
+                          !selectedLaborBookVersionId ||
+                          !laborFixtureRows.some((r) => (r.fixture ?? '').trim())
+                        }
                         style={{
                           padding: '0.35rem 0.75rem',
-                          background: applyingLaborBookHours || !selectedLaborBookVersionId || !laborFixtureRows.some((r) => (r.fixture ?? '').trim()) ? '#9ca3af' : '#3b82f6',
+                          background:
+                            applyingLaborBookHours ||
+                            laborFixtureEntryMode === 'simple' ||
+                            !selectedLaborBookVersionId ||
+                            !laborFixtureRows.some((r) => (r.fixture ?? '').trim())
+                              ? '#9ca3af'
+                              : '#3b82f6',
                           color: 'white',
                           border: 'none',
                           borderRadius: 4,
-                          cursor: applyingLaborBookHours || !selectedLaborBookVersionId || !laborFixtureRows.some((r) => (r.fixture ?? '').trim()) ? 'not-allowed' : 'pointer',
+                          cursor:
+                            applyingLaborBookHours ||
+                            laborFixtureEntryMode === 'simple' ||
+                            !selectedLaborBookVersionId ||
+                            !laborFixtureRows.some((r) => (r.fixture ?? '').trim())
+                              ? 'not-allowed'
+                              : 'pointer',
                           fontSize: '0.875rem',
                         }}
+                        title={laborFixtureEntryMode === 'simple' ? 'Switch to itemized mode to apply labor book hours' : undefined}
                       >
                         {applyingLaborBookHours ? 'Applying…' : 'Apply matching Labor Hours'}
                       </button>
@@ -9732,7 +10122,49 @@ ${totalsHtml}
                   </>
                 )}
               </div>
-              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '1.25rem', alignItems: 'center' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '0.75rem',
+                  marginTop: '1.25rem',
+                  alignItems: 'center',
+                  justifyContent: 'flex-end',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={closeLaborModal}
+                  disabled={laborSaving}
+                  style={{
+                    padding: '0.5rem 1.25rem',
+                    background: '#fff',
+                    color: '#374151',
+                    border: '1px solid #d1d5db',
+                    borderRadius: 6,
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    cursor: laborSaving ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => editingLaborJob ? printJobSubSheet(editingLaborJob) : printLaborSubSheet()}
+                  style={{
+                    padding: '0.5rem 1.25rem',
+                    background: '#4b5563',
+                    color: 'white',
+                    border: '1px solid #4b5563',
+                    borderRadius: 6,
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Print
+                </button>
                 <button
                   type="submit"
                   disabled={!laborCanSubmit || laborSaving}
@@ -9751,46 +10183,13 @@ ${totalsHtml}
                   {laborSaving ? 'Saving…' : 'Save'}
                 </button>
                 {!laborCanSubmit && !laborSaving && laborMissingFields.length > 0 && (
-                  <span style={{ fontSize: '0.8rem', color: '#FF6600', marginLeft: '0.5rem', display: 'inline-block' }}>
-                  <span style={{ display: 'block' }}>Required:</span>
-                  {laborMissingFields.map((f) => (
-                    <span key={f} style={{ display: 'block', marginLeft: '0.25em' }}>{f}</span>
-                  ))}
-                </span>
+                  <span style={{ fontSize: '0.8rem', color: '#FF6600', display: 'inline-block', textAlign: 'left' }}>
+                    <span style={{ display: 'block' }}>Required:</span>
+                    {laborMissingFields.map((f) => (
+                      <span key={f} style={{ display: 'block', marginLeft: '0.25em' }}>{f}</span>
+                    ))}
+                  </span>
                 )}
-                <button
-                  type="button"
-                  onClick={() => editingLaborJob ? printJobSubSheet(editingLaborJob) : printLaborSubSheet()}
-                  style={{
-                    padding: '0.5rem 1.25rem',
-                    background: '#4b5563',
-                    color: 'white',
-                    border: '1px solid #4b5563',
-                    borderRadius: 6,
-                    fontSize: '0.875rem',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Print
-                </button>
-                <button
-                  type="button"
-                  onClick={closeLaborModal}
-                  disabled={laborSaving}
-                  style={{
-                    padding: '0.5rem 1.25rem',
-                    background: '#fff',
-                    color: '#374151',
-                    border: '1px solid #d1d5db',
-                    borderRadius: 6,
-                    fontSize: '0.875rem',
-                    fontWeight: 500,
-                    cursor: laborSaving ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  Cancel
-                </button>
                 {editingLaborJob && (
                   <button
                     type="button"
@@ -9800,7 +10199,6 @@ ${totalsHtml}
                     }}
                     disabled={laborJobDeletingId === editingLaborJob.id}
                     style={{
-                      marginLeft: 'auto',
                       padding: '0.5rem 1.25rem',
                       background: laborJobDeletingId === editingLaborJob.id ? '#fecaca' : '#fee2e2',
                       color: '#991b1b',
@@ -9823,7 +10221,7 @@ ${totalsHtml}
       {showAddSubcontractorModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
-            <h3 style={{ marginTop: 0 }}>Add Subcontractor</h3>
+            <h3 style={{ marginTop: 0 }}>Add Sub</h3>
             {addSubcontractorError && (
               <p style={{ color: '#b91c1c', marginBottom: '1rem', fontSize: '0.875rem' }}>{addSubcontractorError}</p>
             )}
@@ -10307,11 +10705,15 @@ ${totalsHtml}
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
             <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>{sendBackInvoice.action === 'delete' ? DELETE_DRAFT_BILL_LABEL : 'Send back'}</h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>{sendBackInvoice.inv.job.hcp_number || '—'} · {sendBackInvoice.inv.job.job_name || '—'} · ${Number(sendBackInvoice.inv.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+              {`Job ${sendBackInvoice.inv.job.hcp_number || '—'} · ${sendBackInvoice.inv.job.job_name || '—'} · $${Number(sendBackInvoice.inv.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+            </p>
             {sendBackInvoice.action === 'delete' && (
               <p style={{ margin: '0 0 1rem', fontSize: '0.875rem' }}>This will remove the invoice from Ready to Bill.</p>
             )}
-            {sendBackInvoice.action === 'revert' && invoiceNeedsStripeVoidForRevert(sendBackInvoice.inv) && (
+            {sendBackInvoice.action === 'revert' &&
+              invoiceNeedsStripeVoidForRevert(sendBackInvoice.inv) &&
+              sendBackInvoiceStripeExplainerAfterFailure && (
               <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#92400e' }}>
                 This bill was sent via Stripe. We will void or remove the Stripe invoice so the customer cannot pay an unpaid bill. If it is already paid in Stripe, send back will fail until you resolve it there.
               </p>
@@ -10323,7 +10725,17 @@ ${totalsHtml}
               </label>
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button type="button" onClick={() => { setSendBackInvoice(null); setSendBackChecked(false) }} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSendBackInvoice(null)
+                  setSendBackChecked(false)
+                  setSendBackInvoiceStripeExplainerAfterFailure(false)
+                }}
+                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
               <button
                 type="button"
                 disabled={!sendBackChecked || stagesInvoiceUpdatingId === sendBackInvoice.inv.id}
@@ -10333,11 +10745,22 @@ ${totalsHtml}
                     if (stagesInvoiceSendBackConfirmLockRef.current) return
                     stagesInvoiceSendBackConfirmLockRef.current = true
                     const { inv, action } = sendBackInvoice
-                    setSendBackInvoice(null)
-                    setSendBackChecked(false)
                     try {
-                      if (action === 'delete') await deleteInvoice(inv.id)
-                      else await revertBilledInvoiceToReadyToBill(inv)
+                      if (action === 'delete') {
+                        setSendBackInvoice(null)
+                        setSendBackChecked(false)
+                        setSendBackInvoiceStripeExplainerAfterFailure(false)
+                        await deleteInvoice(inv.id)
+                      } else {
+                        const ok = await revertBilledInvoiceToReadyToBill(inv)
+                        if (ok) {
+                          setSendBackInvoice(null)
+                          setSendBackChecked(false)
+                          setSendBackInvoiceStripeExplainerAfterFailure(false)
+                        } else if (invoiceNeedsStripeVoidForRevert(inv)) {
+                          setSendBackInvoiceStripeExplainerAfterFailure(true)
+                        }
+                      }
                     } finally {
                       stagesInvoiceSendBackConfirmLockRef.current = false
                     }
@@ -10399,8 +10822,7 @@ ${totalsHtml}
                 onClick={async () => {
                   if (!sendBackJob) return
                   if (sendBackJob.toStatus === 'ready_to_bill') {
-                    const { data: auth } = await supabase.auth.getSession()
-                    const token = auth.session?.access_token
+                    const token = await getAccessTokenForEdgeFunctions()
                     if (!token) {
                       setError('Not signed in')
                       return

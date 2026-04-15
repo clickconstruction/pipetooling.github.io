@@ -45,8 +45,8 @@ const dropdownLinkStyle = ({ isActive }: { isActive: boolean }) => ({
 const IMPERSONATION_KEY = 'impersonation_original'
 
 const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/calendar', '/checklist', '/settings', '/tally']
-const PRIMARY_PATHS = ['/dashboard', '/materials', '/estimates', '/jobs', '/bids', '/calendar', '/checklist', '/settings', '/tally']
-const SUPERINTENDENT_PATHS = ['/dashboard', '/projects', '/workflows', '/jobs', '/schedule-dispatch', '/bids', '/materials', '/estimates', '/calendar', '/checklist', '/settings', '/tally']
+const PRIMARY_PATHS = ['/dashboard', '/materials', '/estimates', '/documents', '/jobs', '/bids', '/calendar', '/checklist', '/settings', '/tally']
+const SUPERINTENDENT_PATHS = ['/dashboard', '/projects', '/workflows', '/jobs', '/schedule-dispatch', '/bids', '/materials', '/estimates', '/documents', '/calendar', '/checklist', '/settings', '/tally']
 
 const HEADER_ACTION_BUTTON_HEIGHT = 'calc(1rem + 1.25em)'
 
@@ -284,6 +284,7 @@ export default function Layout() {
           )}
           <NavLink to="/materials" style={linkStyle} onClick={onNavClick}>Materials</NavLink>
           <NavLink to="/estimates" style={linkStyle} onClick={onNavClick}>Estimates</NavLink>
+          <NavLink to="/documents" style={linkStyle} onClick={onNavClick}>Documents</NavLink>
           <NavLink to="/bids" style={linkStyle} onClick={onNavClick}>Bids</NavLink>
           <NavLink to="/customers" style={linkStyle} onClick={onNavClick}>Customers</NavLink>
           {estimatorProspectsAccess && (
@@ -312,6 +313,7 @@ export default function Layout() {
           )}
           <NavLink to="/materials" style={linkStyle} onClick={onNavClick}>Materials</NavLink>
           <NavLink to="/estimates" style={linkStyle} onClick={onNavClick}>Estimates</NavLink>
+          <NavLink to="/documents" style={linkStyle} onClick={onNavClick}>Documents</NavLink>
           <NavLink to="/jobs" style={linkStyle} onClick={onNavClick}>Jobs</NavLink>
           <NavLink to="/bids" style={linkStyle} onClick={onNavClick}>Bids</NavLink>
         </>
@@ -363,6 +365,9 @@ export default function Layout() {
               >
                 Dispatch
               </NavLink>
+            )}
+            {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
+              <NavLink to="/documents" style={linkStyle} onClick={onNavClick}>Documents</NavLink>
             )}
             {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
               <>

@@ -18,7 +18,8 @@ const JOB_LEDGER_DETAIL_SELECT = `
         jobs_ledger_invoices(*),
         jobs_ledger_team_members(*, users(name)),
         reports(job_ledger_id),
-        projects:project_id(id, name)
+        projects:project_id(id, name),
+        bids:bid_id(id, project_name, bid_number)
       `
 
 function mapRowToJobWithDetails(
@@ -30,6 +31,7 @@ function mapRowToJobWithDetails(
     jobs_ledger_team_members?: (JobsLedgerTeamMember & { users: { name: string } | null })[]
     reports?: Array<{ job_ledger_id: string | null }>
     projects?: { id: string; name: string } | null
+    bids?: { id: string; project_name: string | null; bid_number: string | null } | null
   },
 ): JobWithDetails {
   const {
@@ -40,6 +42,7 @@ function mapRowToJobWithDetails(
     jobs_ledger_team_members: team,
     reports: rep,
     projects: proj,
+    bids: bidEmbed,
     ...job
   } = row
   return {
@@ -51,6 +54,7 @@ function mapRowToJobWithDetails(
     team_members: team ?? [],
     report_count: (rep ?? []).length,
     project: proj ?? null,
+    linkedBid: bidEmbed ?? null,
     last_schedule_work_date: null,
   }
 }

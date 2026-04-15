@@ -19,6 +19,7 @@ export const PINNABLE_PATHS = [
   '/templates',
   '/materials',
   '/estimates',
+  '/documents',
   '/duplicates',
   '/bids',
   '/checklist',
@@ -39,6 +40,7 @@ export const PATH_TO_LABEL: Record<string, string> = {
   '/templates': 'Templates',
   '/materials': 'Materials',
   '/estimates': 'Estimates',
+  '/documents': 'Documents',
   '/duplicates': 'Duplicates',
   '/bids': 'Bids',
   '/checklist': 'Checklist',
@@ -65,6 +67,7 @@ export const PATH_TABS: Record<string, readonly string[]> = {
   ],
   '/checklist': ['today', 'history', 'review', 'manage'],
   '/materials': ['price-book', 'assembly-book', 'templates-po', 'purchase-orders', 'supply-houses'],
+  '/documents': ['ledger', 'upload'],
 }
 
 export function getStorageKey(userId: string): string {
@@ -256,8 +259,32 @@ export function pathToLabel(path: string): string {
 }
 
 const SUBCONTRACTOR_PATHS = new Set(['/', '/dashboard', '/calendar', '/checklist', '/settings', '/tally'])
-const PRIMARY_PATHS = new Set(['/dashboard', '/materials', '/jobs', '/bids', '/calendar', '/checklist', '/settings', '/tally'])
-const SUPERINTENDENT_PATHS = new Set(['/dashboard', '/projects', '/workflows', '/jobs', '/bids', '/materials', '/calendar', '/checklist', '/settings', '/tally'])
+const PRIMARY_PATHS = new Set([
+  '/dashboard',
+  '/materials',
+  '/estimates',
+  '/documents',
+  '/jobs',
+  '/bids',
+  '/calendar',
+  '/checklist',
+  '/settings',
+  '/tally',
+])
+const SUPERINTENDENT_PATHS = new Set([
+  '/dashboard',
+  '/projects',
+  '/workflows',
+  '/jobs',
+  '/bids',
+  '/materials',
+  '/estimates',
+  '/documents',
+  '/calendar',
+  '/checklist',
+  '/settings',
+  '/tally',
+])
 
 function getAllowedPathsForRole(role: string | null, estimatorProspectsAccess?: boolean): Set<string> | null {
   if (role === 'subcontractor') return SUBCONTRACTOR_PATHS
@@ -265,7 +292,10 @@ function getAllowedPathsForRole(role: string | null, estimatorProspectsAccess?: 
     return new Set([
       '/dashboard',
       '/materials',
+      '/estimates',
+      '/documents',
       '/bids',
+      '/customers',
       ...(estimatorProspectsAccess ? ['/prospects'] : []),
       '/calendar',
       '/checklist',

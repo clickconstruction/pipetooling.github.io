@@ -19,6 +19,7 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import { resolveCustomerIdForJobPayload } from '../../lib/jobLedgerCustomer'
 import { resolveEffectiveJobMasterUserId } from '../../lib/resolveEffectiveJobMasterUserId'
 import { getBillingStripeModePref, stripeModeInvokeBody } from '../../lib/billingStripeModePref'
+import { getAccessTokenForEdgeFunctions } from '../../lib/supabaseAccessTokenForEdge'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import { setReturnEditJobFromStages } from '../../lib/returnEditJobFromStages'
 import { invoiceCreatedCalendarDayOffset } from '../../lib/invoiceCreatedRelative'
@@ -28,12 +29,14 @@ import { formatMercuryDebitCardIdCompact } from '../../lib/mercuryRawDebitCard'
 import type { JobMercuryAllocLine, JobSupplyInvoiceLine, JobTallyPartLine } from '../../lib/fetchJobMaterialsCostSnapshot'
 import { MaterialsCostAccordionRow } from './JobFormMaterialsCostAccordion'
 import JobProjectLinkChoiceModal from './JobProjectLinkChoiceModal'
+import JobBidLinkChoiceModal, { type JobBidLinkOption } from './JobBidLinkChoiceModal'
 import type { JobBillingContext } from './SendRecordInvoiceModal'
 import { useBillCustomerModal } from '../../contexts/BillCustomerModalContext'
 import { useNewProjectModal } from '../../contexts/NewProjectModalContext'
 import BilledBillViewModal, { type InvoiceWithJobForBillView } from './BilledBillViewModal'
 import { StripeInvoiceSharePanel } from './StripeInvoiceSharePanel'
 import { loadTeamLaborData, type TeamLaborRow } from '../../utils/teamLabor'
+import { laborItemsSubtotal } from '../../lib/peopleLaborJobItemLineCost'
 
 type EstimatesRow = Database['public']['Tables']['estimates']['Row']
 type JobsLedgerInvoiceRow = Database['public']['Tables']['jobs_ledger_invoices']['Row']
@@ -219,6 +222,13 @@ type ProjectOption = {
 /** Above Job Detail modal (`1004`) so Edit Job can stack on top without closing detail. */
 const JOB_FORM_OVERLAY_Z_INDEX = 1010
 const JOB_FORM_NESTED_OVERLAY_Z_INDEX = JOB_FORM_OVERLAY_Z_INDEX + 1
+
+function formatJobFormBidLinkTitle(summary: { project_name: string | null; bid_number: string | null } | null): string {
+  if (!summary) return ''
+  const name = (summary.project_name ?? '').trim() || 'Untitled'
+  const n = summary.bid_number != null && String(summary.bid_number).trim() !== '' ? String(summary.bid_number).trim() : null
+  return n ? `B${n} | ${name}` : name
+}
 /** Above Edit Job + nested create-customer overlay so View Bill stacks correctly. */
 const JOB_FORM_BILL_VIEW_OVERLAY_Z_INDEX = JOB_FORM_NESTED_OVERLAY_Z_INDEX + 1
 
@@ -302,8 +312,7 @@ export default function JobFormModal({
 
     let cancelled = false
     void (async () => {
-      const { data: auth } = await supabase.auth.getSession()
-      const token = auth.session?.access_token
+      const token = await getAccessTokenForEdgeFunctions()
       if (!token || cancelled) return
       for (const inv of targets) {
         if (cancelled) return
@@ -336,6 +345,13 @@ export default function JobFormModal({
   const [customerId, setCustomerId] = useState<string | null>(null)
   const [projectId, setProjectId] = useState<string | null>(null)
   const [projects, setProjects] = useState<ProjectOption[]>([])
+  const [bidId, setBidId] = useState<string | null>(null)
+  const [linkedBidSummary, setLinkedBidSummary] = useState<{
+    project_name: string | null
+    bid_number: string | null
+  } | null>(null)
+  const [bids, setBids] = useState<JobBidLinkOption[]>([])
+  const [jobBidLinkChoiceOpen, setJobBidLinkChoiceOpen] = useState(false)
   const [customers, setCustomers] = useState<CustomerRow[]>([])
   const [users, setUsers] = useState<UserRow[]>([])
   const [customerSearch, setCustomerSearch] = useState('')
@@ -438,6 +454,9 @@ export default function JobFormModal({
   const jobFormJobPlansSectionRef = useRef<HTMLDivElement | null>(null)
   const jobFormGoogleDriveInputRef = useRef<HTMLInputElement | null>(null)
   const jobFormJobPlansInputRef = useRef<HTMLInputElement | null>(null)
+  const jobFormBidSectionRef = useRef<HTMLDivElement | null>(null)
+  const jobFormBidDisconnectRef = useRef<HTMLButtonElement | null>(null)
+  const jobFormBidLinkButtonRef = useRef<HTMLButtonElement | null>(null)
 
   function getCustomerDisplay(c: CustomerRow): string {
     if (c.address) return `${c.name} - ${c.address}`
@@ -473,6 +492,7 @@ export default function JobFormModal({
 
   function closeForm() {
     setJobProjectLinkChoiceOpen(false)
+    setJobBidLinkChoiceOpen(false)
     setContractModalEstimateId(null)
     setCreateCustomerFromJobModalOpen(false)
     setBillViewInvoice(null)
@@ -496,6 +516,14 @@ export default function JobFormModal({
     setCustomerPhone(job.customer_phone ?? '')
     setCustomerId(job.customer_id ?? null)
     setProjectId(job.project_id ?? null)
+    setBidId(job.bid_id ?? null)
+    setLinkedBidSummary(
+      job.bid_id && job.linkedBid
+        ? { project_name: job.linkedBid.project_name, bid_number: job.linkedBid.bid_number }
+        : job.bid_id
+          ? { project_name: null, bid_number: null }
+          : null,
+    )
     setCustomerSearch('')
     setCustomerExpanded(billingGate && !jobLedgerHasCustomerForBilling(job.customer_id))
     setLastBillDate(job.last_bill_date ? job.last_bill_date.slice(0, 10) : '')
@@ -545,6 +573,8 @@ export default function JobFormModal({
     setCustomerPhone('')
     setCustomerId(null)
     setProjectId(projectPrefill)
+    setBidId(null)
+    setLinkedBidSummary(null)
     setCustomerSearch('')
     setDateMet('')
     setCustomerExpanded(true)
@@ -592,13 +622,19 @@ export default function JobFormModal({
           if (!cancelled) setUsers(usersList)
         }
 
-        const [{ data: custData }, { data: projData }] = await Promise.all([
+        const [{ data: custData }, { data: projData }, { data: bidData }] = await Promise.all([
           supabase.from('customers').select('id, name, address, contact_info, date_met, master_user_id, customer_type').order('name'),
           supabase.from('projects').select('id, name, customer_id, master_user_id, customers(name)').order('name'),
+          supabase
+            .from('bids')
+            .select('id, project_name, bid_number, customer_id, customers(name)')
+            .order('updated_at', { ascending: false })
+            .limit(800),
         ])
         if (cancelled) return
         setCustomers((custData as CustomerRow[]) ?? [])
         setProjects((projData as ProjectOption[]) ?? [])
+        setBids((bidData as JobBidLinkOption[]) ?? [])
         await loadFormUsers()
         if (cancelled) return
 
@@ -654,6 +690,17 @@ export default function JobFormModal({
       cancelled = true
     }
   }, [authUser?.id])
+
+  useEffect(() => {
+    if (!bidId) return
+    const b = bids.find((x) => x.id === bidId)
+    if (!b) return
+    setLinkedBidSummary((prev) => {
+      const label = formatJobFormBidLinkTitle(prev)
+      if (label && label !== 'Untitled') return prev
+      return { project_name: b.project_name, bid_number: b.bid_number }
+    })
+  }, [bids, bidId])
 
   useEffect(() => {
     const jobId = editing?.id ?? null
@@ -793,28 +840,38 @@ export default function JobFormModal({
 
           let labor = 0
           const jobIds = matching.map((j) => j.id)
-          if (jobIds.length > 0) {
+                   if (jobIds.length > 0) {
             const { data: items, error: itemsErr } = await supabase
               .from('people_labor_job_items')
-              .select('job_id, count, hrs_per_unit, is_fixed')
+              .select('job_id, count, hrs_per_unit, is_fixed, labor_rate, direct_labor_amount')
               .in('job_id', jobIds)
               .order('sequence_order', { ascending: true })
             if (itemsErr) throw new Error(itemsErr.message)
-            const itemsByJob = new Map<string, Array<{ count: number; hrs_per_unit: number; is_fixed?: boolean }>>()
-            for (const it of (items ?? []) as Array<{ job_id: string; count: number; hrs_per_unit: number; is_fixed?: boolean }>) {
+            type SubLaborItemRow = {
+              count: number
+              hrs_per_unit: number
+              is_fixed?: boolean
+              labor_rate?: number | null
+              direct_labor_amount?: number | null
+            }
+            const itemsByJob = new Map<string, SubLaborItemRow[]>()
+            for (const it of (items ?? []) as Array<{ job_id: string } & SubLaborItemRow>) {
               if (!itemsByJob.has(it.job_id)) itemsByJob.set(it.job_id, [])
-              itemsByJob.get(it.job_id)!.push({ count: it.count, hrs_per_unit: it.hrs_per_unit, is_fixed: it.is_fixed })
+              itemsByJob.get(it.job_id)!.push({
+                count: it.count,
+                hrs_per_unit: it.hrs_per_unit,
+                is_fixed: it.is_fixed,
+                labor_rate: it.labor_rate,
+                direct_labor_amount: it.direct_labor_amount,
+              })
             }
             for (const job of matching) {
-              const totalHrs = (itemsByJob.get(job.id) ?? []).reduce((s, i) => {
-                const hrs = Number(i.hrs_per_unit) || 0
-                return s + (i.is_fixed ?? false ? hrs : (Number(i.count) || 0) * hrs)
-              }, 0)
-              const rate = job.labor_rate ?? 0
+              const jobRate = job.labor_rate ?? 0
+              const lineTotal = laborItemsSubtotal(itemsByJob.get(job.id) ?? [], jobRate)
               const miles = Number(job.distance_miles) || 0
               const driveCost =
-                miles > 0 && rate > 0 ? miles * mileageCost + miles * timePerMile * rate : miles > 0 ? miles * mileageCost : 0
-              labor += totalHrs * rate + driveCost
+                miles > 0 && jobRate > 0 ? miles * mileageCost + miles * timePerMile * jobRate : miles > 0 ? miles * mileageCost : 0
+              labor += lineTotal + driveCost
             }
           }
           if (!cancelled) setEditJobSubLaborData({ count: matching.length, total: labor })
@@ -945,6 +1002,20 @@ export default function JobFormModal({
       })
     })
   }, [])
+
+  const scrollToBidSection = useCallback(() => {
+    setProjectFilesPlansExpanded(true)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        jobFormBidSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        if (bidId) {
+          jobFormBidDisconnectRef.current?.focus()
+        } else {
+          jobFormBidLinkButtonRef.current?.focus()
+        }
+      })
+    })
+  }, [bidId])
 
   const projectFilesPlansJumpLinkStyle: CSSProperties = {
     background: 'none',
@@ -1298,6 +1369,7 @@ export default function JobFormModal({
           revenue: revNum,
           payments_made: paymentsMadeNum,
           project_id: projectId || null,
+          bid_id: bidId || null,
           master_user_id: masterUserIdForUpdate,
         }
         const { error: updateErr } = await supabase
@@ -1373,6 +1445,7 @@ export default function JobFormModal({
             revenue: revNum,
             payments_made: paymentsMadeNum,
             project_id: projectId || null,
+            bid_id: bidId || null,
           })
           .select('id')
           .single()
@@ -1491,48 +1564,95 @@ export default function JobFormModal({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', gap: '0.5rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.25rem' }}>{editing ? 'Edit Job' : 'New Job'}</h2>
-          {projectId ? (
-            (() => {
-              const proj = projects.find((p) => p.id === projectId)
-              return (
-                <Link
-                  to={`/workflows/${projectId}`}
-                  style={{
-                    fontSize: '0.875rem',
-                    padding: '0.25rem 0.5rem',
-                    background: '#eff6ff',
-                    color: '#1d4ed8',
-                    borderRadius: 4,
-                    textDecoration: 'none',
-                    fontWeight: 500,
-                    display: 'inline-block',
-                  }}
-                >
-                  Project: {proj?.name ?? 'Project'}
-                </Link>
-              )
-            })()
-          ) : (
-            <button
-              type="button"
-              onClick={() => setJobProjectLinkChoiceOpen(true)}
-              style={{
-                fontSize: '0.875rem',
-                color: '#2563eb',
-                textDecoration: 'none',
-                fontWeight: 500,
-                background: 'none',
-                border: 'none',
-                padding: 0,
-                cursor: 'pointer',
-                font: 'inherit',
-              }}
-            >
-              Link to Project
-            </button>
-          )}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '0.25rem',
+              justifyContent: 'flex-end',
+              fontSize: '0.875rem',
+            }}
+          >
+            <span style={{ color: '#6b7280', userSelect: 'none' }}>Link to:</span>
+            {bidId ? (
+              <Link
+                to={`/bids?bidId=${encodeURIComponent(bidId)}&tab=cover-letter`}
+                aria-label="Open linked bid"
+                style={{
+                  padding: '0.25rem 0.5rem',
+                  background: '#eff6ff',
+                  color: '#1d4ed8',
+                  borderRadius: 4,
+                  textDecoration: 'none',
+                  fontWeight: 500,
+                  display: 'inline-block',
+                }}
+              >
+                Bid
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setJobBidLinkChoiceOpen(true)}
+                aria-label="Choose bid to link"
+                style={{
+                  color: '#2563eb',
+                  fontWeight: 500,
+                  background: 'none',
+                  border: 'none',
+                  padding: '0.25rem 0.35rem',
+                  cursor: 'pointer',
+                  font: 'inherit',
+                  textDecoration: 'underline',
+                  textUnderlineOffset: '2px',
+                }}
+              >
+                Bid
+              </button>
+            )}
+            <span style={{ color: '#9ca3af', userSelect: 'none' }} aria-hidden>
+              |
+            </span>
+            {projectId ? (
+              <Link
+                to={`/workflows/${projectId}`}
+                aria-label="Open linked project workflow"
+                style={{
+                  padding: '0.25rem 0.5rem',
+                  background: '#eff6ff',
+                  color: '#1d4ed8',
+                  borderRadius: 4,
+                  textDecoration: 'none',
+                  fontWeight: 500,
+                  display: 'inline-block',
+                }}
+              >
+                Project
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setJobProjectLinkChoiceOpen(true)}
+                aria-label="Choose project to link"
+                style={{
+                  color: '#2563eb',
+                  fontWeight: 500,
+                  background: 'none',
+                  border: 'none',
+                  padding: '0.25rem 0.35rem',
+                  cursor: 'pointer',
+                  font: 'inherit',
+                  textDecoration: 'underline',
+                  textUnderlineOffset: '2px',
+                }}
+              >
+                Project
+              </button>
+            )}
+          </div>
         </div>
         {editing && sourceEstimateLoading ? (
           <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>Checking for linked estimate…</p>
@@ -1835,7 +1955,7 @@ export default function JobFormModal({
                   minWidth: 0,
                 }}
               >
-                {/* Match Project | Files | Plans row: fixed chevron slot + same gap as job-form-project-files-plans-trigger */}
+                {/* Match Project | Files | Plans | Bid row: fixed chevron slot + same gap as job-form-project-files-plans-trigger */}
                 <span
                   aria-hidden
                   style={{
@@ -2082,7 +2202,7 @@ export default function JobFormModal({
                 id="job-form-project-files-plans-trigger"
                 aria-expanded={projectFilesPlansExpanded}
                 aria-controls="job-form-project-files-plans-panel"
-                aria-label="Expand or collapse project, files, and plans"
+                aria-label="Expand or collapse project, files, plans, and bid"
                 onClick={() => setProjectFilesPlansExpanded((p) => !p)}
                 style={{
                   display: 'inline-flex',
@@ -2151,12 +2271,30 @@ export default function JobFormModal({
               ) : (
                 <span style={projectFilesPlansPlainSegmentStyle}>Plans</span>
               )}
+              <span aria-hidden style={projectFilesPlansPipeStyle}>
+                {' | '}
+              </span>
+              {bidId ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    scrollToBidSection()
+                  }}
+                  style={projectFilesPlansJumpLinkStyle}
+                  aria-label="Show bid link"
+                >
+                  Bid
+                </button>
+              ) : (
+                <span style={projectFilesPlansPlainSegmentStyle}>Bid</span>
+              )}
             </div>
             {projectFilesPlansExpanded && (
               <div
                 id="job-form-project-files-plans-panel"
                 role="region"
-                aria-label="Project, files, and plans"
+                aria-label="Project, files, plans, and bid"
                 style={{ paddingLeft: '1.25rem', borderLeft: '2px solid #e5e7eb' }}
               >
                 <div ref={jobFormProjectSectionRef} style={{ marginBottom: '0.75rem' }}>
@@ -2226,7 +2364,7 @@ export default function JobFormModal({
                     </>
                   )}
                 </div>
-                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
                   <div ref={jobFormJobFilesSectionRef} style={{ flex: 1, minWidth: 200 }}>
                     <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Files</label>
                     <input
@@ -2258,6 +2396,76 @@ export default function JobFormModal({
                       style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
                     />
                   </div>
+                </div>
+                <div ref={jobFormBidSectionRef} style={{ marginBottom: '0.75rem' }}>
+                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Bid proposal</label>
+                  {bidId ? (
+                    <>
+                      <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: '#374151' }}>
+                        Linked: <strong>{formatJobFormBidLinkTitle(linkedBidSummary)}</strong>
+                      </p>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+                        <Link
+                          to={`/bids?bidId=${encodeURIComponent(bidId)}&tab=cover-letter`}
+                          style={{
+                            fontSize: '0.875rem',
+                            padding: '0.35rem 0.65rem',
+                            background: '#eff6ff',
+                            color: '#1d4ed8',
+                            borderRadius: 4,
+                            textDecoration: 'none',
+                            fontWeight: 500,
+                          }}
+                        >
+                          Open cover letter
+                        </Link>
+                        <button
+                          ref={jobFormBidDisconnectRef}
+                          type="button"
+                          onClick={() => {
+                            setBidId(null)
+                            setLinkedBidSummary(null)
+                            showToast('Unlinked bid proposal. Save the job to apply.', 'info')
+                          }}
+                          style={{
+                            padding: '0.35rem 0.65rem',
+                            fontSize: '0.875rem',
+                            border: '1px solid #d1d5db',
+                            background: '#f9fafb',
+                            borderRadius: 6,
+                            cursor: 'pointer',
+                            color: '#374151',
+                            fontWeight: 500,
+                          }}
+                        >
+                          Disconnect bid
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        ref={jobFormBidLinkButtonRef}
+                        type="button"
+                        onClick={() => setJobBidLinkChoiceOpen(true)}
+                        style={{
+                          padding: '0.5rem 0.75rem',
+                          fontSize: '0.875rem',
+                          border: '1px solid #d1d5db',
+                          background: 'white',
+                          borderRadius: 6,
+                          cursor: 'pointer',
+                          color: '#2563eb',
+                          fontWeight: 500,
+                        }}
+                      >
+                        Link a bid proposal
+                      </button>
+                      <span style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 4, display: 'block' }}>
+                        Tie this job to a bid for quick access (optional)
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             )}
@@ -3617,6 +3825,30 @@ export default function JobFormModal({
             </div>
           </div>
         </div>
+      )}
+      {jobBidLinkChoiceOpen && (
+        <JobBidLinkChoiceModal
+          open={jobBidLinkChoiceOpen}
+          onClose={() => setJobBidLinkChoiceOpen(false)}
+          zIndex={JOB_FORM_NESTED_OVERLAY_Z_INDEX}
+          bids={bids}
+          customerId={customerId}
+          onLinked={(id) => {
+            const opt = bids.find((b) => b.id === id)
+            setBidId(id)
+            setLinkedBidSummary(
+              opt
+                ? { project_name: opt.project_name, bid_number: opt.bid_number }
+                : { project_name: null, bid_number: null },
+            )
+            if (opt?.customer_id && !customerId) {
+              setCustomerId(opt.customer_id)
+            }
+            setJobBidLinkChoiceOpen(false)
+            setProjectFilesPlansExpanded(true)
+            showToast('Bid linked. Save the job to keep changes.', 'info')
+          }}
+        />
       )}
       {jobProjectLinkChoiceOpen && (
         <JobProjectLinkChoiceModal

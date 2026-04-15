@@ -11,6 +11,7 @@ import {
   prepareBilledInvoicesBeforeJobRevertToReadyToBill,
   stripeModeForBillingFromRole,
 } from '../lib/voidStripeInvoiceForRevert'
+import { getAccessTokenForEdgeFunctions } from '../lib/supabaseAccessTokenForEdge'
 import { syncJobToReadyToBillIfNoBilledInvoicesRemain } from '../lib/syncJobToReadyToBillIfNoBilledInvoicesRemain'
 import { useAuth } from '../hooks/useAuth'
 import NewReportModal from '../components/NewReportModal'
@@ -666,6 +667,7 @@ export default function Dashboard() {
   const [markPaidInvoice, setMarkPaidInvoice] = useState<InvoiceForDashboard | null>(null)
   const [sendBackJob, setSendBackJob] = useState<{ id: string; hcpNumber: string; jobName: string; toStatus: 'working' | 'ready_to_bill' } | null>(null)
   const [sendBackInvoice, setSendBackInvoice] = useState<{ inv: InvoiceForDashboard; action: 'delete' | 'revert' } | null>(null)
+  const [sendBackInvoiceStripeExplainerAfterFailure, setSendBackInvoiceStripeExplainerAfterFailure] = useState(false)
   const [sendBackChecked, setSendBackChecked] = useState(false)
   const [sendBackSentBy, setSendBackSentBy] = useState<string | null>(null)
   const [upcomingInspections, setUpcomingInspections] = useState<Array<{ id: string; address: string; inspection_type: string; scheduled_date: string }>>([])
@@ -2285,8 +2287,7 @@ export default function Dashboard() {
   }
 
   async function moveJobToReadyToBillWithStripePrep(jobId: string): Promise<boolean> {
-    const { data: auth } = await supabase.auth.getSession()
-    const token = auth.session?.access_token
+    const token = await getAccessTokenForEdgeFunctions()
     if (!token) {
       showToast?.('Not signed in', 'error')
       return false
@@ -2412,9 +2413,9 @@ export default function Dashboard() {
     })
   }
 
-  async function revertBilledDashboardInvoiceToReadyToBill(inv: InvoiceForDashboard) {
+  async function revertBilledDashboardInvoiceToReadyToBill(inv: InvoiceForDashboard): Promise<boolean> {
     if (!invoiceNeedsStripeVoidForRevert(inv)) {
-      if (dashboardInvoiceMutationLockRef.current === inv.id) return
+      if (dashboardInvoiceMutationLockRef.current === inv.id) return false
       dashboardInvoiceMutationLockRef.current = inv.id
       setInvoiceStatusUpdatingId(inv.id)
       try {
@@ -2425,33 +2426,34 @@ export default function Dashboard() {
         const result = data as { ok?: boolean; deleted?: boolean; error?: string } | null
         if (!result?.ok) {
           showToast?.(result?.error ?? 'Failed to send back invoice', 'error')
-          return
+          return false
         }
-        showToast?.('Invoice sent back', 'success')
         const sync = await syncJobToReadyToBillIfNoBilledInvoicesRemain(supabase, inv.job_id)
         if (!sync.ok) {
           showToast?.(sync.message, 'error')
+          return false
         }
+        showToast?.('Invoice sent back', 'success')
         await refreshInvoices()
+        return true
       } catch (e) {
         showToast?.(e instanceof Error ? e.message : 'Failed to send back invoice', 'error')
+        return false
       } finally {
         setInvoiceStatusUpdatingId(null)
         if (dashboardInvoiceMutationLockRef.current === inv.id) {
           dashboardInvoiceMutationLockRef.current = null
         }
       }
-      return
     }
-    if (dashboardInvoiceMutationLockRef.current === inv.id) return
+    if (dashboardInvoiceMutationLockRef.current === inv.id) return false
     dashboardInvoiceMutationLockRef.current = inv.id
     setInvoiceStatusUpdatingId(inv.id)
     try {
-      const { data: auth } = await supabase.auth.getSession()
-      const token = auth.session?.access_token
+      const token = await getAccessTokenForEdgeFunctions()
       if (!token) {
         showToast?.('Not signed in', 'error')
-        return
+        return false
       }
       const r = await invokeVoidStripeInvoiceForRevert({
         invoiceId: inv.id,
@@ -2460,19 +2462,21 @@ export default function Dashboard() {
       })
       if (!r.ok) {
         showToast?.(r.message, 'error')
-        return
+        return false
       }
       const cleaned = await ensureLedgerInvoiceRemovedAfterStripeSendBack(inv.id)
       if (!cleaned.ok) {
         showToast?.(cleaned.message, 'error')
-        return
+        return false
       }
-      showToast?.('Invoice sent back', 'success')
       const sync = await syncJobToReadyToBillIfNoBilledInvoicesRemain(supabase, inv.job_id)
       if (!sync.ok) {
         showToast?.(sync.message, 'error')
+        return false
       }
+      showToast?.('Invoice sent back', 'success')
       await refreshInvoices()
+      return true
     } finally {
       setInvoiceStatusUpdatingId(null)
       if (dashboardInvoiceMutationLockRef.current === inv.id) {
@@ -2528,6 +2532,12 @@ export default function Dashboard() {
         setSendBackSentBy(row?.users?.name ?? null)
       })
   }, [sendBackJob])
+
+  useEffect(() => {
+    if (sendBackInvoice) {
+      setSendBackInvoiceStripeExplainerAfterFailure(false)
+    }
+  }, [sendBackInvoice])
 
   useEffect(() => {
     if (!authUser?.id || !isDev) return
@@ -6981,11 +6991,15 @@ export default function Dashboard() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
             <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>{sendBackInvoice.action === 'delete' ? DELETE_DRAFT_BILL_LABEL : 'Send back'}</h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>{sendBackInvoice.inv.hcp_number || '—'} · {sendBackInvoice.inv.job_name || '—'} · ${sendBackInvoice.inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+              {`Job ${sendBackInvoice.inv.hcp_number || '—'} · ${sendBackInvoice.inv.job_name || '—'} · $${sendBackInvoice.inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+            </p>
             {sendBackInvoice.action === 'delete' && (
               <p style={{ margin: '0 0 1rem', fontSize: '0.875rem' }}>This will remove the invoice from Ready to Bill.</p>
             )}
-            {sendBackInvoice.action === 'revert' && invoiceNeedsStripeVoidForRevert(sendBackInvoice.inv) && (
+            {sendBackInvoice.action === 'revert' &&
+              invoiceNeedsStripeVoidForRevert(sendBackInvoice.inv) &&
+              sendBackInvoiceStripeExplainerAfterFailure && (
               <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#92400e' }}>
                 This bill was sent via Stripe. We will void or remove the Stripe invoice so the customer cannot pay an unpaid bill. If it is already paid in Stripe, send back will fail until you resolve it there.
               </p>
@@ -6997,7 +7011,17 @@ export default function Dashboard() {
               </label>
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button type="button" onClick={() => { setSendBackInvoice(null); setSendBackChecked(false) }} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSendBackInvoice(null)
+                  setSendBackChecked(false)
+                  setSendBackInvoiceStripeExplainerAfterFailure(false)
+                }}
+                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
               <button
                 type="button"
                 disabled={!sendBackChecked || invoiceStatusUpdatingId === sendBackInvoice.inv.id}
@@ -7007,11 +7031,22 @@ export default function Dashboard() {
                     if (dashboardInvoiceSendBackConfirmLockRef.current) return
                     dashboardInvoiceSendBackConfirmLockRef.current = true
                     const { inv, action } = sendBackInvoice
-                    setSendBackInvoice(null)
-                    setSendBackChecked(false)
                     try {
-                      if (action === 'delete') await deleteInvoice(inv.id)
-                      else await revertBilledDashboardInvoiceToReadyToBill(inv)
+                      if (action === 'delete') {
+                        setSendBackInvoice(null)
+                        setSendBackChecked(false)
+                        setSendBackInvoiceStripeExplainerAfterFailure(false)
+                        await deleteInvoice(inv.id)
+                      } else {
+                        const ok = await revertBilledDashboardInvoiceToReadyToBill(inv)
+                        if (ok) {
+                          setSendBackInvoice(null)
+                          setSendBackChecked(false)
+                          setSendBackInvoiceStripeExplainerAfterFailure(false)
+                        } else if (invoiceNeedsStripeVoidForRevert(inv)) {
+                          setSendBackInvoiceStripeExplainerAfterFailure(true)
+                        }
+                      }
                     } finally {
                       dashboardInvoiceSendBackConfirmLockRef.current = false
                     }
@@ -7073,8 +7108,7 @@ export default function Dashboard() {
                 onClick={async () => {
                   if (!sendBackJob) return
                   if (sendBackJob.toStatus === 'ready_to_bill') {
-                    const { data: auth } = await supabase.auth.getSession()
-                    const token = auth.session?.access_token
+                    const token = await getAccessTokenForEdgeFunctions()
                     if (!token) {
                       showToast?.('Not signed in', 'error')
                       return

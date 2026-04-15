@@ -22,6 +22,8 @@ export type JobWithDetails = JobsLedgerRow & {
   team_members: (JobsLedgerTeamMember & { users: { name: string } | null })[]
   report_count?: number
   project?: { id: string; name: string } | null
+  /** Embedded bid when `bid_id` is set (`jobs_ledger.bid_id` → `bids`). */
+  linkedBid?: { id: string; project_name: string | null; bid_number: string | null } | null
   /** Max `job_schedule_blocks.work_date` for this job; set in Jobs `loadJobs` only. */
   last_schedule_work_date?: string | null
   /** Primary linked quote for Stages row banner; set in `loadJobs` only. */

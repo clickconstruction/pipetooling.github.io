@@ -2760,6 +2760,7 @@ export type Database = {
       }
       jobs_ledger: {
         Row: {
+          bid_id: string | null
           created_at: string | null
           customer_email: string | null
           customer_id: string | null
@@ -2782,6 +2783,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          bid_id?: string | null
           created_at?: string | null
           customer_email?: string | null
           customer_id?: string | null
@@ -2804,6 +2806,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          bid_id?: string | null
           created_at?: string | null
           customer_email?: string | null
           customer_id?: string | null
@@ -2826,6 +2829,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "jobs_ledger_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "jobs_ledger_customer_id_fkey"
             columns: ["customer_id"]
@@ -4592,6 +4602,7 @@ export type Database = {
         Row: {
           count: number
           created_at: string | null
+          direct_labor_amount: number | null
           fixture: string
           hrs_per_unit: number
           id: string
@@ -4603,6 +4614,7 @@ export type Database = {
         Insert: {
           count?: number
           created_at?: string | null
+          direct_labor_amount?: number | null
           fixture?: string
           hrs_per_unit?: number
           id?: string
@@ -4614,6 +4626,7 @@ export type Database = {
         Update: {
           count?: number
           created_at?: string | null
+          direct_labor_amount?: number | null
           fixture?: string
           hrs_per_unit?: number
           id?: string
