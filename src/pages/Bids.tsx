@@ -83,9 +83,11 @@ function isBidEligibleForWorkingBoard(bid: BidWithBuilder, userId: string | unde
   )
 }
 
-function formatBidStaffDisplayName(u: EstimatorUser | null | undefined): string {
-  if (!u) return '—'
-  return (u.name?.trim() || u.email || '—').slice(0, 200)
+function formatBidStaffDisplayName(u: EstimatorUser | EstimatorUser[] | null | undefined): string {
+  if (u == null) return '—'
+  const one = Array.isArray(u) ? u[0] ?? null : u
+  if (!one) return '—'
+  return (one.name?.trim() || one.email || '—').slice(0, 200)
 }
 
 const BID_DATE_SENT_ATTESTATION_NULLS: Record<
