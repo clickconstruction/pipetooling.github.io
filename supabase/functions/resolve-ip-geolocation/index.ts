@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { clientIpFromEdgeRequest } from '../_shared/clientIpFromEdgeRequest.ts'
 import { isRoutablePublicIp } from '../_shared/ipGeoValidation.ts'
 
 const corsHeaders = {
@@ -53,9 +54,12 @@ serve(async (req) => {
 
   try {
     const url = new URL(req.url)
-    const ip = url.searchParams.get('ip')?.trim() ?? ''
+    let ip = url.searchParams.get('ip')?.trim() ?? ''
     if (!ip) {
-      return new Response(JSON.stringify({ error: 'Missing ip' }), {
+      ip = clientIpFromEdgeRequest(req) ?? ''
+    }
+    if (!ip) {
+      return new Response(JSON.stringify({ error: 'Could not determine client IP' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })

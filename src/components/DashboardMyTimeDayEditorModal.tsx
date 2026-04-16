@@ -325,19 +325,19 @@ export function DashboardMyTimeDayEditorModal({
     Boolean(subjectUserIdProp?.trim())
 
   const [markNotComingInBusy, setMarkNotComingInBusy] = useState(false)
-  const handleNotComingInClick = useCallback(async () => {
+  const [notComingInConfirmOpen, setNotComingInConfirmOpen] = useState(false)
+  const handleNotComingInClick = useCallback(() => {
     if (!onMarkNotComingIn) return
-    if (
-      !window.confirm(
-        'Mark this person as not coming in on this day? This adds unpaid time off on the calendar. They can still clock in if plans change.',
-      )
-    )
-      return
+    setNotComingInConfirmOpen(true)
+  }, [onMarkNotComingIn])
+  const confirmMarkNotComingIn = useCallback(async () => {
+    if (!onMarkNotComingIn) return
     setMarkNotComingInBusy(true)
     try {
       await Promise.resolve(onMarkNotComingIn())
     } finally {
       setMarkNotComingInBusy(false)
+      setNotComingInConfirmOpen(false)
     }
   }, [onMarkNotComingIn])
 
@@ -358,6 +358,8 @@ export function DashboardMyTimeDayEditorModal({
   const [ncnsDetails, setNcnsDetails] = useState('')
   const [ncnsBusy, setNcnsBusy] = useState(false)
   const [ncnsPrecloseOpenSessions, setNcnsPrecloseOpenSessions] = useState<DayEditorSession[] | null>(null)
+  /** When staff may record NCNS: true if assignee has a job_schedule_blocks row on dateStr (null = loading). */
+  const [subjectHasScheduleBlocksForDay, setSubjectHasScheduleBlocksForDay] = useState<boolean | null>(null)
 
   const draftLocalJobBidAssign = useCallback(
     (target: AssignSessionJobPopoverSession, selection: UnifiedSearchResult | null) => {
@@ -614,15 +616,53 @@ export function DashboardMyTimeDayEditorModal({
     [resolvedSessions]
   )
 
+  useEffect(() => {
+    if (!allowNcnsFromMyTime || editingSelf) {
+      setSubjectHasScheduleBlocksForDay(false)
+      return
+    }
+    const uid = effectiveSubjectUserId?.trim()
+    if (!uid || !dateStr) {
+      setSubjectHasScheduleBlocksForDay(null)
+      return
+    }
+    let cancelled = false
+    setSubjectHasScheduleBlocksForDay(null)
+    void (async () => {
+      try {
+        const rows = await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('job_schedule_blocks')
+              .select('id')
+              .eq('assignee_user_id', uid)
+              .eq('work_date', dateStr)
+              .limit(1),
+          'job_schedule_blocks probe for ncns',
+        )
+        if (cancelled) return
+        const list = (rows ?? []) as { id: string }[]
+        setSubjectHasScheduleBlocksForDay(list.length > 0)
+      } catch {
+        if (cancelled) return
+        setSubjectHasScheduleBlocksForDay(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [allowNcnsFromMyTime, editingSelf, effectiveSubjectUserId, dateStr])
+
   const ncnsHasOpenSession = useMemo(() => sortedSessions.some((s) => !s.clocked_out_at), [sortedSessions])
   const ncnsClickAllowed =
     allowNcnsFromMyTime &&
     !editingSelf &&
     allowPunchTimeActions &&
     !!effectiveSubjectUserId &&
-    sortedSessions.length > 0 &&
     !sessionsLoading &&
-    !pendingAuthForFetch
+    !pendingAuthForFetch &&
+    (sortedSessions.length > 0 || subjectHasScheduleBlocksForDay !== null) &&
+    (sortedSessions.length > 0 || subjectHasScheduleBlocksForDay === true)
 
   useEffect(() => {
     setNcnsUi('off')
@@ -634,7 +674,12 @@ export function DashboardMyTimeDayEditorModal({
     if (!allowNcnsFromMyTime || editingSelf) return ''
     if (!allowPunchTimeActions) return ''
     if (sessionsLoading || pendingAuthForFetch) return 'Loading…'
-    if (sortedSessions.length === 0) return 'No sessions to reject for this day'
+    if (sortedSessions.length === 0) {
+      if (subjectHasScheduleBlocksForDay === null) return 'Loading…'
+      if (subjectHasScheduleBlocksForDay)
+        return 'Record no-call-no-show (scheduled, no clock time)'
+      return 'No sessions or schedule for this day'
+    }
     if (ncnsHasOpenSession) return 'Click to clock out open sessions at current time, then record NCNS'
     return 'Record no-call-no-show for this day'
   }, [
@@ -644,6 +689,7 @@ export function DashboardMyTimeDayEditorModal({
     sessionsLoading,
     pendingAuthForFetch,
     sortedSessions.length,
+    subjectHasScheduleBlocksForDay,
     ncnsHasOpenSession,
   ])
 
@@ -2066,6 +2112,11 @@ export function DashboardMyTimeDayEditorModal({
     const onWindowKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
       if (saving) return
+      if (notComingInConfirmOpen) {
+        e.preventDefault()
+        if (!markNotComingInBusy) setNotComingInConfirmOpen(false)
+        return
+      }
       if (ncnsUi !== 'off') {
         e.preventDefault()
         setNcnsUi('off')
@@ -2108,9 +2159,11 @@ export function DashboardMyTimeDayEditorModal({
     cancelBoundaryDrag,
     cancelStripTapGesture,
     forceClockOutSession,
+    markNotComingInBusy,
     ncnsBusy,
     ncnsPrecloseOpenSessions,
     ncnsUi,
+    notComingInConfirmOpen,
     requestClose,
     saving,
   ])
@@ -3150,6 +3203,92 @@ export function DashboardMyTimeDayEditorModal({
               </div>
             </>
           ) : null}
+        </div>
+      </div>
+    ) : null}
+    {notComingInConfirmOpen ? (
+      <div
+        role="presentation"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.45)',
+          zIndex: 1320,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1rem',
+        }}
+        onMouseDown={(e) => {
+          if (e.target !== e.currentTarget || markNotComingInBusy) return
+          setNotComingInConfirmOpen(false)
+        }}
+      >
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="mark-not-coming-in-confirm-title"
+          style={{
+            background: 'white',
+            borderRadius: 8,
+            padding: '1.25rem',
+            maxWidth: 440,
+            width: '100%',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
+            border: '1px solid #e5e7eb',
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <h2
+            id="mark-not-coming-in-confirm-title"
+            style={{
+              margin: '0 0 0.75rem 0',
+              fontSize: '1.05rem',
+              fontWeight: 600,
+              color: '#111827',
+              lineHeight: 1.35,
+            }}
+          >
+            Not coming in
+          </h2>
+          <p style={{ margin: '0 0 1.25rem 0', fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}>
+            Mark this person as not coming in on this day? This adds unpaid time off on the calendar. They can still
+            clock in if plans change.
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              disabled={markNotComingInBusy}
+              onClick={() => setNotComingInConfirmOpen(false)}
+              style={{
+                padding: '0.45rem 0.85rem',
+                fontSize: '0.875rem',
+                border: '1px solid #d1d5db',
+                borderRadius: 6,
+                background: 'white',
+                cursor: markNotComingInBusy ? 'not-allowed' : 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={markNotComingInBusy}
+              onClick={() => void confirmMarkNotComingIn()}
+              style={{
+                padding: '0.45rem 0.85rem',
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                color: '#6b21a8',
+                background: '#f3e8ff',
+                border: '1px solid #e9d5ff',
+                borderRadius: 6,
+                cursor: markNotComingInBusy ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {markNotComingInBusy ? '…' : 'Mark not coming in'}
+            </button>
+          </div>
         </div>
       </div>
     ) : null}

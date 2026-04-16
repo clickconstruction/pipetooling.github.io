@@ -12,14 +12,23 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.316 → v2.4"
+version_range: "v2.319 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.319)"
+    line: ~1000
+    description: "NCNS when scheduled no clock: record_ncns + job_schedule_blocks branch; My Time schedule probe"
+  - name: "Latest Version (v2.318)"
+    line: ~1011
+    description: "My Time: Not coming in uses stacked confirm dialog (replaces window.confirm); z-index 1320, Escape/backdrop"
+  - name: "Latest Version (v2.317)"
+    line: ~1022
+    description: "Quickfill Schedule: roster rows grouped by auth role (People-style headings); usersTabRosterRoleSections.ts"
   - name: "Latest Version (v2.316)"
-    line: ~991
+    line: ~1035
     description: "Dashboard: block My Time modal when work_date is hours-correct; RLS SELECT on hours_days_correct for authenticated"
   - name: "Latest Version (v2.315)"
-    line: ~1015
+    line: ~1034
     description: "My Time cross-row merge (mixed punch/salary): affine partition save, merge gates, salary-sync toast; SALARY_CLOCK_SESSIONS.md"
   - name: "Latest Version (v2.314)"
     line: ~1028
@@ -413,7 +422,7 @@ key_sections:
     description: "Dashboard Clock In / Update Focus: assigned jobs auto-loaded; no Choose button/labels; hidden single-type Filtering by line; stronger field borders + focus rings"
   - name: "Latest Version (v2.181)"
     line: ~574
-    description: "Jobs Edit billing: comma formatting for Job Total/Bid and payment amounts; Workflow line items optional item_date + clipboard bulk import (tab-separated)"
+    description: "Jobs Edit billing: comma formatting for Job Total and payment amounts; Workflow line items optional item_date + clipboard bulk import (tab-separated)"
   - name: "Latest Version (v2.180)"
     line: ~591
     description: "Bids New/Edit modal: SearchableSelect pickers; top field grid + mobile layout; Address / Distance+Plan Pages; wider modal; estimator header Bid button height"
@@ -560,7 +569,7 @@ key_sections:
     description: "approve_clock_sessions fix, approveClockSessions helper, db.schema"
   - name: "v2.123"
     line: ~330
-    description: "Stages paid/left/bid labels, to bill formula, Job Total / Bid in Edit/New Job"
+    description: "Stages paid/left/bid labels, to bill formula, Job Total in Edit/New Job"
   - name: "v2.122"
     line: ~345
     description: "Bids Counts drag-and-drop reordering, removed up/down arrows"
@@ -871,7 +880,7 @@ when_to_read:
 37. [Latest Updates (v2.184)](#latest-updates-v2184) - Job thread notes: **Enter** submits note; **Shift+Enter** new line ([`JobThreadNotesPanel`](src/components/JobThreadNotesPanel.tsx))
 38. [Latest Updates (v2.183)](#latest-updates-v2183) - Jobs **Stages** + **Workflow** linked jobs: **thread notes** column (`jobs_ledger_thread_notes`, Dispatch-style panel); `jobs_ledger_thread_note_stats`; [`useJobThreadNotes`](src/hooks/useJobThreadNotes.ts)
 39. [Latest Updates (v2.182)](#latest-updates-v2182) - Dashboard **Clock In** / **Update Focus**: assigned jobs **auto-load** (`list_assigned_jobs_for_dashboard`); no **Choose from my jobs** control; **Filtering by** line hidden when a single service type; stronger notes/search **borders** and **focus** styles
-40. [Latest Updates (v2.181)](#latest-updates-v2181) - Jobs **Edit Job** billing: **comma** thousands on Job Total/Bid and payment amounts; Workflow **line items** optional **item_date** + **clipboard** bulk import (Add mode)
+40. [Latest Updates (v2.181)](#latest-updates-v2181) - Jobs **Edit Job** billing: **comma** thousands on Job Total and payment amounts; Workflow **line items** optional **item_date** + **clipboard** bulk import (Add mode)
 41. [Latest Updates (v2.180)](#latest-updates-v2180) - Bids **New/Edit** modal: **SearchableSelect**, layout + mobile grid, Distance + Plan Pages row; estimator **Bid** header
 42. [Latest Updates (v2.179)](#latest-updates-v2179) - Dashboard **My Time** / **Edit time** (this-week-only editor, Form/Visual defaults, timeline UX)
 43. [Latest Updates (v2.178)](#latest-updates-v2178) - People **Primary** / **Superintendent** on `people` roster + Pay/Hours (`20260329042321`)
@@ -989,6 +998,38 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.319)
+
+**Date**: 2026-04-16
+
+### **My Time** — **NCNS** when **scheduled** but **no clock sessions**
+
+- **Migration [`20260416154325_ncns_when_scheduled_no_clock.sql`](supabase/migrations/20260416154325_ncns_when_scheduled_no_clock.sql)** — **`record_ncns_and_reject_sessions_for_day`**: zero sessions + **`job_schedule_blocks`** for assignee/day → insert **`attendance_incidents`** only (**`scheduled_without_clock`** in **`metadata`**); duplicate NCNS same day → error; no sessions and no schedule → **`No sessions or schedule for this day`**.
+- **[`DashboardMyTimeDayEditorModal.tsx`](src/components/DashboardMyTimeDayEditorModal.tsx)** — Probes **`job_schedule_blocks`** for team NCNS; enables **NCNS** when sessions exist **or** schedule row exists; tooltips updated.
+
+---
+
+## Latest Updates (v2.318)
+
+**Date**: 2026-04-16
+
+### **My Time** — **Not coming in** confirmation **modal** (staff marking another user)
+
+- **[`DashboardMyTimeDayEditorModal.tsx`](src/components/DashboardMyTimeDayEditorModal.tsx)** — **Not coming in** opens a stacked **`role="dialog"`** confirm (same copy as before) at **`zIndex: 1320`** above the day editor; **Cancel**, backdrop (when not busy), and **Escape** dismiss; **Mark not coming in** runs the existing **`onMarkNotComingIn`** path. Applies everywhere that control is used (e.g. Quickfill Schedule name/strip, Dashboard strip, Quickfill People Hours).
+
+---
+
+## Latest Updates (v2.317)
+
+**Date**: 2026-04-16
+
+### **Quickfill Schedule** — Roster grouped by **role** (People → Users order)
+
+- **[`usersTabRosterRoleSections.ts`](src/lib/usersTabRosterRoleSections.ts)** — Canonical **`users.role`** section order and labels (Master Technicians, Assistants, Primaries, Estimators, Superintendents, Subcontractors, Devs); **`groupRosterUsersByAuthRoleSection`** buckets the visible list; unknown roles → trailing **Other**.
+- **[`QuickfillScheduleSection.tsx`](src/components/quickfill/QuickfillScheduleSection.tsx)** — After search and “Hide assistants and estimators”, rows render under **`h2`** sections with a single shared time-scale header; **`section`** + **`aria-labelledby`** per group.
+
 ---
 
 ## Latest Updates (v2.316)
@@ -1520,7 +1561,7 @@ when_to_read:
 
 - **[`DetailJobModal.tsx`](src/components/jobs/DetailJobModal.tsx)** — **Three date rows**: **Last work date** (read-only **`last_work_date`**); **Last bill date** from **`deriveRecordedBillingActivityDetail`** ([`stagesJobReferenceDates.ts`](src/lib/stagesJobReferenceDates.ts)) on **full** job fetch — **invoice / payment activity only** (`sent_to_customer_at` / `billed_at` / `paid_on`; **excludes** **`last_bill_date`**, which is the third row); **`—`** when no qualifying activity or on **limited** snapshot (**invoices/payments not loaded**). **Last manual bill date** = column **`last_bill_date`** (user-editable in **Edit Job**). Contrast Stages **`b:`**, which uses **`deriveStagesBillingActivityDetail`** (includes **`last_bill_date`**).
 - **Friendly date lines** + **title** tooltips: [`formatJobDetailModalDateYmd.ts`](src/lib/formatJobDetailModalDateYmd.ts) (`formatJobDetailModalDateFromYmd`, `formatJobDetailModalDateTitleFromYmd`); **Last bill date** hover merges ISO + activity detail via **`jobDetailBillingHoverTitle`**.
-- **Layout**: **`useNarrowViewport640`** — at ~640px and below, the **3-date** band stacks vertically (**`DetailRow`** **`softBox`**); wider viewports use a **3-column** date grid. **Status** is centered below the dates; **Job Total / Bid** sits below **Specific Work (Fixtures / Tie-ins / Repair)** (full detail) or below **Materials cost** (limited snapshot).
+- **Layout**: **`useNarrowViewport640`** — at ~640px and below, the **3-date** band stacks vertically (**`DetailRow`** **`softBox`**); wider viewports use a **3-column** date grid. **Status** is centered below the dates; **Job Total** sits below **Specific Work (Fixtures / Tie-ins / Repair)** (full detail) or below **Materials cost** (limited snapshot).
 - **Status**: **[`JobLedgerStatusPipeline`](src/components/jobs/JobLedgerStatusPipeline.tsx)** + **[`jobsLedgerStatusPipeline.ts`](src/lib/jobsLedgerStatusPipeline.ts)** — **Working → Ready to bill → Billed → Paid**; current step emphasized (**`aria-current`**). Used for both full and limited job rows.
 - **Lists**: section headings **Other job charges** and **Specific Work (Fixtures / Tie-ins / Repair)** (full load). **Job Files** / **Job Plans** visibility + numbered fixtures: [v2.278](#latest-updates-v2278). **Materials cost** rows + **Edit job** stacking: [v2.277](#latest-updates-v2277).
 - **Edit job**: gear control left of **Close** — see [v2.277](#latest-updates-v2277) (**`JobFormModal`** stacked above Detail; optional **`onEditJobSaved`**).
@@ -2628,7 +2669,7 @@ when_to_read:
 
 ### Jobs — Edit Job billing comma formatting
 
-- **Job Total / Bid ($)** and **Payments received** → **Amount ($)** use text inputs with **thousands separators** on blur (`toLocaleString('en-US')` via existing [`formatCurrency`](src/pages/Jobs.tsx)).
+- **Job Total ($)** and **Payments received** → **Amount ($)** use text inputs with **thousands separators** on blur (`toLocaleString('en-US')` via existing [`formatCurrency`](src/pages/Jobs.tsx)).
 - Helpers: [`sanitizeMoneyTyping`](src/pages/Jobs.tsx), [`parseMoneyInputToNumber`](src/pages/Jobs.tsx), [`parseMoneyInputToNumberOrNull`](src/pages/Jobs.tsx) for save, **Remaining ($)**, and invoice remaining checks.
 - Payment amounts: [`MoneyDecimalAmountInput`](src/components/MoneyDecimalAmountInput.tsx) (focus = raw decimal, blur = formatted; zero stays blank).
 
@@ -3525,7 +3566,7 @@ when_to_read:
 
 ### Jobs – Edit/New Job Form
 
-- **Job Total / Bid ($)**: Billing section label changed from "Total Bill ($)" to "Job Total / Bid ($)".
+- **Job Total ($)**: Billing section label is **Job Total ($)** (was "Total Bill ($)", then "Job Total / Bid ($)").
 
 **Files**: `src/pages/Jobs.tsx`
 

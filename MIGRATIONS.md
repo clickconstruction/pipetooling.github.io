@@ -92,6 +92,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### April 2026
 
+#### April 16, 2026
+
+**`20260416154325_ncns_when_scheduled_no_clock.sql`**
+- **Purpose**: Allow **`record_ncns_and_reject_sessions_for_day`** to record **NCNS** when the subject has **no** **`clock_sessions`** on **`work_date`** but has at least one **`job_schedule_blocks`** row (scheduled, never clocked); **`metadata.scheduled_without_clock`**; duplicate **`attendance_incidents`** same user/day rejected.
+- **Changes**: **`CREATE OR REPLACE`** **`record_ncns_and_reject_sessions_for_day(uuid, date, text)`** — early branch before prior “no sessions” error
+- **Impact**: [`DashboardMyTimeDayEditorModal.tsx`](src/components/DashboardMyTimeDayEditorModal.tsx); **ACCESS_CONTROL** NCNS row
+- **Category**: People / Attendance / Schedule
+
 #### April 15, 2026
 
 **`20260415222916_add_jobs_ledger_fixtures_unit_price_description.sql`**

@@ -18,6 +18,7 @@ import {
   type DispatchScheduledJobForAssign,
 } from '../lib/jobScheduleBlocks'
 import { syncSalaryClockSessionsForUserDay } from '../lib/salaryScheduleSync'
+import { resolveClockPunchCoordinates } from '../lib/resolveClockPunchCoordinates'
 import TeamFeedbackWizard from './team-feedback/TeamFeedbackWizard'
 
 function formatElapsed(seconds: number): string {
@@ -654,23 +655,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
     setClockInError(null)
     try {
       const now = new Date()
-      let clockInLat: number | null = null
-      let clockInLng: number | null = null
-      if ('geolocation' in navigator) {
-        try {
-          const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, {
-              enableHighAccuracy: false,
-              timeout: 8000,
-              maximumAge: 60000,
-            })
-          })
-          clockInLat = pos.coords.latitude
-          clockInLng = pos.coords.longitude
-        } catch {
-          // Proceed without location (permission denied, timeout, or unavailable)
-        }
-      }
+      const punchIn = await resolveClockPunchCoordinates(supabase)
       const { error: err } = await supabase.from('clock_sessions').insert({
         user_id: userId,
         clocked_in_at: now.toISOString(),
@@ -678,8 +663,11 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
         notes: clockInNotes.trim(),
         job_ledger_id: selectedAssociation?.source === 'job' ? selectedAssociation?.id : null,
         bid_id: selectedAssociation?.source === 'bid' ? selectedAssociation?.id : null,
-        ...(clockInLat != null &&
-          clockInLng != null && { clock_in_lat: clockInLat, clock_in_lng: clockInLng }),
+        ...(punchIn != null && {
+          clock_in_lat: punchIn.lat,
+          clock_in_lng: punchIn.lng,
+          clock_in_location_source: punchIn.source,
+        }),
       })
       if (err) throw err
       if (selectedAssociation && userId && typeof localStorage !== 'undefined') {
@@ -720,23 +708,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
     setClockOutReviewError(null)
     setError(null)
     try {
-      let clockOutLat: number | null = null
-      let clockOutLng: number | null = null
-      if ('geolocation' in navigator) {
-        try {
-          const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, {
-              enableHighAccuracy: false,
-              timeout: 8000,
-              maximumAge: 60000,
-            })
-          })
-          clockOutLat = pos.coords.latitude
-          clockOutLng = pos.coords.longitude
-        } catch {
-          // Proceed without location (permission denied, timeout, or unavailable)
-        }
-      }
+      const punchOut = await resolveClockPunchCoordinates(supabase)
       const notesTrim = clockOutReviewNotes.trim()
       const jobId = selectedAssociation?.source === 'job' ? selectedAssociation.id : null
       const bidId = selectedAssociation?.source === 'bid' ? selectedAssociation.id : null
@@ -747,8 +719,11 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
           job_ledger_id: jobId,
           bid_id: bidId,
           clocked_out_at: new Date().toISOString(),
-          ...(clockOutLat != null &&
-            clockOutLng != null && { clock_out_lat: clockOutLat, clock_out_lng: clockOutLng }),
+          ...(punchOut != null && {
+            clock_out_lat: punchOut.lat,
+            clock_out_lng: punchOut.lng,
+            clock_out_location_source: punchOut.source,
+          }),
         })
         .eq('id', openSession.id)
       if (err) throw err
@@ -803,33 +778,16 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
         return
       }
       const now = new Date()
-      let clockOutLat: number | null = null
-      let clockOutLng: number | null = null
-      let clockInLat: number | null = null
-      let clockInLng: number | null = null
-      if ('geolocation' in navigator) {
-        try {
-          const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, {
-              enableHighAccuracy: false,
-              timeout: 8000,
-              maximumAge: 60000,
-            })
-          })
-          clockOutLat = pos.coords.latitude
-          clockOutLng = pos.coords.longitude
-          clockInLat = pos.coords.latitude
-          clockInLng = pos.coords.longitude
-        } catch {
-          // Proceed without location
-        }
-      }
+      const punchFocus = await resolveClockPunchCoordinates(supabase)
       const { error: errOut } = await supabase
         .from('clock_sessions')
         .update({
           clocked_out_at: now.toISOString(),
-          ...(clockOutLat != null &&
-            clockOutLng != null && { clock_out_lat: clockOutLat, clock_out_lng: clockOutLng }),
+          ...(punchFocus != null && {
+            clock_out_lat: punchFocus.lat,
+            clock_out_lng: punchFocus.lng,
+            clock_out_location_source: punchFocus.source,
+          }),
         })
         .eq('id', openSession.id)
       if (errOut) throw errOut
@@ -840,8 +798,11 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
         notes: updateFocusNotes.trim(),
         job_ledger_id: selectedAssociation?.source === 'job' ? selectedAssociation?.id : null,
         bid_id: selectedAssociation?.source === 'bid' ? selectedAssociation?.id : null,
-        ...(clockInLat != null &&
-          clockInLng != null && { clock_in_lat: clockInLat, clock_in_lng: clockInLng }),
+        ...(punchFocus != null && {
+          clock_in_lat: punchFocus.lat,
+          clock_in_lng: punchFocus.lng,
+          clock_in_location_source: punchFocus.source,
+        }),
       })
       if (errIn) throw errIn
       if (selectedAssociation && userId && typeof localStorage !== 'undefined') {

@@ -38,6 +38,8 @@ export function calendarRawToClockSessionRow(r: CalendarClockSessionRaw): ClockS
     clock_in_lng: null,
     clock_out_lat: null,
     clock_out_lng: null,
+    clock_in_location_source: null,
+    clock_out_location_source: null,
     approved_at: null,
     approved_by: null,
     rejected_at: r.rejected_at,

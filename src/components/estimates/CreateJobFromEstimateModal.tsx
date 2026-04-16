@@ -474,7 +474,7 @@ export default function CreateJobFromEstimateModal({
           <EstimateLineItemsTable lines={normalizedLines} />
         </div>
         <div style={{ marginBottom: '0.75rem' }}>
-          <span style={labelStyle}>Job Total / Bid ($)</span>
+          <span style={labelStyle}>Job Total ($)</span>
           <div
             aria-live="polite"
             style={{

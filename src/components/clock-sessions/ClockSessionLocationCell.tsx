@@ -1,8 +1,13 @@
+import type { CSSProperties } from 'react'
+
 type ClockSessionLocationCellProps = {
   clockInLat: number | null
   clockInLng: number | null
   clockOutLat: number | null
   clockOutLng: number | null
+  /** 'ip' = grey links (geo-IP); 'gps' or null/legacy = blue */
+  clockInLocationSource?: string | null
+  clockOutLocationSource?: string | null
   variant?: 'compact' | 'full'
 }
 
@@ -18,13 +23,27 @@ const RouteIcon = () => (
   </svg>
 )
 
-const linkStyle: React.CSSProperties = { color: '#2563eb', textDecoration: 'none' }
+const linkStyleGps: CSSProperties = { color: '#2563eb', textDecoration: 'none' }
+const linkStyleIp: CSSProperties = { color: '#6b7280', textDecoration: 'none' }
+
+function linkStyleForSource(source: string | null | undefined): CSSProperties {
+  return source === 'ip' ? linkStyleIp : linkStyleGps
+}
+
+function titleForPin(source: string | null | undefined, label: string, lat: number, lng: number): string {
+  if (source === 'ip') {
+    return `Approximate location from IP — ${label}: ${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)} (opens Google Maps)`
+  }
+  return `${label}: ${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)} (opens Google Maps)`
+}
 
 export function ClockSessionLocationCell({
   clockInLat,
   clockInLng,
   clockOutLat,
   clockOutLng,
+  clockInLocationSource = null,
+  clockOutLocationSource = null,
   variant = 'compact',
 }: ClockSessionLocationCellProps) {
   const hasIn = clockInLat != null && clockInLng != null
@@ -32,22 +51,57 @@ export function ClockSessionLocationCell({
   if (!hasIn && !hasOut) return <>In: — | Out: —</>
 
   if (variant === 'compact') {
+    const inTitle =
+      clockInLocationSource === 'ip'
+        ? 'Approximate location from IP (opens Google Maps)'
+        : 'View location in Google Maps'
+    const outTitle =
+      clockOutLocationSource === 'ip'
+        ? 'Approximate location from IP (opens Google Maps)'
+        : 'View location in Google Maps'
     return (
       <>
-        In: {hasIn ? <a href={`https://www.google.com/maps?q=${clockInLat},${clockInLng}`} target="_blank" rel="noopener noreferrer" title="View location in Google Maps" style={linkStyle}><MapPinIcon /></a> : '—'}
-        {hasOut && <> | Out: <a href={`https://www.google.com/maps?q=${clockOutLat},${clockOutLng}`} target="_blank" rel="noopener noreferrer" title="View location in Google Maps" style={linkStyle}><MapPinIcon /></a></>}
+        In:{' '}
+        {hasIn ? (
+          <a
+            href={`https://www.google.com/maps?q=${clockInLat},${clockInLng}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={inTitle}
+            style={linkStyleForSource(clockInLocationSource)}
+          >
+            <MapPinIcon />
+          </a>
+        ) : (
+          '—'
+        )}
+        {hasOut && (
+          <>
+            {' '}
+            | Out:{' '}
+            <a
+              href={`https://www.google.com/maps?q=${clockOutLat},${clockOutLng}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={outTitle}
+              style={linkStyleForSource(clockOutLocationSource)}
+            >
+              <MapPinIcon />
+            </a>
+          </>
+        )}
       </>
     )
   }
 
-  const link = (lat: number, lng: number, label: string) => (
+  const link = (lat: number, lng: number, label: string, source: string | null | undefined) => (
     <a
       key={label}
       href={`https://www.google.com/maps?q=${lat},${lng}`}
       target="_blank"
       rel="noopener noreferrer"
-      title={`${label}: ${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)}`}
-      style={linkStyle}
+      title={titleForPin(source, label, lat, lng)}
+      style={linkStyleForSource(source)}
     >
       <MapPinIcon />
     </a>
@@ -56,15 +110,20 @@ export function ClockSessionLocationCell({
   if (hasIn) routePoints.push(`${clockInLat},${clockInLng}`)
   if (hasOut) routePoints.push(`${clockOutLat},${clockOutLng}`)
   const routeUrl = `https://www.google.com/maps/dir/${routePoints.join('/')}`
+  const routeIsIp = clockInLocationSource === 'ip' || clockOutLocationSource === 'ip'
+  const routeStyle = routeIsIp ? linkStyleIp : linkStyleGps
+  const routeTitle = routeIsIp
+    ? 'Approximate route from IP-based locations (opens Google Maps)'
+    : 'View route in Google Maps'
 
   return (
     <>
-      In: {hasIn ? link(clockInLat, clockInLng, 'In') : '—'}
-      {hasOut && <> | Out: {link(clockOutLat, clockOutLng, 'Out')}</>}
+      In: {hasIn ? link(clockInLat, clockInLng, 'In', clockInLocationSource) : '—'}
+      {hasOut && <> | Out: {link(clockOutLat, clockOutLng, 'Out', clockOutLocationSource)}</>}
       {hasIn && hasOut && (
         <>
           {' | '}
-          <a href={routeUrl} target="_blank" rel="noopener noreferrer" title="View route in Google Maps" style={linkStyle}>
+          <a href={routeUrl} target="_blank" rel="noopener noreferrer" title={routeTitle} style={routeStyle}>
             <RouteIcon />
           </a>
         </>

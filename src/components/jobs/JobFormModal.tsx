@@ -20,6 +20,7 @@ import { resolveCustomerIdForJobPayload } from '../../lib/jobLedgerCustomer'
 import { resolveEffectiveJobMasterUserId } from '../../lib/resolveEffectiveJobMasterUserId'
 import { getBillingStripeModePref, stripeModeInvokeBody } from '../../lib/billingStripeModePref'
 import { getAccessTokenForEdgeFunctions } from '../../lib/supabaseAccessTokenForEdge'
+import { prepareBilledInvoicesBeforeJobRevertToReadyToBill } from '../../lib/voidStripeInvoiceForRevert'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import { setReturnEditJobFromStages } from '../../lib/returnEditJobFromStages'
 import { invoiceCreatedCalendarDayOffset } from '../../lib/invoiceCreatedRelative'
@@ -48,6 +49,10 @@ type CustomerRow = Database['public']['Tables']['customers']['Row']
 type UserRow = { id: string; name: string; email: string | null; role: string }
 
 type MaterialRow = { id: string; description: string; amount: number }
+
+function materialRowHasUserContent(row: MaterialRow): boolean {
+  return (row.description ?? '').trim() !== '' || Number(row.amount) !== 0
+}
 
 type MaterialsAccordionKey = 'supply' | 'mercury' | 'tally' | 'billed'
 
@@ -82,7 +87,7 @@ const FIXTURE_SCOPE_FIELD_LABEL_VISUALLY_HIDDEN: CSSProperties = {
   borderWidth: 0,
 }
 
-/** Job Total / Bid: sum of Specific Work extended amounts (named rows only). */
+/** Job Total: sum of Specific Work extended amounts (named rows only). */
 function revenueDollarsFromFixtures(fixtures: FixtureRow[]): number {
   let s = 0
   for (const f of fixtures) {
@@ -212,21 +217,26 @@ function parseMoneyInputToNumberOrNull(s: string): number | null {
   return Number.isFinite(n) ? n : null
 }
 
-function billableRemainingFromJob(job: JobWithDetails): number {
-  const rev = job.revenue != null ? Number(job.revenue) : 0
+/** Gross (job total) minus payments minus ready_to_bill and billed invoice line amounts — same basis as Stages unallocated. */
+function unallocatedBillableDollars(
+  gross: number,
+  paidSum: number,
+  invoices: Array<{ status: string; amount: unknown }> | null | undefined,
+): number {
+  let alloc = 0
+  for (const inv of invoices ?? []) {
+    if (inv.status === 'ready_to_bill' || inv.status === 'billed') {
+      alloc += Number(inv.amount) || 0
+    }
+  }
+  return Math.max(0, gross - paidSum - alloc)
+}
+
+function breakOffPrefillAmountStringFromJob(job: JobWithDetails): string {
+  const gross = job.revenue != null ? Number(job.revenue) : 0
   const paid = (job.payments ?? []).reduce((s, p) => s + (Number(p.amount) || 0), 0)
-  return Math.max(0, rev - paid)
-}
-
-function sumOutstandingBilledInvoiceAmount(job: JobWithDetails): number {
-  return (job.invoices ?? [])
-    .filter((i) => i.status === 'billed')
-    .reduce((s, i) => s + (Number(i.amount) || 0), 0)
-}
-
-function defaultMakeInvoiceAmountString(remaining: number, job: JobWithDetails): string {
-  const n = Math.max(0, remaining - sumOutstandingBilledInvoiceAmount(job))
-  return n > 0 ? n.toFixed(2) : ''
+  const u = unallocatedBillableDollars(gross, paid, job.invoices)
+  return u > 0 ? u.toFixed(2) : ''
 }
 
 function sanitizeMoneyTyping(raw: string): string {
@@ -428,6 +438,7 @@ export default function JobFormModal({
   const [newInvoiceAmount, setNewInvoiceAmount] = useState('')
   const [newInvoiceAmountInputFocused, setNewInvoiceAmountInputFocused] = useState(false)
   const [creatingInvoice, setCreatingInvoice] = useState(false)
+  const [movingJobToReadyToBill, setMovingJobToReadyToBill] = useState(false)
   const [paymentRemoveConfirmRowId, setPaymentRemoveConfirmRowId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [materialsAccordionOpen, setMaterialsAccordionOpen] = useState<MaterialsAccordionKey | null>('billed')
@@ -602,9 +613,8 @@ export default function JobFormModal({
     setTeamMemberIds(job.team_members.map((t) => t.user_id))
     setContractorsSearch('')
     setContractorsDropdownOpen(false)
-    const rem = billableRemainingFromJob(job)
     setNewInvoiceAmountInputFocused(false)
-    setNewInvoiceAmount(defaultMakeInvoiceAmountString(rem, job))
+    setNewInvoiceAmount(breakOffPrefillAmountStringFromJob(job))
   }
 
   function resetNewForm(projectPrefill: string | null) {
@@ -1100,8 +1110,68 @@ export default function JobFormModal({
     return { rowAmt, jobTotal: rev, currentRem, newRem }
   }, [paymentRemoveConfirmRowId, payments, jobTotalBidDollars])
 
+  const isSendFullUnallocatedToReadyToBill = useMemo(() => {
+    if (!editing || editing.status !== 'working') return false
+    const paidSum = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
+    const remaining = unallocatedBillableDollars(jobTotalBidDollars, paidSum, editing.invoices)
+    if (!(remaining > 0)) return false
+    const amt = parseMoneyInputToNumber(newInvoiceAmount)
+    return Math.round(amt * 100) === Math.round(remaining * 100)
+  }, [editing, newInvoiceAmount, jobTotalBidDollars, payments])
+
   function getEditJobBillableRemaining(): number {
-    return Math.max(0, jobTotalBidDollars - payments.reduce((s, p) => s + (Number(p.amount) || 0), 0))
+    const paidSum = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
+    return unallocatedBillableDollars(jobTotalBidDollars, paidSum, editing?.invoices)
+  }
+
+  async function moveWorkingJobToReadyToBillFromEdit() {
+    if (!editing || editing.status !== 'working') return
+    const remaining = getEditJobBillableRemaining()
+    const amount = parseMoneyInputToNumber(newInvoiceAmount)
+    if (!(remaining > 0) || Math.round(amount * 100) !== Math.round(remaining * 100)) {
+      setError('Enter the full unallocated amount to move this job to Ready to Bill.')
+      return
+    }
+    setMovingJobToReadyToBill(true)
+    setError(null)
+    try {
+      const token = await getAccessTokenForEdgeFunctions()
+      if (!token) {
+        setError('Not signed in')
+        return
+      }
+      const prep = await prepareBilledInvoicesBeforeJobRevertToReadyToBill({
+        jobId: editing.id,
+        authRole: authRole ?? null,
+        accessToken: token,
+      })
+      if (!prep.ok) {
+        setError(prep.message)
+        return
+      }
+      const data = await withSupabaseRetry(
+        async () => supabase.rpc('update_job_status', { p_job_id: editing.id, p_to_status: 'ready_to_bill' }),
+        'update_job_status working to ready_to_bill from edit job',
+      )
+      const result = data as { error?: string } | null
+      if (result?.error) {
+        setError(result.error)
+        return
+      }
+      showToast('Job moved to Ready to Bill', 'success')
+      const found = await fetchJobWithDetailsById(editing.id)
+      if (found) {
+        setEditing(found)
+        setNewInvoiceAmountInputFocused(false)
+        setNewInvoiceAmount(breakOffPrefillAmountStringFromJob(found))
+      }
+      onSavedRef.current?.()
+    } catch (e: unknown) {
+      const errObj = e as { message?: string }
+      setError(errObj?.message ?? 'Failed to update job status')
+    } finally {
+      setMovingJobToReadyToBill(false)
+    }
   }
 
   async function createInvoice() {
@@ -1119,7 +1189,7 @@ export default function JobFormModal({
       return
     }
     if (amountToUseCents < Math.round(amount * 100)) {
-      showToast(`Adjusted to remaining balance ($${formatCurrency(amountToUse)})`, 'info')
+      showToast(`Adjusted to remaining unallocated ($${formatCurrency(amountToUse)})`, 'info')
       setNewInvoiceAmount(String(amountToUse))
     }
     if (editing.status === 'ready_to_bill' && Math.round(amountToUse * 100) === Math.round(remaining * 100)) {
@@ -1186,7 +1256,7 @@ export default function JobFormModal({
       if (found) {
         setEditing(found)
         setNewInvoiceAmountInputFocused(false)
-        setNewInvoiceAmount(defaultMakeInvoiceAmountString(billableRemainingFromJob(found), found))
+        setNewInvoiceAmount(breakOffPrefillAmountStringFromJob(found))
       } else {
         setNewInvoiceAmount('')
         setNewInvoiceAmountInputFocused(false)
@@ -1262,7 +1332,16 @@ export default function JobFormModal({
   }
 
   function removeMaterialRow(id: string) {
-    setMaterials((prev) => (prev.length <= 1 ? prev : prev.filter((r) => r.id !== id)))
+    setMaterials((prev) => {
+      if (prev.length > 1) {
+        return prev.filter((r) => r.id !== id)
+      }
+      if (prev.length === 1 && prev[0]?.id === id) {
+        const r = prev[0]
+        return [{ ...r, description: '', amount: 0 }]
+      }
+      return prev
+    })
   }
 
   function addFixtureRow() {
@@ -2530,6 +2609,7 @@ export default function JobFormModal({
             )}
             </div>
           </div>
+          <hr style={{ margin: '0.75rem auto', border: 'none', borderTop: '1px solid #9ca3af', width: '50%' }} />
           <div style={{ marginBottom: '1rem' }}>
             <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#374151', marginBottom: '0.75rem' }}>Specific Work (Fixtures / Tie-ins / Repair)</div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>
@@ -2829,36 +2909,35 @@ export default function JobFormModal({
               </tbody>
             </table>
           </div>
-          <hr style={{ margin: '0.75rem auto', border: 'none', borderTop: '1px solid #9ca3af', width: '50%' }} />
           <div style={{ marginBottom: '1rem' }}>
-            <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#374151', marginBottom: '0.75rem' }}>Billing</div>
-            <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', padding: '1rem' }}>
             <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-              <div style={{ flex: '1 1 140px', minWidth: 0 }}>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Total / Bid ($)</label>
+              <div style={{ flex: '1 1 140px', minWidth: 0, textAlign: 'center' }}>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Total ($)</label>
                 <div
                   aria-live="polite"
                   style={{
-                    width: '100%',
-                    padding: '0.5rem 0.75rem',
-                    border: '1px solid #d1d5db',
-                    borderRadius: 6,
                     fontSize: '0.875rem',
                     fontWeight: 600,
                     color: '#374151',
-                    background: '#f9fafb',
-                    boxSizing: 'border-box',
+                    fontVariantNumeric: 'tabular-nums',
                   }}
                 >
                   ${formatCurrency(jobTotalBidDollars)}
                 </div>
                 <span style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 4, display: 'block' }}>
-                  Total of Specific Work lines above.
+                  Total of lines above.
                 </span>
               </div>
-              <div style={{ flex: '1 1 140px', minWidth: 0 }}>
+              <div style={{ flex: '1 1 140px', minWidth: 0, textAlign: 'center' }}>
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Remaining ($)</label>
-                <div style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', fontWeight: 600, color: '#374151', background: '#f9fafb', borderRadius: 6 }}>
+                <div
+                  style={{
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    color: '#374151',
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
                   ${formatCurrency(getEditJobBillableRemaining())}
                 </div>
               </div>
@@ -2866,15 +2945,7 @@ export default function JobFormModal({
           {editing && (
             <>
               {editing ? (
-                <div
-                  style={{
-                    marginBottom: '1rem',
-                    padding: '0.75rem',
-                    borderRadius: 8,
-                    border: '1px solid #e5e7eb',
-                    background: '#f9fafb',
-                  }}
-                >
+                <div style={{ marginBottom: '1rem' }}>
                   <div
                     style={{
                       display: 'flex',
@@ -2897,7 +2968,7 @@ export default function JobFormModal({
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      Break off Invoice:
+                      {isSendFullUnallocatedToReadyToBill ? 'Send to Ready to Bill:' : 'Break off Invoice:'}
                     </label>
                     <input
                       id="edit-job-partial-invoice-amount"
@@ -2925,7 +2996,11 @@ export default function JobFormModal({
                       }}
                       onChange={(e) => setNewInvoiceAmount(sanitizeMoneyTyping(e.target.value))}
                       placeholder="$0"
-                      title="Break off an amount to send through Ready to Bill. Job stays in Working."
+                      title={
+                        isSendFullUnallocatedToReadyToBill
+                          ? 'Full unallocated amount: moves job to Ready to Bill (no separate draft line for this amount).'
+                          : 'Break off an amount to send through Ready to Bill. Job stays in Working.'
+                      }
                       style={{
                         minWidth: '6rem',
                         width: '6rem',
@@ -2940,31 +3015,43 @@ export default function JobFormModal({
                     />
                     <button
                       type="button"
-                      onClick={createInvoice}
-                      disabled={creatingInvoice || !(parseMoneyInputToNumber(newInvoiceAmount) > 0)}
-                      title="Create invoice"
-                      aria-label="Create invoice"
+                      onClick={isSendFullUnallocatedToReadyToBill ? moveWorkingJobToReadyToBillFromEdit : createInvoice}
+                      disabled={
+                        movingJobToReadyToBill ||
+                        creatingInvoice ||
+                        !(parseMoneyInputToNumber(newInvoiceAmount) > 0)
+                      }
+                      title={isSendFullUnallocatedToReadyToBill ? 'Move job to Ready to Bill' : 'Create invoice'}
+                      aria-label={isSendFullUnallocatedToReadyToBill ? 'Ready to Bill' : 'Create invoice'}
                       style={{
-                        padding: '0.35rem 0.5rem',
-                        fontSize: '1rem',
+                        padding: isSendFullUnallocatedToReadyToBill ? '0.35rem 0.65rem' : '0.35rem 0.5rem',
+                        fontSize: isSendFullUnallocatedToReadyToBill ? '0.8125rem' : '1rem',
                         fontWeight: 600,
                         lineHeight: 1,
                         flexShrink: 0,
                         whiteSpace: 'nowrap',
                         background:
-                          creatingInvoice || !(parseMoneyInputToNumber(newInvoiceAmount) > 0) ? '#9ca3af' : '#3b82f6',
+                          movingJobToReadyToBill ||
+                          creatingInvoice ||
+                          !(parseMoneyInputToNumber(newInvoiceAmount) > 0)
+                            ? '#9ca3af'
+                            : '#3b82f6',
                         color: 'white',
                         border: 'none',
                         borderRadius: 6,
                         cursor:
-                          creatingInvoice || !(parseMoneyInputToNumber(newInvoiceAmount) > 0) ? 'not-allowed' : 'pointer',
+                          movingJobToReadyToBill ||
+                          creatingInvoice ||
+                          !(parseMoneyInputToNumber(newInvoiceAmount) > 0)
+                            ? 'not-allowed'
+                            : 'pointer',
                         display: 'inline-flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        minWidth: '1.75rem',
+                        minWidth: isSendFullUnallocatedToReadyToBill ? '7.5rem' : '1.75rem',
                       }}
                     >
-                      {creatingInvoice ? '…' : '+'}
+                      {movingJobToReadyToBill ? '…' : creatingInvoice ? '…' : isSendFullUnallocatedToReadyToBill ? 'Ready to Bill' : '+'}
                     </button>
                   </div>
                   <p
@@ -2976,7 +3063,9 @@ export default function JobFormModal({
                       lineHeight: 1.45,
                     }}
                   >
-                    Break off an amount to send through Ready to Bill. Job stays in Working.
+                    {isSendFullUnallocatedToReadyToBill
+                      ? 'Full unallocated amount moves the job to Ready to Bill (same as Stages). Partial amounts stay in Working and add a draft line.'
+                      : 'Break off an amount to send through Ready to Bill. Job stays in Working.'}
                   </p>
                 </div>
               ) : null}
@@ -3593,7 +3682,6 @@ export default function JobFormModal({
               </table>
               </div>
             </div>
-            </div>
           </div>
           {editing?.id ? (
             <>
@@ -3842,11 +3930,15 @@ export default function JobFormModal({
                     <tr>
                       <th style={{ padding: '0.625rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Line Item</th>
                       <th style={{ padding: '0.625rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Amount ($)</th>
-                      <th style={{ padding: '0.625rem 0.5rem', width: 48, borderBottom: '1px solid #e5e7eb' }} />
+                      <th style={{ padding: '0.625rem 0.5rem', minWidth: '4.5rem', width: '4.5rem', borderBottom: '1px solid #e5e7eb' }} />
                     </tr>
                   </thead>
                   <tbody>
-                    {materials.map((row, idx) => (
+                    {materials.map((row, idx) => {
+                      const canRemove = materials.length > 1 || materialRowHasUserContent(row)
+                      const removeTitle = materials.length > 1 ? 'Remove' : 'Clear row'
+                      const showAddMaterialRow = materials.length === 1 || idx === materials.length - 1
+                      return (
                       <tr key={row.id} style={{ borderBottom: idx < materials.length - 1 ? '1px solid #e5e7eb' : 'none' }}>
                         <td style={{ padding: '0.625rem 0.75rem' }}>
                           <input
@@ -3868,36 +3960,71 @@ export default function JobFormModal({
                             style={{ width: '6rem', padding: '0.375rem 0.625rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem', textAlign: 'right' }}
                           />
                         </td>
-                        <td style={{ padding: '0.625rem 0.5rem' }}>
-                          <button
-                            type="button"
-                            onClick={() => removeMaterialRow(row.id)}
-                            disabled={materials.length <= 1}
-                            title="Remove"
+                        <td style={{ padding: '0.625rem 0.5rem', verticalAlign: 'middle' }}>
+                          <div
                             style={{
-                              padding: '0.35rem',
-                              background: materials.length <= 1 ? '#f3f4f6' : 'transparent',
-                              color: materials.length <= 1 ? '#9ca3af' : '#991b1c',
-                              border: 'none',
-                              borderRadius: 4,
-                              cursor: materials.length <= 1 ? 'not-allowed' : 'pointer',
-                              display: 'inline-flex',
+                              display: 'flex',
                               alignItems: 'center',
-                              justifyContent: 'center',
+                              justifyContent: 'flex-end',
+                              gap: 4,
+                              flexWrap: 'nowrap',
                             }}
                           >
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z" /></svg>
-                          </button>
+                            {showAddMaterialRow ? (
+                              <button
+                                type="button"
+                                onClick={addMaterialRow}
+                                title="Add line"
+                                aria-label="Add line"
+                                style={{
+                                  padding: '0.35rem 0.5rem',
+                                  fontSize: '1rem',
+                                  fontWeight: 600,
+                                  lineHeight: 1,
+                                  background: '#3b82f6',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: 6,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  minWidth: '1.75rem',
+                                  flexShrink: 0,
+                                }}
+                              >
+                                +
+                              </button>
+                            ) : null}
+                            {canRemove ? (
+                              <button
+                                type="button"
+                                onClick={() => removeMaterialRow(row.id)}
+                                title={removeTitle}
+                                aria-label={removeTitle}
+                                style={{
+                                  padding: '0.35rem',
+                                  background: 'transparent',
+                                  color: '#991b1c',
+                                  border: 'none',
+                                  borderRadius: 4,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexShrink: 0,
+                                }}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z" /></svg>
+                              </button>
+                            ) : null}
+                          </div>
                         </td>
                       </tr>
-                    ))}
+                      )
+                    })}
                   </tbody>
                 </table>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.75rem' }}>
-                  <button type="button" onClick={addMaterialRow} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', fontWeight: 500, background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
-                    Add
-                  </button>
-                </div>
               </MaterialsCostAccordionRow>
           </div>
         </div>
@@ -3936,6 +4063,19 @@ export default function JobFormModal({
             )}
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <button type="button" onClick={closeForm} style={{ padding: '0.5rem 1rem', background: '#e5e7eb', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+              Cancel
+            </button>
+            {!jobFormCanSubmit && !saving && jobFormMissingFields.length > 0 && (
+              <span style={{ fontSize: '0.8rem', color: '#FF6600', display: 'inline-block' }}>
+                <span style={{ display: 'block' }}>Required:</span>
+                {jobFormMissingFields.map((f) => (
+                  <span key={f} style={{ display: 'block', marginLeft: '0.25em' }}>
+                    {f}
+                  </span>
+                ))}
+              </span>
+            )}
             <button
               type="button"
               onClick={saveJob}
@@ -3952,19 +4092,6 @@ export default function JobFormModal({
               }}
             >
               {saving ? 'Saving…' : 'Save'}
-            </button>
-            {!jobFormCanSubmit && !saving && jobFormMissingFields.length > 0 && (
-              <span style={{ fontSize: '0.8rem', color: '#FF6600', display: 'inline-block' }}>
-                <span style={{ display: 'block' }}>Required:</span>
-                {jobFormMissingFields.map((f) => (
-                  <span key={f} style={{ display: 'block', marginLeft: '0.25em' }}>
-                    {f}
-                  </span>
-                ))}
-              </span>
-            )}
-            <button type="button" onClick={closeForm} style={{ padding: '0.5rem 1rem', background: '#e5e7eb', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
-              Cancel
             </button>
           </div>
         </div>
@@ -4004,7 +4131,7 @@ export default function JobFormModal({
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', marginBottom: '1rem' }}>
                   <tbody>
                     <tr>
-                      <td style={{ padding: '0.35rem 0', color: '#6b7280' }}>Job total / bid</td>
+                      <td style={{ padding: '0.35rem 0', color: '#6b7280' }}>Job total</td>
                       <td style={{ padding: '0.35rem 0', textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
                         ${formatCurrency(paymentRemovePreview.jobTotal)}
                       </td>

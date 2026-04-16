@@ -1024,8 +1024,10 @@ export type Database = {
           bid_id: string | null
           clock_in_lat: number | null
           clock_in_lng: number | null
+          clock_in_location_source: string | null
           clock_out_lat: number | null
           clock_out_lng: number | null
+          clock_out_location_source: string | null
           clocked_in_at: string
           clocked_out_at: string | null
           created_at: string | null
@@ -1047,8 +1049,10 @@ export type Database = {
           bid_id?: string | null
           clock_in_lat?: number | null
           clock_in_lng?: number | null
+          clock_in_location_source?: string | null
           clock_out_lat?: number | null
           clock_out_lng?: number | null
+          clock_out_location_source?: string | null
           clocked_in_at: string
           clocked_out_at?: string | null
           created_at?: string | null
@@ -1070,8 +1074,10 @@ export type Database = {
           bid_id?: string | null
           clock_in_lat?: number | null
           clock_in_lng?: number | null
+          clock_in_location_source?: string | null
           clock_out_lat?: number | null
           clock_out_lng?: number | null
+          clock_out_location_source?: string | null
           clocked_in_at?: string
           clocked_out_at?: string | null
           created_at?: string | null

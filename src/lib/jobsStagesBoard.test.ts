@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildBilledStageRows,
+  buildJobsStagesBoardLists,
   buildReadyToBillStageRows,
   jobBillingUnallocatedDollars,
   readyToBillRowsExposureTotal,
@@ -59,6 +60,27 @@ describe('buildReadyToBillStageRows', () => {
     expect(rows.filter((r) => r.kind === 'job')).toHaveLength(1)
     expect(rows.filter((r) => r.kind === 'invoice')).toHaveLength(1)
     const invRow = rows.find((r) => r.kind === 'invoice')
+    expect(invRow?.kind).toBe('invoice')
+    if (invRow?.kind === 'invoice') expect(invRow.inv.id).toBe('inv-1')
+  })
+
+  it('working job with partial RTB: invoice row only, no remainder job shell', () => {
+    const inv = rtbInvoiceStub({
+      id: 'inv-1',
+      job_id: 'job-1',
+      amount: 5000,
+      is_primary_rtb_bundle: false,
+    })
+    const job = jobStub({
+      id: 'job-1',
+      status: 'working',
+      invoices: [inv],
+    })
+    const rows = buildReadyToBillStageRows([job])
+    expect(rows).toHaveLength(1)
+    expect(rows.filter((r) => r.kind === 'job')).toHaveLength(0)
+    expect(rows.filter((r) => r.kind === 'invoice')).toHaveLength(1)
+    const invRow = rows[0]
     expect(invRow?.kind).toBe('invoice')
     if (invRow?.kind === 'invoice') expect(invRow.inv.id).toBe('inv-1')
   })
@@ -248,6 +270,37 @@ describe('buildReadyToBillStageRows', () => {
   })
 })
 
+describe('buildJobsStagesBoardLists', () => {
+  it('includes working job with ready_to_bill invoice in readyToBillRows (Break off invoice parity)', () => {
+    const inv = rtbInvoiceStub({
+      id: 'inv-1',
+      job_id: 'job-1',
+      amount: 5000,
+      is_primary_rtb_bundle: false,
+    })
+    const job = jobStub({
+      id: 'job-1',
+      status: 'working',
+      invoices: [inv],
+    })
+    const { readyToBillRows } = buildJobsStagesBoardLists([job], '')
+    const direct = buildReadyToBillStageRows([job])
+    expect(readyToBillRows).toEqual(direct)
+    expect(readyToBillRows).toHaveLength(1)
+    expect(readyToBillRows[0]?.kind).toBe('invoice')
+  })
+
+  it('working job without RTB invoices produces no readyToBillRows', () => {
+    const job = jobStub({
+      id: 'job-1',
+      status: 'working',
+      invoices: [],
+    })
+    const { readyToBillRows } = buildJobsStagesBoardLists([job], '')
+    expect(readyToBillRows).toHaveLength(0)
+  })
+})
+
 describe('readyToBillRowsExposureTotal', () => {
   it('counts job unallocated plus partial lines once (not gross plus drafts)', () => {
     const inv = rtbInvoiceStub({
@@ -262,6 +315,23 @@ describe('readyToBillRowsExposureTotal', () => {
     })
     const rows = buildReadyToBillStageRows([job])
     expect(readyToBillRowsExposureTotal(rows)).toBe(7000)
+    expect(jobBillingUnallocatedDollars(job)).toBe(2000)
+  })
+
+  it('working job partial: RTB exposure is draft lines only (no remainder row in RTB)', () => {
+    const inv = rtbInvoiceStub({
+      id: 'inv-1',
+      job_id: 'job-1',
+      amount: 5000,
+      is_primary_rtb_bundle: false,
+    })
+    const job = jobStub({
+      id: 'job-1',
+      status: 'working',
+      invoices: [inv],
+    })
+    const rows = buildReadyToBillStageRows([job])
+    expect(readyToBillRowsExposureTotal(rows)).toBe(5000)
     expect(jobBillingUnallocatedDollars(job)).toBe(2000)
   })
 

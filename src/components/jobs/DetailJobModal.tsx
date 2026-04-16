@@ -1025,7 +1025,7 @@ export default function DetailJobModal({
             </div>
 
             <div style={{ marginTop: '1rem' }}>
-              <DetailRow label="Job Total / Bid" noBottomMargin centered>
+              <DetailRow label="Job Total" noBottomMargin centered>
                 {fullJob.revenue != null ? formatCurrency(Number(fullJob.revenue)) : '—'}
               </DetailRow>
             </div>
@@ -1143,7 +1143,7 @@ export default function DetailJobModal({
             ) : null}
 
             <div style={{ marginTop: '1rem' }}>
-              <DetailRow label="Job Total / Bid" noBottomMargin centered>
+              <DetailRow label="Job Total" noBottomMargin centered>
                 {limitedJob.revenue != null ? formatCurrency(Number(limitedJob.revenue)) : '—'}
               </DetailRow>
             </div>

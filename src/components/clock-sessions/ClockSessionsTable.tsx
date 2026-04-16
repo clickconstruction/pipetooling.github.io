@@ -255,6 +255,8 @@ function SessionTimeLocationBlock({
           clockInLng={s.clock_in_lng}
           clockOutLat={s.clock_out_lat}
           clockOutLng={s.clock_out_lng}
+          clockInLocationSource={s.clock_in_location_source}
+          clockOutLocationSource={s.clock_out_location_source}
           variant={locationVariant}
         />
       </div>

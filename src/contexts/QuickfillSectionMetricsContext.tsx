@@ -78,13 +78,14 @@ export function useReportQuickfillSectionMetric(
   onOutstandingClick?: (() => void) | null,
 ): void {
   const ctx = useContext(QuickfillSectionMetricsContext)
+  const setSectionMetric = ctx?.setSectionMetric
   useEffect(() => {
-    if (!ctx) return
-    ctx.setSectionMetric(sectionId, {
+    if (!setSectionMetric) return
+    setSectionMetric(sectionId, {
       count,
       loading,
       onOutstandingClick: onOutstandingClick ?? undefined,
     })
-    return () => ctx.setSectionMetric(sectionId, null)
-  }, [sectionId, count, loading, onOutstandingClick, ctx])
+    return () => setSectionMetric(sectionId, null)
+  }, [sectionId, count, loading, onOutstandingClick, setSectionMetric])
 }

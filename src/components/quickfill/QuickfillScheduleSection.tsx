@@ -54,6 +54,7 @@ import {
   ymdAddDays,
 } from '../../utils/dateUtils'
 import { QUICKFILL_SECTION_BANNER_BOX_STYLE } from '../../lib/quickfillSectionBannerStyle'
+import { groupRosterUsersByAuthRoleSection } from '../../lib/usersTabRosterRoleSections'
 
 const SCHEDULE_CONFLICTS_DEFAULT_PROMPT = 'Are there any obvious schedule conflicts?'
 
@@ -111,18 +112,24 @@ const noopSlot = () => {}
 const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
   userId,
   displayName,
+  scheduleDayYmd,
   segments,
   secondaryBands,
   onScheduleAddClick,
   onOpenMyTimeForSessionStrip,
+  onOpenPersonMyTime,
   onOccupiedBandClick,
 }: {
   userId: string
   displayName: string
+  /** Calendar day for this row (YYYY-MM-DD); used for name-button accessibility when opening My Time. */
+  scheduleDayYmd: string
   segments: AddBlockTimelineSegment[]
   secondaryBands?: DispatchSecondaryBand[]
   onScheduleAddClick?: () => void
   onOpenMyTimeForSessionStrip?: (uid: string, name: string) => void
+  /** Opens My Time day editor (NCNS / Not coming in) from the person name — same handler as strip when provided. */
+  onOpenPersonMyTime?: (uid: string, name: string) => void
   onOccupiedBandClick?: (band: DispatchOccupiedBand) => void
 }) {
   const occupiedBands = useMemo(() => segmentsToOccupiedBands(segments), [segments])
@@ -165,7 +172,34 @@ const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
           padding: '0.15rem 0.25rem',
         }}
       >
-        {displayName}
+        {onOpenPersonMyTime ? (
+          <button
+            type="button"
+            onClick={() => onOpenPersonMyTime(userId, displayName)}
+            title={`Time and attendance for ${displayName} (${scheduleDayYmd})`}
+            aria-label={`Time and attendance for ${displayName} on ${scheduleDayYmd}`}
+            style={{
+              display: 'block',
+              width: '100%',
+              margin: 0,
+              padding: 0,
+              border: 'none',
+              background: 'none',
+              font: 'inherit',
+              fontWeight: 600,
+              color: 'inherit',
+              textAlign: 'left',
+              cursor: 'pointer',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {displayName}
+          </button>
+        ) : (
+          displayName
+        )}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <DispatchAddBlockTimeRange
@@ -304,6 +338,11 @@ export function QuickfillScheduleSection({ hideConflictPrompt = false }: { hideC
       return false
     })
   }, [rosterFilteredUsers, searchQuery, blocksByUserId, jobTitleById])
+
+  const scheduleUsersByRoleSection = useMemo(
+    () => groupRosterUsersByAuthRoleSection(filteredSortedUsers, roleByUserId),
+    [filteredSortedUsers, roleByUserId],
+  )
 
   const scheduleSecondaryByUserId = useMemo(() => {
     const now = Date.now()
@@ -928,31 +967,60 @@ export function QuickfillScheduleSection({ hideConflictPrompt = false }: { hideC
               <div style={{ width: QUICKFILL_SCHEDULE_ADD_COL_WIDTH, flexShrink: 0 }} aria-hidden />
             ) : null}
           </div>
-          {filteredSortedUsers.map(({ id, name }) => {
-            const rows = blocksByUserId.get(id) ?? []
-            const segments = blocksToSegments(rows, jobTitleById)
-            const secondary = scheduleSecondaryByUserId.get(id)
+          {scheduleUsersByRoleSection.map((roleSection, sectionIndex) => {
+            const headingId = `quickfill-schedule-role-${roleSection.sectionKey}`
             return (
-              <QuickfillScheduleUserRow
-                key={id}
-                userId={id}
-                displayName={name}
-                segments={segments}
-                secondaryBands={secondary}
-                onScheduleAddClick={
-                  canEditSchedule
-                    ? () => {
-                        setCellAddContext({ assigneeUserId: id, workDate })
-                        setAssignJobPickerSearch('')
-                        setAssignJobPickerOpen(true)
-                      }
-                    : undefined
-                }
-                onOpenMyTimeForSessionStrip={
-                  showStripSubjectMyTimeEditor ? openMyTimeForSessionStrip : undefined
-                }
-                onOccupiedBandClick={openOccupiedBandOnScheduleDispatch}
-              />
+              <section
+                key={roleSection.sectionKey}
+                aria-labelledby={headingId}
+                style={{ marginTop: sectionIndex > 0 ? '1.25rem' : 0 }}
+              >
+                <h2
+                  id={headingId}
+                  style={{
+                    margin: '0 0 0.5rem 0',
+                    fontSize: '1rem',
+                    fontWeight: 600,
+                    color: '#111827',
+                    textAlign: 'center',
+                  }}
+                >
+                  {roleSection.label}
+                </h2>
+                <div>
+                  {roleSection.rows.map(({ id, name }) => {
+                    const rows = blocksByUserId.get(id) ?? []
+                    const segments = blocksToSegments(rows, jobTitleById)
+                    const secondary = scheduleSecondaryByUserId.get(id)
+                    return (
+                      <QuickfillScheduleUserRow
+                        key={id}
+                        userId={id}
+                        displayName={name}
+                        scheduleDayYmd={workDate}
+                        segments={segments}
+                        secondaryBands={secondary}
+                        onScheduleAddClick={
+                          canEditSchedule
+                            ? () => {
+                                setCellAddContext({ assigneeUserId: id, workDate })
+                                setAssignJobPickerSearch('')
+                                setAssignJobPickerOpen(true)
+                              }
+                            : undefined
+                        }
+                        onOpenMyTimeForSessionStrip={
+                          showStripSubjectMyTimeEditor ? openMyTimeForSessionStrip : undefined
+                        }
+                        onOpenPersonMyTime={
+                          showStripSubjectMyTimeEditor ? openMyTimeForSessionStrip : undefined
+                        }
+                        onOccupiedBandClick={openOccupiedBandOnScheduleDispatch}
+                      />
+                    )
+                  })}
+                </div>
+              </section>
             )
           })}
         </div>

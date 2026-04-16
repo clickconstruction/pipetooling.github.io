@@ -758,7 +758,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Purpose**: Resolve a **public** IPv4/IPv6 address to approximate **lat/lng** (via **ipinfo.io**) so staff can open **Google Maps**. Used from **Estimates** customer activity and acceptance IP lines ([`IpAddressMapButton`](src/components/estimates/IpAddressMapButton.tsx)).
 
-**Endpoint**: `GET /functions/v1/resolve-ip-geolocation?ip=<address>`
+**Endpoint**: `GET /functions/v1/resolve-ip-geolocation?ip=<address>` — **`ip` optional**. If **`ip` is omitted or empty**, the function uses the caller’s public IP from proxy headers (`x-forwarded-for` first hop, then `cf-connecting-ip`, then `x-real-ip`) for the same ipinfo lookup (used for **clock in/out** geo-IP fallback when GPS is unavailable).
 
 **Headers**: `Authorization: Bearer <user_jwt>`, `apikey: <anon_key>` (same pattern as other staff `fetch` calls to Edge).
 
@@ -766,7 +766,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Gateway**: `verify_jwt = false`; **`auth.getUser()`** with the Bearer on the Supabase client.
 
-**Validation**: Private/link-local/loopback/CGNAT IPv4 and common non-global IPv6 prefixes return **400** without calling ipinfo. Malformed IP returns **400**.
+**Validation**: Private/link-local/loopback/CGNAT IPv4 and common non-global IPv6 prefixes return **400** without calling ipinfo. If **`ip` is omitted** and no client IP can be read from headers, returns **400** `Could not determine client IP`.
 
 **Success** (**200** JSON): `{ "lat": number, "lng": number, "label": string | null }` (`label` may combine city/region when present).
 

@@ -45,6 +45,9 @@ export type ClockSessionRow = {
   clock_in_lng: number | null
   clock_out_lat: number | null
   clock_out_lng: number | null
+  /** gps | ip — null for legacy rows or punches without coordinates */
+  clock_in_location_source: string | null
+  clock_out_location_source: string | null
   approved_at: string | null
   approved_by: string | null
   rejected_at: string | null

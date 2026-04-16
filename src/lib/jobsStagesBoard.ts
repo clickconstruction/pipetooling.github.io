@@ -89,12 +89,14 @@ export function readyToBillRowsExposureTotal(rows: StageRow[]): number {
 }
 
 /**
- * Ready to Bill rows: mirrors Dashboard `buildReadyToBillDashboardUnits` bundling so the primary remainder
- * stays a merged job row when it is not the “single RTB + unallocated gap” case.
+ * Ready to Bill rows: mirrors Dashboard `buildReadyToBillDashboardUnits` bundling for non-working jobs.
+ * Jobs still in `working` omit the bare remainder `{ kind: 'job' }` row so break-off drafts appear as invoice
+ * rows only; remainder stays visible on the Working board.
  */
 export function buildReadyToBillStageRows(readyToBillJobs: JobWithDetails[]): StageRow[] {
   const rows: StageRow[] = []
   for (const job of readyToBillJobs) {
+    const isWorking = ((job.status ?? 'working') as string) === 'working'
     const rtbList = (job.invoices ?? [])
       .filter((i) => i.status === 'ready_to_bill')
       .slice()
@@ -105,8 +107,8 @@ export function buildReadyToBillStageRows(readyToBillJobs: JobWithDetails[]): St
     if (mergedId != null) {
       const inv = rtbList.find((i) => i.id === mergedId)
       if (inv != null) rows.push({ kind: 'job_with_primary_rtb', job, inv })
-      else rows.push({ kind: 'job', job })
-    } else {
+      else if (!isWorking) rows.push({ kind: 'job', job })
+    } else if (!isWorking) {
       rows.push({ kind: 'job', job })
     }
 
@@ -164,12 +166,18 @@ export type JobsStagesBoardLists = {
   billedRows: StageRow[]
 }
 
+function jobHasReadyToBillInvoice(j: JobWithDetails): boolean {
+  return (j.invoices ?? []).some((i) => i.status === 'ready_to_bill')
+}
+
 export function buildJobsStagesBoardLists(jobs: JobWithDetails[], stagesSearchQuery: string): JobsStagesBoardLists {
   const filtered = filterJobsByStagesSearch(jobs, stagesSearchQuery)
   const status = (j: JobWithDetails) => (j.status ?? 'working') as string
   const working = filtered.filter((j) => status(j) === 'working')
   const paid = filtered.filter((j) => status(j) === 'paid')
-  const readyToBillJobs = filtered.filter((j) => status(j) === 'ready_to_bill')
+  const readyToBillJobs = filtered.filter(
+    (j) => status(j) === 'ready_to_bill' || (status(j) === 'working' && jobHasReadyToBillInvoice(j)),
+  )
   const billedJobs = filtered.filter((j) => status(j) === 'billed')
   const readyToBillInvoices: InvoiceWithJob[] = filtered.flatMap((j) =>
     (j.invoices ?? []).filter((i) => i.status === 'ready_to_bill').map((inv) => ({ ...inv, job: j })),

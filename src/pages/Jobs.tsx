@@ -4921,6 +4921,33 @@ ${totalsHtml}
           {(() => {
             const { working, paid, readyToBillRows, billedRows } = stagesBoardLists
 
+            const stagesJobHcpBadgeStyle: CSSProperties = {
+              display: 'inline-block',
+              padding: '0.15rem 0.4rem',
+              fontSize: '0.6875rem',
+              fontWeight: 600,
+              border: '1px solid rgba(255,255,255,0.5)',
+              borderRadius: 4,
+              background: '#2563eb',
+              color: 'white',
+              lineHeight: 1.2,
+              fontFamily: 'inherit',
+            }
+
+            function renderStagesJobHcpSubline(job: JobWithDetails, extraWrap?: CSSProperties) {
+              const t = (job.hcp_number ?? '').trim()
+              if (t) {
+                return (
+                  <div style={extraWrap}>
+                    <span style={stagesJobHcpBadgeStyle}>Job: {t}</span>
+                  </div>
+                )
+              }
+              return (
+                <div style={{ fontSize: '0.75rem', color: '#6b7280', ...extraWrap }}>—</div>
+              )
+            }
+
             function toggleStages(key: keyof typeof stagesSectionOpen) {
               setStagesSectionOpen((prev) => ({ ...prev, [key]: !prev[key] }))
             }
@@ -5576,13 +5603,13 @@ ${totalsHtml}
                                       </div>
                                     )}
                                   </div>
-                                  <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{j.hcp_number || '—'}</div>
+                                  {renderStagesJobHcpSubline(j)}
                                   {renderStagesFieldAndBillingLines(j)}
                                 </div>
                               ) : (
                                 <>
                                   <div>{(j.team_members ?? []).map((t) => t.users?.name?.trim()).filter(Boolean).join(', ') || '—'}</div>
-                                  <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{j.hcp_number || '—'}</div>
+                                  {renderStagesJobHcpSubline(j, { marginTop: '0.15rem' })}
                                   {renderStagesFieldAndBillingLines(j)}
                                 </>
                               )}
@@ -5917,6 +5944,18 @@ ${totalsHtml}
                 maxWidth: '100%',
                 boxSizing: 'border-box',
               }
+              const stagesInvoiceHcpBadgeStyle: CSSProperties = {
+                display: 'inline-block',
+                padding: '0.15rem 0.4rem',
+                fontSize: '0.6875rem',
+                fontWeight: 600,
+                border: '1px solid rgba(255,255,255,0.5)',
+                borderRadius: 4,
+                background: '#16a34a',
+                color: 'white',
+                lineHeight: 1.2,
+                fontFamily: 'inherit',
+              }
               return (
                 <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
                   <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
@@ -6096,13 +6135,13 @@ ${totalsHtml}
                                         </div>
                                       )}
                                     </div>
-                                    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{j.hcp_number || '—'}</div>
+                                    {renderStagesJobHcpSubline(j, { marginTop: '0.15rem' })}
                                     {renderStagesFieldAndBillingLines(j)}
                                   </div>
                                   ) : (
                                     <>
                                       <div>{(j.team_members ?? []).map((t) => t.users?.name?.trim()).filter(Boolean).join(', ') || '—'}</div>
-                                      <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{j.hcp_number || '—'}</div>
+                                      {renderStagesJobHcpSubline(j, { marginTop: '0.15rem' })}
                                       {renderStagesFieldAndBillingLines(j)}
                                     </>
                                   )}
@@ -6447,6 +6486,10 @@ ${totalsHtml}
                           } else {
                             const { inv, job } = row
                             const invWithJob: InvoiceWithJob = { ...inv, job }
+                            const stagesInvoiceHcpTrimmed = (job.hcp_number ?? '').trim()
+                            const stagesInvoiceRowHcpLabel = stagesInvoiceHcpTrimmed
+                              ? `Invoice: ${stagesInvoiceHcpTrimmed}`
+                              : '—'
                             return (
                               <Fragment key={`inv-${inv.id}`}>
                               <tr
@@ -6462,7 +6505,15 @@ ${totalsHtml}
                               >
                                 <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
                                   <div>{(job.team_members ?? []).map((t) => t.users?.name?.trim()).filter(Boolean).join(', ') || '—'}</div>
-                                  <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{job.hcp_number || '—'}</div>
+                                  {stagesInvoiceHcpTrimmed ? (
+                                    <div style={{ marginTop: '0.15rem' }}>
+                                      <span style={stagesInvoiceHcpBadgeStyle}>{stagesInvoiceRowHcpLabel}</span>
+                                    </div>
+                                  ) : (
+                                    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>
+                                      {stagesInvoiceRowHcpLabel}
+                                    </div>
+                                  )}
                                   {renderStagesFieldAndBillingLines(job)}
                                   {(() => {
                                     const eff = effectiveInvoiceEstBillDate(inv, job)

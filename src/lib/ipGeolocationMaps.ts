@@ -90,18 +90,10 @@ function writeCache(ip: string, lat: number, lng: number): void {
 
 type ResolveResponse = { lat: number; lng: number; label?: string | null; error?: string }
 
-export async function fetchIpGeoForMaps(
+async function fetchResolveIpGeolocationAuthorized(
   supabase: SupabaseClient,
-  ip: string,
+  query: string,
 ): Promise<{ lat: number; lng: number }> {
-  const trimmed = ip.trim()
-  if (!trimmed) {
-    throw new Error('Missing IP')
-  }
-
-  const cached = readCache(trimmed)
-  if (cached) return cached
-
   const { data: sess } = await supabase.auth.getSession()
   const jwt = sess.session?.access_token
   if (!jwt) {
@@ -110,7 +102,7 @@ export async function fetchIpGeoForMaps(
 
   const baseUrl = import.meta.env.VITE_SUPABASE_URL as string
   const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string
-  const url = `${baseUrl}/functions/v1/resolve-ip-geolocation?ip=${encodeURIComponent(trimmed)}`
+  const url = `${baseUrl}/functions/v1/resolve-ip-geolocation${query}`
 
   const res = await fetch(url, {
     method: 'GET',
@@ -128,6 +120,34 @@ export async function fetchIpGeoForMaps(
     throw new Error('Invalid response from geolocation service')
   }
 
-  writeCache(trimmed, json.lat, json.lng)
   return { lat: json.lat, lng: json.lng }
+}
+
+/**
+ * Geo-IP for the signed-in caller (omit `ip` on Edge). No sessionStorage cache — avoids stale coords when the network changes.
+ * Used when device GPS is unavailable during clock in/out.
+ */
+export async function fetchCallerIpGeoForMaps(supabase: SupabaseClient): Promise<{ lat: number; lng: number }> {
+  return fetchResolveIpGeolocationAuthorized(supabase, '')
+}
+
+export async function fetchIpGeoForMaps(
+  supabase: SupabaseClient,
+  ip: string,
+): Promise<{ lat: number; lng: number }> {
+  const trimmed = ip.trim()
+  if (!trimmed) {
+    throw new Error('Missing IP')
+  }
+
+  const cached = readCache(trimmed)
+  if (cached) return cached
+
+  const { lat, lng } = await fetchResolveIpGeolocationAuthorized(
+    supabase,
+    `?ip=${encodeURIComponent(trimmed)}`,
+  )
+
+  writeCache(trimmed, lat, lng)
+  return { lat, lng }
 }
