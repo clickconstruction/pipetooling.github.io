@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { displayNameFromAuthUser } from '../lib/displayNameFromAuthUser'
+import { useAuth } from '../hooks/useAuth'
 import { getDefaultWeekRange, getLastWeekRange } from '../utils/dateUtils'
 import { DashboardMyTimeDayEditorModal } from './DashboardMyTimeDayEditorModal'
 
@@ -135,6 +137,10 @@ type HoursByDayOptions = {
   sessionCountByDay?: Map<string, number>
   onDayClick?: (dateStr: string) => void
   editableRange?: { start: string; end: string }
+  /** Days marked correct in People → Hours; those cells are not clickable. */
+  hoursDaysCorrect?: Set<string>
+  /** Salaried Dashboard UX: show “On Shift” instead of numeric hours when the day has time. */
+  useOnShiftDayLabel?: boolean
 }
 
 function renderHoursByDay(weekStart: string, secondsByDay: Map<string, number>, options?: HoursByDayOptions) {
@@ -144,7 +150,8 @@ function renderHoursByDay(weekStart: string, secondsByDay: Map<string, number>, 
     dates.push(d.toLocaleDateString('en-CA'))
     d.setDate(d.getDate() + 1)
   }
-  const { sessionCountByDay, onDayClick, editableRange } = options ?? {}
+  const { sessionCountByDay, onDayClick, editableRange, hoursDaysCorrect, useOnShiftDayLabel } =
+    options ?? {}
 
   return (
     <div className="hoursByDayGrid">
@@ -153,19 +160,23 @@ function renderHoursByDay(weekStart: string, secondsByDay: Map<string, number>, 
         const d2 = new Date(dateStr + 'T00:00:00')
         const label = `${DAY_NAMES[i]} ${d2.getMonth() + 1}/${d2.getDate()}`
         const parts = sec > 0 ? formatHoursBoldParts(sec) : null
+        const showOnShift = Boolean(useOnShiftDayLabel && sec > 0)
         const count = sessionCountByDay?.get(dateStr) ?? 0
         const inRange =
           editableRange != null && dateStr >= editableRange.start && dateStr <= editableRange.end
+        const dayLocked = Boolean(hoursDaysCorrect?.has(dateStr))
         const isInteractive =
-          Boolean(onDayClick && sessionCountByDay && inRange && sec > 0 && count > 0)
+          Boolean(onDayClick && sessionCountByDay && inRange && sec > 0 && count > 0 && !dayLocked)
 
-        const hoursLabel = parts ? `${parts.value}${parts.suffix}` : '—'
+        const hoursLabel = showOnShift ? 'On Shift' : parts ? `${parts.value}${parts.suffix}` : '—'
 
         const inner = (
           <>
             <span className="hoursByDayDateLine">{label}:</span>
             <span className="hoursByDayHoursLine">
-              {parts ? (
+              {showOnShift ? (
+                <span style={{ fontWeight: 600 }}>On Shift</span>
+              ) : parts ? (
                 <>
                   <strong style={{ fontWeight: 600 }}>{parts.value}</strong>
                   {parts.suffix}
@@ -175,7 +186,7 @@ function renderHoursByDay(weekStart: string, secondsByDay: Map<string, number>, 
               )}
             </span>
             {isInteractive ? (
-              <span className="hoursByDayGoalsLine">{count === 1 ? '1 Goal' : `${count} Goals`}</span>
+              <span className="hoursByDayGoalsLine">{count === 1 ? '1 pending' : `${count} pending`}</span>
             ) : null}
           </>
         )
@@ -213,6 +224,8 @@ type SessionRow = {
   job_ledger_id: string | null
   bid_id: string | null
   approved_at: string | null
+  origin: string
+  salary_segment_index: number | null
 }
 
 type SubItem = { notes: string; seconds: number }
@@ -229,9 +242,17 @@ type BreakdownItem = {
 
 type Props = {
   userId: string
+  hoursDaysCorrect: Set<string>
+  /** When true (e.g. salaried pay config), week day cells do not open the My Time day editor. */
+  disableDayEditor?: boolean
 }
 
-export default function DashboardMyTimeSection({ userId }: Props) {
+export default function DashboardMyTimeSection({ userId, hoursDaysCorrect, disableDayEditor = false }: Props) {
+  const { user: authUser } = useAuth()
+  const myTimeSubjectDisplayName = useMemo(() => {
+    if (authUser?.id === userId) return displayNameFromAuthUser(authUser)?.trim() || 'You'
+    return 'User'
+  }, [authUser, userId])
   const [loading, setLoading] = useState(true)
   const [totalSecondsToday, setTotalSecondsToday] = useState(0)
   const [totalSecondsWeek, setTotalSecondsWeek] = useState(0)
@@ -279,6 +300,16 @@ export default function DashboardMyTimeSection({ userId }: Props) {
     return []
   }, [editorDate, rawSessionsThisWeek, rawSessionsLastWeek])
 
+  useEffect(() => {
+    if (editorDate && hoursDaysCorrect.has(editorDate)) {
+      setEditorDate(null)
+    }
+  }, [editorDate, hoursDaysCorrect])
+
+  useEffect(() => {
+    if (disableDayEditor && editorDate) setEditorDate(null)
+  }, [disableDayEditor, editorDate])
+
   const loadData = useCallback(async () => {
     if (!userId) return
     setLoading(true)
@@ -290,7 +321,9 @@ export default function DashboardMyTimeSection({ userId }: Props) {
     const [{ data, error }, { data: lastWeekData }] = await Promise.all([
       supabase
         .from('clock_sessions')
-        .select('id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, bid_id, approved_at')
+        .select(
+          'id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, bid_id, approved_at, origin, salary_segment_index'
+        )
         .eq('user_id', userId)
         .is('rejected_at', null)
         .is('revoked_at', null)
@@ -298,7 +331,9 @@ export default function DashboardMyTimeSection({ userId }: Props) {
         .lte('work_date', end),
       supabase
         .from('clock_sessions')
-        .select('id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, bid_id, approved_at')
+        .select(
+          'id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, bid_id, approved_at, origin, salary_segment_index'
+        )
         .eq('user_id', userId)
         .is('rejected_at', null)
         .is('revoked_at', null)
@@ -618,8 +653,10 @@ export default function DashboardMyTimeSection({ userId }: Props) {
             <>
               {renderHoursByDay(getDefaultWeekRange().start, secondsByDayThisWeek, {
                 sessionCountByDay,
-                onDayClick: setEditorDate,
+                onDayClick: disableDayEditor ? undefined : setEditorDate,
                 editableRange: getDefaultWeekRange(),
+                hoursDaysCorrect,
+                useOnShiftDayLabel: disableDayEditor,
               })}
               {renderBreakdownList(breakdown, expandedKeys, (key) => {
                 setExpandedKeys((prev) => {
@@ -664,6 +701,7 @@ export default function DashboardMyTimeSection({ userId }: Props) {
               </div>
               {renderHoursByDay(getLastWeekRange().start, secondsByDayLastWeek, {
                 sessionCountByDay: sessionCountByDayLastWeek,
+                useOnShiftDayLabel: disableDayEditor,
               })}
             </div>
             {breakdownLastWeek.length > 0 &&
@@ -681,12 +719,15 @@ export default function DashboardMyTimeSection({ userId }: Props) {
       {!loading && breakdown.length === 0 && totalSecondsWeek === 0 && (
         <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No time logged this week.</p>
       )}
-      {editorDate && (
+      {editorDate && !disableDayEditor && (
         <DashboardMyTimeDayEditorModal
           dateStr={editorDate}
           sessions={myTimeModalSessions}
+          subjectUserId={userId}
+          subjectDisplayName={myTimeSubjectDisplayName}
           jobLabels={myTimeJobLabels}
           bidLabels={myTimeBidLabels}
+          clockTimesReadOnly
           onClose={() => setEditorDate(null)}
           onSaved={() => void loadData()}
         />

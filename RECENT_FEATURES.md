@@ -12,26 +12,35 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.313 → v2.4"
+version_range: "v2.316 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.316)"
+    line: ~991
+    description: "Dashboard: block My Time modal when work_date is hours-correct; RLS SELECT on hours_days_correct for authenticated"
+  - name: "Latest Version (v2.315)"
+    line: ~1015
+    description: "My Time cross-row merge (mixed punch/salary): affine partition save, merge gates, salary-sync toast; SALARY_CLOCK_SESSIONS.md"
+  - name: "Latest Version (v2.314)"
+    line: ~1028
+    description: "Documents page: Jobs ledger, add-link modal (+), full-width search, compact header (no visible title)"
   - name: "Latest Version (v2.313)"
-    line: ~983
+    line: ~1001
     description: "Stripe multi-line from Specific Work; Edit Job Stripe char count + scope disclosure; Bill Customer line-on-bill defaults"
   - name: "Latest Version (v2.312)"
-    line: ~995
+    line: ~1013
     description: "Jobs Specific Work: unit price + description per jobs_ledger_fixtures row; Detail + Billing grid"
   - name: "Latest Version (v2.311)"
-    line: ~1008
+    line: ~1026
     description: "Bids Pricing price book New/Edit entry: decimal dollars (step 0.01, inputMode decimal)"
   - name: "Latest Version (v2.310)"
-    line: ~1019
+    line: ~1037
     description: "Quickfill Schedule/Office/Email/Texts/Physical UX + stale tally Assign modal seed fix; DispatchAddBlockTimeRange session strip sizing"
   - name: "Latest Version (v2.309)"
-    line: ~1033
+    line: ~1051
     description: "Quickfill Physical inbox section + Schedule Dispatch hub Day tab (hubTab=day, day= URL focus)"
   - name: "Latest Version (v2.308)"
-    line: ~1053
+    line: ~1071
     description: "Quickfill Schedule: hide assistants/estimators toggle + fetchUsersTabRosterForScheduleDispatchHub (id, role)"
   - name: "Latest Version (v2.307)"
     line: ~1064
@@ -766,6 +775,8 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.315 — **My Time**: cross-row **Merge** on mixed punch/salary rows (affine partition save); salary-sync notice](#latest-updates-v2315)
+**New:** [v2.314 — **Documents** (`/documents`): **Jobs** tab, **+** add Drive links, full-width search, tabs tight under nav](#latest-updates-v2314)
 **New:** [v2.313 — **Stripe** invoice lines from **Specific Work**; Edit Job **(n/500)** counter; **Bill Customer** line-on-bill](#latest-updates-v2313)
 **New:** [v2.312 — Jobs **Specific Work**: **Unit price** + **Description** per row (`jobs_ledger_fixtures`)](#latest-updates-v2312)
 **New:** [v2.311 — Bids **Pricing** price book **New/Edit entry**: **decimal** dollars (`step` 0.01)](#latest-updates-v2311)
@@ -978,6 +989,46 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.316)
+
+**Date**: 2026-04-16
+
+### **Dashboard** — No **My Time** / strip editor when day is **Correct** (People → Hours)
+
+- **`hours_days_correct`** — Migration **`20260416062502_hours_days_correct_authenticated_select.sql`**: **`SELECT`** for **`authenticated`** (read-only); insert/delete still pay-approved master / assistant only.
+- **[`Dashboard.tsx`](src/pages/Dashboard.tsx)** — Loads correct **`work_date`** keys for this week, last week, strip **`clockStripWorkDateYmd`**, and today; **Edit time** on the clock strip and **View today’s time** show a warning toast and do not open **[`DashboardMyTimeDayEditorModal`](src/components/DashboardMyTimeDayEditorModal.tsx)** when that date is marked correct. Strip modal **`dateStr`** matches **`clockStripWorkDateYmd`** (and clock preview uses **`denverCalendarDayKey`** for today).
+- **[`DashboardMyTimeSection.tsx`](src/components/DashboardMyTimeSection.tsx)** — **This week** day cells for correct days are not interactive; if the modal was open and the day becomes correct, it closes.
+- **Ops / payroll:** Apply migration; QA mark **Correct** on a day, confirm Dashboard cannot open My Time for that **`work_date`** until unmarked.
+
+---
+
+## Latest Updates (v2.315)
+
+**Date**: 2026-04-16
+
+### **My Time** — Cross-row **merge** when rows differ by punch vs salary (affine partition)
+
+- **Merge up / Merge down** can collapse a contiguous multi-row cluster into **one** segment even when `origin` / `salary_segment_index` differ across rows. **Save** writes **per-row** `UPDATE`s (clock times + shared focus note); **job/bid per row are unchanged** on this path ([`partitionMixedClusterSingleSegmentToRowIntervals`](src/lib/myTimeMixedClusterSingleSegmentPartition.ts), [`mixedClusterSegmentsAllowPerRowPersist`](src/lib/myTimeDaySavePlan.ts), [`DashboardMyTimeDayEditorModal.tsx`](src/components/DashboardMyTimeDayEditorModal.tsx)).
+- **Dashboard** My Time preview (`clockTimesReadOnly`): merges and this save path still apply; punch-only actions (adjust times, force clock-out, etc.) stay disabled.
+- **After save**, if any row in that persist path was **`salary_schedule`**, an **info** toast notes that **salary template sync** may later adjust auto salary rows—see [`SALARY_CLOCK_SESSIONS.md`](SALARY_CLOCK_SESSIONS.md) (**My Time: cross-row merge**).
+- **Ops / payroll:** No migration; QA mixed cluster (salary row + punch row), merge, save, verify DB seams; spot-check approved-session confirm when times change.
+
+---
+
+## Latest Updates (v2.314)
+
+**Date**: 2026-04-16
+
+### **Documents** (`/documents`) — **Jobs** ledger, **+** add links, search and header layout
+
+- **Tabs** — **Estimates**, **Bid proposals**, **Jobs**, **Upload** (placeholder). URL **`?tab=`**: `estimates`, `bid-proposals`, `jobs`, `upload` ([`documentsPageTab.ts`](src/lib/documentsPageTab.ts); dashboard pins: [`pinnedTabs.ts`](src/lib/pinnedTabs.ts)).
+- **Ledgers** — Shared columns **Docs | Title | Job | Customer | Status | Total**. **Estimates**: doc icons + modals for **sent** / **customer_accepted**; **Bid proposals**: submission + project folder links, service-type chip, lost bids hidden unless searching; **Jobs**: `jobs_ledger` list, **Job Files** from **`google_drive_link`**, title links to **`/jobs?edit=`**, status via [`jobsLedgerStatusPipeline.ts`](src/lib/jobsLedgerStatusPipeline.ts) ([`Documents.tsx`](src/pages/Documents.tsx)).
+- **Docs “+”** — When a link is missing, soft **+** opens [`DocumentsAddDriveLinkModal`](src/components/documents/DocumentsAddDriveLinkModal.tsx): https URL, **Check link** ([`checkGoogleDriveAttachmentUrl`](src/lib/checkGoogleDriveAttachmentUrl.ts) → Edge **`check-estimate-attachment-url`**), **Save** updates **`estimates.customer_attachment_url`** (**draft** only, with row check), **`bids.bid_submission_link`** / **`drive_link`**, or **`jobs_ledger.google_drive_link`**.
+- **Search** — Full width of the page column; no visible **Search** label (`aria-label` on inputs).
+- **Header** — No visible **Documents** title; visually hidden **`h1`**; reduced top padding so tabs sit just under the app nav ([`Documents.tsx`](src/pages/Documents.tsx)).
+
 ---
 
 ## Latest Updates (v2.313)

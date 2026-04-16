@@ -8,6 +8,7 @@ import type { UnifiedSearchResult } from '../../utils/unifiedJobBidSearch'
 import {
   clockSessionRowForSegmentAssign,
   mergeAllocChoiceRequired,
+  myTimeMergePersistBlockTitle,
   NO_JOB_BID_LINKED_LABEL,
   segmentAllocationLabelsForOverlap,
   unassignedSessionIdsOverlappingSegment,
@@ -107,6 +108,11 @@ export type MyTimeDayClusterFormProps = {
   rejectSessionBusyId?: string | null
   /** Dashboard clock preview: no edits to times, notes, merge, or assign. */
   readOnlyView?: boolean
+  /**
+   * Dashboard `clockTimesReadOnly`: disable Form "Ends at" inputs only so boundaries are edited in Visual (blue handles), not via datetime fields.
+   * Does not affect notes, merge, split, or assign (unlike `readOnlyView`).
+   */
+  segmentTimeInputsReadOnly?: boolean
   /** Dispatch schedule quick-picks in Assign popover (optional). */
   dispatchScheduleAssigneeUserId?: string
   dispatchScheduleWorkDateYmd?: string
@@ -142,6 +148,7 @@ export function MyTimeDayClusterForm({
   onRejectSession,
   rejectSessionBusyId = null,
   readOnlyView = false,
+  segmentTimeInputsReadOnly = false,
   dispatchScheduleAssigneeUserId,
   dispatchScheduleWorkDateYmd,
   draftLocalJobBidAssign,
@@ -156,6 +163,31 @@ export function MyTimeDayClusterForm({
   useEffect(() => {
     if (saving) setMergeDirectionModalSegIdx(null)
   }, [saving])
+
+  const mergeModalOpenLast = !lastS.clocked_out_at
+  const mergeDirUpBlockedTitle =
+    mergeDirectionModalSegIdx != null && mergeDirectionModalSegIdx > 0
+      ? myTimeMergePersistBlockTitle(
+          c,
+          split,
+          nowTick,
+          mergeModalOpenLast,
+          'prev',
+          mergeDirectionModalSegIdx,
+        )
+      : undefined
+  const mergeDirDownBlockedTitle =
+    mergeDirectionModalSegIdx != null &&
+    mergeDirectionModalSegIdx < split.boundaries.length - 2
+      ? myTimeMergePersistBlockTitle(
+          c,
+          split,
+          nowTick,
+          mergeModalOpenLast,
+          'next',
+          mergeDirectionModalSegIdx,
+        )
+      : undefined
 
   const joinTargets = useMemo(() => internalRowJoinMs(c, nowTick), [c, nowTick])
   const blockDateAndTimeLine = `${formatDenverBlockDateHeader(t0, t1)} | ${formatDenverTimeOnly(t0)} – ${formatDenverTimeOnly(t1)}`
@@ -273,6 +305,14 @@ export function MyTimeDayClusterForm({
           allocLabels[0] !== NO_JOB_BID_LINKED_LABEL
         const endInputId = `my-time-${clusterId}-seg-${segIdx}-end`
         const openLastCluster = !lastS.clocked_out_at
+        const mergeUpBlockTitle =
+          segIdx > 0
+            ? myTimeMergePersistBlockTitle(c, split, nowTick, openLastCluster, 'prev', segIdx)
+            : undefined
+        const mergeDownBlockTitle =
+          segIdx < split.boundaries.length - 2
+            ? myTimeMergePersistBlockTitle(c, split, nowTick, openLastCluster, 'next', segIdx)
+            : undefined
 
         const spanRangeText = openLast
           ? denverSameCalendarDay(a, b)
@@ -692,7 +732,11 @@ export function MyTimeDayClusterForm({
                           {segIdx > 0 ? (
                             <button
                               type="button"
+                              disabled={!!mergeUpBlockTitle}
+                              title={mergeUpBlockTitle}
+                              aria-label={mergeUpBlockTitle ?? 'Merge up'}
                               onClick={() => {
+                                if (mergeUpBlockTitle) return
                                 const labUp = segmentAllocationLabelsForOverlap(
                                   c,
                                   split,
@@ -719,7 +763,8 @@ export function MyTimeDayClusterForm({
                                 borderRadius: 4,
                                 background: 'white',
                                 color: '#6b7280',
-                                cursor: 'pointer',
+                                cursor: mergeUpBlockTitle ? 'not-allowed' : 'pointer',
+                                opacity: mergeUpBlockTitle ? 0.55 : 1,
                               }}
                             >
                               Merge up
@@ -728,7 +773,11 @@ export function MyTimeDayClusterForm({
                           {segIdx < split.boundaries.length - 2 ? (
                             <button
                               type="button"
+                              disabled={!!mergeDownBlockTitle}
+                              title={mergeDownBlockTitle}
+                              aria-label={mergeDownBlockTitle ?? 'Merge down'}
                               onClick={() => {
+                                if (mergeDownBlockTitle) return
                                 const labDn = segmentAllocationLabelsForOverlap(
                                   c,
                                   split,
@@ -755,7 +804,8 @@ export function MyTimeDayClusterForm({
                                 borderRadius: 4,
                                 background: 'white',
                                 color: '#6b7280',
-                                cursor: 'pointer',
+                                cursor: mergeDownBlockTitle ? 'not-allowed' : 'pointer',
+                                opacity: mergeDownBlockTitle ? 0.55 : 1,
                               }}
                             >
                               Merge down
@@ -809,10 +859,10 @@ export function MyTimeDayClusterForm({
                       step={timeOnlyMode ? 60 : undefined}
                       defaultValue={timeOnlyMode ? msToTimeLocalValue(b) : msToDatetimeLocalValue(b)}
                       key={`${clusterId}-e-${segIdx}-${b}-${timeOnlyMode ? 't' : 'dt'}`}
-                      disabled={readOnlyView || saving}
-                      readOnly={readOnlyView}
+                      disabled={readOnlyView || saving || segmentTimeInputsReadOnly}
+                      readOnly={readOnlyView || segmentTimeInputsReadOnly}
                       onBlur={(e) => {
-                        if (readOnlyView) return
+                        if (readOnlyView || segmentTimeInputsReadOnly) return
                         const ms = timeOnlyMode
                           ? parseTimeOnAnchorDateToMs(anchorYmd, e.target.value)
                           : parseDatetimeLocalToMs(e.target.value)
@@ -866,6 +916,10 @@ export function MyTimeDayClusterForm({
         mergeDirectionModalSegIdx < split.boundaries.length - 2
       }
       disabled={saving}
+      mergeUpBlocked={!!mergeDirUpBlockedTitle}
+      mergeUpBlockedTitle={mergeDirUpBlockedTitle}
+      mergeDownBlocked={!!mergeDirDownBlockedTitle}
+      mergeDownBlockedTitle={mergeDirDownBlockedTitle}
       showReject={(() => {
         const k = mergeDirectionModalSegIdx
         if (k == null) return false

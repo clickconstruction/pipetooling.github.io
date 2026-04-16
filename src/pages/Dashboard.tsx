@@ -62,11 +62,12 @@ import { type JobBillingContext } from '../components/jobs/SendRecordInvoiceModa
 import { useBillCustomerModal } from '../contexts/BillCustomerModalContext'
 import BilledPaymentConfirmationModal, { type InvoiceWithJobLike } from '../components/jobs/BilledPaymentConfirmationModal'
 import { getNextDisplayOrders } from '../utils/checklistOrder'
-import { denverCalendarDayKey } from '../utils/dateUtils'
+import { denverCalendarDayKey, getDefaultWeekRange, getLastWeekRange } from '../utils/dateUtils'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { fetchDashboardPhase1 } from '../lib/dashboardBootQueries'
 import { readDashboardBootCache, writeDashboardBootCache } from '../lib/dashboardBootCache'
 import { displayNameFromAuthUser } from '../lib/displayNameFromAuthUser'
+import { fetchHoursDaysCorrectWorkDates } from '../lib/fetchHoursDaysCorrectWorkDates'
 import {
   buildReadyToBillDashboardUnits,
   type ReadyToBillDashboardUnit as ReadyToBillDashboardUnitBase,
@@ -482,10 +483,14 @@ function dedupeSubScheduleBlocks(blocks: JobScheduleBlockRow[]): JobScheduleBloc
   return out
 }
 
+const HOURS_DAY_CORRECT_BLOCK_TOAST =
+  'This day is marked correct in People → Hours. Unmark it there to edit time from the Dashboard.'
+
 export default function Dashboard() {
   const navigate = useNavigate()
   const bidPreview = useBidPreview()
   const { user: authUser, role, estimatorProspectsAccess } = useAuth()
+  const { showToast } = useToastContext()
   const showClockStripScopeToggle =
     role === 'dev' || role === 'master_technician' || role === 'assistant'
   const showStripSubjectMyTimeEditor =
@@ -548,15 +553,52 @@ export default function Dashboard() {
     () => sessionsForStrip.length > 0 || myTeam.clockedInTodayStripRows.length > 0,
     [sessionsForStrip, myTeam.clockedInTodayStripRows],
   )
-  const stripMyTimeDenverDateStr = useMemo(() => denverCalendarDayKey(Date.now()), [])
+
+  const hoursDaysCorrectRange = useMemo(() => {
+    const { start: w0, end: w1 } = getDefaultWeekRange()
+    const { start: l0, end: l1 } = getLastWeekRange()
+    const today = denverCalendarDayKey(Date.now())
+    const strip = myTeam.clockStripWorkDateYmd
+    const keys = [w0, w1, l0, l1, today, strip]
+    const start = keys.reduce((a, b) => (a < b ? a : b))
+    const end = keys.reduce((a, b) => (a > b ? a : b))
+    return { start, end }
+  }, [myTeam.clockStripWorkDateYmd])
+
+  const [hoursDaysCorrectSet, setHoursDaysCorrectSet] = useState<Set<string>>(() => new Set())
+
+  useEffect(() => {
+    if (!authUser?.id) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const set = await fetchHoursDaysCorrectWorkDates(hoursDaysCorrectRange.start, hoursDaysCorrectRange.end)
+        if (!cancelled) setHoursDaysCorrectSet(set)
+      } catch {
+        if (!cancelled) setHoursDaysCorrectSet(new Set())
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [authUser?.id, hoursDaysCorrectRange.start, hoursDaysCorrectRange.end])
+
   const [stripMyTimeEditor, setStripMyTimeEditor] = useState<{
     subjectUserId: string
     displayName: string
-    clockTimesReadOnly?: boolean
+    dateStr: string
   } | null>(null)
-  const openStripMyTimeEditor = useCallback((p: { subjectUserId: string; displayName: string }) => {
-    setStripMyTimeEditor(p)
-  }, [])
+  const openStripMyTimeEditor = useCallback(
+    (p: { subjectUserId: string; displayName: string }) => {
+      const dateStr = myTeam.clockStripWorkDateYmd
+      if (hoursDaysCorrectSet.has(dateStr)) {
+        showToast(HOURS_DAY_CORRECT_BLOCK_TOAST, 'warning')
+        return
+      }
+      setStripMyTimeEditor({ ...p, dateStr })
+    },
+    [hoursDaysCorrectSet, myTeam.clockStripWorkDateYmd, showToast],
+  )
   const isMobile = useIsMobile()
   const [subscribedSteps, setSubscribedSteps] = useState<SubscribedStep[]>([])
   const [assignedSteps, setAssignedSteps] = useState<AssignedStep[]>([])
@@ -675,14 +717,43 @@ export default function Dashboard() {
     () => userName ?? displayNameFromAuthUser(authUser),
     [userName, authUser],
   )
+  const [dashboardSelfIsSalary, setDashboardSelfIsSalary] = useState(false)
+  useEffect(() => {
+    const name = clockDisplayName?.trim()
+    if (!name) {
+      setDashboardSelfIsSalary(false)
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const row = await withSupabaseRetry(
+          async () =>
+            supabase.from('people_pay_config').select('is_salary').eq('person_name', name).maybeSingle(),
+          'dashboard self people_pay_config is_salary',
+        )
+        if (!cancelled) setDashboardSelfIsSalary(!!(row as { is_salary?: boolean } | null)?.is_salary)
+      } catch {
+        if (!cancelled) setDashboardSelfIsSalary(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [clockDisplayName])
   const openMyTimePreviewFromClock = useCallback(() => {
     if (!authUser?.id) return
+    const dateStr = denverCalendarDayKey(Date.now())
+    if (hoursDaysCorrectSet.has(dateStr)) {
+      showToast(HOURS_DAY_CORRECT_BLOCK_TOAST, 'warning')
+      return
+    }
     setStripMyTimeEditor({
       subjectUserId: authUser.id,
       displayName: clockDisplayName?.trim() || 'You',
-      clockTimesReadOnly: true,
+      dateStr,
     })
-  }, [authUser?.id, clockDisplayName])
+  }, [authUser?.id, clockDisplayName, hoursDaysCorrectSet, showToast])
   const [teamFeedbackHomeEnabled, setTeamFeedbackHomeEnabled] = useState(false)
   const [teamFeedbackWizardOpen, setTeamFeedbackWizardOpen] = useState(false)
   const [dispatchRequestsOpen, setDispatchRequestsOpen] = useState(true)
@@ -753,7 +824,6 @@ export default function Dashboard() {
   }, [])
 
   const isDev = role === 'dev'
-  const { showToast } = useToastContext()
   const {
     dispatchInboxEligible,
     dispatchRequests,
@@ -3491,7 +3561,7 @@ export default function Dashboard() {
           <ClockInOutButton
             userId={authUser.id}
             userName={clockDisplayName}
-            onOpenMyTimeDayEditor={openMyTimePreviewFromClock}
+            onOpenMyTimeDayEditor={dashboardSelfIsSalary ? undefined : openMyTimePreviewFromClock}
           />
         </div>
       )}
@@ -3958,11 +4028,11 @@ export default function Dashboard() {
       )}
       {stripMyTimeEditor && (
         <DashboardMyTimeDayEditorModal
-          dateStr={stripMyTimeDenverDateStr}
+          dateStr={stripMyTimeEditor.dateStr}
           sessions={[]}
           subjectUserId={stripMyTimeEditor.subjectUserId}
           subjectDisplayName={stripMyTimeEditor.displayName}
-          clockTimesReadOnly={stripMyTimeEditor.clockTimesReadOnly === true}
+          clockTimesReadOnly
           jobLabels={{}}
           bidLabels={{}}
           allowNcnsFromMyTime={showClockStripScopeToggle}
@@ -3973,7 +4043,7 @@ export default function Dashboard() {
                   handleStripMarkNotComingIn({
                     subjectUserId: stripMyTimeEditor.subjectUserId,
                     displayName: stripMyTimeEditor.displayName,
-                    workDateYmd: stripMyTimeDenverDateStr,
+                    workDateYmd: stripMyTimeEditor.dateStr,
                   })
               : undefined
           }
@@ -6499,7 +6569,11 @@ export default function Dashboard() {
       )}
 
       {authUser?.id && (
-        <DashboardMyTimeSection userId={authUser.id} />
+        <DashboardMyTimeSection
+          userId={authUser.id}
+          hoursDaysCorrect={hoursDaysCorrectSet}
+          disableDayEditor={dashboardSelfIsSalary}
+        />
       )}
 
       <NewReportModal

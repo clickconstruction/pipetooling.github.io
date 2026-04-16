@@ -1,10 +1,19 @@
 import type { SplitClockSegmentPayload } from './splitOwnClockSessionSegments'
 import {
+  partitionMixedClusterEditorSegmentsToRowIntervals,
+  partitionMixedClusterSingleSegmentToRowIntervals,
+  type PartitionedRowIntervalMs,
+} from './myTimeMixedClusterSingleSegmentPartition'
+import {
   boundariesMatchOriginalRows,
   CLUSTER_CONTIGUITY_EPS_MS,
+  clusterSharesClockSessionClusterRpcMetadata,
+  everySegmentAssignablePerRowOrdered,
+  mergeSegmentNotes,
   sameJobBid,
   sessionRowIntervalMs,
   segmentContainedInRow,
+  splitReducer,
   type DayEditorSession,
   type SplitEditorState,
 } from './myTimeDayTimeline'
@@ -203,6 +212,8 @@ export function segmentAllocationLabel(
     job_ledger_id: alloc.job_ledger_id,
     bid_id: alloc.bid_id,
     approved_at: null,
+    origin: 'user_punch',
+    salary_segment_index: null,
   }
   return labelForSession(pseudo, jobLabels, bidLabels) ?? NO_JOB_BID_LINKED_LABEL
 }
@@ -230,6 +241,8 @@ export function segmentAllocationLabelsForOverlap(
       job_ledger_id: override.job_ledger_id,
       bid_id: override.bid_id,
       approved_at: null,
+      origin: 'user_punch',
+      salary_segment_index: null,
     }
     return [labelForSession(pseudo, jobLabels, bidLabels) ?? NO_JOB_BID_LINKED_LABEL]
   }
@@ -264,6 +277,8 @@ export function segmentAllocationLabelsForOverlap(
     job_ledger_id: alloc.job_ledger_id,
     bid_id: alloc.bid_id,
     approved_at: null,
+    origin: 'user_punch',
+    salary_segment_index: null,
   }
   return [labelForSession(pseudo, jobLabels, bidLabels) ?? NO_JOB_BID_LINKED_LABEL]
 }
@@ -324,4 +339,200 @@ export function everySegmentFullyInsideSomeRow(
     if (!ok) return false
   }
   return true
+}
+
+/** Mixed punch/salary: per-row persist when each segment fits some old row interval, or one segment per row in order inside the cluster hull (seam slides). */
+export function mixedClusterSegmentsAllowPerRowPersist(
+  c: DayEditorSession[],
+  split: SplitEditorState,
+  nowMs: number,
+  eps: number = CLUSTER_CONTIGUITY_EPS_MS
+): boolean {
+  if (
+    c.length > 1 &&
+    !clusterSharesClockSessionClusterRpcMetadata(c) &&
+    split.boundaries.length === 2
+  ) {
+    const last = c[c.length - 1]!
+    const openLast = !last.clocked_out_at
+    const T0 = split.boundaries[0]!
+    const T1 = split.boundaries[1]!
+    const pEnd = openLast ? null : T1
+    return partitionMixedClusterSingleSegmentToRowIntervals(c, T0, pEnd, nowMs) !== null
+  }
+  /**
+   * Fewer editor segments than DB rows: the per-row branch only updates rows that fully contain a
+   * segment; a middle row can be skipped (stale times) while `everySegmentFullyInsideSomeRow` stays
+   * true. Coalesced partition always writes one interval per row.
+   */
+  if (
+    c.length > 1 &&
+    !clusterSharesClockSessionClusterRpcMetadata(c) &&
+    split.boundaries.length - 1 < c.length
+  ) {
+    return false
+  }
+  return everySegmentFullyInsideSomeRow(c, split, nowMs, eps) || everySegmentAssignablePerRowOrdered(c, split, nowMs, eps)
+}
+
+/** True when a single-segment mixed-metadata cluster cannot be affine-partitioned onto rows (min duration / hull). */
+export function mixedClusterSingleSegmentPartitionInfeasible(
+  c: DayEditorSession[],
+  split: SplitEditorState,
+  nowMs: number
+): boolean {
+  if (c.length <= 1 || clusterSharesClockSessionClusterRpcMetadata(c)) return false
+  if (split.boundaries.length !== 2) return false
+  const last = c[c.length - 1]!
+  const openLast = !last.clocked_out_at
+  const T0 = split.boundaries[0]!
+  const T1 = split.boundaries[1]!
+  const pEnd = openLast ? null : T1
+  return partitionMixedClusterSingleSegmentToRowIntervals(c, T0, pEnd, nowMs) === null
+}
+
+/**
+ * Multiple contiguous editor segments spanning the full cluster hull (mid cross-row merge).
+ * Persists like the single-segment affine partition: per-row UPDATE of times + merged notes.
+ * Returns null if geometry does not match the hull or partition is infeasible.
+ */
+export function coalescedMixedClusterPartitionForSave(
+  c: DayEditorSession[],
+  split: SplitEditorState,
+  segmentNotes: readonly string[],
+  nowMs: number
+): { intervals: PartitionedRowIntervalMs[]; mergedNotes: string } | null {
+  if (c.length <= 1 || clusterSharesClockSessionClusterRpcMetadata(c)) return null
+  const nSeg = split.boundaries.length - 1
+  if (nSeg < 2) return null
+  if (segmentNotes.length !== nSeg) return null
+
+  const first = c[0]!
+  const last = c[c.length - 1]!
+  const { lo: hullLo } = sessionRowIntervalMs(first, nowMs)
+  const { hi: hullEnd } = sessionRowIntervalMs(last, nowMs)
+  const eps = CLUSTER_CONTIGUITY_EPS_MS
+
+  if (Math.abs(split.boundaries[0]! - hullLo) > eps) return null
+  if (Math.abs(split.boundaries[split.boundaries.length - 1]! - hullEnd) > eps) return null
+
+  const intervals = partitionMixedClusterEditorSegmentsToRowIntervals(c, split.boundaries, nowMs)
+  if (!intervals) return null
+
+  let merged = segmentNotes[0]!.trim()
+  for (let i = 1; i < segmentNotes.length; i++) {
+    merged = mergeSegmentNotes(segmentNotes[i]!.trim(), merged)
+  }
+  merged = merged.trim()
+  if (!merged) return null
+
+  return { intervals, mergedNotes: merged }
+}
+
+/**
+ * After a merge, the editor may have fewer segments than DB rows (`everySegmentAssignablePerRowOrdered`
+ * no longer applies). If the full cluster hull can still be partitioned onto rows once merged to a
+ * single segment, allow intermediate merge steps in the UI.
+ */
+function mixedClusterIntermediateMergeTowardHullPartitionAllowed(
+  c: DayEditorSession[],
+  next: SplitEditorState,
+  nowMs: number
+): boolean {
+  if (c.length <= 1 || clusterSharesClockSessionClusterRpcMetadata(c)) return false
+  if (next.boundaries.length <= 2) return false
+  const first = c[0]!
+  const last = c[c.length - 1]!
+  const hullLo = sessionRowIntervalMs(first, nowMs).lo
+  const openLast = !last.clocked_out_at
+  const hullHi = sessionRowIntervalMs(last, nowMs).hi
+  const pEnd = openLast ? null : hullHi
+  if (partitionMixedClusterSingleSegmentToRowIntervals(c, hullLo, pEnd, nowMs) !== null) return true
+  if (!openLast) return false
+  const relaxedOk =
+    partitionMixedClusterSingleSegmentToRowIntervals(c, hullLo, pEnd, nowMs, {
+      skipOpenTrailingMinCheck: true,
+    }) !== null
+  return relaxedOk
+}
+
+/**
+ * True when save would need a multi-session cluster RPC but rows differ by origin / salary segment.
+ * Support verification: `SELECT id, origin, salary_segment_index FROM clock_sessions WHERE id IN (...)`
+ * for all session ids in the cluster (chronological order).
+ */
+export function myTimeClusterSpanningSaveBlockedByRpcMetadata(
+  c: DayEditorSession[],
+  split: SplitEditorState,
+  nowMs: number,
+): boolean {
+  if (c.length <= 1) return false
+  if (clusterSharesClockSessionClusterRpcMetadata(c)) return false
+  return !mixedClusterSegmentsAllowPerRowPersist(c, split, nowMs)
+}
+
+/** Human-readable mismatch for tooltips / toasts when cluster RPC metadata differs across rows. */
+export function describeClockSessionsRpcMetadataMismatch(c: DayEditorSession[]): string {
+  if (c.length <= 1) return ''
+  const origins = [...new Set(c.map((s) => s.origin))]
+  const segs = [...new Set(c.map((s) => s.salary_segment_index ?? null))]
+  const parts: string[] = []
+  if (origins.length > 1) {
+    parts.push(`mixed origins (${origins.join(', ')})`)
+  }
+  if (segs.length > 1) {
+    const segLabel = segs.map((x) => (x === null ? 'none' : String(x))).join(', ')
+    parts.push(`different salary segment indexes (${segLabel})`)
+  }
+  return parts.join('; ')
+}
+
+export const MY_TIME_CLUSTER_RPC_METADATA_USER_MESSAGE =
+  'Cannot save: clock rows differ by punch vs salary (or salary segment). Keep one editor segment per clock row, or split a row and merge only within that row—do not merge across the boundary between rows into a single segment.'
+
+export function myTimeClusterMergeWouldBlockPersist(
+  c: DayEditorSession[],
+  split: SplitEditorState,
+  action:
+    | { type: 'removeSegmentMergeWithPrev'; segIndex: number; nowMs: number; openLastCluster: boolean }
+    | { type: 'removeSegmentMergeWithNext'; segIndex: number; nowMs: number; openLastCluster: boolean },
+): boolean {
+  const next = splitReducer(split, action)
+  if (!myTimeClusterSpanningSaveBlockedByRpcMetadata(c, next, action.nowMs)) return false
+  if (mixedClusterIntermediateMergeTowardHullPartitionAllowed(c, next, action.nowMs)) return false
+  return true
+}
+
+export function myTimeClusterMergeBlockedUserMessage(c: DayEditorSession[]): string {
+  const detail = describeClockSessionsRpcMetadataMismatch(c)
+  if (!detail) return MY_TIME_CLUSTER_RPC_METADATA_USER_MESSAGE
+  return `${MY_TIME_CLUSTER_RPC_METADATA_USER_MESSAGE} Details: ${detail}.`
+}
+
+export function myTimeClusterPersistRpcMetadataUserMessage(c: DayEditorSession[]): string {
+  return myTimeClusterMergeBlockedUserMessage(c)
+}
+
+export function myTimeMergePersistBlockTitle(
+  c: DayEditorSession[],
+  split: SplitEditorState,
+  nowMs: number,
+  openLastCluster: boolean,
+  direction: 'prev' | 'next',
+  segIdx: number,
+): string | undefined {
+  const action =
+    direction === 'prev'
+      ? { type: 'removeSegmentMergeWithPrev' as const, segIndex: segIdx, nowMs, openLastCluster }
+      : { type: 'removeSegmentMergeWithNext' as const, segIndex: segIdx, nowMs, openLastCluster }
+  const next = splitReducer(split, action)
+  if (!myTimeClusterSpanningSaveBlockedByRpcMetadata(c, next, action.nowMs)) return undefined
+  if (mixedClusterIntermediateMergeTowardHullPartitionAllowed(c, next, action.nowMs)) return undefined
+  if (mixedClusterSingleSegmentPartitionInfeasible(c, next, action.nowMs)) {
+    return 'Cannot merge: the combined span is too small to split across these rows (each row needs at least 0.01 hours). Widen the block or merge within one row.'
+  }
+  const detail = describeClockSessionsRpcMetadataMismatch(c)
+  return detail
+    ? `Cannot merge across these clock rows (${detail}). Add a split inside one row to merge parts there, or keep the boundary between rows.`
+    : 'Cannot merge across incompatible clock rows. Add a split inside one row to merge within that row, or keep the boundary between rows.'
 }

@@ -1,4 +1,4 @@
-import type { DayEditorSession } from './myTimeDayTimeline'
+import { normalizeDayEditorSession, type DayEditorSession } from './myTimeDayTimeline'
 import { salaryZonedWallClockToUtcMs } from './salaryZonedWallClock'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
 
@@ -23,7 +23,7 @@ export function buildPeopleHoursManualDraftSession(
   }
   const durMs = Math.max(0, enteredHoursDecimal) * 3600 * 1000
   const outMs = inMs + durMs
-  return {
+  return normalizeDayEditorSession({
     id: `${DRAFT_PEOPLE_HOURS_SESSION_ID_PREFIX}${crypto.randomUUID()}`,
     clocked_in_at: new Date(inMs).toISOString(),
     clocked_out_at: new Date(outMs).toISOString(),
@@ -32,5 +32,5 @@ export function buildPeopleHoursManualDraftSession(
     job_ledger_id: null,
     bid_id: null,
     approved_at: null,
-  }
+  })
 }

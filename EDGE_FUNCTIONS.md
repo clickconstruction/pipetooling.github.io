@@ -750,7 +750,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Note**: Results are **best-effort** (HTML viewer pages, Workspace policies, timeouts). Staff should still verify in a private/incognito window when unsure.
 
-**Implementation**: [`supabase/functions/check-estimate-attachment-url/index.ts`](supabase/functions/check-estimate-attachment-url/index.ts); UI: draft **Check link** in [`Estimates.tsx`](src/pages/Estimates.tsx).
+**Implementation**: [`supabase/functions/check-estimate-attachment-url/index.ts`](supabase/functions/check-estimate-attachment-url/index.ts); UI: draft **Check link** in [`Estimates.tsx`](src/pages/Estimates.tsx); **Documents** add-link modal via [`checkGoogleDriveAttachmentUrl`](src/lib/checkGoogleDriveAttachmentUrl.ts) ([`DocumentsAddDriveLinkModal.tsx`](src/components/documents/DocumentsAddDriveLinkModal.tsx)).
 
 ---
 

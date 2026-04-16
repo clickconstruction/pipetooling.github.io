@@ -31,6 +31,8 @@ function sortSessionsForDayEditor(
     | 'job_ledger_id'
     | 'bid_id'
     | 'approved_at'
+    | 'origin'
+    | 'salary_segment_index'
   >[]
 ): DayEditorSession[] {
   return [...rows].sort((a, b) => a.clocked_in_at.localeCompare(b.clocked_in_at)) as DayEditorSession[]

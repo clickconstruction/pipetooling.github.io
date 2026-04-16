@@ -198,6 +198,28 @@ const docsAddLinkButtonStyle: CSSProperties = {
   borderRadius: 4,
 }
 
+const documentsLedgerSearchInputStyle: CSSProperties = {
+  width: '100%',
+  boxSizing: 'border-box',
+  padding: '0.5rem 0.65rem',
+  border: '1px solid #d1d5db',
+  borderRadius: 6,
+  fontSize: '0.9rem',
+}
+
+/** Screen-reader-only page title (no visible Documents heading). */
+const documentsPageVisuallyHiddenH1Style: CSSProperties = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: 'hidden',
+  clip: 'rect(0, 0, 0, 0)',
+  whiteSpace: 'nowrap',
+  borderWidth: 0,
+}
+
 function DocumentsEstimatesLedger() {
   const { user } = useAuth()
   const { showToast } = useToastContext()
@@ -296,9 +318,6 @@ function DocumentsEstimatesLedger() {
       />
       {!loading && rows.length > 0 ? (
         <div style={{ marginBottom: '0.75rem' }}>
-          <label htmlFor="documents-estimates-search" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: '0.35rem' }}>
-            Search
-          </label>
           <input
             id="documents-estimates-search"
             type="search"
@@ -307,15 +326,7 @@ function DocumentsEstimatesLedger() {
             placeholder="Title, customer, job, status, total…"
             autoComplete="off"
             aria-label="Search estimates in ledger"
-            style={{
-              width: '100%',
-              maxWidth: 420,
-              boxSizing: 'border-box',
-              padding: '0.5rem 0.65rem',
-              border: '1px solid #d1d5db',
-              borderRadius: 6,
-              fontSize: '0.9rem',
-            }}
+            style={documentsLedgerSearchInputStyle}
           />
         </div>
       ) : null}
@@ -563,9 +574,6 @@ function DocumentsJobsLedger() {
       />
       {!loading && rows.length > 0 ? (
         <div style={{ marginBottom: '0.75rem' }}>
-          <label htmlFor="documents-jobs-search" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: '0.35rem' }}>
-            Search
-          </label>
           <input
             id="documents-jobs-search"
             type="search"
@@ -574,15 +582,7 @@ function DocumentsJobsLedger() {
             placeholder="HCP, job, address, customer, status, total…"
             autoComplete="off"
             aria-label="Search jobs in ledger"
-            style={{
-              width: '100%',
-              maxWidth: 420,
-              boxSizing: 'border-box',
-              padding: '0.5rem 0.65rem',
-              border: '1px solid #d1d5db',
-              borderRadius: 6,
-              fontSize: '0.9rem',
-            }}
+            style={documentsLedgerSearchInputStyle}
           />
         </div>
       ) : null}
@@ -793,12 +793,6 @@ function DocumentsBidProposalsLedger() {
       />
       {!loading && rows.length > 0 ? (
         <div style={{ marginBottom: '0.75rem' }}>
-          <label
-            htmlFor="documents-bid-proposals-search"
-            style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: '0.35rem' }}
-          >
-            Search
-          </label>
           <input
             id="documents-bid-proposals-search"
             type="search"
@@ -807,15 +801,7 @@ function DocumentsBidProposalsLedger() {
             placeholder="Title, site, customer, counts, status…"
             autoComplete="off"
             aria-label="Search bid proposals"
-            style={{
-              width: '100%',
-              maxWidth: 420,
-              boxSizing: 'border-box',
-              padding: '0.5rem 0.65rem',
-              border: '1px solid #d1d5db',
-              borderRadius: 6,
-              fontSize: '0.9rem',
-            }}
+            style={documentsLedgerSearchInputStyle}
           />
         </div>
       ) : null}
@@ -982,10 +968,10 @@ export default function Documents() {
   }
 
   return (
-    <div style={{ padding: '1rem 1.25rem', maxWidth: 1200, margin: '0 auto' }}>
-      <h1 style={{ fontSize: '1.35rem', fontWeight: 700, margin: '0 0 1rem' }}>Documents</h1>
+    <div style={{ position: 'relative', padding: '0.35rem 1.25rem 1rem', maxWidth: 1200, margin: '0 auto' }}>
+      <h1 style={documentsPageVisuallyHiddenH1Style}>Documents</h1>
 
-      <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
         <button
           type="button"
           style={pageUnderlineTabStyle(documentsTab === 'estimates')}

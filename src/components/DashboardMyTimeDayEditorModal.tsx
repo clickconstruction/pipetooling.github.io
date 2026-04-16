@@ -17,8 +17,12 @@ import {
   assignJobNeedsPersistedSplits,
   attachAllocationsToPayloads,
   clockSessionRowForSegmentAssign,
+  coalescedMixedClusterPartitionForSave,
   effectiveSegmentJobBid,
-  everySegmentFullyInsideSomeRow,
+  mixedClusterSegmentsAllowPerRowPersist,
+  myTimeClusterMergeBlockedUserMessage,
+  myTimeClusterMergeWouldBlockPersist,
+  myTimeClusterPersistRpcMetadataUserMessage,
   segmentAllocationLabelsForOverlap,
 } from '../lib/myTimeDaySavePlan'
 import { persistMyTimeClusterAndGetSegmentIds } from '../lib/persistMyTimeClusterForSegmentAssign'
@@ -28,8 +32,11 @@ import {
   cloneSplitState,
   CLUSTER_CONTIGUITY_EPS_MS,
   clusterIsHomogeneousJobBid,
+  clusterSharesClockSessionClusterRpcMetadata,
   daySpanMs,
+  everySegmentAssignablePerRowOrdered,
   expandClustersSplitPairwiseOverlaps,
+  finalizeInnerBoundaryMsForCluster,
   getNextSessionClusterInTimeline,
   groupTimeContiguousSessionClusters,
   hasPairwiseClockIntervalOverlap,
@@ -40,8 +47,9 @@ import {
   segmentContainedInRow,
   sessionRowIntervalMs,
   sessionClusterId,
-  snapBoundaryMs,
   mergeSegmentNotes,
+  normalizeDayEditorSession,
+  repairMixedClusterSplitForRowContainment,
   snapTapMsToNearestJoin,
   splitReducer,
   type DayEditorSession,
@@ -74,6 +82,7 @@ import {
 } from '../utils/dateUtils'
 import type { UnifiedSearchResult } from '../utils/unifiedJobBidSearch'
 import { isDraftPeopleHoursSessionId } from '../lib/peopleHoursManualDraftSession'
+import { partitionMixedClusterSingleSegmentToRowIntervals } from '../lib/myTimeMixedClusterSingleSegmentPartition'
 
 export type { DayEditorSession }
 
@@ -550,7 +559,9 @@ export function DashboardMyTimeDayEditorModal({
           async () =>
             supabase
               .from('clock_sessions')
-              .select('id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, bid_id, approved_at')
+              .select(
+                'id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, bid_id, approved_at, origin, salary_segment_index'
+              )
               .eq('user_id', effectiveSubjectUserId)
               .eq('work_date', dateStr)
               .is('rejected_at', null)
@@ -558,7 +569,7 @@ export function DashboardMyTimeDayEditorModal({
           'clock_sessions day for my time editor'
         )
         if (cancelled) return
-        setFetchedSessions((data ?? []) as DayEditorSession[])
+        setFetchedSessions((data ?? []).map((row) => normalizeDayEditorSession(row as DayEditorSession)))
       } catch (e: unknown) {
         if (!cancelled) {
           setSessionsFetchError(formatErrorMessage(e, 'Could not load clock sessions'))
@@ -579,17 +590,22 @@ export function DashboardMyTimeDayEditorModal({
       async () =>
         supabase
           .from('clock_sessions')
-          .select('id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, bid_id, approved_at')
+          .select(
+            'id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, bid_id, approved_at, origin, salary_segment_index'
+          )
           .eq('user_id', effectiveSubjectUserId)
           .eq('work_date', dateStr)
           .is('rejected_at', null)
           .is('revoked_at', null),
       'clock_sessions day for my time editor refetch',
     )
-    return (data ?? []) as DayEditorSession[]
+    return (data ?? []).map((row) => normalizeDayEditorSession(row as DayEditorSession))
   }, [effectiveSubjectUserId, dateStr])
 
-  const resolvedSessions = sessionsProp.length > 0 ? sessionsProp : (fetchedSessions ?? [])
+  const resolvedSessions = useMemo(() => {
+    const raw = sessionsProp.length > 0 ? sessionsProp : (fetchedSessions ?? [])
+    return raw.map((s) => normalizeDayEditorSession(s))
+  }, [sessionsProp, fetchedSessions])
   const pendingAuthForFetch = sessionsProp.length === 0 && !subjectUserIdProp && !authReady
 
   const sortedSessions = useMemo(
@@ -843,10 +859,42 @@ export function DashboardMyTimeDayEditorModal({
   const patchCluster = useCallback(
     (clusterId: string, action: SplitAction) => {
       if (!allowTimelineEdits) return
+      if (action.type === 'removeSegmentMergeWithPrev' || action.type === 'removeSegmentMergeWithNext') {
+        const cur = splitByCluster[clusterId]
+        const c = sessionClusters.find((x) => sessionClusterId(x) === clusterId)
+        if (cur && c?.length && myTimeClusterMergeWouldBlockPersist(c, cur, action)) {
+          showToast(myTimeClusterMergeBlockedUserMessage(c), 'error')
+          return
+        }
+      }
       setSplitByCluster((prev) => {
         const cur = prev[clusterId]
         if (!cur) return prev
         return { ...prev, [clusterId]: splitReducer(cur, action) }
+      })
+    },
+    [allowTimelineEdits, splitByCluster, sessionClusters, showToast],
+  )
+
+  const applyInnerBoundaryDragMs = useCallback(
+    (clusterId: string, boundaryIndex: number, ms: number) => {
+      if (!allowTimelineEdits) return
+      const c = sessionClustersRef.current.find((x) => sessionClusterId(x) === clusterId)
+      setSplitByCluster((prev) => {
+        const cur = prev[clusterId]
+        if (!cur || !c?.length) return prev
+        let next = splitReducer(cur, { type: 'drag', index: boundaryIndex, ms })
+        if (boundaryIndex <= 0 || boundaryIndex >= next.boundaries.length - 1) {
+          return { ...prev, [clusterId]: next }
+        }
+        const msAt = next.boundaries[boundaryIndex]!
+        const prevB = next.boundaries[boundaryIndex - 1]!
+        const nextB = next.boundaries[boundaryIndex + 1]!
+        const fin = finalizeInnerBoundaryMsForCluster(c, prevB, nextB, msAt, nowTickRef.current)
+        if (fin !== msAt) {
+          next = splitReducer(next, { type: 'drag', index: boundaryIndex, ms: fin })
+        }
+        return { ...prev, [clusterId]: next }
       })
     },
     [allowTimelineEdits],
@@ -890,6 +938,14 @@ export function DashboardMyTimeDayEditorModal({
           : mergeSegmentNotes(notes[segIdx + 1] ?? '', notes[segIdx] ?? '')
       const defaultJobChoice: Extract<MergeJobAllocOption, 'upper' | 'lower'> =
         direction === 'prev' ? 'upper' : 'lower'
+      const mergeProbe: SplitAction =
+        direction === 'prev'
+          ? { type: 'removeSegmentMergeWithPrev', segIndex: segIdx, nowMs: nowTick, openLastCluster }
+          : { type: 'removeSegmentMergeWithNext', segIndex: segIdx, nowMs: nowTick, openLastCluster }
+      if (myTimeClusterMergeWouldBlockPersist(c, split, mergeProbe)) {
+        showToast(myTimeClusterMergeBlockedUserMessage(c), 'error')
+        return
+      }
       setMergeJobChoice({
         clusterId,
         direction,
@@ -903,7 +959,7 @@ export function DashboardMyTimeDayEditorModal({
         initialMergedFocusNote,
       })
     },
-    [allowTimelineEdits, sessionClusters, splitByCluster, nowTick, mergedJobLabels, mergedBidLabels]
+    [allowTimelineEdits, sessionClusters, splitByCluster, nowTick, mergedJobLabels, mergedBidLabels, showToast]
   )
 
   const confirmMergeJobChoice = useCallback((choice: MergeJobAllocOption, mergedFocusNote: string) => {
@@ -960,10 +1016,9 @@ export function DashboardMyTimeDayEditorModal({
       const msAt = next.boundaries[boundaryIndex]!
       const prevB = next.boundaries[boundaryIndex - 1]!
       const nextB = next.boundaries[boundaryIndex + 1]!
-      const joins = internalRowJoinMs(c, nowTickRef.current)
-      const snapped = snapBoundaryMs(msAt, prevB, nextB, joins, ROW_JOIN_SNAP_MS)
-      if (snapped !== msAt) {
-        next = splitReducer(next, { type: 'drag', index: boundaryIndex, ms: snapped })
+      const fin = finalizeInnerBoundaryMsForCluster(c, prevB, nextB, msAt, nowTickRef.current)
+      if (fin !== msAt) {
+        next = splitReducer(next, { type: 'drag', index: boundaryIndex, ms: fin })
       }
       return { ...prev, [clusterId]: next }
     })
@@ -1165,6 +1220,10 @@ export function DashboardMyTimeDayEditorModal({
     pointerId: number
     captureEl: Element
     undo: SplitEditorState
+    /** Strip-local Y at pointerdown (`clientY - strip.getBoundingClientRect().top`). Matches how the strip maps time to % top. */
+    grabStripY: number
+    /** Boundary ms at pointerdown (matches undo.boundaries[index]). */
+    originBoundaryMs: number
   }
   const dragRef = useRef<DragCtx | null>(null)
   const stripTapSessionRef = useRef<StripTapSession | null>(null)
@@ -1192,17 +1251,21 @@ export function DashboardMyTimeDayEditorModal({
     if (!ctx) return
     const { clusterId, index } = ctx
     const el = stripRefs.current[clusterId]
-    const split = splitByCluster[clusterId]
-    const c = sessionClusters.find((x) => sessionClusterId(x) === clusterId)
+    const split = splitByClusterRef.current[clusterId]
+    const c = sessionClustersRef.current.find((x) => sessionClusterId(x) === clusterId)
     if (!el || !split || !c?.length) return
     const first = c[0]!
     const last = c[c.length - 1]!
     const rect = el.getBoundingClientRect()
-    const y = Math.min(Math.max(0, e.clientY - rect.top), rect.height)
     const t0 = new Date(first.clocked_in_at).getTime()
-    const t1 = last.clocked_out_at ? new Date(last.clocked_out_at).getTime() : nowTick
-    const ms = t0 + (rect.height > 0 ? (y / rect.height) * (t1 - t0) : 0)
-    patchCluster(clusterId, { type: 'drag', index, ms })
+    const t1 = last.clocked_out_at ? new Date(last.clocked_out_at).getTime() : nowTickRef.current
+    const spanMs = t1 - t0
+    const stripY = Math.min(Math.max(0, e.clientY - rect.top), rect.height)
+    const originPx =
+      spanMs > 0 && rect.height > 0 ? ((ctx.originBoundaryMs - t0) / spanMs) * rect.height : 0
+    const adjustedPx = Math.min(Math.max(0, stripY - ctx.grabStripY + originPx), rect.height)
+    const ms = t0 + (rect.height > 0 ? (adjustedPx / rect.height) * spanMs : 0)
+    applyInnerBoundaryDragMs(clusterId, index, ms)
   }
 
   stripTapMoveRef.current = (e: PointerEvent) => {
@@ -1227,6 +1290,9 @@ export function DashboardMyTimeDayEditorModal({
     window.removeEventListener('pointercancel', stableStripTapEnd)
   }, [stableStripTapMove, stableStripTapEnd])
 
+  const cancelStripTapGestureRef = useRef(cancelStripTapGesture)
+  cancelStripTapGestureRef.current = cancelStripTapGesture
+
   stripTapEndRef.current = (e: PointerEvent) => {
     const s = stripTapSessionRef.current
     if (!s || e.pointerId !== s.pointerId) return
@@ -1248,7 +1314,13 @@ export function DashboardMyTimeDayEditorModal({
     const ms = t0 + (rect.height > 0 ? (y / rect.height) * (t1 - t0) : 0)
     const joins = internalRowJoinMs(c, nowTick)
     const msSnap = snapTapMsToNearestJoin(ms, joins, ROW_JOIN_SNAP_MS)
-    patchCluster(clusterId, { type: 'addSplitAt', ms: msSnap })
+    setSplitByCluster((prev) => {
+      const cur = prev[clusterId]
+      if (!cur) return prev
+      let next = splitReducer(cur, { type: 'addSplitAt', ms: msSnap })
+      next = repairMixedClusterSplitForRowContainment(c, next, nowTick)
+      return { ...prev, [clusterId]: next }
+    })
   }
 
   /** Persist UI splits to DB when needed so job/bid assign targets only one segment (single-row + virtual splits). */
@@ -1314,6 +1386,12 @@ export function DashboardMyTimeDayEditorModal({
     [allowTimelineEdits, editingSelf, onLinkedSessionsUpdated]
   )
 
+  const endBoundaryDragListenersRef = useRef(() => {})
+  /** Stable identity for window pointerup/pointercancel so add/removeEventListener always pairs; implementation via ref. */
+  const stableBoundaryDragPointerUp = useCallback(() => {
+    endBoundaryDragListenersRef.current()
+  }, [])
+
   const endBoundaryDragListeners = useCallback(() => {
     const ctx = dragRef.current
     if (ctx) {
@@ -1325,8 +1403,8 @@ export function DashboardMyTimeDayEditorModal({
     }
     dragRef.current = null
     window.removeEventListener('pointermove', stableWindowPointerMove)
-    window.removeEventListener('pointerup', endBoundaryDragListeners)
-    window.removeEventListener('pointercancel', endBoundaryDragListeners)
+    window.removeEventListener('pointerup', stableBoundaryDragPointerUp)
+    window.removeEventListener('pointercancel', stableBoundaryDragPointerUp)
     document.body.classList.remove(MY_TIME_BOUNDARY_DRAG_BODY_CLASS)
 
     if (!ctx) return
@@ -1339,18 +1417,19 @@ export function DashboardMyTimeDayEditorModal({
     const ms = split.boundaries[index]!
     const prevB = split.boundaries[index - 1]!
     const nextB = split.boundaries[index + 1]!
-    const joins = internalRowJoinMs(c, nowTickRef.current)
-    const snapped = snapBoundaryMs(ms, prevB, nextB, joins, ROW_JOIN_SNAP_MS)
-    if (snapped !== ms) {
-      patchCluster(clusterId, { type: 'drag', index, ms: snapped })
+    const fin = finalizeInnerBoundaryMsForCluster(c, prevB, nextB, ms, nowTickRef.current)
+    if (fin !== ms) {
+      patchCluster(clusterId, { type: 'drag', index, ms: fin })
     }
-  }, [patchCluster, stableWindowPointerMove])
+  }, [patchCluster, stableBoundaryDragPointerUp, stableWindowPointerMove])
+
+  endBoundaryDragListenersRef.current = endBoundaryDragListeners
 
   useEffect(() => {
-    cancelStripTapGesture()
-    endBoundaryDragListeners()
+    cancelStripTapGestureRef.current()
+    endBoundaryDragListenersRef.current()
     setFocusedHandle(null)
-  }, [layoutMode, cancelStripTapGesture, endBoundaryDragListeners])
+  }, [layoutMode])
 
   const cancelBoundaryDrag = useCallback(() => {
     const ctx = dragRef.current
@@ -1363,21 +1442,33 @@ export function DashboardMyTimeDayEditorModal({
     }
     dragRef.current = null
     window.removeEventListener('pointermove', stableWindowPointerMove)
-    window.removeEventListener('pointerup', endBoundaryDragListeners)
-    window.removeEventListener('pointercancel', endBoundaryDragListeners)
+    window.removeEventListener('pointerup', stableBoundaryDragPointerUp)
+    window.removeEventListener('pointercancel', stableBoundaryDragPointerUp)
     document.body.classList.remove(MY_TIME_BOUNDARY_DRAG_BODY_CLASS)
     setSplitByCluster((prev) => {
       if (!prev[clusterId]) return prev
       return { ...prev, [clusterId]: cloneSplitState(undo) }
     })
     setFocusedHandle(null)
-  }, [endBoundaryDragListeners, stableWindowPointerMove])
+  }, [stableBoundaryDragPointerUp, stableWindowPointerMove])
 
   const startDrag = useCallback(
     (clusterId: string, index: number, ev: React.PointerEvent<HTMLButtonElement>, undo: SplitEditorState) => {
       if (!allowTimelineEdits) return
+      const stripEl = stripRefs.current[clusterId]
+      if (!stripEl) return
       const captureEl = ev.currentTarget
-      dragRef.current = { clusterId, index, pointerId: ev.pointerId, captureEl, undo }
+      const rect0 = stripEl.getBoundingClientRect()
+      const grabStripY = Math.min(Math.max(0, ev.clientY - rect0.top), rect0.height)
+      dragRef.current = {
+        clusterId,
+        index,
+        pointerId: ev.pointerId,
+        captureEl,
+        undo,
+        grabStripY,
+        originBoundaryMs: undo.boundaries[index]!,
+      }
       try {
         captureEl.setPointerCapture(ev.pointerId)
       } catch {
@@ -1385,10 +1476,10 @@ export function DashboardMyTimeDayEditorModal({
       }
       document.body.classList.add(MY_TIME_BOUNDARY_DRAG_BODY_CLASS)
       window.addEventListener('pointermove', stableWindowPointerMove)
-      window.addEventListener('pointerup', endBoundaryDragListeners)
-      window.addEventListener('pointercancel', endBoundaryDragListeners)
+      window.addEventListener('pointerup', stableBoundaryDragPointerUp)
+      window.addEventListener('pointercancel', stableBoundaryDragPointerUp)
     },
-    [allowTimelineEdits, endBoundaryDragListeners, stableWindowPointerMove]
+    [allowTimelineEdits, stableBoundaryDragPointerUp, stableWindowPointerMove]
   )
 
   const handleStripPointerDown = useCallback(
@@ -1429,10 +1520,9 @@ export function DashboardMyTimeDayEditorModal({
               const msAt = next.boundaries[idx]!
               const prevB = next.boundaries[idx - 1]!
               const nextB = next.boundaries[idx + 1]!
-              const joins = internalRowJoinMs(c, nowTickRef.current)
-              const snapped = snapBoundaryMs(msAt, prevB, nextB, joins, ROW_JOIN_SNAP_MS)
-              if (snapped !== msAt) {
-                next = splitReducer(next, { type: 'drag', index: idx, ms: snapped })
+              const fin = finalizeInnerBoundaryMsForCluster(c, prevB, nextB, msAt, nowTickRef.current)
+              if (fin !== msAt) {
+                next = splitReducer(next, { type: 'drag', index: idx, ms: fin })
               }
               return { ...prev, [clusterId]: next }
             })
@@ -1476,8 +1566,8 @@ export function DashboardMyTimeDayEditorModal({
       }
       dragRef.current = null
       window.removeEventListener('pointermove', stableWindowPointerMove)
-      window.removeEventListener('pointerup', endBoundaryDragListeners)
-      window.removeEventListener('pointercancel', endBoundaryDragListeners)
+      window.removeEventListener('pointerup', stableBoundaryDragPointerUp)
+      window.removeEventListener('pointercancel', stableBoundaryDragPointerUp)
       document.body.classList.remove(MY_TIME_BOUNDARY_DRAG_BODY_CLASS)
 
       if (stripTapSessionRef.current) {
@@ -1493,7 +1583,7 @@ export function DashboardMyTimeDayEditorModal({
         window.removeEventListener('pointercancel', stableStripTapEnd)
       }
     },
-    [endBoundaryDragListeners, stableStripTapEnd, stableStripTapMove, stableWindowPointerMove]
+    [stableBoundaryDragPointerUp, stableStripTapEnd, stableStripTapMove, stableWindowPointerMove]
   )
 
   function handleStripKeyDown(clusterId: string, e: React.KeyboardEvent) {
@@ -1514,10 +1604,9 @@ export function DashboardMyTimeDayEditorModal({
         const ms = next.boundaries[idx]!
         const prevB = next.boundaries[idx - 1]!
         const nextB = next.boundaries[idx + 1]!
-        const joins = internalRowJoinMs(c, nowTick)
-        const snapped = snapBoundaryMs(ms, prevB, nextB, joins, ROW_JOIN_SNAP_MS)
-        if (snapped !== ms) {
-          next = splitReducer(next, { type: 'drag', index: idx, ms: snapped })
+        const fin = finalizeInnerBoundaryMsForCluster(c, prevB, nextB, ms, nowTick)
+        if (fin !== ms) {
+          next = splitReducer(next, { type: 'drag', index: idx, ms: fin })
         }
       }
       return { ...prev, [clusterId]: next }
@@ -1539,7 +1628,35 @@ export function DashboardMyTimeDayEditorModal({
     sessionClusters.every((c) => {
       const split = splitByCluster[sessionClusterId(c)]!
       const last = c[c.length - 1]!
-      return buildPayloads(last, split, nowTick) !== null
+      if (buildPayloads(last, split, nowTick) === null) return false
+      if (
+        c.length > 1 &&
+        !clusterSharesClockSessionClusterRpcMetadata(c) &&
+        split.boundaries.length === 2
+      ) {
+        const openLast = !last.clocked_out_at
+        const pEnd = openLast ? null : split.boundaries[1]!
+        if (
+          partitionMixedClusterSingleSegmentToRowIntervals(c, split.boundaries[0]!, pEnd, nowTick) ===
+          null
+        ) {
+          return false
+        }
+      }
+      if (
+        c.length > 1 &&
+        !clusterSharesClockSessionClusterRpcMetadata(c) &&
+        split.boundaries.length > 2 &&
+        !mixedClusterSegmentsAllowPerRowPersist(c, split, nowTick)
+      ) {
+        const nSeg = split.boundaries.length - 1
+        if (
+          coalescedMixedClusterPartitionForSave(c, split, split.notes.slice(0, nSeg), nowTick) === null
+        ) {
+          return false
+        }
+      }
+      return true
     })
 
   const persistDirtyChangesAsync = useCallback(
@@ -1548,6 +1665,7 @@ export function DashboardMyTimeDayEditorModal({
       const runSplitCluster = editingSelf ? splitOwnClockSessionCluster : leaderSplitClockSessionCluster
       const runReplaceMixed = editingSelf ? replaceOwnClockSessionClusterMixed : leaderReplaceClockSessionClusterMixed
       try {
+        let showSalarySyncAfterPartitionSave = false
         for (const clusterId of dirty) {
           const c = sessionClusters.find((x) => sessionClusterId(x) === clusterId)
           if (!c?.length) continue
@@ -1626,8 +1744,52 @@ export function DashboardMyTimeDayEditorModal({
                 )
               }
             } else {
-              const mixed = attachAllocationsToPayloads(payloads, c, split, nowTick)
-              await runReplaceMixed(c.map((s) => s.id), mixed)
+              const p0 = payloads[0]!
+              const pIn = new Date(p0.clocked_in_at).getTime()
+              const pOut = p0.clocked_out_at ? new Date(p0.clocked_out_at).getTime() : null
+              let partitionPersisted = false
+              if (
+                split.boundaries.length === 2 &&
+                !clusterSharesClockSessionClusterRpcMetadata(c)
+              ) {
+                const intervals = partitionMixedClusterSingleSegmentToRowIntervals(c, pIn, pOut, nowTick)
+                if (intervals) {
+                  for (let i = 0; i < c.length; i++) {
+                    const row = c[i]!
+                    const iv = intervals[i]!
+                    await withSupabaseRetry(
+                      async () =>
+                        supabase
+                          .from('clock_sessions')
+                          .update({
+                            clocked_in_at: new Date(iv.clockedInMs).toISOString(),
+                            clocked_out_at:
+                              iv.clockedOutMs != null
+                                ? new Date(iv.clockedOutMs).toISOString()
+                                : null,
+                            notes: p0.notes,
+                          })
+                          .eq('id', row.id),
+                      'update clock session times after mixed cross-row merge partition',
+                    )
+                  }
+                  partitionPersisted = true
+                  if (c.some((s) => s.origin === 'salary_schedule')) {
+                    showSalarySyncAfterPartitionSave = true
+                  }
+                } else {
+                  throw new DatabaseError(
+                    'Cannot save: the time span is too small to split across these clock rows (each needs at least 0.01 hours), or the block is too compressed. Widen the span or edit in People → Hours.'
+                  )
+                }
+              }
+              if (!partitionPersisted) {
+                if (!clusterSharesClockSessionClusterRpcMetadata(c)) {
+                  throw new DatabaseError(myTimeClusterPersistRpcMetadataUserMessage(c))
+                }
+                const mixed = attachAllocationsToPayloads(payloads, c, split, nowTick)
+                await runReplaceMixed(c.map((s) => s.id), mixed)
+              }
             }
           } else if (c.length === 1) {
             if (isDraftPeopleHoursSessionId(c[0]!.id)) {
@@ -1636,22 +1798,15 @@ export function DashboardMyTimeDayEditorModal({
               )
             }
             await runSplitSeg(c[0]!.id, payloads.map(stripJobBidForSegmentRpc))
-          } else if (clusterIsHomogeneousJobBid(c)) {
+          } else if (clusterIsHomogeneousJobBid(c) && clusterSharesClockSessionClusterRpcMetadata(c)) {
             await runSplitCluster(c.map((s) => s.id), payloads.map(stripJobBidForSegmentRpc))
-          } else if (everySegmentFullyInsideSomeRow(c, split, nowTick)) {
-            for (const row of c) {
-              const { lo, hi } = sessionRowIntervalMs(row, nowTick)
-              const rowPayloads: SplitClockSegmentPayload[] = []
-              for (let i = 0; i < payloads.length; i++) {
-                const a = split.boundaries[i]!
-                const b = split.boundaries[i + 1]!
-                if (segmentContainedInRow(a, b, lo, hi)) {
-                  rowPayloads.push(payloads[i]!)
-                }
-              }
-              if (rowPayloads.length === 0) continue
-              if (rowPayloads.length === 1) {
-                const p0 = rowPayloads[0]!
+          } else if (mixedClusterSegmentsAllowPerRowPersist(c, split, nowTick)) {
+            const useOrderedRowSegment =
+              everySegmentAssignablePerRowOrdered(c, split, nowTick) && payloads.length === c.length
+            if (useOrderedRowSegment) {
+              for (let rowIdx = 0; rowIdx < c.length; rowIdx++) {
+                const row = c[rowIdx]!
+                const p0 = payloads[rowIdx]!
                 const pIn = new Date(p0.clocked_in_at).getTime()
                 const pOut = p0.clocked_out_at ? new Date(p0.clocked_out_at).getTime() : nowTick
                 const rowIn = new Date(row.clocked_in_at).getTime()
@@ -1683,14 +1838,103 @@ export function DashboardMyTimeDayEditorModal({
                     'update clock session times'
                   )
                 }
-              } else {
-                await runSplitSeg(row.id, rowPayloads.map(stripJobBidForSegmentRpc))
+              }
+            } else {
+              for (const row of c) {
+                const { lo, hi } = sessionRowIntervalMs(row, nowTick)
+                const rowPayloads: SplitClockSegmentPayload[] = []
+                for (let i = 0; i < payloads.length; i++) {
+                  const a = split.boundaries[i]!
+                  const b = split.boundaries[i + 1]!
+                  if (segmentContainedInRow(a, b, lo, hi)) {
+                    rowPayloads.push(payloads[i]!)
+                  }
+                }
+                if (rowPayloads.length === 0) continue
+                if (rowPayloads.length === 1) {
+                  const p0 = rowPayloads[0]!
+                  const pIn = new Date(p0.clocked_in_at).getTime()
+                  const pOut = p0.clocked_out_at ? new Date(p0.clocked_out_at).getTime() : nowTick
+                  const rowIn = new Date(row.clocked_in_at).getTime()
+                  const rowOut = row.clocked_out_at ? new Date(row.clocked_out_at).getTime() : nowTick
+                  const eps = CLUSTER_CONTIGUITY_EPS_MS
+                  const timesMatch =
+                    Math.abs(pIn - rowIn) <= eps &&
+                    ((!row.clocked_out_at && !p0.clocked_out_at) ||
+                      (row.clocked_out_at &&
+                        p0.clocked_out_at &&
+                        Math.abs(pOut - rowOut) <= eps))
+                  if (timesMatch) {
+                    await withSupabaseRetry(
+                      async () =>
+                        supabase.from('clock_sessions').update({ notes: p0.notes }).eq('id', row.id),
+                      'update clock session notes'
+                    )
+                  } else {
+                    await withSupabaseRetry(
+                      async () =>
+                        supabase
+                          .from('clock_sessions')
+                          .update({
+                            clocked_in_at: p0.clocked_in_at,
+                            clocked_out_at: p0.clocked_out_at,
+                            notes: p0.notes,
+                          })
+                          .eq('id', row.id),
+                      'update clock session times'
+                    )
+                  }
+                } else {
+                  await runSplitSeg(row.id, rowPayloads.map(stripJobBidForSegmentRpc))
+                }
               }
             }
+          } else if (c.length > 1 && !clusterSharesClockSessionClusterRpcMetadata(c)) {
+            const nSegCoalesce = split.boundaries.length - 1
+            const coalesced = coalescedMixedClusterPartitionForSave(
+              c,
+              split,
+              split.notes.slice(0, nSegCoalesce),
+              nowTick,
+            )
+            if (!coalesced) {
+              throw new DatabaseError(myTimeClusterPersistRpcMetadataUserMessage(c))
+            }
+            for (let i = 0; i < c.length; i++) {
+              const row = c[i]!
+              const iv = coalesced.intervals[i]!
+              await withSupabaseRetry(
+                async () =>
+                  supabase
+                    .from('clock_sessions')
+                    .update({
+                      clocked_in_at: new Date(iv.clockedInMs).toISOString(),
+                      clocked_out_at:
+                        iv.clockedOutMs != null
+                          ? new Date(iv.clockedOutMs).toISOString()
+                          : null,
+                      notes: coalesced.mergedNotes,
+                    })
+                    .eq('id', row.id),
+                'update clock session times after mixed coalesced partition save',
+              )
+            }
+            if (c.some((s) => s.origin === 'salary_schedule')) {
+              showSalarySyncAfterPartitionSave = true
+            }
           } else {
+            if (!clusterSharesClockSessionClusterRpcMetadata(c)) {
+              throw new DatabaseError(myTimeClusterPersistRpcMetadataUserMessage(c))
+            }
             const mixed = attachAllocationsToPayloads(payloads, c, split, nowTick)
             await runReplaceMixed(c.map((s) => s.id), mixed)
           }
+        }
+        if (showSalarySyncAfterPartitionSave) {
+          showToast(
+            'Saved. Rows tied to the salaried workday template may be adjusted when salary sync runs.',
+            'info'
+          )
         }
         return true
       } catch (e: unknown) {
@@ -1706,6 +1950,7 @@ export function DashboardMyTimeDayEditorModal({
       effectiveSubjectUserId,
       dateStr,
       peopleHoursGridProportionalSeed,
+      showToast,
     ]
   )
 
@@ -2046,8 +2291,9 @@ export function DashboardMyTimeDayEditorModal({
                   {clockTimesReadOnly ? (
                     <>
                       {' · '}
-                      Punch start/end cannot be changed with Adjust times here. You can split focus, edit segment notes,
-                      assign jobs or bids, and use Close to save when you have pending changes.
+                      Punch start/end cannot be changed with Adjust times or Form &quot;Ends at&quot; fields here—use
+                      Visual (blue handles on the strip) to move boundaries between rows. You can split focus, edit
+                      segment notes, assign jobs or bids, and use Close to save when you have pending changes.
                     </>
                   ) : null}
                 </p>
@@ -2059,8 +2305,9 @@ export function DashboardMyTimeDayEditorModal({
                 {clockTimesReadOnly ? (
                   <>
                     {' · '}
-                    Punch start/end cannot be changed with Adjust times here. You can split focus, edit segment notes, assign
-                    jobs or bids, and use Close to save when you have pending changes.
+                    Punch start/end cannot be changed with Adjust times or Form &quot;Ends at&quot; fields here—use
+                    Visual (blue handles on the strip) to move boundaries between rows. You can split focus, edit
+                    segment notes, assign jobs or bids, and use Close to save when you have pending changes.
                   </>
                 ) : null}
               </p>
@@ -2197,6 +2444,7 @@ export function DashboardMyTimeDayEditorModal({
                           saving={saving}
                           jobLabels={mergedJobLabels}
                           bidLabels={mergedBidLabels}
+                          segmentTimeInputsReadOnly={clockTimesReadOnly}
                           patchClusterAction={(action) => patchCluster(clusterId, action)}
                           onCommitInnerBoundary={(boundaryIndex, ms) =>
                             commitInnerBoundary(clusterId, boundaryIndex, ms)

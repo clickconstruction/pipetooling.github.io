@@ -1131,6 +1131,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Category**: Checklist / Notifications
 - **Note**: Superseded by April 17 migrations; replaced with per-task `user_checklist_item_mute_preferences`
 
+**`20260416062502_hours_days_correct_authenticated_select.sql`**
+- **Purpose**: Let all signed-in users see which `work_date` values are marked correct (company-wide lock)
+- **Changes**: RLS policy `FOR SELECT TO authenticated USING (true)` on `hours_days_correct`; INSERT/DELETE unchanged (pay-approved master / assistant)
+- **Impact**: Dashboard can hide My Time / strip editors for locked days without widening write access
+- **Category**: People / Hours
+
 #### April 17, 2026
 
 **`20260417000000_add_estimated_completion_date_to_jobs_ledger.sql`**

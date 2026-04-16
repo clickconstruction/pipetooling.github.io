@@ -7,6 +7,36 @@ export type DayEditorSession = {
   job_ledger_id: string | null
   bid_id: string | null
   approved_at: string | null
+  /** DB `clock_sessions.origin` (e.g. user_punch, salary_schedule). */
+  origin: string
+  salary_segment_index: number | null
+}
+
+/** Default missing PostgREST fields so RPC metadata checks do not false-positive on `undefined`. */
+export function normalizeDayEditorSession(row: {
+  id: string
+  clocked_in_at: string
+  clocked_out_at: string | null
+  work_date: string
+  notes: string
+  job_ledger_id: string | null
+  bid_id: string | null
+  approved_at: string | null
+  origin?: string | null
+  salary_segment_index?: number | null
+}): DayEditorSession {
+  return {
+    id: row.id,
+    clocked_in_at: row.clocked_in_at,
+    clocked_out_at: row.clocked_out_at,
+    work_date: row.work_date,
+    notes: row.notes,
+    job_ledger_id: row.job_ledger_id,
+    bid_id: row.bid_id,
+    approved_at: row.approved_at,
+    origin: row.origin ?? 'user_punch',
+    salary_segment_index: row.salary_segment_index ?? null,
+  }
 }
 
 /** Minimal row shape for interval overlap checks (strip sessions + editor clusters). */
@@ -164,6 +194,17 @@ export function clusterIsHomogeneousJobBid(c: DayEditorSession[]): boolean {
   return c.every((s) => sameJobBid(first, s))
 }
 
+/** Multi-session cluster split/replace RPCs require matching punch vs salary and segment index. */
+export function clusterSharesClockSessionClusterRpcMetadata(c: DayEditorSession[]): boolean {
+  if (c.length <= 1) return true
+  const first = c[0]!
+  return c.every(
+    (s) =>
+      s.origin === first.origin &&
+      (s.salary_segment_index ?? null) === (first.salary_segment_index ?? null),
+  )
+}
+
 /** Inclusive row interval in ms (open end uses nowMs). */
 export function sessionRowIntervalMs(s: ClockIntervalRow, nowMs: number): { lo: number; hi: number } {
   const lo = new Date(s.clocked_in_at).getTime()
@@ -227,6 +268,185 @@ export function segmentContainedInRow(
   eps: number = CLUSTER_CONTIGUITY_EPS_MS
 ): boolean {
   return segLo >= rowLo - eps && segHi <= rowHi + eps
+}
+
+function findRowIndexContainingSegment(
+  c: DayEditorSession[],
+  segLo: number,
+  segHi: number,
+  nowMs: number,
+  eps: number
+): number | null {
+  let found: number | null = null
+  for (let i = 0; i < c.length; i++) {
+    const { lo, hi } = sessionRowIntervalMs(c[i]!, nowMs)
+    if (segmentContainedInRow(segLo, segHi, lo, hi, eps)) {
+      if (found !== null) return null
+      found = i
+    }
+  }
+  return found
+}
+
+/**
+ * One editor segment per DB row, in order; each segment fits in the cluster time hull (first row in → last row out). Allows moving row seams without matching old row `[lo, hi]` (mixed punch/salary).
+ */
+export function everySegmentAssignablePerRowOrdered(
+  c: DayEditorSession[],
+  split: SplitEditorState,
+  nowMs: number,
+  eps: number = CLUSTER_CONTIGUITY_EPS_MS
+): boolean {
+  const n = split.boundaries.length - 1
+  if (n !== c.length || n < 1) return false
+  const last = c[c.length - 1]!
+  const openLastCluster = !last.clocked_out_at
+  if (!segmentIntervalsMeetMinMs(split.boundaries, nowMs, openLastCluster)) return false
+  const hullLo = sessionRowIntervalMs(c[0]!, nowMs).lo
+  const hullHi = sessionRowIntervalMs(last, nowMs).hi
+  for (let i = 0; i < n; i++) {
+    const segLo = split.boundaries[i]!
+    const segHi = split.boundaries[i + 1]!
+    if (!(segLo < segHi)) return false
+    if (!segmentContainedInRow(segLo, segHi, hullLo, hullHi, eps)) return false
+  }
+  return true
+}
+
+function clusterSplitEverySegmentFitsInOneDbRow(
+  c: DayEditorSession[],
+  split: SplitEditorState,
+  nowMs: number
+): boolean {
+  const eps = CLUSTER_CONTIGUITY_EPS_MS
+  const n = split.boundaries.length - 1
+  for (let i = 0; i < n; i++) {
+    const segLo = split.boundaries[i]!
+    const segHi = split.boundaries[i + 1]!
+    let ok = false
+    for (const s of c) {
+      const { lo, hi } = sessionRowIntervalMs(s, nowMs)
+      if (segmentContainedInRow(segLo, segHi, lo, hi, eps)) {
+        ok = true
+        break
+      }
+    }
+    if (!ok) return false
+  }
+  return true
+}
+
+/**
+ * After min-segment clamp, finalize inner boundary ms so mixed punch/salary clusters never
+ * straddle two DB rows. Homogeneous clusters keep soft snap to row joins ({@link ROW_JOIN_SNAP_MS}).
+ */
+export function finalizeInnerBoundaryMsForCluster(
+  c: DayEditorSession[],
+  prevB: number,
+  nextB: number,
+  ms: number,
+  nowMs: number
+): number {
+  const minMs = prevB + MIN_SEGMENT_MS
+  const maxMs = nextB - MIN_SEGMENT_MS
+  const t = Math.min(maxMs, Math.max(minMs, ms))
+  const joins = internalRowJoinMs(c, nowMs)
+  if (c.length <= 1 || clusterSharesClockSessionClusterRpcMetadata(c)) {
+    return snapBoundaryMs(t, prevB, nextB, joins, ROW_JOIN_SNAP_MS)
+  }
+
+  const eps = CLUSTER_CONTIGUITY_EPS_MS
+  const leftIdx = findRowIndexContainingSegment(c, prevB, t, nowMs, eps)
+  const rightIdx = findRowIndexContainingSegment(c, t, nextB, nowMs, eps)
+
+  if (leftIdx != null && rightIdx != null && leftIdx === rightIdx) {
+    const { lo: rlo, hi: rhi } = sessionRowIntervalMs(c[leftIdx]!, nowMs)
+    if (prevB >= rlo - eps && nextB <= rhi + eps) {
+      const loBound = Math.max(minMs, rlo - eps)
+      const hiBound = Math.min(maxMs, rhi + eps)
+      if (loBound <= hiBound) {
+        return Math.min(hiBound, Math.max(loBound, t))
+      }
+    }
+  }
+
+  const clampSeamToHull = (): number => {
+    const hullLo = sessionRowIntervalMs(c[0]!, nowMs).lo
+    const hullHi = sessionRowIntervalMs(c[c.length - 1]!, nowMs).hi
+    const tHull = Math.min(hullHi + eps, Math.max(hullLo - eps, t))
+    return Math.min(maxMs, Math.max(minMs, tHull))
+  }
+
+  // Seam between consecutive DB rows: allow sliding t along the hull.
+  // Later t: left [prevB,t] may straddle → leftIdx null; right [t,nextB] still in row i+1 → rightIdx set.
+  if (rightIdx != null && rightIdx >= 1) {
+    const rowLeft = c[rightIdx - 1]!
+    const { lo: rlo, hi: rhi } = sessionRowIntervalMs(rowLeft, nowMs)
+    const prevInLeftRow = prevB >= rlo - eps && prevB <= rhi + eps
+    const leftOk =
+      (leftIdx != null && rightIdx === leftIdx + 1) || (leftIdx === null && prevInLeftRow)
+    if (leftOk) return clampSeamToHull()
+  }
+
+  // Earlier t: right [t,nextB] may straddle → rightIdx null; left [prevB,t] still in row i → leftIdx set.
+  if (leftIdx != null && rightIdx === null && leftIdx + 1 < c.length) {
+    const rowRight = c[leftIdx + 1]!
+    const { lo: rrLo, hi: rrHi } = sessionRowIntervalMs(rowRight, nowMs)
+    const nextInRightRow = nextB >= rrLo - eps && nextB <= rrHi + eps
+    if (nextInRightRow) return clampSeamToHull()
+  }
+
+  let best: number | null = null
+  let bestD = Infinity
+  for (const j of joins) {
+    if (j < minMs || j > maxMs) continue
+    const d = Math.abs(j - t)
+    if (d < bestD) {
+      bestD = d
+      best = j
+    }
+  }
+  if (best != null) return best
+
+  return t
+}
+
+/**
+ * One or more passes: nudge inner boundaries so each segment fits in a single row (mixed-metadata
+ * clusters only). Used after strip tap add-split when soft join snap is insufficient.
+ */
+export function repairMixedClusterSplitForRowContainment(
+  c: DayEditorSession[],
+  split: SplitEditorState,
+  nowMs: number
+): SplitEditorState {
+  if (c.length <= 1 || clusterSharesClockSessionClusterRpcMetadata(c)) return split
+  if (
+    clusterSplitEverySegmentFitsInOneDbRow(c, split, nowMs) ||
+    everySegmentAssignablePerRowOrdered(c, split, nowMs)
+  ) {
+    return split
+  }
+
+  const maxPasses = Math.max(2, split.boundaries.length)
+  let b = [...split.boundaries]
+  for (let pass = 0; pass < maxPasses; pass++) {
+    let changed = false
+    for (let k = 1; k < b.length - 1; k++) {
+      const prevB = b[k - 1]!
+      const nextB = b[k + 1]!
+      const cur = b[k]!
+      const fin = finalizeInnerBoundaryMsForCluster(c, prevB, nextB, cur, nowMs)
+      if (fin !== cur) {
+        b[k] = fin
+        changed = true
+      }
+    }
+    const candidate = { ...split, boundaries: b }
+    if (clusterSplitEverySegmentFitsInOneDbRow(c, candidate, nowMs)) return candidate
+    if (!changed) return candidate
+  }
+  return { ...split, boundaries: b }
 }
 
 /** Stable key for editor state (chronological session ids). */
@@ -460,7 +680,8 @@ export function mergeSegmentNotes(absorber: string, removed: string): string {
   return out.join('\n\n')
 }
 
-function segmentIntervalsMeetMinMs(
+/** Min duration per segment; last segment may be open (uses `nowMs`). Exported for save-plan / tests. */
+export function segmentIntervalsMeetMinMs(
   boundaries: number[],
   nowMs: number,
   openLastCluster: boolean

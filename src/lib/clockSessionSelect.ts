@@ -4,7 +4,7 @@ export const CLOCK_SESSION_TODAY_STRIP_SELECT =
 
 /** Month grid + day modal: own sessions with job/bid embeds (no GPS / approver joins). */
 export const CLOCK_SESSION_CALENDAR_SELECT =
-  'id, user_id, work_date, clocked_in_at, clocked_out_at, approved_at, notes, job_ledger_id, bid_id, origin, rejected_at, revoked_at, jobs_ledger!clock_sessions_job_ledger_id_fkey(hcp_number, job_name, job_address), bids!clock_sessions_bid_id_fkey(bid_number, project_name, address, customers(name))'
+  'id, user_id, work_date, clocked_in_at, clocked_out_at, approved_at, notes, job_ledger_id, bid_id, origin, salary_segment_index, rejected_at, revoked_at, jobs_ledger!clock_sessions_job_ledger_id_fkey(hcp_number, job_name, job_address), bids!clock_sessions_bid_id_fkey(bid_number, project_name, address, customers(name))'
 
 /** Shared PostgREST select for clock session lists with joins (People Hours, Dashboard My Team, etc.). */
 export const CLOCK_SESSION_LIST_SELECT =

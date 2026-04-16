@@ -9,6 +9,7 @@ import {
   clockSessionRowForSegmentAssign,
   clusterHasMultipleAllocations,
   mergeAllocChoiceRequired,
+  myTimeMergePersistBlockTitle,
   NO_JOB_BID_LINKED_LABEL,
   segmentAllocationLabelsForOverlap,
   unassignedSessionIdsOverlappingSegment,
@@ -114,6 +115,30 @@ export function MyTimeDayClusterVisual({
   useEffect(() => {
     if (saving) setMergeDirectionModalSegIdx(null)
   }, [saving])
+
+  const mergeDirUpBlockedTitle =
+    mergeDirectionModalSegIdx != null && mergeDirectionModalSegIdx > 0
+      ? myTimeMergePersistBlockTitle(
+          c,
+          split,
+          nowTick,
+          openLastCluster,
+          'prev',
+          mergeDirectionModalSegIdx,
+        )
+      : undefined
+  const mergeDirDownBlockedTitle =
+    mergeDirectionModalSegIdx != null &&
+    mergeDirectionModalSegIdx < split.boundaries.length - 2
+      ? myTimeMergePersistBlockTitle(
+          c,
+          split,
+          nowTick,
+          openLastCluster,
+          'next',
+          mergeDirectionModalSegIdx,
+        )
+      : undefined
 
   return (
     <Fragment>
@@ -440,6 +465,14 @@ export function MyTimeDayClusterVisual({
             )
             const segmentRejectDisabled = Boolean(rejectSessionBusyId != null)
             const showMergeControls = split.boundaries.length > 2 && !readOnlyView && !saving
+            const mergeUpBlockTitle =
+              segIdx > 0
+                ? myTimeMergePersistBlockTitle(c, split, nowTick, openLastCluster, 'prev', segIdx)
+                : undefined
+            const mergeDownBlockTitle =
+              segIdx < split.boundaries.length - 2
+                ? myTimeMergePersistBlockTitle(c, split, nowTick, openLastCluster, 'next', segIdx)
+                : undefined
             const visualSpanDurText: CSSProperties = {
               fontSize: '0.75rem',
               color: '#9ca3af',
@@ -795,7 +828,11 @@ export function MyTimeDayClusterVisual({
                           {segIdx > 0 ? (
                             <button
                               type="button"
+                              disabled={!!mergeUpBlockTitle}
+                              title={mergeUpBlockTitle}
+                              aria-label={mergeUpBlockTitle ?? 'Merge up'}
                               onClick={() => {
+                                if (mergeUpBlockTitle) return
                                 const labUp = segmentAllocationLabelsForOverlap(
                                   c,
                                   split,
@@ -822,7 +859,8 @@ export function MyTimeDayClusterVisual({
                                 borderRadius: 4,
                                 background: 'white',
                                 color: '#6b7280',
-                                cursor: 'pointer',
+                                cursor: mergeUpBlockTitle ? 'not-allowed' : 'pointer',
+                                opacity: mergeUpBlockTitle ? 0.55 : 1,
                               }}
                             >
                               Merge up
@@ -831,7 +869,11 @@ export function MyTimeDayClusterVisual({
                           {segIdx < split.boundaries.length - 2 ? (
                             <button
                               type="button"
+                              disabled={!!mergeDownBlockTitle}
+                              title={mergeDownBlockTitle}
+                              aria-label={mergeDownBlockTitle ?? 'Merge down'}
                               onClick={() => {
+                                if (mergeDownBlockTitle) return
                                 const labDn = segmentAllocationLabelsForOverlap(
                                   c,
                                   split,
@@ -858,7 +900,8 @@ export function MyTimeDayClusterVisual({
                                 borderRadius: 4,
                                 background: 'white',
                                 color: '#6b7280',
-                                cursor: 'pointer',
+                                cursor: mergeDownBlockTitle ? 'not-allowed' : 'pointer',
+                                opacity: mergeDownBlockTitle ? 0.55 : 1,
                               }}
                             >
                               Merge down
@@ -925,6 +968,10 @@ export function MyTimeDayClusterVisual({
         mergeDirectionModalSegIdx < split.boundaries.length - 2
       }
       disabled={saving}
+      mergeUpBlocked={!!mergeDirUpBlockedTitle}
+      mergeUpBlockedTitle={mergeDirUpBlockedTitle}
+      mergeDownBlocked={!!mergeDirDownBlockedTitle}
+      mergeDownBlockedTitle={mergeDirDownBlockedTitle}
       showReject={(() => {
         const k = mergeDirectionModalSegIdx
         if (k == null) return false

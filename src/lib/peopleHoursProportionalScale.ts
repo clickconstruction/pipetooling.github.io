@@ -1,7 +1,6 @@
 import type { ClockSessionRow } from '../types/clockSessions'
 import { shortJobOrBidLabelFromEmbeds } from '../types/clockSessions'
-import type { DayEditorSession } from './myTimeDayTimeline'
-import { MIN_SEGMENT_MS } from './myTimeDayTimeline'
+import { MIN_SEGMENT_MS, normalizeDayEditorSession, type DayEditorSession } from './myTimeDayTimeline'
 
 export function toDayEditorSession(row: {
   id: string
@@ -12,17 +11,10 @@ export function toDayEditorSession(row: {
   job_ledger_id: string | null
   bid_id: string | null
   approved_at: string | null
+  origin?: string | null
+  salary_segment_index?: number | null
 }): DayEditorSession {
-  return {
-    id: row.id,
-    clocked_in_at: row.clocked_in_at,
-    clocked_out_at: row.clocked_out_at,
-    work_date: row.work_date,
-    notes: row.notes,
-    job_ledger_id: row.job_ledger_id,
-    bid_id: row.bid_id,
-    approved_at: row.approved_at,
-  }
+  return normalizeDayEditorSession(row)
 }
 
 export function collectPeopleHoursDaySessionsForScale(

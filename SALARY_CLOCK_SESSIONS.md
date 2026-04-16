@@ -124,6 +124,12 @@ Week editability uses **America/Chicago** (current week for single session; this
 
 ---
 
+## My Time: cross-row merge (mixed punch / salary rows)
+
+When My Time **merges** multiple `clock_sessions` rows into **one** visual segment while rows differ by **`origin` / `salary_segment_index`**, Save can apply an **affine partition** of that segment onto each row (clock times + shared focus note; job/bid per row unchanged). **Re-sync risk:** a later **`salary_sync_one_user_clock_sessions`** run can still **rewrite or recreate** template-driven **`salary_schedule`** rows for that calendar day (block boundaries, reopen/close), which may **revert** hand-edited seams on salary-linked rows. Punch rows are not materialized the same way, but sync still **mass-closes** open sessions at block ends. Product/ops should treat mixed clusters as potentially affected by the next sync.
+
+---
+
 ## Migration index (salary session behavior)
 
 | Version | What it changes |

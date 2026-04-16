@@ -5,7 +5,7 @@ import { assertTargetSessionsAllowJobMixReplace } from '../../lib/copyDayJobMixT
 import { buildDayJobMixReplacePlan } from '../../lib/dayJobMixApply'
 import { sessionsToMixRows, totalMixSeconds } from '../../lib/dayJobMixPercentages'
 import { leaderReplaceClockSessionClusterMixed } from '../../lib/leaderClockSessionSplit'
-import type { DayEditorSession } from '../../lib/myTimeDayTimeline'
+import { normalizeDayEditorSession, type DayEditorSession } from '../../lib/myTimeDayTimeline'
 import { supabase } from '../../lib/supabase'
 import { DatabaseError, formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 
@@ -22,10 +22,11 @@ type CalendarSessionRow = {
   rejected_at: string | null
   revoked_at: string | null
   origin: string | null
+  salary_segment_index: number | null
 }
 
 function toDayEditorSession(r: CalendarSessionRow): DayEditorSession {
-  return {
+  return normalizeDayEditorSession({
     id: r.id,
     clocked_in_at: r.clocked_in_at,
     clocked_out_at: r.clocked_out_at,
@@ -34,7 +35,9 @@ function toDayEditorSession(r: CalendarSessionRow): DayEditorSession {
     job_ledger_id: r.job_ledger_id,
     bid_id: r.bid_id,
     approved_at: r.approved_at,
-  }
+    origin: r.origin,
+    salary_segment_index: r.salary_segment_index,
+  })
 }
 
 function formatPct(p: number): string {

@@ -8,6 +8,11 @@ export type MyTimeSegmentMergeDirectionModalProps = {
   onMergeUp: () => void
   onMergeDown: () => void
   disabled?: boolean
+  /** When set, Merge up is disabled (e.g. incompatible clock row metadata). */
+  mergeUpBlocked?: boolean
+  mergeUpBlockedTitle?: string
+  mergeDownBlocked?: boolean
+  mergeDownBlockedTitle?: string
   /** When true, title is “Segment actions” and a Reject row is shown (compact mobile × flow). */
   showReject?: boolean
   onReject?: () => void
@@ -39,6 +44,10 @@ export function MyTimeSegmentMergeDirectionModal({
   onMergeUp,
   onMergeDown,
   disabled = false,
+  mergeUpBlocked = false,
+  mergeUpBlockedTitle,
+  mergeDownBlocked = false,
+  mergeDownBlockedTitle,
   showReject = false,
   onReject,
   rejectDisabled = false,
@@ -88,9 +97,16 @@ export function MyTimeSegmentMergeDirectionModal({
           {mergeUpVisible ? (
             <button
               type="button"
-              disabled={disabled}
-              style={{ ...actionBtn, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1 }}
+              disabled={disabled || mergeUpBlocked}
+              title={mergeUpBlocked ? mergeUpBlockedTitle : undefined}
+              aria-label={mergeUpBlocked && mergeUpBlockedTitle ? mergeUpBlockedTitle : undefined}
+              style={{
+                ...actionBtn,
+                cursor: disabled || mergeUpBlocked ? 'not-allowed' : 'pointer',
+                opacity: disabled || mergeUpBlocked ? 0.6 : 1,
+              }}
               onClick={() => {
+                if (mergeUpBlocked) return
                 onMergeUp()
                 onClose()
               }}
@@ -101,9 +117,16 @@ export function MyTimeSegmentMergeDirectionModal({
           {mergeDownVisible ? (
             <button
               type="button"
-              disabled={disabled}
-              style={{ ...actionBtn, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1 }}
+              disabled={disabled || mergeDownBlocked}
+              title={mergeDownBlocked ? mergeDownBlockedTitle : undefined}
+              aria-label={mergeDownBlocked && mergeDownBlockedTitle ? mergeDownBlockedTitle : undefined}
+              style={{
+                ...actionBtn,
+                cursor: disabled || mergeDownBlocked ? 'not-allowed' : 'pointer',
+                opacity: disabled || mergeDownBlocked ? 0.6 : 1,
+              }}
               onClick={() => {
+                if (mergeDownBlocked) return
                 onMergeDown()
                 onClose()
               }}

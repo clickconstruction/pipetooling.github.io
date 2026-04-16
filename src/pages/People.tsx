@@ -1143,6 +1143,16 @@ export default function People() {
     })
   }, [])
 
+  const openHoursMyTimeForGridCell = useCallback((personName: string, workDate: string) => {
+    const u = users.find((x) => (x.name ?? '').trim() === personName.trim())
+    if (!u?.id) return
+    setHoursMyTimeEditor({
+      subjectUserId: u.id,
+      subjectDisplayName: u.name?.trim() ?? personName,
+      dateStr: workDate,
+    })
+  }, [users])
+
   const hoursAllowNcnsFromMyTime =
     isDev || authUserRole === 'master_technician' || authUserRole === 'assistant'
 
@@ -9650,6 +9660,9 @@ export default function People() {
                           const canEdit = canEditHours(personName)
                           const missingJob = isCorrectDayMissingJob(personName, d)
                           const missingJobTitle = 'Correct day with hours but no job assignment — assign in Crew Jobs / Bids'
+                          const gridDisplayHrs = getHoursGridDisplayHours(personName, d)
+                          const hoursRowUser = users.find((x) => (x.name ?? '').trim() === personName.trim())
+                          const showMyTimeCorner = gridDisplayHrs > 0 && !!hoursRowUser?.id
                           return (
                             <td
                               key={d}
@@ -9657,6 +9670,7 @@ export default function People() {
                               style={{
                                 padding: '0.35rem 0.5rem',
                                 textAlign: canEdit ? 'right' : 'center',
+                                ...(showMyTimeCorner ? { position: 'relative' } : {}),
                                 ...(missingJob && {
                                   background: 'rgba(254, 242, 242, 0.9)',
                                   boxShadow: 'inset 0 0 0 1px rgba(252, 165, 165, 0.45)',
@@ -9674,7 +9688,7 @@ export default function People() {
                               }}
                             >
                               {!canEdit ? (
-                                <span style={{ color: '#6b7280' }}>{decimalToHms(getHoursGridDisplayHours(personName, d)) || '-'}</span>
+                                <span style={{ color: '#6b7280' }}>{decimalToHms(gridDisplayHrs) || '-'}</span>
                               ) : dayLocked ? (
                                 canEdit ? (
                                   <button
@@ -9695,23 +9709,23 @@ export default function People() {
                                       font: 'inherit',
                                     }}
                                   >
-                                    {decimalToHms(getHoursGridDisplayHours(personName, d)) || '-'}
+                                    {decimalToHms(gridDisplayHrs) || '-'}
                                   </button>
                                 ) : (
                                   <span style={{ color: '#6b7280' }} title="Day marked Correct — locked">
-                                    {decimalToHms(getHoursGridDisplayHours(personName, d)) || '-'}
+                                    {decimalToHms(gridDisplayHrs) || '-'}
                                   </span>
                                 )
                               ) : (
                                 <input
                                   type="text"
                                   inputMode="numeric"
-                                  value={editingHoursCell?.personName === personName && editingHoursCell?.workDate === d ? editingHoursValue : decimalToHms(getHoursGridDisplayHours(personName, d))}
+                                  value={editingHoursCell?.personName === personName && editingHoursCell?.workDate === d ? editingHoursValue : decimalToHms(gridDisplayHrs)}
                                   placeholder="-"
                                   onClick={(e) => e.stopPropagation()}
                                   onFocus={(e) => {
                                     setEditingHoursCell({ personName, workDate: d })
-                                    setEditingHoursValue(decimalToHms(getHoursGridDisplayHours(personName, d)) || '')
+                                    setEditingHoursValue(decimalToHms(gridDisplayHrs) || '')
                                     e.target.select()
                                   }}
                                   onChange={(e) => setEditingHoursValue(e.target.value)}
@@ -9732,6 +9746,53 @@ export default function People() {
                                   style={{ width: 72, padding: '0.25rem 0.35rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'right' }}
                                 />
                               )}
+                              {showMyTimeCorner ? (
+                                <div
+                                  style={{
+                                    position: 'absolute',
+                                    left: 0,
+                                    bottom: 0,
+                                    width: 24,
+                                    height: 24,
+                                    zIndex: 6,
+                                    pointerEvents: 'none',
+                                  }}
+                                >
+                                  <button
+                                    type="button"
+                                    aria-label={`Open My Time for ${personName} on ${d}`}
+                                    title="Open My Time for this person and day"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      openHoursMyTimeForGridCell(personName, d)
+                                    }}
+                                    style={{
+                                      pointerEvents: 'auto',
+                                      width: '100%',
+                                      height: '100%',
+                                      padding: 0,
+                                      margin: 0,
+                                      border: 'none',
+                                      cursor: 'pointer',
+                                      clipPath: 'polygon(0 100%, 100% 100%, 0 0)',
+                                      background: '#0f766e',
+                                      color: '#fff',
+                                      fontSize: '0.85rem',
+                                      fontWeight: 700,
+                                      lineHeight: 1,
+                                      display: 'flex',
+                                      alignItems: 'flex-end',
+                                      justifyContent: 'flex-start',
+                                      paddingLeft: 3,
+                                      paddingBottom: 2,
+                                      fontFamily: 'inherit',
+                                      boxShadow: '0 0 0 1px rgba(255,255,255,0.35)',
+                                    }}
+                                  >
+                                    {'\u2022'}
+                                  </button>
+                                </div>
+                              ) : null}
                             </td>
                           )
                         })}
