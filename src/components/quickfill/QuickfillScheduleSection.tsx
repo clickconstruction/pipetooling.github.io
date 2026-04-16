@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
@@ -47,26 +47,15 @@ import {
   referenceDateForWorkDateYmd,
   ymdAddDays,
 } from '../../utils/dateUtils'
+import { QUICKFILL_SECTION_BANNER_BOX_STYLE } from '../../lib/quickfillSectionBannerStyle'
+
+const SCHEDULE_CONFLICTS_DEFAULT_PROMPT = 'Are there any obvious schedule conflicts?'
 
 const QUICKFILL_SCHEDULE_HIDE_ASSISTANT_ESTIMATOR_KEY = 'quickfill_schedule_hide_assistant_estimator'
 
 /** Matches per-row name column so shared 8 AM / 12 PM / 4 PM labels align with each timeline. */
 const QUICKFILL_SCHEDULE_NAME_COL_WIDTH = 'clamp(5.5rem, 24vw, 8.5rem)'
 const QUICKFILL_SCHEDULE_ROW_GAP = '0.5rem'
-
-const scheduleConflictPromptBoxStyle: CSSProperties = {
-  margin: '0 0 0.75rem',
-  padding: '0.65rem 1rem',
-  textAlign: 'center',
-  fontSize: '0.875rem',
-  fontWeight: 600,
-  lineHeight: 1.45,
-  color: '#854d0e',
-  background: '#fef9c3',
-  border: '1px solid #facc15',
-  borderRadius: 8,
-  boxSizing: 'border-box',
-}
 
 function readHideAssistantsEstimatorsFromStorage(): boolean {
   try {
@@ -205,8 +194,10 @@ const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
 /**
  * Quickfill overview: one read-only Add-block-style timeline per user (Schedule Dispatch roster) for a chosen day.
  * Edits happen on Schedule Dispatch. Section header does not show a Quickfill “open” backlog count (not comparable to inbox-style sections).
+ *
+ * On the Quickfill page, pass `hideConflictPrompt` so the section wrapper’s configurable banner is the only callout.
  */
-export function QuickfillScheduleSection() {
+export function QuickfillScheduleSection({ hideConflictPrompt = false }: { hideConflictPrompt?: boolean } = {}) {
   const navigate = useNavigate()
   const { role } = useAuth()
   const { showToast } = useToastContext()
@@ -497,9 +488,11 @@ export function QuickfillScheduleSection() {
 
   return (
     <div>
-      <div role="note" style={scheduleConflictPromptBoxStyle}>
-        Are there any obvious schedule conflicts?
-      </div>
+      {!hideConflictPrompt ? (
+        <div role="note" style={QUICKFILL_SECTION_BANNER_BOX_STYLE}>
+          {SCHEDULE_CONFLICTS_DEFAULT_PROMPT}
+        </div>
+      ) : null}
       <div
         style={{
           display: 'flex',

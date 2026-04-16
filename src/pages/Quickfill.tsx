@@ -36,6 +36,7 @@ import { useStaleTallyStaffFollowUp } from '../hooks/useStaleTallyStaffFollowUp'
 import { TALLY_STALE_MIN_AGE_DAYS } from '../lib/tallyStaleMinAgeDays'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
 import { withSupabaseRetry } from '../utils/errorHandling'
+import { QUICKFILL_SECTION_BANNER_BOX_STYLE } from '../lib/quickfillSectionBannerStyle'
 
 const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-warnings', sectionId: 'warnings', label: 'Warnings' },
@@ -52,6 +53,8 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-dispatch-inbox', sectionId: 'dispatch-inbox', label: 'Dispatch inbox' },
   { id: 'quickfill-schedule', sectionId: 'schedule', label: 'Schedule' },
   { id: 'quickfill-email-inbox', sectionId: 'email-inbox', label: 'Email' },
+  { id: 'quickfill-email-next-actions', sectionId: 'email-next-actions', label: 'Email: Next Actions' },
+  { id: 'quickfill-email-follow-up', sectionId: 'email-follow-up', label: 'Email: Follow Up' },
   { id: 'quickfill-texts', sectionId: 'texts', label: 'Texts' },
   { id: 'quickfill-physical-inbox', sectionId: 'physical-inbox', label: 'Physical inbox' },
   { id: 'quickfill-office-leaving', sectionId: 'office-leaving', label: 'Office Leaving' },
@@ -60,6 +63,9 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
 const APP_SETTINGS_KEY_QUICKFILL_HIDDEN = 'quickfill_hidden_section_ids'
 const APP_SETTINGS_KEY_QUICKFILL_MIN_HCP = 'quickfill_jobs_billing_min_hcp'
 const APP_SETTINGS_KEY_QUICKFILL_SECTION_ORDER = 'quickfill_section_order'
+const APP_SETTINGS_KEY_QUICKFILL_SECTION_BANNERS = 'quickfill_section_banners'
+const QUICKFILL_SECTION_BANNER_MAX_CHARS = 800
+const SCHEDULE_SECTION_DEFAULT_BANNER = 'Are there any obvious schedule conflicts?'
 const DEFAULT_JOBS_BILLING_MIN_HCP = 406
 
 /** Same cohort as Schedule Dispatch page; gates Quickfill Schedule section visibility. */
@@ -105,6 +111,38 @@ function normalizeQuickfillSectionOrderFromValueText(raw: string | null | undefi
   } catch {
     return [...DEFAULT_SECTION_ORDER_IDS]
   }
+}
+
+function parseQuickfillSectionBannersFromValueText(raw: string | null | undefined): Record<string, string> {
+  if (raw == null || raw === '') return {}
+  try {
+    const parsed = JSON.parse(raw) as unknown
+    if (parsed == null || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+    const out: Record<string, string> = {}
+    for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+      if (!VALID_SECTION_IDS.has(k) || typeof v !== 'string') continue
+      const t = v.trim()
+      if (t === '') continue
+      out[k] = t.length > QUICKFILL_SECTION_BANNER_MAX_CHARS ? t.slice(0, QUICKFILL_SECTION_BANNER_MAX_CHARS) : t
+    }
+    return out
+  } catch {
+    return {}
+  }
+}
+
+function capQuickfillBannerText(s: string): string {
+  const t = s.trim()
+  if (t === '') return ''
+  return t.length > QUICKFILL_SECTION_BANNER_MAX_CHARS ? t.slice(0, QUICKFILL_SECTION_BANNER_MAX_CHARS) : t
+}
+
+/** Stored custom banner only; schedule falls back in `effectiveQuickfillSectionBanner`. */
+function effectiveQuickfillSectionBanner(sectionId: string, banners: Record<string, string>): string | null {
+  const custom = banners[sectionId]?.trim()
+  if (custom) return custom.length > QUICKFILL_SECTION_BANNER_MAX_CHARS ? custom.slice(0, QUICKFILL_SECTION_BANNER_MAX_CHARS) : custom
+  if (sectionId === 'schedule') return SCHEDULE_SECTION_DEFAULT_BANNER
+  return null
 }
 
 type ButtonColor = 'red' | 'yellow' | 'green'
@@ -206,12 +244,18 @@ function QuickfillDevSectionSortableRow({
   onToggleVisible,
   jobsBillingMinHcp,
   onJobsBillingMinHcpChange,
+  bannerDraft,
+  onBannerDraftChange,
+  onBannerCommit,
 }: {
   meta: QuickfillSectionMeta
   sectionVisible: boolean
   onToggleVisible: (sectionId: string, visible: boolean) => void
   jobsBillingMinHcp: number
   onJobsBillingMinHcpChange: (n: number) => void
+  bannerDraft: string
+  onBannerDraftChange: (sectionId: string, value: string) => void
+  onBannerCommit: (sectionId: string, value: string) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: meta.sectionId })
   const style: CSSProperties = {
@@ -254,6 +298,32 @@ function QuickfillDevSectionSortableRow({
           />
           <span>{meta.label}</span>
         </label>
+        <span style={{ color: '#94a3b8', userSelect: 'none', fontSize: '0.875rem' }} aria-hidden>
+          –
+        </span>
+        <input
+          type="text"
+          value={bannerDraft}
+          onChange={(e) => onBannerDraftChange(meta.sectionId, e.target.value)}
+          onBlur={() => onBannerCommit(meta.sectionId, bannerDraft)}
+          placeholder={
+            meta.sectionId === 'schedule'
+              ? `Default: ${SCHEDULE_SECTION_DEFAULT_BANNER}`
+              : 'Shown at top of section when expanded'
+          }
+          maxLength={QUICKFILL_SECTION_BANNER_MAX_CHARS}
+          aria-label={`Optional banner for ${meta.label}, shown at top of section when expanded`}
+          style={{
+            flex: '1 1 12rem',
+            minWidth: 0,
+            maxWidth: '28rem',
+            boxSizing: 'border-box',
+            padding: '0.35rem 0.5rem',
+            border: '1px solid #d1d5db',
+            borderRadius: 4,
+            fontSize: '0.8125rem',
+          }}
+        />
         {meta.sectionId === 'jobs-billing' && (
           <label
             style={{
@@ -325,6 +395,8 @@ function QuickfillPage() {
   const [jobsBillingMinHcp, setJobsBillingMinHcp] = useState<number>(DEFAULT_JOBS_BILLING_MIN_HCP)
   const [markHistoryModal, setMarkHistoryModal] = useState<{ sectionId: string; label: string } | null>(null)
   const [sectionOrderIds, setSectionOrderIds] = useState<string[]>(() => [...DEFAULT_SECTION_ORDER_IDS])
+  const [sectionBanners, setSectionBanners] = useState<Record<string, string>>({})
+  const [sectionBannerDrafts, setSectionBannerDrafts] = useState<Record<string, string>>({})
   const [dispatchDismissedModalOpen, setDispatchDismissedModalOpen] = useState(false)
 
   const persistHiddenSectionIds = useCallback(async (hidden: Set<string>) => {
@@ -372,6 +444,21 @@ function QuickfillPage() {
     }
   }, [])
 
+  const persistSectionBanners = useCallback(async (banners: Record<string, string>) => {
+    try {
+      await withSupabaseRetry(
+        async () =>
+          await supabase.from('app_settings').upsert(
+            { key: APP_SETTINGS_KEY_QUICKFILL_SECTION_BANNERS, value_text: JSON.stringify(banners) },
+            { onConflict: 'key' },
+          ),
+        'save quickfill section banners',
+      )
+    } catch (e) {
+      console.error(e)
+    }
+  }, [])
+
   useEffect(() => {
     let cancelled = false
     ;(async () => {
@@ -385,6 +472,7 @@ function QuickfillPage() {
                 APP_SETTINGS_KEY_QUICKFILL_HIDDEN,
                 APP_SETTINGS_KEY_QUICKFILL_MIN_HCP,
                 APP_SETTINGS_KEY_QUICKFILL_SECTION_ORDER,
+                APP_SETTINGS_KEY_QUICKFILL_SECTION_BANNERS,
               ]),
           'load quickfill layout settings',
         )
@@ -392,6 +480,7 @@ function QuickfillPage() {
         let hidden = new Set<string>()
         let minHcp = DEFAULT_JOBS_BILLING_MIN_HCP
         let orderText: string | null | undefined
+        let bannersText: string | null | undefined
         const rowList = (rows ?? []) as Array<{ key: string; value_text: string | null; value_num: number | null }>
         for (const row of rowList) {
           const r = row
@@ -402,11 +491,18 @@ function QuickfillPage() {
             if (Number.isFinite(n) && n >= 0) minHcp = Math.floor(n)
           } else if (r.key === APP_SETTINGS_KEY_QUICKFILL_SECTION_ORDER) {
             orderText = r.value_text
+          } else if (r.key === APP_SETTINGS_KEY_QUICKFILL_SECTION_BANNERS) {
+            bannersText = r.value_text
           }
         }
+        const banners = parseQuickfillSectionBannersFromValueText(bannersText)
         setHiddenSectionIds(hidden)
         setJobsBillingMinHcp(minHcp)
         setSectionOrderIds(normalizeQuickfillSectionOrderFromValueText(orderText))
+        setSectionBanners(banners)
+        setSectionBannerDrafts(
+          Object.fromEntries(SECTIONS.map((s) => [s.sectionId, banners[s.sectionId] ?? ''] as const)),
+        )
       } catch (e) {
         console.error(e)
       }
@@ -432,6 +528,12 @@ function QuickfillPage() {
             if (Number.isFinite(n) && n >= 0) setJobsBillingMinHcp(Math.floor(n))
           } else if (row.key === APP_SETTINGS_KEY_QUICKFILL_SECTION_ORDER) {
             setSectionOrderIds(normalizeQuickfillSectionOrderFromValueText(row.value_text))
+          } else if (row.key === APP_SETTINGS_KEY_QUICKFILL_SECTION_BANNERS) {
+            const next = parseQuickfillSectionBannersFromValueText(row.value_text)
+            setSectionBanners(next)
+            setSectionBannerDrafts(
+              Object.fromEntries(SECTIONS.map((s) => [s.sectionId, next[s.sectionId] ?? ''] as const)),
+            )
           }
         },
       )
@@ -497,6 +599,27 @@ function QuickfillPage() {
   }, [orderedSections, sectionWouldRenderOnPage])
 
   const quickfillSectionDragSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
+
+  const onBannerDraftChange = useCallback((sid: string, value: string) => {
+    setSectionBannerDrafts((d) => ({ ...d, [sid]: value }))
+  }, [])
+
+  const onBannerCommit = useCallback(
+    (sid: string, value: string) => {
+      const capped = capQuickfillBannerText(value)
+      setSectionBanners((prev) => {
+        const next = { ...prev }
+        if (capped === '') delete next[sid]
+        else next[sid] = capped
+        queueMicrotask(() => {
+          void persistSectionBanners(next)
+        })
+        return next
+      })
+      setSectionBannerDrafts((d) => ({ ...d, [sid]: capped }))
+    },
+    [persistSectionBanners],
+  )
 
   const onQuickfillSectionDragEnd = useCallback(
     (event: DragEndEvent) => {
@@ -586,6 +709,7 @@ function QuickfillPage() {
   function quickfillSectionBlock(meta: QuickfillSectionMeta): ReactNode {
     const { id, sectionId, label } = meta
     const withTopDivider = firstVisibleSectionId !== null && firstVisibleSectionId !== sectionId
+    const bannerText = effectiveQuickfillSectionBanner(sectionId, sectionBanners)
     switch (sectionId) {
       case 'warnings':
         return (
@@ -593,6 +717,7 @@ function QuickfillPage() {
             id={id}
             sectionId={sectionId}
             label={label}
+            bannerText={bannerText}
             withTopDivider={withTopDivider}
             color={getButtonColor(sectionMarks['warnings']?.marked_at ?? null)}
             collapsed={isCollapsed('warnings') && !forceExpandedSections.has('warnings')}
@@ -627,6 +752,7 @@ function QuickfillPage() {
             id={id}
             sectionId={sectionId}
             label={label}
+            bannerText={bannerText}
             withTopDivider={withTopDivider}
             color={getButtonColor(sectionMarks['office-arriving']?.marked_at ?? null)}
             collapsed={isCollapsed('office-arriving') && !forceExpandedSections.has('office-arriving')}
@@ -644,6 +770,7 @@ function QuickfillPage() {
             id={id}
             sectionId={sectionId}
             label={label}
+            bannerText={bannerText}
             withTopDivider={withTopDivider}
             color={getButtonColor(sectionMarks['office-leaving']?.marked_at ?? null)}
             collapsed={isCollapsed('office-leaving') && !forceExpandedSections.has('office-leaving')}
@@ -661,6 +788,7 @@ function QuickfillPage() {
             id={id}
             sectionId={sectionId}
             label={label}
+            bannerText={bannerText}
             withTopDivider={withTopDivider}
             color={getButtonColor(sectionMarks['hours']?.marked_at ?? null)}
             collapsed={isCollapsed('hours') && !forceExpandedSections.has('hours')}
@@ -678,6 +806,7 @@ function QuickfillPage() {
             id={id}
             sectionId={sectionId}
             label={label}
+            bannerText={bannerText}
             withTopDivider={withTopDivider}
             color={getButtonColor(sectionMarks['people-hours-new']?.marked_at ?? null)}
             collapsed={isCollapsed('people-hours-new') && !forceExpandedSections.has('people-hours-new')}
@@ -695,6 +824,7 @@ function QuickfillPage() {
             id={id}
             sectionId={sectionId}
             label={label}
+            bannerText={bannerText}
             withTopDivider={withTopDivider}
             color={getButtonColor(sectionMarks['banking-sorting']?.marked_at ?? null)}
             collapsed={isCollapsed('banking-sorting') && !forceExpandedSections.has('banking-sorting')}
@@ -712,6 +842,7 @@ function QuickfillPage() {
             id={id}
             sectionId={sectionId}
             label={label}
+            bannerText={bannerText}
             withTopDivider={withTopDivider}
             color={getButtonColor(sectionMarks['crew-jobs']?.marked_at ?? null)}
             collapsed={isCollapsed('crew-jobs') && !forceExpandedSections.has('crew-jobs')}
@@ -729,6 +860,7 @@ function QuickfillPage() {
             id={id}
             sectionId={sectionId}
             label={label}
+            bannerText={bannerText}
             withTopDivider={withTopDivider}
             color={getButtonColor(sectionMarks['billed-awaiting']?.marked_at ?? null)}
             collapsed={isCollapsed('billed-awaiting') && !forceExpandedSections.has('billed-awaiting')}
@@ -746,6 +878,7 @@ function QuickfillPage() {
             id={id}
             sectionId={sectionId}
             label={label}
+            bannerText={bannerText}
             withTopDivider={withTopDivider}
             color={getButtonColor(sectionMarks['unpriced-fixtures']?.marked_at ?? null)}
             collapsed={isCollapsed('unpriced-fixtures') && !forceExpandedSections.has('unpriced-fixtures')}
@@ -764,6 +897,7 @@ function QuickfillPage() {
             id={id}
             sectionId={sectionId}
             label={label}
+            bannerText={bannerText}
             withTopDivider={withTopDivider}
             color={getButtonColor(sectionMarks['cant-reach']?.marked_at ?? null)}
             collapsed={isCollapsed('cant-reach') && !forceExpandedSections.has('cant-reach')}
@@ -781,6 +915,7 @@ function QuickfillPage() {
             id={id}
             sectionId={sectionId}
             label={label}
+            bannerText={bannerText}
             withTopDivider={withTopDivider}
             color={getButtonColor(sectionMarks['supply-houses']?.marked_at ?? null)}
             collapsed={isCollapsed('supply-houses') && !forceExpandedSections.has('supply-houses')}
@@ -798,6 +933,7 @@ function QuickfillPage() {
             id={id}
             sectionId={sectionId}
             label={label}
+            bannerText={bannerText}
             withTopDivider={withTopDivider}
             color={getButtonColor(sectionMarks['jobs-billing']?.marked_at ?? null)}
             collapsed={isCollapsed('jobs-billing') && !forceExpandedSections.has('jobs-billing')}
@@ -815,6 +951,7 @@ function QuickfillPage() {
             id={id}
             sectionId={sectionId}
             label={label}
+            bannerText={bannerText}
             withTopDivider={withTopDivider}
             color={getButtonColor(sectionMarks['dispatch-inbox']?.marked_at ?? null)}
             collapsed={isCollapsed('dispatch-inbox') && !forceExpandedSections.has('dispatch-inbox')}
@@ -860,6 +997,7 @@ function QuickfillPage() {
             id={id}
             sectionId={sectionId}
             label={label}
+            bannerText={bannerText}
             withTopDivider={withTopDivider}
             color={getButtonColor(sectionMarks['schedule']?.marked_at ?? null)}
             collapsed={isCollapsed('schedule') && !forceExpandedSections.has('schedule')}
@@ -870,7 +1008,7 @@ function QuickfillPage() {
             showOutstandingInHeader={false}
             showMarkHistoryButton={false}
           >
-            <QuickfillScheduleSection />
+            <QuickfillScheduleSection hideConflictPrompt />
           </QuickfillSectionWrapper>
         )
       case 'email-inbox':
@@ -879,6 +1017,7 @@ function QuickfillPage() {
             id={id}
             sectionId={sectionId}
             label={label}
+            bannerText={bannerText}
             withTopDivider={withTopDivider}
             color={getButtonColor(sectionMarks['email-inbox']?.marked_at ?? null)}
             collapsed={isCollapsed('email-inbox') && !forceExpandedSections.has('email-inbox')}
@@ -889,11 +1028,72 @@ function QuickfillPage() {
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'email-inbox', label: 'Email' })}
           >
             <QuickfillEmailInboxSection
+              metricSectionId="email-inbox"
               markButtonPalette={{
                 bg: BUTTON_BG[getButtonColor(sectionMarks['email-inbox']?.marked_at ?? null)],
                 border: BUTTON_BORDER[getButtonColor(sectionMarks['email-inbox']?.marked_at ?? null)],
               }}
               onConfirmMark={(note) => void markSectionUpToDate('email-inbox', { noteText: note })}
+            />
+          </QuickfillSectionWrapper>
+        )
+      case 'email-next-actions':
+        return (
+          <QuickfillSectionWrapper
+            id={id}
+            sectionId={sectionId}
+            label={label}
+            bannerText={bannerText}
+            withTopDivider={withTopDivider}
+            color={getButtonColor(sectionMarks['email-next-actions']?.marked_at ?? null)}
+            collapsed={isCollapsed('email-next-actions') && !forceExpandedSections.has('email-next-actions')}
+            mark={sectionMarks['email-next-actions']}
+            omitDefaultMarkButton
+            onMarkUpToDate={() => undefined}
+            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'email-next-actions']))}
+            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'email-next-actions', label: 'Email: Next Actions' })}
+          >
+            <QuickfillEmailInboxSection
+              metricSectionId="email-next-actions"
+              fieldLabel="Still in Next Actions"
+              description=" - Before marking complete, list what is still in Next Actions (one item per line or free text)."
+              markButtonLabel="Mark Next Actions up to date!"
+              emptyNoteToast="List what is still in Next Actions before marking complete."
+              markButtonPalette={{
+                bg: BUTTON_BG[getButtonColor(sectionMarks['email-next-actions']?.marked_at ?? null)],
+                border: BUTTON_BORDER[getButtonColor(sectionMarks['email-next-actions']?.marked_at ?? null)],
+              }}
+              onConfirmMark={(note) => void markSectionUpToDate('email-next-actions', { noteText: note })}
+            />
+          </QuickfillSectionWrapper>
+        )
+      case 'email-follow-up':
+        return (
+          <QuickfillSectionWrapper
+            id={id}
+            sectionId={sectionId}
+            label={label}
+            bannerText={bannerText}
+            withTopDivider={withTopDivider}
+            color={getButtonColor(sectionMarks['email-follow-up']?.marked_at ?? null)}
+            collapsed={isCollapsed('email-follow-up') && !forceExpandedSections.has('email-follow-up')}
+            mark={sectionMarks['email-follow-up']}
+            omitDefaultMarkButton
+            onMarkUpToDate={() => undefined}
+            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'email-follow-up']))}
+            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'email-follow-up', label: 'Email: Follow Up' })}
+          >
+            <QuickfillEmailInboxSection
+              metricSectionId="email-follow-up"
+              fieldLabel="Still in Follow Up"
+              description=" - Before marking complete, list what is still in Follow Up (one item per line or free text)."
+              markButtonLabel="Mark Follow Up up to date!"
+              emptyNoteToast="List what is still in Follow Up before marking complete."
+              markButtonPalette={{
+                bg: BUTTON_BG[getButtonColor(sectionMarks['email-follow-up']?.marked_at ?? null)],
+                border: BUTTON_BORDER[getButtonColor(sectionMarks['email-follow-up']?.marked_at ?? null)],
+              }}
+              onConfirmMark={(note) => void markSectionUpToDate('email-follow-up', { noteText: note })}
             />
           </QuickfillSectionWrapper>
         )
@@ -903,6 +1103,7 @@ function QuickfillPage() {
             id={id}
             sectionId={sectionId}
             label={label}
+            bannerText={bannerText}
             withTopDivider={withTopDivider}
             color={getButtonColor(sectionMarks['texts']?.marked_at ?? null)}
             collapsed={isCollapsed('texts') && !forceExpandedSections.has('texts')}
@@ -927,6 +1128,7 @@ function QuickfillPage() {
             id={id}
             sectionId={sectionId}
             label={label}
+            bannerText={bannerText}
             withTopDivider={withTopDivider}
             color={getButtonColor(sectionMarks['physical-inbox']?.marked_at ?? null)}
             collapsed={isCollapsed('physical-inbox') && !forceExpandedSections.has('physical-inbox')}
@@ -1046,7 +1248,8 @@ function QuickfillPage() {
           <div style={{ padding: '0 1rem 1rem 1rem' }}>
             <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
               Uncheck a section to hide it from this page and from the jump buttons above for everyone. Drag the handle to
-              reorder sections for everyone. Settings are stored in the database.
+              reorder sections for everyone. Optional per-section banners (amber callout) appear when a section is expanded.
+              Settings are stored in the database.
             </p>
             <DndContext sensors={quickfillSectionDragSensors} onDragEnd={onQuickfillSectionDragEnd}>
               <SortableContext items={sectionOrderIds} strategy={verticalListSortingStrategy}>
@@ -1062,6 +1265,9 @@ function QuickfillPage() {
                         setJobsBillingMinHcp(n)
                         void persistJobsBillingMinHcp(n)
                       }}
+                      bannerDraft={sectionBannerDrafts[meta.sectionId] ?? ''}
+                      onBannerDraftChange={onBannerDraftChange}
+                      onBannerCommit={onBannerCommit}
                     />
                   ))}
                 </ul>
@@ -1101,6 +1307,7 @@ function QuickfillSectionWrapper({
   sectionId,
   label,
   withTopDivider,
+  bannerText = null,
   color,
   collapsed,
   mark,
@@ -1116,6 +1323,8 @@ function QuickfillSectionWrapper({
   sectionId: string
   label: string
   withTopDivider: boolean
+  /** Amber callout above section body when expanded; omit or null to hide. */
+  bannerText?: string | null
   color: ButtonColor
   collapsed: boolean
   mark: { marked_at: string; marked_by?: string; marked_by_name?: string | null } | undefined
@@ -1241,6 +1450,11 @@ function QuickfillSectionWrapper({
         </div>
       ) : (
         <>
+          {bannerText != null && bannerText.trim() !== '' ? (
+            <div role="note" style={QUICKFILL_SECTION_BANNER_BOX_STYLE}>
+              {bannerText.trim()}
+            </div>
+          ) : null}
           {children}
           {!omitDefaultMarkButton && (
             <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'center' }}>

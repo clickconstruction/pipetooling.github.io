@@ -4,11 +4,19 @@ import { useToastContext } from '../../contexts/ToastContext'
 
 const NOTE_MAX_CHARS = 10_000
 
+const DEFAULT_GMAIL_HREF = 'https://mail.google.com/mail/u/0/#inbox'
+
 type MarkPalette = { bg: string; border: string }
 
-type QuickfillEmailInboxSectionProps = {
+export type QuickfillEmailInboxSectionProps = {
+  metricSectionId: string
   markButtonPalette: MarkPalette
   onConfirmMark: (trimmedNote: string) => void
+  fieldLabel?: string
+  description?: string
+  markButtonLabel?: string
+  emptyNoteToast?: string
+  gmailHref?: string
 }
 
 const introRowStyle: CSSProperties = {
@@ -27,7 +35,16 @@ const linkStyle: CSSProperties = {
   fontWeight: 600,
 }
 
-export function QuickfillEmailInboxSection({ markButtonPalette, onConfirmMark }: QuickfillEmailInboxSectionProps) {
+export function QuickfillEmailInboxSection({
+  metricSectionId,
+  markButtonPalette,
+  onConfirmMark,
+  fieldLabel = 'Still in inbox',
+  description = ' - Before marking complete, list what is still in your inbox (one item per line or free text).',
+  markButtonLabel = 'Mark Email up to date!',
+  emptyNoteToast = 'List what is still in your inbox before marking complete.',
+  gmailHref = DEFAULT_GMAIL_HREF,
+}: QuickfillEmailInboxSectionProps) {
   const { showToast } = useToastContext()
   const [inboxNote, setInboxNote] = useState('')
 
@@ -35,12 +52,12 @@ export function QuickfillEmailInboxSection({ markButtonPalette, onConfirmMark }:
     return inboxNote.split(/\r?\n/).filter((line) => line.trim().length > 0).length
   }, [inboxNote])
 
-  useReportQuickfillSectionMetric('email-inbox', itemsNotedCount, false)
+  useReportQuickfillSectionMetric(metricSectionId, itemsNotedCount, false)
 
   function handleMarkComplete() {
     const trimmed = inboxNote.trim()
     if (!trimmed) {
-      showToast('List what is still in your inbox before marking complete.', 'warning')
+      showToast(emptyNoteToast, 'warning')
       return
     }
     const capped = trimmed.length > NOTE_MAX_CHARS ? trimmed.slice(0, NOTE_MAX_CHARS) : trimmed
@@ -48,7 +65,8 @@ export function QuickfillEmailInboxSection({ markButtonPalette, onConfirmMark }:
     setInboxNote('')
   }
 
-  const promptId = 'quickfill-email-inbox-prompt'
+  const promptId = `quickfill-${metricSectionId}-prompt`
+  const textareaId = `quickfill-${metricSectionId}-textarea`
 
   return (
     <section
@@ -59,22 +77,19 @@ export function QuickfillEmailInboxSection({ markButtonPalette, onConfirmMark }:
       }}
     >
       <div id={promptId} style={introRowStyle}>
-        <a href="https://mail.google.com/mail/u/0/#inbox" target="_blank" rel="noopener noreferrer" style={linkStyle}>
+        <a href={gmailHref} target="_blank" rel="noopener noreferrer" style={linkStyle}>
           Open Gmail
         </a>
         <span style={{ color: '#94a3b8', userSelect: 'none' }} aria-hidden>
           |
         </span>
-        <label
-          htmlFor="quickfill-email-inbox-textarea"
-          style={{ fontWeight: 600, color: '#374151', cursor: 'pointer', margin: 0 }}
-        >
-          Still in inbox
+        <label htmlFor={textareaId} style={{ fontWeight: 600, color: '#374151', cursor: 'pointer', margin: 0 }}>
+          {fieldLabel}
         </label>
-        <span>{' - Before marking complete, list what is still in your inbox (one item per line or free text).'}</span>
+        <span>{description}</span>
       </div>
       <textarea
-        id="quickfill-email-inbox-textarea"
+        id={textareaId}
         value={inboxNote}
         onChange={(e) => setInboxNote(e.target.value)}
         aria-describedby={promptId}
@@ -106,7 +121,7 @@ export function QuickfillEmailInboxSection({ markButtonPalette, onConfirmMark }:
             fontWeight: 500,
           }}
         >
-          Mark Email up to date!
+          {markButtonLabel}
         </button>
       </div>
     </section>

@@ -738,6 +738,30 @@ export function useDashboardMyTeamSectionState(
     void loadPending()
   }, [loadPending])
 
+  /** Live refresh when sessions change elsewhere (e.g. Schedule/Dispatch assign). */
+  useEffect(() => {
+    if (!authUserId) return
+    const debounceMs = 280
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null
+    const scheduleReload = () => {
+      if (debounceTimer != null) clearTimeout(debounceTimer)
+      debounceTimer = setTimeout(() => {
+        debounceTimer = null
+        void loadPending({ silent: true })
+      }, debounceMs)
+    }
+    const channel = supabase
+      .channel(`my-team-clock-sessions-${authUserId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'clock_sessions' }, () => {
+        scheduleReload()
+      })
+      .subscribe()
+    return () => {
+      if (debounceTimer != null) clearTimeout(debounceTimer)
+      supabase.removeChannel(channel)
+    }
+  }, [authUserId, loadPending])
+
   useEffect(() => {
     if (!authUserId) {
       setOrgWidePendingSessions([])
