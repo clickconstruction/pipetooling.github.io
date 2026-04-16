@@ -1,5 +1,15 @@
 /* eslint-disable react-hooks/exhaustive-deps -- mount-only init; parent remounts via key */
-import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
 import type { CSSProperties, RefObject } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { NO_CUSTOMER_TYPE_LABEL } from '../../constants/customerTypeLabels'
@@ -232,11 +242,47 @@ function unallocatedBillableDollars(
   return Math.max(0, gross - paidSum - alloc)
 }
 
+/** Break-off dollars for target combined % ((paid + break) / gross) * 100, clamped to remaining unallocated. */
+function breakDollarsFromCombinedPct(
+  combinedPct: number,
+  gross: number,
+  paidSum: number,
+  remainingUnallocated: number,
+): number {
+  const rawBreak = (combinedPct / 100) * gross - paidSum
+  const cents = Math.min(
+    Math.round(remainingUnallocated * 100),
+    Math.max(0, Math.round(rawBreak * 100)),
+  )
+  return cents / 100
+}
+
+const BREAK_OFF_COMBINED_SLIDER_STEP_PCT = 5
+
+function snapBreakOffCombinedPctToStep(
+  pct: number,
+  min: number,
+  max: number,
+  step: number = BREAK_OFF_COMBINED_SLIDER_STEP_PCT,
+): number {
+  const snapped = Math.round(pct / step) * step
+  return Math.min(max, Math.max(min, snapped))
+}
+
 function breakOffPrefillAmountStringFromJob(job: JobWithDetails): string {
   const gross = job.revenue != null ? Number(job.revenue) : 0
   const paid = (job.payments ?? []).reduce((s, p) => s + (Number(p.amount) || 0), 0)
-  const u = unallocatedBillableDollars(gross, paid, job.invoices)
-  return u > 0 ? u.toFixed(2) : ''
+  const remaining = unallocatedBillableDollars(gross, paid, job.invoices)
+  if (!(gross > 0) || !(remaining > 0)) return ''
+  const paidCents = Math.round(paid * 100)
+  const threshold80Cents = Math.round(0.8 * gross * 100)
+  const rawTarget = paidCents > threshold80Cents ? 0.95 * gross : 0.8 * gross
+  const useCents = Math.min(
+    Math.round(remaining * 100),
+    Math.max(0, Math.round(rawTarget * 100)),
+  )
+  const amount = useCents / 100
+  return amount > 0 ? amount.toFixed(2) : ''
 }
 
 function sanitizeMoneyTyping(raw: string): string {
@@ -437,6 +483,11 @@ export default function JobFormModal({
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [newInvoiceAmount, setNewInvoiceAmount] = useState('')
   const [newInvoiceAmountInputFocused, setNewInvoiceAmountInputFocused] = useState(false)
+  const [breakOffSliderDragCombinedPct, setBreakOffSliderDragCombinedPct] = useState<number | null>(null)
+  const billingBreakOffTrackRef = useRef<HTMLDivElement | null>(null)
+  const breakOffSliderPointerActiveRef = useRef(false)
+  const breakOffSliderLastDragCombinedRef = useRef(0)
+  const breakOffSliderLastPointerXRef = useRef(0)
   const [creatingInvoice, setCreatingInvoice] = useState(false)
   const [movingJobToReadyToBill, setMovingJobToReadyToBill] = useState(false)
   const [paymentRemoveConfirmRowId, setPaymentRemoveConfirmRowId] = useState<string | null>(null)
@@ -1118,6 +1169,208 @@ export default function JobFormModal({
     const amt = parseMoneyInputToNumber(newInvoiceAmount)
     return Math.round(amt * 100) === Math.round(remaining * 100)
   }, [editing, newInvoiceAmount, jobTotalBidDollars, payments])
+
+  const breakOffBillingTrackPercents = useMemo(() => {
+    const total = jobTotalBidDollars
+    const paidSum = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
+    if (!(total > 0)) {
+      return { paidPct: 0, breakPreviewPct: 0, hasTotal: false as const }
+    }
+    const paidPct = Math.min(100, (paidSum / total) * 100)
+    const rawBreak = Math.max(0, parseMoneyInputToNumber(newInvoiceAmount))
+    const breakPreviewPctUncapped = (rawBreak / total) * 100
+    const maxBreakPreview = Math.max(0, 100 - paidPct)
+    const breakPreviewPct = Math.min(maxBreakPreview, breakPreviewPctUncapped)
+    return { paidPct, breakPreviewPct, hasTotal: true as const }
+  }, [jobTotalBidDollars, payments, newInvoiceAmount])
+
+  const jobCompleteTrackPct = useMemo(() => {
+    const raw = editing?.pct_complete
+    if (raw == null) return null
+    const n = Number(raw)
+    if (!Number.isFinite(n)) return null
+    return Math.min(100, Math.max(0, n))
+  }, [editing?.pct_complete])
+
+  const breakOffPaidSum = useMemo(
+    () => payments.reduce((s, p) => s + (Number(p.amount) || 0), 0),
+    [payments],
+  )
+  const breakOffRemaining = useMemo(
+    () => unallocatedBillableDollars(jobTotalBidDollars, breakOffPaidSum, editing?.invoices),
+    [jobTotalBidDollars, breakOffPaidSum, editing?.invoices],
+  )
+  const breakOffCombinedSliderBounds = useMemo(() => {
+    const total = jobTotalBidDollars
+    if (!(total > 0)) return { min: 0, max: 0 }
+    const min = Math.min(100, Math.max(0, (breakOffPaidSum / total) * 100))
+    const max = Math.min(100, Math.max(min, ((breakOffPaidSum + breakOffRemaining) / total) * 100))
+    return { min, max }
+  }, [jobTotalBidDollars, breakOffPaidSum, breakOffRemaining])
+
+  const breakOffDraftCoveragePctDisplay = useMemo(() => {
+    const total = jobTotalBidDollars
+    if (!(total > 0)) return null
+    const b = parseMoneyInputToNumber(newInvoiceAmount)
+    const pct = Math.min(100, Math.max(0, ((breakOffPaidSum + b) / total) * 100))
+    return Math.round(pct)
+  }, [jobTotalBidDollars, breakOffPaidSum, newInvoiceAmount])
+
+  const breakOffCombinedHandlePct = useMemo(() => {
+    const total = jobTotalBidDollars
+    if (!(total > 0)) return 0
+    const { min, max } = breakOffCombinedSliderBounds
+    if (breakOffSliderDragCombinedPct != null) {
+      return Math.min(100, Math.max(0, breakOffSliderDragCombinedPct))
+    }
+    const b = parseMoneyInputToNumber(newInvoiceAmount)
+    const raw = Math.min(100, Math.max(0, ((breakOffPaidSum + b) / total) * 100))
+    if (newInvoiceAmountInputFocused) {
+      return Math.min(100, Math.max(0, raw))
+    }
+    return snapBreakOffCombinedPctToStep(raw, min, max)
+  }, [
+    jobTotalBidDollars,
+    breakOffCombinedSliderBounds,
+    breakOffPaidSum,
+    newInvoiceAmount,
+    newInvoiceAmountInputFocused,
+    breakOffSliderDragCombinedPct,
+  ])
+
+  const breakOffCombinedThumbLeftPct = useMemo(() => {
+    const { min, max } = breakOffCombinedSliderBounds
+    return Math.min(max, Math.max(min, breakOffCombinedHandlePct))
+  }, [breakOffCombinedSliderBounds, breakOffCombinedHandlePct])
+
+  const seedBreakOffSliderFromPointerX = useCallback(
+    (clientX: number) => {
+      const el = billingBreakOffTrackRef.current
+      const total = jobTotalBidDollars
+      if (!el || !(total > 0)) return
+      const rect = el.getBoundingClientRect()
+      const w = rect.width || 1
+      const { min, max } = breakOffCombinedSliderBounds
+           const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / w))
+      const unsnapped = Math.min(max, Math.max(min, min + ratio * (max - min)))
+      breakOffSliderLastDragCombinedRef.current = unsnapped
+      const combined = snapBreakOffCombinedPctToStep(unsnapped, min, max)
+      setBreakOffSliderDragCombinedPct(combined)
+      const bd = breakDollarsFromCombinedPct(combined, total, breakOffPaidSum, breakOffRemaining)
+      setNewInvoiceAmount(String(bd))
+    },
+    [jobTotalBidDollars, breakOffCombinedSliderBounds, breakOffPaidSum, breakOffRemaining],
+  )
+
+  const endBreakOffSliderPointerGesture = useCallback(() => {
+    if (!breakOffSliderPointerActiveRef.current) return
+    breakOffSliderPointerActiveRef.current = false
+    breakOffSliderLastPointerXRef.current = 0
+    setBreakOffSliderDragCombinedPct(null)
+    const total = jobTotalBidDollars
+    if (!(total > 0)) return
+    const prev = breakOffSliderLastDragCombinedRef.current
+    const { min, max } = breakOffCombinedSliderBounds
+    const snapped = snapBreakOffCombinedPctToStep(prev, min, max)
+    const bd = breakDollarsFromCombinedPct(snapped, total, breakOffPaidSum, breakOffRemaining)
+    setNewInvoiceAmount(String(bd))
+    setNewInvoiceAmountInputFocused(false)
+  }, [jobTotalBidDollars, breakOffCombinedSliderBounds, breakOffPaidSum, breakOffRemaining])
+
+  const onBillingBreakOffTrackPointerDown = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      if (e.button !== 0) return
+      breakOffSliderPointerActiveRef.current = true
+      e.currentTarget.setPointerCapture(e.pointerId)
+      setNewInvoiceAmountInputFocused(false)
+      seedBreakOffSliderFromPointerX(e.clientX)
+      breakOffSliderLastPointerXRef.current = e.clientX
+    },
+    [seedBreakOffSliderFromPointerX],
+  )
+
+  const onBillingBreakOffTrackPointerMove = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      if (!breakOffSliderPointerActiveRef.current) return
+      const el = billingBreakOffTrackRef.current
+      const total = jobTotalBidDollars
+      if (!el || !(total > 0)) return
+      const rect = el.getBoundingClientRect()
+      const w = rect.width || 1
+      const { min, max } = breakOffCombinedSliderBounds
+      const clientX = e.clientX
+      const d = clientX - breakOffSliderLastPointerXRef.current
+      breakOffSliderLastPointerXRef.current = clientX
+      let next = breakOffSliderLastDragCombinedRef.current + (d / w) * 100
+      next = Math.min(max, Math.max(min, next))
+      breakOffSliderLastDragCombinedRef.current = next
+      const snapped = snapBreakOffCombinedPctToStep(next, min, max)
+      setBreakOffSliderDragCombinedPct(snapped)
+      setNewInvoiceAmount(
+        String(breakDollarsFromCombinedPct(snapped, total, breakOffPaidSum, breakOffRemaining)),
+      )
+    },
+    [jobTotalBidDollars, breakOffCombinedSliderBounds, breakOffPaidSum, breakOffRemaining],
+  )
+
+  const onBillingBreakOffTrackPointerUpCancel = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId)
+      } catch {
+        /* already released */
+      }
+      endBreakOffSliderPointerGesture()
+    },
+    [endBreakOffSliderPointerGesture],
+  )
+
+  const onBillingBreakOffTrackLostPointerCapture = useCallback(() => {
+    endBreakOffSliderPointerGesture()
+  }, [endBreakOffSliderPointerGesture])
+
+  const onBreakOffSliderKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLDivElement>) => {
+      if (breakOffSliderDragCombinedPct != null) return
+      const total = jobTotalBidDollars
+      if (!(total > 0)) return
+      const { min, max } = breakOffCombinedSliderBounds
+      const curSnapped = snapBreakOffCombinedPctToStep(
+        breakOffCombinedThumbLeftPct,
+        min,
+        max,
+      )
+      let next = curSnapped
+      const step = BREAK_OFF_COMBINED_SLIDER_STEP_PCT
+      if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        next = Math.min(max, curSnapped + step)
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+        e.preventDefault()
+        next = Math.max(min, curSnapped - step)
+      } else if (e.key === 'Home') {
+        e.preventDefault()
+        next = min
+      } else if (e.key === 'End') {
+        e.preventDefault()
+        next = max
+      } else {
+        return
+      }
+      next = Math.min(max, Math.max(min, next))
+      const bd = breakDollarsFromCombinedPct(next, total, breakOffPaidSum, breakOffRemaining)
+      setNewInvoiceAmount(String(bd))
+      setNewInvoiceAmountInputFocused(false)
+    },
+    [
+      breakOffSliderDragCombinedPct,
+      jobTotalBidDollars,
+      breakOffCombinedSliderBounds,
+      breakOffCombinedThumbLeftPct,
+      breakOffPaidSum,
+      breakOffRemaining,
+    ],
+  )
 
   function getEditJobBillableRemaining(): number {
     const paidSum = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
@@ -2945,17 +3198,26 @@ export default function JobFormModal({
           {editing && (
             <>
               {editing ? (
-                <div style={{ marginBottom: '1rem' }}>
+                <div
+                  style={{
+                    marginBottom: '1rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.5rem',
+                    width: '100%',
+                    minWidth: 0,
+                  }}
+                >
                   <div
                     style={{
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      flexWrap: 'nowrap',
+                      flexWrap: 'wrap',
                       gap: '0.5rem',
                       width: '100%',
                       minWidth: 0,
-                      overflowX: 'auto',
+                      rowGap: '0.35rem',
                     }}
                   >
                     <label
@@ -2989,9 +3251,16 @@ export default function JobFormModal({
                           setNewInvoiceAmount('')
                           return
                         }
-                        const rem = getEditJobBillableRemaining()
-                        const useCents = Math.min(Math.round(n * 100), Math.round(rem * 100))
-                        const clamped = useCents / 100
+                        const rem = breakOffRemaining
+                        let useCents = Math.min(Math.round(n * 100), Math.round(rem * 100))
+                        let clamped = useCents / 100
+                        const total = jobTotalBidDollars
+                        if (total > 0) {
+                          const { min, max } = breakOffCombinedSliderBounds
+                          const rawC = Math.min(100, ((breakOffPaidSum + clamped) / total) * 100)
+                          const snappedC = snapBreakOffCombinedPctToStep(rawC, min, max)
+                          clamped = breakDollarsFromCombinedPct(snappedC, total, breakOffPaidSum, rem)
+                        }
                         setNewInvoiceAmount(String(clamped))
                       }}
                       onChange={(e) => setNewInvoiceAmount(sanitizeMoneyTyping(e.target.value))}
@@ -3002,8 +3271,8 @@ export default function JobFormModal({
                           : 'Break off an amount to send through Ready to Bill. Job stays in Working.'
                       }
                       style={{
-                        minWidth: '6rem',
-                        width: '6rem',
+                        minWidth: isSendFullUnallocatedToReadyToBill ? '9rem' : '6rem',
+                        width: isSendFullUnallocatedToReadyToBill ? '9rem' : '6rem',
                         flexShrink: 0,
                         boxSizing: 'border-box',
                         padding: '0.375rem 0.5rem',
@@ -3053,20 +3322,262 @@ export default function JobFormModal({
                     >
                       {movingJobToReadyToBill ? '…' : creatingInvoice ? '…' : isSendFullUnallocatedToReadyToBill ? 'Ready to Bill' : '+'}
                     </button>
+                    {breakOffDraftCoveragePctDisplay != null && breakOffDraftCoveragePctDisplay < 100 ? (
+                      <span
+                        title="Payments plus this draft amount as a share of Job Total."
+                        style={{
+                          fontSize: '0.75rem',
+                          color: '#6b7280',
+                          flexShrink: 0,
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {breakOffDraftCoveragePctDisplay}% of job total
+                      </span>
+                    ) : null}
                   </div>
-                  <p
-                    style={{
-                      margin: '0.5rem 0 0',
-                      fontSize: '0.8125rem',
-                      color: '#6b7280',
-                      textAlign: 'center',
-                      lineHeight: 1.45,
-                    }}
-                  >
-                    {isSendFullUnallocatedToReadyToBill
-                      ? 'Full unallocated amount moves the job to Ready to Bill (same as Stages). Partial amounts stay in Working and add a draft line.'
-                      : 'Break off an amount to send through Ready to Bill. Job stays in Working.'}
-                  </p>
+                  {breakOffBillingTrackPercents.hasTotal ? (
+                    <div style={{ width: '100%', minWidth: 0 }}>
+                      <div
+                        ref={billingBreakOffTrackRef}
+                        style={{
+                          position: 'relative',
+                          width: '100%',
+                          height: 34,
+                          marginTop: 2,
+                          touchAction: 'none',
+                        }}
+                        onPointerDown={onBillingBreakOffTrackPointerDown}
+                        onPointerMove={onBillingBreakOffTrackPointerMove}
+                        onPointerUp={onBillingBreakOffTrackPointerUpCancel}
+                        onPointerCancel={onBillingBreakOffTrackPointerUpCancel}
+                        onLostPointerCapture={onBillingBreakOffTrackLostPointerCapture}
+                      >
+                        <div
+                          style={{
+                            position: 'absolute',
+                            left: 0,
+                            right: 0,
+                            top: 8,
+                            height: 8,
+                            background: '#e5e7eb',
+                            borderRadius: 4,
+                            zIndex: 0,
+                          }}
+                        />
+                        <div
+                          style={{
+                            position: 'absolute',
+                            left: 0,
+                            top: 8,
+                            height: 8,
+                            width: `${breakOffBillingTrackPercents.paidPct}%`,
+                            background: '#2563eb',
+                            borderRadius:
+                              breakOffBillingTrackPercents.breakPreviewPct > 0 ? '4px 0 0 4px' : 4,
+                            zIndex: 1,
+                          }}
+                        />
+                        {breakOffBillingTrackPercents.breakPreviewPct > 0 ? (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              left: `${breakOffBillingTrackPercents.paidPct}%`,
+                              top: 8,
+                              height: 8,
+                              width: `${breakOffBillingTrackPercents.breakPreviewPct}%`,
+                              background: '#93c5fd',
+                              borderRadius: '0 4px 4px 0',
+                              zIndex: 1,
+                            }}
+                          />
+                        ) : null}
+                        {Array.from({ length: 19 }, (_, i) => (i + 1) * 5).map((pct) => {
+                          const isMajor = pct % 20 === 0
+                          const railTop = 8
+                          const railH = 8
+                          const minorH = 5
+                          const h = isMajor ? railH : minorH
+                          const top = isMajor ? railTop : railTop + (railH - minorH) / 2
+                          return (
+                            <div
+                              key={pct}
+                              style={{
+                                position: 'absolute',
+                                left: `${pct}%`,
+                                top,
+                                transform: 'translateX(-50%)',
+                                width: 1,
+                                height: h,
+                                background: '#ffffff',
+                                borderRadius: 1,
+                                zIndex: 2,
+                                pointerEvents: 'none',
+                                boxShadow: '0 0 0 0.5px rgba(0, 0, 0, 0.12)',
+                                opacity: isMajor ? 1 : 0.85,
+                              }}
+                            />
+                          )
+                        })}
+                        {jobCompleteTrackPct != null ? (
+                          <div
+                            aria-hidden
+                            style={{
+                              position: 'absolute',
+                              left: `${jobCompleteTrackPct}%`,
+                              top: 7,
+                              width: 10,
+                              height: 10,
+                              transform: 'translateX(-50%)',
+                              borderRadius: '50%',
+                              background: '#facc15',
+                              border: '1px solid #ca8a04',
+                              boxSizing: 'border-box',
+                              zIndex: 3,
+                              pointerEvents: 'none',
+                            }}
+                          />
+                        ) : null}
+                        <div
+                          role="slider"
+                          tabIndex={0}
+                          aria-label={`Paid plus break-off through ${Math.round(breakOffCombinedHandlePct)}% of job total. Track shows ${Math.round(breakOffBillingTrackPercents.paidPct)}% paid and ${Math.round(breakOffBillingTrackPercents.breakPreviewPct)}% new invoice preview. ${jobCompleteTrackPct == null ? 'Field progress not set.' : `Field progress ${Math.round(jobCompleteTrackPct)}%.`}`}
+                          aria-valuemin={Math.round(breakOffCombinedSliderBounds.min)}
+                          aria-valuemax={Math.round(breakOffCombinedSliderBounds.max)}
+                          aria-valuenow={Math.round(
+                            Math.min(
+                              breakOffCombinedSliderBounds.max,
+                              Math.max(breakOffCombinedSliderBounds.min, breakOffCombinedHandlePct),
+                            ),
+                          )}
+                          aria-orientation="horizontal"
+                          data-breakoff-slider-thumb
+                          onKeyDown={onBreakOffSliderKeyDown}
+                          style={{
+                            position: 'absolute',
+                            left: `${breakOffCombinedThumbLeftPct}%`,
+                            top: -2,
+                            transform: 'translateX(-50%)',
+                            zIndex: 5,
+                            lineHeight: 0,
+                            cursor: breakOffSliderDragCombinedPct != null ? 'grabbing' : 'grab',
+                            padding: '6px 10px',
+                            margin: '-6px -10px',
+                            outline: 'none',
+                          }}
+                        >
+                          <svg width="12" height="6" viewBox="0 0 12 6" aria-hidden>
+                            <polygon
+                              points="0,0 12,0 6,6"
+                              fill="#22c55e"
+                              stroke="#15803d"
+                              strokeWidth="0.75"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </div>
+                        <div
+                          style={{
+                            position: 'absolute',
+                            left: 0,
+                            right: 0,
+                            top: 20,
+                            height: 14,
+                          }}
+                        >
+                          {[20, 40, 60, 80].map((pct) => (
+                            <span
+                              key={`lbl-${pct}`}
+                              style={{
+                                position: 'absolute',
+                                left: `${pct}%`,
+                                transform: 'translateX(-50%)',
+                                fontSize: '0.65rem',
+                                color: '#6b7280',
+                                lineHeight: 1.2,
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {pct}%
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '0.75rem', color: '#6b7280', lineHeight: 1.4 }}>
+                      Add Specific Work lines to set Job Total for this chart.
+                    </div>
+                  )}
+                  {breakOffBillingTrackPercents.hasTotal ? (
+                    <div
+                      role="group"
+                      aria-label="Billing progress bar legend"
+                      style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.65rem 1rem',
+                        rowGap: '0.35rem',
+                        width: '100%',
+                        minWidth: 0,
+                        marginTop: 2,
+                      }}
+                    >
+                      {(
+                        [
+                          { color: '#2563eb', label: 'Paid', sub: '', circle: false },
+                          { color: '#93c5fd', label: 'New Invoice', sub: '', circle: false },
+                          {
+                            color: '#facc15',
+                            label:
+                              jobCompleteTrackPct == null ? 'Job: Not set' : `Job: ${Math.round(jobCompleteTrackPct)}%`,
+                            sub: '',
+                            circle: true,
+                          },
+                        ] as {
+                          color: string
+                          label: string
+                          sub: string
+                          circle: boolean
+                        }[]
+                      ).map((item) => (
+                        <div
+                          key={item.label}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'flex-start',
+                            gap: 6,
+                            maxWidth: '100%',
+                          }}
+                        >
+                          <span
+                            aria-hidden
+                            style={{
+                              width: 12,
+                              height: 12,
+                              borderRadius: item.circle ? '50%' : 3,
+                              background: item.color,
+                              border: item.circle ? '1px solid #ca8a04' : 'none',
+                              boxSizing: 'border-box',
+                              flexShrink: 0,
+                              marginTop: 2,
+                            }}
+                          />
+                          <span style={{ fontSize: '0.7rem', color: '#6b7280', lineHeight: 1.35, minWidth: 0 }}>
+                            <span style={{ fontWeight: 600, color: '#4b5563' }}>{item.label}</span>
+                            {item.sub ? (
+                              <>
+                                {' — '}
+                                {item.sub}
+                              </>
+                            ) : null}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
               {(editing.invoices ?? []).some((i) => i.status === 'ready_to_bill') && (
