@@ -7,103 +7,109 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-15
+last_updated: 2026-04-16
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.311 → v2.4"
+version_range: "v2.313 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.313)"
+    line: ~983
+    description: "Stripe multi-line from Specific Work; Edit Job Stripe char count + scope disclosure; Bill Customer line-on-bill defaults"
+  - name: "Latest Version (v2.312)"
+    line: ~995
+    description: "Jobs Specific Work: unit price + description per jobs_ledger_fixtures row; Detail + Billing grid"
   - name: "Latest Version (v2.311)"
-    line: ~971
+    line: ~1008
     description: "Bids Pricing price book New/Edit entry: decimal dollars (step 0.01, inputMode decimal)"
   - name: "Latest Version (v2.310)"
-    line: ~1000
+    line: ~1019
     description: "Quickfill Schedule/Office/Email/Texts/Physical UX + stale tally Assign modal seed fix; DispatchAddBlockTimeRange session strip sizing"
   - name: "Latest Version (v2.309)"
-    line: ~1030
+    line: ~1033
     description: "Quickfill Physical inbox section + Schedule Dispatch hub Day tab (hubTab=day, day= URL focus)"
   - name: "Latest Version (v2.308)"
-    line: ~980
+    line: ~1053
     description: "Quickfill Schedule: hide assistants/estimators toggle + fetchUsersTabRosterForScheduleDispatchHub (id, role)"
   - name: "Latest Version (v2.307)"
-    line: ~972
+    line: ~1064
     description: "Quickfill Schedule: client-side search by person or job (filteredSortedUsers, Clear)"
   - name: "Latest Version (v2.306)"
-    line: ~985
+    line: ~1074
     description: "Quickfill Schedule section: per-user read-only DispatchAddBlockTimeRange day preview + Schedule Dispatch link"
   - name: "Latest Version (v2.305)"
-    line: ~983
+    line: ~1089
     description: "Jobs Sub Labor modal: crew search UX, Add Sub, line items + footer layout, Itemize label, collapsed section headers"
   - name: "Latest Version (v2.304)"
-    line: ~970
+    line: ~1103
     description: "Stripe send confirm modal: PipeTooling send history from jobs_ledger_invoice_stripe_email_sends; Edge log append"
   - name: "Latest Version (v2.303)"
-    line: ~978
+    line: ~1115
     description: "Jobs Stages Last activity: Stripe emailed customer + Resend invoice email (send-stripe-invoice); StripeInvoiceSendFromStripeButton variants"
   - name: "Latest Version (v2.302)"
-    line: ~947
+    line: ~1128
     description: "Jobs Stages Ready to Bill: row amounts (unallocated / draft / remainder) + exposure total; jobsStagesBoard helpers + tests"
   - name: "Latest Version (v2.301)"
-    line: ~928
+    line: ~1140
     description: "Partial RTB + primary remainder: ensure_single_ready_to_bill_invoice_for_job multi-row; Jobs/Edit Job call ensure after partial insert"
   - name: "Latest Version (v2.300)"
-    line: ~928
+    line: ~1153
     description: "Send back from Billed: void-stripe-invoice-for-revert Edge + Jobs/Dashboard/ham + job-level pre-flight"
   - name: "Latest Version (v2.299)"
-    line: ~940
+    line: ~1165
     description: "Public /estimate/accept: AuthPublicLandingLayout + wide sign-in stack + white card; authPublicLanding.css --wide + thank-you inner chrome strip"
   - name: "Latest Version (v2.298)"
-    line: ~940
+    line: ~1176
     description: "Estimators: /customers route + nav; UPDATE RLS + trigger lock master_user_id and stripe_customer_id; EditCustomerForm omits master on save for estimators; ACCESS_CONTROL + Settings matrix"
   - name: "Latest Version (v2.297)"
-    line: ~952
+    line: ~1189
     description: "People Hours grid blur: proportional scale of closed clock_sessions into My Time (preserve share of day); open session → fetch modal + toast; draft fallback; peopleHoursProportionalScale.ts"
   - name: "Latest Version (v2.296)"
-    line: ~928
+    line: ~1207
     description: "Schedule Dispatch Add schedule block: occupied timeline (person-day), drag existing blocks as drafts, gap-clamped new range, batch save updates+insert; scheduleDispatchAddBlockTimeline.ts"
   - name: "Latest Version (v2.295)"
-    line: ~925
+    line: ~1220
     description: "Schedule Dispatch hub People: ++ multi-cell add mode, FAB choose job, applyHubMultiCellJob bulk insert; parseHubPersonDayKey"
   - name: "Latest Version (v2.294)"
-    line: ~925
+    line: ~1233
     description: "Schedule Dispatch hub People day cell: bottom-left triangle + opens Add job to schedule when cell has blocks (onHubAddJobToScheduleForCell)"
   - name: "Latest Version (v2.293)"
-    line: ~915
+    line: ~1243
     description: "Schedule Dispatch hub: empty People cell opens Add job to schedule directly (hubCellAddContext); picker Create new job; no Add schedule block modal"
   - name: "Latest Version (v2.292)"
-    line: ~910
+    line: ~1255
     description: "Clock In / Update Focus / Review before clock out: On schedule Dispatch job quick-picks (fetchDispatchScheduledJobsForAssigneeDay); work_date on open session for clock-out day; dedupe assigned list; info toast only when no assignments and no schedule"
   - name: "Latest Version (v2.291)"
-    line: ~910
+    line: ~1268
     description: "People Hours matrix: blur with hours>0 opens My Time draft (8am APP_CALENDAR_TZ) directly—no choice modal; draft INSERT in DashboardMyTimeDayEditorModal; grid max(people_hours, pending clock); saveHours(0) after draft save; no NCNS in that modal; roster name without users match → toast + grid-only save; peopleHoursManualDraftSession.ts"
   - name: "Latest Version (v2.290)"
-    line: ~905
+    line: ~1284
     description: "People dev-only Feedback tab (?tab=feedback): TeamFeedbackDevSettingsBlock standalone — Enabled persists to team_feedback_settings; Settings + Eligibility modals; raw submissions detail modal, CSV, dev delete; same block as Settings People & accounts"
   - name: "Latest Version (v2.289)"
-    line: ~915
+    line: ~1296
     description: "My Time: pairwise-overlap cluster split (one card per session), Form/Visual separators + overlap double border, compact list chrome, prior-week footer trim, time+jobs layout; Quickfill People Hours (new) mobile day nav"
   - name: "Latest Version (v2.288)"
-    line: ~930
+    line: ~1310
     description: "Estimates accepted-detail layout, Customer activity order/defaults, thank-you + chick, terms link line, footer tagline, link-view dedupe, CustomerSnapshotModal from detail"
   - name: "Latest Version (v2.287)"
-    line: ~920
+    line: ~1324
     description: "Estimates customer_accepted: read-only accepted snapshot (superseded layout in v2.288)"
   - name: "Latest Version (v2.286)"
-    line: ~888
+    line: ~1334
     description: "Jobs Stages: linked quote in Job column footer (estimates.job_ledger_id); loadJobs + pickLinkedEstimateForStagesBanner; project strip unchanged"
   - name: "Latest Version (v2.285)"
-    line: ~898
+    line: ~1346
     description: "Edit Job Billing: Outstanding billing table (date + (+n), Stages/Bill, Stripe share icons, full-width Note/Memo row); Payments received (Date, Amount ($), Memo; Stripe row vs header, Record Payment); Partial invoice layout; StripeInvoiceSharePanel inlineRow"
   - name: "Latest Version (v2.284)"
-    line: ~887
+    line: ~1357
     description: "Banking: product+tab URL (Mercury Ledger/Sorting vs Stripe Invoices/Data, dev-only Stripe); BankingStripeInvoicesPanel + BankingStripeWebhookEventsPanel; Jobs Stages: narrow loadJobs customer param, thread stats chunk 200 + generation guard, 320ms debounce"
   - name: "Latest Version (v2.283)"
-    line: ~900
+    line: ~1371
     description: "Bill Customer Stripe pre-create preview (preview-stripe-invoice); StripeBillPreSubmitPreview; stripeInvoiceShareCopy; BillCustomerModalProvider + Edit Job Preview/Stripe bill; modal z-index over Edit Job"
   - name: "Latest Version (v2.282)"
-    line: ~890
+    line: ~1388
     description: "Bill Customer Stripe tab (create-stripe-invoice); StripeInvoiceSharePanel (pay page, Dashboard, copy link, email, SMS text); webhook invoice.updated/voided/payment_failed; external_send_channel stripe"
   - name: "Latest Version (v2.281)"
     line: ~874
@@ -760,6 +766,8 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.313 — **Stripe** invoice lines from **Specific Work**; Edit Job **(n/500)** counter; **Bill Customer** line-on-bill](#latest-updates-v2313)
+**New:** [v2.312 — Jobs **Specific Work**: **Unit price** + **Description** per row (`jobs_ledger_fixtures`)](#latest-updates-v2312)
 **New:** [v2.311 — Bids **Pricing** price book **New/Edit entry**: **decimal** dollars (`step` 0.01)](#latest-updates-v2311)
 **New:** [v2.310 — Quickfill **Schedule** / **Office** / **Email** / **Texts** / **Physical** UX + **stale tally Assign** input fix](#latest-updates-v2310)
 **New:** [v2.309 — Quickfill **Physical inbox** + Schedule Dispatch hub **Day** tab (`hubTab=day`, `day=`)](#latest-updates-v2309)
@@ -970,6 +978,31 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.313)
+
+**Date**: 2026-04-16
+
+### **Stripe** lines from job **Specific Work**; Edit Job **Stripe length** hint; **Bill Customer** defaults
+
+- **Edge** — **[`create-stripe-invoice`](supabase/functions/create-stripe-invoice/index.ts)** and **[`preview-stripe-invoice`](supabase/functions/preview-stripe-invoice/index.ts)** load **`jobs_ledger_fixtures`** for the invoice’s job. With **billable** rows (non-empty trimmed **`name`**, **`count × line_unit_price` > 0**) and **no** non-empty body **`line_description`** (Bill Customer “Line on bill” override), they create **one** Stripe invoice line per fixture row (ordered by **`sequence_order`**), descriptions from **`name`** + optional **` — `** + trimmed **`line_description`** (scope), cent amounts **scaled proportionally** to **`amount_dollars`** when the bill is below the fixture subtotal. Shared builder: [`stripeInvoiceItemsFromFixtures.ts`](supabase/functions/_shared/stripeInvoiceItemsFromFixtures.ts). Non-empty body **`line_description`** forces the legacy **single** Stripe line for the full amount.
+- **Bill Customer** ([`SendRecordInvoiceModal.tsx`](src/components/jobs/SendRecordInvoiceModal.tsx)) — **Line on bill** starts **empty** after fixtures load when the job has billable Specific Work so preview/create omit the override and use multi-line items; otherwise the default line text is restored. Hint when billable: custom text replaces separate Stripe lines from Specific Work; leave blank for one line per row.
+- **Edit Job** ([`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)) — Under each Specific Work line: **`(n / 500) · name and optional scope for Stripe`** using [`stripeInvoiceFixtureLineLength`](src/lib/stripeInvoiceLineDescription.ts) (same trim + separator rule as Edge); **warning** color when **n > 500**. Visible **Description** label removed; **Add scope or notes** discloses the scope **`textarea`** with a visually hidden label + **`aria-describedby`** to the length line.
+
+---
+
+## Latest Updates (v2.312)
+
+**Date**: 2026-04-15
+
+### Jobs **Specific Work** — **Unit price** + **Description** per fixture row
+
+- **Schema** — Migration **`20260415222916_add_jobs_ledger_fixtures_unit_price_description.sql`**: **`jobs_ledger_fixtures.line_unit_price`** (**`numeric(12,2)`** nullable), **`line_description`** (**`text`** nullable). Optional scope/pricing per line; **not** **`jobs_ledger.revenue`**. Per-row **`line_description`** is **scope** text on that row’s Stripe invoice line when **multi-line Specific Work** billing runs (v2.313); it is **not** the Bill Customer modal’s single-line **`line_description`** body field.
+- **New/Edit Job** ([`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)) — Specific Work: **3-column** table; first row **Line item**, **Count**, third cell **Unit price** + **+** / remove (**flex**, tight gap); second row scope notes (**`textarea`**, **`colSpan` 3**); save/reload via existing delete-all + insert pattern. (v2.313: collapsible scope + Stripe length line — see above.)
+- **Job Detail** ([`DetailJobModal.tsx`](src/components/jobs/DetailJobModal.tsx)) — **`@ $… ea.`** when unit price set; description on a second line.
+- **Billing grid** ([`Jobs.tsx`](src/pages/Jobs.tsx)) — **Specific Work** column includes unit price and description lines when set.
+
 ---
 
 ## Latest Updates (v2.311)

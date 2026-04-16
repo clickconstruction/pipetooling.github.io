@@ -57,7 +57,10 @@ import CreateJobFromEstimateModal, {
 import { CustomerSnapshotModal } from '../components/customers/CustomerSnapshotModal'
 import { AcceptHeaderBrandPicker } from '../components/estimates/AcceptHeaderBrandPicker'
 import EstimateCustomerAttachmentCard from '../components/estimates/EstimateCustomerAttachmentCard'
-import EstimateCustomerDocument, { estimatePublicLineItems } from '../components/estimates/EstimateCustomerDocument'
+import EstimateCustomerDocument, {
+  estimatePublicLineItems,
+  EstimateLineItemsTable,
+} from '../components/estimates/EstimateCustomerDocument'
 import EstimateCustomerAcceptLinkButtons from '../components/estimates/EstimateCustomerAcceptLinkButtons'
 import IpAddressMapButton from '../components/estimates/IpAddressMapButton'
 import {
@@ -86,6 +89,7 @@ import {
   formatEstimateUpdatedRelativeCompact,
 } from '../lib/formatEstimateListUpdated'
 import { formatNotificationDatetime } from '../utils/formatNotificationDatetime'
+import { checkGoogleDriveAttachmentUrl } from '../lib/checkGoogleDriveAttachmentUrl'
 import {
   normalizeCustomerAttachmentDraftForDb,
   normalizeCustomerAttachmentUrl,
@@ -96,6 +100,12 @@ import { pageUnderlineTabStyle } from '../lib/pageUnderlineTabStyle'
 import { JobThreadNotesPanel, type JobThreadNoteRow } from '../components/JobThreadNotesPanel'
 import { getDispatchNoteDisplayMeta } from '../utils/dispatchNoteDisplay'
 import { useEstimateThreadNotes, type EstimateThreadNoteStats } from '../hooks/useEstimateThreadNotes'
+import {
+  computeEstimateLineExtendedCents,
+  normalizeEstimateLineItemsFromJson,
+  sumNormalizedLineItems,
+  type EstimateLineItemNormalized,
+} from '../lib/estimateLineItemNormalize'
 
 const ESTIMATE_CATALOG_EDITOR_ROLES = new Set<UserRole>([
   'dev',
@@ -107,9 +117,6 @@ const ESTIMATE_CATALOG_EDITOR_ROLES = new Set<UserRole>([
 ])
 
 const SEND_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-const ESTIMATE_ATTACHMENT_LIKELY_OK_HTML_COPY =
-  'Works! — you should open the link in a private or incognito window to be sure.'
 
 const ESTIMATE_EMAIL_FROM_LABEL = 'PipeTooling <team@noreply.pipetooling.com>'
 
@@ -476,23 +483,64 @@ function estimateLinkedJobHcp(r: { jobs_ledger?: { hcp_number: string } | null }
   const t = (r.jobs_ledger?.hcp_number ?? '').trim()
   return t || null
 }
-type LineItem = { description: string; amount_cents: number }
+type LineItem = EstimateLineItemNormalized
 
-const DEFAULT_DRAFT_FIRST_LINE_DESCRIPTION = 'Custom Service Visit'
+const DEFAULT_DRAFT_FIRST_LINE_ITEM = 'Custom Service Visit'
+
+/** New stub: default line item + empty description. Legacy stub: empty line item + default in description. */
+function isDefaultDraftStubShape(line_item: string, description: string, amount_cents: number): boolean {
+  if (amount_cents !== 0) return false
+  const def = DEFAULT_DRAFT_FIRST_LINE_ITEM.toLowerCase()
+  const li = line_item.trim().toLowerCase()
+  const desc = description.trim().toLowerCase()
+  if (li === def && desc === '') return true
+  if (line_item.trim() === '' && desc === def) return true
+  return false
+}
+
+function defaultDraftFirstLine(): LineItem {
+  const quantity = 1
+  const unit_price_cents = 0
+  return {
+    line_item: DEFAULT_DRAFT_FIRST_LINE_ITEM,
+    description: '',
+    quantity,
+    unit_price_cents,
+    amount_cents: computeEstimateLineExtendedCents(quantity, unit_price_cents),
+  }
+}
+
+function emptyDraftLine(): LineItem {
+  const quantity = 1
+  const unit_price_cents = 0
+  return {
+    line_item: '',
+    description: '',
+    quantity,
+    unit_price_cents,
+    amount_cents: computeEstimateLineExtendedCents(quantity, unit_price_cents),
+  }
+}
+
+function emptyCatalogEditRow(): EstimateCatalogLineItem {
+  const quantity = 1
+  const unit_price_cents = 0
+  return {
+    id: '',
+    line_item: '',
+    description: '',
+    quantity,
+    unit_price_cents,
+    amount_cents: computeEstimateLineExtendedCents(quantity, unit_price_cents),
+  }
+}
 
 function lineItemsFromJson(raw: unknown): LineItem[] {
-  if (!Array.isArray(raw)) return []
-  return raw.map((x) => {
-    const o = x as Record<string, unknown>
-    return {
-      description: String(o.description ?? ''),
-      amount_cents: Math.max(0, Math.round(Number(o.amount_cents ?? 0))),
-    }
-  })
+  return normalizeEstimateLineItemsFromJson(raw)
 }
 
 function sumLineItems(lines: LineItem[]): number {
-  return lines.reduce((s, r) => s + r.amount_cents, 0)
+  return sumNormalizedLineItems(lines)
 }
 
 function formatMoney(cents: number): string {
@@ -1182,7 +1230,7 @@ function EstimateList() {
               master_user_id: masterUserId,
               created_by: user.id,
               title: '',
-              line_items_snapshot: [{ description: DEFAULT_DRAFT_FIRST_LINE_DESCRIPTION, amount_cents: 0 }],
+              line_items_snapshot: [defaultDraftFirstLine()],
               terms_snapshot: '',
               total_cents: 0,
             })
@@ -1755,9 +1803,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       setTerms(r.terms_snapshot ?? '')
       const parsedLines = lineItemsFromJson(r.line_items_snapshot)
       setLines(
-        r.status === 'draft' && parsedLines.length === 0 ?
-          [{ description: DEFAULT_DRAFT_FIRST_LINE_DESCRIPTION, amount_cents: 0 }]
-        : parsedLines,
+        r.status === 'draft' && parsedLines.length === 0 ? [defaultDraftFirstLine()] : parsedLines,
       )
       setCustomerId(r.customer_id ?? null)
       const vu = (r.valid_until ?? '').trim()
@@ -2446,70 +2492,14 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     }
     setAttachmentCheckStatus('loading')
     setAttachmentCheckMessage('')
-    try {
-      const { data: sess } = await supabase.auth.getSession()
-      const jwt = sess.session?.access_token
-      if (!jwt) {
-        showToast('Not signed in', 'error')
-        setAttachmentCheckStatus('error')
-        setAttachmentCheckMessage('Not signed in.')
-        return
-      }
-      const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/check-estimate-attachment-url`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${jwt}`,
-            apikey: anon,
-          },
-          body: JSON.stringify({ url: u }),
-        },
-      )
-      const json = (await res.json()) as {
-        ok?: boolean
-        result?: 'likely_public' | 'likely_ok_html' | 'likely_restricted' | 'unknown'
-        message?: string
-        error?: string
-      }
-      if (!res.ok) {
-        setAttachmentCheckStatus('error')
-        setAttachmentCheckMessage(json.error || `Check failed (${res.status}).`)
-        return
-      }
-      if (!json.ok) {
-        setAttachmentCheckStatus('error')
-        setAttachmentCheckMessage(json.error || 'Check failed.')
-        return
-      }
-      const r = json.result
-      const extra =
-        ' This check is a best-effort hint only — open the link in a private or incognito window to be sure.'
-      if (r === 'likely_public' || r === 'likely_ok_html') {
-        setAttachmentCheckStatus('success')
-        if (r === 'likely_ok_html') {
-          const m = json.message?.trim()
-          setAttachmentCheckMessage(m || ESTIMATE_ATTACHMENT_LIKELY_OK_HTML_COPY)
-        } else {
-          setAttachmentCheckMessage(
-            (json.message ? json.message : 'Likely viewable without signing in.') + extra,
-          )
-        }
-      } else {
-        setAttachmentCheckStatus('warn')
-        setAttachmentCheckMessage(
-          (json.message ||
-            (r === 'likely_restricted'
-              ? 'This link may require sign-in or permission.'
-              : 'Could not tell from the response — verify sharing.')) + extra,
-        )
-      }
-    } catch (e) {
-      setAttachmentCheckStatus('error')
-      setAttachmentCheckMessage(formatErrorMessage(e, 'Check failed'))
+    const result = await checkGoogleDriveAttachmentUrl(customerAttachmentUrl)
+    if (result.status === 'error' && result.message === 'Not signed in.') {
+      showToast('Not signed in', 'error')
     }
+    setAttachmentCheckStatus(
+      result.status === 'success' ? 'success' : result.status === 'warn' ? 'warn' : 'error',
+    )
+    setAttachmentCheckMessage(result.message)
   }, [customerAttachmentUrl, showToast])
 
   function openCreateJobModal() {
@@ -2570,10 +2560,14 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       const next = [...prev]
       const cur = next[i]
       if (!cur) return prev
-      next[i] = {
-        description: patch.description !== undefined ? patch.description : cur.description,
-        amount_cents: patch.amount_cents !== undefined ? patch.amount_cents : cur.amount_cents,
-      }
+      const line_item = patch.line_item !== undefined ? patch.line_item : cur.line_item
+      const description = patch.description !== undefined ? patch.description : cur.description
+      let quantity = patch.quantity !== undefined ? patch.quantity : cur.quantity
+      if (!Number.isFinite(quantity) || quantity <= 0) quantity = 1
+      const unit_price_cents =
+        patch.unit_price_cents !== undefined ? patch.unit_price_cents : cur.unit_price_cents
+      const amount_cents = computeEstimateLineExtendedCents(quantity, unit_price_cents)
+      next[i] = { line_item, description, quantity, unit_price_cents, amount_cents }
       return next
     })
   }
@@ -2581,7 +2575,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   const lineItemRecentChips = useMemo(
     () =>
       resolveRecentChips(lineItemRecentIds, catalogLineItems).filter(
-        (c) => c.description.trim().toLowerCase() !== DEFAULT_DRAFT_FIRST_LINE_DESCRIPTION.toLowerCase(),
+        (c) => !isDefaultDraftStubShape(c.line_item, c.description, c.amount_cents),
       ),
     [lineItemRecentIds, catalogLineItems],
   )
@@ -2590,21 +2584,48 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     const q = catalogFilter.trim().toLowerCase()
     if (!q) return catalogLineItems
     return catalogLineItems.filter((c) => {
+      if (c.line_item.toLowerCase().includes(q)) return true
       if (c.description.toLowerCase().includes(q)) return true
+      if (String(c.quantity).includes(q)) return true
+      if (String(c.unit_price_cents).includes(q)) return true
       if (String(c.amount_cents).includes(q)) return true
-      return formatMoney(c.amount_cents).toLowerCase().includes(q)
+      return formatMoney(c.unit_price_cents).toLowerCase().includes(q)
+        || formatMoney(c.amount_cents).toLowerCase().includes(q)
     })
   }, [catalogLineItems, catalogFilter])
 
+  function catalogEntryToLineItem(entry: EstimateCatalogLineItem): LineItem {
+    const quantity = Number(entry.quantity) > 0 ? Number(entry.quantity) : 1
+    const unit_price_cents = Math.max(0, Math.round(entry.unit_price_cents))
+    return {
+      line_item: entry.line_item,
+      description: entry.description,
+      quantity,
+      unit_price_cents,
+      amount_cents: computeEstimateLineExtendedCents(quantity, unit_price_cents),
+    }
+  }
+
+  function isBlankDraftLine(l: LineItem): boolean {
+    return l.line_item.trim() === '' && l.description.trim() === '' && l.amount_cents === 0
+  }
+
+  /** Last row is empty or the default first-line placeholder (replace when inserting from catalog). */
+  function isReplaceableStubLine(l: LineItem): boolean {
+    if (isBlankDraftLine(l)) return true
+    return isDefaultDraftStubShape(l.line_item, l.description, l.amount_cents)
+  }
+
   function applyFromCatalogEntry(entry: EstimateCatalogLineItem) {
+    const row = catalogEntryToLineItem(entry)
     setLines((prev) => {
       const last = prev[prev.length - 1]
-      if (last && last.description.trim() === '' && last.amount_cents === 0) {
+      if (last && isReplaceableStubLine(last)) {
         const next = [...prev]
-        next[next.length - 1] = { description: entry.description, amount_cents: entry.amount_cents }
+        next[next.length - 1] = row
         return next
       }
-      return [...prev, { description: entry.description, amount_cents: entry.amount_cents }]
+      return [...prev, row]
     })
     if (user?.id) {
       const sk = estimateLineItemRecentsStorageKey(user.id)
@@ -2637,15 +2658,24 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
 
   function catalogEventSummary(e: EstimateCatalogItemEventRow): string {
     const fmt = (c: number | null | undefined) => (c == null ? '—' : formatMoney(c))
+    const fmtQty = (q: number | null | undefined) => (q == null ? '—' : String(q))
+    const lineLbl = (line: string | null | undefined, desc: string | null | undefined) => {
+      const a = (line ?? '').trim()
+      const b = (desc ?? '').trim()
+      if (a && b) return `"${a}" (${b})`
+      if (a) return `"${a}"`
+      if (b) return `"${b}"`
+      return '—'
+    }
     switch (e.action) {
       case 'create':
-        return `Added: ${e.new_description ?? '—'} — ${fmt(e.new_amount_cents)}`
+        return `Added: ${lineLbl(e.new_line_item, e.new_description)} · qty ${fmtQty(e.new_quantity)} × ${fmt(e.new_unit_price_cents)} = ${fmt(e.new_amount_cents)}`
       case 'update':
-        return `Updated: "${e.prev_description ?? ''}" ${fmt(e.prev_amount_cents)} → "${e.new_description ?? ''}" ${fmt(e.new_amount_cents)}`
+        return `Updated: ${lineLbl(e.prev_line_item, e.prev_description)} qty ${fmtQty(e.prev_quantity)} × ${fmt(e.prev_unit_price_cents)} → ${lineLbl(e.new_line_item, e.new_description)} qty ${fmtQty(e.new_quantity)} × ${fmt(e.new_unit_price_cents)}`
       case 'delete':
-        return `Removed: "${e.prev_description ?? ''}" ${fmt(e.prev_amount_cents)}`
+        return `Removed: ${lineLbl(e.prev_line_item, e.prev_description)} · qty ${fmtQty(e.prev_quantity)} × ${fmt(e.prev_unit_price_cents)}`
       case 'restore':
-        return `Restored: ${e.new_description ?? '—'} — ${fmt(e.new_amount_cents)}`
+        return `Restored: ${lineLbl(e.new_line_item, e.new_description)} · qty ${fmtQty(e.new_quantity)} × ${fmt(e.new_unit_price_cents)} = ${fmt(e.new_amount_cents)}`
       default:
         return String(e.action)
     }
@@ -2941,24 +2971,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.5rem' }}>
               {staffResolvedExperience?.docLineItemsHeading ?? 'Line items'}
             </h2>
-            <ul
-              style={{
-                margin: 0,
-                paddingLeft: '1.25rem',
-                fontSize: '0.9rem',
-                color: '#374151',
-              }}
-            >
-              {(() => {
-                const snapshotLines = estimatePublicLineItems(row.line_items_snapshot)
-                if (snapshotLines.length === 0) return <li>—</li>
-                return snapshotLines.map((line, i) => (
-                  <li key={i} style={{ marginBottom: '0.35rem' }}>
-                    {(line.description ?? '').trim() || 'Item'} — {formatMoney(Number(line.amount_cents ?? 0))}
-                  </li>
-                ))
-              })()}
-            </ul>
+            <div style={{ fontSize: '0.9rem', color: '#374151' }}>
+              <EstimateLineItemsTable lines={estimatePublicLineItems(row.line_items_snapshot)} />
+            </div>
           </section>
         </>
       ) : null}
@@ -3154,14 +3169,14 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             >
               <h2 style={{ fontSize: '1.1rem', margin: 0 }}>Line items</h2>
               {lineItemRecentChips.map((c) => {
-                const short =
-                  c.description.length > 36 ? `${c.description.slice(0, 35)}…` : c.description || '(no description)'
+                const primary = (c.line_item.trim() || c.description.trim() || '(line)').slice(0, 40)
+                const short = primary.length > 36 ? `${primary.slice(0, 35)}…` : primary
                 return (
                   <button
                     key={c.id}
                     type="button"
                     onClick={() => applyFromCatalogEntry(c)}
-                    title={`${c.description} — ${formatMoney(c.amount_cents)}`}
+                    title={`${c.line_item ? `${c.line_item} · ` : ''}${c.description} — ${c.quantity} × ${formatMoney(c.unit_price_cents)}`}
                     style={{
                       padding: '0.35rem 0.65rem',
                       fontSize: '0.8125rem',
@@ -3330,9 +3345,12 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                                   fontSize: '0.9rem',
                                 }}
                               >
-                                <span style={{ display: 'block', fontWeight: 500 }}>{c.description || '—'}</span>
-                                <span style={{ color: '#6b7280', fontVariantNumeric: 'tabular-nums' }}>
-                                  {formatMoney(c.amount_cents)}
+                                <span style={{ display: 'block', fontWeight: 500 }}>
+                                  {c.line_item.trim() || c.description.trim() || '—'}
+                                </span>
+                                <span style={{ color: '#6b7280', fontVariantNumeric: 'tabular-nums', fontSize: '0.8125rem' }}>
+                                  {c.quantity} × {formatMoney(c.unit_price_cents)}
+                                  {c.line_item.trim() && c.description.trim() ? ` · ${c.description.trim()}` : ''}
                                 </span>
                               </button>
                               <button
@@ -3412,12 +3430,89 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                           key={r.id && r.id.trim() !== '' ? r.id : `new-row-${idx}`}
                           style={{
                             display: 'flex',
-                            flexWrap: 'wrap',
-                            gap: '0.5rem',
-                            alignItems: 'center',
+                            flexDirection: 'column',
+                            gap: '0.35rem',
                             marginBottom: '0.5rem',
                           }}
                         >
+                          <div
+                            style={{
+                              display: 'flex',
+                              flexWrap: 'wrap',
+                              gap: '0.5rem',
+                              alignItems: 'center',
+                            }}
+                          >
+                            <input
+                              value={r.line_item}
+                              onChange={(e) => {
+                                const v = e.target.value
+                                setCatalogEditRows((prev) => {
+                                  const next = [...prev]
+                                  const cur = next[idx]
+                                  if (!cur) return prev
+                                  next[idx] = { ...cur, line_item: v }
+                                  return next
+                                })
+                              }}
+                              placeholder="Line item"
+                              style={{
+                                ...estInputBase,
+                                flex: '1 1 120px',
+                                padding: '0.5rem',
+                                minWidth: 0,
+                              }}
+                            />
+                            <input
+                              className="no-spinner"
+                              type="number"
+                              min={0}
+                              step="any"
+                              value={r.quantity}
+                              onChange={(e) => {
+                                let q = Number(e.target.value)
+                                if (!Number.isFinite(q) || q <= 0) q = 1
+                                setCatalogEditRows((prev) => {
+                                  const next = [...prev]
+                                  const cur = next[idx]
+                                  if (!cur) return prev
+                                  const amount_cents = computeEstimateLineExtendedCents(q, cur.unit_price_cents)
+                                  next[idx] = { ...cur, quantity: q, amount_cents }
+                                  return next
+                              })
+                              }}
+                              placeholder="Count"
+                              title="Count"
+                              style={{ ...estInputBase, width: 72, padding: '0.5rem' }}
+                            />
+                            <input
+                              className="no-spinner"
+                              type="number"
+                              min={0}
+                              step="0.01"
+                              value={r.unit_price_cents ? r.unit_price_cents / 100 : ''}
+                              onChange={(e) => {
+                                const unit = Math.max(0, Math.round(Number(e.target.value || '0') * 100))
+                                setCatalogEditRows((prev) => {
+                                  const next = [...prev]
+                                  const cur = next[idx]
+                                  if (!cur) return prev
+                                  const amount_cents = computeEstimateLineExtendedCents(cur.quantity, unit)
+                                  next[idx] = { ...cur, unit_price_cents: unit, amount_cents }
+                                  return next
+                                })
+                              }}
+                              placeholder="Unit ($)"
+                              style={{ ...estInputBase, width: 100, padding: '0.5rem' }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setCatalogEditRows((prev) => prev.filter((_, j) => j !== idx))}
+                              style={estDangerOutlineButton()}
+                            >
+                              Remove
+                            </button>
+                          </div>
                           <input
                             value={r.description}
                             onChange={(e) => {
@@ -3430,48 +3525,22 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                                 return next
                               })
                             }}
-                            placeholder="Description"
+                            placeholder="Description (optional)"
+                            aria-label="Description (optional)"
                             style={{
                               ...estInputBase,
-                              flex: '1 1 200px',
-                              padding: '0.5rem',
+                              width: '100%',
                               minWidth: 0,
+                              boxSizing: 'border-box',
+                              padding: '0.5rem',
                             }}
                           />
-                          <input
-                            className="no-spinner"
-                            type="number"
-                            min={0}
-                            step="0.01"
-                            value={r.amount_cents ? r.amount_cents / 100 : ''}
-                            onChange={(e) => {
-                              const n = Math.round(Number(e.target.value || '0') * 100)
-                              setCatalogEditRows((prev) => {
-                                const next = [...prev]
-                                const cur = next[idx]
-                                if (!cur) return prev
-                                next[idx] = { ...cur, amount_cents: Math.max(0, n) }
-                                return next
-                              })
-                            }}
-                            placeholder="Amount (USD)"
-                            style={{ ...estInputBase, width: 120, padding: '0.5rem' }}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setCatalogEditRows((prev) => prev.filter((_, j) => j !== idx))}
-                            style={estDangerOutlineButton()}
-                          >
-                            Remove
-                          </button>
                         </div>
                       ))}
                       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
                         <button
                           type="button"
-                          onClick={() =>
-                            setCatalogEditRows((prev) => [...prev, { id: '', description: '', amount_cents: 0 }])
-                          }
+                          onClick={() => setCatalogEditRows((prev) => [...prev, emptyCatalogEditRow()])}
                           style={estSecondaryButton()}
                         >
                           Add row
@@ -3502,36 +3571,50 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                   <div
                     style={{
                       display: 'flex',
-                      gap: '0.5rem',
-                      flexWrap: 'wrap',
-                      alignItems: 'center',
+                      flexDirection: 'column',
+                      gap: '0.35rem',
                     }}
                   >
-                    <input
-                      placeholder="Description"
-                      value={ln.description}
-                      onChange={(e) => updateLine(i, { description: e.target.value })}
-                      style={{ ...estInputBase, flex: '1 1 200px', padding: '0.5rem', minWidth: 0 }}
-                    />
                     <div
                       style={{
                         display: 'flex',
-                        alignItems: 'center',
                         gap: '0.5rem',
-                        flexShrink: 0,
+                        flexWrap: 'wrap',
+                        alignItems: 'center',
                       }}
                     >
+                      <input
+                        placeholder="Line item"
+                        value={ln.line_item}
+                        onChange={(e) => updateLine(i, { line_item: e.target.value })}
+                        style={{ ...estInputBase, flex: '1 1 120px', padding: '0.5rem', minWidth: 0 }}
+                      />
+                      <input
+                        className="no-spinner"
+                        type="number"
+                        min={0}
+                        step="any"
+                        placeholder="Count"
+                        title="Count"
+                        value={ln.quantity}
+                        onChange={(e) => {
+                          let q = Number(e.target.value)
+                          if (!Number.isFinite(q) || q <= 0) q = 1
+                          updateLine(i, { quantity: q })
+                        }}
+                        style={{ ...estInputBase, width: 72, padding: '0.5rem' }}
+                      />
                       <input
                         className="no-spinner"
                         type="number"
                         min={0}
                         step="0.01"
-                        placeholder="Amount (USD)"
-                        value={ln.amount_cents ? ln.amount_cents / 100 : ''}
+                        placeholder="Unit ($)"
+                        value={ln.unit_price_cents ? ln.unit_price_cents / 100 : ''}
                         onChange={(e) =>
-                          updateLine(i, { amount_cents: Math.round(Number(e.target.value || '0') * 100) })
+                          updateLine(i, { unit_price_cents: Math.round(Number(e.target.value || '0') * 100) })
                         }
-                        style={{ ...estInputBase, width: 120, padding: '0.5rem' }}
+                        style={{ ...estInputBase, width: 100, padding: '0.5rem' }}
                       />
                       <button
                         type="button"
@@ -3554,11 +3637,25 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                           fontWeight: 500,
                           lineHeight: 0,
                           cursor: 'pointer',
+                          flexShrink: 0,
                         }}
                       >
                         −
                       </button>
                     </div>
+                    <input
+                      placeholder="Description (optional)"
+                      aria-label="Description (optional)"
+                      value={ln.description}
+                      onChange={(e) => updateLine(i, { description: e.target.value })}
+                      style={{
+                        ...estInputBase,
+                        width: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
+                        padding: '0.5rem',
+                      }}
+                    />
                   </div>
                 </li>
               ))}
@@ -3573,7 +3670,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 >
                   <button
                     type="button"
-                    onClick={() => setLines((p) => [...p, { description: '', amount_cents: 0 }])}
+                    onClick={() => setLines((p) => [...p, emptyDraftLine()])}
                     aria-label="Add line"
                     title="Add line"
                     style={{

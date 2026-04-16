@@ -7748,7 +7748,19 @@ ${totalsHtml}
                           ? '—'
                           : job.fixtures
                               .filter((f) => (f.name ?? '').trim())
-                              .map((f) => (f.count > 1 ? `${f.name} × ${f.count}` : f.name))
+                              .map((f) => {
+                                let line = f.count > 1 ? `${f.name} × ${f.count}` : f.name
+                                if (
+                                  f.line_unit_price != null &&
+                                  Number.isFinite(Number(f.line_unit_price)) &&
+                                  Number(f.line_unit_price) > 0
+                                ) {
+                                  line += ` @ $${formatCurrency(Number(f.line_unit_price))}`
+                                }
+                                const desc = (f.line_description ?? '').trim()
+                                if (desc) line += `\n${desc}`
+                                return line
+                              })
                               .join('\n')}
                       </td>
                       <td style={{ padding: '0.75rem', whiteSpace: 'pre-wrap', maxWidth: 200 }}>

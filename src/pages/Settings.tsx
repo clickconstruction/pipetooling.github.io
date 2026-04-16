@@ -41,6 +41,7 @@ import {
 import { ESTIMATE_PUBLIC_TERMS_BODY_APP_KEY } from '../lib/estimatePublicTerms'
 import type { EstimateCatalogLineItem } from '../lib/estimateLineItemCatalog'
 import { catalogDbRowsToLineItems, fetchEstimateCatalogLive, replaceEstimateCatalogFromPayload } from '../lib/estimateCatalogApi'
+import { computeEstimateLineExtendedCents } from '../lib/estimateLineItemNormalize'
 import { formatNotificationDatetime } from '../utils/formatNotificationDatetime'
 
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator' | 'primary' | 'superintendent'
@@ -9359,7 +9360,8 @@ export default function Settings() {
             {estimateLineItemCatalogSectionOpen && (
               <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
                 <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
-                  Preset descriptions and amounts for draft estimates. Staff pick from the book icon next to Line items.
+                  Preset line item, count, unit price, and optional description for draft estimates. Staff pick from the
+                  book icon next to Line items.
                 </p>
                 <form onSubmit={saveEstimateLineItemCatalog}>
                   {estimateLineItemCatalogRows.map((r, idx) => (
@@ -9374,6 +9376,61 @@ export default function Settings() {
                       }}
                     >
                       <input
+                        value={r.line_item}
+                        onChange={(e) => {
+                          const v = e.target.value
+                          setEstimateLineItemCatalogRows((prev) => {
+                            const next = [...prev]
+                            const cur = next[idx]
+                            if (!cur) return prev
+                            next[idx] = { ...cur, line_item: v }
+                            return next
+                          })
+                        }}
+                        placeholder="Line item"
+                        style={{ flex: '1 1 120px', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      />
+                      <input
+                        type="number"
+                        min={0}
+                        step="any"
+                        value={r.quantity}
+                        onChange={(e) => {
+                          let q = Number(e.target.value)
+                          if (!Number.isFinite(q) || q <= 0) q = 1
+                          setEstimateLineItemCatalogRows((prev) => {
+                            const next = [...prev]
+                            const cur = next[idx]
+                            if (!cur) return prev
+                            const amount_cents = computeEstimateLineExtendedCents(q, cur.unit_price_cents)
+                            next[idx] = { ...cur, quantity: q, amount_cents }
+                            return next
+                          })
+                        }}
+                        placeholder="Count"
+                        title="Count"
+                        style={{ width: 72, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      />
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={r.unit_price_cents ? r.unit_price_cents / 100 : ''}
+                        onChange={(e) => {
+                          const unit = Math.max(0, Math.round(Number(e.target.value || '0') * 100))
+                          setEstimateLineItemCatalogRows((prev) => {
+                            const next = [...prev]
+                            const cur = next[idx]
+                            if (!cur) return prev
+                            const amount_cents = computeEstimateLineExtendedCents(cur.quantity, unit)
+                            next[idx] = { ...cur, unit_price_cents: unit, amount_cents }
+                            return next
+                          })
+                        }}
+                        placeholder="Unit ($)"
+                        style={{ width: 100, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      />
+                      <input
                         value={r.description}
                         onChange={(e) => {
                           const v = e.target.value
@@ -9381,30 +9438,13 @@ export default function Settings() {
                             const next = [...prev]
                             const cur = next[idx]
                             if (!cur) return prev
-                            next[idx] = { id: cur.id, description: v, amount_cents: cur.amount_cents }
+                            next[idx] = { ...cur, description: v }
                             return next
                           })
                         }}
-                        placeholder="Description"
-                        style={{ flex: '1 1 200px', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                      />
-                      <input
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        value={r.amount_cents ? r.amount_cents / 100 : ''}
-                        onChange={(e) => {
-                          const n = Math.round(Number(e.target.value || '0') * 100)
-                          setEstimateLineItemCatalogRows((prev) => {
-                            const next = [...prev]
-                            const cur = next[idx]
-                            if (!cur) return prev
-                            next[idx] = { id: cur.id, description: cur.description, amount_cents: Math.max(0, n) }
-                            return next
-                          })
-                        }}
-                        placeholder="Amount (USD)"
-                        style={{ width: 120, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                        placeholder="Description (optional)"
+                        aria-label="Description (optional)"
+                        style={{ flex: '1 1 160px', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
                       />
                       <button
                         type="button"
@@ -9422,7 +9462,14 @@ export default function Settings() {
                       onClick={() =>
                         setEstimateLineItemCatalogRows((prev) => [
                           ...prev,
-                          { id: '', description: '', amount_cents: 0 },
+                          {
+                            id: '',
+                            line_item: '',
+                            description: '',
+                            quantity: 1,
+                            unit_price_cents: 0,
+                            amount_cents: 0,
+                          },
                         ])
                       }
                     >

@@ -12,13 +12,13 @@ import {
   isMissingStripeCustomerError,
 } from '../_shared/stripeStaleCustomer.ts'
 import { stripeInvoiceSnapshotForResponse } from '../_shared/stripeInvoiceSnapshot.ts'
-import { resolveInvoiceLineDescription } from '../_shared/stripeLineDescription.ts'
 import { STRIPE_INVOICE_FOOTER_MAX_CHARS } from '../_shared/stripeInvoiceFooter.ts'
 import {
   stripeInvoiceDescriptionFromStripe,
   stripeInvoiceFooterFromStripe,
 } from '../_shared/stripeInvoiceMemoFromStripe.ts'
 import { buildPipetoolingStripeInvoiceNumber } from '../_shared/pipetoolingStripeInvoiceNumber.ts'
+import { buildStripeInvoiceItemsFromFixtures } from '../_shared/stripeInvoiceItemsFromFixtures.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -300,16 +300,34 @@ serve(async (req) => {
       return jsonResponse({ error: 'Amount too small' }, 400)
     }
 
-    const lineResolved = resolveInvoiceLineDescription({
-      override: lineDescriptionRaw,
+    const { data: fixturesRows, error: fixturesErr } = await admin
+      .from('jobs_ledger_fixtures')
+      .select('name, count, line_unit_price, line_description, sequence_order')
+      .eq('job_id', invRow.job_id)
+      .order('sequence_order', { ascending: true })
+
+    if (fixturesErr) {
+      console.warn('create-stripe-invoice: fixtures load failed', fixturesErr)
+      return jsonResponse({ error: 'Could not load job line items for invoice' }, 500)
+    }
+
+    const lineItemsBuilt = buildStripeInvoiceItemsFromFixtures({
+      fixtures: (fixturesRows ?? []) as {
+        name: string
+        count: number
+        line_unit_price: number | null
+        line_description: string | null
+        sequence_order: number
+      }[],
+      targetAmountCents: amountCents,
+      lineDescriptionOverride: lineDescriptionRaw,
       customerName: customer_name.trim(),
       jobName: jobRow.job_name,
       hcpNumber: jobRow.hcp_number,
     })
-    if (!lineResolved.ok) {
-      return jsonResponse({ error: lineResolved.error }, 400)
+    if (!lineItemsBuilt.ok) {
+      return jsonResponse({ error: lineItemsBuilt.error }, 400)
     }
-    const lineDesc = lineResolved.lineDesc
 
     const d = daysUntilDue(due_date.trim())
 
@@ -340,13 +358,15 @@ serve(async (req) => {
       throw e
     }
 
-    await stripe.invoiceItems.create({
-      customer: stripeCustomerId!,
-      invoice: invoice.id,
-      amount: amountCents,
-      currency: 'usd',
-      description: lineDesc,
-    })
+    for (const lineItem of lineItemsBuilt.items) {
+      await stripe.invoiceItems.create({
+        customer: stripeCustomerId!,
+        invoice: invoice.id,
+        amount: lineItem.amount,
+        currency: 'usd',
+        description: lineItem.description,
+      })
+    }
 
     const finalized = await stripe.invoices.finalizeInvoice(invoice.id)
     const hostedUrl = finalized.hosted_invoice_url

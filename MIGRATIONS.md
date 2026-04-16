@@ -92,6 +92,26 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### April 2026
 
+#### April 15, 2026
+
+**`20260415222916_add_jobs_ledger_fixtures_unit_price_description.sql`**
+- **Purpose**: Optional **unit price** and **per-line description** (**scope**) on **`jobs_ledger_fixtures`** (New/Edit Job **Specific Work**). **`line_description`** is **not** the Bill Customer request-body **`line_description`** override; it **is** combined with **`name`** for each Stripe invoice line when **`create-stripe-invoice`** / **`preview-stripe-invoice`** build multiple lines from billable fixtures.
+- **Changes**: **`line_unit_price`** **`numeric(12,2) NULL`**, **`line_description`** **`text NULL`**
+- **Impact**: [`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx), [`DetailJobModal.tsx`](src/components/jobs/DetailJobModal.tsx), [`Jobs.tsx`](src/pages/Jobs.tsx) Billing grid; types
+- **Category**: Jobs / Billing
+
+**`20260415222132_drop_bids_count_rows_line_price_description.sql`**
+- **Purpose**: Drop **`bids_count_rows.line_unit_price`** and **`line_description`** (revert optional Counts fields; UI/import/CSV and Documents bid-proposal helpers restored without these columns)
+- **Changes**: **`ALTER TABLE public.bids_count_rows`** **`DROP COLUMN IF EXISTS`** for both columns
+- **Impact**: [`Bids.tsx`](src/pages/Bids.tsx), [`Documents.tsx`](src/pages/Documents.tsx), types
+- **Category**: Bids / Counts
+
+**`20260415221117_bids_count_rows_line_price_description.sql`**
+- **Purpose**: (Historical) Added optional **Unit price** and **Description** on count rows; **current** linked databases after **`20260415222132_...`** no longer have these columns
+- **Changes**: **`bids_count_rows.line_unit_price`** **`numeric(12,2) NULL`**, **`line_description`** **`text NULL`** (since dropped)
+- **Impact**: None on current schema; keep file for migration history only
+- **Category**: Bids / Counts
+
 #### April 14, 2026
 
 **`20260414064105_jobs_ledger_invoice_stripe_email_sends.sql`**

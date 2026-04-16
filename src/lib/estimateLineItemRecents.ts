@@ -48,7 +48,10 @@ export function recordRecentCatalogPick(currentIds: string[], pickedId: string):
 
 export type ResolvedRecentChip = {
   id: string
+  line_item: string
   description: string
+  quantity: number
+  unit_price_cents: number
   amount_cents: number
 }
 
@@ -62,7 +65,14 @@ export function resolveRecentChips(
   for (const rid of recentIds) {
     const c = byId.get(rid)
     if (!c) continue
-    out.push({ id: c.id, description: c.description, amount_cents: c.amount_cents })
+    out.push({
+      id: c.id,
+      line_item: c.line_item,
+      description: c.description,
+      quantity: c.quantity,
+      unit_price_cents: c.unit_price_cents,
+      amount_cents: c.amount_cents,
+    })
     if (out.length >= 3) break
   }
   return out

@@ -987,7 +987,7 @@ export default function DetailJobModal({
                         fontSize: '0.875rem',
                         display: 'flex',
                         gap: '0.35rem',
-                        alignItems: 'baseline',
+                        alignItems: 'flex-start',
                       }}
                     >
                       <span
@@ -1000,9 +1000,24 @@ export default function DetailJobModal({
                       >
                         [{index + 1}]
                       </span>
-                      <span>
-                        {f.name || '—'} × {f.count}
-                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <span>
+                          {f.name || '—'} × {f.count}
+                          {f.line_unit_price != null &&
+                          Number.isFinite(Number(f.line_unit_price)) &&
+                          Number(f.line_unit_price) > 0 ? (
+                            <span style={{ color: '#6b7280' }}>
+                              {' '}
+                              @ ${formatCurrency(Number(f.line_unit_price))} ea.
+                            </span>
+                          ) : null}
+                        </span>
+                        {(f.line_description ?? '').trim() ? (
+                          <div style={{ color: '#6b7280', fontSize: '0.8125rem', marginTop: 2, whiteSpace: 'pre-wrap' }}>
+                            {(f.line_description ?? '').trim()}
+                          </div>
+                        ) : null}
+                      </div>
                     </li>
                   ))}
                 </ul>

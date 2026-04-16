@@ -4,6 +4,7 @@
  */
 
 import { supabase } from './supabase'
+import { parseDocumentsPageTabFromSearch } from './documentsPageTab'
 
 export type PinnedItem = { path: string; label: string; tab?: string }
 
@@ -67,7 +68,7 @@ export const PATH_TABS: Record<string, readonly string[]> = {
   ],
   '/checklist': ['today', 'history', 'review', 'manage'],
   '/materials': ['price-book', 'assembly-book', 'templates-po', 'purchase-orders', 'supply-houses'],
-  '/documents': ['ledger', 'upload'],
+  '/documents': ['estimates', 'bid-proposals', 'jobs', 'upload'],
 }
 
 export function getStorageKey(userId: string): string {
@@ -91,6 +92,7 @@ export function getPinned(userId: string | undefined): PinnedItem[] {
       )
       .map((p) => {
         if (p.path === '/jobs' && p.tab === 'ledger') return { ...p, tab: 'billing' }
+        if (p.path === '/documents' && p.tab === 'ledger') return { ...p, tab: 'estimates' }
         return p
       })
   } catch {
@@ -341,6 +343,13 @@ export async function getMergedFilteredPins(
 
 /** Returns valid tab for this path from search (or undefined if none). */
 export function getTabFromPath(path: string, search: string): string | undefined {
+  if (path === '/documents') {
+    const q = search.trim().replace(/^\?/, '').trim()
+    if (q === '') return undefined
+    const v = parseDocumentsPageTabFromSearch(search)
+    const allowedDocs = PATH_TABS['/documents'] ?? []
+    return allowedDocs.includes(v) ? v : undefined
+  }
   const allowed = PATH_TABS[path]
   if (!allowed) return undefined
   const tab = new URLSearchParams(search).get('tab')

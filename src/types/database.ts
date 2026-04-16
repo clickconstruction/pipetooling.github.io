@@ -1823,8 +1823,14 @@ export type Database = {
           item_id: string
           new_amount_cents: number | null
           new_description: string | null
+          new_line_item: string | null
+          new_quantity: number | null
+          new_unit_price_cents: number | null
           prev_amount_cents: number | null
           prev_description: string | null
+          prev_line_item: string | null
+          prev_quantity: number | null
+          prev_unit_price_cents: number | null
         }
         Insert: {
           action: string
@@ -1834,8 +1840,14 @@ export type Database = {
           item_id: string
           new_amount_cents?: number | null
           new_description?: string | null
+          new_line_item?: string | null
+          new_quantity?: number | null
+          new_unit_price_cents?: number | null
           prev_amount_cents?: number | null
           prev_description?: string | null
+          prev_line_item?: string | null
+          prev_quantity?: number | null
+          prev_unit_price_cents?: number | null
         }
         Update: {
           action?: string
@@ -1845,8 +1857,14 @@ export type Database = {
           item_id?: string
           new_amount_cents?: number | null
           new_description?: string | null
+          new_line_item?: string | null
+          new_quantity?: number | null
+          new_unit_price_cents?: number | null
           prev_amount_cents?: number | null
           prev_description?: string | null
+          prev_line_item?: string | null
+          prev_quantity?: number | null
+          prev_unit_price_cents?: number | null
         }
         Relationships: [
           {
@@ -1872,7 +1890,10 @@ export type Database = {
           deleted_at: string | null
           description: string
           id: string
+          line_item: string
+          quantity: number
           sort_order: number
+          unit_price_cents: number
           updated_at: string
         }
         Insert: {
@@ -1881,7 +1902,10 @@ export type Database = {
           deleted_at?: string | null
           description: string
           id?: string
+          line_item?: string
+          quantity?: number
           sort_order?: number
+          unit_price_cents?: number
           updated_at?: string
         }
         Update: {
@@ -1890,7 +1914,10 @@ export type Database = {
           deleted_at?: string | null
           description?: string
           id?: string
+          line_item?: string
+          quantity?: number
           sort_order?: number
+          unit_price_cents?: number
           updated_at?: string
         }
         Relationships: []
@@ -2865,6 +2892,8 @@ export type Database = {
           created_at: string | null
           id: string
           job_id: string
+          line_description: string | null
+          line_unit_price: number | null
           name: string
           sequence_order: number
         }
@@ -2873,6 +2902,8 @@ export type Database = {
           created_at?: string | null
           id?: string
           job_id: string
+          line_description?: string | null
+          line_unit_price?: number | null
           name?: string
           sequence_order?: number
         }
@@ -2881,6 +2912,8 @@ export type Database = {
           created_at?: string | null
           id?: string
           job_id?: string
+          line_description?: string | null
+          line_unit_price?: number | null
           name?: string
           sequence_order?: number
         }
@@ -7960,6 +7993,7 @@ export type Database = {
         Args: {
           p_customer_id?: string
           p_estimate_id: string
+          p_fixtures?: Json
           p_hcp_number: string
           p_job_address?: string
           p_job_name?: string

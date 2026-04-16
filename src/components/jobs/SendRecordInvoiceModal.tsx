@@ -122,6 +122,32 @@ function defaultStripeLineDescriptionFromJob(j: JobBillingContext): string {
   )
 }
 
+/** Matches Edge `buildStripeInvoiceItemsFromFixtures` billable rows (Specific Work on the job). */
+function jobHasBillableStripeSpecificWorkFixtures(
+  fixtures:
+    | Array<{
+        name: string | null
+        count: number | null
+        line_unit_price: number | null
+      }>
+    | undefined
+    | null,
+): boolean {
+  if (!fixtures?.length) return false
+  for (const row of fixtures) {
+    if (!(row.name ?? '').trim()) continue
+    const c = Number(row.count)
+    const qty = Number.isFinite(c) && c > 0 ? c : 1
+    const unit =
+      row.line_unit_price != null && Number.isFinite(Number(row.line_unit_price))
+        ? Number(row.line_unit_price)
+        : 0
+    const dollars = qty * unit
+    if (Number.isFinite(dollars) && dollars > 0) return true
+  }
+  return false
+}
+
 function stripeInvoiceFooterSummaryLine(
   footer: string,
   activePreset: ReturnType<typeof stripeInvoiceFooterActivePreset>,
@@ -182,6 +208,8 @@ export default function SendRecordInvoiceModal({
   const [editDueDateOpen, setEditDueDateOpen] = useState(false)
   const [draftDueYmd, setDraftDueYmd] = useState('')
   const [stripeLineDescription, setStripeLineDescription] = useState('')
+  /** True when the job has Specific Work rows that become multiple Stripe lines unless line description overrides. */
+  const [stripeFixtureMultiLineAvailable, setStripeFixtureMultiLineAvailable] = useState<boolean | null>(null)
   const [stripeMemo, setStripeMemo] = useState('')
   const [stripeInvoiceFooter, setStripeInvoiceFooter] = useState(() => getStripeInvoiceFooterDefaultOnOpen())
   const [stripeFooterSectionOpen, setStripeFooterSectionOpen] = useState(false)
@@ -241,7 +269,8 @@ export default function SendRecordInvoiceModal({
     setStripeDueDate(isoDatePlusDays(30))
     setEditDueDateOpen(false)
     setDraftDueYmd('')
-    setStripeLineDescription(defaultStripeLineDescriptionFromJob(job))
+    // Empty until fixtures load: billable Specific Work must omit line_description for multi-line Stripe items.
+    setStripeLineDescription('')
     setStripeMemo('')
     setStripeInvoiceFooter(getStripeInvoiceFooterDefaultOnOpen())
     setStripeFooterSectionOpen(false)
@@ -258,7 +287,28 @@ export default function SendRecordInvoiceModal({
     } else {
       setBillAmountStr('')
     }
+    setStripeFixtureMultiLineAvailable(null)
   }, [open, job?.id, job?.customer_email, invoice?.id])
+
+  useEffect(() => {
+    if (!open || !job?.id) {
+      setStripeFixtureMultiLineAvailable(null)
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      const fresh = await fetchJobWithDetailsById(job.id)
+      if (cancelled) return
+      const billable = jobHasBillableStripeSpecificWorkFixtures(fresh?.fixtures)
+      setStripeFixtureMultiLineAvailable(billable)
+      if (!billable) {
+        setStripeLineDescription(defaultStripeLineDescriptionFromJob(job))
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, job?.id])
 
   // Ensure primary RTB line when opening for a job row (shared for Outside submit).
   useEffect(() => {
@@ -438,6 +488,7 @@ export default function SendRecordInvoiceModal({
     authRole,
     stripeModeForBilling,
     stripeLineDescription,
+    stripeFixtureMultiLineAvailable,
   ])
 
   async function confirmOutsideBill() {
@@ -964,6 +1015,19 @@ export default function SendRecordInvoiceModal({
                       default
                     </button>
                   </div>
+                  {stripeFixtureMultiLineAvailable ? (
+                    <p
+                      style={{
+                        fontSize: '0.75rem',
+                        color: '#6b7280',
+                        margin: '0 0 0.5rem',
+                        lineHeight: 1.35,
+                      }}
+                    >
+                      Custom text here replaces separate Stripe lines from job Specific Work. Leave this field blank
+                      to use one line per Specific Work row.
+                    </p>
+                  ) : null}
                   <textarea
                     id="bill-customer-stripe-line-description"
                     value={stripeLineDescription}

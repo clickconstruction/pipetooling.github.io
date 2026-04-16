@@ -37,6 +37,10 @@ import BilledBillViewModal, { type InvoiceWithJobForBillView } from './BilledBil
 import { StripeInvoiceSharePanel } from './StripeInvoiceSharePanel'
 import { loadTeamLaborData, type TeamLaborRow } from '../../utils/teamLabor'
 import { laborItemsSubtotal } from '../../lib/peopleLaborJobItemLineCost'
+import {
+  STRIPE_INVOICE_LINE_DESCRIPTION_MAX,
+  stripeInvoiceFixtureLineLength,
+} from '../../lib/stripeInvoiceLineDescription'
 
 type EstimatesRow = Database['public']['Tables']['estimates']['Row']
 type JobsLedgerInvoiceRow = Database['public']['Tables']['jobs_ledger_invoices']['Row']
@@ -57,7 +61,39 @@ type PaymentRow = {
   /** Set when loaded from DB; payments applied to an invoice cannot be removed in this form. */
   invoice_id: string | null
 }
-type FixtureRow = { id: string; name: string; count: number }
+type FixtureRow = {
+  id: string
+  name: string
+  count: number
+  /** Unit price in dollars; null when unset. */
+  line_unit_price: number | null
+  line_description: string
+}
+
+const FIXTURE_SCOPE_FIELD_LABEL_VISUALLY_HIDDEN: CSSProperties = {
+  position: 'absolute',
+  width: '1px',
+  height: '1px',
+  padding: 0,
+  margin: '-1px',
+  overflow: 'hidden',
+  clip: 'rect(0, 0, 0, 0)',
+  whiteSpace: 'nowrap',
+  borderWidth: 0,
+}
+
+/** Job Total / Bid: sum of Specific Work extended amounts (named rows only). */
+function revenueDollarsFromFixtures(fixtures: FixtureRow[]): number {
+  let s = 0
+  for (const f of fixtures) {
+    if (!(f.name ?? '').trim()) continue
+    const c = Number(f.count)
+    const qty = Number.isFinite(c) && c > 0 ? c : 1
+    const unit = f.line_unit_price ?? 0
+    s += qty * (Number.isFinite(unit) ? unit : 0)
+  }
+  return Math.round(s * 100) / 100
+}
 
 function localDateYYYYMMDD(): string {
   const d = new Date()
@@ -374,11 +410,14 @@ export default function JobFormModal({
   const jobFormCanSubmit = jobFormMissingFields.length === 0
   const [googleDriveLink, setGoogleDriveLink] = useState('')
   const [jobPlansLink, setJobPlansLink] = useState('')
-  const [revenue, setRevenue] = useState('')
-  const [revenueInputFocused, setRevenueInputFocused] = useState(false)
   const [payments, setPayments] = useState<PaymentRow[]>(() => [newEmptyPaymentRow()])
   const [materials, setMaterials] = useState<MaterialRow[]>([{ id: crypto.randomUUID(), description: '', amount: 0 }])
-  const [fixtures, setFixtures] = useState<FixtureRow[]>([{ id: crypto.randomUUID(), name: '', count: 1 }])
+  const [fixtures, setFixtures] = useState<FixtureRow[]>([
+    { id: crypto.randomUUID(), name: '', count: 1, line_unit_price: null, line_description: '' },
+  ])
+  /** User opened "Add scope or notes" for this fixture row id (persists while row exists). */
+  const [fixtureScopeExpandedById, setFixtureScopeExpandedById] = useState<Record<string, boolean>>({})
+  const jobTotalBidDollars = useMemo(() => revenueDollarsFromFixtures(fixtures), [fixtures])
   const [teamMemberIds, setTeamMemberIds] = useState<string[]>([])
   const [contractorsSearch, setContractorsSearch] = useState('')
   const [contractorsDropdownOpen, setContractorsDropdownOpen] = useState(false)
@@ -530,7 +569,6 @@ export default function JobFormModal({
     setGoogleDriveLink(job.google_drive_link ?? '')
     setJobPlansLink(job.job_plans_link ?? '')
     setProjectFilesPlansExpanded(false)
-    setRevenue(job.revenue != null ? String(job.revenue) : '')
     setPayments(
       job.payments?.length
         ? job.payments.map((p) => ({
@@ -551,9 +589,16 @@ export default function JobFormModal({
     )
     setFixtures(
       job.fixtures.length > 0
-        ? job.fixtures.map((f) => ({ id: f.id, name: f.name, count: Number(f.count) || 1 }))
-        : [{ id: crypto.randomUUID(), name: '', count: 1 }],
+        ? job.fixtures.map((f) => ({
+            id: f.id,
+            name: f.name,
+            count: Number(f.count) || 1,
+            line_unit_price: f.line_unit_price != null && Number.isFinite(Number(f.line_unit_price)) ? Number(f.line_unit_price) : null,
+            line_description: f.line_description ?? '',
+          }))
+        : [{ id: crypto.randomUUID(), name: '', count: 1, line_unit_price: null, line_description: '' }],
     )
+    setFixtureScopeExpandedById({})
     setTeamMemberIds(job.team_members.map((t) => t.user_id))
     setContractorsSearch('')
     setContractorsDropdownOpen(false)
@@ -582,10 +627,10 @@ export default function JobFormModal({
     setGoogleDriveLink('')
     setJobPlansLink('')
     setProjectFilesPlansExpanded(!!projectPrefill)
-    setRevenue('')
     setPayments([newEmptyPaymentRow()])
     setMaterials([{ id: crypto.randomUUID(), description: '', amount: 0 }])
-    setFixtures([{ id: crypto.randomUUID(), name: '', count: 1 }])
+    setFixtures([{ id: crypto.randomUUID(), name: '', count: 1, line_unit_price: null, line_description: '' }])
+    setFixtureScopeExpandedById({})
     setTeamMemberIds([])
     setContractorsSearch('')
     setContractorsDropdownOpen(false)
@@ -1047,16 +1092,16 @@ export default function JobFormModal({
     if (!paymentRemoveConfirmRowId) return null
     const row = payments.find((r) => r.id === paymentRemoveConfirmRowId)
     if (!row) return null
-    const rev = parseMoneyInputToNumber(revenue)
+    const rev = jobTotalBidDollars
     const paidSum = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
     const currentRem = Math.max(0, rev - paidSum)
     const rowAmt = Number(row.amount) || 0
     const newRem = Math.max(0, rev - (paidSum - rowAmt))
     return { rowAmt, jobTotal: rev, currentRem, newRem }
-  }, [paymentRemoveConfirmRowId, payments, revenue])
+  }, [paymentRemoveConfirmRowId, payments, jobTotalBidDollars])
 
   function getEditJobBillableRemaining(): number {
-    return Math.max(0, parseMoneyInputToNumber(revenue) - payments.reduce((s, p) => s + (Number(p.amount) || 0), 0))
+    return Math.max(0, jobTotalBidDollars - payments.reduce((s, p) => s + (Number(p.amount) || 0), 0))
   }
 
   async function createInvoice() {
@@ -1221,7 +1266,10 @@ export default function JobFormModal({
   }
 
   function addFixtureRow() {
-    setFixtures((prev) => [...prev, { id: crypto.randomUUID(), name: '', count: 1 }])
+    setFixtures((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), name: '', count: 1, line_unit_price: null, line_description: '' },
+    ])
   }
 
   function updateFixtureRow(id: string, updates: Partial<FixtureRow>) {
@@ -1229,6 +1277,11 @@ export default function JobFormModal({
   }
 
   function removeFixtureRow(id: string) {
+    setFixtureScopeExpandedById((prev) => {
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
     setFixtures((prev) => (prev.length <= 1 ? prev : prev.filter((r) => r.id !== id)))
   }
 
@@ -1337,7 +1390,7 @@ export default function JobFormModal({
     if (!authUser?.id) return
     setSaving(true)
     setError(null)
-    const revNum = parseMoneyInputToNumberOrNull(revenue)
+    const revNum = jobTotalBidDollars
     const paymentsMadeNum = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
     const validPayments = payments.filter((p) => (Number(p.amount) || 0) > 0)
     const validMaterials = materials.filter((m) => (m.description ?? '').trim() !== '' || Number(m.amount) !== 0)
@@ -1402,11 +1455,14 @@ export default function JobFormModal({
         await supabase.from('jobs_ledger_fixtures').delete().eq('job_id', editing.id)
         const validFixtures = fixtures.filter((f) => (f.name ?? '').trim())
         for (const [i, f] of validFixtures.entries()) {
+          const unit = f.line_unit_price
           await supabase.from('jobs_ledger_fixtures').insert({
             job_id: editing.id,
             name: f.name.trim(),
             count: f.count,
             sequence_order: i,
+            line_unit_price: unit != null && unit > 0 ? unit : null,
+            line_description: (f.line_description ?? '').trim() ? (f.line_description ?? '').trim() : null,
           })
         }
         const { data: existingTeam } = await supabase.from('jobs_ledger_team_members').select('user_id').eq('job_id', editing.id)
@@ -1474,11 +1530,14 @@ export default function JobFormModal({
           }
           const validFixturesIns = fixtures.filter((f) => (f.name ?? '').trim())
           for (const [i, f] of validFixturesIns.entries()) {
+            const unit = f.line_unit_price
             await supabase.from('jobs_ledger_fixtures').insert({
               job_id: jobId,
               name: f.name.trim(),
               count: f.count,
               sequence_order: i,
+              line_unit_price: unit != null && unit > 0 ? unit : null,
+              line_description: (f.line_description ?? '').trim() ? (f.line_description ?? '').trim() : null,
             })
           }
           for (const uid of teamMemberIds) {
@@ -2476,118 +2535,297 @@ export default function JobFormModal({
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>
               <colgroup>
                 <col />
-                <col style={{ width: 88 }} />
-                <col style={{ width: 76 }} />
+                <col style={{ width: '5.25rem' }} />
+                <col style={{ width: 'calc(5.5rem + 4px + 1.75rem + 0.5rem)' }} />
               </colgroup>
               <thead style={{ background: '#f9fafb' }}>
                 <tr>
                   <th style={{ padding: '0.625rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Line Item</th>
-                  <th style={{ padding: '0.625rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Count</th>
-                  <th style={{ padding: '0.625rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }} aria-hidden />
+                  <th style={{ padding: '0.625rem 0.625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb', fontWeight: 600, whiteSpace: 'nowrap' }}>Count</th>
+                  <th
+                    style={{
+                      paddingTop: '0.625rem',
+                      paddingBottom: '0.625rem',
+                      paddingLeft: '0.625rem',
+                      paddingRight: '0.375rem',
+                      textAlign: 'center',
+                      borderBottom: '1px solid #e5e7eb',
+                      verticalAlign: 'middle',
+                      fontWeight: 600,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    Unit price
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {fixtures.map((row, idx) => (
-                  <tr key={row.id} style={{ borderBottom: idx < fixtures.length - 1 ? '1px solid #e5e7eb' : 'none' }}>
-                    <td style={{ padding: '0.625rem 0.75rem' }}>
-                      <input
-                        type="text"
-                        value={row.name}
-                        onChange={(e) => updateFixtureRow(row.id, { name: e.target.value })}
-                        placeholder="Fixture or tie-in name"
-                        style={{ width: '100%', padding: '0.375rem 0.625rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem' }}
-                      />
-                    </td>
-                    <td style={{ padding: '0.625rem 0.75rem', textAlign: 'center' }}>
-                      <input
-                        type="number"
-                        min={1}
-                        value={row.count}
-                        onChange={(e) => updateFixtureRow(row.id, { count: Math.max(1, Number(e.target.value) || 1) })}
-                        style={{ width: '4rem', padding: '0.375rem 0.625rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem', textAlign: 'center' }}
-                      />
-                    </td>
-                    <td
-                      style={{
-                        padding: '0.625rem 0.75rem',
-                        textAlign: 'right',
-                        verticalAlign: 'middle',
-                      }}
-                    >
-                      {fixtures.length === 1 ? (
-                        <button
-                          type="button"
-                          onClick={addFixtureRow}
-                          title="Add line item"
-                          aria-label="Add line item"
+                {fixtures.map((row, idx) => {
+                  const descFieldId = `job-fixture-desc-${row.id}`
+                  const stripeLenDescId = `job-fixture-stripe-len-${row.id}`
+                  const scopeTrim = (row.line_description ?? '').trim()
+                  const scopeExpanded =
+                    scopeTrim.length > 0 || fixtureScopeExpandedById[row.id] === true
+                  const stripeFixtureLineLen = stripeInvoiceFixtureLineLength(
+                    row.name,
+                    row.line_description,
+                  )
+                  const stripeLineOverLimit = stripeFixtureLineLen > STRIPE_INVOICE_LINE_DESCRIPTION_MAX
+                  return (
+                    <Fragment key={row.id}>
+                      <tr style={{ borderBottom: 'none' }}>
+                        <td style={{ padding: '0.625rem 0.75rem', paddingBottom: '0.35rem' }}>
+                          <input
+                            type="text"
+                            value={row.name}
+                            onChange={(e) => updateFixtureRow(row.id, { name: e.target.value })}
+                            placeholder="Fixture or tie-in name"
+                            style={{ width: '100%', padding: '0.375rem 0.625rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem' }}
+                          />
+                        </td>
+                        <td
                           style={{
-                            padding: '0.35rem 0.5rem',
-                            fontSize: '1rem',
-                            fontWeight: 600,
-                            lineHeight: 1,
-                            background: '#3b82f6',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: 6,
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            minWidth: '1.75rem',
+                            paddingTop: '0.625rem',
+                            paddingBottom: '0.35rem',
+                            paddingLeft: '0.5rem',
+                            paddingRight: '0.625rem',
+                            textAlign: 'right',
+                            whiteSpace: 'nowrap',
                           }}
                         >
-                          +
-                        </button>
-                      ) : idx === fixtures.length - 1 ? (
-                        <button
-                          type="button"
-                          onClick={addFixtureRow}
-                          title="Add line item"
-                          aria-label="Add line item"
+                          <input
+                            type="number"
+                            min={1}
+                            value={row.count}
+                            onChange={(e) => updateFixtureRow(row.id, { count: Math.max(1, Number(e.target.value) || 1) })}
+                            style={{
+                              width: '4rem',
+                              maxWidth: '100%',
+                              boxSizing: 'border-box',
+                              padding: '0.375rem 0.625rem',
+                              border: '1px solid #d1d5db',
+                              borderRadius: 6,
+                              fontSize: '0.875rem',
+                              textAlign: 'center',
+                            }}
+                          />
+                        </td>
+                        <td
                           style={{
-                            padding: '0.35rem 0.5rem',
-                            fontSize: '1rem',
-                            fontWeight: 600,
-                            lineHeight: 1,
-                            background: '#3b82f6',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: 6,
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            minWidth: '1.75rem',
+                            paddingTop: '0.625rem',
+                            paddingRight: '0.375rem',
+                            paddingBottom: '0.35rem',
+                            paddingLeft: '0.625rem',
+                            verticalAlign: 'middle',
                           }}
                         >
-                          +
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => removeFixtureRow(row.id)}
-                          title="Remove"
-                          aria-label="Remove line item"
+                          <div
+                            style={{
+                              display: 'flex',
+                              width: '100%',
+                              alignItems: 'center',
+                              justifyContent: 'flex-start',
+                              gap: 4,
+                              flexWrap: 'nowrap',
+                            }}
+                          >
+                            <MoneyDecimalAmountInput
+                              value={row.line_unit_price ?? 0}
+                              onChange={(n) => updateFixtureRow(row.id, { line_unit_price: n === 0 ? null : n })}
+                              placeholder="—"
+                              aria-label="Unit price"
+                              style={{
+                                width: '5.5rem',
+                                minWidth: '4.5rem',
+                                flexShrink: 0,
+                                boxSizing: 'border-box',
+                                padding: '0.375rem 0.5rem',
+                                border: '1px solid #d1d5db',
+                                borderRadius: 6,
+                                fontSize: '0.875rem',
+                                textAlign: 'right',
+                              }}
+                            />
+                            {fixtures.length === 1 ? (
+                              <button
+                                type="button"
+                                onClick={addFixtureRow}
+                                title="Add line item"
+                                aria-label="Add line item"
+                                style={{
+                                  padding: '0.35rem 0.5rem',
+                                  fontSize: '1rem',
+                                  fontWeight: 600,
+                                  lineHeight: 1,
+                                  background: '#3b82f6',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: 6,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  minWidth: '1.75rem',
+                                  flexShrink: 0,
+                                  marginLeft: 'auto',
+                                }}
+                              >
+                                +
+                              </button>
+                            ) : idx === fixtures.length - 1 ? (
+                              <button
+                                type="button"
+                                onClick={addFixtureRow}
+                                title="Add line item"
+                                aria-label="Add line item"
+                                style={{
+                                  padding: '0.35rem 0.5rem',
+                                  fontSize: '1rem',
+                                  fontWeight: 600,
+                                  lineHeight: 1,
+                                  background: '#3b82f6',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: 6,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  minWidth: '1.75rem',
+                                  flexShrink: 0,
+                                  marginLeft: 'auto',
+                                }}
+                              >
+                                +
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => removeFixtureRow(row.id)}
+                                title="Remove"
+                                aria-label="Remove line item"
+                                style={{
+                                  padding: '0.35rem',
+                                  background: 'transparent',
+                                  color: '#991b1c',
+                                  border: 'none',
+                                  borderRadius: 4,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexShrink: 0,
+                                  marginLeft: 'auto',
+                                }}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
+                                  <path d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                      <tr
+                        style={{
+                          borderBottom: idx < fixtures.length - 1 ? '1px solid #e5e7eb' : 'none',
+                        }}
+                      >
+                        <td
+                          colSpan={3}
                           style={{
-                            padding: '0.35rem',
-                            background: 'transparent',
-                            color: '#991b1c',
-                            border: 'none',
-                            borderRadius: 4,
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
+                            padding: '0 0.75rem 0.625rem',
+                            verticalAlign: 'top',
+                            position: 'relative',
                           }}
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
-                            <path d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z" />
-                          </svg>
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                          {scopeExpanded ? (
+                            <>
+                              <div
+                                id={stripeLenDescId}
+                                aria-live="polite"
+                                style={{
+                                  fontSize: '0.75rem',
+                                  color: stripeLineOverLimit ? '#d97706' : '#6b7280',
+                                  marginBottom: 6,
+                                }}
+                              >
+                                ({stripeFixtureLineLen} / {STRIPE_INVOICE_LINE_DESCRIPTION_MAX})
+                              </div>
+                              <label htmlFor={descFieldId} style={FIXTURE_SCOPE_FIELD_LABEL_VISUALLY_HIDDEN}>
+                                Optional scope or notes for this line
+                              </label>
+                              <textarea
+                                id={descFieldId}
+                                aria-describedby={stripeLenDescId}
+                                value={row.line_description}
+                                onChange={(e) =>
+                                  updateFixtureRow(row.id, { line_description: e.target.value })
+                                }
+                                placeholder="Optional scope or notes"
+                                rows={2}
+                                style={{
+                                  width: '100%',
+                                  boxSizing: 'border-box',
+                                  padding: '0.375rem 0.625rem',
+                                  border: '1px solid #d1d5db',
+                                  borderRadius: 6,
+                                  fontSize: '0.875rem',
+                                  resize: 'vertical',
+                                  minHeight: '2.5rem',
+                                  fontFamily: 'inherit',
+                                }}
+                              />
+                            </>
+                          ) : (
+                            <div
+                              style={{
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                alignItems: 'baseline',
+                                gap: '0.35rem',
+                                marginBottom: 4,
+                                fontSize: '0.75rem',
+                              }}
+                            >
+                              <span
+                                id={stripeLenDescId}
+                                aria-live="polite"
+                                style={{ color: stripeLineOverLimit ? '#d97706' : '#6b7280' }}
+                              >
+                                ({stripeFixtureLineLen} / {STRIPE_INVOICE_LINE_DESCRIPTION_MAX})
+                              </span>
+                              <button
+                                type="button"
+                                aria-expanded={false}
+                                aria-controls={descFieldId}
+                                aria-describedby={stripeLenDescId}
+                                onClick={() =>
+                                  setFixtureScopeExpandedById((prev) => ({
+                                    ...prev,
+                                    [row.id]: true,
+                                  }))
+                                }
+                                style={{
+                                  padding: '0.25rem 0',
+                                  border: 'none',
+                                  background: 'none',
+                                  cursor: 'pointer',
+                                  fontSize: '0.8125rem',
+                                  color: '#2563eb',
+                                  textDecoration: 'underline',
+                                  textUnderlineOffset: '2px',
+                                }}
+                              >
+                                Add scope or notes
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    </Fragment>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -2598,26 +2836,25 @@ export default function JobFormModal({
             <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
               <div style={{ flex: '1 1 140px', minWidth: 0 }}>
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Total / Bid ($)</label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={
-                    revenueInputFocused
-                      ? revenue
-                      : revenue.trim() === ''
-                        ? ''
-                        : formatCurrency(parseMoneyInputToNumber(revenue))
-                  }
-                  onFocus={() => setRevenueInputFocused(true)}
-                  onBlur={() => {
-                    setRevenueInputFocused(false)
-                    const n = parseMoneyInputToNumberOrNull(revenue)
-                    setRevenue(n == null ? '' : String(n))
+                <div
+                  aria-live="polite"
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem 0.75rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: 6,
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    color: '#374151',
+                    background: '#f9fafb',
+                    boxSizing: 'border-box',
                   }}
-                  onChange={(e) => setRevenue(sanitizeMoneyTyping(e.target.value))}
-                  placeholder="Optional"
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem' }}
-                />
+                >
+                  ${formatCurrency(jobTotalBidDollars)}
+                </div>
+                <span style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 4, display: 'block' }}>
+                  Total of Specific Work lines above.
+                </span>
               </div>
               <div style={{ flex: '1 1 140px', minWidth: 0 }}>
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Remaining ($)</label>

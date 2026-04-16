@@ -1,10 +1,14 @@
-import { useCallback, useEffect, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { defaultJobFieldsFromEstimate } from '../../lib/jobFromEstimateDefaults'
 import {
+  computeCreateJobBidDisplayDollars,
+  fixturesPayloadForCreateJobFromEstimate,
   submitCreateJobFromEstimate,
   type EstimateForCreateJob,
 } from '../../lib/createJobFromEstimateSubmit'
+import { normalizeEstimateLineItemsFromJson } from '../../lib/estimateLineItemNormalize'
+import { EstimateLineItemsTable } from './EstimateCustomerDocument'
 import type { Tables } from '../../types/database'
 import type { JobPayloadCustomerRow } from '../../lib/jobLedgerCustomer'
 import { useAuth } from '../../hooks/useAuth'
@@ -15,34 +19,6 @@ import type { JobSearchResult } from '../../utils/unifiedJobBidSearch'
 
 function formatCurrency(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-function parseMoneyInputToNumber(s: string): number {
-  const t = s.replace(/,/g, '').trim()
-  if (t === '' || t === '.') return 0
-  const n = parseFloat(t)
-  return Number.isFinite(n) ? n : 0
-}
-
-function parseMoneyInputToNumberOrNull(s: string): number | null {
-  const t = s.replace(/,/g, '').trim()
-  if (t === '' || t === '.') return null
-  const n = parseFloat(t)
-  return Number.isFinite(n) ? n : null
-}
-
-function sanitizeMoneyTyping(raw: string): string {
-  const noComma = raw.replace(/,/g, '')
-  let out = ''
-  let dotSeen = false
-  for (const c of noComma) {
-    if (c >= '0' && c <= '9') out += c
-    else if (c === '.' && !dotSeen) {
-      dotSeen = true
-      out += '.'
-    }
-  }
-  return out
 }
 
 const labelStyle: CSSProperties = {
@@ -120,8 +96,6 @@ export default function CreateJobFromEstimateModal({
   const [hcp, setHcp] = useState('')
   const [jobName, setJobName] = useState('')
   const [jobAddress, setJobAddress] = useState('')
-  const [revenue, setRevenue] = useState('')
-  const [revenueInputFocused, setRevenueInputFocused] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [linkJobLedgerId, setLinkJobLedgerId] = useState('')
   const [selectedJobPick, setSelectedJobPick] = useState<JobSearchResult | null>(null)
@@ -137,9 +111,22 @@ export default function CreateJobFromEstimateModal({
     const d = defaultJobFieldsFromEstimate(e)
     setJobName(d.jobName)
     setJobAddress(d.jobAddress)
-    setRevenue(d.revenue != null && !Number.isNaN(d.revenue) ? String(d.revenue) : '')
-    setRevenueInputFocused(false)
   }, [])
+
+  const normalizedLines = useMemo(() => {
+    if (!estimate) return []
+    return normalizeEstimateLineItemsFromJson(estimate.line_items_snapshot)
+  }, [estimate])
+
+  const bidDisplayDollars = useMemo(() => {
+    if (!estimate) return 0
+    return computeCreateJobBidDisplayDollars(normalizedLines, estimate.total_cents)
+  }, [estimate, normalizedLines])
+
+  const fixtureRowsForSubmit = useMemo(
+    () => fixturesPayloadForCreateJobFromEstimate(normalizedLines),
+    [normalizedLines],
+  )
 
   useEffect(() => {
     if (!open || !estimate) return
@@ -297,7 +284,6 @@ export default function CreateJobFromEstimateModal({
           hcp,
           jobName,
           jobAddress,
-          revenue,
         },
       )
       if (!result.ok) {
@@ -373,7 +359,7 @@ export default function CreateJobFromEstimateModal({
           background: 'white',
           borderRadius: 8,
           border: '1px solid #e5e7eb',
-          maxWidth: 480,
+          maxWidth: 600,
           width: '100%',
           padding: '1.25rem',
           boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 16px 48px rgba(0,0,0,0.12)',
@@ -483,31 +469,30 @@ export default function CreateJobFromEstimateModal({
           disabled={busy}
           style={{ ...textInputStyle(busy), marginBottom: '0.75rem' }}
         />
-        <label htmlFor="create-job-from-estimate-revenue" style={labelStyle}>
-          Job Total / Bid ($)
-        </label>
-        <input
-          id="create-job-from-estimate-revenue"
-          type="text"
-          inputMode="decimal"
-          value={
-            revenueInputFocused
-              ? revenue
-              : revenue.trim() === ''
-                ? ''
-                : formatCurrency(parseMoneyInputToNumber(revenue))
-          }
-          onFocus={() => setRevenueInputFocused(true)}
-          onBlur={() => {
-            setRevenueInputFocused(false)
-            const n = parseMoneyInputToNumberOrNull(revenue)
-            setRevenue(n == null ? '' : String(n))
-          }}
-          onChange={(e) => setRevenue(sanitizeMoneyTyping(e.target.value))}
-          placeholder="Uses estimate total if empty"
-          disabled={busy}
-          style={{ ...textInputStyle(busy), marginBottom: '0.75rem' }}
-        />
+        <div style={{ marginBottom: '0.75rem' }}>
+          <div style={{ ...labelStyle, marginBottom: '0.35rem' }}>Line items</div>
+          <EstimateLineItemsTable lines={normalizedLines} />
+        </div>
+        <div style={{ marginBottom: '0.75rem' }}>
+          <span style={labelStyle}>Job Total / Bid ($)</span>
+          <div
+            aria-live="polite"
+            style={{
+              ...textInputStyle(true),
+              marginTop: 4,
+              background: '#f9fafb',
+              color: '#111827',
+              fontWeight: 600,
+            }}
+          >
+            {formatCurrency(bidDisplayDollars)}
+          </div>
+          <p style={{ margin: '0.35rem 0 0', fontSize: '0.8rem', color: '#6b7280', lineHeight: 1.4 }}>
+            {fixtureRowsForSubmit.length > 0
+              ? 'Total from line items above; carried into the job as Specific Work.'
+              : 'No line items to copy; job total matches the estimate total.'}
+          </p>
+        </div>
         <div
           style={{
             display: 'flex',

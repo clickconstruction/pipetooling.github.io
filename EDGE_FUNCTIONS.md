@@ -1383,7 +1383,7 @@ interface CreateStripeInvoiceBody {
   memo?: string
   /** Optional: Stripe Invoice `footer` (max **5000** chars). Omit or empty = Stripe account default footer. */
   footer?: string
-  /** Optional: Stripe invoice **line item** `description`. Max **500** characters. Omit to use the default `Customer · Job · HCP n` string from the job. */
+  /** Optional: Stripe invoice **line item** `description`. Max **500** characters. If set (non-empty), forces a **single** line; omit to allow **multiple** lines from job **Specific Work** (`jobs_ledger_fixtures`) when billable rows exist. */
   line_description?: string
 }
 ```
@@ -1444,7 +1444,8 @@ If **`stripe_invoice_id`** and **`hosted_invoice_url`** are already set, returns
 1. Loads job and customer with **service role**; requires **`jobs_ledger.customer_id`** and matches body **`customer_id`** to it; ensures **`customers.master_user_id`** matches **`jobs_ledger.master_user_id`**.
 2. Creates or reuses **`customers.stripe_customer_id`** on Stripe; updates Stripe customer email/name.
 3. Stripe invoice **`number`** is **digits-only HCP**, a hyphen, **`YYMMDD`** from bill due date, then **`HHmm`** (24-hour) in **`America/Chicago`** at finalize time (e.g. `11-2605140020`; customer email may show a **`#`** prefix). **`preview-stripe-invoice`** uses the same rule at preview time; if the user waits between preview and create, the time suffix may differ.
-4. Creates draft invoice + invoice item, **finalize**s, then **UPDATE** **`jobs_ledger_invoices`** (**`status = 'billed'`**) and Stripe columns, plus **`external_send_channel = 'stripe'`**, **`stripe_invoice_memo`** (from **`memo`** → Stripe **`description`**), and **`stripe_invoice_footer`** (from optional **`footer`** → Stripe **`footer`**; **`null`** when omitted). **`sent_to_customer_at`** is **not** set here; it is recorded when **[send-stripe-invoice](#send-stripe-invoice)** successfully calls Stripe **`invoices.sendInvoice`** (customer email from Stripe).
+4. Creates draft invoice + one or more invoice line items (see below), **finalize**s, then **UPDATE** **`jobs_ledger_invoices`** (**`status = 'billed'`**) and Stripe columns, plus **`external_send_channel = 'stripe'`**, **`stripe_invoice_memo`** (from **`memo`** → Stripe **`description`**), and **`stripe_invoice_footer`** (from optional **`footer`** → Stripe **`footer`**; **`null`** when omitted). **`sent_to_customer_at`** is **not** set here; it is recorded when **[send-stripe-invoice](#send-stripe-invoice)** successfully calls Stripe **`invoices.sendInvoice`** (customer email from Stripe).
+5. **Line items from Specific Work**: Loads **`jobs_ledger_fixtures`** for the invoice’s job. When there are **billable** rows (trimmed **`name`**, **`count × line_unit_price`** in dollars **> 0**) and **`line_description`** is omitted or blank, creates **one** Stripe line per row (ordered by **`sequence_order`**; description from name + optional scope text), with cent amounts **scaled proportionally** to **`amount_dollars`** when the bill is less than the fixture subtotal so the lines sum exactly. A non-empty **`line_description`** keeps the legacy behavior: **one** line for the full amount using that description (or the default **`Customer · Job · HCP`** string when not overridden).
 
 **Gateway JWT**: [`supabase/config.toml`](supabase/config.toml) sets **`verify_jwt = false`**. Deploy with **`supabase functions deploy create-stripe-invoice --no-verify-jwt`** when the hosted gateway still enforces JWT.
 
@@ -1539,7 +1540,7 @@ interface RecordStripeInvoiceOobBody {
 
 #### Request body
 
-Same fields as **create-stripe-invoice** (`jobs_ledger_invoice_id`, `customer_id`, `amount_dollars`, `customer_email`, `customer_name`, `due_date`, optional `memo`, optional **`line_description`** — same 500-char cap and default as create).
+Same fields as **create-stripe-invoice** (`jobs_ledger_invoice_id`, `customer_id`, `amount_dollars`, `customer_email`, `customer_name`, `due_date`, optional `memo`, optional **`line_description`** — same 500-char cap; non-empty **`line_description`** forces a single preview line). **`preview-stripe-invoice`** uses the same **Specific Work** multi-line rules as **create-stripe-invoice** when **`line_description`** is blank.
 
 #### Success response (200)
 
@@ -1559,6 +1560,7 @@ Amounts are in **cents**, matching Stripe invoice objects.
 #### Behavior
 
 - Validates job/customer ownership via service role (same rules as create).
+- Builds the same **`invoice_items`** as **create-stripe-invoice** (multi-line from **`jobs_ledger_fixtures`** when applicable; otherwise one line).
 - If **`customers.stripe_customer_id`** is set, previews as that **`customer`**; otherwise uses **`customer_details`** from the body (no `cus_` creation).
 - **`collection_method`**, **`days_until_due`**, memo/line description mirror **create-stripe-invoice**.
 - Invoice **`number`** in the preview matches **create-stripe-invoice** (`{hcp}-{YYMMDD}{HHmm}` in Chicago time at request time); a later create may use a different **`HHmm`** if the clock has moved.

@@ -8,7 +8,7 @@ import {
   type StripeBillingMode,
 } from '../_shared/stripeSecrets.ts'
 import { isMissingStripeCustomerError } from '../_shared/stripeStaleCustomer.ts'
-import { resolveInvoiceLineDescription } from '../_shared/stripeLineDescription.ts'
+import { buildStripeInvoiceItemsFromFixtures } from '../_shared/stripeInvoiceItemsFromFixtures.ts'
 import { stripeSellerDisplayName } from '../_shared/stripeSellerDisplayName.ts'
 import { buildPipetoolingStripeInvoiceNumber } from '../_shared/pipetoolingStripeInvoiceNumber.ts'
 
@@ -182,29 +182,48 @@ serve(async (req) => {
       return jsonResponse({ error: 'Amount too small' }, 400)
     }
 
-    const lineResolved = resolveInvoiceLineDescription({
-      override: lineDescriptionRaw,
+    const { data: fixturesRows, error: fixturesErr } = await admin
+      .from('jobs_ledger_fixtures')
+      .select('name, count, line_unit_price, line_description, sequence_order')
+      .eq('job_id', invRow.job_id)
+      .order('sequence_order', { ascending: true })
+
+    if (fixturesErr) {
+      console.warn('preview-stripe-invoice: fixtures load failed', fixturesErr)
+      return jsonResponse({ error: 'Could not load job line items for invoice' }, 500)
+    }
+
+    const lineItemsBuilt = buildStripeInvoiceItemsFromFixtures({
+      fixtures: (fixturesRows ?? []) as {
+        name: string
+        count: number
+        line_unit_price: number | null
+        line_description: string | null
+        sequence_order: number
+      }[],
+      targetAmountCents: amountCents,
+      lineDescriptionOverride: lineDescriptionRaw,
       customerName: customer_name.trim(),
       jobName: jobRow.job_name,
       hcpNumber: jobRow.hcp_number,
     })
-    if (!lineResolved.ok) {
-      return jsonResponse({ error: lineResolved.error }, 400)
+    if (!lineItemsBuilt.ok) {
+      return jsonResponse({ error: lineItemsBuilt.error }, 400)
     }
-    const lineDesc = lineResolved.lineDesc
+
     const stripe = new Stripe(stripeSecret, { apiVersion: '2024-06-20' })
 
     // Preview must not UPDATE customers.stripe_customer_id. Auto (live) vs Test use different Stripe accounts;
     // rewriting the row when switching modes caused heavy churn and looked like the DB "crashing".
     // Use the stored cus_ only if it exists for *this* Stripe key; otherwise a throwaway customer, then delete it.
     const storedStripeCustomerId = custRow.stripe_customer_id?.trim() || null
-    const invoiceItems: Stripe.InvoiceCreatePreviewParams['invoice_items'] = [
-      {
-        amount: amountCents,
+    const invoiceItems: Stripe.InvoiceCreatePreviewParams['invoice_items'] = lineItemsBuilt.items.map(
+      (it) => ({
+        amount: it.amount,
         currency: 'usd',
-        description: lineDesc,
-      },
-    ]
+        description: it.description,
+      }),
+    )
 
     let preview: Stripe.Response<Stripe.Invoice>
     let ephemeralCustomerId: string | null = null

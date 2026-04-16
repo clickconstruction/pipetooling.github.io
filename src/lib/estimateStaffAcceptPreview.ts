@@ -1,6 +1,10 @@
 import type { EstimateExperienceOverrideKey } from './estimateCustomerExperience'
 import { parseEstimateExperienceOverrides } from './estimateCustomerExperience'
 import type { CustomerAttachmentPayload } from './estimateCustomerAttachment'
+import {
+  normalizeEstimateLineItemFromJsonElement,
+  type EstimateLineItemNormalized,
+} from './estimateLineItemNormalize'
 
 /** localStorage key prefix — shared across tabs (same origin) for staff “Preview as customer” in a new window. */
 export const STAFF_ACCEPT_PREVIEW_STORAGE_PREFIX = 'estimate_staff_accept_preview:'
@@ -8,7 +12,7 @@ export const STAFF_ACCEPT_PREVIEW_STORAGE_PREFIX = 'estimate_staff_accept_previe
 /** Discard snapshots older than this so abandoned previews do not override DB after long idle. */
 const STAFF_ACCEPT_PREVIEW_TTL_MS = 60 * 60 * 1000
 
-export type StaffAcceptPreviewLineItem = { description: string; amount_cents: number }
+export type StaffAcceptPreviewLineItem = EstimateLineItemNormalized
 
 export type StaffAcceptPreviewSnapshotV1 = {
   v: 1
@@ -56,13 +60,7 @@ function parseSnapshotV1FromRecord(
   if (o.valid_until !== null && typeof o.valid_until !== 'string') return null
   if (!Array.isArray(o.line_items)) return null
   if (typeof o.total_cents !== 'number' || !Number.isFinite(o.total_cents)) return null
-  const line_items = (o.line_items as unknown[]).map((x) => {
-    const r = x as Record<string, unknown>
-    return {
-      description: String(r.description ?? ''),
-      amount_cents: Math.max(0, Math.round(Number(r.amount_cents ?? 0))),
-    }
-  })
+  const line_items = (o.line_items as unknown[]).map((x) => normalizeEstimateLineItemFromJsonElement(x))
   let overrides: Record<string, string> | null = null
   if (o.overrides != null) {
     const ov = parseEstimateExperienceOverrides(o.overrides)

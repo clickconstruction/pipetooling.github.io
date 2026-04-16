@@ -1,20 +1,81 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database, Tables } from '../types/database'
+import type { Database, Json, Tables } from '../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { resolveCustomerIdForJobPayload, type JobPayloadCustomerRow } from './jobLedgerCustomer'
 import { resolveEffectiveJobMasterUserId } from './resolveEffectiveJobMasterUserId'
+import {
+  normalizeEstimateLineItemsFromJson,
+  type EstimateLineItemNormalized,
+} from './estimateLineItemNormalize'
 
 /** Fields required to call `create_job_from_estimate` with the same rules as Estimate detail. */
 export type EstimateForCreateJob = Pick<
   Tables<'estimates'>,
-  'id' | 'status' | 'project_id' | 'customer_id' | 'job_ledger_id' | 'title' | 'for_address' | 'total_cents'
+  | 'id'
+  | 'status'
+  | 'project_id'
+  | 'customer_id'
+  | 'job_ledger_id'
+  | 'title'
+  | 'for_address'
+  | 'total_cents'
+  | 'line_items_snapshot'
 >
+
+export type CreateJobFixtureRpcRow = {
+  name: string
+  count: number
+  line_unit_price: number | null
+  line_description: string | null
+  sequence_order: number
+}
+
+/** Maps normalized estimate lines to RPC `p_fixtures` rows (Specific Work). */
+export function fixturesPayloadForCreateJobFromEstimate(
+  lines: EstimateLineItemNormalized[],
+): CreateJobFixtureRpcRow[] {
+  const out: CreateJobFixtureRpcRow[] = []
+  lines.forEach((row, idx) => {
+    const li = (row.line_item ?? '').trim()
+    const desc = (row.description ?? '').trim()
+    const name = li || desc || (row.amount_cents > 0 ? 'Item' : '')
+    if (!name) return
+
+    const line_description = li !== '' ? (desc || null) : null
+    const unitDollars = row.unit_price_cents / 100
+    const line_unit_price =
+      Number.isFinite(unitDollars) ? Math.round(unitDollars * 100) / 100 : null
+
+    out.push({
+      name,
+      count: row.quantity,
+      line_unit_price,
+      line_description,
+      sequence_order: idx,
+    })
+  })
+  return out
+}
+
+export function computeCreateJobBidDisplayDollars(
+  lines: EstimateLineItemNormalized[],
+  estimateTotalCents: number | null,
+): number {
+  const fixtures = fixturesPayloadForCreateJobFromEstimate(lines)
+  if (fixtures.length === 0) {
+    return (estimateTotalCents ?? 0) / 100
+  }
+  let s = 0
+  for (const f of fixtures) {
+    s += f.count * (f.line_unit_price ?? 0)
+  }
+  return Math.round(s * 100) / 100
+}
 
 export type CreateJobFromEstimateFormValues = {
   hcp: string
   jobName: string
   jobAddress: string
-  revenue: string
 }
 
 export type CreateJobFromEstimateSubmitResult =
@@ -44,16 +105,6 @@ export async function submitCreateJobFromEstimate(
     return { ok: false, error: 'HCP # is required.' }
   }
 
-  let revenueOverride: number | undefined
-  const rtrim = form.revenue.trim()
-  if (rtrim !== '') {
-    const n = Number(rtrim)
-    if (Number.isNaN(n)) {
-      return { ok: false, error: 'Revenue must be a number.' }
-    }
-    revenueOverride = n
-  }
-
   try {
     const effectiveMaster = await resolveEffectiveJobMasterUserId(supabase, userId, estimate.project_id)
     const cust = customerIdForPayload ? customers.find((c) => c.id === customerIdForPayload) : null
@@ -65,12 +116,15 @@ export async function submitCreateJobFromEstimate(
       customers,
     )
 
+    const normalized = normalizeEstimateLineItemsFromJson(estimate.line_items_snapshot)
+    const fixtures = fixturesPayloadForCreateJobFromEstimate(normalized)
+
     const rpcArgs = {
       p_estimate_id: estimate.id,
       p_hcp_number: hcp,
       p_job_name: form.jobName.trim() || undefined,
       p_job_address: form.jobAddress.trim() || undefined,
-      ...(revenueOverride !== undefined ? { p_revenue: revenueOverride } : {}),
+      p_fixtures: fixtures as unknown as Json,
       ...(resolvedCustomerId ? { p_customer_id: resolvedCustomerId } : {}),
     }
 
