@@ -37,6 +37,7 @@ import { TALLY_STALE_MIN_AGE_DAYS } from '../lib/tallyStaleMinAgeDays'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { QUICKFILL_SECTION_BANNER_BOX_STYLE } from '../lib/quickfillSectionBannerStyle'
+import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES as CAN_USE_SCHEDULE_DISPATCH_FOR_QUICKFILL_SCHEDULE } from '../lib/scheduleDispatchEditRoles'
 
 const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-warnings', sectionId: 'warnings', label: 'Warnings' },
@@ -67,14 +68,6 @@ const APP_SETTINGS_KEY_QUICKFILL_SECTION_BANNERS = 'quickfill_section_banners'
 const QUICKFILL_SECTION_BANNER_MAX_CHARS = 800
 const SCHEDULE_SECTION_DEFAULT_BANNER = 'Are there any obvious schedule conflicts?'
 const DEFAULT_JOBS_BILLING_MIN_HCP = 406
-
-/** Same cohort as Schedule Dispatch page; gates Quickfill Schedule section visibility. */
-const CAN_USE_SCHEDULE_DISPATCH_FOR_QUICKFILL_SCHEDULE = new Set([
-  'dev',
-  'master_technician',
-  'assistant',
-  'superintendent',
-])
 
 const DEFAULT_SECTION_ORDER_IDS = SECTIONS.map((s) => s.sectionId)
 

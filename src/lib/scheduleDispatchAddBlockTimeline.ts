@@ -4,7 +4,13 @@ import {
   scheduleRangesOverlap,
   type MinuteRange,
 } from './jobScheduleOverlap'
-import { MIN_MIN, MAX_MIN, dispatchMinutesToHHmm } from './dispatchAddBlockTime'
+import {
+  DISPATCH_DEFAULT_NEW_BLOCK_PREFERRED_DURATION_MIN,
+  DISPATCH_DEFAULT_NEW_BLOCK_PREFERRED_START_MIN,
+  MAX_MIN,
+  MIN_MIN,
+  dispatchMinutesToHHmm,
+} from './dispatchAddBlockTime'
 
 export type AddBlockTimelineSegment = {
   blockId: string
@@ -88,18 +94,20 @@ export function gapsFromOccupied(occupied: MinuteRange[], dayLo = MIN_MIN, dayHi
   return gaps
 }
 
-/** Pick default start/end for a new block: first gap that fits `preferDurationMin`, else best effort. */
+/** Pick default start/end for a new block: first gap, preferring 8 AM–4 PM when it fits (else longest slice up to that duration in the gap). */
 export function defaultNewBlockRangeInFirstGap(args: {
   segments: AddBlockTimelineSegment[]
   draftByBlockId: Record<string, { time_start: string; time_end: string }>
   preferDurationMin?: number
+  preferStartMin?: number
   dayLo?: number
   dayHi?: number
 }): { startMin: number; endMin: number } | null {
   const {
     segments,
     draftByBlockId,
-    preferDurationMin = 4 * 60,
+    preferDurationMin = DISPATCH_DEFAULT_NEW_BLOCK_PREFERRED_DURATION_MIN,
+    preferStartMin = DISPATCH_DEFAULT_NEW_BLOCK_PREFERRED_START_MIN,
     dayLo = MIN_MIN,
     dayHi = MAX_MIN,
   } = args
@@ -108,14 +116,19 @@ export function defaultNewBlockRangeInFirstGap(args: {
   const minDur = JOB_SCHEDULE_BLOCK_MIN_DURATION_MINUTES
 
   for (const g of gaps) {
-    if (g.endMin - g.startMin < minDur) continue
-    const end = Math.min(g.startMin + preferDurationMin, g.endMin)
-    const start = end - preferDurationMin
-    if (start >= g.startMin && end - start >= minDur) {
-      return { startMin: start, endMin: end }
+    const gapW = g.endMin - g.startMin
+    if (gapW < minDur) continue
+
+    const D = Math.min(preferDurationMin, gapW)
+    let start = Math.max(g.startMin, preferStartMin)
+    let end = start + D
+    if (end > g.endMin) {
+      end = g.endMin
+      start = end - D
+      start = Math.max(start, g.startMin)
     }
-    if (g.endMin - g.startMin >= minDur) {
-      return { startMin: g.startMin, endMin: Math.min(g.startMin + preferDurationMin, g.endMin) }
+    if (end - start >= minDur) {
+      return { startMin: start, endMin: end }
     }
   }
   return null

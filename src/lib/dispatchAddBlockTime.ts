@@ -6,6 +6,10 @@ import {
 export const MIN_MIN = 4 * 60
 export const MAX_MIN = 20 * 60
 
+/** Preferred default window when adding a schedule block (8:00 AM–4:00 PM Central, dispatch grid). */
+export const DISPATCH_DEFAULT_NEW_BLOCK_PREFERRED_START_MIN = 8 * 60
+export const DISPATCH_DEFAULT_NEW_BLOCK_PREFERRED_DURATION_MIN = 8 * 60
+
 const DISPATCH_ADD_BLOCK_SLOT_STEP = JOB_SCHEDULE_BLOCK_MIN_DURATION_MINUTES
 export const DISPATCH_ADD_BLOCK_SLOT_COUNT =
   (MAX_MIN - MIN_MIN) / DISPATCH_ADD_BLOCK_SLOT_STEP + 1

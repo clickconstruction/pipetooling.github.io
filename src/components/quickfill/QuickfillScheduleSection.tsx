@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
@@ -10,11 +10,18 @@ import {
   fetchUserNamesForIds,
   fetchUsersTabRosterForScheduleDispatchHub,
   formatScheduleDispatchHubJobTitle,
+  type ScheduleDispatchHubJobRow,
 } from '../../lib/scheduleDispatchHub'
 import {
   defaultNewBlockRangeInFirstGap,
   type AddBlockTimelineSegment,
 } from '../../lib/scheduleDispatchAddBlockTimeline'
+import { scheduleTimeToMinutesFromMidnight } from '../../lib/jobScheduleOverlap'
+import { scheduleFormatWeekdayLong } from '../../lib/jobScheduleChicago'
+import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES } from '../../lib/scheduleDispatchEditRoles'
+import { saveNewScheduleBlockForPersonDay } from '../../lib/scheduleDispatchAddBlockSave'
+import { ScheduleDispatchAddBlockModal } from '../schedule/ScheduleDispatchAddBlockModal'
+import { ScheduleDispatchAssignJobPickerModal } from '../schedule/ScheduleDispatchAssignJobPickerModal'
 import {
   DISPATCH_ADD_BLOCK_SLOT_COUNT,
   dispatchMinutesToHHmm,
@@ -24,7 +31,6 @@ import {
   timeInputToMinutesSafe,
   timeInputToPg,
 } from '../../lib/dispatchAddBlockTime'
-import { scheduleTimeToMinutesFromMidnight } from '../../lib/jobScheduleOverlap'
 import {
   DISPATCH_ADD_BLOCK_ORIENTATION_MARKS,
   DispatchAddBlockTimeRange,
@@ -55,6 +61,7 @@ const QUICKFILL_SCHEDULE_HIDE_ASSISTANT_ESTIMATOR_KEY = 'quickfill_schedule_hide
 
 /** Matches per-row name column so shared 8 AM / 12 PM / 4 PM labels align with each timeline. */
 const QUICKFILL_SCHEDULE_NAME_COL_WIDTH = 'clamp(5.5rem, 24vw, 8.5rem)'
+const QUICKFILL_SCHEDULE_ADD_COL_WIDTH = '2rem'
 const QUICKFILL_SCHEDULE_ROW_GAP = '0.5rem'
 
 function readHideAssistantsEstimatorsFromStorage(): boolean {
@@ -106,6 +113,7 @@ const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
   displayName,
   segments,
   secondaryBands,
+  onScheduleAddClick,
   onOpenMyTimeForSessionStrip,
   onOccupiedBandClick,
 }: {
@@ -113,6 +121,7 @@ const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
   displayName: string
   segments: AddBlockTimelineSegment[]
   secondaryBands?: DispatchSecondaryBand[]
+  onScheduleAddClick?: () => void
   onOpenMyTimeForSessionStrip?: (uid: string, name: string) => void
   onOccupiedBandClick?: (band: DispatchOccupiedBand) => void
 }) {
@@ -128,7 +137,7 @@ const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
     }
     return {
       startSlotIndex: dispatchMinutesToSlotIndex(timeInputToMinutesSafe('08:00')),
-      endSlotIndex: dispatchMinutesToSlotIndex(timeInputToMinutesSafe('12:00')),
+      endSlotIndex: dispatchMinutesToSlotIndex(timeInputToMinutesSafe('16:00')),
     }
   }, [segments])
 
@@ -143,17 +152,17 @@ const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
       }}
     >
       <div
-        title={displayName}
         style={{
           width: QUICKFILL_SCHEDULE_NAME_COL_WIDTH,
           flexShrink: 0,
           fontSize: '0.8125rem',
           fontWeight: 600,
-          color: '#374151',
+          color: '#111827',
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           lineHeight: 1.2,
+          padding: '0.15rem 0.25rem',
         }}
       >
         {displayName}
@@ -187,6 +196,34 @@ const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
           onOccupiedBandClick={onOccupiedBandClick}
         />
       </div>
+      {onScheduleAddClick ? (
+        <button
+          type="button"
+          onClick={onScheduleAddClick}
+          title={`Add job to schedule for ${displayName}`}
+          aria-label={`Add schedule block for ${displayName} on this day`}
+          style={{
+            width: QUICKFILL_SCHEDULE_ADD_COL_WIDTH,
+            flexShrink: 0,
+            height: QUICKFILL_SCHEDULE_ADD_COL_WIDTH,
+            padding: 0,
+            margin: 0,
+            border: 'none',
+            borderRadius: 6,
+            background: '#f3f4f6',
+            color: '#9ca3af',
+            fontSize: '1.125rem',
+            fontWeight: 600,
+            lineHeight: 1,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          +
+        </button>
+      ) : null}
     </div>
   )
 })
@@ -197,10 +234,13 @@ const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
  *
  * On the Quickfill page, pass `hideConflictPrompt` so the section wrapper’s configurable banner is the only callout.
  */
+type QuickfillBlockModalState = { kind: 'add'; assigneeUserId: string; workDate: string; jobId: string }
+
 export function QuickfillScheduleSection({ hideConflictPrompt = false }: { hideConflictPrompt?: boolean } = {}) {
   const navigate = useNavigate()
-  const { role } = useAuth()
+  const { role, user: authUser } = useAuth()
   const { showToast } = useToastContext()
+  const canEditSchedule = role != null && CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES.has(role)
   const showClockStripScopeToggle =
     role === 'dev' || role === 'master_technician' || role === 'assistant'
   const showStripSubjectMyTimeEditor = showClockStripScopeToggle || role === 'superintendent'
@@ -221,6 +261,20 @@ export function QuickfillScheduleSection({ hideConflictPrompt = false }: { hideC
   const [roleByUserId, setRoleByUserId] = useState<Map<string, string>>(() => new Map())
   const [searchQuery, setSearchQuery] = useState('')
   const [hideAssistantsEstimators, setHideAssistantsEstimators] = useState(readHideAssistantsEstimatorsFromStorage)
+  const [hubJobsForPicker, setHubJobsForPicker] = useState<ScheduleDispatchHubJobRow[]>([])
+  const [cellAddContext, setCellAddContext] = useState<{ assigneeUserId: string; workDate: string } | null>(null)
+  const [assignJobPickerOpen, setAssignJobPickerOpen] = useState(false)
+  const [assignJobPickerSearch, setAssignJobPickerSearch] = useState('')
+  const [blockModalState, setBlockModalState] = useState<QuickfillBlockModalState | null>(null)
+  const [addBlockTimelineSegments, setAddBlockTimelineSegments] = useState<AddBlockTimelineSegment[]>([])
+  const [addBlockDraftByBlockId, setAddBlockDraftByBlockId] = useState<
+    Record<string, { time_start: string; time_end: string }>
+  >({})
+  const [addTimeStart, setAddTimeStart] = useState('08:00')
+  const [addTimeEnd, setAddTimeEnd] = useState('16:00')
+  const [addNote, setAddNote] = useState('')
+  const [addError, setAddError] = useState<string | null>(null)
+  const [addSaving, setAddSaving] = useState(false)
 
   const sortedUsers = useMemo(() => {
     const rows = userIds.map((id) => ({ id, name: (nameById.get(id) ?? 'Unknown').trim() || 'Unknown' }))
@@ -274,6 +328,155 @@ export function QuickfillScheduleSection({ hideConflictPrompt = false }: { hideC
     setScheduleMyTimeEditor({ subjectUserId: uid, subjectDisplayName: name })
   }, [])
 
+  const closeQuickfillAddBlock = useCallback(() => {
+    setBlockModalState(null)
+    setAddError(null)
+    setAddBlockTimelineSegments([])
+    setAddBlockDraftByBlockId({})
+  }, [])
+
+  const closeQuickfillJobPicker = useCallback(() => {
+    setAssignJobPickerOpen(false)
+    setCellAddContext(null)
+    setAssignJobPickerSearch('')
+  }, [])
+
+  const openQuickfillAddBlock = useCallback(
+    (args: { assigneeUserId: string; workDate: string; jobId: string }) => {
+      setAssignJobPickerOpen(false)
+      setCellAddContext(null)
+      setAssignJobPickerSearch('')
+      setBlockModalState({ kind: 'add', assigneeUserId: args.assigneeUserId, workDate: args.workDate, jobId: args.jobId })
+      const rows = blocksByUserId.get(args.assigneeUserId) ?? []
+      const labelFor = (jid: string) => jobTitleById.get(jid) ?? formatScheduleDispatchHubJobTitle(null, null)
+      const segments: AddBlockTimelineSegment[] = [...rows]
+        .map((b) => ({
+          blockId: b.id,
+          jobId: b.job_id,
+          label: labelFor(b.job_id),
+          time_start: b.time_start,
+          time_end: b.time_end,
+          shared_block_group_id: b.shared_block_group_id,
+        }))
+        .sort(
+          (a, b) =>
+            scheduleTimeToMinutesFromMidnight(timeInputToPg(a.time_start.slice(0, 5))) -
+            scheduleTimeToMinutesFromMidnight(timeInputToPg(b.time_start.slice(0, 5))),
+        )
+      setAddBlockTimelineSegments(segments)
+      setAddBlockDraftByBlockId({})
+      const def = defaultNewBlockRangeInFirstGap({ segments, draftByBlockId: {} })
+      if (def) {
+        setAddTimeStart(dispatchMinutesToHHmm(def.startMin))
+        setAddTimeEnd(dispatchMinutesToHHmm(def.endMin))
+      } else {
+        setAddTimeStart('08:00')
+        setAddTimeEnd('16:00')
+      }
+      setAddNote('')
+      setAddError(null)
+    },
+    [blocksByUserId, jobTitleById],
+  )
+
+  /** Unique jobs_ledger ids from this person’s clock sessions on the picker day (first clock-in order). */
+  const quickfillOrderedSessionJobLedgerIds = useMemo(() => {
+    if (!cellAddContext) return [] as string[]
+    const sessions = sessionsByUserId.get(cellAddContext.assigneeUserId) ?? []
+    const out: string[] = []
+    const seen = new Set<string>()
+    for (const s of sessions) {
+      const jid = s.job_ledger_id?.trim()
+      if (!jid || seen.has(jid)) continue
+      seen.add(jid)
+      out.push(jid)
+    }
+    return out
+  }, [cellAddContext, sessionsByUserId])
+
+  const quickfillSessionJobOrderIndex = useMemo(() => {
+    const m = new Map<string, number>()
+    quickfillOrderedSessionJobLedgerIds.forEach((id, i) => m.set(id, i))
+    return m
+  }, [quickfillOrderedSessionJobLedgerIds])
+
+  const quickfillPickerJobsSorted = useMemo(
+    () =>
+      [...hubJobsForPicker].sort((a, b) => {
+        const ia = quickfillSessionJobOrderIndex.get(a.id)
+        const ib = quickfillSessionJobOrderIndex.get(b.id)
+        const aIn = ia !== undefined
+        const bIn = ib !== undefined
+        if (aIn && !bIn) return -1
+        if (!aIn && bIn) return 1
+        if (aIn && bIn && ia !== ib) return ia - ib
+        const ha = (a.hcp_number ?? '').trim()
+        const hb = (b.hcp_number ?? '').trim()
+        return hb.localeCompare(ha, undefined, { numeric: true })
+      }),
+    [hubJobsForPicker, quickfillSessionJobOrderIndex],
+  )
+
+  const quickfillAssignJobPickerRows = useMemo(() => {
+    const q = assignJobPickerSearch.trim().toLowerCase()
+    const sessionTodaySet = new Set(quickfillOrderedSessionJobLedgerIds)
+    let list = quickfillPickerJobsSorted
+    if (q) {
+      list = list.filter(
+        (j) =>
+          (j.hcp_number ?? '').toLowerCase().includes(q) ||
+          (j.job_name ?? '').toLowerCase().includes(q) ||
+          formatScheduleDispatchHubJobTitle(j.hcp_number, j.job_name).toLowerCase().includes(q),
+      )
+    }
+    return list.map((j) => ({
+      id: j.id,
+      displayTitle: formatScheduleDispatchHubJobTitle(j.hcp_number, j.job_name),
+      sessionToday: sessionTodaySet.has(j.id),
+    }))
+  }, [assignJobPickerSearch, quickfillOrderedSessionJobLedgerIds, quickfillPickerJobsSorted])
+
+  const quickfillCellChoiceSubtitle = useMemo(() => {
+    if (!cellAddContext) return ''
+    const name = (nameById.get(cellAddContext.assigneeUserId) ?? 'Unknown').trim() || 'Unknown'
+    return `${name} · ${scheduleFormatWeekdayLong(cellAddContext.workDate)} (${cellAddContext.workDate})`
+  }, [cellAddContext, nameById])
+
+  const quickfillAssignJobPickerSubtitle = useMemo((): ReactNode => {
+    if (!cellAddContext) return null
+    return (
+      <p style={{ margin: 0, fontSize: '0.875rem', color: '#4b5563' }}>
+        Pick a job to add a block for <strong>{quickfillCellChoiceSubtitle}</strong>.
+      </p>
+    )
+  }, [cellAddContext, quickfillCellChoiceSubtitle])
+
+  const blockModalPersonLabel = useMemo(() => {
+    if (!blockModalState) return ''
+    return (nameById.get(blockModalState.assigneeUserId) ?? 'Unknown').trim() || 'Unknown'
+  }, [blockModalState, nameById])
+
+  const blockModalJobTitle = useMemo(() => {
+    if (!blockModalState) return ''
+    return jobTitleById.get(blockModalState.jobId) ?? formatScheduleDispatchHubJobTitle(null, null)
+  }, [blockModalState, jobTitleById])
+
+  const addBlockModalTimeline = useMemo(() => {
+    if (!blockModalState) return undefined
+    return {
+      segments: addBlockTimelineSegments,
+      draftByBlockId: addBlockDraftByBlockId,
+      setDraftByBlockId: setAddBlockDraftByBlockId,
+    }
+  }, [blockModalState, addBlockTimelineSegments, addBlockDraftByBlockId])
+
+  useEffect(() => {
+    setAssignJobPickerOpen(false)
+    setCellAddContext(null)
+    setAssignJobPickerSearch('')
+    closeQuickfillAddBlock()
+  }, [workDate, closeQuickfillAddBlock])
+
   useReportQuickfillSectionMetric('schedule', null, false)
 
   const dayLabel = useMemo(() => {
@@ -309,8 +512,9 @@ export function QuickfillScheduleSection({ hideConflictPrompt = false }: { hideC
     })
   }, [])
 
-  const loadData = useCallback(async () => {
-    setLoading(true)
+  const loadData = useCallback(async (options?: { quiet?: boolean }) => {
+    const quiet = options?.quiet === true
+    if (!quiet) setLoading(true)
     try {
       const [usersRes, jobsRes] = await Promise.all([
         fetchUsersTabRosterForScheduleDispatchHub(role === 'dev'),
@@ -323,6 +527,7 @@ export function QuickfillScheduleSection({ hideConflictPrompt = false }: { hideC
         setBlocksByUserId(new Map())
         setSessionsByUserId(new Map())
         setBidTitleById(new Map())
+        setHubJobsForPicker([])
         return
       }
       const roster = usersRes.data
@@ -330,9 +535,12 @@ export function QuickfillScheduleSection({ hideConflictPrompt = false }: { hideC
       setRoleByUserId(new Map(roster.map((r) => [r.id, r.role])))
       const jMap = new Map<string, string>()
       if (!jobsRes.error) {
+        setHubJobsForPicker(jobsRes.data)
         for (const j of jobsRes.data) {
           jMap.set(j.id, formatScheduleDispatchHubJobTitle(j.hcp_number, j.job_name))
         }
+      } else {
+        setHubJobsForPicker([])
       }
       setJobTitleById(jMap)
 
@@ -436,10 +644,45 @@ export function QuickfillScheduleSection({ hideConflictPrompt = false }: { hideC
       setBlocksByUserId(new Map())
       setSessionsByUserId(new Map())
       setBidTitleById(new Map())
+      setHubJobsForPicker([])
     } finally {
-      setLoading(false)
+      if (!quiet) setLoading(false)
     }
   }, [workDate, role, showToast])
+
+  const saveQuickfillBlockModal = useCallback(async () => {
+    if (!blockModalState || !authUser?.id) return
+    setAddSaving(true)
+    setAddError(null)
+    const res = await saveNewScheduleBlockForPersonDay({
+      authUserId: authUser.id,
+      assigneeUserId: blockModalState.assigneeUserId,
+      workDate: blockModalState.workDate,
+      targetJobId: blockModalState.jobId,
+      addTimeStart,
+      addTimeEnd,
+      addNote,
+      addBlockDraftByBlockId,
+    })
+    setAddSaving(false)
+    if (!res.ok) {
+      setAddError(res.error)
+      return
+    }
+    showToast('Block added.', 'success')
+    closeQuickfillAddBlock()
+    void loadData({ quiet: true })
+  }, [
+    addBlockDraftByBlockId,
+    addNote,
+    addTimeEnd,
+    addTimeStart,
+    authUser?.id,
+    blockModalState,
+    closeQuickfillAddBlock,
+    loadData,
+    showToast,
+  ])
 
   const handleScheduleMarkNotComingIn = useCallback(async () => {
     const editor = scheduleMyTimeEditor
@@ -460,7 +703,7 @@ export function QuickfillScheduleSection({ hideConflictPrompt = false }: { hideC
     if (result.syncWarning) {
       showToast(`Salary sync: ${result.syncWarning}`, 'warning')
     }
-    void loadData()
+    void loadData({ quiet: true })
   }, [scheduleMyTimeEditor, workDate, showToast, loadData])
 
   useEffect(() => {
@@ -477,7 +720,7 @@ export function QuickfillScheduleSection({ hideConflictPrompt = false }: { hideC
           const row = (payload.new as { work_date?: string } | null) ?? (payload.old as { work_date?: string } | null)
           const wd = row?.work_date
           if (wd != null && wd !== workDate) return
-          void loadData()
+          void loadData({ quiet: true })
         },
       )
       .subscribe()
@@ -681,6 +924,9 @@ export function QuickfillScheduleSection({ hideConflictPrompt = false }: { hideC
                 </span>
               ))}
             </div>
+            {canEditSchedule ? (
+              <div style={{ width: QUICKFILL_SCHEDULE_ADD_COL_WIDTH, flexShrink: 0 }} aria-hidden />
+            ) : null}
           </div>
           {filteredSortedUsers.map(({ id, name }) => {
             const rows = blocksByUserId.get(id) ?? []
@@ -693,6 +939,15 @@ export function QuickfillScheduleSection({ hideConflictPrompt = false }: { hideC
                 displayName={name}
                 segments={segments}
                 secondaryBands={secondary}
+                onScheduleAddClick={
+                  canEditSchedule
+                    ? () => {
+                        setCellAddContext({ assigneeUserId: id, workDate })
+                        setAssignJobPickerSearch('')
+                        setAssignJobPickerOpen(true)
+                      }
+                    : undefined
+                }
                 onOpenMyTimeForSessionStrip={
                   showStripSubjectMyTimeEditor ? openMyTimeForSessionStrip : undefined
                 }
@@ -702,6 +957,40 @@ export function QuickfillScheduleSection({ hideConflictPrompt = false }: { hideC
           })}
         </div>
       )}
+      <ScheduleDispatchAssignJobPickerModal
+        open={assignJobPickerOpen}
+        onClose={closeQuickfillJobPicker}
+        subtitle={quickfillAssignJobPickerSubtitle}
+        jobRows={quickfillAssignJobPickerRows}
+        searchValue={assignJobPickerSearch}
+        onSearchChange={setAssignJobPickerSearch}
+        onPickJob={(jobId) => {
+          if (!cellAddContext) return
+          openQuickfillAddBlock({
+            assigneeUserId: cellAddContext.assigneeUserId,
+            workDate: cellAddContext.workDate,
+            jobId,
+          })
+        }}
+      />
+      <ScheduleDispatchAddBlockModal
+        open={blockModalState != null}
+        mode="add"
+        jobTitle={blockModalJobTitle}
+        personLabel={blockModalPersonLabel}
+        workDate={blockModalState?.workDate ?? ''}
+        timeStart={addTimeStart}
+        timeEnd={addTimeEnd}
+        note={addNote}
+        saving={addSaving}
+        error={addError}
+        onClose={closeQuickfillAddBlock}
+        onChangeStart={setAddTimeStart}
+        onChangeEnd={setAddTimeEnd}
+        onChangeNote={setAddNote}
+        onSave={() => void saveQuickfillBlockModal()}
+        addTimeline={addBlockModalTimeline}
+      />
       {scheduleMyTimeEditor ? (
         <DashboardMyTimeDayEditorModal
           dateStr={workDate}
@@ -717,10 +1006,10 @@ export function QuickfillScheduleSection({ hideConflictPrompt = false }: { hideC
           }
           onClose={() => setScheduleMyTimeEditor(null)}
           onSaved={() => {
-            void loadData()
+            void loadData({ quiet: true })
             setScheduleMyTimeEditor(null)
           }}
-          onLinkedSessionsUpdated={() => void loadData()}
+          onLinkedSessionsUpdated={() => void loadData({ quiet: true })}
         />
       ) : null}
     </div>

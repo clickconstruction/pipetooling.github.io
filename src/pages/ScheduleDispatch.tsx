@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { useAuth } from '../hooks/useAuth'
@@ -19,41 +19,27 @@ import {
 } from '../lib/jobScheduleBlocks'
 import { buildLinkedGroupAccentMap } from '../lib/scheduleDispatchLinkedGroupPalette'
 import {
-  DISPATCH_ADD_BLOCK_SLOT_COUNT,
   MIN_MIN,
   MAX_MIN,
-  clampDispatchEndStartForMinDuration,
-  clampDispatchStartEndForMinDuration,
   dispatchMinutesToHHmm,
-  dispatchMinutesToSlotIndex,
-  dispatchSlotIndexToMinutes,
-  formatBlockDurationAriaLabel,
-  formatBlockDurationMinutes,
-  formatDispatchQuickTimeLabel,
-  timeInputToMinutesSafe,
   timeInputToPg,
 } from '../lib/dispatchAddBlockTime'
 import {
   scheduleBlockToRange,
-  scheduleHasInternalOverlap,
   scheduleOverlapsAny,
   scheduleTimeToMinutesFromMidnight,
   validateJobScheduleBlockMinuteRange,
 } from '../lib/jobScheduleOverlap'
 import {
-  applySegmentMoveToAbsoluteStart,
-  clampNewBlockRangeToGaps,
   defaultNewBlockRangeInFirstGap,
-  gapsFromOccupied,
-  occupiedUnionFromSegments,
-  virtualDayBlocksForOverlap,
   type AddBlockTimelineSegment,
 } from '../lib/scheduleDispatchAddBlockTimeline'
 import { scheduleFormatWeekdayLong, scheduleFormatWindow } from '../lib/jobScheduleChicago'
 import { executeScheduleDispatchBlockReassign } from '../lib/scheduleDispatchDragEnd'
 import { insertScheduleDispatchCopiedLeg } from '../lib/scheduleDispatchMirrorInsert'
 import { fetchSalariedUserIdSetFromUserIds } from '../lib/salaryPayConfigGate'
-import { DispatchAddBlockTimeRange, type DispatchOccupiedBand } from '../components/schedule/DispatchAddBlockTimeRange'
+import { ScheduleDispatchAddBlockModal } from '../components/schedule/ScheduleDispatchAddBlockModal'
+import { ScheduleDispatchAssignJobPickerModal } from '../components/schedule/ScheduleDispatchAssignJobPickerModal'
 import DetailJobModal, { type DetailJobScheduleContext } from '../components/jobs/DetailJobModal'
 import { PreviewJobModal } from '../components/calendar/PreviewJobModal'
 import { LinkedScheduleGroupModal } from '../components/schedule/LinkedScheduleGroupModal'
@@ -88,6 +74,8 @@ import {
   getScheduleDispatchVisibleDayKeys,
   ymdAddDays,
 } from '../utils/dateUtils'
+import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES as CAN_USE_SCHEDULE_DISPATCH } from '../lib/scheduleDispatchEditRoles'
+import { saveNewScheduleBlockForPersonDay } from '../lib/scheduleDispatchAddBlockSave'
 
 const SCHEDULE_DISPATCH_HIDE_WEEKEND_STORAGE_KEY = 'scheduleDispatchHideWeekend'
 const SCHEDULE_DISPATCH_HIGHLIGHT_LINKED_GROUPS_KEY = 'scheduleDispatchHighlightLinkedGroups'
@@ -113,13 +101,6 @@ function readScheduleDispatchHighlightLinkedGroups(): boolean {
   }
 }
 
-const CAN_USE_SCHEDULE_DISPATCH = new Set([
-  'dev',
-  'master_technician',
-  'assistant',
-  'superintendent',
-])
-
 /** Matches RLS on jobs_ledger_team_members INSERT (no superintendent). */
 const CAN_ADD_TO_JOB_ROSTER = new Set(['dev', 'master_technician', 'assistant'])
 
@@ -144,308 +125,6 @@ function validateRange(timeStart: string, timeEnd: string): string | null {
     minWallMin: MIN_MIN,
     maxWallMin: MAX_MIN,
   })
-}
-
-function AddBlockModal({
-  open,
-  mode,
-  jobTitle,
-  personLabel,
-  workDate,
-  timeStart,
-  timeEnd,
-  note,
-  saving,
-  error,
-  onClose,
-  onChangeStart,
-  onChangeEnd,
-  onChangeNote,
-  onSave,
-  addTimeline,
-}: {
-  open: boolean
-  mode: 'add' | 'edit'
-  jobTitle: string
-  personLabel: string
-  workDate: string
-  timeStart: string
-  timeEnd: string
-  note: string
-  saving: boolean
-  error: string | null
-  onClose: () => void
-  onChangeStart: (v: string) => void
-  onChangeEnd: (v: string) => void
-  onChangeNote: (v: string) => void
-  onSave: () => void
-  addTimeline?: {
-    segments: AddBlockTimelineSegment[]
-    draftByBlockId: Record<string, { time_start: string; time_end: string }>
-    setDraftByBlockId: Dispatch<SetStateAction<Record<string, { time_start: string; time_end: string }>>>
-  }
-}) {
-  const startMin = useMemo(() => timeInputToMinutesSafe(timeStart), [timeStart])
-  const endMin = useMemo(() => timeInputToMinutesSafe(timeEnd), [timeEnd])
-  const startSlotIndex = useMemo(() => dispatchMinutesToSlotIndex(startMin), [startMin])
-  const endSlotIndex = useMemo(() => dispatchMinutesToSlotIndex(endMin), [endMin])
-
-  const occupiedBands = useMemo((): DispatchOccupiedBand[] | undefined => {
-    if (mode !== 'add' || !addTimeline?.segments.length) return undefined
-    return addTimeline.segments.map((s) => {
-      const d = addTimeline.draftByBlockId[s.blockId]
-      const ts = (d?.time_start ?? s.time_start).slice(0, 5)
-      const te = (d?.time_end ?? s.time_end).slice(0, 5)
-      const sm = timeInputToMinutesSafe(ts)
-      const em = timeInputToMinutesSafe(te)
-      return {
-        blockId: s.blockId,
-        jobId: s.jobId,
-        label: s.label,
-        startSlotIndex: dispatchMinutesToSlotIndex(sm),
-        endSlotIndex: dispatchMinutesToSlotIndex(em),
-      }
-    })
-  }, [mode, addTimeline?.segments, addTimeline?.draftByBlockId])
-
-  const onOccupiedAbsoluteStart = useCallback(
-    (blockId: string, desiredStartMin: number) => {
-      if (!addTimeline || mode !== 'add') return
-      addTimeline.setDraftByBlockId((prev) => {
-        const next = applySegmentMoveToAbsoluteStart({
-          segments: addTimeline.segments,
-          draftByBlockId: prev,
-          seedBlockId: blockId,
-          desiredStartMin,
-        })
-        return next ?? prev
-      })
-    },
-    [addTimeline, mode],
-  )
-
-  const addModalTimeRef = useRef({ start: timeStart, end: timeEnd })
-  addModalTimeRef.current = { start: timeStart, end: timeEnd }
-
-  useEffect(() => {
-    if (mode !== 'add' || !addTimeline) return
-    const gaps = gapsFromOccupied(occupiedUnionFromSegments(addTimeline.segments, addTimeline.draftByBlockId))
-    const { start: ts, end: te } = addModalTimeRef.current
-    const sm = timeInputToMinutesSafe(ts)
-    const em = timeInputToMinutesSafe(te)
-    const c = clampNewBlockRangeToGaps({ desiredStartMin: sm, desiredEndMin: em, gaps })
-    const ns = dispatchMinutesToHHmm(c.startMin)
-    const ne = dispatchMinutesToHHmm(c.endMin)
-    if (ns !== ts || ne !== te) {
-      onChangeStart(ns)
-      onChangeEnd(ne)
-    }
-  }, [mode, addTimeline?.segments, addTimeline?.draftByBlockId, onChangeStart, onChangeEnd])
-
-  const { durationDisplay, durationAriaLabel } = useMemo(() => {
-    const dm = endMin > startMin ? endMin - startMin : Number.NaN
-    return {
-      durationDisplay: formatBlockDurationMinutes(dm),
-      durationAriaLabel: formatBlockDurationAriaLabel(dm),
-    }
-  }, [startMin, endMin])
-
-  const onStartSliderChange = useCallback(
-    (slotIndex: number) => {
-      const sMin = dispatchSlotIndexToMinutes(slotIndex)
-      const eMinCur = timeInputToMinutesSafe(timeEnd)
-      let { s, e } = clampDispatchStartEndForMinDuration(sMin, eMinCur)
-      if (mode === 'add' && addTimeline) {
-        const gaps = gapsFromOccupied(
-          occupiedUnionFromSegments(addTimeline.segments, addTimeline.draftByBlockId),
-        )
-        const c = clampNewBlockRangeToGaps({ desiredStartMin: s, desiredEndMin: e, gaps })
-        s = c.startMin
-        e = c.endMin
-      }
-      onChangeStart(dispatchMinutesToHHmm(s))
-      onChangeEnd(dispatchMinutesToHHmm(e))
-    },
-    [timeEnd, onChangeStart, onChangeEnd, mode, addTimeline],
-  )
-
-  const onEndSliderChange = useCallback(
-    (slotIndex: number) => {
-      const eMin = dispatchSlotIndexToMinutes(slotIndex)
-      const sMinCur = timeInputToMinutesSafe(timeStart)
-      let { s, e } = clampDispatchEndStartForMinDuration(eMin, sMinCur)
-      if (mode === 'add' && addTimeline) {
-        const gaps = gapsFromOccupied(
-          occupiedUnionFromSegments(addTimeline.segments, addTimeline.draftByBlockId),
-        )
-        const c = clampNewBlockRangeToGaps({ desiredStartMin: s, desiredEndMin: e, gaps })
-        s = c.startMin
-        e = c.endMin
-      }
-      onChangeStart(dispatchMinutesToHHmm(s))
-      onChangeEnd(dispatchMinutesToHHmm(e))
-    },
-    [timeStart, onChangeStart, onChangeEnd, mode, addTimeline],
-  )
-
-  if (!open) return null
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.45)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1002,
-      }}
-      onClick={onClose}
-      role="presentation"
-    >
-      <div
-        role="dialog"
-        aria-labelledby="schedule-dispatch-add-title"
-        style={{
-          background: '#fff',
-          borderRadius: 8,
-          padding: '1.25rem',
-          maxWidth: 420,
-          width: '92%',
-          boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2
-          id="schedule-dispatch-add-title"
-          style={{
-            margin: '0 0 0.75rem',
-            fontSize: '1.05rem',
-            lineHeight: 1.35,
-            wordBreak: 'break-word',
-          }}
-        >
-          {mode === 'edit' ? 'Edit schedule block' : 'Add schedule block'}
-          {jobTitle.trim() ? (
-            <>
-              {' '}
-              <span aria-hidden>·</span>{' '}
-              <span title={jobTitle} style={{ fontSize: '0.9rem', color: '#374151', fontWeight: 600 }}>
-                {jobTitle}
-              </span>
-            </>
-          ) : null}
-        </h2>
-        <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#4b5563', lineHeight: 1.35, wordBreak: 'break-word' }}>
-          <strong>{personLabel}</strong>
-          {workDate.trim() ? (
-            <>
-              {' '}
-              <span aria-hidden>·</span>{' '}
-              <span title={workDate}>{scheduleFormatWeekdayLong(workDate)}</span>
-            </>
-          ) : null}
-        </p>
-        {error ? (
-          <p style={{ color: '#b91c1c', fontSize: '0.875rem', margin: '0 0 0.75rem', whiteSpace: 'pre-wrap' }}>{error}</p>
-        ) : null}
-        <div style={{ marginBottom: '0.75rem' }}>
-          <DispatchAddBlockTimeRange
-            slotCount={DISPATCH_ADD_BLOCK_SLOT_COUNT}
-            startSlotIndex={startSlotIndex}
-            endSlotIndex={endSlotIndex}
-            onStartChange={onStartSliderChange}
-            onEndChange={onEndSliderChange}
-            formatAriaValue={(i) =>
-              formatDispatchQuickTimeLabel(dispatchMinutesToHHmm(dispatchSlotIndexToMinutes(i)))
-            }
-            disabled={saving}
-            groupAriaLabel="Scheduled block time, 30-minute steps from 4:00 AM to 8:00 PM Central"
-            occupiedBands={occupiedBands}
-            onOccupiedAbsoluteStart={mode === 'add' && addTimeline ? onOccupiedAbsoluteStart : undefined}
-          />
-        </div>
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.75rem', alignItems: 'flex-end' }}>
-          <label style={{ fontSize: '0.75rem', color: '#6b7280', flex: '1 1 120px' }}>
-            Start
-            <input
-              type="time"
-              value={timeStart}
-              onChange={(e) => onChangeStart(e.target.value)}
-              style={{ display: 'block', marginTop: 4, width: '100%', padding: '0.35rem' }}
-            />
-          </label>
-          <div
-            role="status"
-            aria-live="polite"
-            aria-label={durationAriaLabel}
-            style={{
-              flex: '0 0 auto',
-              textAlign: 'center',
-              minWidth: 72,
-              paddingBottom: 2,
-            }}
-          >
-            <div style={{ fontSize: '0.65rem', color: '#6b7280', marginBottom: 2 }}>Duration</div>
-            <div
-              style={{
-                fontSize: '0.875rem',
-                fontWeight: 600,
-                fontVariantNumeric: 'tabular-nums',
-                color: '#374151',
-              }}
-            >
-              {durationDisplay}
-            </div>
-          </div>
-          <label style={{ fontSize: '0.75rem', color: '#6b7280', flex: '1 1 120px' }}>
-            End
-            <input
-              type="time"
-              value={timeEnd}
-              onChange={(e) => onChangeEnd(e.target.value)}
-              style={{ display: 'block', marginTop: 4, width: '100%', padding: '0.35rem' }}
-            />
-          </label>
-        </div>
-        <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.75rem' }}>
-          Note (optional)
-          <input
-            type="text"
-            value={note}
-            onChange={(e) => onChangeNote(e.target.value)}
-            maxLength={500}
-            style={{ display: 'block', marginTop: 4, width: '100%', padding: '0.4rem', fontSize: '0.875rem' }}
-          />
-        </label>
-        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{ padding: '0.45rem 1rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            disabled={saving}
-            onClick={() => onSave()}
-            style={{
-              padding: '0.45rem 1rem',
-              fontSize: '0.875rem',
-              background: saving ? '#e5e7eb' : '#2563eb',
-              color: saving ? '#6b7280' : '#fff',
-              border: 'none',
-              borderRadius: 4,
-              cursor: saving ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {saving ? 'Saving…' : mode === 'edit' ? 'Save changes' : 'Save'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
 }
 
 function RemoveScheduleBlockConfirmModal({
@@ -666,7 +345,7 @@ export default function ScheduleDispatch() {
   const [jobWeekHydratedKey, setJobWeekHydratedKey] = useState<string | null>(null)
 
   const [hubLoading, setHubLoading] = useState(false)
-  /** Monotonic id so only the latest `loadHub` run clears `hubLoading` (overlapping week/job navigations). */
+  /** Monotonic id so only the latest non-quiet `loadHub` run clears `hubLoading` (overlapping week/job navigations). Quiet refreshes do not bump this. */
   const hubLoadSeqRef = useRef(0)
   /** Monotonic id so overlapping `load()` runs (Strict Mode / rapid URL changes) do not clobber state or `loading`. */
   const jobWeekLoadSeqRef = useRef(0)
@@ -824,10 +503,11 @@ export default function ScheduleDispatch() {
     return rows
   }, [hubJobs, hubSummaryRows])
 
-  const loadHub = useCallback(async () => {
+  const loadHub = useCallback(async (options?: { quiet?: boolean }) => {
     if (jobId) return
-    const hubLoadSeq = ++hubLoadSeqRef.current
-    setHubLoading(true)
+    const quiet = options?.quiet === true
+    const hubLoadSeq = quiet ? 0 : ++hubLoadSeqRef.current
+    if (!quiet) setHubLoading(true)
     try {
       setHubJobsError(null)
       setHubSummariesError(null)
@@ -927,7 +607,7 @@ export default function ScheduleDispatch() {
     } catch (err) {
       showToast(formatErrorMessage(err), 'error')
     } finally {
-      if (hubLoadSeqRef.current === hubLoadSeq) {
+      if (!quiet && hubLoadSeqRef.current === hubLoadSeq) {
         setHubLoading(false)
       }
     }
@@ -944,13 +624,13 @@ export default function ScheduleDispatch() {
         showToast('No cells selected.', 'info')
         return
       }
-      const rangeErr = validateRange('08:00', '12:00')
+      const rangeErr = validateRange('08:00', '16:00')
       if (rangeErr) {
         showToast(rangeErr, 'error')
         return
       }
       const ts = timeInputToPg('08:00')
-      const te = timeInputToPg('12:00')
+      const te = timeInputToPg('16:00')
       const candidate = scheduleBlockToRange(ts, te)
 
       let added = 0
@@ -1007,7 +687,7 @@ export default function ScheduleDispatch() {
       setHubAssignJobPickerOpen(false)
       setHubAssignJobPickerIntent('toolbar')
       setHubCellAddContext(null)
-      await loadHub()
+      await loadHub({ quiet: true })
     },
     [authUser?.id, showToast, loadHub],
   )
@@ -1224,7 +904,7 @@ export default function ScheduleDispatch() {
   const [deleteBlockId, setDeleteBlockId] = useState<string | null>(null)
   const [deleteBlockBusy, setDeleteBlockBusy] = useState(false)
   const [addTimeStart, setAddTimeStart] = useState('08:00')
-  const [addTimeEnd, setAddTimeEnd] = useState('12:00')
+  const [addTimeEnd, setAddTimeEnd] = useState('16:00')
   const [addNote, setAddNote] = useState('')
   const [addSaving, setAddSaving] = useState(false)
   const [addError, setAddError] = useState<string | null>(null)
@@ -1242,7 +922,6 @@ export default function ScheduleDispatch() {
   const [hubMultiCellAddActive, setHubMultiCellAddActive] = useState(false)
   const [hubMultiCellAddSelection, setHubMultiCellAddSelection] = useState<Set<string>>(() => new Set())
   const placeJobArmKeyRef = useRef<string>('')
-  const hubAssignJobPickerSearchInputRef = useRef<HTMLInputElement>(null)
 
   const closeHubAssignJobPicker = useCallback(() => {
     setHubAssignJobPickerOpen(false)
@@ -1251,14 +930,6 @@ export default function ScheduleDispatch() {
     setHubMultiCellAddActive(false)
     setHubMultiCellAddSelection(new Set())
   }, [])
-
-  useEffect(() => {
-    if (!hubAssignJobPickerOpen) return
-    const id = window.requestAnimationFrame(() => {
-      hubAssignJobPickerSearchInputRef.current?.focus()
-    })
-    return () => window.cancelAnimationFrame(id)
-  }, [hubAssignJobPickerOpen])
 
   const placementSourceBlock = useMemo(() => {
     if (!cardPlacementMode) return null
@@ -1354,7 +1025,7 @@ export default function ScheduleDispatch() {
         setAddTimeEnd(dispatchMinutesToHHmm(def.endMin))
       } else {
         setAddTimeStart('08:00')
-        setAddTimeEnd('12:00')
+        setAddTimeEnd('16:00')
       }
       setAddNote('')
       setAddError(null)
@@ -1480,7 +1151,7 @@ export default function ScheduleDispatch() {
       }
       setCardPlacementMode(null)
       showToast(placementVariant === 'linked' ? 'Linked copy added.' : 'Solo copy added.', 'success')
-      await loadHub()
+      await loadHub({ quiet: true })
     },
     [
       cardPlacementMode,
@@ -1624,6 +1295,32 @@ export default function ScheduleDispatch() {
     return `${name} · ${scheduleFormatWeekdayLong(hubCellAddContext.workDate)} (${hubCellAddContext.workDate})`
   }, [hubCellAddContext, hubPeopleNameById])
 
+  const hubAssignJobPickerSubtitle = useMemo(() => {
+    if (!hubAssignJobPickerOpen) return null
+    if (hubAssignJobPickerIntent === 'multi') {
+      return (
+        <p style={{ margin: 0, fontSize: '0.875rem', color: '#4b5563' }}>
+          Adding the same job to <strong>{hubMultiCellAddSelection.size}</strong> selected person/day cell
+          {hubMultiCellAddSelection.size === 1 ? '' : 's'} (this week&apos;s hub list).
+        </p>
+      )
+    }
+    if (hubCellAddContext) {
+      return (
+        <p style={{ margin: 0, fontSize: '0.875rem', color: '#4b5563' }}>
+          Pick a job to add a block for <strong>{hubEmptyCellChoiceSubtitle}</strong> (this week&apos;s hub list).
+        </p>
+      )
+    }
+    return null
+  }, [
+    hubAssignJobPickerOpen,
+    hubAssignJobPickerIntent,
+    hubMultiCellAddSelection.size,
+    hubCellAddContext,
+    hubEmptyCellChoiceSubtitle,
+  ])
+
   const blockModalPersonLabel = useMemo(() => {
     if (!blockModalState) return ''
     if (blockModalState.kind === 'add') {
@@ -1676,106 +1373,23 @@ export default function ScheduleDispatch() {
     const noteVal = addNote.trim() || null
 
     if (blockModalState.kind === 'add') {
-      const targetJobId = blockModalState.jobId
-      const assigneeUserId = blockModalState.assigneeUserId
-      const workDate = blockModalState.workDate
-      const { data: dayBlocks, error: dayErr } = await fetchScheduleBlocksForAssigneesOnDay([assigneeUserId], workDate)
-      if (dayErr) {
-        setAddError(dayErr)
-        return
-      }
-      const virtualBlocks = virtualDayBlocksForOverlap(dayBlocks, addBlockDraftByBlockId)
-      if (scheduleHasInternalOverlap(virtualBlocks)) {
-        setAddError('Draft block moves overlap each other or leave invalid gaps for this person.')
-        return
-      }
-      if (scheduleOverlapsAny(candidate, virtualBlocks, undefined)) {
-        setAddError('That time overlaps another block for this person on this day.')
-        return
-      }
-
-      const processedGroup = new Set<string>()
-      const groupPatches: Array<{
-        jobId: string
-        groupId: string
-        time_start: string
-        time_end: string
-        note: string | null
-      }> = []
-      const soloPatches: Array<{ id: string; time_start: string; time_end: string }> = []
-
-      for (const row of dayBlocks) {
-        const d = addBlockDraftByBlockId[row.id]
-        if (!d) continue
-        const dts = timeInputToPg(d.time_start)
-        const dte = timeInputToPg(d.time_end)
-        if (dts === row.time_start && dte === row.time_end) continue
-        const gid = row.shared_block_group_id
-        if (gid) {
-          if (processedGroup.has(gid)) continue
-          processedGroup.add(gid)
-          const legWithDraft =
-            dayBlocks.find((b) => b.shared_block_group_id === gid && addBlockDraftByBlockId[b.id]) ?? row
-          const d0 = addBlockDraftByBlockId[legWithDraft.id]
-          if (!d0) continue
-          const noteLeg = dayBlocks.find((b) => b.shared_block_group_id === gid) ?? row
-          groupPatches.push({
-            jobId: legWithDraft.job_id,
-            groupId: gid,
-            time_start: timeInputToPg(d0.time_start),
-            time_end: timeInputToPg(d0.time_end),
-            note: noteLeg.note ?? null,
-          })
-        } else {
-          soloPatches.push({ id: row.id, time_start: dts, time_end: dte })
-        }
-      }
-
+      const createdBy = authUser?.id
+      if (!createdBy) return
       setAddSaving(true)
       setAddError(null)
-      const createdBy = authUser?.id
-      if (!createdBy) {
-        setAddSaving(false)
-        return
-      }
-
-      for (const p of groupPatches) {
-        const { error: upErr } = await updateJobScheduleBlockGroup(p.jobId, p.groupId, {
-          time_start: p.time_start,
-          time_end: p.time_end,
-          note: p.note,
-        })
-        if (upErr) {
-          setAddSaving(false)
-          setAddError(upErr)
-          return
-        }
-      }
-      for (const p of soloPatches) {
-        const { error: upErr } = await updateJobScheduleBlock(p.id, {
-          time_start: p.time_start,
-          time_end: p.time_end,
-        })
-        if (upErr) {
-          setAddSaving(false)
-          setAddError(upErr)
-          return
-        }
-      }
-
-      const { error: insErr } = await insertJobScheduleBlock({
-        job_id: targetJobId,
-        assignee_user_id: assigneeUserId,
-        work_date: workDate,
-        time_start: ts,
-        time_end: te,
-        note: noteVal,
-        created_by: createdBy,
-        shared_block_group_id: newJobScheduleSharedBlockGroupId(),
+      const res = await saveNewScheduleBlockForPersonDay({
+        authUserId: createdBy,
+        assigneeUserId: blockModalState.assigneeUserId,
+        workDate: blockModalState.workDate,
+        targetJobId: blockModalState.jobId,
+        addTimeStart,
+        addTimeEnd,
+        addNote,
+        addBlockDraftByBlockId,
       })
       setAddSaving(false)
-      if (insErr) {
-        setAddError(insErr)
+      if (!res.ok) {
+        setAddError(res.error)
         return
       }
       showToast('Block added.', 'success')
@@ -1783,7 +1397,7 @@ export default function ScheduleDispatch() {
       if (jobId) {
         await load()
       } else {
-        await loadHub()
+        await loadHub({ quiet: true })
       }
       return
     }
@@ -1893,7 +1507,7 @@ export default function ScheduleDispatch() {
       }
       setDeleteBlockId(null)
       if (jobId) await load()
-      else await loadHub()
+      else await loadHub({ quiet: true })
     } finally {
       setDeleteBlockBusy(false)
     }
@@ -1919,7 +1533,7 @@ export default function ScheduleDispatch() {
         blockById: hubBlockById,
         canEdit,
         showToast,
-        onSuccess: loadHub,
+        onSuccess: () => loadHub({ quiet: true }),
       })
     },
     [hubBlockById, canEdit, loadHub, showToast],
@@ -2246,7 +1860,7 @@ export default function ScheduleDispatch() {
             </button>
           </div>
         ) : null}
-        <AddBlockModal
+        <ScheduleDispatchAddBlockModal
           open={blockModalState != null}
           mode={blockModalState?.kind === 'edit' ? 'edit' : 'add'}
           jobTitle={blockModalJobTitleForModal}
@@ -2265,157 +1879,35 @@ export default function ScheduleDispatch() {
           addTimeline={addBlockModalTimeline}
         />
         {removeScheduleBlockConfirmModal}
-        {hubAssignJobPickerOpen ? (
-          <div
-            style={{
-              position: 'fixed',
-              inset: 0,
-              background: 'rgba(0,0,0,0.45)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 1003,
-            }}
-            onClick={closeHubAssignJobPicker}
-            role="presentation"
-          >
-            <div
-              role="dialog"
-              aria-labelledby="hub-assign-job-picker-title"
-              style={{
-                background: '#fff',
-                borderRadius: 8,
-                padding: '1.25rem',
-                maxWidth: 480,
-                width: '92%',
-                maxHeight: '80vh',
-                overflow: 'hidden',
-                display: 'flex',
-                flexDirection: 'column',
-                boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '0.75rem',
-                  flexWrap: 'wrap',
-                  marginBottom: '0.75rem',
-                }}
-              >
-                <h2 id="hub-assign-job-picker-title" style={{ margin: 0, fontSize: '1.05rem' }}>
-                  Add job to schedule
-                </h2>
-                <button
-                  type="button"
-                  onClick={onCreateNewJobFromHubJobPicker}
-                  disabled={!jobFormModal}
-                  style={{
-                    boxSizing: 'border-box',
-                    height: 32,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '0 0.75rem',
-                    border: '1px solid',
-                    borderColor: jobFormModal ? '#2563eb' : '#94a3b8',
-                    borderRadius: 4,
-                    background: jobFormModal ? '#2563eb' : '#94a3b8',
-                    color: '#fff',
-                    cursor: jobFormModal ? 'pointer' : 'not-allowed',
-                    fontSize: '0.8125rem',
-                  }}
-                >
-                  Create new job
-                </button>
-              </div>
-              {hubAssignJobPickerIntent === 'multi' ? (
-                <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#4b5563' }}>
-                  Adding the same job to <strong>{hubMultiCellAddSelection.size}</strong> selected person/day cell
-                  {hubMultiCellAddSelection.size === 1 ? '' : 's'} (this week&apos;s hub list).
-                </p>
-              ) : hubCellAddContext ? (
-                <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#4b5563' }}>
-                  Pick a job to add a block for <strong>{hubEmptyCellChoiceSubtitle}</strong> (this week&apos;s hub list).
-                </p>
-              ) : null}
-              <input
-                ref={hubAssignJobPickerSearchInputRef}
-                type="search"
-                value={hubAssignJobPickerSearch}
-                onChange={(e) => setHubAssignJobPickerSearch(e.target.value)}
-                placeholder="Search HCP or job name"
-                aria-label="Search jobs"
-                style={{ marginBottom: '0.75rem', padding: '0.4rem', fontSize: '0.875rem' }}
-              />
-              <div style={{ overflowY: 'auto', flex: 1, border: '1px solid #e5e7eb', borderRadius: 6 }}>
-                {hubAssignJobPickerRows.length === 0 ? (
-                  <div style={{ padding: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>No jobs match.</div>
-                ) : (
-                  <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-                    {hubAssignJobPickerRows.map((r) => (
-                      <li key={r.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (hubAssignJobPickerIntent === 'multi') {
-                              void applyHubMultiCellJob(r.id, [...hubMultiCellAddSelection])
-                              return
-                            }
-                            if (hubCellAddContext) {
-                              openAddBlock({
-                                assigneeUserId: hubCellAddContext.assigneeUserId,
-                                workDate: hubCellAddContext.workDate,
-                                jobId: r.id,
-                              })
-                              return
-                            }
-                            setHubAssignJobPickerOpen(false)
-                            setHubAssignJobPickerIntent('toolbar')
-                            setCardPlacementMode(null)
-                            setPlusMenuBlockId(null)
-                            setHubAssignJobPlacement({ jobId: r.id })
-                            showToast('Click a person day cell to place a block for this job.', 'info')
-                          }}
-                          style={{
-                            width: '100%',
-                            textAlign: 'left',
-                            padding: '0.55rem 0.75rem',
-                            border: 'none',
-                            background: '#fff',
-                            cursor: 'pointer',
-                            fontSize: '0.875rem',
-                          }}
-                        >
-                          {r.displayTitle}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.75rem' }}>
-                <button
-                  type="button"
-                  onClick={closeHubAssignJobPicker}
-                  style={{
-                    padding: '0.45rem 1rem',
-                    fontSize: '0.875rem',
-                    background: '#f3f4f6',
-                    border: '1px solid #d1d5db',
-                    borderRadius: 4,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : null}
+        <ScheduleDispatchAssignJobPickerModal
+          open={hubAssignJobPickerOpen}
+          onClose={closeHubAssignJobPicker}
+          subtitle={hubAssignJobPickerSubtitle}
+          jobRows={hubAssignJobPickerRows.map((r) => ({ id: r.id, displayTitle: r.displayTitle }))}
+          searchValue={hubAssignJobPickerSearch}
+          onSearchChange={setHubAssignJobPickerSearch}
+          onPickJob={(pickedJobId) => {
+            if (hubAssignJobPickerIntent === 'multi') {
+              void applyHubMultiCellJob(pickedJobId, [...hubMultiCellAddSelection])
+              return
+            }
+            if (hubCellAddContext) {
+              openAddBlock({
+                assigneeUserId: hubCellAddContext.assigneeUserId,
+                workDate: hubCellAddContext.workDate,
+                jobId: pickedJobId,
+              })
+              return
+            }
+            setHubAssignJobPickerOpen(false)
+            setHubAssignJobPickerIntent('toolbar')
+            setCardPlacementMode(null)
+            setPlusMenuBlockId(null)
+            setHubAssignJobPlacement({ jobId: pickedJobId })
+            showToast('Click a person day cell to place a block for this job.', 'info')
+          }}
+          onCreateNewJob={jobFormModal ? onCreateNewJobFromHubJobPicker : undefined}
+        />
         {linkedGroupModalId ? (
           <LinkedScheduleGroupModal
             open
@@ -2619,7 +2111,7 @@ export default function ScheduleDispatch() {
         />
       </DndContext>
 
-      <AddBlockModal
+      <ScheduleDispatchAddBlockModal
         open={blockModalState != null}
         mode={blockModalState?.kind === 'edit' ? 'edit' : 'add'}
         jobTitle={blockModalJobTitleForModal}
