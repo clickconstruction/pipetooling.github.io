@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -20,6 +20,8 @@ import DocumentsAddDriveLinkModal, {
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { type DocumentsPageTab, parseDocumentsPageTabFromSearch } from '../lib/documentsPageTab'
 import { labelJobsLedgerStatus, normalizeJobsLedgerStatus } from '../lib/jobsLedgerStatusPipeline'
+import DocumentsJobBilledInvoiceModal from '../components/documents/DocumentsJobBilledInvoiceModal'
+import { billingTypeLabel } from '../components/jobs/HostedStripeBillPanel'
 
 type LedgerEstimateRow = Tables<'estimates'> & {
   customers: { name: string | null; address: string | null; contact_info: unknown } | null
@@ -461,6 +463,8 @@ type LedgerJobRow = Pick<
   customers: { name: string | null; address: string | null } | null
 }
 
+type DocumentsJobLedgerInvoiceRow = Tables<'jobs_ledger_invoices'>
+
 function jobLedgerCustomerLines(r: LedgerJobRow): { primary: string; secondary: string | null } {
   const cust = r.customers
   if (cust) {
@@ -489,7 +493,27 @@ function formatJobRevenueUsd(n: number | null | undefined): string {
   return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(Number(n))
 }
 
-function documentsJobsRowMatchesSearch(r: LedgerJobRow, query: string): boolean {
+function documentsJobInvoiceMatchesSearch(inv: DocumentsJobLedgerInvoiceRow, query: string): boolean {
+  const t = query.trim().toLowerCase()
+  if (!t) return true
+  if (String(inv.sequence_order).includes(t)) return true
+  if (billingTypeLabel(inv).toLowerCase().includes(t)) return true
+  if (String(inv.amount ?? '').includes(t)) return true
+  if (formatJobRevenueUsd(inv.amount).toLowerCase().includes(t)) return true
+  const sent = (inv.sent_to_customer_at ?? '').trim().toLowerCase()
+  if (sent && sent.includes(t)) return true
+  const billed = (inv.billed_at ?? '').trim().toLowerCase()
+  if (billed && billed.includes(t)) return true
+  const ch = (inv.external_send_channel ?? '').trim().toLowerCase()
+  if (ch && ch.includes(t)) return true
+  return false
+}
+
+function documentsJobsRowMatchesSearch(
+  r: LedgerJobRow,
+  query: string,
+  billedInvoices: DocumentsJobLedgerInvoiceRow[],
+): boolean {
   const t = query.trim().toLowerCase()
   if (!t) return true
   if ((r.hcp_number ?? '').toLowerCase().includes(t)) return true
@@ -501,6 +525,9 @@ function documentsJobsRowMatchesSearch(r: LedgerJobRow, query: string): boolean 
   if (documentsJobLedgerStatusLabel(r.status).toLowerCase().includes(t)) return true
   if (String(r.status ?? '').toLowerCase().includes(t)) return true
   if (formatJobRevenueUsd(r.revenue).toLowerCase().includes(t)) return true
+  for (const inv of billedInvoices) {
+    if (documentsJobInvoiceMatchesSearch(inv, query)) return true
+  }
   return false
 }
 
@@ -508,14 +535,18 @@ function DocumentsJobsLedger() {
   const { user } = useAuth()
   const { showToast } = useToastContext()
   const [rows, setRows] = useState<LedgerJobRow[]>([])
+  const [invoicesByJobId, setInvoicesByJobId] = useState<Map<string, DocumentsJobLedgerInvoiceRow[]>>(() => new Map())
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [addDriveLinkJob, setAddDriveLinkJob] = useState<{ id: string; title: string } | null>(null)
+  const [billedInvoiceModal, setBilledInvoiceModal] = useState<DocumentsJobLedgerInvoiceRow | null>(null)
 
   const filteredRows = useMemo(() => {
     if (!search.trim()) return rows
-    return rows.filter((r) => documentsJobsRowMatchesSearch(r, search))
-  }, [rows, search])
+    return rows.filter((r) =>
+      documentsJobsRowMatchesSearch(r, search, invoicesByJobId.get(r.id) ?? []),
+    )
+  }, [rows, search, invoicesByJobId])
 
   const load = useCallback(async () => {
     if (!user?.id) return
@@ -532,10 +563,53 @@ function DocumentsJobsLedger() {
             .limit(200),
         'load documents jobs ledger',
       )
-      setRows((data ?? []) as LedgerJobRow[])
+      const jobList = (data ?? []) as LedgerJobRow[]
+      setRows(jobList)
+
+      const jobIds = jobList.map((r) => r.id)
+      if (jobIds.length === 0) {
+        setInvoicesByJobId(new Map())
+        return
+      }
+
+      try {
+        const invData = await withSupabaseRetry(
+          async () =>
+            await supabase
+              .from('jobs_ledger_invoices')
+              .select(
+                'id, job_id, amount, sequence_order, external_send_channel, sent_to_customer_at, billed_at, estimated_bill_date, external_send_note, stripe_invoice_id, hosted_invoice_url, stripe_invoice_memo, stripe_invoice_footer, stripe_invoice_status, status, created_at',
+              )
+              .in('job_id', jobIds)
+              .eq('status', 'billed')
+              .order('sequence_order', { ascending: true })
+              .order('created_at', { ascending: true }),
+          'load documents jobs ledger invoices',
+        )
+
+        const byJob = new Map<string, DocumentsJobLedgerInvoiceRow[]>()
+        for (const row of invData ?? []) {
+          const inv = row as DocumentsJobLedgerInvoiceRow
+          const jid = inv.job_id
+          const arr = byJob.get(jid) ?? []
+          arr.push(inv)
+          byJob.set(jid, arr)
+        }
+        for (const arr of byJob.values()) {
+          arr.sort((a, b) => {
+            if (a.sequence_order !== b.sequence_order) return a.sequence_order - b.sequence_order
+            return String(a.created_at ?? '').localeCompare(String(b.created_at ?? ''))
+          })
+        }
+        setInvoicesByJobId(byJob)
+      } catch (invErr) {
+        showToast(formatErrorMessage(invErr, 'Could not load job invoices'), 'error')
+        setInvoicesByJobId(new Map())
+      }
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not load jobs'), 'error')
       setRows([])
+      setInvoicesByJobId(new Map())
     } finally {
       setLoading(false)
     }
@@ -551,6 +625,11 @@ function DocumentsJobsLedger() {
 
   return (
     <div>
+      <DocumentsJobBilledInvoiceModal
+        open={billedInvoiceModal != null}
+        invoice={billedInvoiceModal}
+        onClose={() => setBilledInvoiceModal(null)}
+      />
       <DocumentsAddDriveLinkModal
         open={addDriveLinkJob != null}
         onClose={() => setAddDriveLinkJob(null)}
@@ -579,7 +658,7 @@ function DocumentsJobsLedger() {
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="HCP, job, address, customer, status, total…"
+            placeholder="HCP, job, invoices, amount, channel…"
             autoComplete="off"
             aria-label="Search jobs in ledger"
             style={documentsLedgerSearchInputStyle}
@@ -614,55 +693,88 @@ function DocumentsJobsLedger() {
                 const addr = (r.job_address ?? '').trim()
                 const filesLink = (r.google_drive_link ?? '').trim()
                 const hasJobFiles = !!filesLink
+                const jobInvoices = invoicesByJobId.get(r.id) ?? []
                 return (
-                  <tr key={r.id}>
-                    <td style={{ ...tdStyle, verticalAlign: 'middle' }}>
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                        {hasJobFiles ? (
-                          <button
-                            type="button"
-                            aria-label="Open job files (Google Drive)"
-                            style={docsIconButtonStyle}
-                            onClick={() => openInExternalBrowser(filesLink)}
-                          >
-                            <LedgerBidProjectFolderIcon />
-                          </button>
+                  <Fragment key={r.id}>
+                    <tr>
+                      <td style={{ ...tdStyle, verticalAlign: 'middle' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                          {hasJobFiles ? (
+                            <button
+                              type="button"
+                              aria-label="Open job files (Google Drive)"
+                              style={docsIconButtonStyle}
+                              onClick={() => openInExternalBrowser(filesLink)}
+                            >
+                              <LedgerBidProjectFolderIcon />
+                            </button>
+                          ) : null}
+                          {!hasJobFiles ? (
+                            <button
+                              type="button"
+                              aria-label="Add job files link"
+                              title="Add job files link"
+                              style={docsAddLinkButtonStyle}
+                              onClick={() =>
+                                setAddDriveLinkJob({
+                                  id: r.id,
+                                  title: titleText,
+                                })
+                              }
+                            >
+                              +
+                            </button>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td style={tdStyle}>
+                        <Link to={`/jobs?edit=${encodeURIComponent(r.id)}`} style={{ color: '#2563eb', fontWeight: 500 }}>
+                          {titleText}
+                        </Link>
+                      </td>
+                      <td style={tdStyle}>
+                        {addr ? <div>{addr}</div> : <span style={{ color: '#6b7280' }}>—</span>}
+                      </td>
+                      <td style={tdStyle}>
+                        <div>{cx.primary}</div>
+                        {cx.secondary ? (
+                          <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{cx.secondary}</div>
                         ) : null}
-                        {!hasJobFiles ? (
-                          <button
-                            type="button"
-                            aria-label="Add job files link"
-                            title="Add job files link"
-                            style={docsAddLinkButtonStyle}
-                            onClick={() =>
-                              setAddDriveLinkJob({
-                                id: r.id,
-                                title: titleText,
-                              })
-                            }
-                          >
-                            +
-                          </button>
-                        ) : null}
-                      </div>
-                    </td>
-                    <td style={tdStyle}>
-                      <Link to={`/jobs?edit=${encodeURIComponent(r.id)}`} style={{ color: '#2563eb', fontWeight: 500 }}>
-                        {titleText}
-                      </Link>
-                    </td>
-                    <td style={tdStyle}>
-                      {addr ? <div>{addr}</div> : <span style={{ color: '#6b7280' }}>—</span>}
-                    </td>
-                    <td style={tdStyle}>
-                      <div>{cx.primary}</div>
-                      {cx.secondary ? (
-                        <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{cx.secondary}</div>
-                      ) : null}
-                    </td>
-                    <td style={tdStyle}>{documentsJobLedgerStatusLabel(r.status)}</td>
-                    <td style={{ ...tdStyle, textAlign: 'right', whiteSpace: 'nowrap' }}>{formatJobRevenueUsd(r.revenue)}</td>
-                  </tr>
+                      </td>
+                      <td style={tdStyle}>{documentsJobLedgerStatusLabel(r.status)}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', whiteSpace: 'nowrap' }}>{formatJobRevenueUsd(r.revenue)}</td>
+                    </tr>
+                    {jobInvoices.map((inv) => {
+                      const sent = (inv.sent_to_customer_at ?? '').trim().slice(0, 10)
+                      return (
+                        <tr key={inv.id}>
+                          <td colSpan={6} style={{ ...tdStyle, paddingLeft: '1.75rem', background: '#fafafa' }}>
+                            <button
+                              type="button"
+                              onClick={() => setBilledInvoiceModal(inv)}
+                              style={{
+                                border: 'none',
+                                background: 'transparent',
+                                padding: 0,
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                font: 'inherit',
+                                color: '#1d4ed8',
+                                textDecoration: 'underline',
+                              }}
+                            >
+                              Invoice #{inv.sequence_order}
+                            </button>
+                            <span style={{ color: '#6b7280', marginLeft: '0.5rem' }}>{billingTypeLabel(inv)}</span>
+                            <span style={{ marginLeft: '0.5rem' }}>{formatJobRevenueUsd(inv.amount)}</span>
+                            {sent ? (
+                              <span style={{ color: '#6b7280', marginLeft: '0.5rem', fontSize: '0.85rem' }}>Sent {sent}</span>
+                            ) : null}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </Fragment>
                 )
               })}
             </tbody>

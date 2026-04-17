@@ -28,6 +28,9 @@ import { buildSalariedWorkdayPickerRows } from '../lib/buildSalariedWorkdayPicke
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import TeamFeedbackDevSettingsBlock from '../components/team-feedback/TeamFeedbackDevSettingsBlock'
 import StripeInvoiceFooterDevSettingsBlock from '../components/settings/StripeInvoiceFooterDevSettingsBlock'
+import PhysicalInvoiceFooterDevSettingsBlock from '../components/settings/PhysicalInvoiceFooterDevSettingsBlock'
+import BillCustomerMemoDevSettingsBlock from '../components/settings/BillCustomerMemoDevSettingsBlock'
+import PhysicalInvoiceIssuerDevSettingsBlock from '../components/settings/PhysicalInvoiceIssuerDevSettingsBlock'
 import TeamFeedbackMasterAggregates from '../components/team-feedback/TeamFeedbackMasterAggregates'
 import type { Database } from '../types/database'
 import { APP_SETTINGS_KEY_JOB_TALLY_MIN_POSTED_YMD, isValidYmd } from '../lib/appSettingsKeys'
@@ -10992,6 +10995,9 @@ export default function Settings() {
       {myRole === 'dev' && (
         <>
           <StripeInvoiceFooterDevSettingsBlock />
+          <PhysicalInvoiceIssuerDevSettingsBlock />
+          <PhysicalInvoiceFooterDevSettingsBlock />
+          <BillCustomerMemoDevSettingsBlock />
           <div style={{ marginBottom: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
             <button
               type="button"

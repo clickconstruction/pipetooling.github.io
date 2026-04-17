@@ -415,6 +415,10 @@ verify_jwt = false
 [functions.send-estimate-to-customer]
 verify_jwt = false
 
+# Bill Customer physical invoice: Resend email with PDF; JWT + RLS in function (same pattern as send-estimate-to-customer).
+[functions.send-physical-invoice-email]
+verify_jwt = false
+
 # Staff: JWT validated in function (getUser). Heuristic probe for Google Drive/Docs attachment URLs.
 [functions.check-estimate-attachment-url]
 verify_jwt = false

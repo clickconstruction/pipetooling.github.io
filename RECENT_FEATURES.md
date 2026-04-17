@@ -7,28 +7,52 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-16
+last_updated: 2026-04-17
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.319 → v2.4"
+version_range: "v2.327 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.327)"
+    line: ~1026
+    description: "Documents Jobs: billed invoice child rows; DocumentsJobBilledInvoiceModal (HostedStripeBillPanel + PipeTooling PDF preview); jobBillingContext + physicalInvoice helpers in lib"
+  - name: "Latest Version (v2.326)"
+    line: ~1038
+    description: "Physical invoice Resend subject: Click Plumbing Invoice [#…]; physicalInvoiceEmailSubject"
+  - name: "Latest Version (v2.325)"
+    line: ~1050
+    description: "Bill Customer collapsible Line/Memo; memo preset normalization; physical invoice email tagline bold, no Service date/Issuer in summary"
+  - name: "Latest Version (v2.324)"
+    line: ~1062
+    description: "Physical invoice Services proportional split matches Stripe (blank line on bill); physicalInvoiceFixtureScaling"
+  - name: "Latest Version (v2.323)"
+    line: ~1073
+    description: "Physical invoice detailed HCP-style PDF (fixtures/materials/payments); Settings company block; physicalInvoiceLineItems"
+  - name: "Latest Version (v2.322)"
+    line: ~1087
+    description: "Bill Customer Physical invoice: email customer with matching PDF; send-physical-invoice-email Edge"
+  - name: "Latest Version (v2.321)"
+    line: ~1098
+    description: "Bill Customer: HouseCall Pro + Physical invoice as top tabs (with Stripe bill); remove Outside bill"
+  - name: "Latest Version (v2.320)"
+    line: ~1108
+    description: "Legacy revenue → first Specific Work row (migration); Edit Job break-off slider 5% snap + % of job total hint"
   - name: "Latest Version (v2.319)"
-    line: ~1000
+    line: ~1119
     description: "NCNS when scheduled no clock: record_ncns + job_schedule_blocks branch; My Time schedule probe"
   - name: "Latest Version (v2.318)"
-    line: ~1011
+    line: ~1130
     description: "My Time: Not coming in uses stacked confirm dialog (replaces window.confirm); z-index 1320, Escape/backdrop"
   - name: "Latest Version (v2.317)"
-    line: ~1022
+    line: ~1052
     description: "Quickfill Schedule: roster rows grouped by auth role (People-style headings); usersTabRosterRoleSections.ts"
   - name: "Latest Version (v2.316)"
-    line: ~1035
+    line: ~1065
     description: "Dashboard: block My Time modal when work_date is hours-correct; RLS SELECT on hours_days_correct for authenticated"
   - name: "Latest Version (v2.315)"
-    line: ~1034
+    line: ~1077
     description: "My Time cross-row merge (mixed punch/salary): affine partition save, merge gates, salary-sync toast; SALARY_CLOCK_SESSIONS.md"
   - name: "Latest Version (v2.314)"
     line: ~1028
@@ -784,6 +808,9 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.327 — **Documents** → **Jobs**: **billed** invoice rows under each job; **View bill** + **PipeTooling PDF** preview (`DocumentsJobBilledInvoiceModal`)](#latest-updates-v2327)
+**New:** [v2.326 — **Physical invoice** Resend **subject**: **Click Plumbing Invoice [#…]** (`physicalInvoiceEmailSubject`)](#latest-updates-v2326)
+**New:** [v2.325 — **Bill Customer** collapsible **Line on bill** / **Memo**; memo presets normalized like footer; **physical** email: bold **tagline**, no Service date or Issuer block in summary](#latest-updates-v2325)
 **New:** [v2.315 — **My Time**: cross-row **Merge** on mixed punch/salary rows (affine partition save); salary-sync notice](#latest-updates-v2315)
 **New:** [v2.314 — **Documents** (`/documents`): **Jobs** tab, **+** add Drive links, full-width search, tabs tight under nav](#latest-updates-v2314)
 **New:** [v2.313 — **Stripe** invoice lines from **Specific Work**; Edit Job **(n/500)** counter; **Bill Customer** line-on-bill](#latest-updates-v2313)
@@ -998,6 +1025,95 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.327)
+
+**Date**: 2026-04-17
+
+### **Documents** → **Jobs** — **Billed** invoices as child rows; **View bill** + **PDF** preview
+
+- **[`Documents.tsx`](src/pages/Documents.tsx)** — After loading the jobs ledger, second query **`jobs_ledger_invoices`** **`.in('job_id', …)`** **`.eq('status', 'billed')`**; nested rows per job (**Invoice #**, channel via **`billingTypeLabel`**, amount, sent date). Search matches invoice fields. **[`DocumentsJobBilledInvoiceModal.tsx`](src/components/documents/DocumentsJobBilledInvoiceModal.tsx)** — **[`HostedStripeBillPanel`](src/components/jobs/HostedStripeBillPanel.tsx)** + reconstructed **`PhysicalInvoicePreview`** / open PDF tab; **`fetchJobWithDetailsById`**. **`billingTypeLabel`** exported from **`HostedStripeBillPanel`**. Shared: **[`jobBillingContext.ts`](src/lib/jobBillingContext.ts)**, **[`physicalInvoiceJobContext.ts`](src/lib/physicalInvoiceJobContext.ts)**, **[`physicalInvoiceDocumentForBilledInvoice.ts`](src/lib/physicalInvoiceDocumentForBilledInvoice.ts)**.
+
+---
+
+## Latest Updates (v2.326)
+
+**Date**: 2026-04-17
+
+### **Bill Customer** — **Physical invoice** email **subject** line
+
+- **[`physicalInvoiceDocument.ts`](src/lib/physicalInvoiceDocument.ts)** — **[`physicalInvoiceEmailSubject`](src/lib/physicalInvoiceDocument.ts)** uses the fixed pattern **`Click Plumbing Invoice [#…]`** (invoice number from the document, or **`#${hcp}`** when the display placeholder is **—**). **[`SendRecordInvoiceModal.tsx`](src/components/jobs/SendRecordInvoiceModal.tsx)** passes it as **`subject`** to **`send-physical-invoice-email`**.
+
+---
+
+## Latest Updates (v2.325)
+
+**Date**: 2026-04-17
+
+### **Bill Customer** — collapsible **Line on bill** / **Memo**; memo preset normalization; **physical invoice** email summary
+
+- **[`SendRecordInvoiceModal.tsx`](src/components/jobs/SendRecordInvoiceModal.tsx)** — **Line on bill** and **Memo** are **disclosure** sections (**collapsed by default**) on **Stripe bill** and **Physical invoice** (same pattern as **Footer**). **HouseCall Pro** collapses **Memo** only. Shared **`lineOnBillSectionOpen`** / **`memoSectionOpen`** reset when the modal opens. Collapsed headers show a short summary (**[`billCustomerMemoSummaryLine`](src/lib/billCustomerMemoPresets.ts)**, truncated line-on-bill preview).
+- **[`billCustomerMemoPresets.ts`](src/lib/billCustomerMemoPresets.ts)** — Preset bodies use **`capMemoBody`**: **[`normalizePhysicalInvoiceFooterPlainText`](src/lib/physicalInvoiceDocument.ts)** then length cap (same semantics as physical invoice footer). Read/save, custom presets, and **`billCustomerMemoActivePresetId`** compare **normalized** text so messy pastes still match the active preset chip.
+- **[`physicalInvoiceDocument.ts`](src/lib/physicalInvoiceDocument.ts)** — **[`buildPhysicalInvoiceEmailBodies`](src/lib/physicalInvoiceDocument.ts)** (customer email with PDF): **detailed** summary no longer includes **Service date** or the former **Issuer** block (license/tagline section). **Issuer tagline** alone is included **bold** (`<strong>`) under the intro paragraph, before the metadata table, for both **detailed** and **simple** layouts when non-empty. PDF / preview unchanged as source of truth.
+
+---
+
+## Latest Updates (v2.324)
+
+**Date**: 2026-04-17
+
+### **Bill Customer** — **Physical invoice** Services rows match **Stripe** (proportional Specific Work)
+
+- **[`physicalInvoiceFixtureScaling.ts`](src/lib/physicalInvoiceFixtureScaling.ts)** — Same **largest-remainder** cent allocation as Edge **`stripeInvoiceItemsFromFixtures`**; comment to keep in sync on changes.
+- **[`resolvePhysicalInvoiceLinePresentation`](src/lib/physicalInvoiceLineItems.ts)** — **Materials** are summed first; the **service** portion (**bill − materials**) is split across billable fixtures when **line on bill** is blank (partial bills no longer collapse to one opaque line). **Non-empty line on bill** → one service line for the **full** invoice and **no** Materials rows (Stripe override parity). **[`SendRecordInvoiceModal.tsx`](src/components/jobs/SendRecordInvoiceModal.tsx)** passes **`physicalLineOnBillRaw`** from the same field as Stripe.
+
+---
+
+## Latest Updates (v2.323)
+
+**Date**: 2026-04-17
+
+### **Bill Customer** — **Physical invoice** detailed layout (job line items + payments)
+
+- **[`physicalInvoiceLineItems.ts`](src/lib/physicalInvoiceLineItems.ts)** — Builds **Services** / **Materials** rows from **`jobs_ledger_fixtures`** / **`jobs_ledger_materials`** with the same **billable** rule as Stripe; **payment history** prefers **`jobs_ledger_payments.invoice_id`** when billing an invoice row. When fixture+material **subtotal** does not match the **bill amount** (±$0.02), the PDF uses **one synthetic service line** for the full amount so totals stay honest.
+- **[`physicalInvoiceDocument.ts`](src/lib/physicalInvoiceDocument.ts)** — **`layout: detailed | simple`**; **`buildPhysicalInvoiceDocument`** accepts optional **`detailFromJob`**; **`PhysicalInvoiceIssuer`** from **[`physicalInvoiceIssuer.ts`](src/lib/physicalInvoiceIssuer.ts)** (localStorage). **[`buildPhysicalInvoiceEmailBodies`](src/lib/physicalInvoiceDocument.ts)** includes **Services** / **Materials** / **Payment history** in the HTML/text summary when **`layout === 'detailed'`** (PDF remains authoritative; **v2.325** trims some meta rows from the email and adds a bold **tagline**—see **Latest Updates (v2.325)**).
+- **[`physicalInvoicePdf.ts`](src/lib/physicalInvoicePdf.ts)** — **Detailed** path: **INVOICE** header, narrative + meta column, issuer / service / contact blocks, **Services** & **Materials** tables, subtotal, **Payment history**, memo; **footer** + license on **page 2**; **`-- n of m --`** footers. **Simple** path unchanged for builds without job detail fetch.
+- **[`SendRecordInvoiceModal.tsx`](src/components/jobs/SendRecordInvoiceModal.tsx)** — Reuses **`fetchJobWithDetailsById`** for **`billCustomerJobDetails`**; extends **`JobBillingContext`** with **`job_address`**, **`customer_phone`**, **`last_work_date`**. **[`Jobs.tsx`](src/pages/Jobs.tsx)**, **[`Dashboard.tsx`](src/pages/Dashboard.tsx)** (invoice join + job load select), **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)** pass through.
+- **[`PhysicalInvoiceIssuerDevSettingsBlock.tsx`](src/components/settings/PhysicalInvoiceIssuerDevSettingsBlock.tsx)** — Dev **Settings → Templates & testing**: company name, address, phone, email, tagline, license line for PDF header / page 2.
+
+---
+
+## Latest Updates (v2.322)
+
+**Date**: 2026-04-16
+
+### **Bill Customer** — **Physical invoice** emails **PDF** to customer
+
+- **[`SendRecordInvoiceModal.tsx`](src/components/jobs/SendRecordInvoiceModal.tsx)** — **Physical invoice** tab: preview (matches PDF), line on bill / memo / invoice date / due date, **Send email**. **HouseCall Pro** tab unchanged (date, memo, Save). Client builds PDF via **`jspdf`** ([`physicalInvoicePdf.ts`](src/lib/physicalInvoicePdf.ts)) from the same document model as **[`PhysicalInvoicePreview`](src/components/jobs/PhysicalInvoicePreview.tsx)** ([`physicalInvoiceDocument.ts`](src/lib/physicalInvoiceDocument.ts)).
+- **Edge [`send-physical-invoice-email`](supabase/functions/send-physical-invoice-email/index.ts)** — Validates JWT + RLS; verifies **`customer_email`** matches **`jobs_ledger.customer_email`**; **Resend** with attachment; then updates **`jobs_ledger_invoices`** (**`external_send_channel: physical`**) and **`update_job_status`** when **`billing_kind`** is **`job`**. **`RESEND_API_KEY`**, **`verify_jwt = false`** in [`config.toml`](supabase/config.toml). Documented in **[`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md)**.
+
+---
+
+## Latest Updates (v2.321)
+
+**Date**: 2026-04-16
+
+### **Bill Customer** — **HouseCall Pro** and **Physical invoice** as **top tabs**
+
+- **[`SendRecordInvoiceModal.tsx`](src/components/jobs/SendRecordInvoiceModal.tsx)** — Three primary tabs: **Stripe bill** | **HouseCall Pro** | **Physical invoice** (replaces **Outside bill** + nested channel toggles). Shared date/memo/Save form for the two external channels; **`external_send_channel`** unchanged (**`housecallpro`** / **`physical`**). Default tab when the job has no customer email remains **HouseCall Pro** (was first option under Outside bill).
+
+---
+
+## Latest Updates (v2.320)
+
+**Date**: 2026-04-16
+
+### **Jobs** — Legacy **`revenue`** into **Specific Work**; **Edit Job** break-off **slider** and **billing %** hint
+
+- **Migration [`20260416182749_migrate_legacy_revenue_to_first_fixture.sql`](supabase/migrations/20260416182749_migrate_legacy_revenue_to_first_fixture.sql)** — One-time **data** backfill: jobs with **`jobs_ledger.revenue` > 0** and **no** named Specific Work extended dollars (`jobs_ledger_fixtures` with non-blank **`name`**, **`round(count × line_unit_price, 2)`** sum = 0) get **`line_unit_price`** on the **first** fixture row (by **`sequence_order`**, **`created_at`**, **`id`**) or a new row **`Job total (migrated)`** if none exist. **`jobs_ledger.revenue`** unchanged. Idempotent by eligibility. See **`MIGRATIONS.md`**.
+- **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)** — **Partial invoice** / **Break off Invoice** track: green thumb snaps to **5%** ticks while dragging (**`snapBreakOffCombinedPctToStep`**, **`BREAK_OFF_COMBINED_SLIDER_STEP_PCT`**); drag uses an **unsnapped** ref so small pointer moves accumulate (fixes “stuck” thumb). Muted **`N% of job total`** after **`+`** / **Ready to Bill** — **payments + draft amount** vs Job Total (same basis as the slider); **hidden** at **100%**. Keyboard / amount blur still snap to 5%.
+
 ---
 
 ## Latest Updates (v2.319)

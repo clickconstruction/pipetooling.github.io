@@ -207,7 +207,7 @@ function sumPaymentsForInvoice(payments: JobsLedgerPayment[] | undefined, invoic
   return s
 }
 
-function billingTypeLabel(inv: JobsLedgerInvoice): string {
+export function billingTypeLabel(inv: JobsLedgerInvoice): string {
   if ((inv.stripe_invoice_id ?? '').trim() && (inv.hosted_invoice_url ?? '').trim()) return 'Stripe'
   const ch = (inv.external_send_channel ?? '').trim()
   if (ch === 'housecallpro') return 'Outside (Housecall Pro)'

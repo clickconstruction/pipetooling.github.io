@@ -41,7 +41,7 @@ import type { JobMercuryAllocLine, JobSupplyInvoiceLine, JobTallyPartLine } from
 import { MaterialsCostAccordionRow } from './JobFormMaterialsCostAccordion'
 import JobProjectLinkChoiceModal from './JobProjectLinkChoiceModal'
 import JobBidLinkChoiceModal, { type JobBidLinkOption } from './JobBidLinkChoiceModal'
-import type { JobBillingContext } from './SendRecordInvoiceModal'
+import type { JobBillingContext } from '../../lib/jobBillingContext'
 import { useBillCustomerModal } from '../../contexts/BillCustomerModalContext'
 import { useNewProjectModal } from '../../contexts/NewProjectModalContext'
 import BilledBillViewModal, { type InvoiceWithJobForBillView } from './BilledBillViewModal'
@@ -1459,6 +1459,9 @@ export default function JobFormModal({
         customer_id: editing.customer_id,
         customer_name: editing.customer_name,
         customer_email: editing.customer_email,
+        job_address: editing.job_address,
+        customer_phone: editing.customer_phone,
+        last_work_date: editing.last_work_date,
       }
       billCustomer?.openBillCustomer({
         payload: { kind: 'job', job: ctx },
@@ -3619,6 +3622,9 @@ export default function JobFormModal({
                                 customer_id: editing.customer_id,
                                 customer_name: editing.customer_name,
                                 customer_email: editing.customer_email,
+                                job_address: editing.job_address,
+                                customer_phone: editing.customer_phone,
+                                last_work_date: editing.last_work_date,
                               }
                               billCustomer?.openBillCustomer({
                                 payload: {

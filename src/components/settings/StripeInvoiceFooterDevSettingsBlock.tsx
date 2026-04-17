@@ -3,11 +3,8 @@ import { useToastContext } from '../../contexts/ToastContext'
 import {
   getStripeInvoiceFooterPresetElectrical,
   getStripeInvoiceFooterPresetPlumbing,
-  resetStripeInvoiceFooterPresetsToBuiltins,
   saveStripeInvoiceFooterPresetsFromForm,
   STRIPE_INVOICE_FOOTER_MAX_CHARS,
-  STRIPE_INVOICE_FOOTER_PRESET_ELECTRICAL,
-  STRIPE_INVOICE_FOOTER_PRESET_PLUMBING,
 } from '../../lib/stripeInvoiceFooter'
 
 export default function StripeInvoiceFooterDevSettingsBlock() {
@@ -59,8 +56,7 @@ export default function StripeInvoiceFooterDevSettingsBlock() {
           }}
         >
           <p style={{ margin: '0 0 0.75rem', color: '#6b7280', fontSize: '0.875rem', lineHeight: 1.5 }}>
-            Overrides apply to Bill Customer footer presets on this browser only. Shipped defaults remain in the repo;
-            Reset restores those strings.
+            Overrides apply to Bill Customer footer presets on this browser only. Shipped defaults remain in the repo.
           </p>
           <label htmlFor="stripe-footer-preset-plumbing" style={{ display: 'block', fontWeight: 600, fontSize: '0.875rem', marginBottom: 4 }}>
             Plumbing
@@ -126,25 +122,6 @@ export default function StripeInvoiceFooterDevSettingsBlock() {
               }}
             >
               Save
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                resetStripeInvoiceFooterPresetsToBuiltins()
-                setPlumbingText(STRIPE_INVOICE_FOOTER_PRESET_PLUMBING)
-                setElectricalText(STRIPE_INVOICE_FOOTER_PRESET_ELECTRICAL)
-                showToast('Footer presets reset to shipped defaults.', 'success')
-              }}
-              style={{
-                padding: '0.35rem 0.75rem',
-                fontSize: '0.875rem',
-                cursor: 'pointer',
-                background: '#fff',
-                border: '1px solid #d1d5db',
-                borderRadius: 4,
-              }}
-            >
-              Reset to shipped defaults
             </button>
           </div>
         </div>

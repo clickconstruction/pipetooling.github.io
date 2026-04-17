@@ -99,6 +99,7 @@ when_to_read:
    - [claim-dev](#claim-dev)
    - [test-email](#test-email)
    - [create-stripe-invoice](#create-stripe-invoice)
+   - [send-physical-invoice-email](#send-physical-invoice-email)
    - [send-stripe-invoice](#send-stripe-invoice)
    - [get-stripe-invoice-details](#get-stripe-invoice-details)
    - [record-stripe-invoice-out-of-band-payment](#record-stripe-invoice-out-of-band-payment)
@@ -1448,6 +1449,56 @@ If **`stripe_invoice_id`** and **`hosted_invoice_url`** are already set, returns
 5. **Line items from Specific Work**: Loads **`jobs_ledger_fixtures`** for the invoice’s job. When there are **billable** rows (trimmed **`name`**, **`count × line_unit_price`** in dollars **> 0**) and **`line_description`** is omitted or blank, creates **one** Stripe line per row (ordered by **`sequence_order`**; description from name + optional scope text), with cent amounts **scaled proportionally** to **`amount_dollars`** when the bill is less than the fixture subtotal so the lines sum exactly. A non-empty **`line_description`** keeps the legacy behavior: **one** line for the full amount using that description (or the default **`Customer · Job · HCP`** string when not overridden).
 
 **Gateway JWT**: [`supabase/config.toml`](supabase/config.toml) sets **`verify_jwt = false`**. Deploy with **`supabase functions deploy create-stripe-invoice --no-verify-jwt`** when the hosted gateway still enforces JWT.
+
+---
+
+### send-physical-invoice-email
+
+**Purpose**: Email the customer a **PDF invoice** (generated in the app to match the on-screen preview) via **Resend**, then persist the same **`jobs_ledger_invoices`** billing fields as **HouseCall Pro / Physical** manual save (**`status: billed`**, **`external_send_channel: physical`**, **`sent_to_customer_at`**, **`external_send_note`**, **`amount`**). When **`billing_kind`** is **`job`**, also calls **`update_job_status`** to **`billed`**. The client may send a **detailed** multi-section PDF (Specific Work + materials + payment history) built from the job ledger; the Edge function only validates and attaches **`pdf_base64`**.
+
+**Endpoint**: `POST /functions/v1/send-physical-invoice-email`
+
+**Authentication**: Bearer JWT; **`auth.getUser`** in the function. All DB reads/writes use the **user-scoped** Supabase client (**RLS** applies). **`verify_jwt = false`** on the gateway (same pattern as **`send-estimate-to-customer`**).
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, **`RESEND_API_KEY`**.
+
+#### Request body
+
+```typescript
+interface SendPhysicalInvoiceEmailBody {
+  jobs_ledger_invoice_id: string
+  job_id: string
+  /** Omit or **`job`**: run **`update_job_status`** to **`billed`**. **`invoice`**: invoice-row-only (e.g. Dashboard invoice context). */
+  billing_kind?: 'job' | 'invoice'
+  amount_dollars: number
+  sent_to_customer_at: string // ISO timestamp
+  external_send_note?: string | null
+  /** Must match **`jobs_ledger.customer_email`** (trimmed, case-insensitive). */
+  customer_email: string
+  subject?: string
+  pdf_base64: string
+  pdf_filename?: string
+  email_text?: string
+  email_html?: string
+}
+```
+
+#### Success (200)
+
+```json
+{ "success": true }
+```
+
+#### Errors
+
+- **400** — Missing fields, invalid email, invoice not **ready_to_bill**, **`customer_email`** mismatch vs **`jobs_ledger.customer_email`**, invoice **`job_id`** mismatch, oversized PDF payload.
+- **401** — Missing or invalid JWT.
+- **403** — Invoice or job not visible under RLS.
+- **502** — Resend API error.
+
+**Client**: [`SendRecordInvoiceModal.tsx`](src/components/jobs/SendRecordInvoiceModal.tsx) (**Physical invoice** tab). **`subject`** is **[`physicalInvoiceEmailSubject`](src/lib/physicalInvoiceDocument.ts)** (**`Click Plumbing Invoice [#…]`**). **`email_text`** / **`email_html`** are built by **[`buildPhysicalInvoiceEmailBodies`](src/lib/physicalInvoiceDocument.ts)** (HTML summary: bold issuer **tagline** under the intro; no **Service date** or **Issuer** block—PDF is authoritative).
+
+**Deploy**: `supabase functions deploy send-physical-invoice-email --no-verify-jwt` if the hosted gateway still enforces JWT.
 
 ---
 

@@ -58,7 +58,7 @@ import {
 } from '../components/EstimatorInboxSection'
 import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
 import AssignedStageCard from '../components/AssignedStageCard'
-import { type JobBillingContext } from '../components/jobs/SendRecordInvoiceModal'
+import { type JobBillingContext } from '../lib/jobBillingContext'
 import { useBillCustomerModal } from '../contexts/BillCustomerModalContext'
 import BilledPaymentConfirmationModal, { type InvoiceWithJobLike } from '../components/jobs/BilledPaymentConfirmationModal'
 import { getNextDisplayOrders } from '../utils/checklistOrder'
@@ -197,6 +197,8 @@ type InvoiceForDashboard = JobsLedgerInvoiceRow & {
   customer_id: string | null
   customer_name: string | null
   customer_email: string | null
+  customer_phone: string | null
+  last_work_date: string | null
   /** Prefer job `created_at` for dashboard “Open … ago” labels */
   open_since_at: string | null
   invoice_payments: JobsLedgerPaymentRow[]
@@ -214,11 +216,13 @@ type DashboardInvoiceJoinRow = JobsLedgerInvoiceRow & {
     customer_id: string | null
     customer_name: string | null
     customer_email: string | null
+    customer_phone: string | null
+    last_work_date: string | null
   }
 }
 
 const DASHBOARD_INVOICES_JOBS_LEDGER_SELECT =
-  'id, job_id, amount, status, created_at, is_primary_rtb_bundle, billed_at, estimated_bill_date, external_send_channel, external_send_note, hosted_invoice_url, sent_to_customer_at, sequence_order, stripe_invoice_id, stripe_invoice_memo, stripe_invoice_footer, stripe_invoice_status, jobs_ledger!inner(hcp_number, job_name, job_address, google_drive_link, job_plans_link, created_at, master_user_id, customer_id, customer_name, customer_email)'
+  'id, job_id, amount, status, created_at, is_primary_rtb_bundle, billed_at, estimated_bill_date, external_send_channel, external_send_note, hosted_invoice_url, sent_to_customer_at, sequence_order, stripe_invoice_id, stripe_invoice_memo, stripe_invoice_footer, stripe_invoice_status, jobs_ledger!inner(hcp_number, job_name, job_address, google_drive_link, job_plans_link, created_at, master_user_id, customer_id, customer_name, customer_email, customer_phone, last_work_date)'
 
 function buildPaymentsByInvoiceIdMap(payments: JobsLedgerPaymentRow[]): Map<string, JobsLedgerPaymentRow[]> {
   const m = new Map<string, JobsLedgerPaymentRow[]>()
@@ -263,6 +267,8 @@ function mapJoinedInvoiceToDashboard(
     customer_id: jl?.customer_id ?? null,
     customer_name: jl?.customer_name ?? null,
     customer_email: jl?.customer_email ?? null,
+    customer_phone: jl?.customer_phone ?? null,
+    last_work_date: jl?.last_work_date ?? null,
     open_since_at: jl?.created_at ?? r.created_at,
     invoice_payments: paymentsByInvoiceId.get(r.id) ?? [],
   }
@@ -309,6 +315,9 @@ function jobBillingFromDashboardInvoice(inv: InvoiceForDashboard): JobBillingCon
     customer_id: inv.customer_id,
     customer_name: inv.customer_name,
     customer_email: inv.customer_email,
+    job_address: inv.job_address,
+    customer_phone: inv.customer_phone,
+    last_work_date: inv.last_work_date,
   }
 }
 
@@ -2248,13 +2257,24 @@ export default function Dashboard() {
       try {
         type JobBillingRow = Pick<
           Database['public']['Tables']['jobs_ledger']['Row'],
-          'id' | 'master_user_id' | 'customer_id' | 'customer_name' | 'customer_email' | 'hcp_number' | 'job_name'
+          | 'id'
+          | 'master_user_id'
+          | 'customer_id'
+          | 'customer_name'
+          | 'customer_email'
+          | 'customer_phone'
+          | 'hcp_number'
+          | 'job_name'
+          | 'job_address'
+          | 'last_work_date'
         >
         const data = await withSupabaseRetry<JobBillingRow | null>(
           async () =>
             supabase
               .from('jobs_ledger')
-              .select('id, master_user_id, customer_id, customer_name, customer_email, hcp_number, job_name')
+              .select(
+                'id, master_user_id, customer_id, customer_name, customer_email, customer_phone, hcp_number, job_name, job_address, last_work_date',
+              )
               .eq('id', sendRecordJobMeta.id)
               .maybeSingle(),
           'load job for send invoice modal',
@@ -2278,6 +2298,9 @@ export default function Dashboard() {
           customer_email: data.customer_email,
           hcp_number: data.hcp_number,
           job_name: data.job_name,
+          job_address: data.job_address,
+          customer_phone: data.customer_phone,
+          last_work_date: data.last_work_date,
         }
         billCustomer?.openBillCustomer({
           payload: { kind: 'job', job: ctx },

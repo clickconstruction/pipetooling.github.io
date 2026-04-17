@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-04-14
+last_updated: 2026-04-16
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -93,6 +93,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### April 2026
 
 #### April 16, 2026
+
+**`20260416182749_migrate_legacy_revenue_to_first_fixture.sql`**
+- **Purpose**: One-time backfill so **Edit Job** **Job Total** (Specific Work sum) matches legacy jobs that had **`jobs_ledger.revenue`** but no priced **named** fixture rows. Eligible: **`COALESCE(revenue,0) > 0`** and sum of **`round(count × COALESCE(line_unit_price,0), 2)`** over rows with **`trim(name) <> ''`** is **0**. **UPDATE** first fixture per job (**`line_unit_price`**, normalize **`count`**); **INSERT** **`Job total (migrated)`** when no fixtures. Does **not** change **`jobs_ledger.revenue`**.
+- **Changes**: **`DO`** block + temp eligible set; **`RAISE NOTICE`** update/insert counts
+- **Impact**: [`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx) **Job Total** / Stripe multi-line eligibility; **`RECENT_FEATURES.md`** v2.320
+- **Category**: Jobs / Billing / Data
 
 **`20260416154325_ncns_when_scheduled_no_clock.sql`**
 - **Purpose**: Allow **`record_ncns_and_reject_sessions_for_day`** to record **NCNS** when the subject has **no** **`clock_sessions`** on **`work_date`** but has at least one **`job_schedule_blocks`** row (scheduled, never clocked); **`metadata.scheduled_without_clock`**; duplicate **`attendance_incidents`** same user/day rejected.

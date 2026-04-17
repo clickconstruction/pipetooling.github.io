@@ -23,7 +23,7 @@ import NewReportModal from '../components/NewReportModal'
 import JobReportsModal from '../components/JobReportsModal'
 import AddInspectionModal from '../components/AddInspectionModal'
 import { ErrorBoundary } from '../components/ErrorBoundary'
-import { type JobBillingContext } from '../components/jobs/SendRecordInvoiceModal'
+import { jobBillingContextFromJob } from '../lib/jobBillingContext'
 import { useBillCustomerModal } from '../contexts/BillCustomerModalContext'
 import BilledPaymentConfirmationModal from '../components/jobs/BilledPaymentConfirmationModal'
 import BilledBillViewModal from '../components/jobs/BilledBillViewModal'
@@ -82,18 +82,6 @@ type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['R
 type JobsLedgerTeamMember = Database['public']['Tables']['jobs_ledger_team_members']['Row']
 type InspectionRow = Database['public']['Tables']['inspections']['Row']
 type UserRow = { id: string; name: string; email: string | null; role: string }
-
-function jobBillingContextFromJob(j: JobWithDetails): JobBillingContext {
-  return {
-    id: j.id,
-    master_user_id: j.master_user_id,
-    hcp_number: j.hcp_number,
-    job_name: j.job_name,
-    customer_id: j.customer_id,
-    customer_name: j.customer_name,
-    customer_email: j.customer_email,
-  }
-}
 
 /** Jobs ledger row must be linked to a customers row before Invoice/Update or instant billed. */
 function jobLedgerHasCustomerForBilling(customerId: string | null | undefined): boolean {
