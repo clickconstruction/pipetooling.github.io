@@ -38,7 +38,7 @@ import {
 } from '../components/bidBoard/UnifiedBidCustomerNotes'
 import { BidBoardNotesPanel } from '../components/bids/BidBoardNotesPanel'
 import { BidsWorkingBoard } from '../components/bids/BidsWorkingBoard'
-import { BidFormModal } from '../components/bids/BidFormModal'
+import { BidFormModal, type BidServiceTypeSwitchSibling } from '../components/bids/BidFormModal'
 import { SupplyHouseWebsiteLink } from '../components/SupplyHouseWebsiteLink'
 import { Database } from '../types/database'
 import type { Json } from '../types/database'
@@ -1112,6 +1112,9 @@ export default function Bids() {
   const [evaluateChecked, setEvaluateChecked] = useState<{ [key: string]: boolean }>({})
   const [showSentBidScript, setShowSentBidScript] = useState(false)
   const [showBidQuestionScript, setShowBidQuestionScript] = useState(false)
+  const [bidServiceTypeSwitchSiblings, setBidServiceTypeSwitchSiblings] = useState<
+    Record<string, BidServiceTypeSwitchSibling[]>
+  >({})
 
   const [driveLink, setDriveLink] = useState('')
   const [plansLink, setPlansLink] = useState('')
@@ -8206,7 +8209,102 @@ export default function Bids() {
     setDeleteConfirmProjectName('')
     setDeletingBid(false)
     setDeleteBidModalOpen(false)
+    setBidServiceTypeSwitchSiblings({})
     clearBidDateSentAttestationFlow()
+  }
+
+  async function refreshBidServiceTypeSwitchSiblings() {
+    const source = editingBid
+    const customerId = source?.customer_id
+    if (!source || !customerId) {
+      setBidServiceTypeSwitchSiblings({})
+      return
+    }
+    const pn = (source.project_name ?? '').trim().toLowerCase()
+    if (!pn) {
+      setBidServiceTypeSwitchSiblings({})
+      return
+    }
+    try {
+      const data = await withSupabaseRetry(
+        () =>
+          supabase
+            .from('bids')
+            .select('id, bid_number, service_type_id, project_name')
+            .eq('customer_id', customerId)
+            .neq('id', source.id),
+        'list sibling bids for service type switch',
+      )
+      const map: Record<string, BidServiceTypeSwitchSibling[]> = {}
+      for (const row of data ?? []) {
+        if ((row.project_name ?? '').trim().toLowerCase() !== pn) continue
+        const st = row.service_type_id
+        if (!map[st]) map[st] = []
+        map[st].push({ id: row.id, bid_number: row.bid_number })
+      }
+      setBidServiceTypeSwitchSiblings(map)
+    } catch {
+      setBidServiceTypeSwitchSiblings({})
+    }
+  }
+
+  async function duplicateBidToServiceTypeHandler(targetServiceTypeId: string) {
+    if (!editingBid || !authUser?.id) return
+    setSavingBid(true)
+    setError(null)
+    try {
+      const newId = await withSupabaseRetry(
+        () =>
+          supabase.rpc('duplicate_bid_to_service_type', {
+            p_source_bid_id: editingBid.id,
+            p_target_service_type_id: targetServiceTypeId,
+          }),
+        'duplicate bid to service type',
+      )
+      if (typeof newId !== 'string' || !newId) {
+        const msg = 'Duplicate did not return a new bid id.'
+        setError(msg)
+        showToast(msg, 'error')
+        return
+      }
+      const rows = await loadBids()
+      setSelectedServiceTypeId(targetServiceTypeId)
+      const fresh = rows.find((b) => b.id === newId)
+      if (fresh) {
+        closeBidForm()
+        openEditBid(fresh)
+        showToast('Bid copied to the new trade.', 'success')
+      } else {
+        closeBidForm()
+        showToast('Bid copied. Refresh the page if it does not appear.', 'success')
+      }
+    } catch (e) {
+      const msg = formatErrorMessage(e)
+      setError(msg)
+      showToast(msg, 'error')
+    } finally {
+      setSavingBid(false)
+    }
+  }
+
+  function openExistingBidFromServiceTypeSwitch(bidId: string) {
+    const fresh = bids.find((b) => b.id === bidId)
+    if (fresh) {
+      setSelectedServiceTypeId(fresh.service_type_id)
+      closeBidForm()
+      openEditBid(fresh)
+      return
+    }
+    void loadBids().then((rows) => {
+      const b = rows.find((x) => x.id === bidId)
+      if (b) {
+        setSelectedServiceTypeId(b.service_type_id)
+        closeBidForm()
+        openEditBid(b)
+      } else {
+        showToast('Bid not found or no access.', 'error')
+      }
+    })
   }
 
   function getBidDateSentAttestationPayloadMerge(): Record<string, string | null> {
@@ -16814,6 +16912,10 @@ export default function Bids() {
         setDeleteBidModalOpen={setDeleteBidModalOpen}
         setDeleteConfirmProjectName={setDeleteConfirmProjectName}
         setError={setError}
+        serviceTypeSwitchSiblings={bidServiceTypeSwitchSiblings}
+        onServiceTypeSwitchModalOpen={refreshBidServiceTypeSwitchSiblings}
+        onDuplicateBidToServiceType={duplicateBidToServiceTypeHandler}
+        onOpenExistingBidFromServiceTypeSwitch={openExistingBidFromServiceTypeSwitch}
       />
 
       {bidSentAttestModalOpen && (

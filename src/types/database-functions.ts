@@ -35,6 +35,14 @@ export interface CreateProjectWithTemplateResult {
 }
 
 /**
+ * Parameters for duplicate_bid_to_service_type (new bid, different trade)
+ */
+export interface DuplicateBidToServiceTypeParams {
+  p_source_bid_id: string
+  p_target_service_type_id: string
+}
+
+/**
  * Parameters for duplicate_purchase_order function
  */
 export interface DuplicatePurchaseOrderParams {

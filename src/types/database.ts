@@ -8086,6 +8086,10 @@ export type Database = {
           request_id: string
         }[]
       }
+      duplicate_bid_to_service_type: {
+        Args: { p_source_bid_id: string; p_target_service_type_id: string }
+        Returns: string
+      }
       duplicate_purchase_order: {
         Args: { p_created_by: string; p_source_po_id: string }
         Returns: Json

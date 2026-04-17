@@ -1,4 +1,5 @@
-import type { ChangeEvent, Dispatch, FocusEvent, FormEvent, SetStateAction } from 'react'
+import type { ChangeEvent, CSSProperties, Dispatch, FocusEvent, FormEvent, SetStateAction } from 'react'
+import { useEffect, useState } from 'react'
 import { SearchableSelect } from '../SearchableSelect'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import type { Database } from '../../types/database'
@@ -9,6 +10,7 @@ import {
   normalizeBidDateInput,
   wholeCalendarDaysSinceSentDate,
 } from '../../lib/bidDateSentDisplay'
+import { getBidServiceTypeTag } from '../../utils/unifiedJobBidSearch'
 
 type Bid = Database['public']['Tables']['bids']['Row']
 type Customer = Database['public']['Tables']['customers']['Row']
@@ -22,6 +24,8 @@ type BidFormUserRole =
   | 'superintendent'
 
 export type BidFormOutcomeOption = 'won' | 'lost' | 'started_or_complete' | ''
+
+export type BidServiceTypeSwitchSibling = { id: string; bid_number: string | null }
 
 export type BidFormModalProps = {
   open: boolean
@@ -42,7 +46,7 @@ export type BidFormModalProps = {
   setProjectName: (value: string) => void
   formServiceTypeId: string
   setFormServiceTypeId: (value: string) => void
-  visibleServiceTypes: { id: string; name: string }[]
+  visibleServiceTypes: { id: string; name: string; color: string | null }[]
   outcome: BidFormOutcomeOption
   setOutcome: (value: BidFormOutcomeOption) => void
   bidDateSent: string
@@ -109,9 +113,40 @@ export type BidFormModalProps = {
   setDeleteBidModalOpen: (value: boolean) => void
   setDeleteConfirmProjectName: (value: string) => void
   setError: Dispatch<SetStateAction<string | null>>
+  /** Sibling bids keyed by `service_type_id` (same customer + project name); for “open existing” in service-type switcher. */
+  serviceTypeSwitchSiblings?: Record<string, BidServiceTypeSwitchSibling[]>
+  onServiceTypeSwitchModalOpen?: () => void | Promise<void>
+  onDuplicateBidToServiceType?: (targetServiceTypeId: string) => Promise<void>
+  onOpenExistingBidFromServiceTypeSwitch?: (bidId: string) => void
+}
+
+function serviceTypePillStyle(st: { name: string; color: string | null }): CSSProperties {
+  const tag = getBidServiceTypeTag(st.name)
+  if (tag) return { background: tag.color, color: '#fff' }
+  if (st.color) return { background: st.color, color: '#fff' }
+  return { background: '#e5e7eb', color: '#374151' }
 }
 
 export function BidFormModal(props: BidFormModalProps) {
+  const [serviceTypeSwitchOpen, setServiceTypeSwitchOpen] = useState(false)
+  const [duplicatingToServiceTypeId, setDuplicatingToServiceTypeId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!props.open) {
+      setServiceTypeSwitchOpen(false)
+      setDuplicatingToServiceTypeId(null)
+    }
+  }, [props.open])
+
+  useEffect(() => {
+    if (!serviceTypeSwitchOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setServiceTypeSwitchOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [serviceTypeSwitchOpen])
+
   if (!props.open) return null
   const {
     editingBid,
@@ -198,7 +233,22 @@ export function BidFormModal(props: BidFormModalProps) {
     setDeleteBidModalOpen,
     setDeleteConfirmProjectName,
     setError,
+    serviceTypeSwitchSiblings = {},
+    onServiceTypeSwitchModalOpen,
+    onDuplicateBidToServiceType,
+    onOpenExistingBidFromServiceTypeSwitch,
   } = props
+
+  const selectedServiceType = formServiceTypeId.trim()
+    ? visibleServiceTypes.find((st) => st.id === formServiceTypeId)
+    : undefined
+  const serviceTypePillTag = selectedServiceType ? getBidServiceTypeTag(selectedServiceType.name) : null
+  const otherServiceTypes = visibleServiceTypes.filter((st) => st.id !== formServiceTypeId)
+
+  function openServiceTypeSwitch() {
+    setServiceTypeSwitchOpen(true)
+    void Promise.resolve(onServiceTypeSwitchModalOpen?.())
+  }
 
   return (
         <div className="bid-form-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
@@ -225,12 +275,66 @@ export function BidFormModal(props: BidFormModalProps) {
                 max-height: 100vh !important;
                 border-radius: 0 !important;
               }
+              .bid-form-modal-header {
+                grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important;
+                gap: 0.5rem !important;
+              }
+              .bid-form-modal-header h2 {
+                font-size: 1.1rem !important;
+              }
             }
           `}</style>
           <div className="bid-form-modal" style={{ background: 'white', padding: '1rem 2rem 2rem', borderRadius: 8, maxWidth: '720px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-              <h2 style={{ margin: 0 }}>{editingBid ? 'Edit Bid' : 'New Bid'}</h2>
-              <button type="button" onClick={closeBidForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>
+            <div
+              className="bid-form-modal-header"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)',
+                alignItems: 'center',
+                gap: '0.75rem',
+                marginBottom: '1.5rem',
+              }}
+            >
+              <h2 style={{ margin: 0, minWidth: 0 }}>{editingBid ? 'Edit Bid' : 'New Bid'}</h2>
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                {selectedServiceType ? (
+                  <button
+                    type="button"
+                    aria-label={`Service type: ${selectedServiceType.name}. Choose another trade or copy bid.`}
+                    aria-haspopup="dialog"
+                    aria-expanded={serviceTypeSwitchOpen}
+                    onClick={openServiceTypeSwitch}
+                    style={{
+                      padding: '0.1rem 0.35rem',
+                      fontSize: '0.6875rem',
+                      fontWeight: 500,
+                      borderRadius: 4,
+                      maxWidth: 'min(40vw, 12rem)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      ...serviceTypePillStyle(selectedServiceType),
+                    }}
+                  >
+                    {serviceTypePillTag ? `[${serviceTypePillTag.tag}]` : selectedServiceType.name}
+                  </button>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                onClick={closeBidForm}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: '#f3f4f6',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  justifySelf: 'end',
+                }}
+              >
                 Cancel
               </button>
             </div>
@@ -807,6 +911,162 @@ export function BidFormModal(props: BidFormModalProps) {
               </div>
             </form>
           </div>
+
+          {serviceTypeSwitchOpen ? (
+            <div
+              role="presentation"
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0,0,0,0.45)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 1002,
+              }}
+              onMouseDown={(e) => {
+                if (e.target === e.currentTarget) setServiceTypeSwitchOpen(false)
+              }}
+            >
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="bid-service-type-switch-title"
+                style={{
+                  background: 'white',
+                  padding: '1.25rem 1.5rem',
+                  borderRadius: 8,
+                  maxWidth: '420px',
+                  width: '90%',
+                  maxHeight: '85vh',
+                  overflow: 'auto',
+                  boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
+                }}
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                  <h2 id="bid-service-type-switch-title" style={{ margin: 0, fontSize: '1.05rem' }}>
+                    Other trades for this job
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => setServiceTypeSwitchOpen(false)}
+                    style={{
+                      padding: '0.25rem 0.5rem',
+                      background: '#f3f4f6',
+                      border: '1px solid #d1d5db',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                    }}
+                  >
+                    Close
+                  </button>
+                </div>
+                <p style={{ margin: '0 0 1rem 0', fontSize: '0.8125rem', color: '#6b7280', lineHeight: 1.45 }}>
+                  Open an existing bid for the same customer and project name, or copy this bid’s counts and estimate data into a new bid for another service type.
+                </p>
+                {!editingBid ? (
+                  <p style={{ margin: '0 0 1rem 0', fontSize: '0.8125rem', color: '#b45309' }}>
+                    Save the bid first to enable <strong>Copy to new … bid</strong>.
+                  </p>
+                ) : null}
+                {otherServiceTypes.length === 0 ? (
+                  <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>No other service types are available for your account.</p>
+                ) : (
+                  <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {otherServiceTypes.map((st) => {
+                      const tag = getBidServiceTypeTag(st.name)
+                      const labelShort = tag ? `[${tag.tag}]` : st.name
+                      const siblings = serviceTypeSwitchSiblings[st.id] ?? []
+                      const dupBusy = duplicatingToServiceTypeId === st.id
+                      return (
+                        <li
+                          key={st.id}
+                          style={{
+                            border: '1px solid #e5e7eb',
+                            borderRadius: 6,
+                            padding: '0.65rem 0.75rem',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.5rem',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <span
+                              style={{
+                                padding: '0.1rem 0.35rem',
+                                fontSize: '0.6875rem',
+                                fontWeight: 500,
+                                borderRadius: 4,
+                                ...serviceTypePillStyle(st),
+                              }}
+                            >
+                              {labelShort}
+                            </span>
+                            <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>{st.name}</span>
+                          </div>
+                          {siblings.length > 0 ? (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
+                              {siblings.map((sib) => (
+                                <button
+                                  key={sib.id}
+                                  type="button"
+                                  onClick={() => {
+                                    onOpenExistingBidFromServiceTypeSwitch?.(sib.id)
+                                    setServiceTypeSwitchOpen(false)
+                                  }}
+                                  disabled={!onOpenExistingBidFromServiceTypeSwitch}
+                                  style={{
+                                    padding: '0.35rem 0.65rem',
+                                    fontSize: '0.8125rem',
+                                    background: '#eff6ff',
+                                    border: '1px solid #3b82f6',
+                                    color: '#1d4ed8',
+                                    borderRadius: 4,
+                                    cursor: onOpenExistingBidFromServiceTypeSwitch ? 'pointer' : 'not-allowed',
+                                  }}
+                                >
+                                  Open B{sib.bid_number?.trim() || '—'}
+                                </button>
+                              ))}
+                            </div>
+                          ) : null}
+                          <button
+                            type="button"
+                            disabled={!editingBid || !onDuplicateBidToServiceType || dupBusy || savingBid}
+                            title={!editingBid ? 'Save this bid first' : undefined}
+                            onClick={async () => {
+                              if (!onDuplicateBidToServiceType || !editingBid) return
+                              setDuplicatingToServiceTypeId(st.id)
+                              try {
+                                await onDuplicateBidToServiceType(st.id)
+                                setServiceTypeSwitchOpen(false)
+                              } finally {
+                                setDuplicatingToServiceTypeId(null)
+                              }
+                            }}
+                            style={{
+                              padding: '0.4rem 0.75rem',
+                              fontSize: '0.8125rem',
+                              alignSelf: 'flex-start',
+                              background: !editingBid || !onDuplicateBidToServiceType ? '#e5e7eb' : '#3b82f6',
+                              color: !editingBid || !onDuplicateBidToServiceType ? '#6b7280' : 'white',
+                              border: 'none',
+                              borderRadius: 4,
+                              cursor: !editingBid || !onDuplicateBidToServiceType ? 'not-allowed' : 'pointer',
+                            }}
+                          >
+                            {dupBusy ? 'Copying…' : `Copy to new ${st.name} bid`}
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+              </div>
+            </div>
+          ) : null}
         </div>
 
   )
