@@ -38,6 +38,7 @@ import { PhysicalInvoicePreview } from './PhysicalInvoicePreview'
 import {
   buildPhysicalInvoiceDocument,
   buildPhysicalInvoiceEmailBodies,
+  formatPhysicalInvoiceLongDateYmd,
   physicalInvoiceEmailSubject,
 } from '../../lib/physicalInvoiceDocument'
 import { type JobBillingContext } from '../../lib/jobBillingContext'
@@ -133,6 +134,43 @@ const BILL_CUSTOMER_DISCLOSURE_TOGGLE_STYLE: CSSProperties = {
   font: 'inherit',
   color: 'inherit',
   boxSizing: 'border-box',
+}
+
+/** Line item override + Memo + Footer: tighter vertical rhythm than standalone disclosures. */
+const BILL_CUSTOMER_MODIFICATIONS_STACK_STYLE: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '0.25rem',
+}
+
+/** Stripe + Physical: gray card around invoice modification disclosures. */
+const BILL_CUSTOMER_INVOICE_MODIFICATIONS_SHELL_STYLE: CSSProperties = {
+  background: '#f9fafb',
+  border: '1px solid #e5e7eb',
+  borderRadius: 8,
+  padding: '0.75rem 1rem',
+  marginBottom: '0.75rem',
+}
+
+const BILL_CUSTOMER_INVOICE_MODIFICATIONS_TITLE_STYLE: CSSProperties = {
+  fontSize: '0.875rem',
+  fontWeight: 600,
+  color: '#111827',
+  marginBottom: '0.35rem',
+  textAlign: 'center',
+}
+
+const BILL_CUSTOMER_PHYSICAL_DATE_LINK_BUTTON_STYLE: CSSProperties = {
+  fontSize: '0.875rem',
+  color: '#2563eb',
+  textDecoration: 'underline',
+  textUnderlineOffset: '2px',
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  padding: 0,
+  font: 'inherit',
+  textAlign: 'left',
 }
 
 function billCustomerLineOnBillSummaryLine(line: string): string {
@@ -329,6 +367,7 @@ export default function SendRecordInvoiceModal({
   const [stripeDueDate, setStripeDueDate] = useState(() => isoDatePlusDays(30))
   const [editDueDateOpen, setEditDueDateOpen] = useState(false)
   const [draftDueYmd, setDraftDueYmd] = useState('')
+  const [draftServiceYmd, setDraftServiceYmd] = useState('')
   const [stripeLineDescription, setStripeLineDescription] = useState('')
   /** True when the job has Specific Work rows that become multiple Stripe lines unless line description overrides. */
   const [stripeFixtureMultiLineAvailable, setStripeFixtureMultiLineAvailable] = useState<boolean | null>(null)
@@ -408,6 +447,7 @@ export default function SendRecordInvoiceModal({
     setStripeDueDate(isoDatePlusDays(30))
     setEditDueDateOpen(false)
     setDraftDueYmd('')
+    setDraftServiceYmd('')
     // Empty until fixtures load: billable Specific Work must omit line_description for multi-line Stripe items.
     setStripeLineDescription('')
     setStripeMemo(memoDefault)
@@ -961,6 +1001,11 @@ export default function SendRecordInvoiceModal({
         })
       : null
 
+  const physicalServiceDateLinkLabel =
+    physicalDocPreview?.invoiceDateDisplay ?? formatPhysicalInvoiceLongDateYmd(sentDate)
+  const physicalDueDateLinkLabel =
+    physicalDocPreview?.dueDateDisplay ?? formatPhysicalInvoiceLongDateYmd(stripeDueDate)
+
   const physicalSendReady =
     outsideReady &&
     (job?.customer_email ?? '').trim().length > 0 &&
@@ -1115,7 +1160,7 @@ export default function SendRecordInvoiceModal({
                     color: '#374151',
                   }}
                 >
-                  Memo (optional)
+                  Memo
                 </span>
               </span>
               <span
@@ -1187,10 +1232,11 @@ export default function SendRecordInvoiceModal({
                 Customer email is required to send a physical invoice by email. Add it on Edit Job.
               </p>
             ) : null}
-            <div style={{ marginBottom: '0.75rem' }}>
-              <label style={BILL_CUSTOMER_FIELD_LABEL_STYLE}>Invoice date</label>
-              <input type="date" value={sentDate} onChange={(e) => setSentDate(e.target.value)} style={billDateInputStyle} />
-            </div>
+            <div style={BILL_CUSTOMER_INVOICE_MODIFICATIONS_SHELL_STYLE}>
+              <div style={BILL_CUSTOMER_INVOICE_MODIFICATIONS_TITLE_STYLE}>
+                Invoice Modifications (optional)
+              </div>
+              <div style={BILL_CUSTOMER_MODIFICATIONS_STACK_STYLE}>
             <button
               type="button"
               aria-expanded={lineOnBillSectionOpen}
@@ -1198,7 +1244,7 @@ export default function SendRecordInvoiceModal({
               onClick={() => setLineOnBillSectionOpen((v) => !v)}
               style={{
                 ...BILL_CUSTOMER_DISCLOSURE_TOGGLE_STYLE,
-                marginBottom: lineOnBillSectionOpen ? '0.35rem' : '0.65rem',
+                marginBottom: 0,
               }}
             >
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0 }}>
@@ -1213,7 +1259,7 @@ export default function SendRecordInvoiceModal({
                     color: '#374151',
                   }}
                 >
-                  Line on bill
+                  Line item override
                 </span>
               </span>
               <span
@@ -1231,7 +1277,7 @@ export default function SendRecordInvoiceModal({
               role="region"
               aria-labelledby="bill-customer-physical-line-on-bill-disclosure-heading"
               hidden={!lineOnBillSectionOpen}
-              style={{ marginBottom: '0.65rem' }}
+              style={{ marginBottom: 0 }}
             >
               <div
                 style={{
@@ -1259,8 +1305,8 @@ export default function SendRecordInvoiceModal({
                   type="button"
                   onClick={() => job && setStripeLineDescription(defaultStripeLineDescriptionFromJob(job))}
                   disabled={!job}
-                  title="Reset line on bill to default"
-                  aria-label="Reset line on bill to default"
+                  title="Reset line item override to default"
+                  aria-label="Reset line item override to default"
                   style={{
                     padding: 0,
                     border: 'none',
@@ -1299,7 +1345,7 @@ export default function SendRecordInvoiceModal({
               onClick={() => setMemoSectionOpen((v) => !v)}
               style={{
                 ...BILL_CUSTOMER_DISCLOSURE_TOGGLE_STYLE,
-                marginBottom: memoSectionOpen ? '0.35rem' : '0.65rem',
+                marginBottom: 0,
               }}
             >
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0 }}>
@@ -1314,7 +1360,7 @@ export default function SendRecordInvoiceModal({
                     color: '#374151',
                   }}
                 >
-                  Memo (optional)
+                  Memo
                 </span>
               </span>
               <span
@@ -1332,7 +1378,7 @@ export default function SendRecordInvoiceModal({
               role="region"
               aria-labelledby="bill-customer-physical-memo-disclosure-heading"
               hidden={!memoSectionOpen}
-              style={{ marginBottom: '0.65rem' }}
+              style={{ marginBottom: 0 }}
             >
               <span style={{ ...BILL_CUSTOMER_FIELD_LABEL_STYLE, fontSize: '0.75rem', color: '#6b7280', fontWeight: 400 }}>
                 ({externalNote.length} / {BILL_CUSTOMER_MEMO_MAX_CHARS})
@@ -1356,7 +1402,7 @@ export default function SendRecordInvoiceModal({
               onClick={() => setPhysicalFooterSectionOpen((v) => !v)}
               style={{
                 ...BILL_CUSTOMER_DISCLOSURE_TOGGLE_STYLE,
-                marginBottom: physicalFooterSectionOpen ? '0.35rem' : '0.65rem',
+                marginBottom: 0,
               }}
             >
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0 }}>
@@ -1371,7 +1417,7 @@ export default function SendRecordInvoiceModal({
                     color: '#374151',
                   }}
                 >
-                  Footer (optional)
+                  Footer
                 </span>
               </span>
               <span
@@ -1389,7 +1435,7 @@ export default function SendRecordInvoiceModal({
               role="region"
               aria-labelledby="bill-customer-physical-footer-disclosure-heading"
               hidden={!physicalFooterSectionOpen}
-              style={{ marginBottom: '0.65rem' }}
+              style={{ marginBottom: 0 }}
             >
               <div
                 style={{
@@ -1467,58 +1513,79 @@ export default function SendRecordInvoiceModal({
                 style={{ ...BILL_CUSTOMER_TEXTAREA_STYLE, marginBottom: 0, minHeight: '4.5rem' }}
               />
             </div>
+              </div>
+            </div>
             <div style={{ marginBottom: '0.75rem' }}>
-              <label style={BILL_CUSTOMER_FIELD_LABEL_STYLE}>Due date</label>
               <div
                 style={{
                   display: 'flex',
                   flexWrap: 'wrap',
-                  alignItems: 'center',
+                  alignItems: 'flex-start',
+                  gap: '1rem',
                   justifyContent: 'space-between',
-                  gap: '0.5rem',
                 }}
               >
-                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
-                  <span style={{ fontSize: '0.875rem', color: '#111827' }}>{physicalDocPreview?.dueDateDisplay ?? '—'}</span>
+                <div style={{ flex: '0 1 auto', minWidth: '8.5rem' }}>
+                  <span style={BILL_CUSTOMER_FIELD_LABEL_STYLE}>Service date</span>
                   <button
                     type="button"
                     onClick={() => {
+                      setDraftServiceYmd(sentDate)
                       setDraftDueYmd(stripeDueDate)
                       setEditDueDateOpen(true)
                     }}
-                    style={{
-                      padding: '0.25rem 0.5rem',
-                      fontSize: '0.8125rem',
-                      border: '1px solid #d1d5db',
-                      background: '#f9fafb',
-                      borderRadius: 4,
-                      cursor: 'pointer',
-                    }}
+                    aria-label="Edit service date and due date"
+                    style={BILL_CUSTOMER_PHYSICAL_DATE_LINK_BUTTON_STYLE}
                   >
-                    Edit
+                    {physicalServiceDateLinkLabel}
                   </button>
                 </div>
-                <button
-                  type="button"
-                  disabled={!physicalDocPreview || physicalPdfPreviewLoading}
-                  onClick={() => void openPhysicalInvoicePdfInNewTab()}
-                  style={{
-                    padding: '0.25rem 0.5rem',
-                    fontSize: '0.8125rem',
-                    border: '1px solid #d1d5db',
-                    background: '#f9fafb',
-                    borderRadius: 4,
-                    cursor:
-                      !physicalDocPreview || physicalPdfPreviewLoading ? 'not-allowed' : 'pointer',
-                    opacity: !physicalDocPreview || physicalPdfPreviewLoading ? 0.55 : 1,
-                  }}
-                >
-                  {physicalPdfPreviewLoading ? '…' : 'Preview'}
-                </button>
+                <div style={{ flex: '1 1 280px', minWidth: 0 }}>
+                  <span style={BILL_CUSTOMER_FIELD_LABEL_STYLE}>Due date</span>
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '0.5rem',
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDraftServiceYmd(sentDate)
+                        setDraftDueYmd(stripeDueDate)
+                        setEditDueDateOpen(true)
+                      }}
+                      aria-label="Edit service date and due date"
+                      style={BILL_CUSTOMER_PHYSICAL_DATE_LINK_BUTTON_STYLE}
+                    >
+                      {physicalDueDateLinkLabel}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!physicalDocPreview || physicalPdfPreviewLoading}
+                      onClick={() => void openPhysicalInvoicePdfInNewTab()}
+                      style={{
+                        padding: '0.25rem 0.5rem',
+                        fontSize: '0.8125rem',
+                        border: '1px solid #d1d5db',
+                        background: '#f9fafb',
+                        borderRadius: 4,
+                        cursor:
+                          !physicalDocPreview || physicalPdfPreviewLoading ? 'not-allowed' : 'pointer',
+                        opacity: !physicalDocPreview || physicalPdfPreviewLoading ? 0.55 : 1,
+                      }}
+                    >
+                      {physicalPdfPreviewLoading ? '…' : 'Preview'}
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
             {physicalDocPreview ? (
-              <PhysicalInvoicePreview document={physicalDocPreview} />
+              <PhysicalInvoicePreview document={physicalDocPreview} hideIssuerContact />
             ) : (
               <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.75rem' }}>
                 Enter a valid bill amount and dates to preview the PDF.
@@ -1641,26 +1708,11 @@ export default function SendRecordInvoiceModal({
               </>
             ) : (
               <>
-                <div
-                  style={{
-                    background: '#f9fafb',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: 8,
-                    padding: '0.75rem 1rem',
-                    marginBottom: '0.75rem',
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: '0.875rem',
-                      fontWeight: 600,
-                      color: '#111827',
-                      marginBottom: '0.65rem',
-                      textAlign: 'center',
-                    }}
-                  >
-                    What appears on the invoice
+                <div style={BILL_CUSTOMER_INVOICE_MODIFICATIONS_SHELL_STYLE}>
+                  <div style={BILL_CUSTOMER_INVOICE_MODIFICATIONS_TITLE_STYLE}>
+                    Invoice Modifications (optional)
                   </div>
+                  <div style={BILL_CUSTOMER_MODIFICATIONS_STACK_STYLE}>
                   <button
                     type="button"
                     aria-expanded={lineOnBillSectionOpen}
@@ -1668,7 +1720,7 @@ export default function SendRecordInvoiceModal({
                     onClick={() => setLineOnBillSectionOpen((v) => !v)}
                     style={{
                       ...BILL_CUSTOMER_DISCLOSURE_TOGGLE_STYLE,
-                      marginBottom: lineOnBillSectionOpen ? '0.35rem' : '0.65rem',
+                      marginBottom: 0,
                     }}
                   >
                     <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0 }}>
@@ -1683,7 +1735,7 @@ export default function SendRecordInvoiceModal({
                           color: '#374151',
                         }}
                       >
-                        Line on bill
+                        Line item override
                       </span>
                     </span>
                     <span
@@ -1701,7 +1753,7 @@ export default function SendRecordInvoiceModal({
                     role="region"
                     aria-labelledby="bill-customer-stripe-line-on-bill-disclosure-heading"
                     hidden={!lineOnBillSectionOpen}
-                    style={{ marginBottom: '0.65rem' }}
+                    style={{ marginBottom: 0 }}
                   >
                     <div
                       style={{
@@ -1729,8 +1781,8 @@ export default function SendRecordInvoiceModal({
                         type="button"
                         onClick={() => job && setStripeLineDescription(defaultStripeLineDescriptionFromJob(job))}
                         disabled={!job}
-                        title="Reset line on bill to default"
-                        aria-label="Reset line on bill to default"
+                        title="Reset line item override to default"
+                        aria-label="Reset line item override to default"
                         style={{
                           padding: 0,
                           border: 'none',
@@ -1771,7 +1823,7 @@ export default function SendRecordInvoiceModal({
                     onClick={() => setMemoSectionOpen((v) => !v)}
                     style={{
                       ...BILL_CUSTOMER_DISCLOSURE_TOGGLE_STYLE,
-                      marginBottom: memoSectionOpen ? '0.35rem' : '0.65rem',
+                      marginBottom: 0,
                     }}
                   >
                     <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0 }}>
@@ -1786,7 +1838,7 @@ export default function SendRecordInvoiceModal({
                           color: '#374151',
                         }}
                       >
-                        Memo (optional)
+                        Memo
                       </span>
                     </span>
                     <span
@@ -1804,7 +1856,7 @@ export default function SendRecordInvoiceModal({
                     role="region"
                     aria-labelledby="bill-customer-stripe-memo-disclosure-heading"
                     hidden={!memoSectionOpen}
-                    style={{ marginBottom: '0.65rem' }}
+                    style={{ marginBottom: 0 }}
                   >
                     <span style={{ ...BILL_CUSTOMER_FIELD_LABEL_STYLE, fontSize: '0.75rem', color: '#6b7280', fontWeight: 400 }}>
                       ({stripeMemo.length} / {BILL_CUSTOMER_MEMO_MAX_CHARS})
@@ -1828,7 +1880,7 @@ export default function SendRecordInvoiceModal({
                     onClick={() => setStripeFooterSectionOpen((v) => !v)}
                     style={{
                       ...BILL_CUSTOMER_DISCLOSURE_TOGGLE_STYLE,
-                      marginBottom: stripeFooterSectionOpen ? '0.35rem' : '0.65rem',
+                      marginBottom: 0,
                     }}
                   >
                     <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0 }}>
@@ -1843,7 +1895,7 @@ export default function SendRecordInvoiceModal({
                           color: '#374151',
                         }}
                       >
-                        Footer (optional)
+                        Footer
                       </span>
                     </span>
                     <span
@@ -1861,7 +1913,7 @@ export default function SendRecordInvoiceModal({
                     role="region"
                     aria-labelledby="bill-customer-footer-disclosure-heading"
                     hidden={!stripeFooterSectionOpen}
-                    style={{ marginBottom: '0.65rem' }}
+                    style={{ marginBottom: 0 }}
                   >
                       <div
                         style={{
@@ -1966,6 +2018,7 @@ export default function SendRecordInvoiceModal({
                         style={{ ...BILL_CUSTOMER_TEXTAREA_STYLE, marginBottom: 0, minHeight: '4.5rem' }}
                       />
                   </div>
+                  </div>
                 </div>
                 {job ? (
                   <StripeBillPreSubmitPreview
@@ -2053,7 +2106,7 @@ export default function SendRecordInvoiceModal({
       >
         <div
           role="dialog"
-          aria-labelledby="edit-stripe-due-date-title"
+          aria-labelledby="edit-bill-customer-dates-title"
           style={{
             background: 'white',
             padding: '1.25rem',
@@ -2064,11 +2117,28 @@ export default function SendRecordInvoiceModal({
           }}
           onMouseDown={(e) => e.stopPropagation()}
         >
-          <h2 id="edit-stripe-due-date-title" style={{ margin: '0 0 0.75rem', fontSize: '1.1rem', fontWeight: 600 }}>
-            Edit Due Date
+          <h2 id="edit-bill-customer-dates-title" style={{ margin: '0 0 0.75rem', fontSize: '1.1rem', fontWeight: 600 }}>
+            {tab === 'physical' ? 'Edit dates' : 'Edit Due Date'}
           </h2>
-          <label style={{ ...BILL_CUSTOMER_FIELD_LABEL_STYLE, display: 'block' }}>Due date</label>
+          {tab === 'physical' ? (
+            <>
+              <label htmlFor="bill-customer-edit-service-date" style={{ ...BILL_CUSTOMER_FIELD_LABEL_STYLE, display: 'block' }}>
+                Service date
+              </label>
+              <input
+                id="bill-customer-edit-service-date"
+                type="date"
+                value={draftServiceYmd}
+                onChange={(e) => setDraftServiceYmd(e.target.value)}
+                style={{ ...billDateInputStyle, marginBottom: '1rem' }}
+              />
+            </>
+          ) : null}
+          <label htmlFor="bill-customer-edit-due-date" style={{ ...BILL_CUSTOMER_FIELD_LABEL_STYLE, display: 'block' }}>
+            Due date
+          </label>
           <input
+            id="bill-customer-edit-due-date"
             type="date"
             value={draftDueYmd}
             onChange={(e) => setDraftDueYmd(e.target.value)}
@@ -2085,6 +2155,9 @@ export default function SendRecordInvoiceModal({
             <button
               type="button"
               onClick={() => {
+                if (tab === 'physical') {
+                  setSentDate(draftServiceYmd.trim())
+                }
                 setStripeDueDate(draftDueYmd.trim())
                 setEditDueDateOpen(false)
               }}

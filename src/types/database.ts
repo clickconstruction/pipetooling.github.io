@@ -3075,6 +3075,7 @@ export type Database = {
           id: string
           invoice_id: string | null
           job_id: string
+          mercury_transaction_id: string | null
           note: string | null
           paid_on: string | null
           payment_type: string | null
@@ -3087,6 +3088,7 @@ export type Database = {
           id?: string
           invoice_id?: string | null
           job_id: string
+          mercury_transaction_id?: string | null
           note?: string | null
           paid_on?: string | null
           payment_type?: string | null
@@ -3099,6 +3101,7 @@ export type Database = {
           id?: string
           invoice_id?: string | null
           job_id?: string
+          mercury_transaction_id?: string | null
           note?: string | null
           paid_on?: string | null
           payment_type?: string | null
@@ -3118,6 +3121,13 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_payments_mercury_transaction_id_fkey"
+            columns: ["mercury_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "mercury_transactions"
             referencedColumns: ["id"]
           },
         ]
@@ -7904,6 +7914,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _mercury_raw_debit_card_id_lower: {
+        Args: { p_raw: Json }
+        Returns: string
+      }
       _pay_staff_bulk_insert_user_time_off_row: {
         Args: {
           p_end_date: string
@@ -7912,6 +7926,16 @@ export type Database = {
           p_start_date: string
           p_today: string
           p_uid: string
+        }
+        Returns: Json
+      }
+      apply_mercury_bank_payment_allocations: {
+        Args: {
+          p_allocations: Json
+          p_mercury_transaction_id: string
+          p_note: string
+          p_paid_on: string
+          p_payment_type: string
         }
         Returns: Json
       }
@@ -8398,6 +8422,23 @@ export type Database = {
           id: string
           job_address: string
           job_name: string
+        }[]
+      }
+      list_mercury_transactions_for_bank_payments: {
+        Args: { p_filter?: Json }
+        Returns: {
+          amount: number
+          consumed: number
+          counterparty_name: string
+          external_memo: string
+          kind: string
+          mercury_account_id: string
+          mercury_id: string
+          mercury_transaction_id: string
+          note: string
+          posted_at: string
+          raw: Json
+          remaining_available: number
         }[]
       }
       list_my_linked_mercury_debit_cards_for_tally: {

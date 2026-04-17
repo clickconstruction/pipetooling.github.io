@@ -25,6 +25,7 @@ import AddInspectionModal from '../components/AddInspectionModal'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { jobBillingContextFromJob } from '../lib/jobBillingContext'
 import { useBillCustomerModal } from '../contexts/BillCustomerModalContext'
+import BankPaymentsModal from '../components/jobs/BankPaymentsModal'
 import BilledPaymentConfirmationModal from '../components/jobs/BilledPaymentConfirmationModal'
 import BilledBillViewModal from '../components/jobs/BilledBillViewModal'
 import { StripeInvoiceSendFromStripeButton } from '../components/jobs/StripeInvoiceSendFromStripeButton'
@@ -51,6 +52,7 @@ import {
   peekReturnEditJobFromStages,
 } from '../lib/returnEditJobFromStages'
 import { DELETE_DRAFT_BILL_LABEL } from '../lib/deleteDraftBillLabel'
+import { formatMoveIntoStageByOnLine } from '../lib/formatMoveIntoStageByOnLine'
 import {
   ensureLedgerInvoiceRemovedAfterStripeSendBack,
   invoiceNeedsStripeVoidForRevert,
@@ -848,12 +850,19 @@ export default function Jobs() {
   const [readyForBillingChecked2, setReadyForBillingChecked2] = useState(false)
   const [markPaidJob, setMarkPaidJob] = useState<JobWithDetails | null>(null)
   const [markPaidInvoice, setMarkPaidInvoice] = useState<InvoiceWithJob | null>(null)
+  const [bankPaymentsModalOpen, setBankPaymentsModalOpen] = useState(false)
   const [viewBillInvoice, setViewBillInvoice] = useState<InvoiceWithJob | null>(null)
-  const [sendBackJob, setSendBackJob] = useState<{ id: string; hcpNumber: string; jobName: string; toStatus: 'working' | 'ready_to_bill' } | null>(null)
+  const [sendBackJob, setSendBackJob] = useState<{
+    id: string
+    hcpNumber: string
+    jobName: string
+    toStatus: 'working' | 'ready_to_bill'
+    rtbDraftCount: number
+  } | null>(null)
   const [sendBackInvoice, setSendBackInvoice] = useState<{ inv: InvoiceWithJob; action: 'delete' | 'revert' } | null>(null)
   const [sendBackInvoiceStripeExplainerAfterFailure, setSendBackInvoiceStripeExplainerAfterFailure] = useState(false)
   const [sendBackChecked, setSendBackChecked] = useState(false)
-  const [sendBackSentBy, setSendBackSentBy] = useState<string | null>(null)
+  const [sendBackStatusEventLine, setSendBackStatusEventLine] = useState<string | null>(null)
   const [sendBackConfirmJob, setSendBackConfirmJob] = useState<{ id: string; toStatus: 'ready_to_bill' | 'billed' } | null>(null)
   const [confirmJobStatusJob, setConfirmJobStatusJob] = useState<{ id: string; toStatus: 'billed' | 'paid'; message: string } | null>(null)
   const [stagesHamMode, setStagesHamMode] = useState(() => {
@@ -1330,21 +1339,25 @@ export default function Jobs() {
 
   useEffect(() => {
     if (!sendBackJob) {
-      setSendBackSentBy(null)
+      setSendBackStatusEventLine(null)
       return
     }
     const toStatusForEvent = sendBackJob.toStatus === 'working' ? 'ready_to_bill' : 'billed'
     supabase
       .from('job_status_events')
-      .select('users(name)')
+      .select('changed_at, users(name)')
       .eq('job_id', sendBackJob.id)
       .eq('to_status', toStatusForEvent)
       .order('changed_at', { ascending: false })
       .limit(1)
       .maybeSingle()
       .then(({ data }) => {
-        const row = data as { users: { name: string } | null } | null
-        setSendBackSentBy(row?.users?.name ?? null)
+        const row = data as { changed_at: string; users: { name: string | null } | null } | null
+        setSendBackStatusEventLine(
+          row
+            ? formatMoveIntoStageByOnLine(toStatusForEvent, row.users?.name ?? null, row.changed_at)
+            : null,
+        )
       })
   }, [sendBackJob])
 
@@ -5891,6 +5904,8 @@ ${totalsHtml}
                 invoiceStandaloneActionLabel?: string
                 /** Deep-link flash: row matching this invoice id gets a brief highlight. */
                 flashInvoiceId?: string | null
+                /** When false, hide the Click Tooling (wrench) shortcut (e.g. Billed Awaiting Payment). Default true. */
+                showClickTooling?: boolean
               }
             ) {
               const {
@@ -5908,6 +5923,7 @@ ${totalsHtml}
                 invoiceBundleActionLabel = 'Remove line',
                 invoiceStandaloneActionLabel = 'Send back',
                 flashInvoiceId = null,
+                showClickTooling = true,
               } = options
               const unifiedStagesColCount = 6
               const flashRowStyle = (invoiceId: string): CSSProperties =>
@@ -6363,17 +6379,19 @@ ${totalsHtml}
                                       )}
                                     </div>
                                     <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-                                      <button
-                                        type="button"
-                                        onClick={() => openInExternalBrowser(buildClickToolingUrl(j))}
-                                        title="Open Click Tooling report (pre-fill customer info)"
-                                        aria-label="Open Click Tooling"
-                                        style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#FF6600', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                      >
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                                          <path d="M541.4 162.6C549 155 561.7 156.9 565.5 166.9C572.3 184.6 576 203.9 576 224C576 312.4 504.4 384 416 384C398.5 384 381.6 381.2 365.8 376L178.9 562.9C150.8 591 105.2 591 77.1 562.9C49 534.8 49 489.2 77.1 461.1L264 274.2C258.8 258.4 256 241.6 256 224C256 135.6 327.6 64 416 64C436.1 64 455.4 67.7 473.1 74.5C483.1 78.3 484.9 91 477.4 98.6L388.7 187.3C385.7 190.3 384 194.4 384 198.6L384 240C384 248.8 391.2 256 400 256L441.4 256C445.6 256 449.7 254.3 452.7 251.3L541.4 162.6z" />
-                                        </svg>
-                                      </button>
+                                      {showClickTooling && (
+                                        <button
+                                          type="button"
+                                          onClick={() => openInExternalBrowser(buildClickToolingUrl(j))}
+                                          title="Open Click Tooling report (pre-fill customer info)"
+                                          aria-label="Open Click Tooling"
+                                          style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#FF6600', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                        >
+                                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                                            <path d="M541.4 162.6C549 155 561.7 156.9 565.5 166.9C572.3 184.6 576 203.9 576 224C576 312.4 504.4 384 416 384C398.5 384 381.6 381.2 365.8 376L178.9 562.9C150.8 591 105.2 591 77.1 562.9C49 534.8 49 489.2 77.1 461.1L264 274.2C258.8 258.4 256 241.6 256 224C256 135.6 327.6 64 416 64C436.1 64 455.4 67.7 473.1 74.5C483.1 78.3 484.9 91 477.4 98.6L388.7 187.3C385.7 190.3 384 194.4 384 198.6L384 240C384 248.8 391.2 256 400 256L441.4 256C445.6 256 449.7 254.3 452.7 251.3L541.4 162.6z" />
+                                          </svg>
+                                        </button>
+                                      )}
                                       {showCreatePartialInvoice && (() => {
                                         const rem = Math.max(0, (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)))
                                         return (
@@ -6704,17 +6722,19 @@ ${totalsHtml}
                                       )}
                                     </div>
                                     <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-                                      <button
-                                        type="button"
-                                        onClick={() => openInExternalBrowser(buildClickToolingUrl(job))}
-                                        title="Open Click Tooling report (pre-fill customer info)"
-                                        aria-label="Open Click Tooling"
-                                        style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#FF6600', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                      >
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                                          <path d="M541.4 162.6C549 155 561.7 156.9 565.5 166.9C572.3 184.6 576 203.9 576 224C576 312.4 504.4 384 416 384C398.5 384 381.6 381.2 365.8 376L178.9 562.9C150.8 591 105.2 591 77.1 562.9C49 534.8 49 489.2 77.1 461.1L264 274.2C258.8 258.4 256 241.6 256 224C256 135.6 327.6 64 416 64C436.1 64 455.4 67.7 473.1 74.5C483.1 78.3 484.9 91 477.4 98.6L388.7 187.3C385.7 190.3 384 194.4 384 198.6L384 240C384 248.8 391.2 256 400 256L441.4 256C445.6 256 449.7 254.3 452.7 251.3L541.4 162.6z" />
-                                        </svg>
-                                      </button>
+                                      {showClickTooling && (
+                                        <button
+                                          type="button"
+                                          onClick={() => openInExternalBrowser(buildClickToolingUrl(job))}
+                                          title="Open Click Tooling report (pre-fill customer info)"
+                                          aria-label="Open Click Tooling"
+                                          style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#FF6600', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                        >
+                                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                                            <path d="M541.4 162.6C549 155 561.7 156.9 565.5 166.9C572.3 184.6 576 203.9 576 224C576 312.4 504.4 384 416 384C398.5 384 381.6 381.2 365.8 376L178.9 562.9C150.8 591 105.2 591 77.1 562.9C49 534.8 49 489.2 77.1 461.1L264 274.2C258.8 258.4 256 241.6 256 224C256 135.6 327.6 64 416 64C436.1 64 455.4 67.7 473.1 74.5C483.1 78.3 484.9 91 477.4 98.6L388.7 187.3C385.7 190.3 384 194.4 384 198.6L384 240C384 248.8 391.2 256 400 256L441.4 256C445.6 256 449.7 254.3 452.7 251.3L541.4 162.6z" />
+                                          </svg>
+                                        </button>
+                                      )}
                                       <button
                                         type="button"
                                         onClick={() => openEdit(job)}
@@ -6895,12 +6915,22 @@ ${totalsHtml}
                       },
                     })
                   },
-                  onJobSendBack: (j) => stagesHamMode ? updateJobStatus(j.id, 'working') : (setSendBackChecked(false), setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'working' })),
+                  onJobSendBack: (j) =>
+                    stagesHamMode
+                      ? void updateJobStatus(j.id, 'working')
+                      : (setSendBackChecked(false),
+                        setSendBackJob({
+                          id: j.id,
+                          hcpNumber: j.hcp_number ?? '—',
+                          jobName: j.job_name ?? '—',
+                          toStatus: 'working',
+                          rtbDraftCount: (j.invoices ?? []).filter((i) => i.status === 'ready_to_bill').length,
+                        })),
                   onInvoiceSendBack: (inv) => stagesHamMode ? deleteInvoice(inv.id) : (setSendBackChecked(false), setSendBackInvoice({ inv, action: 'delete' })),
                   showRemaining: true,
                   showTimeOpen: true,
                   showCreatePartialInvoice: true,
-                  jobSendBackLabel: 'Job: Send Job Back',
+                  jobSendBackLabel: 'Send Job Back',
                   invoiceBundleActionLabel: DELETE_DRAFT_BILL_LABEL,
                   invoiceStandaloneActionLabel: DELETE_DRAFT_BILL_LABEL,
                   flashInvoiceId: stagesInvoiceFlashId,
@@ -6921,6 +6951,66 @@ ${totalsHtml}
                       {`30+ days: ${billedAgingBuckets.count30_90} | $${formatCurrency(billedAgingBuckets.sum30_90)} — 90+ days: ${billedAgingBuckets.count90} | $${formatCurrency(billedAgingBuckets.sum90)} · est. bill date`}
                     </span>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setBankPaymentsModalOpen(true)}
+                    disabled={
+                      billedRows.length === 0 ||
+                      !(
+                        authRole === 'dev' ||
+                        authRole === 'master_technician' ||
+                        authRole === 'assistant' ||
+                        authRole === 'primary'
+                      )
+                    }
+                    title={
+                      billedRows.length === 0
+                        ? 'No billed rows'
+                        : authRole === 'dev' ||
+                            authRole === 'master_technician' ||
+                            authRole === 'assistant' ||
+                            authRole === 'primary'
+                          ? 'Apply bank deposits to billed lines (non-Stripe)'
+                          : 'Only dev, master, assistant, and primary can record payments'
+                    }
+                    aria-label="Open bank payments modal"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      flexShrink: 0,
+                      height: 36,
+                      padding: '0 0.75rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: 4,
+                      background:
+                        billedRows.length === 0 ||
+                        !(
+                          authRole === 'dev' ||
+                          authRole === 'master_technician' ||
+                          authRole === 'assistant' ||
+                          authRole === 'primary'
+                        )
+                          ? '#f3f4f6'
+                          : 'white',
+                      cursor:
+                        billedRows.length === 0 ||
+                        !(
+                          authRole === 'dev' ||
+                          authRole === 'master_technician' ||
+                          authRole === 'assistant' ||
+                          authRole === 'primary'
+                        )
+                          ? 'not-allowed'
+                          : 'pointer',
+                      color: '#374151',
+                      fontSize: '0.8125rem',
+                      fontWeight: 500,
+                    }}
+                  >
+                    Bank Payments
+                  </button>
                   <button
                     type="button"
                     onClick={() => printBilledAwaitingPaymentReport(billedRows, { searchFilter: stagesSearchQuery })}
@@ -6958,10 +7048,18 @@ ${totalsHtml}
                   onJobAction: (j) => setMarkPaidJob(j),
                   onInvoiceAction: (inv) => setMarkPaidInvoice(inv),
                   onViewBill: (inv) => setViewBillInvoice(inv),
+                  showClickTooling: false,
                   onJobSendBack: (j) =>
                     stagesHamMode
                       ? void moveJobToReadyToBillWithStripePrep(j.id)
-                      : (setSendBackChecked(false), setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'ready_to_bill' })),
+                      : (setSendBackChecked(false),
+                        setSendBackJob({
+                          id: j.id,
+                          hcpNumber: j.hcp_number ?? '—',
+                          jobName: j.job_name ?? '—',
+                          toStatus: 'ready_to_bill',
+                          rtbDraftCount: 0,
+                        })),
                   onInvoiceSendBack: (inv) =>
                     stagesHamMode
                       ? void revertBilledInvoiceToReadyToBill(inv)
@@ -10608,6 +10706,16 @@ ${totalsHtml}
           </div>
         </div>
       )}
+      <BankPaymentsModal
+        open={bankPaymentsModalOpen}
+        onClose={() => setBankPaymentsModalOpen(false)}
+        authUserId={authUser?.id}
+        authRole={authRole}
+        billedRows={stagesBoardLists.billedRows}
+        onApplied={async () => {
+          await loadJobs()
+        }}
+      />
       <BilledBillViewModal
         invoice={viewBillInvoice}
         onClose={() => {
@@ -10829,21 +10937,29 @@ ${totalsHtml}
       {sendBackJob && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
-            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>{sendBackJob.toStatus === 'working' ? 'Job: Send Job Back' : 'Send back'}</h2>
+            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>{sendBackJob.toStatus === 'working' ? 'Send Job Back' : 'Send back'}</h2>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem' }}>
+              {sendBackJob.toStatus === 'ready_to_bill'
+                ? 'This will move the job back to Ready to Bill.'
+                : sendBackJob.rtbDraftCount > 0
+                  ? `This will move the job back to Assigned Jobs (Working). ${
+                      sendBackJob.rtbDraftCount === 1
+                        ? `This will also remove 1 Ready to Bill draft bill (same as ${DELETE_DRAFT_BILL_LABEL.replace('\u00A0', ' ')}).`
+                        : `This will also remove ${sendBackJob.rtbDraftCount} Ready to Bill draft bills (same as ${DELETE_DRAFT_BILL_LABEL.replace('\u00A0', ' ')}).`
+                    }`
+                  : 'This will move the job back to Assigned Jobs (Working).'}
+            </p>
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
               {sendBackJob.hcpNumber} · {sendBackJob.jobName}
             </p>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem' }}>
-              {sendBackJob.toStatus === 'working' ? 'This will move the job back to Assigned Jobs (Working).' : 'This will move the job back to Ready to Bill.'}
-            </p>
+            {sendBackStatusEventLine != null && (
+              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                {sendBackStatusEventLine}
+              </p>
+            )}
             {sendBackJob.toStatus === 'ready_to_bill' && (
               <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#92400e' }}>
                 Billed lines on this job will be removed (Stripe invoices voided first where applicable). Lines with recorded payments block send back until adjusted. Paid Stripe invoices block until resolved in Stripe.
-              </p>
-            )}
-            {sendBackSentBy != null && (
-              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
-                Sent by: {sendBackSentBy}
               </p>
             )}
             <div style={{ marginBottom: '1rem' }}>
@@ -10903,7 +11019,7 @@ ${totalsHtml}
                   cursor: sendBackChecked && stagesStatusUpdatingId !== sendBackJob.id ? 'pointer' : 'not-allowed',
                 }}
               >
-                {stagesStatusUpdatingId === sendBackJob.id ? '…' : sendBackJob.toStatus === 'working' ? 'Job: Send Job Back' : 'Send back'}
+                {stagesStatusUpdatingId === sendBackJob.id ? '…' : sendBackJob.toStatus === 'working' ? 'Send Job Back' : 'Send back'}
               </button>
             </div>
           </div>

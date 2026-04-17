@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { upsertBidNotesReadWatermark } from '../lib/userBidNotesReadState'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { DELETE_DRAFT_BILL_LABEL } from '../lib/deleteDraftBillLabel'
+import { formatMoveIntoStageByOnLine } from '../lib/formatMoveIntoStageByOnLine'
 import {
   ensureLedgerInvoiceRemovedAfterStripeSendBack,
   invoiceNeedsStripeVoidForRevert,
@@ -336,6 +337,15 @@ type JobForDashboard = {
 
 function dashboardJobHasCustomerForBilling(customerId: string | null | undefined): boolean {
   return customerId != null && String(customerId).trim().length > 0
+}
+
+/** `readyToBillInvoices` is already limited to status ready_to_bill. */
+function countDashboardRtbDraftsForJob(jobId: string, readyToBillInvoices: InvoiceForDashboard[]): number {
+  let n = 0
+  for (const inv of readyToBillInvoices) {
+    if (inv.job_id === jobId) n += 1
+  }
+  return n
 }
 
 type ReadyToBillDashboardUnit = ReadyToBillDashboardUnitBase<JobForDashboard, InvoiceForDashboard>
@@ -714,11 +724,17 @@ export default function Dashboard() {
   const [sendRecordJobMeta, setSendRecordJobMeta] = useState<{ id: string } | null>(null)
   const [markPaidJob, setMarkPaidJob] = useState<JobForDashboard | null>(null)
   const [markPaidInvoice, setMarkPaidInvoice] = useState<InvoiceForDashboard | null>(null)
-  const [sendBackJob, setSendBackJob] = useState<{ id: string; hcpNumber: string; jobName: string; toStatus: 'working' | 'ready_to_bill' } | null>(null)
+  const [sendBackJob, setSendBackJob] = useState<{
+    id: string
+    hcpNumber: string
+    jobName: string
+    toStatus: 'working' | 'ready_to_bill'
+    rtbDraftCount: number
+  } | null>(null)
   const [sendBackInvoice, setSendBackInvoice] = useState<{ inv: InvoiceForDashboard; action: 'delete' | 'revert' } | null>(null)
   const [sendBackInvoiceStripeExplainerAfterFailure, setSendBackInvoiceStripeExplainerAfterFailure] = useState(false)
   const [sendBackChecked, setSendBackChecked] = useState(false)
-  const [sendBackSentBy, setSendBackSentBy] = useState<string | null>(null)
+  const [sendBackStatusEventLine, setSendBackStatusEventLine] = useState<string | null>(null)
   const [upcomingInspections, setUpcomingInspections] = useState<Array<{ id: string; address: string; inspection_type: string; scheduled_date: string }>>([])
   const [upcomingInspectionsLoading, setUpcomingInspectionsLoading] = useState(false)
   const [userName, setUserName] = useState<string | null>(null)
@@ -2437,21 +2453,25 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!sendBackJob) {
-      setSendBackSentBy(null)
+      setSendBackStatusEventLine(null)
       return
     }
     const toStatusForEvent = sendBackJob.toStatus === 'working' ? 'ready_to_bill' : 'billed'
     supabase
       .from('job_status_events')
-      .select('users(name)')
+      .select('changed_at, users(name)')
       .eq('job_id', sendBackJob.id)
       .eq('to_status', toStatusForEvent)
       .order('changed_at', { ascending: false })
       .limit(1)
       .maybeSingle()
       .then(({ data }) => {
-        const row = data as { users: { name: string } | null } | null
-        setSendBackSentBy(row?.users?.name ?? null)
+        const row = data as { changed_at: string; users: { name: string | null } | null } | null
+        setSendBackStatusEventLine(
+          row
+            ? formatMoveIntoStageByOnLine(toStatusForEvent, row.users?.name ?? null, row.changed_at)
+            : null,
+        )
       })
   }, [sendBackJob])
 
@@ -3814,7 +3834,7 @@ export default function Dashboard() {
                           )}
                           <button type="button" onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
                           <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
-                          <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'working' }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>Job:<br />Send Job Back</button>
+                          <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'working', rtbDraftCount: countDashboardRtbDraftsForJob(j.id, readyToBillInvoices) }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>Job:<br />Send Job Back</button>
                           {bundleInv != null ? (
                             <>
                               <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv: bundleInv, action: 'delete' }) }} disabled={invoiceStatusUpdatingId === bundleInv.id} title="Remove this billing line (partial invoice row)" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: invoiceStatusUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer' }}>Delete<br />draft bill</button>
@@ -3995,7 +4015,7 @@ export default function Dashboard() {
                             )}
                             <button type="button" onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
                             <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
-                            <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'ready_to_bill' }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
+                            <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'ready_to_bill', rtbDraftCount: 0 }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
                             <button type="button" onClick={() => setMarkPaidJob(j)} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : <>Mark<br />Paid</>}</button>
                             {j.created_at && <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">{isMobile ? <>Open {formatTimeSince(j.created_at)}</> : <>Open<br />{formatTimeSince(j.created_at)}</>}</span>}
                           </div>
@@ -4285,7 +4305,7 @@ export default function Dashboard() {
                         )}
                         <button type="button" onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
                         <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
-                        <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'working' }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>Job:<br />Send Job Back</button>
+                        <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'working', rtbDraftCount: countDashboardRtbDraftsForJob(j.id, readyToBillInvoices) }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>Job:<br />Send Job Back</button>
                         {bundleInv != null ? (
                           <>
                             <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv: bundleInv, action: 'delete' }) }} disabled={invoiceStatusUpdatingId === bundleInv.id} title="Remove this billing line (partial invoice row)" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: invoiceStatusUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer' }}>Delete<br />draft bill</button>
@@ -4427,7 +4447,7 @@ export default function Dashboard() {
                         )}
                         <button type="button" onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
                         <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
-                        <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'ready_to_bill' }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
+                        <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'ready_to_bill', rtbDraftCount: 0 }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
                         <button type="button" onClick={() => setMarkPaidJob(j)} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : <>Mark<br />Paid</>}</button>
                         {j.created_at && <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">{isMobile ? <>Open {formatTimeSince(j.created_at)}</> : <>Open<br />{formatTimeSince(j.created_at)}</>}</span>}
                       </div>
@@ -6839,20 +6859,28 @@ export default function Dashboard() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
             <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>{sendBackJob.toStatus === 'working' ? 'Job: Send Job Back' : 'Send back'}</h2>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem' }}>
+              {sendBackJob.toStatus === 'ready_to_bill'
+                ? 'This will move the job back to Ready to Bill.'
+                : sendBackJob.rtbDraftCount > 0
+                  ? `This will move the job back to Assigned Jobs (Working). ${
+                      sendBackJob.rtbDraftCount === 1
+                        ? `This will also remove 1 Ready to Bill draft bill (same as ${DELETE_DRAFT_BILL_LABEL.replace('\u00A0', ' ')}).`
+                        : `This will also remove ${sendBackJob.rtbDraftCount} Ready to Bill draft bills (same as ${DELETE_DRAFT_BILL_LABEL.replace('\u00A0', ' ')}).`
+                    }`
+                  : 'This will move the job back to Assigned Jobs (Working).'}
+            </p>
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
               {sendBackJob.hcpNumber} · {sendBackJob.jobName}
             </p>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem' }}>
-              {sendBackJob.toStatus === 'working' ? 'This will move the job back to Assigned Jobs (Working).' : 'This will move the job back to Ready to Bill.'}
-            </p>
+            {sendBackStatusEventLine != null && (
+              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                {sendBackStatusEventLine}
+              </p>
+            )}
             {sendBackJob.toStatus === 'ready_to_bill' && (
               <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#92400e' }}>
                 Billed lines on this job will be removed (Stripe invoices voided first where applicable). Lines with recorded payments block send back until adjusted. Paid Stripe invoices block until resolved in Stripe.
-              </p>
-            )}
-            {sendBackSentBy != null && (
-              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
-                Sent by: {sendBackSentBy}
               </p>
             )}
             <div style={{ marginBottom: '1rem' }}>

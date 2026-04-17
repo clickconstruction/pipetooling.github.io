@@ -12,38 +12,44 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.327 → v2.4"
+version_range: "v2.329 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.329)"
+    line: ~1050
+    description: "Bids: Cover Letter combined HTML for Google Docs paste (single p, pre-wrap, HTML-only clipboard); Submission deep link pending ref; bid/customer note datetime-local via datetimeLocal.ts"
+  - name: "Latest Version (v2.328)"
+    line: ~1062
+    description: "Jobs Stages Billed Awaiting Payment: Edit icon immediately after Open … (merged job + standalone invoice rows); editJobIconBesideTimeOpen in renderUnifiedStagesTable"
   - name: "Latest Version (v2.327)"
-    line: ~1026
+    line: ~1074
     description: "Documents Jobs: billed invoice child rows; DocumentsJobBilledInvoiceModal (HostedStripeBillPanel + PipeTooling PDF preview); jobBillingContext + physicalInvoice helpers in lib"
   - name: "Latest Version (v2.326)"
-    line: ~1038
+    line: ~1050
     description: "Physical invoice Resend subject: Click Plumbing Invoice [#…]; physicalInvoiceEmailSubject"
   - name: "Latest Version (v2.325)"
-    line: ~1050
+    line: ~1062
     description: "Bill Customer collapsible Line/Memo; memo preset normalization; physical invoice email tagline bold, no Service date/Issuer in summary"
   - name: "Latest Version (v2.324)"
-    line: ~1062
+    line: ~1074
     description: "Physical invoice Services proportional split matches Stripe (blank line on bill); physicalInvoiceFixtureScaling"
   - name: "Latest Version (v2.323)"
-    line: ~1073
+    line: ~1085
     description: "Physical invoice detailed HCP-style PDF (fixtures/materials/payments); Settings company block; physicalInvoiceLineItems"
   - name: "Latest Version (v2.322)"
-    line: ~1087
+    line: ~1097
     description: "Bill Customer Physical invoice: email customer with matching PDF; send-physical-invoice-email Edge"
   - name: "Latest Version (v2.321)"
-    line: ~1098
+    line: ~1108
     description: "Bill Customer: HouseCall Pro + Physical invoice as top tabs (with Stripe bill); remove Outside bill"
   - name: "Latest Version (v2.320)"
-    line: ~1108
+    line: ~1119
     description: "Legacy revenue → first Specific Work row (migration); Edit Job break-off slider 5% snap + % of job total hint"
   - name: "Latest Version (v2.319)"
-    line: ~1119
+    line: ~1130
     description: "NCNS when scheduled no clock: record_ncns + job_schedule_blocks branch; My Time schedule probe"
   - name: "Latest Version (v2.318)"
-    line: ~1130
+    line: ~1141
     description: "My Time: Not coming in uses stacked confirm dialog (replaces window.confirm); z-index 1320, Escape/backdrop"
   - name: "Latest Version (v2.317)"
     line: ~1052
@@ -808,6 +814,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.328 — **Jobs** **Stages** **Billed Awaiting Payment**: **Edit** immediately after **Open …** (same row); standalone invoice rows show **Open …** from billing line age](#latest-updates-v2328)
 **New:** [v2.327 — **Documents** → **Jobs**: **billed** invoice rows under each job; **View bill** + **PipeTooling PDF** preview (`DocumentsJobBilledInvoiceModal`)](#latest-updates-v2327)
 **New:** [v2.326 — **Physical invoice** Resend **subject**: **Click Plumbing Invoice [#…]** (`physicalInvoiceEmailSubject`)](#latest-updates-v2326)
 **New:** [v2.325 — **Bill Customer** collapsible **Line on bill** / **Memo**; memo presets normalized like footer; **physical** email: bold **tagline**, no Service date or Issuer block in summary](#latest-updates-v2325)
@@ -859,6 +866,7 @@ when_to_read:
 **New:** [v2.254 — Jobs Schedule modal + Calendar Job preview & planned chips](#latest-updates-v2254)
 **New:** [v2.253 — Calendar: per-session chips + day modal clock sessions](#latest-updates-v2253)
 **New:** [v2.252 — Pay History: Draft Payroll week + crew merge + employee credit + Record payment](#latest-updates-v2252)
+**New:** [v2.329 — Bids: **Cover Letter** Google Docs paste HTML; **Submission** URL deep link; note **datetime-local**](#latest-updates-v2329)
 **New:** [v2.279 — Bids: Bid Preview from **B#**; Submission notes toolbar; **notify-dispatch-request** gateway JWT](#latest-updates-v2279)
 **New:** [v2.251 — Jobs worked today: approve controls (Clocked in today parity)](#latest-updates-v2251)
 **New:** [v2.250 — My Time: prior-week acknowledgment + two-week edit window](#latest-updates-v2250)
@@ -1025,6 +1033,28 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.329)
+
+**Date**: 2026-04-17
+
+### **Bids** — **Cover Letter** paste for **Google Docs**; **Submission & Followup** deep link; note **times** (`datetime-local`)
+
+- **[`buildCoverLetterHtml`](src/pages/Bids.tsx)** — Combined document is one **`<p>`** with **`<br/>`** (and double breaks between major sections) so Google Docs does not get one paragraph per old block. **`white-space:pre-wrap`** preserves leading spaces for inclusion/exclusion indents; **`line-height:1`** for single spacing. **Copy to clipboard** writes **`text/html` only** (minimal full HTML document with **StartFragment** / **EndFragment** comments around the body) so Docs does not prefer **`text/plain`** (**[`buildCoverLetterText`](src/pages/Bids.tsx)** uses a newline per line and caused a paragraph mark per line when plain was chosen). Fallback **`writeText(combinedText)`** unchanged. Use **normal paste** in Docs, not paste without formatting.
+- **[`Bids.tsx`](src/pages/Bids.tsx)** — **`submissionFollowupPendingDeepLinkBidIdRef`** + **`applySubmissionFollowupDeepLinkToBid`**: **`/bids?bidId=…&tab=submission-followup`** applies when the bid appears after a service-type filter switch (same pattern as Bid Board pending scroll).
+- **[`BidNotesTable.tsx`](src/components/bidNotes/BidNotesTable.tsx)**, **[`UnifiedBidCustomerNotes.tsx`](src/components/bidBoard/UnifiedBidCustomerNotes.tsx)** — **`datetime-local`** inputs use **`toDatetimeLocal`** / **`fromDatetimeLocal`** from **[`datetimeLocal.ts`](src/utils/datetimeLocal.ts)** so stored UTC ISO matches the picker (no offset skew from **`slice(0,16)`** on UTC strings).
+
+---
+
+## Latest Updates (v2.328)
+
+**Date**: 2026-04-17
+
+### **Jobs** — **Stages** **Billed Awaiting Payment**: **Edit** beside **Open …**
+
+- **[`Jobs.tsx`](src/pages/Jobs.tsx)** — **`renderUnifiedStagesTable`** option **`editJobIconBesideTimeOpen`** (default **`false`**; **`true`** only for the **Billed Awaiting Payment** section). **Merged** job rows: **Edit** follows the **Open …** span (job **`created_at`**). **Standalone** partial-invoice rows: **Open …** uses the billing line **`created_at`**; **Edit** on the same flex row as **Mark Paid** / **View Bill**. **Ready to Bill** and other callers unchanged (**Edit** stays in the secondary icon row with wrench / partial invoice when shown). When **`showTimeOpen`** is off, **Edit** is not moved up (no orphan control).
+
 ---
 
 ## Latest Updates (v2.327)

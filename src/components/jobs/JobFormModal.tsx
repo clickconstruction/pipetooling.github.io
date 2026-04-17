@@ -75,6 +75,8 @@ type PaymentRow = {
   reference_number: string | null
   /** Set when loaded from DB; payments applied to an invoice cannot be removed in this form. */
   invoice_id: string | null
+  /** Set when loaded from DB; Bank Payments flow links a Mercury transaction. */
+  mercury_transaction_id: string | null
 }
 type FixtureRow = {
   id: string
@@ -127,7 +129,12 @@ function newEmptyPaymentRow(): PaymentRow {
     payment_type: null,
     reference_number: null,
     invoice_id: null,
+    mercury_transaction_id: null,
   }
+}
+
+function mercuryLinkedPaymentRow(row: PaymentRow): boolean {
+  return row.mercury_transaction_id != null && String(row.mercury_transaction_id).trim().length > 0
 }
 
 function paymentRowLinkedToInvoice(row: PaymentRow): boolean {
@@ -641,6 +648,7 @@ export default function JobFormModal({
             payment_type: p.payment_type ?? null,
             reference_number: p.reference_number ?? null,
             invoice_id: p.invoice_id ?? null,
+            mercury_transaction_id: p.mercury_transaction_id ?? null,
           }))
         : [newEmptyPaymentRow()],
     )
@@ -1541,9 +1549,11 @@ export default function JobFormModal({
       prev.map((r) => {
         if (r.id !== id) return r
         const merged = { ...r, ...updates }
-        if (stripeBillInvoiceForPaymentRow(r, editing)) {
+        if (stripeBillInvoiceForPaymentRow(r, editing) || mercuryLinkedPaymentRow(r)) {
           merged.amount = r.amount
           merged.paid_on = r.paid_on
+          merged.mercury_transaction_id = r.mercury_transaction_id
+          merged.invoice_id = r.invoice_id
         }
         return merged
       }),
@@ -1555,6 +1565,10 @@ export default function JobFormModal({
   }
 
   function requestRemovePaymentRow(row: PaymentRow) {
+    if (mercuryLinkedPaymentRow(row)) {
+      showToast('This payment is linked to a bank transaction. Remove it from Jobs Stages → Bank Payments workflow if needed.', 'error')
+      return
+    }
     if (paymentRowLinkedToInvoice(row)) {
       showToast(
         'This payment is linked to an invoice and can’t be removed in Edit Job. Change it from Outstanding billing or the mark-paid flow.',
@@ -1575,7 +1589,7 @@ export default function JobFormModal({
   function confirmRemovePaymentRow() {
     if (!paymentRemoveConfirmRowId) return
     const row = payments.find((r) => r.id === paymentRemoveConfirmRowId)
-    if (!row || payments.length <= 1 || paymentRowLinkedToInvoice(row)) {
+    if (!row || payments.length <= 1 || paymentRowLinkedToInvoice(row) || mercuryLinkedPaymentRow(row)) {
       setPaymentRemoveConfirmRowId(null)
       return
     }
@@ -1776,6 +1790,7 @@ export default function JobFormModal({
             payment_type: p.payment_type?.trim() ? p.payment_type.trim() : null,
             reference_number: p.reference_number?.trim() ? p.reference_number.trim() : null,
             invoice_id: p.invoice_id,
+            mercury_transaction_id: p.mercury_transaction_id,
           })
         }
         await supabase.from('jobs_ledger_materials').delete().eq('job_id', editing.id)
@@ -1853,6 +1868,7 @@ export default function JobFormModal({
               payment_type: p.payment_type?.trim() ? p.payment_type.trim() : null,
               reference_number: p.reference_number?.trim() ? p.reference_number.trim() : null,
               invoice_id: p.invoice_id,
+              mercury_transaction_id: p.mercury_transaction_id,
             })
           }
           for (const [i, m] of validMaterials.entries()) {
@@ -3866,18 +3882,20 @@ export default function JobFormModal({
                     let lastUnlockedPaymentIdx = -1
                     for (let i = payments.length - 1; i >= 0; i--) {
                       const pr = payments[i]
-                      if (pr && !stripeBillInvoiceForPaymentRow(pr, editing)) {
+                      if (pr && !stripeBillInvoiceForPaymentRow(pr, editing) && !mercuryLinkedPaymentRow(pr)) {
                         lastUnlockedPaymentIdx = i
                         break
                       }
                     }
                     return payments.map((row, idx) => {
                     const stripePaymentLocked = Boolean(stripeBillInvoiceForPaymentRow(row, editing))
+                    const mercuryPaymentLocked = mercuryLinkedPaymentRow(row)
+                    const paymentReadOnly = stripePaymentLocked || mercuryPaymentLocked
                     const noteTrim = (row.note ?? '').trim()
                     const ptTrim = (row.payment_type ?? '').trim()
                     const refTrim = (row.reference_number ?? '').trim()
                     const hasMemoSubRow =
-                      !stripePaymentLocked || noteTrim.length > 0 || ptTrim.length > 0 || refTrim.length > 0
+                      !paymentReadOnly || noteTrim.length > 0 || ptTrim.length > 0 || refTrim.length > 0
                     const rowSep = idx < payments.length - 1 ? '1px solid #e5e7eb' : 'none'
                     const parentCellPad = hasMemoSubRow ? '0.5rem 0.75rem 0.1rem' : '0.5rem 0.75rem'
                     const paymentDateCellStyle = {
@@ -3906,6 +3924,14 @@ export default function JobFormModal({
                               <span
                                 style={{ color: '#374151', fontVariantNumeric: 'tabular-nums' }}
                                 title="Recorded from the Stripe invoice."
+                                aria-label={`Payment date ${formatPaymentDateForDisplay(row.paid_on)}`}
+                              >
+                                {formatPaymentDateForDisplay(row.paid_on)}
+                              </span>
+                            ) : mercuryPaymentLocked ? (
+                              <span
+                                style={{ color: '#374151', fontVariantNumeric: 'tabular-nums' }}
+                                title="Recorded from Bank Payments (Mercury)."
                                 aria-label={`Payment date ${formatPaymentDateForDisplay(row.paid_on)}`}
                               >
                                 {formatPaymentDateForDisplay(row.paid_on)}
@@ -3994,6 +4020,45 @@ export default function JobFormModal({
                                   ${formatCurrency(Number(row.amount))}
                                 </span>
                               </div>
+                            ) : mercuryPaymentLocked ? (
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'flex-end',
+                                  gap: '0.35rem',
+                                  flexWrap: 'wrap',
+                                  minWidth: 0,
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    fontSize: '0.65rem',
+                                    fontWeight: 700,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.04em',
+                                    color: '#1d4ed8',
+                                    background: '#eff6ff',
+                                    border: '1px solid #bfdbfe',
+                                    borderRadius: 4,
+                                    padding: '0.1rem 0.35rem',
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  Mercury
+                                </span>
+                                <span
+                                  style={{
+                                    color: '#111827',
+                                    fontVariantNumeric: 'tabular-nums',
+                                    minWidth: 0,
+                                  }}
+                                  title="Linked to a Mercury bank transaction."
+                                  aria-label={`Payment amount ${formatCurrency(Number(row.amount))} dollars`}
+                                >
+                                  ${formatCurrency(Number(row.amount))}
+                                </span>
+                              </div>
                             ) : (
                               <MoneyDecimalAmountInput
                                 value={row.amount}
@@ -4020,7 +4085,7 @@ export default function JobFormModal({
                               textAlign: 'right',
                             }}
                           >
-                            {stripePaymentLocked ? null : idx === lastUnlockedPaymentIdx ? (
+                            {stripePaymentLocked || mercuryPaymentLocked ? null : idx === lastUnlockedPaymentIdx ? (
                               <button
                                 type="button"
                                 onClick={addPaymentRow}
@@ -4053,12 +4118,19 @@ export default function JobFormModal({
                                 style={{
                                   padding: '0.35rem',
                                   background:
-                                    payments.length <= 1 || paymentRowLinkedToInvoice(row) ? '#f3f4f6' : 'transparent',
-                                  color: payments.length <= 1 || paymentRowLinkedToInvoice(row) ? '#9ca3af' : '#991b1c',
+                                    payments.length <= 1 || paymentRowLinkedToInvoice(row) || mercuryPaymentLocked
+                                      ? '#f3f4f6'
+                                      : 'transparent',
+                                  color:
+                                    payments.length <= 1 || paymentRowLinkedToInvoice(row) || mercuryPaymentLocked
+                                      ? '#9ca3af'
+                                      : '#991b1c',
                                   border: 'none',
                                   borderRadius: 4,
                                   cursor:
-                                    payments.length <= 1 || paymentRowLinkedToInvoice(row) ? 'not-allowed' : 'pointer',
+                                    payments.length <= 1 || paymentRowLinkedToInvoice(row) || mercuryPaymentLocked
+                                      ? 'not-allowed'
+                                      : 'pointer',
                                   display: 'inline-flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
@@ -4072,7 +4144,7 @@ export default function JobFormModal({
                         {hasMemoSubRow ? (
                           <tr style={{ borderBottom: rowSep }}>
                             <td colSpan={3} style={PAYMENT_MEMO_SUB_ROW_CELL_STYLE}>
-                              {stripePaymentLocked ? (
+                              {paymentReadOnly ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                                   {(ptTrim || refTrim) ? (
                                     <div style={{ fontSize: '0.75rem', color: '#374151' }}>

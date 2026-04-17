@@ -595,47 +595,35 @@ function buildCoverLetterHtml(
   const stWord = serviceTypeWordForCoverLetter(serviceTypeName)
   const revenueLinePrefix = `As per ${stWord} plans and specifications, we propose to do the ${stWord} in the amount of: `
   const br = '<br/>'
-  const pStyle = 'margin: 0 0 0.5em 0'
-  const paragraphs: string[] = []
-  // Customer + blank line + Project + blank line + revenue (one paragraph: soft return, empty line, soft return between each block)
+  const br2 = br + br
+  // Single <p> + <br/> / <br/><br/> so Google Docs paste gets line breaks inside one paragraph (see clipboard full HTML doc).
   const customerAddr = addressLines(customerAddress).map((l) => escapeHtml(l)).join(br)
   const projectAddr = addressLines(projectAddress).map((l) => escapeHtml(l)).join(br)
   const customerBlock = '<strong>' + escapeHtml(customerName) + '</strong><br/>' + customerAddr
   const projectBlock = '<strong>' + escapeHtml(projectName) + '</strong><br/>' + projectAddr + br + br + (escapeHtml(revenueLinePrefix) + '<strong>' + escapeHtml(amountBold) + '</strong>')
-  paragraphs.push(customerBlock + br + br + projectBlock)
-  if (designDrawingPlanDateFormatted) {
-    paragraphs.push('<strong>Design Drawings Plan Date: ' + escapeHtml(designDrawingPlanDateFormatted) + '</strong>')
-  }
-  // Inclusions heading (one paragraph)
-  paragraphs.push('<strong>Inclusions:</strong>')
-  // Inclusions content (one paragraph, newlines → br)
-  paragraphs.push(escapeHtml(inclusionsBlock || '(none)').replace(/\n/g, br))
-  // Exclusions heading (one paragraph)
-  paragraphs.push('<strong>Exclusions and Scope:</strong>')
-  // Exclusions content (one paragraph, newlines → br)
   const exclusionsContent = exclusions.trim()
     ? exclusionLines.join('\n')
     : DEFAULT_EXCLUSIONS.trim().split(/\n/).filter(Boolean).map((l) => exclusionIndent + '• ' + l.trim()).join('\n')
-  paragraphs.push(escapeHtml(exclusionsContent).replace(/\n/g, br))
-  // Terms content (one paragraph, newlines → br; heading hidden in Combined Document)
   const termsContent = terms.trim() ? termsLines.join('\n') : DEFAULT_TERMS_AND_WARRANTY
-  paragraphs.push(escapeHtml(termsContent).replace(/\n/g, br))
-  // Remaining blocks (one paragraph each)
-  paragraphs.push(escapeHtml('No work shall commence until Click Plumbing and Electrical has received acceptance of the estimate.'))
-  paragraphs.push(escapeHtml('Respectfully submitted by Click Plumbing and Electrical'))
-  paragraphs.push('')
-  if (includeSignature) {
-    paragraphs.push(escapeHtml('_______________________________'))
-    paragraphs.push(escapeHtml('The above prices, specifications, and conditions are satisfactory and are hereby accepted. You are authorized to perform the work as specified.'))
-    paragraphs.push('')
-    paragraphs.push('<strong>' + escapeHtml('Acceptance of estimate') + '</strong>')
-    paragraphs.push(escapeHtml('General Contractor / Builder Signature:'))
-    paragraphs.push('')
-    paragraphs.push(escapeHtml('____________________________________'))
-    paragraphs.push('')
-    paragraphs.push(escapeHtml('Date: ____________________________________'))
+
+  let html = customerBlock + br2 + projectBlock
+  if (designDrawingPlanDateFormatted) {
+    html += br2 + '<strong>Design Drawings Plan Date: ' + escapeHtml(designDrawingPlanDateFormatted) + '</strong>'
   }
-  return '<div style="white-space: pre-wrap">' + paragraphs.map((p) => (p ? '<p style="' + pStyle + '">' + p + '</p>' : '<p style="' + pStyle + '">&nbsp;</p>')).join('') + '</div>'
+  html += br2 + '<strong>Inclusions:</strong>' + br + escapeHtml(inclusionsBlock || '(none)').replace(/\n/g, br)
+  html += br2 + '<strong>Exclusions and Scope:</strong>' + br + escapeHtml(exclusionsContent).replace(/\n/g, br)
+  html += br2 + escapeHtml(termsContent).replace(/\n/g, br)
+  html += br2 + escapeHtml('No work shall commence until Click Plumbing and Electrical has received acceptance of the estimate.')
+  html += br + escapeHtml('Respectfully submitted by Click Plumbing and Electrical')
+  if (includeSignature) {
+    html += br2 + escapeHtml('_______________________________')
+    html += br + escapeHtml('The above prices, specifications, and conditions are satisfactory and are hereby accepted. You are authorized to perform the work as specified.')
+    html += br2 + '<strong>' + escapeHtml('Acceptance of estimate') + '</strong>'
+    html += br + escapeHtml('General Contractor / Builder Signature:')
+    html += br2 + escapeHtml('____________________________________')
+    html += br2 + escapeHtml('Date: ____________________________________')
+  }
+  return '<p style="margin:0;line-height:1;white-space:pre-wrap">' + html + '</p>'
 }
 
 type EvaluateChecklistItem = {
@@ -1236,6 +1224,7 @@ export default function Bids() {
   const [bidBoardDeepLinkHighlightGen, setBidBoardDeepLinkHighlightGen] = useState(0)
   const bidBoardDeepLinkTimeoutRef = useRef<number | null>(null)
   const bidBoardPendingScrollBidIdRef = useRef<string | null>(null)
+  const submissionFollowupPendingDeepLinkBidIdRef = useRef<string | null>(null)
 
   const applyBidBoardDeepLinkToBid = useCallback((bid: BidWithBuilder) => {
     bidBoardPendingScrollBidIdRef.current = null
@@ -1263,6 +1252,26 @@ export default function Bids() {
     }, 2500)
     window.setTimeout(() => {
       document.getElementById(`bid-board-row-${bid.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 150)
+  }, [])
+
+  const applySubmissionFollowupDeepLinkToBid = useCallback((bid: BidWithBuilder) => {
+    submissionFollowupPendingDeepLinkBidIdRef.current = null
+    setSelectedBidForSubmission(bid)
+    setActiveTab('submission-followup')
+    const sectionKey =
+      bid.outcome === 'won'
+        ? ('won' as const)
+        : bid.outcome === 'started_or_complete'
+          ? ('startedOrComplete' as const)
+          : bid.outcome === 'lost'
+            ? ('lost' as const)
+            : !bid.bid_date_sent
+              ? ('unsent' as const)
+              : ('pending' as const)
+    setSubmissionSectionOpen((prev) => ({ ...prev, [sectionKey]: true }))
+    setTimeout(() => {
+      submissionSummaryCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }, 150)
   }, [])
 
@@ -7116,6 +7125,9 @@ export default function Bids() {
     if (tab !== 'bid-board' || !bidId) {
       bidBoardPendingScrollBidIdRef.current = null
     }
+    if (tab !== 'submission-followup' || !bidId) {
+      submissionFollowupPendingDeepLinkBidIdRef.current = null
+    }
     if (tab !== 'builder-review' || !bidId) {
       builderReviewPendingDeepLinkBidIdRef.current = null
       builderReviewDeepLinkAppliedBidIdRef.current = null
@@ -7174,27 +7186,19 @@ export default function Bids() {
     if (bidId && tab === 'submission-followup') {
       const bid = bids.find((b) => b.id === bidId)
       if (bid) {
-        setSelectedBidForSubmission(bid)
+        applySubmissionFollowupDeepLinkToBid(bid)
+      } else {
+        submissionFollowupPendingDeepLinkBidIdRef.current = bidId
         setActiveTab('submission-followup')
-        const sectionKey = (() => {
-          if (bid.outcome === 'won') return 'won'
-          if (bid.outcome === 'started_or_complete') return 'startedOrComplete'
-          if (bid.outcome === 'lost') return 'lost'
-          if (!bid.bid_date_sent) return 'unsent'
-          return 'pending'
-        })()
-        setSubmissionSectionOpen((prev) => ({ ...prev, [sectionKey]: true }))
-        setTimeout(() => {
-          submissionSummaryCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        }, 150)
-      } else if (serviceTypes.length > 0) {
-        // Bid not in current list - may be different service type; fetch and switch
-        supabase.from('bids').select('service_type_id').eq('id', bidId).single().then(({ data }) => {
-          const row = data as { service_type_id: string } | null
-          if (row && row.service_type_id !== selectedServiceTypeId) {
-            setSelectedServiceTypeId(row.service_type_id)
-          }
-        })
+        if (serviceTypes.length > 0) {
+          // Bid not in current list - may be different service type; fetch and switch
+          supabase.from('bids').select('service_type_id').eq('id', bidId).single().then(({ data }) => {
+            const row = data as { service_type_id: string } | null
+            if (row && row.service_type_id !== selectedServiceTypeId) {
+              setSelectedServiceTypeId(row.service_type_id)
+            }
+          })
+        }
       }
       return
     }
@@ -7269,6 +7273,7 @@ export default function Bids() {
     myRole,
     authUser?.id,
     applyBidBoardDeepLinkToBid,
+    applySubmissionFollowupDeepLinkToBid,
     applyBuilderReviewDeepLinkFromBid,
     showToast,
   ])
@@ -7283,6 +7288,17 @@ export default function Bids() {
     if (!pendingBid) return
     applyBidBoardDeepLinkToBid(pendingBid)
   }, [bids, location.search, applyBidBoardDeepLinkToBid])
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const deepBidId = params.get('bidId')
+    const deepTab = params.get('tab')
+    if (deepTab !== 'submission-followup' || !deepBidId) return
+    if (submissionFollowupPendingDeepLinkBidIdRef.current !== deepBidId) return
+    const pendingBid = bids.find((b) => b.id === deepBidId)
+    if (!pendingBid) return
+    applySubmissionFollowupDeepLinkToBid(pendingBid)
+  }, [bids, location.search, applySubmissionFollowupDeepLinkToBid])
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
@@ -14455,9 +14471,13 @@ export default function Bids() {
             const googleDocsCopyUrl = `https://docs.google.com/document/d/${googleDocsTemplateId}/copy?title=` + encodeURIComponent(templateCopyTarget)
             const copyToClipboard = () => {
               if (navigator.clipboard && navigator.clipboard.write) {
-                const htmlBlob = new Blob([combinedHtml], { type: 'text/html' })
-                const textBlob = new Blob([combinedText], { type: 'text/plain' })
-                const item = new ClipboardItem({ 'text/html': htmlBlob, 'text/plain': textBlob })
+                // Google Docs often picks text/plain when both MIME types exist; combinedText has a newline per line (paragraph per line in Docs). HTML-only paste uses <br/> inside one <p>.
+                const clipboardHtml =
+                  '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><!--StartFragment-->' +
+                  combinedHtml +
+                  '<!--EndFragment--></body></html>'
+                const htmlBlob = new Blob([clipboardHtml], { type: 'text/html' })
+                const item = new ClipboardItem({ 'text/html': htmlBlob })
                 navigator.clipboard.write([item]).then(
                   () => {
                     setCoverLetterCopySuccess(true)

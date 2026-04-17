@@ -104,7 +104,8 @@ function formatUsd(dollars: number): string {
   return `$${dollars.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
-function formatLongDateYmd(ymd: string): string {
+/** Long calendar label for a YYYY-MM-DD string (company TZ). */
+export function formatPhysicalInvoiceLongDateYmd(ymd: string): string {
   const trimmed = ymd.trim()
   if (!trimmed) return '—'
   const ref = referenceDateForWorkDateYmd(trimmed)
@@ -154,7 +155,7 @@ export function buildPhysicalInvoiceDocument(opts: {
   const issuer = getPhysicalInvoiceIssuerForDocument()
   const narrativeTrim = lineDescription.trim()
   const serviceDateYmd = (job.last_work_date ?? '').trim() || invoiceDateYmd
-  const serviceDateDisplay = formatLongDateYmd(serviceDateYmd)
+  const serviceDateDisplay = formatPhysicalInvoiceLongDateYmd(serviceDateYmd)
   const paymentTerms = 'Upon receipt'
 
   let layout: PhysicalInvoiceDocument['layout'] = 'simple'
@@ -212,8 +213,8 @@ export function buildPhysicalInvoiceDocument(opts: {
     paymentHistory,
     memo: memo.trim(),
     footer,
-    invoiceDateDisplay: formatLongDateYmd(invoiceDateYmd),
-    dueDateDisplay: formatLongDateYmd(dueDateYmd),
+    invoiceDateDisplay: formatPhysicalInvoiceLongDateYmd(invoiceDateYmd),
+    dueDateDisplay: formatPhysicalInvoiceLongDateYmd(dueDateYmd),
   }
 }
 

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import { supabase } from '../../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { formatCompactNoteDateTime } from '../../utils/dateUtils'
+import { fromDatetimeLocal, toDatetimeLocal } from '../../utils/datetimeLocal'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { ContactMethodQuickPicks, contactMethodFieldInputStyle } from '../shared/ContactMethodQuickPicks'
@@ -83,14 +84,14 @@ function BidNotesEntryRow({
   const { showToast } = useToastContext()
   const [contactMethod, setContactMethod] = useState(entry.contact_method ?? '')
   const [notes, setNotes] = useState(entry.notes ?? '')
-  const [occurredAt, setOccurredAt] = useState(entry.occurred_at ? entry.occurred_at.slice(0, 16) : '')
+  const [occurredAt, setOccurredAt] = useState(toDatetimeLocal(entry.occurred_at))
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
 
   async function save() {
     setSaving(true)
     try {
-      const occurredAtIso = occurredAt ? new Date(occurredAt).toISOString() : entry.occurred_at
+      const occurredAtIso = fromDatetimeLocal(occurredAt) ?? entry.occurred_at
       await withSupabaseRetry(
         async () =>
           supabase
@@ -288,7 +289,7 @@ function BidNotesNewRow({
   const { user: authUser } = useAuth()
   const [contactMethod, setContactMethod] = useState('')
   const [notes, setNotes] = useState('')
-  const [occurredAt, setOccurredAt] = useState(() => new Date().toISOString().slice(0, 16))
+  const [occurredAt, setOccurredAt] = useState(() => toDatetimeLocal(new Date().toISOString()))
   const [saving, setSaving] = useState(false)
 
   async function submit() {
@@ -298,7 +299,7 @@ function BidNotesNewRow({
     }
     setSaving(true)
     try {
-      const occurredAtIso = new Date(occurredAt).toISOString()
+      const occurredAtIso = fromDatetimeLocal(occurredAt) ?? new Date().toISOString()
       await withSupabaseRetry(
         async () =>
           supabase.from('bids_submission_entries').insert({

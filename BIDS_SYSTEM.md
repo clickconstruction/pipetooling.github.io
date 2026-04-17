@@ -1131,6 +1131,12 @@ Electrical, fire protection, fire alarm, drywall, framing, and architectural fin
 - Uses defaults where user hasn't customized
 - Professional layout suitable for customer presentation
 
+### Copy to clipboard and Google Docs
+
+- **HTML** ([`buildCoverLetterHtml`](src/pages/Bids.tsx)): one **`<p>`** with line breaks as **`&lt;br/&gt;`** (not many separate paragraphs), **`white-space:pre-wrap`** so inclusion/exclusion leading spaces render, **`line-height:1`** for single spacing.
+- **Clipboard**: **`text/html`** is a minimal full document (DOCTYPE, charset meta, **StartFragment** / **EndFragment** around the body content) and **no** paired **`text/plain`** on the same write, so **Google Docs** tends to use rich HTML instead of plain text (plain would be one paragraph per line from newlines). **Normal paste** in Docs; “paste without formatting” still uses plain fallback behavior.
+- Fallback if **`navigator.clipboard.write`** fails: **`writeText(combinedText)`** as before.
+
 ### Apply Proposed amount to Bid Value
 
 **Location**: Below "Proposed amount (from Pricing)", above the amount display
@@ -1156,6 +1162,12 @@ Electrical, fire protection, fire alarm, drywall, framing, and architectural fin
 
 ### Purpose
 Track bid submissions, follow-up activities, and outcomes. Organize bids by status for efficient pipeline management.
+
+### URL deep link
+**`/bids?bidId=<uuid>&tab=submission-followup`** selects the bid and opens this tab when the row is already in the loaded list. If the bid belongs to another service type, a **pending ref** switches the service-type filter and applies the deep link once **`bids`** includes that id (see [`Bids.tsx`](src/pages/Bids.tsx)).
+
+### Note times (`datetime-local`)
+Bid and customer notes use [`toDatetimeLocal`](src/utils/datetimeLocal.ts) / [`fromDatetimeLocal`](src/utils/datetimeLocal.ts) in [`BidNotesTable.tsx`](src/components/bidNotes/BidNotesTable.tsx) and [`UnifiedBidCustomerNotes.tsx`](src/components/bidBoard/UnifiedBidCustomerNotes.tsx) so the picker matches UTC values stored in the database (see **RECENT_FEATURES** v2.329).
 
 ### Selected bid — notes toolbar (above the notes list)
 

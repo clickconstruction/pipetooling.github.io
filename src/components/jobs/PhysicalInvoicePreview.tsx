@@ -109,7 +109,14 @@ function LineItemsTable({
   )
 }
 
-export function PhysicalInvoicePreview({ document: d }: { document: PhysicalInvoiceDocument }) {
+export function PhysicalInvoicePreview({
+  document: d,
+  hideIssuerContact = false,
+}: {
+  document: PhysicalInvoiceDocument
+  /** Bill Customer Physical: omit issuer company name + issuer address/phone/email in detailed layout only. */
+  hideIssuerContact?: boolean
+}) {
   if (d.layout === 'detailed') {
     const issuer = (d.issuer.companyName ?? '').trim()
     const taglineTrim = (d.issuer.tagline ?? '').trim()
@@ -137,7 +144,7 @@ export function PhysicalInvoicePreview({ document: d }: { document: PhysicalInvo
         >
           Invoice (PDF preview)
         </div>
-        {issuer ? (
+        {!hideIssuerContact && issuer ? (
           <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#111827', marginBottom: 6 }}>{issuer}</div>
         ) : null}
         <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827', marginBottom: '0.65rem' }}>INVOICE</div>
@@ -229,7 +236,8 @@ export function PhysicalInvoicePreview({ document: d }: { document: PhysicalInvo
           </div>
         </div>
 
-        {(d.issuer.addressText ?? '').trim() || d.issuer.phone || d.issuer.email ? (
+        {!hideIssuerContact &&
+        ((d.issuer.addressText ?? '').trim() || d.issuer.phone || d.issuer.email) ? (
           <div style={{ marginTop: '0.65rem', fontSize: '0.78rem', color: '#374151', lineHeight: 1.35 }}>
             {(d.issuer.addressText ?? '').split('\n').map((line, i) => (
               <div key={i}>{line}</div>

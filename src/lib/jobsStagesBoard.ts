@@ -122,6 +122,74 @@ export function buildReadyToBillStageRows(readyToBillJobs: JobWithDetails[]): St
 }
 
 /** One row per display unit: sole billed invoice merges with job; 2+ invoices → invoice rows only; no invoices → job row. */
+function sumPaymentsForInvoiceOnJob(job: JobWithDetails, invoiceId: string): number {
+  let s = 0
+  for (const p of job.payments ?? []) {
+    if (p.invoice_id === invoiceId) s += Number(p.amount ?? 0)
+  }
+  return s
+}
+
+/** Remaining dollars for a Billed Awaiting Payment stage row (job shell, merged billed, or invoice). */
+export function billedStageRowRemainingAmount(r: StageRow): number {
+  if (r.kind === 'job') {
+    return Math.max(0, Number(r.job.revenue ?? 0) - Number(r.job.payments_made ?? 0))
+  }
+  const inv = r.inv
+  const applied = sumPaymentsForInvoiceOnJob(r.job, inv.id)
+  return Math.max(0, Number(inv.amount ?? 0) - applied)
+}
+
+/** Short label for Bank Payments / Stages (HCP + line type). */
+export function billedStageRowLineLabel(r: StageRow): string {
+  const hcp = r.job.hcp_number || '—'
+  if (r.kind === 'job') return `${hcp} · Job balance`
+  if (r.kind === 'job_with_merged_billed') return `${hcp} · Billed line`
+  return `${hcp} · Invoice #${r.inv.sequence_order}`
+}
+
+export function isStripeHostedBilledInvoice(inv: JobsLedgerInvoice): boolean {
+  return String(inv.stripe_invoice_id ?? '').trim() !== ''
+}
+
+export type BankPaymentTarget = {
+  key: string
+  label: string
+  remaining: number
+  invoiceId: string | null
+  jobId: string
+}
+
+/** Billed rows eligible for Bank Payments (non-Stripe, positive remaining). */
+export function bankPaymentTargetsFromStageRows(rows: StageRow[]): BankPaymentTarget[] {
+  const out: BankPaymentTarget[] = []
+  for (const r of rows) {
+    if (r.kind === 'invoice' || r.kind === 'job_with_merged_billed') {
+      if (isStripeHostedBilledInvoice(r.inv)) continue
+      const rem = billedStageRowRemainingAmount(r)
+      if (rem <= 0.0005) continue
+      out.push({
+        key: `inv:${r.inv.id}`,
+        label: billedStageRowLineLabel(r),
+        remaining: rem,
+        invoiceId: r.inv.id,
+        jobId: r.job.id,
+      })
+    } else if (r.kind === 'job') {
+      const rem = billedStageRowRemainingAmount(r)
+      if (rem <= 0.0005) continue
+      out.push({
+        key: `job:${r.job.id}`,
+        label: billedStageRowLineLabel(r),
+        remaining: rem,
+        invoiceId: null,
+        jobId: r.job.id,
+      })
+    }
+  }
+  return out
+}
+
 export function buildBilledStageRows(billedJobs: JobWithDetails[], billedInvoices: InvoiceWithJob[]): StageRow[] {
   const bundledIds = new Set<string>()
   const rows: StageRow[] = []
