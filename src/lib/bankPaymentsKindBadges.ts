@@ -1,5 +1,11 @@
-/** Shared per-origin (localStorage) kind labels/colors for Jobs → Bank payments AR sorting. */
+/**
+ * Kind labels/colors for Jobs → Bank payments: canonical copy in `app_settings` (dev-written);
+ * `localStorage` mirrors as a cache after fetch/save.
+ */
 
+import { supabase } from './supabase'
+import { withSupabaseRetry } from '../utils/errorHandling'
+import { APP_SETTINGS_KEY_BANK_PAYMENTS_KIND_BADGES } from './appSettingsKeys'
 import { formatMercuryKind } from './mercuryKindLabels'
 
 export type MercuryKindBadge = {
@@ -51,32 +57,88 @@ function normalizeBadgeEntry(raw: unknown): MercuryKindBadge | null {
   return { nickname, color }
 }
 
+/** Parse JSON object (already parsed) into a validated badge map. */
+export function parseBankPaymentsKindBadgesObject(parsed: unknown): Record<string, MercuryKindBadge> {
+  if (parsed === null || typeof parsed !== 'object') return {}
+  const out: Record<string, MercuryKindBadge> = {}
+  for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+    if (!isValidKindKey(k)) continue
+    const n = normalizeBadgeEntry(v)
+    if (n) out[k] = n
+  }
+  return out
+}
+
 export function loadBankPaymentsKindBadges(): Record<string, MercuryKindBadge> {
   if (typeof window === 'undefined') return {}
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (!raw) return {}
     const parsed: unknown = JSON.parse(raw)
-    if (parsed === null || typeof parsed !== 'object') return {}
-    const out: Record<string, MercuryKindBadge> = {}
-    for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
-      if (!isValidKindKey(k)) continue
-      const n = normalizeBadgeEntry(v)
-      if (n) out[k] = n
-    }
-    return out
+    return parseBankPaymentsKindBadgesObject(parsed)
   } catch {
     return {}
   }
 }
 
-export function saveBankPaymentsKindBadges(map: Record<string, MercuryKindBadge>): void {
+/** Read org-wide badges from `app_settings`. Returns `{ badges, rowExists }` so callers can migrate local-only data when no row. */
+export async function fetchBankPaymentsKindBadgesFromAppSettings(): Promise<{
+  badges: Record<string, MercuryKindBadge>
+  rowExists: boolean
+}> {
+  try {
+    const data = (await withSupabaseRetry(
+      async () =>
+        supabase
+          .from('app_settings')
+          .select('value_text')
+          .eq('key', APP_SETTINGS_KEY_BANK_PAYMENTS_KIND_BADGES)
+          .maybeSingle(),
+      'fetch_bank_payments_kind_badges',
+    )) as { value_text: string | null } | null
+    if (data == null) {
+      return { badges: {}, rowExists: false }
+    }
+    const text = data.value_text
+    if (text == null || text.trim() === '') {
+      return { badges: {}, rowExists: true }
+    }
+    try {
+      const parsed: unknown = JSON.parse(text)
+      return { badges: parseBankPaymentsKindBadgesObject(parsed), rowExists: true }
+    } catch {
+      return { badges: {}, rowExists: true }
+    }
+  } catch {
+    return { badges: {}, rowExists: false }
+  }
+}
+
+/** Dev-only (RLS): upsert global Kind badges JSON. */
+export async function upsertBankPaymentsKindBadgesToAppSettings(
+  map: Record<string, MercuryKindBadge>,
+): Promise<void> {
+  await withSupabaseRetry(
+    async () =>
+      supabase.from('app_settings').upsert(
+        { key: APP_SETTINGS_KEY_BANK_PAYMENTS_KIND_BADGES, value_text: JSON.stringify(map) },
+        { onConflict: 'key' },
+      ),
+    'upsert_bank_payments_kind_badges',
+  )
+}
+
+export function saveBankPaymentsKindBadgesLocalCache(map: Record<string, MercuryKindBadge>): void {
   if (typeof window === 'undefined') return
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(map))
   } catch {
     /* quota / private mode */
   }
+}
+
+export function saveBankPaymentsKindBadges(map: Record<string, MercuryKindBadge>): void {
+  saveBankPaymentsKindBadgesLocalCache(map)
 }
 
 /** Keep only badge entries whose kind is in the allowed set (from Mercury sample query). */

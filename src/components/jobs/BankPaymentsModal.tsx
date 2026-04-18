@@ -4,16 +4,22 @@ import { BankingSortingConfigModal } from '../BankingSortingConfigModal'
 import type { BankingSortingConfigV1 } from '../../lib/bankingSortingConfig'
 import {
   BANKING_SORTING_CONFIG_VERSION,
+  defaultBankingSortingConfig,
+  fetchBankPaymentsSortingConfigFromAppSettings,
   loadBankPaymentsSortingConfig,
-  saveBankPaymentsSortingConfig,
+  loadBankPaymentsSortingConfigFromLocalCache,
+  saveBankPaymentsSortingConfigToLocalCache,
+  upsertBankPaymentsSortingConfigToAppSettings,
 } from '../../lib/bankingSortingConfig'
 import {
   defaultKindBadgeColor,
+  fetchBankPaymentsKindBadgesFromAppSettings,
   loadBankPaymentsKindBadges,
   mercuryKindPaymentTypeLabel,
   normalizeHexColor,
   pickTextOnBackground,
-  saveBankPaymentsKindBadges,
+  saveBankPaymentsKindBadgesLocalCache,
+  upsertBankPaymentsKindBadgesToAppSettings,
   type MercuryKindBadge,
 } from '../../lib/bankPaymentsKindBadges'
 import { mercuryDebitCardIdFromRaw } from '../../lib/mercuryRawDebitCard'
@@ -94,8 +100,8 @@ export default function BankPaymentsModal({
   onApplied,
 }: BankPaymentsModalProps) {
   const { nicknameByAccount, nicknameByDebitCard } = useMercuryLedgerNicknames({ enabled: open })
-  const [sortingConfig, setSortingConfig] = useState<BankingSortingConfigV1>(() =>
-    loadBankPaymentsSortingConfig(authUserId),
+  const [sortingConfig, setSortingConfig] = useState<BankingSortingConfigV1>(
+    () => loadBankPaymentsSortingConfigFromLocalCache() ?? defaultBankingSortingConfig(),
   )
   const [devFilterOpen, setDevFilterOpen] = useState(false)
   const [sortingConfigModalOpen, setSortingConfigModalOpen] = useState(false)
@@ -220,13 +226,58 @@ export default function BankPaymentsModal({
 
   useEffect(() => {
     if (!open) return
-    setSortingConfig(loadBankPaymentsSortingConfig(authUserId))
-  }, [open, authUserId])
+    let cancelled = false
+    void (async () => {
+      const { config, rowExists } = await fetchBankPaymentsSortingConfigFromAppSettings()
+      if (cancelled) return
+      if (rowExists) {
+        setSortingConfig(config)
+        saveBankPaymentsSortingConfigToLocalCache(config)
+        return
+      }
+      const local = loadBankPaymentsSortingConfig(authUserId)
+      setSortingConfig(local)
+      saveBankPaymentsSortingConfigToLocalCache(local)
+      if (authRole === 'dev') {
+        try {
+          await upsertBankPaymentsSortingConfigToAppSettings(local)
+          saveBankPaymentsSortingConfigToLocalCache(local)
+        } catch {
+          /* RLS or network; keep legacy/local-derived filters for this browser */
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, authUserId, authRole])
 
   useEffect(() => {
     if (!open) return
-    setKindBadges(loadBankPaymentsKindBadges())
-  }, [open])
+    let cancelled = false
+    void (async () => {
+      const local = loadBankPaymentsKindBadges()
+      const { badges: remote, rowExists } = await fetchBankPaymentsKindBadgesFromAppSettings()
+      if (cancelled) return
+      if (rowExists) {
+        setKindBadges(remote)
+        saveBankPaymentsKindBadgesLocalCache(remote)
+        return
+      }
+      setKindBadges(local)
+      if (authRole === 'dev' && Object.keys(local).length > 0) {
+        try {
+          await upsertBankPaymentsKindBadgesToAppSettings(local)
+          saveBankPaymentsKindBadgesLocalCache(local)
+        } catch {
+          /* RLS or network; keep local-only badges for this browser */
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, authRole])
 
   useEffect(() => {
     if (!open) return
@@ -894,18 +945,23 @@ export default function BankPaymentsModal({
         nicknameByDebitCard={nicknameByDebitCard}
         dialogAriaSuffix="bank-payments"
         title="Accounts Receivable Sorting"
-        contextNote="This configuration applies only to Jobs → Stages → Accounts Receivable. It does not change Banking or Quickfill sorting filters."
-        enableKindBadgeEditor
+        contextNote="This filter is org-wide (saved in app settings by a dev). It applies only to Jobs → Stages → Accounts Receivable and does not change Banking or Quickfill sorting filters."
+        enableKindBadgeEditor={authRole === 'dev'}
         enableTextExclusionEditor
         kindBadges={kindBadges}
-        onSaveKindBadges={(badges) => {
-          saveBankPaymentsKindBadges(badges)
-          setKindBadges(badges)
-        }}
-        onSave={(cfg) => {
-          saveBankPaymentsSortingConfig(authUserId, cfg)
+        onSaveKindBadges={
+          authRole === 'dev'
+            ? async (badges) => {
+                await upsertBankPaymentsKindBadgesToAppSettings(badges)
+                saveBankPaymentsKindBadgesLocalCache(badges)
+                setKindBadges(badges)
+              }
+            : undefined
+        }
+        onSave={async (cfg) => {
+          await upsertBankPaymentsSortingConfigToAppSettings(cfg)
+          saveBankPaymentsSortingConfigToLocalCache(cfg)
           setSortingConfig(cfg)
-          setSortingConfigModalOpen(false)
           void refreshList()
         }}
       />

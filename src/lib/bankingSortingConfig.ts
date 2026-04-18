@@ -1,4 +1,7 @@
 import { denverCalendarDayKey, ymdAddDays } from '../utils/dateUtils'
+import { APP_SETTINGS_KEY_BANK_PAYMENTS_SORTING_CONFIG } from './appSettingsKeys'
+import { supabase } from './supabase'
+import { withSupabaseRetry } from '../utils/errorHandling'
 
 export const BANKING_SORTING_CONFIG_VERSION = 1 as const
 
@@ -30,8 +33,11 @@ export type BankingSortingConfigV1 = {
 
 const STORAGE_PREFIX = 'banking_sorting_config_v1_'
 
-/** Jobs → Stages → Bank payments only; independent from {@link STORAGE_PREFIX}. */
+/** Jobs → Stages → Bank payments only; independent from {@link STORAGE_PREFIX}. Legacy per-user key (read for migration only). */
 const BANK_PAYMENTS_STORAGE_PREFIX = 'bank_payments_sorting_config_v1_'
+
+/** Org-wide AR sorting cache after fetch/save (not per-user). */
+export const BANK_PAYMENTS_SORTING_LOCAL_CACHE_KEY = 'bank_payments_sorting_config_v1__cache' as const
 
 export function defaultBankingSortingConfig(): BankingSortingConfigV1 {
   const todayChicago = denverCalendarDayKey(Date.now())
@@ -127,8 +133,8 @@ export function saveBankingSortingConfig(userId: string | undefined, cfg: Bankin
 }
 
 /**
- * Sorting filter for Jobs → Stages → Bank payments only (separate localStorage key).
- * On first access, seeds from {@link loadBankingSortingConfig} and persists so Banking / Quickfill stay aligned until the user edits Bank payments filters.
+ * Legacy fallback when `app_settings` has no row yet: reads old per-user `localStorage` if present;
+ * otherwise same as {@link loadBankingSortingConfig} (Banking / Quickfill key) without writing.
  */
 export function loadBankPaymentsSortingConfig(userId: string | undefined): BankingSortingConfigV1 {
   if (!userId || typeof window === 'undefined') return defaultBankingSortingConfig()
@@ -141,24 +147,87 @@ export function loadBankPaymentsSortingConfig(userId: string | undefined): Banki
       if (n) return n
     }
   } catch {
-    /* invalid JSON or parse error — seed below */
+    /* invalid JSON */
   }
-  const fromGlobal = loadBankingSortingConfig(userId)
-  try {
-    window.localStorage.setItem(key, JSON.stringify(fromGlobal))
-  } catch {
-    /* quota / private mode */
-  }
-  return fromGlobal
+  return loadBankingSortingConfig(userId)
 }
 
-export function saveBankPaymentsSortingConfig(userId: string | undefined, cfg: BankingSortingConfigV1): void {
-  if (!userId || typeof window === 'undefined') return
+export function loadBankPaymentsSortingConfigFromLocalCache(): BankingSortingConfigV1 | null {
+  if (typeof window === 'undefined') return null
   try {
-    window.localStorage.setItem(BANK_PAYMENTS_STORAGE_PREFIX + userId, JSON.stringify(cfg))
+    const raw = window.localStorage.getItem(BANK_PAYMENTS_SORTING_LOCAL_CACHE_KEY)
+    if (!raw) return null
+    const parsed: unknown = JSON.parse(raw)
+    return normalizeConfig(parsed)
+  } catch {
+    return null
+  }
+}
+
+export function saveBankPaymentsSortingConfigToLocalCache(cfg: BankingSortingConfigV1): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(BANK_PAYMENTS_SORTING_LOCAL_CACHE_KEY, JSON.stringify(cfg))
   } catch {
     /* quota / private mode */
   }
+}
+
+/** Read org-wide AR sorting from `app_settings`. Use `rowExists` to decide legacy local migration. */
+export async function fetchBankPaymentsSortingConfigFromAppSettings(): Promise<{
+  config: BankingSortingConfigV1
+  rowExists: boolean
+}> {
+  try {
+    const data = (await withSupabaseRetry(
+      async () =>
+        supabase
+          .from('app_settings')
+          .select('value_text')
+          .eq('key', APP_SETTINGS_KEY_BANK_PAYMENTS_SORTING_CONFIG)
+          .maybeSingle(),
+      'fetch_bank_payments_sorting_config',
+    )) as { value_text: string | null } | null
+    if (data == null) {
+      return { config: defaultBankingSortingConfig(), rowExists: false }
+    }
+    const text = data.value_text
+    if (text == null || text.trim() === '') {
+      return { config: defaultBankingSortingConfig(), rowExists: true }
+    }
+    try {
+      const parsed: unknown = JSON.parse(text)
+      const n = normalizeConfig(parsed)
+      return { config: n ?? defaultBankingSortingConfig(), rowExists: true }
+    } catch {
+      return { config: defaultBankingSortingConfig(), rowExists: true }
+    }
+  } catch {
+    return { config: defaultBankingSortingConfig(), rowExists: false }
+  }
+}
+
+/** Dev-only (RLS): upsert global AR sorting JSON. */
+export async function upsertBankPaymentsSortingConfigToAppSettings(cfg: BankingSortingConfigV1): Promise<void> {
+  await withSupabaseRetry(
+    async () =>
+      supabase.from('app_settings').upsert(
+        { key: APP_SETTINGS_KEY_BANK_PAYMENTS_SORTING_CONFIG, value_text: JSON.stringify(cfg) },
+        { onConflict: 'key' },
+      ),
+    'upsert_bank_payments_sorting_config',
+  )
+}
+
+/**
+ * Effective AR filter for RPCs when `app_settings` may be empty: company row if present, else legacy per-user local.
+ */
+export async function resolveBankPaymentsSortingConfigForAr(
+  authUserId: string | undefined,
+): Promise<BankingSortingConfigV1> {
+  const { config, rowExists } = await fetchBankPaymentsSortingConfigFromAppSettings()
+  if (rowExists) return config
+  return loadBankPaymentsSortingConfig(authUserId)
 }
 
 /** posted_at must exist; compare Chicago calendar day >= startDateYmd */

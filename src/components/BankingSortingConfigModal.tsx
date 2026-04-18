@@ -24,7 +24,7 @@ export type BankingSortingConfigModalProps = {
   nicknameByAccount: Record<string, string>
   debitCardChoices: string[]
   nicknameByDebitCard: Record<string, string>
-  onSave: (cfg: BankingSortingConfigV1) => void
+  onSave: (cfg: BankingSortingConfigV1) => void | Promise<void>
   /** Extra line under the main description (e.g. scope: Jobs Bank payments only). */
   contextNote?: string
   /** Appended to dialog title/desc ids for unique aria when multiple instances exist. */
@@ -36,7 +36,7 @@ export type BankingSortingConfigModalProps = {
   /** Initial map when `enableKindBadgeEditor` (defaults to empty). */
   kindBadges?: Record<string, MercuryKindBadge>
   /** Called with badges pruned to kinds present in `kindChoices` (Mercury sample). */
-  onSaveKindBadges?: (badges: Record<string, MercuryKindBadge>) => void
+  onSaveKindBadges?: (badges: Record<string, MercuryKindBadge>) => void | Promise<void>
   /**
    * Jobs Accounts Receivable only: fourth tab for substring exclusions on Counterparty / Note.
    * When false, Save keeps `initialConfig` exclusion arrays (Banking must not clear AR-only lists).
@@ -82,6 +82,7 @@ export function BankingSortingConfigModal({
   const [draftKindBadges, setDraftKindBadges] = useState<Record<string, MercuryKindBadge>>({})
   const [draftExcludeCounterpartyText, setDraftExcludeCounterpartyText] = useState('')
   const [draftExcludeNoteText, setDraftExcludeNoteText] = useState('')
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const mergedKindChoices = useMemo(() => {
     const s = new Set<string>([...kindChoices, ...Object.keys(kindBadges)])
@@ -97,6 +98,7 @@ export function BankingSortingConfigModal({
     setActiveSection('kinds')
     setDraftExcludeCounterpartyText((initialConfig.excludeCounterpartyContains ?? []).join('\n'))
     setDraftExcludeNoteText((initialConfig.excludeNoteContains ?? []).join('\n'))
+    setSaveError(null)
   }, [open, initialConfig])
 
   useEffect(() => {
@@ -178,10 +180,11 @@ export function BankingSortingConfigModal({
     setDraftDebitCardIds(new Set())
   }
 
-  function handleSave() {
+  async function handleSave() {
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(startDateYmd.trim())
     if (!m) return
-    onSave({
+    setSaveError(null)
+    const cfgPayload = {
       v: initialConfig.v,
       kinds: Array.from(draftKinds).sort(),
       accountIds: Array.from(draftAccounts).sort(),
@@ -193,16 +196,21 @@ export function BankingSortingConfigModal({
       excludeNoteContains: enableTextExclusionEditor
         ? normalizeExclusionLinesFromText(draftExcludeNoteText)
         : (initialConfig.excludeNoteContains ?? []),
-    })
-    if (enableKindBadgeEditor && onSaveKindBadges) {
-      const normalized: Record<string, MercuryKindBadge> = {}
-      for (const [k, b] of Object.entries(draftKindBadges)) {
-        const color = normalizeHexColor(b.color) ?? defaultKindBadgeColor()
-        normalized[k] = { nickname: b.nickname.trim(), color }
-      }
-      onSaveKindBadges(pruneKindBadgesToChoices(normalized, kindChoices))
     }
-    onClose()
+    try {
+      if (enableKindBadgeEditor && onSaveKindBadges) {
+        const normalized: Record<string, MercuryKindBadge> = {}
+        for (const [k, b] of Object.entries(draftKindBadges)) {
+          const color = normalizeHexColor(b.color) ?? defaultKindBadgeColor()
+          normalized[k] = { nickname: b.nickname.trim(), color }
+        }
+        await Promise.resolve(onSaveKindBadges(pruneKindBadgesToChoices(normalized, kindChoices)))
+      }
+      await Promise.resolve(onSave(cfgPayload))
+      onClose()
+    } catch (e: unknown) {
+      setSaveError(e instanceof Error ? e.message : 'Save failed')
+    }
   }
 
   const listBoxStyle: CSSProperties = {
@@ -644,10 +652,16 @@ export function BankingSortingConfigModal({
           </div>
         ) : null}
 
+        {saveError ? (
+          <p role="alert" style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: '#b91c1c' }}>
+            {saveError}
+          </p>
+        ) : null}
+
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexShrink: 0 }}>
           <button
             type="button"
-            onClick={handleSave}
+            onClick={() => void handleSave()}
             style={{
               padding: '0.45rem 1rem',
               borderRadius: 4,

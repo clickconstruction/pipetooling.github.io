@@ -1174,6 +1174,30 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### April 18, 2026
 
+**`20260418061005_count_mercury_transactions_for_bank_payments.sql`**
+- **Purpose**: Dashboard **Unallocated bank deposits** count and Jobs **Bank Payments** parity — same eligibility filter + remainder rules as **`list_mercury_transactions_for_bank_payments`**
+- **Changes**: Create **`count_mercury_transactions_for_bank_payments(p_filter jsonb)`** (SECURITY DEFINER; dev / master_technician / assistant / primary)
+- **Impact**: [`useArBankUnallocatedCount.ts`](src/hooks/useArBankUnallocatedCount.ts); [`DashboardArBankUnallocatedBanner.tsx`](src/components/DashboardArBankUnallocatedBanner.tsx)
+- **Category**: Banking / Accounts Receivable / Dashboard
+
+**`20260418063154_ar_sorting_exclude_counterparty_note.sql`**
+- **Purpose**: **Accounts Receivable Sorting** — optional case-insensitive substring exclusions on Mercury **`counterparty_name`** and **`note`** (no SQL `LIKE` metacharacters)
+- **Changes**: Replace **`list_mercury_transactions_for_bank_payments`** to apply **`excludeCounterpartyContains`** / **`excludeNoteContains`** from **`p_filter`**; align **`count_mercury_transactions_for_bank_payments`** with the same logic
+- **Impact**: [`bankingSortingConfig.ts`](src/lib/bankingSortingConfig.ts); [`BankingSortingConfigModal.tsx`](src/components/BankingSortingConfigModal.tsx); [`BankPaymentsModal.tsx`](src/components/jobs/BankPaymentsModal.tsx)
+- **Category**: Banking / Accounts Receivable
+
+**`20260418073359_bank_payments_kind_badges_app_settings_doc.sql`**
+- **Purpose**: Document **`app_settings.key`** **`bank_payments_kind_badges_v1`** for org-wide Jobs **Bank Payments** Mercury Kind badge JSON (no DDL; no seed row)
+- **Changes**: Comment-only migration (`SELECT 1`) so local-only **`localStorage`** fallback stays correct before first dev upsert
+- **Impact**: [`bankPaymentsKindBadges.ts`](src/lib/bankPaymentsKindBadges.ts); [`appSettingsKeys.ts`](src/lib/appSettingsKeys.ts)
+- **Category**: Banking / Accounts Receivable / Settings
+
+**`20260418074400_bank_payments_sorting_config_app_settings_doc.sql`**
+- **Purpose**: Document **`app_settings.key`** **`bank_payments_sorting_config_v1`** for org-wide Jobs **Accounts Receivable Sorting** Mercury filter JSON (`BankingSortingConfigV1`; no DDL; no seed row)
+- **Changes**: Comment-only migration (`SELECT 1`) so legacy per-user **`localStorage`** fallback stays correct before first dev upsert
+- **Impact**: [`bankingSortingConfig.ts`](src/lib/bankingSortingConfig.ts); [`appSettingsKeys.ts`](src/lib/appSettingsKeys.ts); [`BankPaymentsModal.tsx`](src/components/jobs/BankPaymentsModal.tsx); [`useArBankUnallocatedCount.ts`](src/hooks/useArBankUnallocatedCount.ts)
+- **Category**: Banking / Accounts Receivable / Settings
+
 **`20260418120000_create_dev_ignored_checklist_items.sql`**
 - **Purpose**: Dev Ignored Tasks section in Recently Completed Tasks
 - **Changes**: Create `dev_ignored_checklist_items` (dev_user_id, checklist_item_id, ignored_at) PK; RLS for devs to manage own rows

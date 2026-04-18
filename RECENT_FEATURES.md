@@ -12,11 +12,20 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.331 → v2.4"
+version_range: "v2.334 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.334)"
+    line: ~1054
+    description: "Accounts Receivable Sorting filter JSON in app_settings (bank_payments_sorting_config_v1, dev writes); company-wide for Bank Payments RPCs + unallocated count; legacy per-user localStorage only when no server row; global localStorage cache after fetch/save"
+  - name: "Latest Version (v2.333)"
+    line: ~1068
+    description: "Bank Payments Kind badges in app_settings (global); dev-only badge editor; localStorage cache; auto-publish local to server when no row (dev)"
+  - name: "Latest Version (v2.332)"
+    line: ~1078
+    description: "Dashboard unallocated bank deposits banner (count_mercury_transactions_for_bank_payments); AR sorting counterparty/note exclusions; Bank Payments allocation layout (amount row + Add allocation footer)"
   - name: "Latest Version (v2.331)"
-    line: ~1042
+    line: ~1062
     description: "Bank Payments: per-kind badge nickname + color in Accounts Receivable Sorting (dev editor); bank_payments_kind_badges_v1 localStorage; pills on transaction rows"
   - name: "Latest Version (v2.330)"
     line: ~1068
@@ -872,6 +881,8 @@ when_to_read:
 **New:** [v2.254 — Jobs Schedule modal + Calendar Job preview & planned chips](#latest-updates-v2254)
 **New:** [v2.253 — Calendar: per-session chips + day modal clock sessions](#latest-updates-v2253)
 **New:** [v2.252 — Pay History: Draft Payroll week + crew merge + employee credit + Record payment](#latest-updates-v2252)
+**New:** [v2.333 — **Bank Payments** Kind badges: **`app_settings`** (`bank_payments_kind_badges_v1`); dev-only editor; local cache](#latest-updates-v2333)
+**New:** [v2.332 — Dashboard **Unallocated bank deposits**; AR sorting **counterparty/note** excludes; **Bank Payments** allocation layout (amount row + footer **Add allocation**)](#latest-updates-v2332)
 **New:** [v2.331 — **Bank Payments**: Mercury **Kind** badge label + color (`bank_payments_kind_badges_v1`)](#latest-updates-v2331)
 **New:** [v2.330 — Pay History: **Generate Custom Pay Report** modal; Jobs **Bank payments** **Accounts Receivable Sorting** (separate `localStorage` + nicknames)](#latest-updates-v2330)
 **New:** [v2.329 — Bids: **Cover Letter** Google Docs paste HTML; **Submission** URL deep link; note **datetime-local**](#latest-updates-v2329)
@@ -1043,6 +1054,56 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
+## Latest Updates (v2.334)
+
+**Date**: 2026-04-18
+
+### **Jobs** / **Dashboard** — **Accounts Receivable Sorting** filter: org-wide **`app_settings`** (dev writes)
+
+- **[`APP_SETTINGS_KEY_BANK_PAYMENTS_SORTING_CONFIG`](src/lib/appSettingsKeys.ts)** — Key **`bank_payments_sorting_config_v1`**; JSON **`BankingSortingConfigV1`** in **`value_text`** (kinds, accounts, debit cards, start date, counterparty/note exclusions). **RLS**: same as Kind badges — all authenticated **SELECT**; **dev** **upsert** only.
+- **[`bankingSortingConfig.ts`](src/lib/bankingSortingConfig.ts)** — **`fetchBankPaymentsSortingConfigFromAppSettings`**, **`upsertBankPaymentsSortingConfigToAppSettings`**, **`resolveBankPaymentsSortingConfigForAr`**; **`loadBankPaymentsSortingConfig`** reads legacy per-user **`bank_payments_sorting_config_v1_<userId>`** (no write) or falls back to Banking/Quickfill **`banking_sorting_config_v1_<userId>`** when no **`app_settings`** row yet; **`BANK_PAYMENTS_SORTING_LOCAL_CACHE_KEY`** (**`bank_payments_sorting_config_v1__cache`**) mirrors the server after fetch/save.
+- **[`BankPaymentsModal.tsx`](src/components/jobs/BankPaymentsModal.tsx)** — On open: server wins when a row exists; if **no** row, uses legacy local-derived filters and **dev** **one-time** upsert publishes them (same pattern as Kind badges). **Save** on **Accounts Receivable Sorting** persists with **`upsertBankPaymentsSortingConfigToAppSettings`** (dev-only UI).
+- **[`useArBankUnallocatedCount.ts`](src/hooks/useArBankUnallocatedCount.ts)** — **`p_filter`** from **`resolveBankPaymentsSortingConfigForAr`** so the Dashboard banner matches Jobs **Bank Payments** for all roles.
+- **[`BankingSortingConfigModal.tsx`](src/components/BankingSortingConfigModal.tsx)** — Sorting **`onSave`** may return **`Promise`**; **Save** awaits it before close.
+- **Migration** — [`20260418074400_bank_payments_sorting_config_app_settings_doc.sql`](supabase/migrations/20260418074400_bank_payments_sorting_config_app_settings_doc.sql) documents the key (no seed row).
+
+---
+
+## Latest Updates (v2.333)
+
+**Date**: 2026-04-18
+
+### **Jobs** — **Bank Payments** Kind badges: org-wide **`app_settings`** (dev writes)
+
+- **[`APP_SETTINGS_KEY_BANK_PAYMENTS_KIND_BADGES`](src/lib/appSettingsKeys.ts)** — Key **`bank_payments_kind_badges_v1`**; JSON in **`value_text`** (same shape as before). **RLS**: all authenticated **SELECT**; **dev** **upsert** only ([`20260220180000_create_app_settings.sql`](supabase/migrations/20260220180000_create_app_settings.sql)).
+- **[`bankPaymentsKindBadges.ts`](src/lib/bankPaymentsKindBadges.ts)** — **`fetchBankPaymentsKindBadgesFromAppSettings`**, **`upsertBankPaymentsKindBadgesToAppSettings`**, **`parseBankPaymentsKindBadgesObject`**; **`localStorage`** key unchanged as **cache** after fetch/save (**`saveBankPaymentsKindBadgesLocalCache`**).
+- **[`BankPaymentsModal.tsx`](src/components/jobs/BankPaymentsModal.tsx)** — On open: **server wins** when a row exists; if **no** row and **dev** has **local-only** badges, **one-time** upsert publishes them. **`enableKindBadgeEditor`** only when **`authRole === 'dev'`** (badge label/color rows; sorting filters unchanged for all AR roles).
+- **[`BankingSortingConfigModal.tsx`](src/components/BankingSortingConfigModal.tsx)** — **`onSaveKindBadges`** may return **`Promise`**; **Save** awaits Kind badges before sorting **`onSave`**; **`saveError`** on failure.
+- **Migration** — [`20260418073359_bank_payments_kind_badges_app_settings_doc.sql`](supabase/migrations/20260418073359_bank_payments_kind_badges_app_settings_doc.sql) documents the key (no seed row).
+
+---
+
+## Latest Updates (v2.332)
+
+**Date**: 2026-04-18
+
+### **Dashboard** — **Unallocated bank deposits** banner (AR-ready Mercury rows)
+
+- **[`useArBankUnallocatedCount.ts`](src/hooks/useArBankUnallocatedCount.ts)** — Calls RPC **`count_mercury_transactions_for_bank_payments`** with the same **`p_filter`** shape as **`list_mercury_transactions_for_bank_payments`** (company **Accounts Receivable Sorting** via [`resolveBankPaymentsSortingConfigForAr`](src/lib/bankingSortingConfig.ts); see **v2.334**). Roles: **dev**, **master_technician**, **assistant**, **primary**. Refetch on **`window` `focus`**; optional **`bankPaymentsModalOpen`** from **Jobs** refetches when the modal closes so the count drops after Apply.
+- **[`DashboardArBankUnallocatedBanner.tsx`](src/components/DashboardArBankUnallocatedBanner.tsx)** — Blue call-to-action above the Job Tally / stale-tally row when count &gt; 0; navigates to **`/jobs?tab=stages&openBankPayments=true`**.
+
+### **Jobs** — **Bank Payments** / **Accounts Receivable Sorting**: counterparty + note exclusions; allocation layout
+
+- **[`bankingSortingConfig.ts`](src/lib/bankingSortingConfig.ts)** — Sorting config includes **`excludeCounterpartyContains`** and **`excludeNoteContains`** (case-insensitive substring lists; max count/length caps). With **v2.334**, canonical persistence is org-wide **`app_settings`** **`bank_payments_sorting_config_v1`** (dev writes); legacy per-user key retained only for migration when no server row.
+- **[`BankingSortingConfigModal.tsx`](src/components/BankingSortingConfigModal.tsx)** — **Accounts Receivable Sorting** can edit **Exclude counterparty contains** and **Exclude note contains** (multi-line); applied by **`list_mercury_transactions_for_bank_payments`** / count RPC (see **`20260418063154_ar_sorting_exclude_counterparty_note.sql`**).
+- **[`BankPaymentsModal.tsx`](src/components/jobs/BankPaymentsModal.tsx)** — **Allocations**: each line uses two rows — **billed line** [`SearchableSelect`](src/components/SearchableSelect.tsx) + **Remove** on the first row, **Amount** on the second; **Add allocation** sits on a **footer** row (right-aligned flex). Apply still calls **`apply_mercury_bank_payment_allocations`**.
+
+### **Quickfill** — **Warnings**: **Unallocated bank deposits** (with stale-tally block)
+
+- **[`Quickfill.tsx`](src/pages/Quickfill.tsx)** — When the **Warnings** section is visible (stale tally staff follow-up), it also shows **`DashboardArBankUnallocatedBanner`** and **`QuickfillMetricReporter`** (**`ar-bank-unallocated`**) for positive **`useArBankUnallocatedCount`** (same navigation to **`/jobs?tab=stages&openBankPayments=true`**). **Dashboard** shows the AR banner independently (above the tally row) for **dev** / **master_technician** / **assistant** / **primary**.
+
+---
+
 ## Latest Updates (v2.331)
 
 **Date**: 2026-04-18
@@ -1065,7 +1126,7 @@ when_to_read:
 
 ### **Jobs** — **Stages** **Bank payments**: **Accounts Receivable Sorting** (separate config from Banking)
 
-- **[`bankingSortingConfig.ts`](src/lib/bankingSortingConfig.ts)** — **`loadBankPaymentsSortingConfig`** / **`saveBankPaymentsSortingConfig`** persist per-user filters under **`bank_payments_sorting_config_v1_<userId>`**. First open seeds from the shared Banking / Quickfill key **`banking_sorting_config_v1_<userId>`**; changes here do **not** overwrite Banking sorting.
+- **[`bankingSortingConfig.ts`](src/lib/bankingSortingConfig.ts)** — AR sorting was introduced as per-user **`bank_payments_sorting_config_v1_<userId>`** with seed from **`banking_sorting_config_v1_<userId>`**; **v2.334** moves the canonical filter blob to **`app_settings`** **`bank_payments_sorting_config_v1`** (see **Latest Updates (v2.334)**). Banking / Quickfill **`banking_sorting_config_v1_*`** remains per-user.
 - **[`BankPaymentsModal.tsx`](src/components/jobs/BankPaymentsModal.tsx)** — **Sorting configuration…** opens **[`BankingSortingConfigModal`](src/components/BankingSortingConfigModal.tsx)** with **`title="Accounts Receivable Sorting"`**, optional **`contextNote`**, and **[`useMercuryLedgerNicknames`](src/hooks/useMercuryLedgerNicknames.ts)** (`{ enabled: open }`) so account / debit lists show nicknames where the hook applies (dev / master_technician / assistant).
 - **[`BankingSortingConfigModal.tsx`](src/components/BankingSortingConfigModal.tsx)** — Optional **`title`**, **`contextNote`**, **`dialogAriaSuffix`** for distinct accessible titles when reused from Banking vs Jobs.
 

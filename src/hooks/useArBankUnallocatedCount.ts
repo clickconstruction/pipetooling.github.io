@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { BANKING_SORTING_CONFIG_VERSION, loadBankPaymentsSortingConfig } from '../lib/bankingSortingConfig'
+import { BANKING_SORTING_CONFIG_VERSION, resolveBankPaymentsSortingConfigForAr } from '../lib/bankingSortingConfig'
 import { withSupabaseRetry } from '../utils/errorHandling'
 
 export function canRoleUseArBankCount(role: string | null): boolean {
@@ -30,7 +30,7 @@ export function useArBankUnallocatedCount(options: {
       return
     }
     try {
-      const cfg = loadBankPaymentsSortingConfig(authUserId)
+      const cfg = await resolveBankPaymentsSortingConfigForAr(authUserId)
       const p_filter = {
         v: BANKING_SORTING_CONFIG_VERSION,
         kinds: cfg.kinds,
