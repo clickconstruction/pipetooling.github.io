@@ -152,12 +152,64 @@ export function isStripeHostedBilledInvoice(inv: JobsLedgerInvoice): boolean {
   return String(inv.stripe_invoice_id ?? '').trim() !== ''
 }
 
+export type BankPaymentLineKind = 'job_balance' | 'merged_billed' | 'invoice'
+
 export type BankPaymentTarget = {
   key: string
+  /** Short line for errors and compact UI (HCP · line type). */
   label: string
+  /**
+   * Full option label for SearchableSelect: concatenates HCP, job name, address, line type, max remaining
+   * so substring search matches any token.
+   */
+  searchLabel: string
   remaining: number
   invoiceId: string | null
   jobId: string
+  hcpNumber: string
+  jobName: string
+  jobAddress: string
+  lineKind: BankPaymentLineKind
+  invoiceSequenceOrder: number | null
+}
+
+function bankPaymentTargetMoneyStr(n: number): string {
+  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+function bankPaymentTargetSearchLabel(job: JobWithDetails, shortLabel: string, remaining: number): string {
+  const hcp = (job.hcp_number ?? '').trim() || '—'
+  const name = (job.job_name ?? '').trim()
+  const addr = (job.job_address ?? '').trim()
+  const rem = bankPaymentTargetMoneyStr(remaining)
+  /** Lead with dollar amount (plain text for SearchableSelect search); UI can bold via `labelContent`. */
+  const dollars = `$${rem}`
+  const rest = [hcp, name, addr, shortLabel].filter((s) => s.length > 0).join(' · ')
+  return rest ? `${dollars} · ${rest}` : dollars
+}
+
+/** Formatted dollar string for AR allocation display (e.g. `$1,234.56`). */
+export function formatBankPaymentTargetDollars(remaining: number): string {
+  return `$${bankPaymentTargetMoneyStr(remaining)}`
+}
+
+/** Text after the leading amount: HCP, job name, address, short line (matches `searchLabel` tail). */
+export function bankPaymentTargetCuesAfterAmount(t: BankPaymentTarget): string {
+  return [t.hcpNumber, t.jobName, t.jobAddress, t.label].filter((s) => s.trim().length > 0).join(' · ')
+}
+
+/** Address and invoice # for the summary line under the picker (amount shown separately). */
+export function bankPaymentTargetDetailLead(t: BankPaymentTarget): string {
+  const addr = t.jobAddress.trim()
+  const inv = t.invoiceSequenceOrder != null ? `Invoice #${t.invoiceSequenceOrder}` : null
+  return [addr || null, inv].filter((x): x is string => Boolean(x)).join(' · ')
+}
+
+/** Primary title for AR allocation summary (under SearchableSelect). */
+export function bankPaymentTargetPrimaryLabel(t: BankPaymentTarget): string {
+  const name = t.jobName.trim()
+  if (name) return `${t.hcpNumber || '—'} · ${name}`
+  return t.label
 }
 
 /** Billed rows eligible for Bank Payments (non-Stripe, positive remaining). */
@@ -168,22 +220,39 @@ export function bankPaymentTargetsFromStageRows(rows: StageRow[]): BankPaymentTa
       if (isStripeHostedBilledInvoice(r.inv)) continue
       const rem = billedStageRowRemainingAmount(r)
       if (rem <= 0.0005) continue
+      const job = r.job
+      const shortLabel = billedStageRowLineLabel(r)
+      const lineKind: BankPaymentLineKind = r.kind === 'job_with_merged_billed' ? 'merged_billed' : 'invoice'
       out.push({
         key: `inv:${r.inv.id}`,
-        label: billedStageRowLineLabel(r),
+        label: shortLabel,
+        searchLabel: bankPaymentTargetSearchLabel(job, shortLabel, rem),
         remaining: rem,
         invoiceId: r.inv.id,
-        jobId: r.job.id,
+        jobId: job.id,
+        hcpNumber: (job.hcp_number ?? '').trim() || '—',
+        jobName: (job.job_name ?? '').trim(),
+        jobAddress: (job.job_address ?? '').trim(),
+        lineKind,
+        invoiceSequenceOrder: r.inv.sequence_order,
       })
     } else if (r.kind === 'job') {
       const rem = billedStageRowRemainingAmount(r)
       if (rem <= 0.0005) continue
+      const job = r.job
+      const shortLabel = billedStageRowLineLabel(r)
       out.push({
         key: `job:${r.job.id}`,
-        label: billedStageRowLineLabel(r),
+        label: shortLabel,
+        searchLabel: bankPaymentTargetSearchLabel(job, shortLabel, rem),
         remaining: rem,
         invoiceId: null,
-        jobId: r.job.id,
+        jobId: job.id,
+        hcpNumber: (job.hcp_number ?? '').trim() || '—',
+        jobName: (job.job_name ?? '').trim(),
+        jobAddress: (job.job_address ?? '').trim(),
+        lineKind: 'job_balance',
+        invoiceSequenceOrder: null,
       })
     }
   }

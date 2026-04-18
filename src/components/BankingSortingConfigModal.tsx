@@ -1,5 +1,16 @@
-import { useEffect, useState, type CSSProperties } from 'react'
-import type { BankingSortingConfigV1 } from '../lib/bankingSortingConfig'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import {
+  BANKING_SORTING_MAX_EXCLUSION_PATTERNS,
+  BANKING_SORTING_MAX_EXCLUSION_STRING_LEN,
+  type BankingSortingConfigV1,
+  normalizeExclusionLinesFromText,
+} from '../lib/bankingSortingConfig'
+import {
+  defaultKindBadgeColor,
+  normalizeHexColor,
+  pruneKindBadgesToChoices,
+  type MercuryKindBadge,
+} from '../lib/bankPaymentsKindBadges'
 import { formatMercuryKind } from '../lib/mercuryKindLabels'
 import { pageUnderlineTabStyle } from '../lib/pageUnderlineTabStyle'
 import { formatWorkDateYmdFriendly } from '../utils/dateUtils'
@@ -14,9 +25,26 @@ export type BankingSortingConfigModalProps = {
   debitCardChoices: string[]
   nicknameByDebitCard: Record<string, string>
   onSave: (cfg: BankingSortingConfigV1) => void
+  /** Extra line under the main description (e.g. scope: Jobs Bank payments only). */
+  contextNote?: string
+  /** Appended to dialog title/desc ids for unique aria when multiple instances exist. */
+  dialogAriaSuffix?: string
+  /** Dialog heading; default "Sorting configuration" (e.g. Banking). */
+  title?: string
+  /** Jobs Bank payments: edit per-kind badge label + color (saved separately). */
+  enableKindBadgeEditor?: boolean
+  /** Initial map when `enableKindBadgeEditor` (defaults to empty). */
+  kindBadges?: Record<string, MercuryKindBadge>
+  /** Called with badges pruned to kinds present in `kindChoices` (Mercury sample). */
+  onSaveKindBadges?: (badges: Record<string, MercuryKindBadge>) => void
+  /**
+   * Jobs Accounts Receivable only: fourth tab for substring exclusions on Counterparty / Note.
+   * When false, Save keeps `initialConfig` exclusion arrays (Banking must not clear AR-only lists).
+   */
+  enableTextExclusionEditor?: boolean
 }
 
-type ConfigSection = 'kinds' | 'accounts' | 'debit'
+type ConfigSection = 'kinds' | 'accounts' | 'debit' | 'exclusions'
 
 function shortUuidPrefix(id: string): string {
   if (id.length <= 8) return id
@@ -33,12 +61,32 @@ export function BankingSortingConfigModal({
   debitCardChoices,
   nicknameByDebitCard,
   onSave,
+  contextNote,
+  dialogAriaSuffix,
+  title,
+  enableKindBadgeEditor = false,
+  kindBadges = {},
+  onSaveKindBadges,
+  enableTextExclusionEditor = false,
 }: BankingSortingConfigModalProps) {
+  const suf = dialogAriaSuffix ? `-${dialogAriaSuffix}` : ''
+  const titleId = `banking-sorting-config-title${suf}`
+  const descId = `banking-sorting-config-desc${suf}`
+  const contextNoteId = contextNote ? `banking-sorting-config-context${suf}` : undefined
+  const describedBy = [descId, contextNoteId].filter(Boolean).join(' ')
   const [draftKinds, setDraftKinds] = useState<Set<string>>(() => new Set())
   const [draftAccounts, setDraftAccounts] = useState<Set<string>>(() => new Set())
   const [draftDebitCardIds, setDraftDebitCardIds] = useState<Set<string>>(() => new Set())
   const [startDateYmd, setStartDateYmd] = useState('')
   const [activeSection, setActiveSection] = useState<ConfigSection>('kinds')
+  const [draftKindBadges, setDraftKindBadges] = useState<Record<string, MercuryKindBadge>>({})
+  const [draftExcludeCounterpartyText, setDraftExcludeCounterpartyText] = useState('')
+  const [draftExcludeNoteText, setDraftExcludeNoteText] = useState('')
+
+  const mergedKindChoices = useMemo(() => {
+    const s = new Set<string>([...kindChoices, ...Object.keys(kindBadges)])
+    return Array.from(s).sort()
+  }, [kindChoices, kindBadges])
 
   useEffect(() => {
     if (!open) return
@@ -47,7 +95,22 @@ export function BankingSortingConfigModal({
     setDraftDebitCardIds(new Set(initialConfig.debitCardIds))
     setStartDateYmd(initialConfig.startDateYmd)
     setActiveSection('kinds')
+    setDraftExcludeCounterpartyText((initialConfig.excludeCounterpartyContains ?? []).join('\n'))
+    setDraftExcludeNoteText((initialConfig.excludeNoteContains ?? []).join('\n'))
   }, [open, initialConfig])
+
+  useEffect(() => {
+    if (!open || !enableKindBadgeEditor) return
+    setDraftKindBadges(() => {
+      const next: Record<string, MercuryKindBadge> = {}
+      for (const k of mergedKindChoices) {
+        const prev = kindBadges[k]
+        const color = normalizeHexColor(prev?.color ?? '') ?? defaultKindBadgeColor()
+        next[k] = { nickname: (prev?.nickname ?? '').trim(), color }
+      }
+      return next
+    })
+  }, [open, enableKindBadgeEditor, kindBadges, mergedKindChoices])
 
   useEffect(() => {
     if (!open) return
@@ -124,7 +187,21 @@ export function BankingSortingConfigModal({
       accountIds: Array.from(draftAccounts).sort(),
       debitCardIds: Array.from(draftDebitCardIds).sort(),
       startDateYmd: startDateYmd.trim(),
+      excludeCounterpartyContains: enableTextExclusionEditor
+        ? normalizeExclusionLinesFromText(draftExcludeCounterpartyText)
+        : (initialConfig.excludeCounterpartyContains ?? []),
+      excludeNoteContains: enableTextExclusionEditor
+        ? normalizeExclusionLinesFromText(draftExcludeNoteText)
+        : (initialConfig.excludeNoteContains ?? []),
     })
+    if (enableKindBadgeEditor && onSaveKindBadges) {
+      const normalized: Record<string, MercuryKindBadge> = {}
+      for (const [k, b] of Object.entries(draftKindBadges)) {
+        const color = normalizeHexColor(b.color) ?? defaultKindBadgeColor()
+        normalized[k] = { nickname: b.nickname.trim(), color }
+      }
+      onSaveKindBadges(pruneKindBadgesToChoices(normalized, kindChoices))
+    }
     onClose()
   }
 
@@ -142,12 +219,14 @@ export function BankingSortingConfigModal({
     kinds: 'banking-sorting-config-tab-kinds',
     accounts: 'banking-sorting-config-tab-accounts',
     debit: 'banking-sorting-config-tab-debit',
+    exclusions: 'banking-sorting-config-tab-exclusions',
   } as const
 
   const panelIds = {
     kinds: 'banking-sorting-config-panel-kinds',
     accounts: 'banking-sorting-config-panel-accounts',
     debit: 'banking-sorting-config-panel-debit',
+    exclusions: 'banking-sorting-config-panel-exclusions',
   } as const
 
   return (
@@ -169,13 +248,16 @@ export function BankingSortingConfigModal({
       <div
         role="dialog"
         aria-modal="true"
-        aria-labelledby="banking-sorting-config-title"
-        aria-describedby="banking-sorting-config-desc"
+        aria-labelledby={titleId}
+        aria-describedby={describedBy}
         onClick={(e) => e.stopPropagation()}
         style={{
           background: 'white',
           borderRadius: 8,
-          width: 'min(520px, calc(100vw - 2rem))',
+          width:
+            enableKindBadgeEditor || enableTextExclusionEditor
+              ? 'min(600px, calc(100vw - 2rem))'
+              : 'min(520px, calc(100vw - 2rem))',
           maxHeight: '90vh',
           display: 'flex',
           flexDirection: 'column',
@@ -193,8 +275,8 @@ export function BankingSortingConfigModal({
             flexShrink: 0,
           }}
         >
-          <h2 id="banking-sorting-config-title" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>
-            Sorting configuration
+          <h2 id={titleId} style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>
+            {title ?? 'Sorting configuration'}
           </h2>
           <button
             type="button"
@@ -211,10 +293,15 @@ export function BankingSortingConfigModal({
             Cancel
           </button>
         </div>
-        <p id="banking-sorting-config-desc" style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+        <p id={descId} style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#6b7280' }}>
           Empty <strong>Kinds</strong>, <strong>Accounts</strong>, or <strong>Debit cards</strong> lists mean <strong>all</strong>. Start date uses the
           transaction <strong>posted</strong> day (America/Chicago); oldest row must be on or after that day.
         </p>
+        {contextNote && contextNoteId ? (
+          <p id={contextNoteId} style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+            {contextNote}
+          </p>
+        ) : null}
 
         <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.35rem' }}>
           Start date
@@ -277,6 +364,20 @@ export function BankingSortingConfigModal({
           >
             Debit cards
           </button>
+          {enableTextExclusionEditor ? (
+            <button
+              type="button"
+              role="tab"
+              id={tabIds.exclusions}
+              aria-selected={activeSection === 'exclusions'}
+              aria-controls={panelIds.exclusions}
+              tabIndex={activeSection === 'exclusions' ? 0 : -1}
+              onClick={() => setActiveSection('exclusions')}
+              style={pageUnderlineTabStyle(activeSection === 'exclusions')}
+            >
+              Exclusions
+            </button>
+          ) : null}
         </div>
 
         {activeSection === 'kinds' ? (
@@ -297,9 +398,90 @@ export function BankingSortingConfigModal({
                 </button>
               </span>
             </div>
-            <div style={listBoxStyle}>
-              {kindChoices.length === 0 ? (
+            <div
+              style={
+                enableKindBadgeEditor
+                  ? { ...listBoxStyle, maxHeight: 'min(40vh, 320px)' }
+                  : listBoxStyle
+              }
+            >
+              {(enableKindBadgeEditor ? mergedKindChoices : kindChoices).length === 0 ? (
                 <span style={{ color: '#6b7280' }}>No kinds loaded yet — open Ledger or reload transactions.</span>
+              ) : enableKindBadgeEditor ? (
+                mergedKindChoices.map((k) => {
+                  const inSample = kindChoices.includes(k)
+                  const badge = draftKindBadges[k] ?? { nickname: '', color: defaultKindBadgeColor() }
+                  return (
+                    <div
+                      key={k}
+                      style={{
+                        marginBottom: '0.5rem',
+                        paddingBottom: '0.45rem',
+                        borderBottom: '1px solid #f3f4f6',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        {inSample ? (
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', flex: '1 1 12rem', minWidth: 0 }}>
+                            <input type="checkbox" checked={draftKinds.has(k)} onChange={() => toggleKind(k)} />
+                            <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.75rem', wordBreak: 'break-all' }} title={k}>
+                              {formatMercuryKind(k)}
+                            </span>
+                          </label>
+                        ) : (
+                          <div style={{ flex: '1 1 12rem', minWidth: 0, fontSize: '0.75rem', color: '#6b7280' }}>
+                            <span style={{ fontFamily: 'ui-monospace, monospace', wordBreak: 'break-all' }} title={k}>
+                              {formatMercuryKind(k)}
+                            </span>
+                            <div style={{ marginTop: 2 }}>Not in current Mercury sample — badge entry drops on Save.</div>
+                          </div>
+                        )}
+                      </div>
+                      <div
+                        style={{
+                          marginTop: '0.35rem',
+                          marginLeft: inSample ? '1.5rem' : 0,
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                        }}
+                      >
+                        <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          Badge label
+                          <input
+                            type="text"
+                            value={badge.nickname}
+                            onChange={(e) =>
+                              setDraftKindBadges((prev) => ({
+                                ...prev,
+                                [k]: { ...badge, nickname: e.target.value },
+                              }))
+                            }
+                            placeholder="Optional"
+                            style={{ padding: '4px 6px', fontSize: '0.8125rem', width: 'min(220px, 100%)' }}
+                          />
+                        </label>
+                        <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          Color
+                          <input
+                            type="color"
+                            value={normalizeHexColor(badge.color) ?? defaultKindBadgeColor()}
+                            onChange={(e) => {
+                              const v = normalizeHexColor(e.target.value) ?? defaultKindBadgeColor()
+                              setDraftKindBadges((prev) => ({
+                                ...prev,
+                                [k]: { ...badge, color: v },
+                              }))
+                            }}
+                            aria-label={`Badge color for ${k}`}
+                            style={{ width: 36, height: 28, padding: 0, border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  )
+                })
               ) : (
                 kindChoices.map((k) => (
                   <label key={k} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginBottom: '0.25rem' }}>
@@ -387,6 +569,77 @@ export function BankingSortingConfigModal({
                   )
                 })
               )}
+            </div>
+          </div>
+        ) : null}
+
+        {enableTextExclusionEditor && activeSection === 'exclusions' ? (
+          <div
+            role="tabpanel"
+            id={panelIds.exclusions}
+            aria-labelledby={tabIds.exclusions}
+            style={{ display: 'flex', flexDirection: 'column', minHeight: 0, marginBottom: '0.85rem', gap: '0.75rem' }}
+          >
+            <p style={{ margin: 0, fontSize: '0.8125rem', color: '#6b7280' }}>
+              Hide transactions when Mercury <strong>Counterparty name</strong> or internal <strong>Note</strong> contains any of these
+              substrings (case-insensitive). One pattern per line. Max {BANKING_SORTING_MAX_EXCLUSION_PATTERNS} patterns per list, up to{' '}
+              {BANKING_SORTING_MAX_EXCLUSION_STRING_LEN} characters each.
+            </p>
+            <div>
+              <label
+                htmlFor="banking-sorting-exclude-counterparty"
+                style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.35rem' }}
+              >
+                Counterparty exclusions
+              </label>
+              <textarea
+                id="banking-sorting-exclude-counterparty"
+                value={draftExcludeCounterpartyText}
+                onChange={(e) => setDraftExcludeCounterpartyText(e.target.value)}
+                rows={5}
+                spellCheck={false}
+                placeholder="One substring per line"
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  fontSize: '0.8125rem',
+                  padding: '0.5rem 0.65rem',
+                  borderRadius: 4,
+                  border: '1px solid #e5e7eb',
+                  fontFamily: 'inherit',
+                  resize: 'vertical',
+                  minHeight: '4.5rem',
+                  background: '#fafafa',
+                }}
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="banking-sorting-exclude-note"
+                style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.35rem' }}
+              >
+                Note exclusions
+              </label>
+              <textarea
+                id="banking-sorting-exclude-note"
+                value={draftExcludeNoteText}
+                onChange={(e) => setDraftExcludeNoteText(e.target.value)}
+                rows={5}
+                spellCheck={false}
+                placeholder="One substring per line"
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  fontSize: '0.8125rem',
+                  padding: '0.5rem 0.65rem',
+                  borderRadius: 4,
+                  border: '1px solid #e5e7eb',
+                  fontFamily: 'inherit',
+                  resize: 'vertical',
+                  minHeight: '4.5rem',
+                  background: '#fafafa',
+                }}
+              />
             </div>
           </div>
         ) : null}

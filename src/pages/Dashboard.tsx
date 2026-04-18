@@ -42,9 +42,11 @@ import DashboardMyTimeSection from '../components/DashboardMyTimeSection'
 import { DashboardMyTimeDayEditorModal } from '../components/DashboardMyTimeDayEditorModal'
 import DashboardDevRejectedNotification from '../components/DashboardDevRejectedNotification'
 import DashboardMyTeamPendingBanner from '../components/DashboardMyTeamPendingBanner'
+import DashboardArBankUnallocatedBanner from '../components/DashboardArBankUnallocatedBanner'
 import DashboardTallyStaleBanner from '../components/DashboardTallyStaleBanner'
 import DashboardTallyStaleStaffBanner from '../components/DashboardTallyStaleStaffBanner'
 import { DashboardStaleTallyStaffFollowUpModal } from '../components/DashboardStaleTallyStaffFollowUpModal'
+import { canRoleUseArBankCount, useArBankUnallocatedCount } from '../hooks/useArBankUnallocatedCount'
 import { useStaleTallyStaffFollowUp } from '../hooks/useStaleTallyStaffFollowUp'
 import { TALLY_STALE_MIN_AGE_DAYS } from '../lib/tallyStaleMinAgeDays'
 import { DashboardTeamActiveClockStrip } from '../components/DashboardTeamActiveClockStrip'
@@ -922,6 +924,13 @@ export default function Dashboard() {
   const { count: hoursAwaitingCount } = useHoursAwaitingApprovalCount(isDev, financialRefreshKey)
   const { total: supplyHousesAPTotal } = useSupplyHousesAPTotal(hasSupplyHousesAPPin, financialRefreshKey)
   const { total: subLaborDueTotal } = useSubLaborDueTotal(hasSubLaborDuePin, financialRefreshKey)
+
+  const arBankCountEnabled = Boolean(authUser?.id) && canRoleUseArBankCount(role)
+  const { count: arBankUnallocatedCount } = useArBankUnallocatedCount({
+    enabled: arBankCountEnabled,
+    authUserId: authUser?.id,
+    authRole: role,
+  })
 
   const loadTallyUnlinkedCount = useCallback(async () => {
     if (!authUser?.id || role == null) return
@@ -3424,6 +3433,13 @@ export default function Dashboard() {
 
   const tallyAndPinnedBlock = (
     <>
+      {arBankCountEnabled && (
+        <DashboardArBankUnallocatedBanner
+          count={arBankUnallocatedCount ?? 0}
+          loading={arBankUnallocatedCount === null}
+          onGoToAr={() => navigate('/jobs?tab=stages&openBankPayments=true')}
+        />
+      )}
       {role != null && (
         <DashboardTallyStaleBanner
           staleCount={typeof tallyStaleUnlinkedCount === 'number' ? tallyStaleUnlinkedCount : 0}

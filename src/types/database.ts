@@ -8011,6 +8011,10 @@ export type Database = {
         Args: { p_insert_after_sequence: number; p_step_id: string }
         Returns: Json
       }
+      count_mercury_transactions_for_bank_payments: {
+        Args: { p_filter?: Json }
+        Returns: number
+      }
       count_unlinked_mercury_transactions_for_tally: {
         Args: never
         Returns: number

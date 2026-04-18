@@ -1,23 +1,38 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { SearchableSelect } from '../SearchableSelect'
 import { BankingSortingConfigModal } from '../BankingSortingConfigModal'
 import type { BankingSortingConfigV1 } from '../../lib/bankingSortingConfig'
 import {
   BANKING_SORTING_CONFIG_VERSION,
-  loadBankingSortingConfig,
-  saveBankingSortingConfig,
+  loadBankPaymentsSortingConfig,
+  saveBankPaymentsSortingConfig,
 } from '../../lib/bankingSortingConfig'
-import { formatMercuryKind } from '../../lib/mercuryKindLabels'
+import {
+  defaultKindBadgeColor,
+  loadBankPaymentsKindBadges,
+  mercuryKindPaymentTypeLabel,
+  normalizeHexColor,
+  pickTextOnBackground,
+  saveBankPaymentsKindBadges,
+  type MercuryKindBadge,
+} from '../../lib/bankPaymentsKindBadges'
 import { mercuryDebitCardIdFromRaw } from '../../lib/mercuryRawDebitCard'
 import { supabase } from '../../lib/supabase'
-import { bankPaymentTargetsFromStageRows, type StageRow } from '../../lib/jobsStagesBoard'
-import { denverCalendarDayKey } from '../../utils/dateUtils'
+import {
+  bankPaymentTargetCuesAfterAmount,
+  bankPaymentTargetDetailLead,
+  bankPaymentTargetPrimaryLabel,
+  bankPaymentTargetsFromStageRows,
+  formatBankPaymentTargetDollars,
+  type StageRow,
+} from '../../lib/jobsStagesBoard'
+import { useMercuryLedgerNicknames } from '../../hooks/useMercuryLedgerNicknames'
+import { denverCalendarDayKey, formatWorkDateYmdFriendly } from '../../utils/dateUtils'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import type { Database } from '../../types/database'
 
 type MercuryCandidate =
   Database['public']['Functions']['list_mercury_transactions_for_bank_payments']['Returns'][number]
-
-const PAYMENT_TYPES = ['ACH', 'Wire', 'Check', 'Cash', 'Card (external)', 'Other'] as const
 
 function formatMoney(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -25,6 +40,38 @@ function formatMoney(n: number): string {
 
 function canRoleApplyBankPayments(role: string | null): boolean {
   return role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
+}
+
+function KindBadgePill({
+  kind,
+  kindBadges,
+}: {
+  kind: string
+  kindBadges: Record<string, MercuryKindBadge>
+}) {
+  const b = kindBadges[kind]
+  const label = mercuryKindPaymentTypeLabel(kind, kindBadges)
+  const bg = normalizeHexColor(b?.color ?? '') ?? defaultKindBadgeColor()
+  const color = pickTextOnBackground(bg)
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        verticalAlign: 'middle',
+        maxWidth: '100%',
+        padding: '1px 6px',
+        borderRadius: 4,
+        fontSize: '0.7rem',
+        fontWeight: 600,
+        lineHeight: 1.35,
+        background: bg,
+        color,
+        wordBreak: 'break-word',
+      }}
+    >
+      {label}
+    </span>
+  )
 }
 
 export type BankPaymentsModalProps = {
@@ -46,8 +93,9 @@ export default function BankPaymentsModal({
   billedRows,
   onApplied,
 }: BankPaymentsModalProps) {
+  const { nicknameByAccount, nicknameByDebitCard } = useMercuryLedgerNicknames({ enabled: open })
   const [sortingConfig, setSortingConfig] = useState<BankingSortingConfigV1>(() =>
-    loadBankingSortingConfig(authUserId),
+    loadBankPaymentsSortingConfig(authUserId),
   )
   const [devFilterOpen, setDevFilterOpen] = useState(false)
   const [sortingConfigModalOpen, setSortingConfigModalOpen] = useState(false)
@@ -56,24 +104,80 @@ export default function BankPaymentsModal({
   const [debitCardChoices, setDebitCardChoices] = useState<string[]>([])
 
   const [candidates, setCandidates] = useState<MercuryCandidate[]>([])
+  const [bankTxSearchQuery, setBankTxSearchQuery] = useState('')
   const [listLoading, setListLoading] = useState(false)
   const [listError, setListError] = useState<string | null>(null)
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [allocLines, setAllocLines] = useState<AllocLine[]>([])
-  const [paidOnYmd, setPaidOnYmd] = useState(() => denverCalendarDayKey(Date.now()))
-  const [paymentType, setPaymentType] = useState<(typeof PAYMENT_TYPES)[number]>('ACH')
   const [internalNote, setInternalNote] = useState('')
   const [applyError, setApplyError] = useState<string | null>(null)
   const [applySubmitting, setApplySubmitting] = useState(false)
+  const [kindBadges, setKindBadges] = useState<Record<string, MercuryKindBadge>>(() => loadBankPaymentsKindBadges())
 
   const targets = useMemo(() => bankPaymentTargetsFromStageRows(billedRows), [billedRows])
   const targetByKey = useMemo(() => new Map(targets.map((t) => [t.key, t] as const)), [targets])
+  const targetSelectOptions = useMemo(
+    () =>
+      targets.map((t) => {
+        const cues = bankPaymentTargetCuesAfterAmount(t)
+        const dollars = formatBankPaymentTargetDollars(t.remaining)
+        return {
+          value: t.key,
+          label: t.searchLabel,
+          labelContent: (
+            <>
+              <strong style={{ fontWeight: 600 }}>{dollars}</strong>
+              {cues ? <span>{` · ${cues}`}</span> : null}
+            </>
+          ),
+        }
+      }),
+    [targets],
+  )
+
+  const filteredCandidates = useMemo(() => {
+    const q = bankTxSearchQuery.trim().toLowerCase()
+    if (!q) return candidates
+    return candidates.filter((c) => {
+      const cp = (c.counterparty_name ?? '').toLowerCase()
+      const note = (c.note ?? '').toLowerCase()
+      const memo = (c.external_memo ?? '').toLowerCase()
+      const amountStr = formatMoney(Math.abs(Number(c.amount))).toLowerCase()
+      const posted = c.posted_at
+        ? new Date(c.posted_at).toLocaleDateString('en-US', { timeZone: 'America/Chicago' }).toLowerCase()
+        : ''
+      return (
+        cp.includes(q) ||
+        note.includes(q) ||
+        memo.includes(q) ||
+        amountStr.includes(q) ||
+        posted.includes(q)
+      )
+    })
+  }, [candidates, bankTxSearchQuery])
 
   const selected = useMemo(
     () => (selectedId ? candidates.find((c) => c.mercury_transaction_id === selectedId) ?? null : null),
     [candidates, selectedId],
   )
+
+  const kindPaymentTypeLabel = useMemo(
+    () => (selected ? mercuryKindPaymentTypeLabel(selected.kind, kindBadges) : ''),
+    [selected, kindBadges],
+  )
+
+  /** `jobs_ledger_payments.paid_on` — Chicago calendar day from Mercury `posted_at` only (not user-editable). */
+  const paidOnYmdFromMercury = useMemo(() => {
+    if (!selected?.posted_at) return null
+    try {
+      const ms = new Date(selected.posted_at).getTime()
+      if (Number.isNaN(ms)) return null
+      return denverCalendarDayKey(ms)
+    } catch {
+      return null
+    }
+  }, [selected])
 
   const canApply = canRoleApplyBankPayments(authRole)
 
@@ -89,6 +193,8 @@ export default function BankPaymentsModal({
         accountIds: cfg.accountIds,
         debitCardIds: cfg.debitCardIds,
         startDateYmd: cfg.startDateYmd,
+        excludeCounterpartyContains: cfg.excludeCounterpartyContains,
+        excludeNoteContains: cfg.excludeNoteContains,
       }
       const data = await withSupabaseRetry(
         async () =>
@@ -114,8 +220,13 @@ export default function BankPaymentsModal({
 
   useEffect(() => {
     if (!open) return
-    setSortingConfig(loadBankingSortingConfig(authUserId))
+    setSortingConfig(loadBankPaymentsSortingConfig(authUserId))
   }, [open, authUserId])
+
+  useEffect(() => {
+    if (!open) return
+    setKindBadges(loadBankPaymentsKindBadges())
+  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -139,6 +250,19 @@ export default function BankPaymentsModal({
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [open, onClose])
+
+  useEffect(() => {
+    if (!open) setBankTxSearchQuery('')
+  }, [open])
+
+  /** Keep selection on the filtered bank list; when the filter hides the current row, select the first visible row. */
+  useEffect(() => {
+    if (!open) return
+    setSelectedId((prev) => {
+      if (prev && filteredCandidates.some((r) => r.mercury_transaction_id === prev)) return prev
+      return filteredCandidates[0]?.mercury_transaction_id ?? null
+    })
+  }, [open, filteredCandidates])
 
   const loadMercurySamplesForConfigModal = useCallback(async () => {
     const { data, error } = await supabase
@@ -200,8 +324,20 @@ export default function BankPaymentsModal({
     return null
   }, [selected, allocLines, targetByKey])
 
+  const applyDisabled =
+    !canApply ||
+    !selected ||
+    applySubmitting ||
+    !!validationMessage ||
+    targets.length === 0 ||
+    !paidOnYmdFromMercury
+
   async function submitApply() {
     if (!selected || !canApply) return
+    if (!paidOnYmdFromMercury) {
+      setApplyError('Missing Mercury posted date for this transaction.')
+      return
+    }
     setApplySubmitting(true)
     setApplyError(null)
     const allocations: Array<{ invoice_id?: string; job_id?: string; amount: number }> = []
@@ -228,8 +364,8 @@ export default function BankPaymentsModal({
         async () =>
           supabase.rpc('apply_mercury_bank_payment_allocations', {
             p_mercury_transaction_id: selected.mercury_transaction_id,
-            p_paid_on: paidOnYmd,
-            p_payment_type: paymentType,
+            p_paid_on: paidOnYmdFromMercury,
+            p_payment_type: kindPaymentTypeLabel,
             p_note: internalNote.trim(),
             p_allocations: allocations,
           }),
@@ -265,7 +401,7 @@ export default function BankPaymentsModal({
       }}
       role="dialog"
       aria-modal="true"
-      aria-labelledby="bank-payments-modal-title"
+      aria-labelledby="accounts-receivable-modal-title"
     >
       <div
         style={{
@@ -290,8 +426,8 @@ export default function BankPaymentsModal({
             borderBottom: '1px solid #e5e7eb',
           }}
         >
-          <h2 id="bank-payments-modal-title" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>
-            Bank Payments
+          <h2 id="accounts-receivable-modal-title" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>
+            Accounts Receivable
           </h2>
           <button
             type="button"
@@ -364,8 +500,8 @@ export default function BankPaymentsModal({
 
         {!canApply && (
           <div style={{ padding: '0.5rem 1.25rem', background: '#fffbeb', fontSize: '0.8125rem', color: '#92400e' }}>
-            Your role cannot record job payments. Bank Payments apply is limited to dev, master, assistant, and primary (same as
-            Mark Paid).
+            Your role cannot record job payments. Recording payments from this modal is limited to dev, master, assistant, and
+            primary (same as Mark Paid).
           </div>
         )}
 
@@ -380,8 +516,27 @@ export default function BankPaymentsModal({
               minHeight: 0,
             }}
           >
-            <div style={{ padding: '0.5rem 0.75rem', fontWeight: 600, fontSize: '0.8125rem', color: '#374151' }}>
+            <div style={{ padding: '0.5rem 0.75rem 0.35rem', fontWeight: 600, fontSize: '0.8125rem', color: '#374151' }}>
               Bank transactions
+            </div>
+            <div style={{ padding: '0 0.5rem 0.5rem', flexShrink: 0 }}>
+              <input
+                id="ar-bank-tx-search"
+                type="search"
+                autoComplete="off"
+                aria-label="Search bank transactions by counterparty, note, memo, or amount"
+                placeholder="Search counterparty, note, memo, amount…"
+                value={bankTxSearchQuery}
+                onChange={(e) => setBankTxSearchQuery(e.target.value)}
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  padding: '0.4rem 0.5rem',
+                  fontSize: '0.8125rem',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 4,
+                }}
+              />
             </div>
             <div style={{ flex: 1, overflow: 'auto' }}>
               {listLoading && <p style={{ padding: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>Loading…</p>}
@@ -391,7 +546,12 @@ export default function BankPaymentsModal({
               {!listLoading && !listError && candidates.length === 0 && (
                 <p style={{ padding: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>No matching transactions.</p>
               )}
-              {candidates.map((c) => {
+              {!listLoading && !listError && candidates.length > 0 && filteredCandidates.length === 0 && (
+                <p style={{ padding: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                  No bank transactions match this search.
+                </p>
+              )}
+              {filteredCandidates.map((c) => {
                 const active = c.mercury_transaction_id === selectedId
                 const posted = c.posted_at
                   ? new Date(c.posted_at).toLocaleDateString('en-US', { timeZone: 'America/Chicago' })
@@ -402,7 +562,9 @@ export default function BankPaymentsModal({
                     type="button"
                     onClick={() => setSelectedId(c.mercury_transaction_id)}
                     style={{
-                      display: 'block',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'stretch',
                       width: '100%',
                       textAlign: 'left',
                       padding: '0.6rem 0.75rem',
@@ -411,12 +573,46 @@ export default function BankPaymentsModal({
                       background: active ? '#eff6ff' : 'white',
                       cursor: 'pointer',
                       fontSize: '0.8125rem',
+                      boxSizing: 'border-box',
                     }}
                   >
-                    <div style={{ fontWeight: 600, color: '#111827' }}>{formatMoney(Math.abs(Number(c.amount)))}</div>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '0.5rem',
+                        minWidth: 0,
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontWeight: 600,
+                          color: '#111827',
+                          minWidth: 0,
+                          flex: '1 1 auto',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {formatMoney(Math.abs(Number(c.amount)))}
+                      </div>
+                      <div
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <KindBadgePill kind={c.kind} kindBadges={kindBadges} />
+                        <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{posted}</span>
+                      </div>
+                    </div>
                     <div style={{ color: '#6b7280', marginTop: 2 }}>{c.counterparty_name?.trim() || '—'}</div>
                     <div style={{ color: '#9ca3af', marginTop: 2, fontSize: '0.75rem' }}>
-                      {posted} · {formatMercuryKind(c.kind)} · rem. {formatMoney(Number(c.remaining_available))}
+                      rem. {formatMoney(Number(c.remaining_available))}
                     </div>
                   </button>
                 )
@@ -439,7 +635,7 @@ export default function BankPaymentsModal({
                       fontSize: '0.875rem',
                     }}
                   >
-                    <div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem' }}>
                       <strong>Amount:</strong> {formatMoney(Math.abs(Number(selected.amount)))} ·{' '}
                       <strong>Remaining to allocate:</strong> {formatMoney(Number(selected.remaining_available))}
                     </div>
@@ -455,32 +651,28 @@ export default function BankPaymentsModal({
                     ) : null}
                   </div>
 
-                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 500, marginBottom: '0.25rem' }}>
-                    Effective date
-                  </label>
-                  <input
-                    type="date"
-                    value={paidOnYmd}
-                    onChange={(e) => setPaidOnYmd(e.target.value)}
-                    disabled={!canApply}
-                    style={{ width: '100%', maxWidth: 200, padding: '0.35rem', marginBottom: '0.75rem', boxSizing: 'border-box' }}
-                  />
+                  <div style={{ marginBottom: '0.75rem', fontSize: '0.875rem', color: '#374151' }}>
+                    <strong>Posted:</strong>{' '}
+                    {paidOnYmdFromMercury ? (
+                      <span>{formatWorkDateYmdFriendly(paidOnYmdFromMercury)}</span>
+                    ) : (
+                      <span style={{ color: '#9ca3af' }}>—</span>
+                    )}
+                  </div>
 
-                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 500, marginBottom: '0.25rem' }}>
-                    Payment type
-                  </label>
-                  <select
-                    value={paymentType}
-                    onChange={(e) => setPaymentType(e.target.value as (typeof PAYMENT_TYPES)[number])}
-                    disabled={!canApply}
-                    style={{ width: '100%', maxWidth: 280, padding: '0.35rem', marginBottom: '0.75rem' }}
+                  <div
+                    style={{
+                      marginBottom: '0.75rem',
+                      fontSize: '0.875rem',
+                      color: '#374151',
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                    }}
                   >
-                    {PAYMENT_TYPES.map((pt) => (
-                      <option key={pt} value={pt}>
-                        {pt}
-                      </option>
-                    ))}
-                  </select>
+                    <strong>Kind:</strong> <KindBadgePill kind={selected.kind} kindBadges={kindBadges} />
+                  </div>
 
                   <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 500, marginBottom: '0.25rem' }}>
                     Internal note (optional)
@@ -503,83 +695,139 @@ export default function BankPaymentsModal({
                   {targets.length === 0 ? (
                     <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>No eligible billed lines (non-Stripe with balance).</p>
                   ) : (
-                    allocLines.map((line) => (
-                      <div
-                        key={line.id}
-                        style={{
-                          display: 'grid',
-                          gridTemplateColumns: '1fr 120px auto',
-                          gap: '0.5rem',
-                          alignItems: 'center',
-                          marginBottom: '0.5rem',
-                        }}
-                      >
-                        <select
-                          value={line.targetKey}
-                          onChange={(e) => {
-                            const v = e.target.value
-                            setAllocLines((rows) =>
-                              rows.map((r) => (r.id === line.id ? { ...r, targetKey: v } : r)),
-                            )
-                          }}
-                          disabled={!canApply}
-                          style={{ padding: '0.35rem', minWidth: 0 }}
-                        >
-                          <option value="">— Select billed line —</option>
-                          {targets.map((t) => (
-                            <option key={t.key} value={t.key}>
-                              {t.label} (max {formatMoney(t.remaining)})
-                            </option>
-                          ))}
-                        </select>
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          placeholder="Amount"
-                          value={line.amountStr}
-                          onChange={(e) => {
-                            const v = e.target.value
-                            setAllocLines((rows) => rows.map((r) => (r.id === line.id ? { ...r, amountStr: v } : r)))
-                          }}
-                          disabled={!canApply}
-                          style={{ padding: '0.35rem' }}
-                        />
-                        <button
-                          type="button"
-                          disabled={!canApply || allocLines.length <= 1}
-                          onClick={() => setAllocLines((rows) => rows.filter((r) => r.id !== line.id))}
+                    <>
+                      {allocLines.map((line) => {
+                        const picked = line.targetKey ? targetByKey.get(line.targetKey) : undefined
+                        const detailLead = picked ? bankPaymentTargetDetailLead(picked) : ''
+                        return (
+                          <div
+                            key={line.id}
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '0.5rem',
+                              marginBottom: '0.75rem',
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                gap: '0.5rem',
+                              }}
+                            >
+                              <div style={{ flex: '1 1 auto', minWidth: 0 }}>
+                                <SearchableSelect
+                                  id={`ar-alloc-target-${line.id}`}
+                                  value={line.targetKey}
+                                  onChange={(v) => {
+                                    setAllocLines((rows) =>
+                                      rows.map((r) => (r.id === line.id ? { ...r, targetKey: v } : r)),
+                                    )
+                                  }}
+                                  options={targetSelectOptions}
+                                  emptyOption={{ value: '', label: '— Select billed line —' }}
+                                  hideEmptyOptionInListWhenUnset
+                                  disabled={!canApply}
+                                  placeholder="— Select billed line —"
+                                  listAriaLabel="Billed line for allocation"
+                                  portalZIndex={1200}
+                                />
+                                {picked ? (
+                                  <div
+                                    style={{
+                                      marginTop: 6,
+                                      fontSize: '0.75rem',
+                                      color: '#4b5563',
+                                      lineHeight: 1.4,
+                                    }}
+                                  >
+                                    <div style={{ fontWeight: 600 }}>{bankPaymentTargetPrimaryLabel(picked)}</div>
+                                    <div style={{ color: '#6b7280' }}>
+                                      {detailLead ? (
+                                        <>
+                                          {detailLead}
+                                          {' · '}
+                                        </>
+                                      ) : null}
+                                      <strong style={{ fontWeight: 600, color: '#374151' }}>
+                                        {formatBankPaymentTargetDollars(picked.remaining)}
+                                      </strong>
+                                    </div>
+                                  </div>
+                                ) : null}
+                              </div>
+                              <button
+                                type="button"
+                                disabled={!canApply || allocLines.length <= 1}
+                                onClick={() => setAllocLines((rows) => rows.filter((r) => r.id !== line.id))}
+                                style={{
+                                  flexShrink: 0,
+                                  alignSelf: 'flex-start',
+                                  marginTop: 2,
+                                  border: 'none',
+                                  background: 'none',
+                                  color: '#b91c1c',
+                                  cursor: allocLines.length <= 1 ? 'not-allowed' : 'pointer',
+                                  fontSize: '0.8125rem',
+                                }}
+                              >
+                                Remove
+                              </button>
+                            </div>
+                            <div>
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                placeholder="Amount"
+                                aria-label="Allocation amount"
+                                value={line.amountStr}
+                                onChange={(e) => {
+                                  const v = e.target.value
+                                  setAllocLines((rows) =>
+                                    rows.map((r) => (r.id === line.id ? { ...r, amountStr: v } : r)),
+                                  )
+                                }}
+                                disabled={!canApply}
+                                style={{ padding: '0.35rem', width: '7.5rem', boxSizing: 'border-box' }}
+                              />
+                            </div>
+                          </div>
+                        )
+                      })}
+                      {canApply ? (
+                        <div
                           style={{
-                            border: 'none',
-                            background: 'none',
-                            color: '#b91c1c',
-                            cursor: allocLines.length <= 1 ? 'not-allowed' : 'pointer',
-                            fontSize: '0.8125rem',
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            alignItems: 'center',
+                            justifyContent: 'flex-end',
+                            gap: '0.5rem',
+                            marginTop: '0.15rem',
                           }}
                         >
-                          Remove
-                        </button>
-                      </div>
-                    ))
-                  )}
-
-                  {targets.length > 0 && canApply && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setAllocLines((rows) => [...rows, { id: crypto.randomUUID(), targetKey: '', amountStr: '' }])
-                      }
-                      style={{
-                        marginTop: '0.25rem',
-                        padding: '0.35rem 0.65rem',
-                        fontSize: '0.8125rem',
-                        border: '1px solid #d1d5db',
-                        borderRadius: 4,
-                        background: 'white',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Add allocation
-                    </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setAllocLines((rows) => [
+                                ...rows,
+                                { id: crypto.randomUUID(), targetKey: '', amountStr: '' },
+                              ])
+                            }
+                            style={{
+                              padding: '0.35rem 0.65rem',
+                              fontSize: '0.8125rem',
+                              border: '1px solid #d1d5db',
+                              borderRadius: 4,
+                              background: 'white',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Add allocation
+                          </button>
+                        </div>
+                      ) : null}
+                    </>
                   )}
 
                   {validationMessage && (
@@ -616,21 +864,15 @@ export default function BankPaymentsModal({
               </button>
               <button
                 type="button"
-                disabled={!canApply || !selected || applySubmitting || !!validationMessage || targets.length === 0}
+                disabled={applyDisabled}
                 onClick={() => void submitApply()}
                 style={{
                   padding: '0.45rem 0.9rem',
                   borderRadius: 4,
                   border: 'none',
-                  background:
-                    !canApply || !selected || applySubmitting || !!validationMessage || targets.length === 0
-                      ? '#d1d5db'
-                      : '#2563eb',
+                  background: applyDisabled ? '#d1d5db' : '#2563eb',
                   color: 'white',
-                  cursor:
-                    !canApply || !selected || applySubmitting || !!validationMessage || targets.length === 0
-                      ? 'not-allowed'
-                      : 'pointer',
+                  cursor: applyDisabled ? 'not-allowed' : 'pointer',
                   fontWeight: 600,
                 }}
               >
@@ -647,11 +889,21 @@ export default function BankPaymentsModal({
         initialConfig={sortingConfig}
         kindChoices={kindChoices}
         accountChoices={accountChoices}
-        nicknameByAccount={{}}
+        nicknameByAccount={nicknameByAccount}
         debitCardChoices={debitCardChoices}
-        nicknameByDebitCard={{}}
+        nicknameByDebitCard={nicknameByDebitCard}
+        dialogAriaSuffix="bank-payments"
+        title="Accounts Receivable Sorting"
+        contextNote="This configuration applies only to Jobs → Stages → Accounts Receivable. It does not change Banking or Quickfill sorting filters."
+        enableKindBadgeEditor
+        enableTextExclusionEditor
+        kindBadges={kindBadges}
+        onSaveKindBadges={(badges) => {
+          saveBankPaymentsKindBadges(badges)
+          setKindBadges(badges)
+        }}
         onSave={(cfg) => {
-          saveBankingSortingConfig(authUserId, cfg)
+          saveBankPaymentsSortingConfig(authUserId, cfg)
           setSortingConfig(cfg)
           setSortingConfigModalOpen(false)
           void refreshList()

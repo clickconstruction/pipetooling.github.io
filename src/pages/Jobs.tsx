@@ -25,6 +25,7 @@ import AddInspectionModal from '../components/AddInspectionModal'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { jobBillingContextFromJob } from '../lib/jobBillingContext'
 import { useBillCustomerModal } from '../contexts/BillCustomerModalContext'
+import { canRoleUseArBankCount, useArBankUnallocatedCount } from '../hooks/useArBankUnallocatedCount'
 import BankPaymentsModal from '../components/jobs/BankPaymentsModal'
 import BilledPaymentConfirmationModal from '../components/jobs/BilledPaymentConfirmationModal'
 import BilledBillViewModal from '../components/jobs/BilledBillViewModal'
@@ -851,6 +852,12 @@ export default function Jobs() {
   const [markPaidJob, setMarkPaidJob] = useState<JobWithDetails | null>(null)
   const [markPaidInvoice, setMarkPaidInvoice] = useState<InvoiceWithJob | null>(null)
   const [bankPaymentsModalOpen, setBankPaymentsModalOpen] = useState(false)
+  const { count: arBankTxUnallocatedCount } = useArBankUnallocatedCount({
+    enabled: activeTab === 'stages',
+    authUserId: authUser?.id,
+    authRole,
+    bankPaymentsModalOpen,
+  })
   const [viewBillInvoice, setViewBillInvoice] = useState<InvoiceWithJob | null>(null)
   const [sendBackJob, setSendBackJob] = useState<{
     id: string
@@ -950,6 +957,22 @@ export default function Jobs() {
     () => buildJobsStagesBoardLists(jobs, stagesSearchQuery),
     [jobs, stagesSearchQuery],
   )
+
+  const accountsReceivableButtonAccessibleName = useMemo(() => {
+    const can =
+      authRole === 'dev' ||
+      authRole === 'master_technician' ||
+      authRole === 'assistant' ||
+      authRole === 'primary'
+    if (!can) return 'Only dev, master, assistant, and primary can record payments'
+    const hasUnalloc =
+      typeof arBankTxUnallocatedCount === 'number' && arBankTxUnallocatedCount > 0
+    if (hasUnalloc) {
+      return `Accounts Receivable, ${arBankTxUnallocatedCount} unallocated bank transaction${arBankTxUnallocatedCount === 1 ? '' : 's'}`
+    }
+    if (stagesBoardLists.billedRows.length === 0) return 'No billed rows'
+    return 'Accounts Receivable: apply bank deposits to billed lines (non-Stripe)'
+  }, [authRole, stagesBoardLists.billedRows.length, arBankTxUnallocatedCount])
 
   const billedAgingBuckets = useMemo(() => {
     const st = (j: JobWithDetails) => (j.status ?? 'working') as string
@@ -3568,6 +3591,40 @@ ${totalsHtml}
       return next
     }, { replace: true })
   }, [editJobId, jobs, loading])
+
+  const openBankPaymentsParam = searchParams.get('openBankPayments')
+  useEffect(() => {
+    const wantsOpen = openBankPaymentsParam === 'true' || openBankPaymentsParam === '1'
+    if (!wantsOpen) return
+    if (loading) return
+
+    const stripOpenBankPaymentsParam = () => {
+      setSearchParams(
+        (p) => {
+          const next = new URLSearchParams(p)
+          next.delete('openBankPayments')
+          return next
+        },
+        { replace: true },
+      )
+    }
+
+    if (!canRoleUseArBankCount(authRole)) {
+      stripOpenBankPaymentsParam()
+      return
+    }
+    const isPrimary = authRole === 'primary' || myRole === 'primary'
+    if (isPrimary) {
+      stripOpenBankPaymentsParam()
+      return
+    }
+    if (activeTab !== 'stages') {
+      stripOpenBankPaymentsParam()
+      return
+    }
+    setBankPaymentsModalOpen(true)
+    stripOpenBankPaymentsParam()
+  }, [openBankPaymentsParam, loading, authRole, myRole, activeTab, setSearchParams])
 
   // When editLabor=hcp is in URL and labor jobs are loaded, open edit or new labor modal
   const editLaborHcp = searchParams.get('editLabor')
@@ -6951,66 +7008,85 @@ ${totalsHtml}
                       {`30+ days: ${billedAgingBuckets.count30_90} | $${formatCurrency(billedAgingBuckets.sum30_90)} — 90+ days: ${billedAgingBuckets.count90} | $${formatCurrency(billedAgingBuckets.sum90)} · est. bill date`}
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setBankPaymentsModalOpen(true)}
-                    disabled={
-                      billedRows.length === 0 ||
-                      !(
-                        authRole === 'dev' ||
-                        authRole === 'master_technician' ||
-                        authRole === 'assistant' ||
-                        authRole === 'primary'
-                      )
-                    }
-                    title={
-                      billedRows.length === 0
-                        ? 'No billed rows'
-                        : authRole === 'dev' ||
+                  <div style={{ position: 'relative', flexShrink: 0, width: 'fit-content' }}>
+                    <button
+                      type="button"
+                      onClick={() => setBankPaymentsModalOpen(true)}
+                      disabled={
+                        billedRows.length === 0 ||
+                        !(
+                          authRole === 'dev' ||
+                          authRole === 'master_technician' ||
+                          authRole === 'assistant' ||
+                          authRole === 'primary'
+                        )
+                      }
+                      title={accountsReceivableButtonAccessibleName}
+                      aria-label={accountsReceivableButtonAccessibleName}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 6,
+                        height: 36,
+                        padding: '0 0.75rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: 4,
+                        background:
+                          billedRows.length === 0 ||
+                          !(
+                            authRole === 'dev' ||
                             authRole === 'master_technician' ||
                             authRole === 'assistant' ||
                             authRole === 'primary'
-                          ? 'Apply bank deposits to billed lines (non-Stripe)'
-                          : 'Only dev, master, assistant, and primary can record payments'
-                    }
-                    aria-label="Open bank payments modal"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 6,
-                      flexShrink: 0,
-                      height: 36,
-                      padding: '0 0.75rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: 4,
-                      background:
-                        billedRows.length === 0 ||
-                        !(
-                          authRole === 'dev' ||
-                          authRole === 'master_technician' ||
-                          authRole === 'assistant' ||
-                          authRole === 'primary'
-                        )
-                          ? '#f3f4f6'
-                          : 'white',
-                      cursor:
-                        billedRows.length === 0 ||
-                        !(
-                          authRole === 'dev' ||
-                          authRole === 'master_technician' ||
-                          authRole === 'assistant' ||
-                          authRole === 'primary'
-                        )
-                          ? 'not-allowed'
-                          : 'pointer',
-                      color: '#374151',
-                      fontSize: '0.8125rem',
-                      fontWeight: 500,
-                    }}
-                  >
-                    Bank Payments
-                  </button>
+                          )
+                            ? '#f3f4f6'
+                            : 'white',
+                        cursor:
+                          billedRows.length === 0 ||
+                          !(
+                            authRole === 'dev' ||
+                            authRole === 'master_technician' ||
+                            authRole === 'assistant' ||
+                            authRole === 'primary'
+                          )
+                            ? 'not-allowed'
+                            : 'pointer',
+                        color: '#374151',
+                        fontSize: '0.8125rem',
+                        fontWeight: 500,
+                      }}
+                    >
+                      Accounts Receivable
+                    </button>
+                    {typeof arBankTxUnallocatedCount === 'number' && arBankTxUnallocatedCount > 0 ? (
+                      <span
+                        aria-hidden
+                        style={{
+                          position: 'absolute',
+                          top: -4,
+                          right: -4,
+                          minWidth: 18,
+                          padding: '0 5px',
+                          height: 18,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          borderRadius: 9999,
+                          background: '#f59e0b',
+                          color: '#1c1917',
+                          fontSize: 10,
+                          fontWeight: 700,
+                          fontVariantNumeric: 'tabular-nums',
+                          lineHeight: 1,
+                          boxSizing: 'border-box',
+                          pointerEvents: 'none',
+                        }}
+                      >
+                        {arBankTxUnallocatedCount > 99 ? '99+' : arBankTxUnallocatedCount}
+                      </span>
+                    ) : null}
+                  </div>
                   <button
                     type="button"
                     onClick={() => printBilledAwaitingPaymentReport(billedRows, { searchFilter: stagesSearchQuery })}

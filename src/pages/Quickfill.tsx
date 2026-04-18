@@ -1,7 +1,9 @@
 import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import DashboardArBankUnallocatedBanner from '../components/DashboardArBankUnallocatedBanner'
 import DashboardTallyStaleStaffBanner from '../components/DashboardTallyStaleStaffBanner'
 import { DashboardStaleTallyStaffFollowUpModal } from '../components/DashboardStaleTallyStaffFollowUpModal'
 import { BilledAwaitingPaymentSection } from '../components/quickfill/BilledAwaitingPaymentSection'
@@ -32,6 +34,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useDispatchInbox } from '../hooks/useDispatchInbox'
 import { useUnpricedFixturesCount } from '../hooks/useUnpricedFixturesCount'
+import { canRoleUseArBankCount, useArBankUnallocatedCount } from '../hooks/useArBankUnallocatedCount'
 import { useStaleTallyStaffFollowUp } from '../hooks/useStaleTallyStaffFollowUp'
 import { TALLY_STALE_MIN_AGE_DAYS } from '../lib/tallyStaleMinAgeDays'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
@@ -354,6 +357,7 @@ function QuickfillDevSectionSortableRow({
 }
 
 function QuickfillPage() {
+  const navigate = useNavigate()
   const { user: authUser, role } = useAuth()
   const { showToast } = useToastContext()
   const {
@@ -380,6 +384,12 @@ function QuickfillPage() {
     transactionCount: staleTallyStaffTxCount,
     refetch: refetchStaleTallyStaffFollowUp,
   } = useStaleTallyStaffFollowUp(TALLY_STALE_MIN_AGE_DAYS)
+  const arBankCountEnabled = Boolean(authUser?.id) && canRoleUseArBankCount(role)
+  const { count: arBankUnallocatedCount } = useArBankUnallocatedCount({
+    enabled: arBankCountEnabled,
+    authUserId: authUser?.id,
+    authRole: role,
+  })
   const [warningsModalOpen, setWarningsModalOpen] = useState(false)
   const [sectionMarks, setSectionMarks] = useState<Record<string, { marked_at: string; marked_by?: string; marked_by_name?: string | null }>>({})
   const [forceExpandedSections, setForceExpandedSections] = useState<Set<string>>(new Set(['cant-reach']))
@@ -720,10 +730,22 @@ function QuickfillPage() {
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'warnings', label: 'Warnings' })}
           >
             <QuickfillMetricReporter
+              sectionId="ar-bank-unallocated"
+              count={arBankCountEnabled ? arBankUnallocatedCount : null}
+              loading={arBankCountEnabled && arBankUnallocatedCount === null}
+            />
+            <QuickfillMetricReporter
               sectionId="warnings"
               count={typeof staleTallyStaffTxCount === 'number' ? staleTallyStaffTxCount : null}
               loading={staleTallyStaffTxCount === null}
             />
+            {arBankCountEnabled && (
+              <DashboardArBankUnallocatedBanner
+                count={arBankUnallocatedCount ?? 0}
+                loading={arBankUnallocatedCount === null}
+                onGoToAr={() => navigate('/jobs?tab=stages&openBankPayments=true')}
+              />
+            )}
             <DashboardTallyStaleStaffBanner
               peopleCount={typeof staleTallyStaffPeopleCount === 'number' ? staleTallyStaffPeopleCount : 0}
               transactionCount={typeof staleTallyStaffTxCount === 'number' ? staleTallyStaffTxCount : 0}

@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from 'react'
 import { createPortal } from 'react-dom'
 
@@ -14,7 +15,13 @@ const DROPDOWN_MARGIN_PX = 2
 const PORTAL_Z_INDEX = 1100
 
 /** Selectable row (value/label). */
-export type SearchableSelectSelectableOption = { value: string; label: string }
+export type SearchableSelectSelectableOption = {
+  value: string
+  /** Plain text for search filtering and accessible name; required even when `labelContent` is set. */
+  label: string
+  /** When set, shown in the list and closed trigger instead of `label` (search still uses `label`). */
+  labelContent?: ReactNode
+}
 
 /** Non-interactive divider between option groups (e.g. Schedule assignee sections). */
 export type SearchableSelectSeparatorOption = { kind: 'separator'; id: string }
@@ -42,11 +49,31 @@ export type SearchableSelectProps = {
   searchable?: boolean
   /** e.g. { value: '', label: '—' } or service type placeholder. Do not mix with mid-list separators. */
   emptyOption?: SearchableSelectSelectableOption
+  /**
+   * When true and `value === emptyOption.value`, omit the empty option row from the open list
+   * (trigger still shows it). Use when the duplicate row feels redundant next to the search field.
+   */
+  hideEmptyOptionInListWhenUnset?: boolean
   required?: boolean
   /** Accessible name for the listbox */
   listAriaLabel?: string
   /** Portaled dropdown z-index; raise above modals with higher overlays (default 1100). */
   portalZIndex?: number
+}
+
+/** List rows for the open panel; may hide empty option while selection is still empty. */
+function filterOptionsForListRender(
+  filtered: SearchableSelectOption[],
+  hideEmptyWhenUnset: boolean,
+  emptyOption: SearchableSelectSelectableOption | undefined,
+  currentValue: string,
+): SearchableSelectOption[] {
+  if (!hideEmptyWhenUnset || !emptyOption || currentValue !== emptyOption.value) return filtered
+  return filtered.filter((o) => {
+    if (isSeparatorOption(o)) return true
+    if (!isSelectableOption(o)) return true
+    return o.value !== emptyOption.value
+  })
 }
 
 function normalizeOptions(
@@ -149,6 +176,7 @@ export function SearchableSelect({
   id: idProp,
   searchable = true,
   emptyOption,
+  hideEmptyOptionInListWhenUnset = false,
   required = false,
   listAriaLabel = 'Options',
   portalZIndex = PORTAL_Z_INDEX,
@@ -179,11 +207,22 @@ export function SearchableSelect({
     [allOptions, query]
   )
 
-  const selectedLabel = useMemo(() => {
+  const filteredForRender = useMemo(
+    () =>
+      filterOptionsForListRender(
+        filtered,
+        hideEmptyOptionInListWhenUnset,
+        emptyOption,
+        value,
+      ),
+    [filtered, hideEmptyOptionInListWhenUnset, emptyOption, value],
+  )
+
+  const selectedDisplay = useMemo((): ReactNode => {
     const hit = allOptions.find(
       (o): o is SearchableSelectSelectableOption => isSelectableOption(o) && o.value === value,
     )
-    if (hit) return hit.label
+    if (hit) return hit.labelContent ?? hit.label
     return placeholder
   }, [allOptions, value, placeholder])
 
@@ -247,7 +286,7 @@ export function SearchableSelect({
 
   useLayoutEffect(() => {
     updateListPosition()
-  }, [updateListPosition, open, query, filtered.length])
+  }, [updateListPosition, open, query, filteredForRender.length])
 
   useEffect(() => {
     if (!open) return
@@ -282,19 +321,19 @@ export function SearchableSelect({
   }, [open, close])
 
   useEffect(() => {
-    if (activeIndex >= filtered.length) {
-      setActiveIndex(filtered.length > 0 ? filtered.length - 1 : -1)
+    if (activeIndex >= filteredForRender.length) {
+      setActiveIndex(filteredForRender.length > 0 ? filteredForRender.length - 1 : -1)
     }
-  }, [filtered.length, activeIndex, filtered])
+  }, [filteredForRender.length, activeIndex, filteredForRender])
 
   useEffect(() => {
-    if (activeIndex < 0 || activeIndex >= filtered.length) return
-    const row = filtered[activeIndex]
+    if (activeIndex < 0 || activeIndex >= filteredForRender.length) return
+    const row = filteredForRender[activeIndex]
     if (row && isSeparatorOption(row)) {
-      const next = firstSelectableIndex(filtered)
+      const next = firstSelectableIndex(filteredForRender)
       setActiveIndex(next)
     }
-  }, [filtered, activeIndex])
+  }, [filteredForRender, activeIndex])
 
   useEffect(() => {
     if (!open) return
@@ -307,7 +346,7 @@ export function SearchableSelect({
     if (!open || activeIndex < 0) return
     const el = optionRefs.current.get(activeIndex)
     el?.scrollIntoView({ block: 'nearest' })
-  }, [activeIndex, open, filtered])
+  }, [activeIndex, open, filteredForRender])
 
   const applyOption = (v: string) => {
     onChange(v)
@@ -319,28 +358,28 @@ export function SearchableSelect({
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault()
       if (!open) {
-        if (firstSelectableIndex(allOptions) < 0) return
+        if (firstSelectableIndex(filteredForRender) < 0) return
         const idx =
           e.key === 'ArrowDown'
-            ? firstSelectableIndex(allOptions)
-            : lastSelectableIndex(allOptions)
+            ? firstSelectableIndex(filteredForRender)
+            : lastSelectableIndex(filteredForRender)
         if (idx < 0) return
         openPanelWithActive(idx)
         return
       }
-      if (filtered.length === 0) return
+      if (filteredForRender.length === 0) return
       if (e.key === 'ArrowDown') {
         setActiveIndex((i) =>
-          i < 0 ? firstSelectableIndex(filtered) : nextSelectableIndex(filtered, i, 1),
+          i < 0 ? firstSelectableIndex(filteredForRender) : nextSelectableIndex(filteredForRender, i, 1),
         )
       } else {
         setActiveIndex((i) =>
-          i < 0 ? lastSelectableIndex(filtered) : nextSelectableIndex(filtered, i, -1),
+          i < 0 ? lastSelectableIndex(filteredForRender) : nextSelectableIndex(filteredForRender, i, -1),
         )
       }
     }
     if (e.key === 'Enter' && open && activeIndex >= 0) {
-      const row = filtered[activeIndex]
+      const row = filteredForRender[activeIndex]
       if (row && isSelectableOption(row)) {
         e.preventDefault()
         applyOption(row.value)
@@ -360,18 +399,18 @@ export function SearchableSelect({
     }
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      const idx = firstSelectableIndex(filtered)
+      const idx = firstSelectableIndex(filteredForRender)
       if (idx >= 0) setActiveIndex(idx)
       return
     }
     if (e.key === 'ArrowUp') {
       e.preventDefault()
-      const idx = lastSelectableIndex(filtered)
+      const idx = lastSelectableIndex(filteredForRender)
       if (idx >= 0) setActiveIndex(idx)
       return
     }
     if (e.key === 'Enter' && activeIndex >= 0) {
-      const row = filtered[activeIndex]
+      const row = filteredForRender[activeIndex]
       if (row && isSelectableOption(row)) {
         e.preventDefault()
         applyOption(row.value)
@@ -437,7 +476,7 @@ export function SearchableSelect({
             }}
           />
         )}
-        {filtered.length === 0 ? (
+        {filteredForRender.length === 0 ? (
           <div
             style={{
               ...listboxStyle,
@@ -451,7 +490,7 @@ export function SearchableSelect({
           </div>
         ) : (
           <ul id={listId} role="listbox" aria-label={listAriaLabel} style={listboxStyle}>
-            {filtered.map((o, idx) => {
+            {filteredForRender.map((o, idx) => {
               if (isSeparatorOption(o)) {
                 return (
                   <li
@@ -474,7 +513,7 @@ export function SearchableSelect({
                   </li>
                 )
               }
-              const nextRow = idx + 1 < filtered.length ? filtered[idx + 1] : undefined
+              const nextRow = idx + 1 < filteredForRender.length ? filteredForRender[idx + 1] : undefined
               const nextIsSep = nextRow ? isSeparatorOption(nextRow) : false
               return (
                 <li key={`${o.value}-${idx}`} role="none">
@@ -490,6 +529,7 @@ export function SearchableSelect({
                     onMouseEnter={() => setActiveIndex(idx)}
                     onMouseDown={(ev) => ev.preventDefault()}
                     onClick={() => applyOption(o.value)}
+                    aria-label={o.label}
                     style={{
                       width: '100%',
                       textAlign: 'left',
@@ -501,7 +541,7 @@ export function SearchableSelect({
                       fontSize: '0.875rem',
                     }}
                   >
-                    {o.label}
+                    {o.labelContent ?? o.label}
                   </button>
                 </li>
               )
@@ -527,7 +567,10 @@ export function SearchableSelect({
         aria-haspopup="listbox"
         aria-required={required || undefined}
         aria-activedescendant={
-          open && activeIndex >= 0 && filtered[activeIndex] && isSelectableOption(filtered[activeIndex])
+          open &&
+          activeIndex >= 0 &&
+          filteredForRender[activeIndex] &&
+          isSelectableOption(filteredForRender[activeIndex])
             ? `${listId}-opt-${activeIndex}`
             : undefined
         }
@@ -560,7 +603,7 @@ export function SearchableSelect({
             minWidth: 0,
           }}
         >
-          {selectedLabel}
+          {selectedDisplay}
         </span>
         <span aria-hidden style={{ flexShrink: 0, color: '#6b7280', fontSize: '0.65rem' }}>
           ▾

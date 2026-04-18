@@ -7,7 +7,14 @@ type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 /** Minimal split row for counting job-linked rows (matches MercuryJobSplit shape for length checks). */
 type AllocSplitForCount = { job_id: string; amount: number }
 
+function textContainsAnyInsensitive(haystack: string | null | undefined, patterns: string[]): boolean {
+  const h = (haystack ?? '').toLowerCase()
+  return patterns.some((p) => p.length > 0 && h.includes(p.toLowerCase()))
+}
+
 export function filterMercuryRowsForSorting(rows: MercuryTxRow[], cfg: BankingSortingConfigV1): MercuryTxRow[] {
+  const xc = cfg.excludeCounterpartyContains ?? []
+  const xn = cfg.excludeNoteContains ?? []
   return rows.filter((r) => {
     if (cfg.kinds.length > 0 && !cfg.kinds.includes(r.kind)) return false
     if (cfg.accountIds.length > 0 && !cfg.accountIds.includes(r.mercury_account_id)) return false
@@ -16,6 +23,8 @@ export function filterMercuryRowsForSorting(rows: MercuryTxRow[], cfg: BankingSo
       if (debitId === null || !cfg.debitCardIds.includes(debitId)) return false
     }
     if (!mercuryRowPassesSortingStartDate(r.posted_at, cfg.startDateYmd)) return false
+    if (textContainsAnyInsensitive(r.counterparty_name, xc)) return false
+    if (textContainsAnyInsensitive(r.note, xn)) return false
     return true
   })
 }

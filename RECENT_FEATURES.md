@@ -7,22 +7,28 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-17
+last_updated: 2026-04-18
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.329 → v2.4"
+version_range: "v2.331 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.331)"
+    line: ~1042
+    description: "Bank Payments: per-kind badge nickname + color in Accounts Receivable Sorting (dev editor); bank_payments_kind_badges_v1 localStorage; pills on transaction rows"
+  - name: "Latest Version (v2.330)"
+    line: ~1068
+    description: "People Pay History: Generate Custom Pay Report modal + toolbar; Jobs Bank payments AR sorting uses separate localStorage (bank_payments_sorting_config_v1_*), Accounts Receivable Sorting title + Mercury nicknames in modal"
   - name: "Latest Version (v2.329)"
-    line: ~1050
+    line: ~1070
     description: "Bids: Cover Letter combined HTML for Google Docs paste (single p, pre-wrap, HTML-only clipboard); Submission deep link pending ref; bid/customer note datetime-local via datetimeLocal.ts"
   - name: "Latest Version (v2.328)"
-    line: ~1062
+    line: ~1084
     description: "Jobs Stages Billed Awaiting Payment: Edit icon immediately after Open … (merged job + standalone invoice rows); editJobIconBesideTimeOpen in renderUnifiedStagesTable"
   - name: "Latest Version (v2.327)"
-    line: ~1074
+    line: ~1096
     description: "Documents Jobs: billed invoice child rows; DocumentsJobBilledInvoiceModal (HostedStripeBillPanel + PipeTooling PDF preview); jobBillingContext + physicalInvoice helpers in lib"
   - name: "Latest Version (v2.326)"
     line: ~1050
@@ -866,6 +872,8 @@ when_to_read:
 **New:** [v2.254 — Jobs Schedule modal + Calendar Job preview & planned chips](#latest-updates-v2254)
 **New:** [v2.253 — Calendar: per-session chips + day modal clock sessions](#latest-updates-v2253)
 **New:** [v2.252 — Pay History: Draft Payroll week + crew merge + employee credit + Record payment](#latest-updates-v2252)
+**New:** [v2.331 — **Bank Payments**: Mercury **Kind** badge label + color (`bank_payments_kind_badges_v1`)](#latest-updates-v2331)
+**New:** [v2.330 — Pay History: **Generate Custom Pay Report** modal; Jobs **Bank payments** **Accounts Receivable Sorting** (separate `localStorage` + nicknames)](#latest-updates-v2330)
 **New:** [v2.329 — Bids: **Cover Letter** Google Docs paste HTML; **Submission** URL deep link; note **datetime-local**](#latest-updates-v2329)
 **New:** [v2.279 — Bids: Bid Preview from **B#**; Submission notes toolbar; **notify-dispatch-request** gateway JWT](#latest-updates-v2279)
 **New:** [v2.251 — Jobs worked today: approve controls (Clocked in today parity)](#latest-updates-v2251)
@@ -1033,6 +1041,34 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.331)
+
+**Date**: 2026-04-18
+
+### **Jobs** — **Bank Payments** / **Accounts Receivable Sorting**: **Kind** nicknames + colors as badges
+
+- **[`bankPaymentsKindBadges.ts`](src/lib/bankPaymentsKindBadges.ts)** — Shared per-origin **`localStorage`** key **`bank_payments_kind_badges_v1`**: map Mercury **`kind`** → optional **nickname** + **`#rrggbb`** color; **`pickTextOnBackground`** for readable badge text; **`pruneKindBadgesToChoices`** on save keeps only kinds present in the current Mercury sample query.
+- **[`BankingSortingConfigModal.tsx`](src/components/BankingSortingConfigModal.tsx)** — Optional **`enableKindBadgeEditor`**, **`kindBadges`**, **`onSaveKindBadges`**: **Kinds** tab rows include **Badge label** + **Color** when enabled; merged list = sample kinds ∪ saved badge keys (orphan kinds show a short note; pruned on save if not in sample).
+- **[`BankPaymentsModal.tsx`](src/components/jobs/BankPaymentsModal.tsx)** — Loads badges on open; **Bank transactions** list and selected-transaction header show colored **Kind** pills (empty nickname → **`formatMercuryKind`**).
+
+---
+
+## Latest Updates (v2.330)
+
+**Date**: 2026-04-17
+
+### **People** — **Pay History**: **Generate Custom Pay Report** modal; full-width ledger **Search**
+
+- **[`People.tsx`](src/pages/People.tsx)** — Toolbar row: **Generate Custom Pay Report** opens **[`CustomPayReportsModal`](src/components/pay/CustomPayReportsModal.tsx)** (bulk period + per-person status; **View** on stubs); **Draft Payroll** remains on the right. Ledger **Search** is full width with a helper line under **Ledger** (filtered unpaid count + balance sum). Empty ledger copy points users to **Generate Custom Pay Report** and **Draft Payroll** when no stubs match.
+
+### **Jobs** — **Stages** **Bank payments**: **Accounts Receivable Sorting** (separate config from Banking)
+
+- **[`bankingSortingConfig.ts`](src/lib/bankingSortingConfig.ts)** — **`loadBankPaymentsSortingConfig`** / **`saveBankPaymentsSortingConfig`** persist per-user filters under **`bank_payments_sorting_config_v1_<userId>`**. First open seeds from the shared Banking / Quickfill key **`banking_sorting_config_v1_<userId>`**; changes here do **not** overwrite Banking sorting.
+- **[`BankPaymentsModal.tsx`](src/components/jobs/BankPaymentsModal.tsx)** — **Sorting configuration…** opens **[`BankingSortingConfigModal`](src/components/BankingSortingConfigModal.tsx)** with **`title="Accounts Receivable Sorting"`**, optional **`contextNote`**, and **[`useMercuryLedgerNicknames`](src/hooks/useMercuryLedgerNicknames.ts)** (`{ enabled: open }`) so account / debit lists show nicknames where the hook applies (dev / master_technician / assistant).
+- **[`BankingSortingConfigModal.tsx`](src/components/BankingSortingConfigModal.tsx)** — Optional **`title`**, **`contextNote`**, **`dialogAriaSuffix`** for distinct accessible titles when reused from Banking vs Jobs.
+
 ---
 
 ## Latest Updates (v2.329)
