@@ -381,6 +381,12 @@ verify_jwt = false
 [functions.stripe-webhook]
 verify_jwt = false
 
+[functions.terminal-connection-token]
+verify_jwt = false
+
+[functions.create-terminal-collect-payment-intent]
+verify_jwt = false
+
 # Cron: POST with X-Cron-Secret + service role RPC (salary auto clock_sessions).
 [functions.sync-salary-sessions]
 verify_jwt = false

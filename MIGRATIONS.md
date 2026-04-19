@@ -92,6 +92,20 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### April 2026
 
+#### April 19, 2026
+
+**`20260419161731_job_collect_payment_flows.sql`**
+- **Purpose**: **Subcontractor field collect payment** — certify billable lines → staff **Approve for Terminal** → **Stripe Terminal** (PWA). Table **`job_collect_payment_flows`** (status machine, certify/dispatch/Stripe ids); **RLS** (team read, staff read; mutations via **`SECURITY DEFINER`** RPCs only); **Realtime** publication when missing. RPCs: **`get_collect_payment_certify_payload`**, **`submit_collect_payment_certification`**, **`approve_collect_payment_for_terminal`**, **`complete_job_collect_payment_flow_terminal`** (service role). **`list_ready_to_bill_assigned_jobs_for_dashboard()`** gains **`collect_payment_button_variant`** (`default` | `pending_dispatch` | `ready_terminal`).
+- **Changes**: **`CREATE TABLE`** **`job_collect_payment_flows`**; policies; triggers; **`CREATE OR REPLACE`** RPCs; **`DROP`/`CREATE`** list RTB RPC with extra column
+- **Impact**: [`CollectPaymentModal.tsx`](src/components/jobs/CollectPaymentModal.tsx), [`DashboardFieldCollectPaymentQueue.tsx`](src/components/dashboard/DashboardFieldCollectPaymentQueue.tsx), [`Dashboard.tsx`](src/pages/Dashboard.tsx); Edge **`terminal-connection-token`**, **`create-terminal-collect-payment-intent`**; **`stripe-webhook`** `payment_intent.succeeded` branch; types; **`RECENT_FEATURES.md`** v2.339
+- **Category**: Jobs / Billing / Stripe Terminal / RPC
+
+**`20260419154440_list_ready_to_bill_assigned_jobs_for_dashboard.sql`**
+- **Purpose**: **Dashboard** **team-scoped Ready to Bill** for **`subcontractor`**, **`primary`**, **`superintendent`**, **`estimator`** — same row shape as **`list_assigned_jobs_for_dashboard()`** but **`jobs_ledger.status = 'ready_to_bill'`** and **`jobs_ledger_team_members`** join on **`auth.uid()`** (does **not** expose org-wide RTB like **`get_jobs_ledger_by_status`**).
+- **Changes**: **`CREATE OR REPLACE FUNCTION`** **`list_ready_to_bill_assigned_jobs_for_dashboard()`** **`RETURNS TABLE`** (mirrors assigned RPC columns); **`GRANT EXECUTE`** to **`authenticated`**
+- **Impact**: [`Dashboard.tsx`](src/pages/Dashboard.tsx) team **Ready to Bill** block; types in [`database.ts`](src/types/database.ts); **`RECENT_FEATURES.md`** v2.338
+- **Category**: Jobs / Dashboard / RPC
+
 #### April 16, 2026
 
 **`20260416182749_migrate_legacy_revenue_to_first_fixture.sql`**
@@ -409,6 +423,19 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Changes**: **`CREATE TABLE`** + indexes; **dev-only** SELECT RLS (`is_dev()`)
 - **Impact**: [`stripe-webhook`](supabase/functions/stripe-webhook/index.ts); Banking **Stripe** → **Data** ([`BankingStripeWebhookEventsPanel.tsx`](src/components/BankingStripeWebhookEventsPanel.tsx)); [`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.284
 - **Category**: Jobs / Billing / Dev tooling
+
+#### April 19, 2027
+
+**`20270419120001_ar_bank_allocations_breakdown.sql`**
+- **Purpose**: **`list_ar_allocations_for_mercury_transaction`** ( **`jobs_ledger_payments`** linked to a Mercury row, with job/invoice labels); **`CREATE OR REPLACE`** **`list_mercury_transactions_for_bank_payments`** / **`count_mercury_transactions_for_bank_payments`** with **`includeFullyApplied`** only — inadvertently omitted **`returned`** and **`includeHiddenArDeposits`** (restored in **`20270419120002`**)
+- **Impact**: [`BankPaymentsModal.tsx`](src/components/jobs/BankPaymentsModal.tsx) **Applied to jobs** breakdown; list/count filter
+- **Category**: Jobs / Banking / AR
+
+**`20270419120002_list_mercury_bank_payments_returned_column.sql`**
+- **Purpose**: Restore **`returned`** on **`list_mercury_transactions_for_bank_payments`** and **`includeHiddenArDeposits`** (or legacy **`includeFullyApplied`**) visibility for zero-remainder and **mercury_transaction_ar_returned** rows; align **`count_mercury_transactions_for_bank_payments`** with the same rules (**fixes regression** from **`20270419120001`** dropping the join)
+- **Changes**: **`CREATE OR REPLACE`** both RPCs; **`LEFT JOIN`** **`mercury_transaction_ar_returned`**
+- **Impact**: [`BankPaymentsModal.tsx`](src/components/jobs/BankPaymentsModal.tsx); types **`returned`** on list returns
+- **Category**: Jobs / Banking / AR
 
 ### March 2027
 
@@ -1203,6 +1230,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Changes**: Create `dev_ignored_checklist_items` (dev_user_id, checklist_item_id, ignored_at) PK; RLS for devs to manage own rows
 - **Impact**: Dashboard Recently Completed Tasks split into main section (non-ignored types) and collapsible Ignored section; Ignore/Un-ignore buttons; UNREAD count excludes ignored items
 - **Category**: Checklist / Dashboard
+
+**`20260418184112_mercury_transaction_ar_returned_and_include_hidden.sql`**
+- **Purpose**: Jobs AR **Bank Payments** — hide “returned” Mercury deposits by default (e.g. bounced cheque still showing as credit); clearer **`p_filter`** key **`includeHiddenArDeposits`**
+- **Changes**: **`mercury_transaction_ar_returned`** + RLS; **`set_mercury_transaction_ar_returned`**; replace **`list_mercury_transactions_for_bank_payments`** / **`count_mercury_transactions_for_bank_payments`** ( **`returned`** column; **`includeHiddenArDeposits`** with legacy **`includeFullyApplied`** fallback)
+- **Impact**: [`BankPaymentsModal.tsx`](src/components/jobs/BankPaymentsModal.tsx); [`src/types/database.ts`](src/types/database.ts)
+- **Category**: Banking / Accounts Receivable
 
 #### April 10, 2026
 

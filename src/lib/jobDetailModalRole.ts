@@ -16,3 +16,8 @@ export function canExpandJobDetailMaterials(role: string | null): boolean {
     role === 'estimator'
   )
 }
+
+/** Job Detail revenue row — hidden for subcontractors. */
+export function showJobDetailJobTotal(role: string | null): boolean {
+  return role !== 'subcontractor'
+}

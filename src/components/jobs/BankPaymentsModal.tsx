@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { SearchableSelect } from '../SearchableSelect'
 import { BankingSortingConfigModal } from '../BankingSortingConfigModal'
 import type { BankingSortingConfigV1 } from '../../lib/bankingSortingConfig'
@@ -30,6 +30,7 @@ import {
   bankPaymentTargetPrimaryLabel,
   bankPaymentTargetsFromStageRows,
   formatBankPaymentTargetDollars,
+  type BankPaymentTarget,
   type StageRow,
 } from '../../lib/jobsStagesBoard'
 import { useMercuryLedgerNicknames } from '../../hooks/useMercuryLedgerNicknames'
@@ -40,8 +41,48 @@ import type { Database } from '../../types/database'
 type MercuryCandidate =
   Database['public']['Functions']['list_mercury_transactions_for_bank_payments']['Returns'][number]
 
+type ArAllocationRow =
+  Database['public']['Functions']['list_ar_allocations_for_mercury_transaction']['Returns'][number]
+
 function formatMoney(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+/** Parses allocation amount input; strips thousands commas and optional leading `$` (auto-fill uses commas). */
+function parseBankPaymentAllocationAmount(raw: string): number {
+  let s = raw.trim().replace(/,/g, '')
+  if (s.startsWith('$')) s = s.slice(1).trim()
+  const n = Number(s)
+  return Number.isFinite(n) ? n : Number.NaN
+}
+
+function allocationAmountStrForTargetChange(
+  target: BankPaymentTarget | undefined,
+  mercuryCap: number,
+  otherRowsPositiveSum: number,
+): string {
+  if (!target) return ''
+  const mercuryLeft = Math.max(0, mercuryCap - otherRowsPositiveSum)
+  const suggested = Math.min(target.remaining, mercuryLeft)
+  if (!(suggested > 0)) return ''
+  return formatMoney(suggested)
+}
+
+/** Mercury row has no linked job payments yet (full deposit still available). */
+const AR_BANK_PAYMENT_QUICK_MATCH_EPS = 0.02
+/** Billed line balance may be up to this much over the deposit to show as a quick pick. */
+const AR_BANK_PAYMENT_QUICK_MATCH_MAX_OVER = 26
+/** Show "Applied to jobs" when linked payment sum exceeds this (aligns with validation tolerances). */
+const AR_BANK_PAYMENT_CONSUMED_DISPLAY_EPS = 0.01
+/** Matches list RPC remainder rule: treat as no allocatable balance when at or below this. */
+const AR_BANK_REMAINING_EPS = 0.0005
+
+const BANK_PAYMENTS_SUMMARY_CARD_STYLE: CSSProperties = {
+  marginBottom: '1rem',
+  padding: '0.75rem',
+  background: '#f9fafb',
+  borderRadius: 6,
+  fontSize: '0.875rem',
 }
 
 function canRoleApplyBankPayments(role: string | null): boolean {
@@ -87,6 +128,8 @@ export type BankPaymentsModalProps = {
   authRole: string | null
   billedRows: StageRow[]
   onApplied: () => void | Promise<void>
+  /** Applied breakdown: open Edit job for this jobs_ledger id (e.g. from Jobs + JobFormModalContext). */
+  onOpenEditJob?: (jobId: string) => void
 }
 
 type AllocLine = { id: string; targetKey: string; amountStr: string }
@@ -98,6 +141,7 @@ export default function BankPaymentsModal({
   authRole,
   billedRows,
   onApplied,
+  onOpenEditJob,
 }: BankPaymentsModalProps) {
   const { nicknameByAccount, nicknameByDebitCard } = useMercuryLedgerNicknames({ enabled: open })
   const [sortingConfig, setSortingConfig] = useState<BankingSortingConfigV1>(
@@ -111,6 +155,9 @@ export default function BankPaymentsModal({
 
   const [candidates, setCandidates] = useState<MercuryCandidate[]>([])
   const [bankTxSearchQuery, setBankTxSearchQuery] = useState('')
+  const [includeHiddenArDeposits, setIncludeHiddenArDeposits] = useState(false)
+  const [arBankReturnedMarkMode, setArBankReturnedMarkMode] = useState(false)
+  const [returnedToggleSavingId, setReturnedToggleSavingId] = useState<string | null>(null)
   const [listLoading, setListLoading] = useState(false)
   const [listError, setListError] = useState<string | null>(null)
 
@@ -120,6 +167,9 @@ export default function BankPaymentsModal({
   const [applyError, setApplyError] = useState<string | null>(null)
   const [applySubmitting, setApplySubmitting] = useState(false)
   const [kindBadges, setKindBadges] = useState<Record<string, MercuryKindBadge>>(() => loadBankPaymentsKindBadges())
+  const [arAllocations, setArAllocations] = useState<ArAllocationRow[]>([])
+  const [arAllocationsLoading, setArAllocationsLoading] = useState(false)
+  const [arAllocationsError, setArAllocationsError] = useState<string | null>(null)
 
   const targets = useMemo(() => bankPaymentTargetsFromStageRows(billedRows), [billedRows])
   const targetByKey = useMemo(() => new Map(targets.map((t) => [t.key, t] as const)), [targets])
@@ -168,6 +218,11 @@ export default function BankPaymentsModal({
     [candidates, selectedId],
   )
 
+  const canAllocateRemaining = useMemo(
+    () => selected != null && Number(selected.remaining_available) > AR_BANK_REMAINING_EPS,
+    [selected],
+  )
+
   const kindPaymentTypeLabel = useMemo(
     () => (selected ? mercuryKindPaymentTypeLabel(selected.kind, kindBadges) : ''),
     [selected, kindBadges],
@@ -187,6 +242,38 @@ export default function BankPaymentsModal({
 
   const canApply = canRoleApplyBankPayments(authRole)
 
+  const applyAllocationTarget = useCallback(
+    (lineId: string, targetKey: string) => {
+      setAllocLines((rows) => {
+        const otherSum = rows
+          .filter((r) => r.id !== lineId)
+          .reduce((s, r) => {
+            const n = parseBankPaymentAllocationAmount(r.amountStr)
+            return s + (Number.isFinite(n) && n > 0 ? n : 0)
+          }, 0)
+        const mercuryCap = selected ? Number(selected.remaining_available) : 0
+        const target = targetKey.trim() ? targetByKey.get(targetKey) : undefined
+        const amountStr = allocationAmountStrForTargetChange(target, mercuryCap, otherSum)
+        return rows.map((r) => (r.id === lineId ? { ...r, targetKey, amountStr } : r))
+      })
+    },
+    [selected, targetByKey],
+  )
+
+  const bankPaymentQuickMatchTargets = useMemo(() => {
+    if (!selected || targets.length === 0) return []
+    const bankAbs = Math.abs(Number(selected.amount))
+    const remAvail = Number(selected.remaining_available)
+    if (bankAbs - remAvail > AR_BANK_PAYMENT_QUICK_MATCH_EPS) return []
+    return targets
+      .filter(
+        (t) =>
+          t.remaining >= bankAbs - 0.01 && t.remaining <= bankAbs + AR_BANK_PAYMENT_QUICK_MATCH_MAX_OVER,
+      )
+      .slice()
+      .sort((a, b) => a.remaining - b.remaining)
+  }, [selected, targets])
+
   const refreshList = useCallback(async () => {
     if (!open) return
     setListLoading(true)
@@ -201,6 +288,7 @@ export default function BankPaymentsModal({
         startDateYmd: cfg.startDateYmd,
         excludeCounterpartyContains: cfg.excludeCounterpartyContains,
         excludeNoteContains: cfg.excludeNoteContains,
+        ...(includeHiddenArDeposits ? { includeHiddenArDeposits: true } : {}),
       }
       const data = await withSupabaseRetry(
         async () =>
@@ -222,7 +310,47 @@ export default function BankPaymentsModal({
     } finally {
       setListLoading(false)
     }
-  }, [open, sortingConfig])
+  }, [open, sortingConfig, includeHiddenArDeposits])
+
+  const toggleMercuryReturned = useCallback(
+    async (mercuryTransactionId: string, nextReturned: boolean) => {
+      if (!canRoleApplyBankPayments(authRole)) return
+      setReturnedToggleSavingId(mercuryTransactionId)
+      try {
+        await withSupabaseRetry(
+          async () =>
+            supabase.rpc('set_mercury_transaction_ar_returned', {
+              p_mercury_transaction_id: mercuryTransactionId,
+              p_returned: nextReturned,
+            }),
+          'set_mercury_transaction_ar_returned',
+        )
+        setCandidates((prev) => {
+          const next =
+            nextReturned && !includeHiddenArDeposits
+              ? prev.filter((x) => x.mercury_transaction_id !== mercuryTransactionId)
+              : prev.map((x) =>
+                  x.mercury_transaction_id === mercuryTransactionId
+                    ? { ...x, returned: nextReturned }
+                    : x,
+                )
+          queueMicrotask(() => {
+            setSelectedId((sel) =>
+              next.some((r) => r.mercury_transaction_id === sel)
+                ? sel
+                : next[0]?.mercury_transaction_id ?? null,
+            )
+          })
+          return next
+        })
+      } catch {
+        void refreshList()
+      } finally {
+        setReturnedToggleSavingId(null)
+      }
+    },
+    [authRole, includeHiddenArDeposits, refreshList],
+  )
 
   useEffect(() => {
     if (!open) return
@@ -285,6 +413,11 @@ export default function BankPaymentsModal({
   }, [open, refreshList])
 
   useEffect(() => {
+    if (open) return
+    setArBankReturnedMarkMode(false)
+  }, [open])
+
+  useEffect(() => {
     if (!open || !selectedId) return
     setAllocLines([{ id: crypto.randomUUID(), targetKey: '', amountStr: '' }])
     setApplyError(null)
@@ -305,6 +438,58 @@ export default function BankPaymentsModal({
   useEffect(() => {
     if (!open) setBankTxSearchQuery('')
   }, [open])
+
+  useEffect(() => {
+    if (!open) {
+      setArAllocations([])
+      setArAllocationsError(null)
+      setArAllocationsLoading(false)
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (!open || !selected?.mercury_transaction_id) {
+      setArAllocations([])
+      setArAllocationsError(null)
+      setArAllocationsLoading(false)
+      return
+    }
+    const consumed = Number(selected.consumed)
+    if (!(consumed > AR_BANK_PAYMENT_CONSUMED_DISPLAY_EPS)) {
+      setArAllocations([])
+      setArAllocationsError(null)
+      setArAllocationsLoading(false)
+      return
+    }
+    let cancelled = false
+    const txId = selected.mercury_transaction_id
+    setArAllocationsLoading(true)
+    setArAllocationsError(null)
+    void (async () => {
+      try {
+        const data = await withSupabaseRetry(
+          async () =>
+            supabase.rpc('list_ar_allocations_for_mercury_transaction', {
+              p_mercury_transaction_id: txId,
+            }),
+          'list_ar_allocations_for_mercury_transaction',
+        )
+        if (!cancelled) {
+          setArAllocations((data ?? []) as ArAllocationRow[])
+        }
+      } catch (e: unknown) {
+        if (!cancelled) {
+          setArAllocationsError(e instanceof Error ? e.message : 'Failed to load applied breakdown')
+          setArAllocations([])
+        }
+      } finally {
+        if (!cancelled) setArAllocationsLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, selected?.mercury_transaction_id, selected?.consumed])
 
   /** Keep selection on the filtered bank list; when the filter hides the current row, select the first visible row. */
   useEffect(() => {
@@ -362,7 +547,7 @@ export default function BankPaymentsModal({
     for (const line of allocLines) {
       const t = line.targetKey ? targetByKey.get(line.targetKey) : undefined
       if (!t) continue
-      const amt = Number(line.amountStr)
+      const amt = parseBankPaymentAllocationAmount(line.amountStr)
       if (!Number.isFinite(amt) || amt <= 0) continue
       sum += amt
       if (amt > t.remaining + 0.01) {
@@ -381,10 +566,11 @@ export default function BankPaymentsModal({
     applySubmitting ||
     !!validationMessage ||
     targets.length === 0 ||
-    !paidOnYmdFromMercury
+    !paidOnYmdFromMercury ||
+    !canAllocateRemaining
 
   async function submitApply() {
-    if (!selected || !canApply) return
+    if (!selected || !canApply || !canAllocateRemaining) return
     if (!paidOnYmdFromMercury) {
       setApplyError('Missing Mercury posted date for this transaction.')
       return
@@ -395,7 +581,7 @@ export default function BankPaymentsModal({
     for (const line of allocLines) {
       const t = line.targetKey ? targetByKey.get(line.targetKey) : undefined
       if (!t) continue
-      const amt = Number(line.amountStr)
+      const amt = parseBankPaymentAllocationAmount(line.amountStr)
       if (!Number.isFinite(amt) || amt <= 0) continue
       if (t.invoiceId) allocations.push({ invoice_id: t.invoiceId, amount: amt })
       else allocations.push({ job_id: t.jobId, amount: amt })
@@ -567,8 +753,37 @@ export default function BankPaymentsModal({
               minHeight: 0,
             }}
           >
-            <div style={{ padding: '0.5rem 0.75rem 0.35rem', fontWeight: 600, fontSize: '0.8125rem', color: '#374151' }}>
-              Bank transactions
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '0.5rem',
+                padding: '0.5rem 0.75rem 0.35rem',
+              }}
+            >
+              <span style={{ fontWeight: 600, fontSize: '0.8125rem', color: '#374151' }}>Bank transactions</span>
+              {canApply ? (
+                <button
+                  type="button"
+                  onClick={() => setArBankReturnedMarkMode((v) => !v)}
+                  aria-pressed={arBankReturnedMarkMode}
+                  aria-label={arBankReturnedMarkMode ? 'Exit mark returned mode' : 'Mark deposits as returned'}
+                  style={{
+                    border: '1px solid #d1d5db',
+                    background: arBankReturnedMarkMode ? '#eff6ff' : '#fff',
+                    borderRadius: 4,
+                    padding: '2px 8px',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    color: '#374151',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                  }}
+                >
+                  Mark
+                </button>
+              ) : null}
             </div>
             <div style={{ padding: '0 0.5rem 0.5rem', flexShrink: 0 }}>
               <input
@@ -589,6 +804,26 @@ export default function BankPaymentsModal({
                 }}
               />
             </div>
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                padding: '0 0.5rem 0.5rem',
+                fontSize: '0.75rem',
+                color: '#4b5563',
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={includeHiddenArDeposits}
+                onChange={(e) => setIncludeHiddenArDeposits(e.target.checked)}
+                aria-label="Show fully applied and returned deposits"
+              />
+              Show fully applied and returned deposits
+            </label>
             <div style={{ flex: 1, overflow: 'auto' }}>
               {listLoading && <p style={{ padding: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>Loading…</p>}
               {listError && (
@@ -657,14 +892,58 @@ export default function BankPaymentsModal({
                           flexShrink: 0,
                         }}
                       >
+                        {c.returned ? (
+                          <span
+                            style={{
+                              color: '#b91c1c',
+                              fontWeight: 600,
+                              fontSize: '0.72rem',
+                              flexShrink: 0,
+                            }}
+                          >
+                            Returned
+                          </span>
+                        ) : null}
                         <KindBadgePill kind={c.kind} kindBadges={kindBadges} />
                         <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{posted}</span>
+                        {canApply && arBankReturnedMarkMode ? (
+                          <label
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              marginLeft: 4,
+                              fontSize: '0.7rem',
+                              color: '#4b5563',
+                              cursor: returnedToggleSavingId === c.mercury_transaction_id ? 'wait' : 'pointer',
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            onPointerDown={(e) => e.stopPropagation()}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={Boolean(c.returned)}
+                              disabled={returnedToggleSavingId === c.mercury_transaction_id}
+                              onChange={(e) => {
+                                e.stopPropagation()
+                                void toggleMercuryReturned(c.mercury_transaction_id, e.target.checked)
+                              }}
+                              aria-label={`Returned: ${c.counterparty_name?.trim() || formatMoney(Math.abs(Number(c.amount)))}`}
+                            />
+                            Returned
+                          </label>
+                        ) : null}
                       </div>
                     </div>
                     <div style={{ color: '#6b7280', marginTop: 2 }}>{c.counterparty_name?.trim() || '—'}</div>
                     <div style={{ color: '#9ca3af', marginTop: 2, fontSize: '0.75rem' }}>
                       rem. {formatMoney(Number(c.remaining_available))}
                     </div>
+                    {Number(c.consumed) > AR_BANK_PAYMENT_CONSUMED_DISPLAY_EPS ? (
+                      <div style={{ color: '#6b7280', marginTop: 2, fontSize: '0.75rem' }}>
+                        <strong>Applied to jobs:</strong> {formatMoney(Number(c.consumed))}
+                      </div>
+                    ) : null}
                   </button>
                 )
               })}
@@ -677,18 +956,24 @@ export default function BankPaymentsModal({
                 <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Select a bank transaction.</p>
               ) : (
                 <>
-                  <div
-                    style={{
-                      marginBottom: '1rem',
-                      padding: '0.75rem',
-                      background: '#f9fafb',
-                      borderRadius: 6,
-                      fontSize: '0.875rem',
-                    }}
-                  >
+                  <div style={BANK_PAYMENTS_SUMMARY_CARD_STYLE}>
                     <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem' }}>
                       <strong>Amount:</strong> {formatMoney(Math.abs(Number(selected.amount)))} ·{' '}
                       <strong>Remaining to allocate:</strong> {formatMoney(Number(selected.remaining_available))}
+                      {selected.returned ? (
+                        <>
+                          {' '}
+                          <span
+                            style={{
+                              color: '#b91c1c',
+                              fontWeight: 600,
+                              fontSize: '0.75rem',
+                            }}
+                          >
+                            Returned
+                          </span>
+                        </>
+                      ) : null}
                     </div>
                     {selected.note?.trim() ? (
                       <div style={{ marginTop: 6 }}>
@@ -701,6 +986,100 @@ export default function BankPaymentsModal({
                       </div>
                     ) : null}
                   </div>
+
+                  {Number(selected.consumed) > AR_BANK_PAYMENT_CONSUMED_DISPLAY_EPS ? (
+                    <div style={BANK_PAYMENTS_SUMMARY_CARD_STYLE}>
+                      <div>
+                        <strong>Applied to jobs:</strong> {formatMoney(Number(selected.consumed))}
+                      </div>
+                      {arAllocationsLoading ? (
+                        <div style={{ marginTop: 8, fontSize: '0.8125rem', color: '#6b7280' }}>
+                          Loading breakdown…
+                        </div>
+                      ) : arAllocationsError ? (
+                        <div style={{ marginTop: 8, fontSize: '0.8125rem', color: '#b91c1c' }}>
+                          {arAllocationsError}
+                        </div>
+                      ) : arAllocations.length > 0 ? (
+                        <div style={{ marginTop: 8 }}>
+                          <div style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: 4 }}>
+                            Applied breakdown
+                          </div>
+                          <ul
+                            style={{
+                              margin: 0,
+                              paddingLeft: '1.1rem',
+                              fontSize: '0.8125rem',
+                              color: '#374151',
+                            }}
+                          >
+                            {arAllocations.map((row) => {
+                              const hcp = (row.hcp_number ?? '').trim() || '—'
+                              const jn = (row.job_name ?? '').trim() || '—'
+                              const inv =
+                                row.invoice_sequence_order != null
+                                  ? ` · Invoice #${row.invoice_sequence_order}`
+                                  : ''
+                              const paidRaw = row.paid_on?.trim() ?? ''
+                              const paid =
+                                paidRaw && /^\d{4}-\d{2}-\d{2}$/.test(paidRaw)
+                                  ? formatWorkDateYmdFriendly(paidRaw)
+                                  : paidRaw || null
+                              const jobLinkEnabled = Boolean(
+                                onOpenEditJob && (row.job_id ?? '').trim() !== '',
+                              )
+                              return (
+                                <li key={row.payment_id} style={{ marginBottom: 4 }}>
+                                  <strong>{formatMoney(Number(row.amount))}</strong>
+                                  {' · '}
+                                  {jobLinkEnabled ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => onOpenEditJob?.(row.job_id)}
+                                      aria-label={`Edit job ${hcp} ${jn}`}
+                                      style={{
+                                        display: 'inline',
+                                        margin: 0,
+                                        padding: 0,
+                                        border: 'none',
+                                        background: 'none',
+                                        font: 'inherit',
+                                        color: '#2563eb',
+                                        cursor: 'pointer',
+                                        textDecoration: 'underline',
+                                        textUnderlineOffset: 2,
+                                      }}
+                                    >
+                                      {hcp} · {jn}
+                                    </button>
+                                  ) : (
+                                    <span>
+                                      {hcp} · {jn}
+                                    </span>
+                                  )}
+                                  {inv}
+                                  {paid ? (
+                                    <span style={{ color: '#6b7280' }}>{` · ${paid}`}</span>
+                                  ) : null}
+                                  {row.note?.trim() ? (
+                                    <div
+                                      style={{
+                                        color: '#6b7280',
+                                        fontSize: '0.75rem',
+                                        marginTop: 2,
+                                      }}
+                                    >
+                                      {row.note.trim()}
+                                    </div>
+                                  ) : null}
+                                </li>
+                              )
+                            })}
+                          </ul>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
 
                   <div style={{ marginBottom: '0.75rem', fontSize: '0.875rem', color: '#374151' }}>
                     <strong>Posted:</strong>{' '}
@@ -726,7 +1105,7 @@ export default function BankPaymentsModal({
                   </div>
 
                   <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 500, marginBottom: '0.25rem' }}>
-                    Internal note (optional)
+                    Memo (optional)
                   </label>
                   <textarea
                     value={internalNote}
@@ -742,12 +1121,16 @@ export default function BankPaymentsModal({
                     }}
                   />
 
-                  <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.5rem' }}>Allocations</div>
-                  {targets.length === 0 ? (
-                    <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>No eligible billed lines (non-Stripe with balance).</p>
-                  ) : (
+                  {canAllocateRemaining ? (
                     <>
-                      {allocLines.map((line) => {
+                      <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.5rem' }}>Allocations</div>
+                      {targets.length === 0 ? (
+                        <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                          No eligible billed lines (non-Stripe with balance).
+                        </p>
+                      ) : (
+                        <>
+                          {allocLines.map((line) => {
                         const picked = line.targetKey ? targetByKey.get(line.targetKey) : undefined
                         const detailLead = picked ? bankPaymentTargetDetailLead(picked) : ''
                         return (
@@ -755,94 +1138,153 @@ export default function BankPaymentsModal({
                             key={line.id}
                             style={{
                               display: 'flex',
-                              flexDirection: 'column',
+                              alignItems: 'flex-start',
                               gap: '0.5rem',
                               marginBottom: '0.75rem',
                             }}
                           >
-                            <div
-                              style={{
-                                display: 'flex',
-                                alignItems: 'flex-start',
-                                gap: '0.5rem',
-                              }}
-                            >
-                              <div style={{ flex: '1 1 auto', minWidth: 0 }}>
-                                <SearchableSelect
-                                  id={`ar-alloc-target-${line.id}`}
-                                  value={line.targetKey}
-                                  onChange={(v) => {
-                                    setAllocLines((rows) =>
-                                      rows.map((r) => (r.id === line.id ? { ...r, targetKey: v } : r)),
-                                    )
-                                  }}
-                                  options={targetSelectOptions}
-                                  emptyOption={{ value: '', label: '— Select billed line —' }}
-                                  hideEmptyOptionInListWhenUnset
-                                  disabled={!canApply}
-                                  placeholder="— Select billed line —"
-                                  listAriaLabel="Billed line for allocation"
-                                  portalZIndex={1200}
-                                />
-                                {picked ? (
+                            <div style={{ flex: '1 1 auto', minWidth: 0 }}>
+                              <SearchableSelect
+                                id={`ar-alloc-target-${line.id}`}
+                                value={line.targetKey}
+                                onChange={(v) => applyAllocationTarget(line.id, v)}
+                                options={targetSelectOptions}
+                                emptyOption={{ value: '', label: '— Select billed line —' }}
+                                hideEmptyOptionInListWhenUnset
+                                disabled={!canApply}
+                                placeholder="— Select billed line —"
+                                listAriaLabel="Billed line for allocation"
+                                portalZIndex={1200}
+                              />
+                              {allocLines[0]?.id === line.id &&
+                              bankPaymentQuickMatchTargets.length > 0 &&
+                              !line.targetKey.trim() ? (
+                                <div style={{ marginTop: 8 }}>
                                   <div
                                     style={{
-                                      marginTop: 6,
                                       fontSize: '0.75rem',
-                                      color: '#4b5563',
-                                      lineHeight: 1.4,
+                                      color: '#6b7280',
+                                      marginBottom: 6,
+                                      fontWeight: 500,
                                     }}
                                   >
-                                    <div style={{ fontWeight: 600 }}>{bankPaymentTargetPrimaryLabel(picked)}</div>
-                                    <div style={{ color: '#6b7280' }}>
-                                      {detailLead ? (
-                                        <>
-                                          {detailLead}
-                                          {' · '}
-                                        </>
-                                      ) : null}
-                                      <strong style={{ fontWeight: 600, color: '#374151' }}>
-                                        {formatBankPaymentTargetDollars(picked.remaining)}
-                                      </strong>
-                                    </div>
+                                    Matches deposit amount
                                   </div>
-                                ) : null}
-                              </div>
+                                  <div
+                                    style={{
+                                      display: 'flex',
+                                      flexWrap: 'wrap',
+                                      gap: '0.35rem',
+                                      alignItems: 'center',
+                                    }}
+                                  >
+                                    {bankPaymentQuickMatchTargets.map((t) => {
+                                      const chipLabel = `${bankPaymentTargetPrimaryLabel(t)} · ${formatBankPaymentTargetDollars(t.remaining)}`
+                                      return (
+                                        <button
+                                          key={t.key}
+                                          type="button"
+                                          disabled={!canApply}
+                                          onClick={() => applyAllocationTarget(line.id, t.key)}
+                                          aria-label={`Apply allocation: ${chipLabel}`}
+                                          style={{
+                                            padding: '0.3rem 0.5rem',
+                                            fontSize: '0.75rem',
+                                            border: '1px solid #d1d5db',
+                                            borderRadius: 4,
+                                            background: 'white',
+                                            color: '#374151',
+                                            cursor: !canApply ? 'not-allowed' : 'pointer',
+                                            textAlign: 'left',
+                                            maxWidth: '100%',
+                                          }}
+                                        >
+                                          {chipLabel}
+                                        </button>
+                                      )
+                                    })}
+                                  </div>
+                                </div>
+                              ) : null}
+                              {picked ? (
+                                <div
+                                  style={{
+                                    marginTop: 6,
+                                    fontSize: '0.75rem',
+                                    color: '#4b5563',
+                                    lineHeight: 1.4,
+                                  }}
+                                >
+                                  <div style={{ fontWeight: 600 }}>{bankPaymentTargetPrimaryLabel(picked)}</div>
+                                  <div style={{ color: '#6b7280' }}>
+                                    {detailLead ? (
+                                      <>
+                                        {detailLead}
+                                        {' · '}
+                                      </>
+                                    ) : null}
+                                    <strong style={{ fontWeight: 600, color: '#374151' }}>
+                                      {formatBankPaymentTargetDollars(picked.remaining)}
+                                    </strong>
+                                  </div>
+                                </div>
+                              ) : null}
+                            </div>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              placeholder="Amount"
+                              aria-label="Allocation amount"
+                              value={line.amountStr}
+                              onChange={(e) => {
+                                const v = e.target.value
+                                setAllocLines((rows) =>
+                                  rows.map((r) => (r.id === line.id ? { ...r, amountStr: v } : r)),
+                                )
+                              }}
+                              disabled={!canApply}
+                              style={{
+                                flexShrink: 0,
+                                alignSelf: 'flex-start',
+                                padding: '0.35rem',
+                                width: '7.5rem',
+                                boxSizing: 'border-box',
+                                marginTop: 2,
+                              }}
+                            />
+                            {allocLines.length > 1 ? (
                               <button
                                 type="button"
-                                disabled={!canApply || allocLines.length <= 1}
+                                disabled={!canApply}
                                 onClick={() => setAllocLines((rows) => rows.filter((r) => r.id !== line.id))}
+                                aria-label="Remove allocation"
+                                title="Remove allocation"
                                 style={{
                                   flexShrink: 0,
                                   alignSelf: 'flex-start',
                                   marginTop: 2,
+                                  padding: '0.25rem',
                                   border: 'none',
                                   background: 'none',
                                   color: '#b91c1c',
-                                  cursor: allocLines.length <= 1 ? 'not-allowed' : 'pointer',
-                                  fontSize: '0.8125rem',
+                                  cursor: !canApply ? 'not-allowed' : 'pointer',
+                                  lineHeight: 0,
                                 }}
                               >
-                                Remove
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  viewBox="0 0 640 640"
+                                  width={18}
+                                  height={18}
+                                  aria-hidden
+                                >
+                                  <path
+                                    fill="currentColor"
+                                    d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z"
+                                  />
+                                </svg>
                               </button>
-                            </div>
-                            <div>
-                              <input
-                                type="text"
-                                inputMode="decimal"
-                                placeholder="Amount"
-                                aria-label="Allocation amount"
-                                value={line.amountStr}
-                                onChange={(e) => {
-                                  const v = e.target.value
-                                  setAllocLines((rows) =>
-                                    rows.map((r) => (r.id === line.id ? { ...r, amountStr: v } : r)),
-                                  )
-                                }}
-                                disabled={!canApply}
-                                style={{ padding: '0.35rem', width: '7.5rem', boxSizing: 'border-box' }}
-                              />
-                            </div>
+                            ) : null}
                           </div>
                         )
                       })}
@@ -874,11 +1316,17 @@ export default function BankPaymentsModal({
                               cursor: 'pointer',
                             }}
                           >
-                            Add allocation
+                            Add Additional Allocation
                           </button>
                         </div>
                       ) : null}
+                        </>
+                      )}
                     </>
+                  ) : (
+                    <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: 0 }}>
+                      No remaining balance to allocate on this deposit.
+                    </p>
                   )}
 
                   {validationMessage && (

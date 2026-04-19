@@ -280,14 +280,20 @@ export function buildBilledStageRows(billedJobs: JobWithDetails[], billedInvoice
   return rows
 }
 
-function filterJobsByStagesSearch(jobs: JobWithDetails[], stagesSearchQuery: string): JobWithDetails[] {
+export function filterJobsByStagesSearch(
+  jobs: JobWithDetails[],
+  stagesSearchQuery: string,
+  extraJobIds?: ReadonlySet<string> | null,
+): JobWithDetails[] {
   const q = stagesSearchQuery.trim().toLowerCase()
   if (!q) return jobs
+  const extra = extraJobIds ?? null
   return jobs.filter(
     (j) =>
       (j.hcp_number ?? '').toLowerCase().includes(q) ||
       (j.job_name ?? '').toLowerCase().includes(q) ||
-      (j.job_address ?? '').toLowerCase().includes(q),
+      (j.job_address ?? '').toLowerCase().includes(q) ||
+      (extra?.has(j.id) ?? false),
   )
 }
 
@@ -307,8 +313,12 @@ function jobHasReadyToBillInvoice(j: JobWithDetails): boolean {
   return (j.invoices ?? []).some((i) => i.status === 'ready_to_bill')
 }
 
-export function buildJobsStagesBoardLists(jobs: JobWithDetails[], stagesSearchQuery: string): JobsStagesBoardLists {
-  const filtered = filterJobsByStagesSearch(jobs, stagesSearchQuery)
+export function buildJobsStagesBoardLists(
+  jobs: JobWithDetails[],
+  stagesSearchQuery: string,
+  extraJobIds?: ReadonlySet<string> | null,
+): JobsStagesBoardLists {
+  const filtered = filterJobsByStagesSearch(jobs, stagesSearchQuery, extraJobIds)
   const status = (j: JobWithDetails) => (j.status ?? 'working') as string
   const working = filtered.filter((j) => status(j) === 'working')
   const paid = filtered.filter((j) => status(j) === 'paid')

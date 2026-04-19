@@ -2685,6 +2685,95 @@ export type Database = {
           },
         ]
       }
+      job_collect_payment_flows: {
+        Row: {
+          certified_at: string | null
+          certify_mode: string | null
+          correction_notes: string | null
+          created_at: string
+          dispatch_notes: string | null
+          dispatch_reviewed_at: string | null
+          dispatch_reviewed_by: string | null
+          id: string
+          initiated_by_user_id: string
+          job_id: string
+          jobs_ledger_invoice_id: string | null
+          last_error: string | null
+          per_line_notes: Json | null
+          status: string
+          stripe_invoice_id: string | null
+          stripe_payment_intent_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          certified_at?: string | null
+          certify_mode?: string | null
+          correction_notes?: string | null
+          created_at?: string
+          dispatch_notes?: string | null
+          dispatch_reviewed_at?: string | null
+          dispatch_reviewed_by?: string | null
+          id?: string
+          initiated_by_user_id: string
+          job_id: string
+          jobs_ledger_invoice_id?: string | null
+          last_error?: string | null
+          per_line_notes?: Json | null
+          status?: string
+          stripe_invoice_id?: string | null
+          stripe_payment_intent_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          certified_at?: string | null
+          certify_mode?: string | null
+          correction_notes?: string | null
+          created_at?: string
+          dispatch_notes?: string | null
+          dispatch_reviewed_at?: string | null
+          dispatch_reviewed_by?: string | null
+          id?: string
+          initiated_by_user_id?: string
+          job_id?: string
+          jobs_ledger_invoice_id?: string | null
+          last_error?: string | null
+          per_line_notes?: Json | null
+          status?: string
+          stripe_invoice_id?: string | null
+          stripe_payment_intent_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_collect_payment_flows_dispatch_reviewed_by_fkey"
+            columns: ["dispatch_reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_collect_payment_flows_initiated_by_user_id_fkey"
+            columns: ["initiated_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_collect_payment_flows_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: true
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_collect_payment_flows_jobs_ledger_invoice_id_fkey"
+            columns: ["jobs_ledger_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_schedule_blocks: {
         Row: {
           assignee_user_id: string
@@ -3919,6 +4008,42 @@ export type Database = {
             columns: ["mercury_transaction_id"]
             isOneToOne: false
             referencedRelation: "mercury_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mercury_transaction_ar_returned: {
+        Row: {
+          mercury_transaction_id: string
+          returned: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          mercury_transaction_id: string
+          returned?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          mercury_transaction_id?: string
+          returned?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mercury_transaction_ar_returned_mercury_transaction_id_fkey"
+            columns: ["mercury_transaction_id"]
+            isOneToOne: true
+            referencedRelation: "mercury_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mercury_transaction_ar_returned_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -7946,6 +8071,14 @@ export type Database = {
           error_message: string
         }[]
       }
+      approve_collect_payment_for_terminal: {
+        Args: {
+          p_dispatch_notes?: string
+          p_job_id: string
+          p_jobs_ledger_invoice_id: string
+        }
+        Returns: Json
+      }
       assert_caller_can_merge_customer_pair: {
         Args: {
           p_survivor_master_user_id: string
@@ -8007,6 +8140,10 @@ export type Database = {
         Returns: boolean
       }
       check_out_project: { Args: { p_project_id: string }; Returns: Json }
+      complete_job_collect_payment_flow_terminal: {
+        Args: { p_stripe_payment_intent_id: string }
+        Returns: Json
+      }
       copy_workflow_step: {
         Args: { p_insert_after_sequence: number; p_step_id: string }
         Returns: Json
@@ -8178,6 +8315,10 @@ export type Database = {
           id: string
           project_name: string
         }[]
+      }
+      get_collect_payment_certify_payload: {
+        Args: { p_job_id: string }
+        Returns: Json
       }
       get_invoice_allocation_lines_for_jobs: {
         Args: { p_job_ids: string[] }
@@ -8391,6 +8532,20 @@ export type Database = {
           inserted_ids: string[]
         }[]
       }
+      list_ar_allocations_for_mercury_transaction: {
+        Args: { p_mercury_transaction_id: string }
+        Returns: {
+          amount: number
+          hcp_number: string
+          invoice_id: string
+          invoice_sequence_order: number
+          job_id: string
+          job_name: string
+          note: string
+          paid_on: string
+          payment_id: string
+        }[]
+      }
       list_assigned_jobs_for_dashboard: {
         Args: never
         Returns: {
@@ -8447,6 +8602,7 @@ export type Database = {
           posted_at: string
           raw: Json
           remaining_available: number
+          returned: boolean
         }[]
       }
       list_my_linked_mercury_debit_cards_for_tally: {
@@ -8500,6 +8656,22 @@ export type Database = {
         Returns: {
           id: string
           name: string
+        }[]
+      }
+      list_ready_to_bill_assigned_jobs_for_dashboard: {
+        Args: never
+        Returns: {
+          collect_payment_button_variant: string
+          created_at: string
+          google_drive_link: string
+          hcp_number: string
+          id: string
+          job_address: string
+          job_name: string
+          job_plans_link: string
+          last_report_at: string
+          master_user_id: string
+          revenue: number
         }[]
       }
       list_reports_with_job_info: {
@@ -8811,6 +8983,10 @@ export type Database = {
           job_name: string
         }[]
       }
+      set_mercury_transaction_ar_returned: {
+        Args: { p_mercury_transaction_id: string; p_returned: boolean }
+        Returns: undefined
+      }
       split_own_clock_session_cluster: {
         Args: { p_segments: Json; p_session_ids: string[] }
         Returns: {
@@ -8828,6 +9004,15 @@ export type Database = {
       staff_can_view_user_for_tally_followup: {
         Args: { p_target: string; p_viewer: string }
         Returns: boolean
+      }
+      submit_collect_payment_certification: {
+        Args: {
+          p_correction_notes?: string
+          p_job_id: string
+          p_mode: string
+          p_per_line_notes?: Json
+        }
+        Returns: Json
       }
       superintendent_can_access_bid: {
         Args: { b: Database["public"]["Tables"]["bids"]["Row"] }

@@ -234,7 +234,33 @@ serve(async (req) => {
       webhookLog('error', eventForLog, 'stripe_webhook_events insert failed (continuing)', dedupeErr)
     }
 
-    if (event.type === 'invoice.paid' || event.type === 'invoice.payment_succeeded') {
+    if (event.type === 'payment_intent.succeeded') {
+      const pi = event.data.object as Stripe.PaymentIntent
+      const md =
+        pi.metadata && typeof pi.metadata === 'object' && !Array.isArray(pi.metadata)
+          ? (pi.metadata as Record<string, string>)
+          : {}
+      if (md.pipe_collect_flow === '1' && md.jobs_ledger_invoice_id) {
+        const { data: rpcData, error: rpcErr } = await admin.rpc('mark_invoice_paid_from_stripe', {
+          p_invoice_id: md.jobs_ledger_invoice_id,
+        })
+        if (rpcErr) {
+          webhookLog('error', eventForLog, 'terminal PI mark_invoice_paid_from_stripe failed', rpcErr)
+        } else {
+          const result = rpcData as { error?: string; ok?: boolean } | null
+          if (result && typeof result === 'object' && result.error) {
+            webhookLog('warn', eventForLog, 'terminal PI mark paid rejected', result.error)
+          } else {
+            const { error: cErr } = await admin.rpc('complete_job_collect_payment_flow_terminal', {
+              p_stripe_payment_intent_id: pi.id,
+            })
+            if (cErr) {
+              webhookLog('warn', eventForLog, 'complete_job_collect_payment_flow_terminal failed', cErr)
+            }
+          }
+        }
+      }
+    } else if (event.type === 'invoice.paid' || event.type === 'invoice.payment_succeeded') {
       const inv = event.data.object as Stripe.Invoice
       return await handleStripeInvoicePaidEvent(admin, inv, eventForLog)
     } else if (

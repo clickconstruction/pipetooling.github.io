@@ -7,16 +7,31 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-18
+last_updated: 2026-04-19
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.334 → v2.4"
+version_range: "v2.339 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.339)"
+    line: ~1072
+    description: "Subcontractor Collect Payment: certify → dispatch queue → Stripe Terminal; job_collect_payment_flows; dashboard button variants"
+  - name: "Latest Version (v2.338)"
+    line: ~1105
+    description: "Dashboard team Ready to Bill; subcontractor Job Detail Job Total hidden; Assigned Jobs title opens Job Detail"
+  - name: "Latest Version (v2.337)"
+    line: ~1088
+    description: "Job Detail modal: section heading Team → Assigned Team for read-only team_members list (DetailJobModal.tsx)"
+  - name: "Latest Version (v2.336)"
+    line: ~1083
+    description: "Jobs Stages Accounts Receivable: button always on (role-only); BankPaymentsModal billedRows from buildJobsStagesBoardLists(jobs,''); Edit Job Mercury Unlink and remove (DELETE payment, payments_made, paid→billed); single-row remove seeds empty line; Ref read-only abbrev+copy; AR modal Memo (optional) label"
+  - name: "Latest Version (v2.335)"
+    line: ~1094
+    description: "AR Bank Payments: mercury_transaction_ar_returned + Mark mode Returned checkbox; p_filter includeHiddenArDeposits (legacy includeFullyApplied fallback) hides fully applied and returned deposits by default; set_mercury_transaction_ar_returned RPC"
   - name: "Latest Version (v2.334)"
-    line: ~1054
+    line: ~1073
     description: "Accounts Receivable Sorting filter JSON in app_settings (bank_payments_sorting_config_v1, dev writes); company-wide for Bank Payments RPCs + unallocated count; legacy per-user localStorage only when no server row; global localStorage cache after fetch/save"
   - name: "Latest Version (v2.333)"
     line: ~1068
@@ -29,7 +44,7 @@ key_sections:
     description: "Bank Payments: per-kind badge nickname + color in Accounts Receivable Sorting (dev editor); bank_payments_kind_badges_v1 localStorage; pills on transaction rows"
   - name: "Latest Version (v2.330)"
     line: ~1068
-    description: "People Pay History: Generate Custom Pay Report modal + toolbar; Jobs Bank payments AR sorting uses separate localStorage (bank_payments_sorting_config_v1_*), Accounts Receivable Sorting title + Mercury nicknames in modal"
+    description: "People Pay History: Generate Custom Pay Report modal + toolbar; Jobs Bank payments Accounts Receivable Sorting modal title + Mercury nicknames (AR filter storage superseded by org-wide app_settings in v2.334)"
   - name: "Latest Version (v2.329)"
     line: ~1070
     description: "Bids: Cover Letter combined HTML for Google Docs paste (single p, pre-wrap, HTML-only clipboard); Submission deep link pending ref; bid/customer note datetime-local via datetimeLocal.ts"
@@ -829,6 +844,10 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.339 — **Subcontractor** **Collect Payment**: certify → dispatch → **Stripe Terminal** (`job_collect_payment_flows`, field queue, Terminal Edge)](#latest-updates-v2339)
+**New:** [v2.338 — **Dashboard**: team **Ready to Bill**; **Job Detail**: **Job Total** hidden for subcontractors; **Assigned Jobs** title → **Job Detail**](#latest-updates-v2338)
+**New:** [v2.337 — **Job Detail**: section heading **Assigned Team** (read-only **`team_members`**)](#latest-updates-v2337)
+**New:** [v2.336 — **Jobs** **Stages** **Accounts Receivable**: always clickable (role-only); modal targets ignore Stages search; **Edit Job** Mercury **Unlink and remove** + **Ref** abbrev + copy; **Memo (optional)** in AR modal](#latest-updates-v2336)
 **New:** [v2.328 — **Jobs** **Stages** **Billed Awaiting Payment**: **Edit** immediately after **Open …** (same row); standalone invoice rows show **Open …** from billing line age](#latest-updates-v2328)
 **New:** [v2.327 — **Documents** → **Jobs**: **billed** invoice rows under each job; **View bill** + **PipeTooling PDF** preview (`DocumentsJobBilledInvoiceModal`)](#latest-updates-v2327)
 **New:** [v2.326 — **Physical invoice** Resend **subject**: **Click Plumbing Invoice [#…]** (`physicalInvoiceEmailSubject`)](#latest-updates-v2326)
@@ -884,7 +903,7 @@ when_to_read:
 **New:** [v2.333 — **Bank Payments** Kind badges: **`app_settings`** (`bank_payments_kind_badges_v1`); dev-only editor; local cache](#latest-updates-v2333)
 **New:** [v2.332 — Dashboard **Unallocated bank deposits**; AR sorting **counterparty/note** excludes; **Bank Payments** allocation layout (amount row + footer **Add allocation**)](#latest-updates-v2332)
 **New:** [v2.331 — **Bank Payments**: Mercury **Kind** badge label + color (`bank_payments_kind_badges_v1`)](#latest-updates-v2331)
-**New:** [v2.330 — Pay History: **Generate Custom Pay Report** modal; Jobs **Bank payments** **Accounts Receivable Sorting** (separate `localStorage` + nicknames)](#latest-updates-v2330)
+**New:** [v2.330 — Pay History: **Generate Custom Pay Report** modal; Jobs **Bank payments** **Accounts Receivable Sorting** UI (nicknames); AR filter blob later moved to org-wide **`app_settings`** in **v2.334**](#latest-updates-v2330)
 **New:** [v2.329 — Bids: **Cover Letter** Google Docs paste HTML; **Submission** URL deep link; note **datetime-local**](#latest-updates-v2329)
 **New:** [v2.279 — Bids: Bid Preview from **B#**; Submission notes toolbar; **notify-dispatch-request** gateway JWT](#latest-updates-v2279)
 **New:** [v2.251 — Jobs worked today: approve controls (Clocked in today parity)](#latest-updates-v2251)
@@ -1054,6 +1073,81 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
+## Latest Updates (v2.339)
+
+**Date**: 2026-04-19
+
+### **Subcontractor field collect payment** (certify → dispatch → Terminal)
+
+- **Migration** — [`20260419161731_job_collect_payment_flows.sql`](supabase/migrations/20260419161731_job_collect_payment_flows.sql): **`job_collect_payment_flows`**, RPCs **`get_collect_payment_certify_payload`**, **`submit_collect_payment_certification`**, **`approve_collect_payment_for_terminal`**, **`complete_job_collect_payment_flow_terminal`**; **`list_ready_to_bill_assigned_jobs_for_dashboard()`** adds **`collect_payment_button_variant`** (`default` | `pending_dispatch` | `ready_terminal`).
+- **[`CollectPaymentModal.tsx`](src/components/jobs/CollectPaymentModal.tsx)** — Three-step wizard: certify or request correction; await dispatch (**Realtime** on flow row + refresh); Stripe Terminal via **`@stripe/terminal-js`** (**simulated** readers in dev). Depends on office **Stripe billed** invoice + dispatch approval.
+- **[`Dashboard.tsx`](src/pages/Dashboard.tsx)** — Subcontractor **Collect Payment** button: amber **pending** after certify, **green / white** when **`ready_terminal`**; opens **`CollectPaymentModal`**; **`DashboardFieldCollectPaymentQueue`** for dev / master / assistant (**Approve for Terminal**).
+- **Edge** — [`terminal-connection-token`](supabase/functions/terminal-connection-token/index.ts), [`create-terminal-collect-payment-intent`](supabase/functions/create-terminal-collect-payment-intent/index.ts); [`stripe-webhook`](supabase/functions/stripe-webhook/index.ts) **`payment_intent.succeeded`** with **`pipe_collect_flow`** metadata completes the flow and ledger paid state.
+- **Migration** — [`20270419120002_list_mercury_bank_payments_returned_column.sql`](supabase/migrations/20270419120002_list_mercury_bank_payments_returned_column.sql): restores **`returned`** + **`includeHiddenArDeposits`** / legacy **`includeFullyApplied`** visibility on Mercury AR list/count (**`20270419120001`** had dropped them).
+
+---
+
+## Latest Updates (v2.338)
+
+**Date**: 2026-04-19
+
+### **Dashboard** — **team Ready to Bill** (non-staff)
+
+- **Migration** — [`20260419154440_list_ready_to_bill_assigned_jobs_for_dashboard.sql`](supabase/migrations/20260419154440_list_ready_to_bill_assigned_jobs_for_dashboard.sql): RPC **`list_ready_to_bill_assigned_jobs_for_dashboard()`** — same columns as **`list_assigned_jobs_for_dashboard()`** but **`WHERE jl.status = 'ready_to_bill'`** and **`jobs_ledger_team_members`** on **`auth.uid()`** (team-scoped; not org-wide **`get_jobs_ledger_by_status`**).
+- **[`Dashboard.tsx`](src/pages/Dashboard.tsx)** — Collapsible **Ready to Bill** section **above** **Assigned Jobs** for **`subcontractor`**, **`primary`**, **`superintendent`**, **`estimator`** (not dev / master / assistant, who already have org-wide Ready to Bill). **`detailModalAssignedJobsRows`** = assigned working + team RTB for **`DetailJobModal`**; **`updateJobStatus`** and subcontractor schedule labels refresh RTB list as needed.
+
+### **Job Detail** — **Job Total** hidden for subcontractors
+
+- **[`jobDetailModalRole.ts`](src/lib/jobDetailModalRole.ts)** — **`showJobDetailJobTotal(role)`** — **`false`** for **`subcontractor`**.
+- **[`DetailJobModal.tsx`](src/components/jobs/DetailJobModal.tsx)** — Full and limited job **Job Total** **`DetailRow`** gated by **`showJobDetailJobTotal(authRole)`**.
+
+### **Dashboard** — **Assigned Jobs** / **Superintendent Jobs** — open **Job Detail** from title
+
+- **[`Dashboard.tsx`](src/pages/Dashboard.tsx)** — **HCP · job name** line is keyboard-focusable (`role="button"`, `tabIndex={0}`) and opens **`DetailJobModal`** via **`scheduleJobDetail`** with **`scheduleContext: null`**; **`prefillRowLabel`** / **`prefillAddress`**. Styling: dark text (`#111827`), pointer cursor.
+
+---
+
+## Latest Updates (v2.337)
+
+**Date**: 2026-04-18
+
+### **Jobs** — **Job Detail** — **Assigned Team** heading
+
+- **[`DetailJobModal.tsx`](src/components/jobs/DetailJobModal.tsx)** — Full job detail: the team list section label is **Assigned Team** (was **Team**). Same data: read-only **`team_members`**; muted **No team members listed.** when empty.
+
+---
+
+## Latest Updates (v2.336)
+
+**Date**: 2026-04-18
+
+### **Jobs** — **Stages** — **Accounts Receivable** ignores Stages search
+
+- **[`Jobs.tsx`](src/pages/Jobs.tsx)** — **`bankPaymentsModalBilledRows`**: `useMemo(() => buildJobsStagesBoardLists(jobs, '').billedRows, [jobs])`. **[`BankPaymentsModal`](src/components/jobs/BankPaymentsModal.tsx)** receives **`billedRows={bankPaymentsModalBilledRows}`** so allocation targets and Stripe-skip counts match the **full** billed board. **Accounts Receivable** beside **Billed Awaiting Payment** is **disabled** only for roles outside dev / master_technician / assistant / primary (no longer tied to **filtered** billed row count). **`accountsReceivableButtonAccessibleName`** uses **`bankPaymentsModalBilledRows.length`** for the “No billed rows” tooltip. **Print** beside AR still uses **search-filtered** `billedRows`.
+
+### **Edit Job** — **Payments received** — Mercury **Unlink and remove**; **Ref** copy UX
+
+- **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)** — Mercury-linked rows: **Unlink and remove** confirms, **`DELETE`** **`jobs_ledger_payments`**, **`UPDATE`** **`jobs_ledger.payments_made`** (sum of remaining lines), refresh job; if status stays **paid** but **revenue > payments_made** (tolerance), **`update_job_status`** → **billed**. Invoice-linked and role guards unchanged. Removing the **only** payment line seeds **`[newEmptyPaymentRow()]`** so the grid stays usable.
+- **[`abbreviatePaymentReference.ts`](src/lib/abbreviatePaymentReference.ts)** — **`abbreviatePaymentReferenceLabel`**: long / UUID-shaped **Ref** read-only text shows **`first3..last3`**; **`ReadOnlyPaymentRefCopy`** button copies full **`reference_number`**, success toast (**clipboard** fallback errors).
+
+### **Bank Payments** modal — copy
+
+- **[`BankPaymentsModal.tsx`](src/components/jobs/BankPaymentsModal.tsx)** — Label **Memo (optional)** (replaces **Internal note (optional)**); still sent as **`p_note`** → **`jobs_ledger_payments.note`** per allocation apply.
+
+---
+
+## Latest Updates (v2.335)
+
+**Date**: 2026-04-18
+
+### **Jobs** — **Bank Payments**: **Returned** deposits; **`includeHiddenArDeposits`**
+
+- **Migration** — [`20260418184112_mercury_transaction_ar_returned_and_include_hidden.sql`](supabase/migrations/20260418184112_mercury_transaction_ar_returned_and_include_hidden.sql): table **`mercury_transaction_ar_returned`** (FK **`mercury_transactions`**, RLS for dev / master_technician / assistant / primary); RPC **`set_mercury_transaction_ar_returned`**; **`list_mercury_transactions_for_bank_payments`** / **`count_mercury_transactions_for_bank_payments`** add **`p_filter.includeHiddenArDeposits`** (fallback: legacy **`includeFullyApplied`**), **`returned`** column on list, and default visibility excludes rows marked returned and fully applied zero-remainder rows.
+- **[`BankPaymentsModal.tsx`](src/components/jobs/BankPaymentsModal.tsx)** — Header **Mark** toggles per-row **Returned** checkbox ( **`stopPropagation`** ); checkbox label **Show fully applied and returned deposits** sends **`includeHiddenArDeposits`**.
+- **`GLOSSARY.md`** — **Returned deposit (AR Bank Payments)** under Accounts Receivable Sorting.
+
+---
+
 ## Latest Updates (v2.334)
 
 **Date**: 2026-04-18
@@ -1066,6 +1160,7 @@ when_to_read:
 - **[`useArBankUnallocatedCount.ts`](src/hooks/useArBankUnallocatedCount.ts)** — **`p_filter`** from **`resolveBankPaymentsSortingConfigForAr`** so the Dashboard banner matches Jobs **Bank Payments** for all roles.
 - **[`BankingSortingConfigModal.tsx`](src/components/BankingSortingConfigModal.tsx)** — Sorting **`onSave`** may return **`Promise`**; **Save** awaits it before close.
 - **Migration** — [`20260418074400_bank_payments_sorting_config_app_settings_doc.sql`](supabase/migrations/20260418074400_bank_payments_sorting_config_app_settings_doc.sql) documents the key (no seed row).
+- **`GLOSSARY.md`** — Term **Accounts Receivable Sorting (Jobs Stages → Bank payments)** (org-wide filter vs Banking sorting, fallbacks, RPC parity).
 
 ---
 
@@ -1983,7 +2078,7 @@ when_to_read:
 
 ### Dashboard — My schedule Job details modal
 
-- **My schedule** ([`Dashboard.tsx`](src/pages/Dashboard.tsx)): whole row (**click** / **Enter** / **Space**) opens read-only **[`DetailJobModal`](src/components/jobs/DetailJobModal.tsx)** with **Scheduled block** (Chicago date + [`scheduleFormatWindow`](src/lib/jobScheduleChicago.ts) + note). **Staff** (`dev` / `master_technician` / `assistant` / `primary` per [`isStaffFullJobLedgerDetailRole`](src/lib/jobDetailModalRole.ts)): full **[`fetchJobWithDetailsById`](src/lib/fetchJobWithDetailsById.ts)** — Edit Job–parity sections (team, materials, fixtures, payments, invoices). **Others** (e.g. **subcontractor**): [`jobs_ledger`](src/types/database.ts) column-only snapshot when RLS allows, else **[`assignedJobs`](src/pages/Dashboard.tsx)** fallback; muted copy that billing line items are not shown. **Workflow** link only when `authRole !== 'subcontractor'`. **[`LimitedJobDetailSnapshot`](src/types/limitedJobDetailSnapshot.ts)** for the limited tier.
+- **My schedule** ([`Dashboard.tsx`](src/pages/Dashboard.tsx)): whole row (**click** / **Enter** / **Space**) opens read-only **[`DetailJobModal`](src/components/jobs/DetailJobModal.tsx)** with **Scheduled block** (Chicago date + [`scheduleFormatWindow`](src/lib/jobScheduleChicago.ts) + note). **Staff** (`dev` / `master_technician` / `assistant` / `primary` per [`isStaffFullJobLedgerDetailRole`](src/lib/jobDetailModalRole.ts)): full **[`fetchJobWithDetailsById`](src/lib/fetchJobWithDetailsById.ts)** — Edit Job–parity sections (**Assigned Team** / `team_members`, materials, fixtures, payments, invoices). **Others** (e.g. **subcontractor**): [`jobs_ledger`](src/types/database.ts) column-only snapshot when RLS allows, else **[`assignedJobs`](src/pages/Dashboard.tsx)** fallback; muted copy that billing line items are not shown. **Workflow** link only when `authRole !== 'subcontractor'`. **[`LimitedJobDetailSnapshot`](src/types/limitedJobDetailSnapshot.ts)** for the limited tier.
 
 ---
 

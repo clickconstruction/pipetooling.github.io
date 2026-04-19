@@ -10,6 +10,9 @@ export const APP_SETTINGS_KEY_BANK_PAYMENTS_KIND_BADGES = 'bank_payments_kind_ba
  */
 export const APP_SETTINGS_KEY_BANK_PAYMENTS_SORTING_CONFIG = 'bank_payments_sorting_config_v1' as const
 
+/** E.164 or free-form digits in `value_text` — dispatch phone for subcontractor Collect Payment step 2. Dev writes; all authenticated read. */
+export const APP_SETTINGS_KEY_FIELD_DISPATCH_PHONE = 'field_dispatch_phone_v1' as const
+
 export function isValidYmd(s: string): boolean {
   return /^(\d{4})-(\d{2})-(\d{2})$/.test(s.trim())
 }

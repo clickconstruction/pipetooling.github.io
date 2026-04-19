@@ -7,11 +7,11 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-04-07
+last_updated: 2026-04-18
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
-total_terms: ~125
+total_terms: ~126
 categories: 9
 
 key_sections:
@@ -28,9 +28,9 @@ key_sections:
     anchor: "#access-control"
     terms: 5
   - name: "Workflow Concepts"
-    line: ~162
+    line: ~234
     anchor: "#workflow-concepts"
-    terms: 7
+    terms: 8
   - name: "Bids System"
     line: ~228
     anchor: "#bids-system"
@@ -280,6 +280,13 @@ Remaining budget after subtracting ledger total from projections.
 **Calculation**: Projections - Ledger Total
 
 **Visibility**: Masters and dev only (hidden from assistants)
+
+### Accounts Receivable Sorting (Jobs Stages → Bank payments)
+Org-wide Mercury transaction filter for applying customer bank deposits to billed work (**Jobs** → **Stages** → **Bank payments**). The active filter shape is **`BankingSortingConfigV1`**: kinds, accounts, debit cards, Chicago **start date**, and optional counterparty/note substring exclusions. Canonical storage is **`app_settings`** key **`bank_payments_sorting_config_v1`** (**`value_text`** JSON); only **dev** can upsert (RLS). All authenticated roles that can open Bank Payments read the same row; **`list_mercury_transactions_for_bank_payments`** and **`count_mercury_transactions_for_bank_payments`** use the same **`p_filter`**. If no server row exists yet, the client may fall back to legacy per-user **`localStorage`** or Banking/Quickfill **`banking_sorting_config_v1_<userId>`** until a dev publishes settings. A global browser cache key **`bank_payments_sorting_config_v1__cache`** mirrors the server after fetch/save. Distinct from per-user **Banking** page sorting (**`banking_sorting_config_v1_<userId>`**).
+
+**Returned deposit (AR Bank Payments)**: Org flag on a Mercury **`mercury_transactions`** row for deposits that still appear in the feed after a return or bounce (e.g. cheque). Stored in **`mercury_transaction_ar_returned`** (not on the sync table). By default **`list_mercury_transactions_for_bank_payments`** / **`count_mercury_transactions_for_bank_payments`** hide rows marked returned, same as fully applied deposits, unless **`p_filter.includeHiddenArDeposits`** is true (legacy **`includeFullyApplied`** still maps to that behavior). Toggle via **`set_mercury_transaction_ar_returned`** and **Mark** mode in **[`BankPaymentsModal`](src/components/jobs/BankPaymentsModal.tsx)**.
+
+**See**: `RECENT_FEATURES.md` → v2.335, v2.334; `PROJECT_DOCUMENTATION.md` → §15 Banking; [`bankingSortingConfig.ts`](src/lib/bankingSortingConfig.ts), [`appSettingsKeys.ts`](src/lib/appSettingsKeys.ts).
 
 ---
 

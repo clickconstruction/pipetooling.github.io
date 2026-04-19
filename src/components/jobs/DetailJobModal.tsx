@@ -13,7 +13,11 @@ import {
   formatJobDetailModalDateTitleFromYmd,
 } from '../../lib/formatJobDetailModalDateYmd'
 import { deriveRecordedBillingActivityDetail } from '../../lib/stagesJobReferenceDates'
-import { canExpandJobDetailMaterials, isStaffFullJobLedgerDetailRole } from '../../lib/jobDetailModalRole'
+import {
+  canExpandJobDetailMaterials,
+  isStaffFullJobLedgerDetailRole,
+  showJobDetailJobTotal,
+} from '../../lib/jobDetailModalRole'
 import {
   scheduleFormatDateLongNoWeekday,
   scheduleFormatWeekdayOnly,
@@ -25,8 +29,10 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { useJobMaterialsCostSnapshot } from '../../hooks/useJobMaterialsCostSnapshot'
+import { useJobDetailScheduleAndSessions } from '../../hooks/useJobDetailScheduleAndSessions'
 import { useJobThreadNotesForModal } from '../../hooks/useJobThreadNotesForModal'
 import { JobDetailMaterialsCostSection } from './JobDetailMaterialsCostSection'
+import { JobDetailScheduleSessionsSection } from './JobDetailScheduleSessionsSection'
 import { JobLedgerStatusPipeline } from './JobLedgerStatusPipeline'
 import { JobThreadNotesPanel } from '../JobThreadNotesPanel'
 import type { JobWithDetails } from '../../types/jobWithDetails'
@@ -392,6 +398,8 @@ export default function DetailJobModal({
   const streetViewBlobUrlRef = useRef<string | null>(null)
   const detailFetchIdRef = useRef(0)
   const [materialsCostRefreshKey, setMaterialsCostRefreshKey] = useState(0)
+  const [scheduleTimeSectionOpen, setScheduleTimeSectionOpen] = useState(false)
+  const [jobDetailScheduleSessionsFilter, setJobDetailScheduleSessionsFilter] = useState('')
 
   const loadDetail = useCallback(async () => {
     if (!open || !jobId) return
@@ -443,6 +451,18 @@ export default function DetailJobModal({
     void loadDetail()
   }, [open, jobId, loadDetail])
 
+  useEffect(() => {
+    if (!open) setScheduleTimeSectionOpen(false)
+  }, [open])
+
+  useEffect(() => {
+    setScheduleTimeSectionOpen(false)
+  }, [jobId])
+
+  useEffect(() => {
+    setJobDetailScheduleSessionsFilter('')
+  }, [jobId, open])
+
   const showWorkflowLink = authRole !== 'subcontractor' && authRole !== null
 
   const modalTitle = useMemo(() => {
@@ -484,6 +504,16 @@ export default function DetailJobModal({
     showMaterialsCostSection,
     materialsCostRefreshKey,
   )
+
+  const scheduleSessionsEnabled = Boolean(open && jobId && fullJob && scheduleTimeSectionOpen)
+  const {
+    loading: scheduleSessionsLoading,
+    error: scheduleSessionsError,
+    scheduleBlocks: detailScheduleBlocks,
+    clockSessions: detailClockSessions,
+    scheduleTruncated: detailScheduleTruncated,
+    sessionsTruncated: detailSessionsTruncated,
+  } = useJobDetailScheduleAndSessions(open, jobId ?? null, scheduleSessionsEnabled)
 
   const fullJobRecordedBilling = useMemo(
     () => (fullJob ? deriveRecordedBillingActivityDetail(fullJob) : null),
@@ -657,7 +687,15 @@ export default function DetailJobModal({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            gap: '1rem',
+            width: '100%',
+          }}
+        >
           <h2
             id="detail-job-modal-title"
             style={{
@@ -950,7 +988,7 @@ export default function DetailJobModal({
             <DetailJobModalFilesPlansRow googleDriveLink={fullJob.google_drive_link} jobPlansLink={fullJob.job_plans_link} />
 
             <div style={{ marginTop: '1rem' }}>
-              <div style={{ fontWeight: 600, fontSize: '0.9375rem', marginBottom: '0.5rem' }}>Team</div>
+              <div style={{ fontWeight: 600, fontSize: '0.9375rem', marginBottom: '0.5rem' }}>Assigned Team</div>
               {(fullJob.team_members ?? []).length === 0 ? (
                 <p style={{ margin: 0, fontSize: '0.875rem', color: '#9ca3af' }}>No team members listed.</p>
               ) : (
@@ -962,6 +1000,71 @@ export default function DetailJobModal({
                   ))}
                 </ul>
               )}
+            </div>
+
+            <div style={{ marginTop: '1rem' }}>
+              <button
+                type="button"
+                onClick={() => setScheduleTimeSectionOpen((v) => !v)}
+                aria-expanded={scheduleTimeSectionOpen}
+                aria-controls="job-detail-schedule-sessions-panel"
+                id="job-detail-schedule-sessions-toggle"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.35rem',
+                  width: '100%',
+                  margin: 0,
+                  padding: '0.15rem 0',
+                  border: 'none',
+                  background: 'none',
+                  cursor: 'pointer',
+                  font: 'inherit',
+                  fontWeight: 600,
+                  fontSize: '0.9375rem',
+                  color: '#111827',
+                  textAlign: 'center',
+                }}
+              >
+                <span aria-hidden style={{ fontSize: '0.7rem', color: '#6b7280' }}>
+                  {scheduleTimeSectionOpen ? '▼' : '▶'}
+                </span>
+                Schedule and recorded time
+              </button>
+              {scheduleTimeSectionOpen ? (
+                <div id="job-detail-schedule-sessions-panel" role="region" aria-labelledby="job-detail-schedule-sessions-toggle">
+                  <input
+                    type="search"
+                    value={jobDetailScheduleSessionsFilter}
+                    onChange={(e) => setJobDetailScheduleSessionsFilter(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    placeholder="Filter schedule and sessions"
+                    aria-label="Filter schedule blocks and clock sessions"
+                    title="Narrow calendar blocks and clock sessions in the lists below."
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      marginBottom: '0.5rem',
+                      padding: '0.4rem 0.5rem',
+                      fontSize: '0.875rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: 4,
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                  <JobDetailScheduleSessionsSection
+                    hideTitle
+                    loading={scheduleSessionsLoading}
+                    error={scheduleSessionsError}
+                    scheduleBlocks={detailScheduleBlocks}
+                    clockSessions={detailClockSessions}
+                    scheduleTruncated={detailScheduleTruncated}
+                    sessionsTruncated={detailSessionsTruncated}
+                    filterQuery={jobDetailScheduleSessionsFilter}
+                  />
+                </div>
+              ) : null}
             </div>
 
             {showMaterialsCostSection ? (
@@ -1024,11 +1127,13 @@ export default function DetailJobModal({
               )}
             </div>
 
-            <div style={{ marginTop: '1rem' }}>
-              <DetailRow label="Job Total" noBottomMargin centered>
-                {fullJob.revenue != null ? formatCurrency(Number(fullJob.revenue)) : '—'}
-              </DetailRow>
-            </div>
+            {showJobDetailJobTotal(authRole) ? (
+              <div style={{ marginTop: '1rem' }}>
+                <DetailRow label="Job Total" noBottomMargin centered>
+                  {fullJob.revenue != null ? formatCurrency(Number(fullJob.revenue)) : '—'}
+                </DetailRow>
+              </div>
+            ) : null}
 
             <div style={{ marginTop: '1rem' }}>
               <div style={{ fontWeight: 600, fontSize: '0.9375rem', marginBottom: '0.5rem' }}>Payments</div>
@@ -1142,11 +1247,13 @@ export default function DetailJobModal({
               />
             ) : null}
 
-            <div style={{ marginTop: '1rem' }}>
-              <DetailRow label="Job Total" noBottomMargin centered>
-                {limitedJob.revenue != null ? formatCurrency(Number(limitedJob.revenue)) : '—'}
-              </DetailRow>
-            </div>
+            {showJobDetailJobTotal(authRole) ? (
+              <div style={{ marginTop: '1rem' }}>
+                <DetailRow label="Job Total" noBottomMargin centered>
+                  {limitedJob.revenue != null ? formatCurrency(Number(limitedJob.revenue)) : '—'}
+                </DetailRow>
+              </div>
+            ) : null}
 
             <p style={{ margin: '1rem 0 0', fontSize: '0.8125rem', color: '#9ca3af' }}>
               Payments and invoices are not shown in this view.

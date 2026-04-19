@@ -3,6 +3,7 @@ import {
   buildBilledStageRows,
   buildJobsStagesBoardLists,
   buildReadyToBillStageRows,
+  filterJobsByStagesSearch,
   jobBillingUnallocatedDollars,
   readyToBillRowsExposureTotal,
   stagesMergedBillingInvoiceId,
@@ -267,6 +268,45 @@ describe('buildReadyToBillStageRows', () => {
     expect(rows).toHaveLength(3)
     expect(rows.filter((r) => r.kind === 'job')).toHaveLength(1)
     expect(rows.filter((r) => r.kind === 'invoice')).toHaveLength(2)
+  })
+})
+
+describe('filterJobsByStagesSearch', () => {
+  it('includes job only in extraJobIds when text does not match', () => {
+    const a = jobStub({
+      id: 'job-a',
+      hcp_number: '100',
+      job_name: 'Alpha',
+      job_address: '1 Main',
+      invoices: [],
+    })
+    const b = jobStub({
+      id: 'job-b',
+      hcp_number: '200',
+      job_name: 'Beta',
+      job_address: '2 Oak',
+      invoices: [],
+    })
+    const filtered = filterJobsByStagesSearch([a, b], 'zzz', new Set(['job-b']))
+    expect(filtered.map((j) => j.id)).toEqual(['job-b'])
+  })
+
+  it('includes job when text matches even without extraJobIds', () => {
+    const a = jobStub({
+      id: 'job-a',
+      hcp_number: '100',
+      job_name: 'Alpha Plumbing',
+      job_address: '1 Main',
+      invoices: [],
+    })
+    const filtered = filterJobsByStagesSearch([a], 'plumb', null)
+    expect(filtered).toHaveLength(1)
+  })
+
+  it('empty query returns full jobs list', () => {
+    const a = jobStub({ id: 'job-a', invoices: [] })
+    const b = jobStub({ id: 'job-b', invoices: [] })
+    expect(filterJobsByStagesSearch([a, b], '', new Set(['job-a']))).toEqual([a, b])
   })
 })
 

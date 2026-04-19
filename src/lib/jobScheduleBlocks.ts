@@ -73,6 +73,34 @@ export async function fetchScheduleJobContext(
 const SELECT_FIELDS =
   'id, job_id, assignee_user_id, work_date, time_start, time_end, note, shared_block_group_id, created_at, created_by, updated_at'
 
+const SELECT_FIELDS_WITH_ASSIGNEE_NAME = `${SELECT_FIELDS}, users!job_schedule_blocks_assignee_user_id_fkey(name)`
+
+export type JobScheduleBlockWithAssigneeName = JobScheduleBlockRow & {
+  users: { name: string | null } | null
+}
+
+/** All schedule blocks for a job (RLS-limited), ordered by day and start time. Capped at 101 rows so callers can detect truncation. */
+export async function fetchJobScheduleBlocksForJob(
+  jobId: string,
+): Promise<{ data: JobScheduleBlockWithAssigneeName[]; error: string | null }> {
+  try {
+    const data = await withSupabaseRetry(
+      async () =>
+        await supabase
+          .from('job_schedule_blocks')
+          .select(SELECT_FIELDS_WITH_ASSIGNEE_NAME)
+          .eq('job_id', jobId)
+          .order('work_date', { ascending: true })
+          .order('time_start', { ascending: true })
+          .limit(101),
+      'fetchJobScheduleBlocksForJob',
+    )
+    return { data: (data ?? []) as JobScheduleBlockWithAssigneeName[], error: null }
+  } catch (e) {
+    return { data: [], error: formatErrorMessage(e) }
+  }
+}
+
 /** New UUID for `shared_block_group_id` on insert (browser / modern runtimes). */
 export function newJobScheduleSharedBlockGroupId(): string {
   return globalThis.crypto.randomUUID()

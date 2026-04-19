@@ -33,9 +33,11 @@ import { getAccessTokenForEdgeFunctions } from '../../lib/supabaseAccessTokenFor
 import { prepareBilledInvoicesBeforeJobRevertToReadyToBill } from '../../lib/voidStripeInvoiceForRevert'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import { setReturnEditJobFromStages } from '../../lib/returnEditJobFromStages'
+import { normalizeJobsLedgerStatus } from '../../lib/jobsLedgerStatusPipeline'
 import { invoiceCreatedCalendarDayOffset } from '../../lib/invoiceCreatedRelative'
 import { formatMercuryCardChargesPostedDate } from '../../lib/formatMercuryCardChargesPostedDate'
 import { fetchJobMaterialsCostSnapshot } from '../../lib/fetchJobMaterialsCostSnapshot'
+import { abbreviatePaymentReferenceLabel } from '../../lib/abbreviatePaymentReference'
 import { formatMercuryDebitCardIdCompact } from '../../lib/mercuryRawDebitCard'
 import type { JobMercuryAllocLine, JobSupplyInvoiceLine, JobTallyPartLine } from '../../lib/fetchJobMaterialsCostSnapshot'
 import { MaterialsCostAccordionRow } from './JobFormMaterialsCostAccordion'
@@ -135,6 +137,11 @@ function newEmptyPaymentRow(): PaymentRow {
 
 function mercuryLinkedPaymentRow(row: PaymentRow): boolean {
   return row.mercury_transaction_id != null && String(row.mercury_transaction_id).trim().length > 0
+}
+
+/** Same roles as Accounts Receivable bank payment apply. */
+function canUnlinkMercuryPayment(role: string | null): boolean {
+  return role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
 }
 
 function paymentRowLinkedToInvoice(row: PaymentRow): boolean {
@@ -328,6 +335,60 @@ function formatJobFormBidLinkTitle(summary: { project_name: string | null; bid_n
   const n = summary.bid_number != null && String(summary.bid_number).trim() !== '' ? String(summary.bid_number).trim() : null
   return n ? `B${n} | ${name}` : name
 }
+
+function ReadOnlyPaymentRefCopy({
+  refText,
+  showToast,
+}: {
+  refText: string
+  showToast: (message: string, type?: 'success' | 'error' | 'info') => void
+}) {
+  const { display, full } = useMemo(() => abbreviatePaymentReferenceLabel(refText), [refText])
+  const onActivate = useCallback(async () => {
+    try {
+      if (!navigator.clipboard?.writeText) {
+        showToast('Clipboard not available', 'error')
+        return
+      }
+      await navigator.clipboard.writeText(full)
+      showToast('Reference copied', 'success')
+    } catch {
+      showToast('Could not copy reference', 'error')
+    }
+  }, [full, showToast])
+
+  const onKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLButtonElement>) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        void onActivate()
+      }
+    },
+    [onActivate],
+  )
+
+  return (
+    <button
+      type="button"
+      onClick={() => void onActivate()}
+      onKeyDown={onKeyDown}
+      title="Copy full reference to clipboard"
+      aria-label="Copy full reference to clipboard"
+      style={{
+        padding: 0,
+        border: 'none',
+        background: 'none',
+        font: 'inherit',
+        color: '#2563eb',
+        cursor: 'pointer',
+        textDecoration: 'underline',
+        textUnderlineOffset: 2,
+      }}
+    >
+      {display}
+    </button>
+  )
+}
 /** Above Edit Job + nested create-customer overlay so View Bill stacks correctly. */
 const JOB_FORM_BILL_VIEW_OVERLAY_Z_INDEX = JOB_FORM_NESTED_OVERLAY_Z_INDEX + 1
 
@@ -498,6 +559,8 @@ export default function JobFormModal({
   const [creatingInvoice, setCreatingInvoice] = useState(false)
   const [movingJobToReadyToBill, setMovingJobToReadyToBill] = useState(false)
   const [paymentRemoveConfirmRowId, setPaymentRemoveConfirmRowId] = useState<string | null>(null)
+  const [unlinkMercuryConfirmRowId, setUnlinkMercuryConfirmRowId] = useState<string | null>(null)
+  const [unlinkingMercuryPaymentId, setUnlinkingMercuryPaymentId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [materialsAccordionOpen, setMaterialsAccordionOpen] = useState<MaterialsAccordionKey | null>('billed')
   const [jobMaterialsSnapshotLoading, setJobMaterialsSnapshotLoading] = useState(false)
@@ -608,11 +671,13 @@ export default function JobFormModal({
     setNewInvoiceAmount('')
     setNewInvoiceAmountInputFocused(false)
     setPaymentRemoveConfirmRowId(null)
+    setUnlinkMercuryConfirmRowId(null)
     onClose()
   }
 
   function applyEditJob(job: JobWithDetails, billingGate: boolean) {
     setPaymentRemoveConfirmRowId(null)
+    setUnlinkMercuryConfirmRowId(null)
     setBillViewInvoice(null)
     setBillingCustomerHighlight(billingGate)
     setEditing(job)
@@ -709,6 +774,7 @@ export default function JobFormModal({
     setNewInvoiceAmount('')
     setNewInvoiceAmountInputFocused(false)
     setPaymentRemoveConfirmRowId(null)
+    setUnlinkMercuryConfirmRowId(null)
   }
 
   useLayoutEffect(() => {
@@ -1595,6 +1661,95 @@ export default function JobFormModal({
     }
     removePaymentRow(paymentRemoveConfirmRowId)
     setPaymentRemoveConfirmRowId(null)
+  }
+
+  const executeUnlinkMercuryFromBankRow = useCallback(
+    async (row: PaymentRow) => {
+      const jobId = editing?.id
+      if (!jobId || !mercuryLinkedPaymentRow(row) || !canUnlinkMercuryPayment(authRole)) {
+        setUnlinkMercuryConfirmRowId(null)
+        return
+      }
+      if (paymentRowLinkedToInvoice(row)) {
+        showToast(
+          'This payment is linked to an invoice and can’t be removed in Edit Job. Change it from Outstanding billing or the mark-paid flow.',
+          'error',
+        )
+        setUnlinkMercuryConfirmRowId(null)
+        return
+      }
+      const remaining = payments.filter((r) => r.id !== row.id)
+      const paymentsMadeNum = remaining.reduce((s, p) => s + (Number(p.amount) || 0), 0)
+      setUnlinkingMercuryPaymentId(row.id)
+      try {
+        await withSupabaseRetry(
+          async () =>
+            supabase.from('jobs_ledger_payments').delete().eq('id', row.id).eq('job_id', jobId),
+          'jobs_ledger_payments_delete_mercury_row',
+        )
+        await withSupabaseRetry(
+          async () =>
+            supabase.from('jobs_ledger').update({ payments_made: paymentsMadeNum }).eq('id', jobId),
+          'jobs_ledger_update_payments_made_after_delete',
+        )
+        setPayments(remaining.length > 0 ? remaining : [newEmptyPaymentRow()])
+        let refreshed = await fetchJobWithDetailsById(jobId)
+        if (refreshed) setEditing(refreshed)
+
+        const rev = Number(refreshed?.revenue) || 0
+        const pm = Number(refreshed?.payments_made) || 0
+        const shouldMoveToBilled =
+          normalizeJobsLedgerStatus(refreshed?.status) === 'paid' && rev > pm + 0.01
+
+        if (shouldMoveToBilled) {
+          try {
+            const data = await withSupabaseRetry(
+              async () =>
+                supabase.rpc('update_job_status', { p_job_id: jobId, p_to_status: 'billed' }),
+              'update_job_status_unlink_mercury',
+            )
+            const result = data as { error?: string } | null
+            if (result?.error) {
+              showToast(
+                `Payment removed, but the job could not be moved back to Billed: ${result.error}`,
+                'error',
+              )
+            } else {
+              refreshed = await fetchJobWithDetailsById(jobId)
+              if (refreshed) setEditing(refreshed)
+              showToast('Payment removed from job. Job moved back to Billed.', 'success')
+            }
+          } catch (e: unknown) {
+            showToast(
+              formatPostgrestOrUnknownError(e, 'Payment removed but failed to move job to Billed'),
+              'error',
+            )
+          }
+        } else {
+          showToast(
+            'Payment removed from job. The bank deposit is available in Accounts Receivable again.',
+            'success',
+          )
+        }
+        onSavedRef.current?.()
+      } catch (e: unknown) {
+        showToast(formatPostgrestOrUnknownError(e, 'Failed to remove payment and unlink bank'), 'error')
+      } finally {
+        setUnlinkingMercuryPaymentId(null)
+        setUnlinkMercuryConfirmRowId(null)
+      }
+    },
+    [editing?.id, authRole, showToast, payments],
+  )
+
+  function confirmUnlinkMercuryFromBankRow() {
+    if (!unlinkMercuryConfirmRowId) return
+    const row = payments.find((r) => r.id === unlinkMercuryConfirmRowId)
+    if (!row || !mercuryLinkedPaymentRow(row) || !canUnlinkMercuryPayment(authRole)) {
+      setUnlinkMercuryConfirmRowId(null)
+      return
+    }
+    void executeUnlinkMercuryFromBankRow(row)
   }
 
   function updateMaterialRow(id: string, updates: Partial<MaterialRow>) {
@@ -4085,7 +4240,28 @@ export default function JobFormModal({
                               textAlign: 'right',
                             }}
                           >
-                            {stripePaymentLocked || mercuryPaymentLocked ? null : idx === lastUnlockedPaymentIdx ? (
+                            {stripePaymentLocked ? null : mercuryPaymentLocked && canUnlinkMercuryPayment(authRole) ? (
+                              <button
+                                type="button"
+                                onClick={() => setUnlinkMercuryConfirmRowId(row.id)}
+                                disabled={unlinkingMercuryPaymentId === row.id}
+                                title="Remove this payment from the job and free the bank deposit in Accounts Receivable"
+                                aria-label="Unlink bank deposit and remove this payment line"
+                                style={{
+                                  padding: '0.35rem 0.5rem',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 500,
+                                  color: unlinkingMercuryPaymentId === row.id ? '#9ca3af' : '#1d4ed8',
+                                  background: '#eff6ff',
+                                  border: '1px solid #bfdbfe',
+                                  borderRadius: 6,
+                                  cursor: unlinkingMercuryPaymentId === row.id ? 'not-allowed' : 'pointer',
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                {unlinkingMercuryPaymentId === row.id ? 'Removing…' : 'Unlink and remove'}
+                              </button>
+                            ) : mercuryPaymentLocked ? null : idx === lastUnlockedPaymentIdx ? (
                               <button
                                 type="button"
                                 onClick={addPaymentRow}
@@ -4157,7 +4333,7 @@ export default function JobFormModal({
                                       {refTrim ? (
                                         <span>
                                           <span style={{ fontWeight: 600, color: '#4b5563' }}>Ref: </span>
-                                          {refTrim}
+                                          <ReadOnlyPaymentRefCopy refText={refTrim} showToast={showToast} />
                                         </span>
                                       ) : null}
                                     </div>
@@ -4774,6 +4950,104 @@ export default function JobFormModal({
                 }}
               >
                 Remove payment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {unlinkMercuryConfirmRowId && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: JOB_FORM_NESTED_OVERLAY_Z_INDEX,
+          }}
+          onClick={() => {
+            if (unlinkingMercuryPaymentId) return
+            setUnlinkMercuryConfirmRowId(null)
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="job-form-unlink-mercury-confirm-title"
+            style={{
+              background: 'white',
+              padding: '1.5rem',
+              borderRadius: 8,
+              minWidth: 360,
+              maxWidth: 520,
+              maxHeight: '90vh',
+              overflow: 'auto',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2
+              id="job-form-unlink-mercury-confirm-title"
+              style={{ margin: '0 0 0.75rem', fontSize: '1.125rem', fontWeight: 600, color: '#111827' }}
+            >
+              Unlink and remove?
+            </h2>
+            <div style={{ fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}>
+              <p style={{ margin: '0 0 0.75rem' }}>
+                Remove this payment line from the job and unlink it from the bank deposit? The bank transaction will
+                show those funds as available again in Jobs → Stages → Accounts Receivable.
+              </p>
+              <p
+                style={{
+                  margin:
+                    normalizeJobsLedgerStatus(editing?.status) === 'paid' ? '0 0 0.75rem' : '0 0 1rem',
+                }}
+              >
+                Only do this to fix a mistaken link or payment. Applying the same deposit again without fixing data
+                could double-count.
+              </p>
+              {normalizeJobsLedgerStatus(editing?.status) === 'paid' ? (
+                <p style={{ margin: '0 0 1rem', color: '#6b7280', fontSize: '0.8125rem' }}>
+                  This job is Paid: if a balance remains after removing this payment, it will move back to Billed on
+                  Stages.
+                </p>
+              ) : null}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (unlinkingMercuryPaymentId) return
+                  setUnlinkMercuryConfirmRowId(null)
+                }}
+                disabled={Boolean(unlinkingMercuryPaymentId)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: '#f3f4f6',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 6,
+                  cursor: unlinkingMercuryPaymentId ? 'not-allowed' : 'pointer',
+                  fontSize: '0.875rem',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmUnlinkMercuryFromBankRow}
+                disabled={Boolean(unlinkingMercuryPaymentId)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: unlinkingMercuryPaymentId ? '#9ca3af' : '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: unlinkingMercuryPaymentId ? 'not-allowed' : 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                }}
+              >
+                {unlinkingMercuryPaymentId === unlinkMercuryConfirmRowId ? 'Removing…' : 'Unlink and remove'}
               </button>
             </div>
           </div>

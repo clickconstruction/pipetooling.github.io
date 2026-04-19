@@ -75,6 +75,11 @@ import {
   type InvoiceWithJob,
   type StageRow,
 } from '../lib/jobsStagesBoard'
+import {
+  fetchJobIdsMatchingScheduleOrClockSessions,
+  shouldFetchStagesScheduleSessionSearch,
+  STAGES_SCHEDULE_SESSION_SEARCH_MIN_CHARS,
+} from '../lib/jobsStagesScheduleSessionSearch'
 
 type JobsLedgerRow = Database['public']['Tables']['jobs_ledger']['Row']
 type CustomerRow = Database['public']['Tables']['customers']['Row']
@@ -840,6 +845,8 @@ export default function Jobs() {
   const [whenInvoiceBillModalDate, setWhenInvoiceBillModalDate] = useState('')
   const [invoiceEstimatedBillDateSavingId, setInvoiceEstimatedBillDateSavingId] = useState<string | null>(null)
   const [stagesSearchQuery, setStagesSearchQuery] = useState('')
+  const [stagesSearchExtraJobIds, setStagesSearchExtraJobIds] = useState<ReadonlySet<string>>(() => new Set())
+  const [stagesScheduleSessionSearchBusy, setStagesScheduleSessionSearchBusy] = useState(false)
   const [stagesStatusUpdatingId, setStagesStatusUpdatingId] = useState<string | null>(null)
   const [stagesInvoiceUpdatingId, setStagesInvoiceUpdatingId] = useState<string | null>(null)
   const stagesInvoiceMutationLockRef = useRef<string | null>(null)
@@ -879,6 +886,15 @@ export default function Jobs() {
       return false
     }
   })
+  const [stagesIncludeScheduleTimeInSearch, setStagesIncludeScheduleTimeInSearch] = useState(() => {
+    try {
+      const raw = localStorage.getItem('jobs-stages-search-include-schedule-time')
+      if (raw === null) return true
+      return raw === 'true'
+    } catch {
+      return true
+    }
+  })
   const [assignedEditJobId, setAssignedEditJobId] = useState<string | null>(null)
   const [assignedEditSelectedIds, setAssignedEditSelectedIds] = useState<string[]>([])
   const [assignedEditSavingId, setAssignedEditSavingId] = useState<string | null>(null)
@@ -903,21 +919,24 @@ export default function Jobs() {
     }))
   }, [jobs])
 
+  const openStagesDetailJobModal = useCallback((j: JobWithDetails) => {
+    const h = (j.hcp_number ?? '').trim() || '—'
+    const n = (j.job_name ?? '').trim() || 'Job'
+    setStagesDetailJobModal({
+      jobId: j.id,
+      prefillRowLabel: `${h} · ${n}`,
+      prefillAddress: (j.job_address ?? '').trim() || null,
+    })
+  }, [])
+
   const renderStagesOpenDetailJobName = useCallback((j: JobWithDetails): ReactNode => {
     const fmt = formatJobNameTwoLines(j.job_name)
     if (!fmt) return <div>—</div>
-    const h = (j.hcp_number ?? '').trim() || '—'
     const n = (j.job_name ?? '').trim() || 'Job'
     return (
       <button
         type="button"
-        onClick={() =>
-          setStagesDetailJobModal({
-            jobId: j.id,
-            prefillRowLabel: `${h} · ${n}`,
-            prefillAddress: (j.job_address ?? '').trim() || null,
-          })
-        }
+        onClick={() => openStagesDetailJobModal(j)}
         aria-label={`Open job detail for ${n}`}
         style={{
           display: 'block',
@@ -940,22 +959,55 @@ export default function Jobs() {
         ) : null}
       </button>
     )
-  }, [])
-
-  const stagesFilteredJobs = useMemo(() => {
-    const q = stagesSearchQuery.trim().toLowerCase()
-    if (!q) return jobs
-    return jobs.filter(
-      (j) =>
-        (j.hcp_number ?? '').toLowerCase().includes(q) ||
-        (j.job_name ?? '').toLowerCase().includes(q) ||
-        (j.job_address ?? '').toLowerCase().includes(q)
-    )
-  }, [jobs, stagesSearchQuery])
+  }, [openStagesDetailJobModal])
 
   const stagesBoardLists = useMemo(
-    () => buildJobsStagesBoardLists(jobs, stagesSearchQuery),
-    [jobs, stagesSearchQuery],
+    () => buildJobsStagesBoardLists(jobs, stagesSearchQuery, stagesSearchExtraJobIds),
+    [jobs, stagesSearchQuery, stagesSearchExtraJobIds],
+  )
+
+  const stagesFilteredJobs = stagesBoardLists.filtered
+
+  const STAGES_SCHEDULE_SESSION_DEBOUNCE_MS = 350
+  useEffect(() => {
+    if (activeTab !== 'stages') {
+      setStagesSearchExtraJobIds(new Set())
+      setStagesScheduleSessionSearchBusy(false)
+      return
+    }
+    const q = stagesSearchQuery.trim()
+    if (q.length < STAGES_SCHEDULE_SESSION_SEARCH_MIN_CHARS) {
+      setStagesSearchExtraJobIds(new Set())
+      setStagesScheduleSessionSearchBusy(false)
+      return
+    }
+    if (!shouldFetchStagesScheduleSessionSearch(stagesIncludeScheduleTimeInSearch, q)) {
+      setStagesSearchExtraJobIds(new Set())
+      setStagesScheduleSessionSearchBusy(false)
+      return
+    }
+    let cancelled = false
+    const t = window.setTimeout(() => {
+      void (async () => {
+        setStagesScheduleSessionSearchBusy(true)
+        const ids = jobs.map((j) => j.id)
+        const { data, error: schedErr } = await fetchJobIdsMatchingScheduleOrClockSessions(ids, q)
+        if (cancelled) return
+        setStagesSearchExtraJobIds(data)
+        setStagesScheduleSessionSearchBusy(false)
+        if (schedErr) showToast(schedErr, 'warning')
+      })()
+    }, STAGES_SCHEDULE_SESSION_DEBOUNCE_MS)
+    return () => {
+      cancelled = true
+      window.clearTimeout(t)
+      setStagesScheduleSessionSearchBusy(false)
+    }
+  }, [activeTab, stagesSearchQuery, stagesIncludeScheduleTimeInSearch, jobs, showToast])
+
+  const bankPaymentsModalBilledRows = useMemo(
+    () => buildJobsStagesBoardLists(jobs, '').billedRows,
+    [jobs],
   )
 
   const accountsReceivableButtonAccessibleName = useMemo(() => {
@@ -970,9 +1022,9 @@ export default function Jobs() {
     if (hasUnalloc) {
       return `Accounts Receivable, ${arBankTxUnallocatedCount} unallocated bank transaction${arBankTxUnallocatedCount === 1 ? '' : 's'}`
     }
-    if (stagesBoardLists.billedRows.length === 0) return 'No billed rows'
+    if (bankPaymentsModalBilledRows.length === 0) return 'No billed rows'
     return 'Accounts Receivable: apply bank deposits to billed lines (non-Stripe)'
-  }, [authRole, stagesBoardLists.billedRows.length, arBankTxUnallocatedCount])
+  }, [authRole, bankPaymentsModalBilledRows.length, arBankTxUnallocatedCount])
 
   const billedAgingBuckets = useMemo(() => {
     const st = (j: JobWithDetails) => (j.status ?? 'working') as string
@@ -1209,6 +1261,18 @@ export default function Jobs() {
       const next = !prev
       try {
         localStorage.setItem('jobs-stages-ham-mode', String(next))
+      } catch {
+        /* ignore */
+      }
+      return next
+    })
+  }
+
+  function toggleStagesIncludeScheduleTimeInSearch() {
+    setStagesIncludeScheduleTimeInSearch((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem('jobs-stages-search-include-schedule-time', String(next))
       } catch {
         /* ignore */
       }
@@ -3676,7 +3740,11 @@ ${totalsHtml}
     (invoiceId: string): boolean => {
       const raw = invoiceId.trim()
       if (!raw) return false
-      const { readyToBillRows, billedRows } = buildJobsStagesBoardLists(jobs, stagesSearchQuery)
+      const { readyToBillRows, billedRows } = buildJobsStagesBoardLists(
+        jobs,
+        stagesSearchQuery,
+        stagesSearchExtraJobIds,
+      )
       const section = locateStagesInvoiceSection(raw, readyToBillRows, billedRows)
       if (section == null) {
         if (stagesInvoiceVisibleWithEmptySearch(raw, jobs)) {
@@ -3695,7 +3763,7 @@ ${totalsHtml}
       setStagesInvoiceFlashId(raw)
       return true
     },
-    [jobs, stagesSearchQuery, showToast],
+    [jobs, stagesSearchQuery, stagesSearchExtraJobIds, showToast],
   )
 
   const stagesInvoiceParam = searchParams.get('stagesInvoice')
@@ -4901,7 +4969,25 @@ ${totalsHtml}
           {loading && (
             <p style={{ color: '#6b7280', marginBottom: '1rem' }}>Loading jobs…</p>
           )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+          <div style={{ marginBottom: '1rem' }}>
+            <span
+              id="stages-search-supplemental-desc"
+              style={{
+                position: 'absolute',
+                width: 1,
+                height: 1,
+                padding: 0,
+                margin: -1,
+                overflow: 'hidden',
+                clip: 'rect(0,0,0,0)',
+                whiteSpace: 'nowrap',
+                border: 0,
+              }}
+            >
+              When Schedule and time in search is enabled, results can include jobs matched by dispatch schedule or clock
+              session notes, people, or dates.
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <button
               type="button"
               onClick={openNew}
@@ -4919,11 +5005,67 @@ ${totalsHtml}
             </button>
             <input
               type="text"
-              placeholder="Search by HCP, job name, or address"
+              placeholder={
+                stagesIncludeScheduleTimeInSearch
+                  ? 'Search HCP, name, address, schedule notes, or clock notes'
+                  : 'Search HCP, name, address'
+              }
               value={stagesSearchQuery}
               onChange={(e) => setStagesSearchQuery(e.target.value)}
+              aria-busy={stagesIncludeScheduleTimeInSearch && stagesScheduleSessionSearchBusy}
+              aria-describedby={
+                stagesIncludeScheduleTimeInSearch ? 'stages-search-supplemental-desc' : undefined
+              }
               style={{ flex: 1, padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
             />
+            <button
+              type="button"
+              onClick={toggleStagesIncludeScheduleTimeInSearch}
+              title={
+                stagesIncludeScheduleTimeInSearch
+                  ? 'Schedule and time in search on: also matches dispatch schedule and clock sessions (notes, assignee or puncher name, work date). Extra requests while you type. Click to search only HCP, name, and address.'
+                  : 'Schedule and time in search off: only HCP, name, and address. Click to include schedule blocks and clock sessions in search.'
+              }
+              aria-label={
+                stagesIncludeScheduleTimeInSearch
+                  ? 'Schedule and time in search on, press to turn off'
+                  : 'Schedule and time in search off, press to turn on'
+              }
+              aria-pressed={stagesIncludeScheduleTimeInSearch}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 36,
+                height: 36,
+                flexShrink: 0,
+                padding: 0,
+                border: '1px solid #d1d5db',
+                borderRadius: 4,
+                background: stagesIncludeScheduleTimeInSearch ? '#eff6ff' : 'white',
+                cursor: 'pointer',
+                color: stagesIncludeScheduleTimeInSearch ? '#2563eb' : '#6b7280',
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={20} height={20} fill="currentColor" aria-hidden>
+                <path d="M480 272C480 317.9 465.1 360.3 440 394.7L566.6 521.4C579.1 533.9 579.1 554.2 566.6 566.7C554.1 579.2 533.8 579.2 521.3 566.7L394.7 440C360.3 465.1 317.9 480 272 480C157.1 480 64 386.9 64 272C64 157.1 157.1 64 272 64C386.9 64 480 157.1 480 272zM272 416C351.5 416 416 351.5 416 272C416 192.5 351.5 128 272 128C192.5 128 128 192.5 128 272C128 351.5 192.5 416 272 416z" />
+              </svg>
+            </button>
+            {stagesIncludeScheduleTimeInSearch && stagesScheduleSessionSearchBusy ? (
+              <span
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  fontSize: '0.8125rem',
+                  color: '#6b7280',
+                  lineHeight: 1.25,
+                  textAlign: 'left',
+                }}
+              >
+                <span>Search includes schedule</span>
+                <span>and session notes</span>
+              </span>
+            ) : null}
             {(['dev', 'assistant'] as const).includes((authRole || myRole) as 'dev' | 'assistant') && (
               <button
                 type="button"
@@ -4975,6 +5117,7 @@ ${totalsHtml}
                 />
               </svg>
             </button>
+            </div>
           </div>
           {(() => {
             const { working, paid, readyToBillRows, billedRows } = stagesBoardLists
@@ -5866,6 +6009,17 @@ ${totalsHtml}
                                         <path d="M128.1 64C92.8 64 64.1 92.7 64.1 128L64.1 512C64.1 547.3 92.8 576 128.1 576L274.3 576L285.2 521.5C289.5 499.8 300.2 479.9 315.8 464.3L448 332.1L448 234.6C448 217.6 441.3 201.3 429.3 189.3L322.8 82.7C310.8 70.7 294.5 64 277.6 64L128.1 64zM389.6 240L296.1 240C282.8 240 272.1 229.3 272.1 216L272.1 122.5L389.6 240zM332.3 530.9L320.4 590.5C320.2 591.4 320.1 592.4 320.1 593.4C320.1 601.4 326.6 608 334.7 608C335.7 608 336.6 607.9 337.6 607.7L397.2 595.8C409.6 593.3 421 587.2 429.9 578.3L548.8 459.4L468.8 379.4L349.9 498.3C341 507.2 334.9 518.6 332.4 531zM600.1 407.9C622.2 385.8 622.2 350 600.1 327.9C578 305.8 542.2 305.8 520.1 327.9L491.3 356.7L571.3 436.7L600.1 407.9z" />
                                       </svg>
                                     </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => openStagesDetailJobModal(j)}
+                                      title="Job detail"
+                                      aria-label={`Open job detail for ${(j.job_name ?? '').trim() || 'Job'}`}
+                                      style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#374151', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                    >
+                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                                        <path d="M264 112L376 112C380.4 112 384 115.6 384 120L384 160L256 160L256 120C256 115.6 259.6 112 264 112zM208 120L208 160L128 160C92.7 160 64 188.7 64 224L64 320L576 320L576 224C576 188.7 547.3 160 512 160L432 160L432 120C432 89.1 406.9 64 376 64L264 64C233.1 64 208 89.1 208 120zM576 368L384 368L384 384C384 401.7 369.7 416 352 416L288 416C270.3 416 256 401.7 256 384L256 368L64 368L64 480C64 515.3 92.7 544 128 544L512 544C547.3 544 576 515.3 576 480L576 368z" />
+                                      </svg>
+                                    </button>
                                   </div>
                                 </div>
                               </td>
@@ -6477,6 +6631,17 @@ ${totalsHtml}
                                           <path d="M128.1 64C92.8 64 64.1 92.7 64.1 128L64.1 512C64.1 547.3 92.8 576 128.1 576L274.3 576L285.2 521.5C289.5 499.8 300.2 479.9 315.8 464.3L448 332.1L448 234.6C448 217.6 441.3 201.3 429.3 189.3L322.8 82.7C310.8 70.7 294.5 64 277.6 64L128.1 64zM389.6 240L296.1 240C282.8 240 272.1 229.3 272.1 216L272.1 122.5L389.6 240zM332.3 530.9L320.4 590.5C320.2 591.4 320.1 592.4 320.1 593.4C320.1 601.4 326.6 608 334.7 608C335.7 608 336.6 607.9 337.6 607.7L397.2 595.8C409.6 593.3 421 587.2 429.9 578.3L548.8 459.4L468.8 379.4L349.9 498.3C341 507.2 334.9 518.6 332.4 531zM600.1 407.9C622.2 385.8 622.2 350 600.1 327.9C578 305.8 542.2 305.8 520.1 327.9L491.3 356.7L571.3 436.7L600.1 407.9z" />
                                         </svg>
                                       </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => openStagesDetailJobModal(j)}
+                                        title="Job detail"
+                                        aria-label={`Open job detail for ${(j.job_name ?? '').trim() || 'Job'}`}
+                                        style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#374151', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                      >
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                                          <path d="M264 112L376 112C380.4 112 384 115.6 384 120L384 160L256 160L256 120C256 115.6 259.6 112 264 112zM208 120L208 160L128 160C92.7 160 64 188.7 64 224L64 320L576 320L576 224C576 188.7 547.3 160 512 160L432 160L432 120C432 89.1 406.9 64 376 64L264 64C233.1 64 208 89.1 208 120zM576 368L384 368L384 384C384 401.7 369.7 416 352 416L288 416C270.3 416 256 401.7 256 384L256 368L64 368L64 480C64 515.3 92.7 544 128 544L512 544C547.3 544 576 515.3 576 480L576 368z" />
+                                        </svg>
+                                      </button>
                                     </div>
                                   </div>
                                 </td>
@@ -6803,6 +6968,17 @@ ${totalsHtml}
                                           <path d="M128.1 64C92.8 64 64.1 92.7 64.1 128L64.1 512C64.1 547.3 92.8 576 128.1 576L274.3 576L285.2 521.5C289.5 499.8 300.2 479.9 315.8 464.3L448 332.1L448 234.6C448 217.6 441.3 201.3 429.3 189.3L322.8 82.7C310.8 70.7 294.5 64 277.6 64L128.1 64zM389.6 240L296.1 240C282.8 240 272.1 229.3 272.1 216L272.1 122.5L389.6 240zM332.3 530.9L320.4 590.5C320.2 591.4 320.1 592.4 320.1 593.4C320.1 601.4 326.6 608 334.7 608C335.7 608 336.6 607.9 337.6 607.7L397.2 595.8C409.6 593.3 421 587.2 429.9 578.3L548.8 459.4L468.8 379.4L349.9 498.3C341 507.2 334.9 518.6 332.4 531zM600.1 407.9C622.2 385.8 622.2 350 600.1 327.9C578 305.8 542.2 305.8 520.1 327.9L491.3 356.7L571.3 436.7L600.1 407.9z" />
                                         </svg>
                                       </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => openStagesDetailJobModal(job)}
+                                        title="Job detail"
+                                        aria-label={`Open job detail for ${(job.job_name ?? '').trim() || 'Job'}`}
+                                        style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#374151', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                      >
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                                          <path d="M264 112L376 112C380.4 112 384 115.6 384 120L384 160L256 160L256 120C256 115.6 259.6 112 264 112zM208 120L208 160L128 160C92.7 160 64 188.7 64 224L64 320L576 320L576 224C576 188.7 547.3 160 512 160L432 160L432 120C432 89.1 406.9 64 376 64L264 64C233.1 64 208 89.1 208 120zM576 368L384 368L384 384C384 401.7 369.7 416 352 416L288 416C270.3 416 256 401.7 256 384L256 368L64 368L64 480C64 515.3 92.7 544 128 544L512 544C547.3 544 576 515.3 576 480L576 368z" />
+                                        </svg>
+                                      </button>
                                     </div>
                                   </div>
                                 </td>
@@ -7013,7 +7189,6 @@ ${totalsHtml}
                       type="button"
                       onClick={() => setBankPaymentsModalOpen(true)}
                       disabled={
-                        billedRows.length === 0 ||
                         !(
                           authRole === 'dev' ||
                           authRole === 'master_technician' ||
@@ -7033,7 +7208,6 @@ ${totalsHtml}
                         border: '1px solid #d1d5db',
                         borderRadius: 4,
                         background:
-                          billedRows.length === 0 ||
                           !(
                             authRole === 'dev' ||
                             authRole === 'master_technician' ||
@@ -7043,7 +7217,6 @@ ${totalsHtml}
                             ? '#f3f4f6'
                             : 'white',
                         cursor:
-                          billedRows.length === 0 ||
                           !(
                             authRole === 'dev' ||
                             authRole === 'master_technician' ||
@@ -10787,10 +10960,13 @@ ${totalsHtml}
         onClose={() => setBankPaymentsModalOpen(false)}
         authUserId={authUser?.id}
         authRole={authRole}
-        billedRows={stagesBoardLists.billedRows}
+        billedRows={bankPaymentsModalBilledRows}
         onApplied={async () => {
           await loadJobs()
         }}
+        onOpenEditJob={(jobId) =>
+          jobFormModal?.openEditJob(jobId, { onSaved: () => void loadJobs() })
+        }
       />
       <BilledBillViewModal
         invoice={viewBillInvoice}

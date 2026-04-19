@@ -33,7 +33,11 @@ import BillCustomerMemoDevSettingsBlock from '../components/settings/BillCustome
 import PhysicalInvoiceIssuerDevSettingsBlock from '../components/settings/PhysicalInvoiceIssuerDevSettingsBlock'
 import TeamFeedbackMasterAggregates from '../components/team-feedback/TeamFeedbackMasterAggregates'
 import type { Database } from '../types/database'
-import { APP_SETTINGS_KEY_JOB_TALLY_MIN_POSTED_YMD, isValidYmd } from '../lib/appSettingsKeys'
+import {
+  APP_SETTINGS_KEY_FIELD_DISPATCH_PHONE,
+  APP_SETTINGS_KEY_JOB_TALLY_MIN_POSTED_YMD,
+  isValidYmd,
+} from '../lib/appSettingsKeys'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import {
   builtinEstimateExperience,
@@ -799,6 +803,8 @@ export default function Settings() {
   const [jobTallyMinPostedYmdInput, setJobTallyMinPostedYmdInput] = useState('')
   const [jobTallyMinPostedYmdSaving, setJobTallyMinPostedYmdSaving] = useState(false)
   const [jobTallyMinPostedYmdError, setJobTallyMinPostedYmdError] = useState<string | null>(null)
+  const [fieldDispatchPhoneInput, setFieldDispatchPhoneInput] = useState('')
+  const [fieldDispatchPhoneSaving, setFieldDispatchPhoneSaving] = useState(false)
   const [devResetEstimatesModalOpen, setDevResetEstimatesModalOpen] = useState(false)
   const [devResetEstimatesConfirmInput, setDevResetEstimatesConfirmInput] = useState('')
   const [devResetEstimatesLoading, setDevResetEstimatesLoading] = useState(false)
@@ -4321,6 +4327,32 @@ export default function Settings() {
         setJobTallyMinPostedYmdInput(vt?.trim() ?? '')
       } catch {
         if (!cancelled) setJobTallyMinPostedYmdInput('')
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [myRole])
+
+  useEffect(() => {
+    if (myRole !== 'dev') return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const data = await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('app_settings')
+              .select('value_text')
+              .eq('key', APP_SETTINGS_KEY_FIELD_DISPATCH_PHONE)
+              .maybeSingle(),
+          'load field dispatch phone app setting',
+        )
+        if (cancelled) return
+        const vt = (data as { value_text: string | null } | null)?.value_text
+        setFieldDispatchPhoneInput(vt?.trim() ?? '')
+      } catch {
+        if (!cancelled) setFieldDispatchPhoneInput('')
       }
     })()
     return () => {
@@ -10998,6 +11030,71 @@ export default function Settings() {
           <PhysicalInvoiceIssuerDevSettingsBlock />
           <PhysicalInvoiceFooterDevSettingsBlock />
           <BillCustomerMemoDevSettingsBlock />
+          <div
+            style={{
+              marginBottom: '1.5rem',
+              padding: '1rem',
+              border: '1px solid #e5e7eb',
+              borderRadius: 8,
+              background: '#fafafa',
+            }}
+          >
+            <h3 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 600 }}>
+              Field collect payment — dispatch phone
+            </h3>
+            <p style={{ margin: '0 0 0.75rem', color: '#6b7280', fontSize: '0.875rem', lineHeight: 1.5 }}>
+              Shown to subcontractors on Collect Payment step 2 (Awaiting dispatch). E.164 or US digits; example:{' '}
+              <code>+15123600599</code> or <code>512 360 0599</code>. Leave empty to use the app default.
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
+              <label htmlFor="field-dispatch-phone" style={{ fontWeight: 500, fontSize: '0.875rem' }}>
+                Phone
+              </label>
+              <input
+                id="field-dispatch-phone"
+                type="text"
+                autoComplete="tel"
+                value={fieldDispatchPhoneInput}
+                onChange={(e) => setFieldDispatchPhoneInput(e.target.value)}
+                placeholder="+15123600599"
+                style={{ padding: '0.35rem 0.5rem', fontSize: '0.875rem', minWidth: 200 }}
+              />
+              <button
+                type="button"
+                disabled={fieldDispatchPhoneSaving}
+                onClick={() => {
+                  void (async () => {
+                    setFieldDispatchPhoneSaving(true)
+                    try {
+                      await withSupabaseRetry(
+                        async () =>
+                          supabase.from('app_settings').upsert(
+                            {
+                              key: APP_SETTINGS_KEY_FIELD_DISPATCH_PHONE,
+                              value_text: fieldDispatchPhoneInput.trim(),
+                            },
+                            { onConflict: 'key' },
+                          ),
+                        'save field dispatch phone app setting',
+                      )
+                      showToast('Dispatch phone saved.', 'success')
+                    } catch (e) {
+                      showToast(formatErrorMessage(e), 'error')
+                    } finally {
+                      setFieldDispatchPhoneSaving(false)
+                    }
+                  })()
+                }}
+                style={{
+                  padding: '0.35rem 0.75rem',
+                  fontSize: '0.875rem',
+                  cursor: fieldDispatchPhoneSaving ? 'wait' : 'pointer',
+                }}
+              >
+                {fieldDispatchPhoneSaving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
           <div style={{ marginBottom: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
             <button
               type="button"
