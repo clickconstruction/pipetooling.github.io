@@ -27,6 +27,7 @@ import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { useJobMaterialsCostSnapshot } from '../../hooks/useJobMaterialsCostSnapshot'
 import { useJobDetailScheduleAndSessions } from '../../hooks/useJobDetailScheduleAndSessions'
@@ -655,6 +656,8 @@ export default function DetailJobModal({
     })
   }
 
+  useBodyScrollLock(open && narrowViewport)
+
   if (!open) return null
 
   return (
@@ -668,6 +671,7 @@ export default function DetailJobModal({
         justifyContent: 'center',
         zIndex: 1004,
         padding: '1rem',
+        ...(narrowViewport ? { overscrollBehavior: 'contain' as const } : {}),
       }}
       onClick={onClose}
       role="presentation"

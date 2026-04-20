@@ -43,17 +43,22 @@ function formatCurrency(n: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
 }
 
+/** Posted column: date + weekday + local time in app calendar TZ (e.g. April 16 (Thu) · 3:45 PM). */
 function formatPostedShort(iso: string | null): string {
   if (!iso) return '—'
   try {
     const d = new Date(iso)
     if (Number.isNaN(d.getTime())) return iso
-    return d.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      timeZone: APP_CALENDAR_TZ,
+    const tz = APP_CALENDAR_TZ
+    const month = d.toLocaleString('en-US', { month: 'long', timeZone: tz })
+    const day = d.toLocaleString('en-US', { day: 'numeric', timeZone: tz })
+    const weekday = d.toLocaleString('en-US', { weekday: 'short', timeZone: tz })
+    const timePart = d.toLocaleString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      timeZone: tz,
     })
+    return `${month} ${day} (${weekday}) · ${timePart}`
   } catch {
     return iso
   }

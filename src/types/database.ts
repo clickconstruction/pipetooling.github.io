@@ -1166,24 +1166,30 @@ export type Database = {
       }
       contract_template_documents: {
         Row: {
+          book_body_html: string | null
           created_at: string | null
           document_name: string
           id: string
           sequence_order: number
+          tags: string[]
           template_id: string
         }
         Insert: {
+          book_body_html?: string | null
           created_at?: string | null
           document_name: string
           id?: string
           sequence_order?: number
+          tags?: string[]
           template_id: string
         }
         Update: {
+          book_body_html?: string | null
           created_at?: string | null
           document_name?: string
           id?: string
           sequence_order?: number
+          tags?: string[]
           template_id?: string
         }
         Relationships: [
@@ -4426,6 +4432,13 @@ export type Database = {
             referencedRelation: "pay_stubs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "pay_stub_additional_lines_source_clock_session_id_fkey"
+            columns: ["source_clock_session_id"]
+            isOneToOne: false
+            referencedRelation: "clock_sessions"
+            referencedColumns: ["id"]
+          },
         ]
       }
       pay_stub_days: {
@@ -5041,37 +5054,64 @@ export type Database = {
       }
       person_contract_documents: {
         Row: {
+          canonical_document_url: string | null
           created_at: string | null
           document_name: string
           id: string
           note: string | null
           person_name: string
+          public_token_expires_at: string | null
+          public_token_hash: string | null
           sent_at: string | null
           signed_at: string | null
+          signer_consented_at: string | null
+          signer_ip: string | null
+          signer_printed_name: string | null
+          signer_signature_storage_path: string | null
+          signer_user_agent: string | null
+          signing_body_html: string | null
           status: string
           updated_at: string | null
           url: string | null
         }
         Insert: {
+          canonical_document_url?: string | null
           created_at?: string | null
           document_name: string
           id?: string
           note?: string | null
           person_name: string
+          public_token_expires_at?: string | null
+          public_token_hash?: string | null
           sent_at?: string | null
           signed_at?: string | null
+          signer_consented_at?: string | null
+          signer_ip?: string | null
+          signer_printed_name?: string | null
+          signer_signature_storage_path?: string | null
+          signer_user_agent?: string | null
+          signing_body_html?: string | null
           status?: string
           updated_at?: string | null
           url?: string | null
         }
         Update: {
+          canonical_document_url?: string | null
           created_at?: string | null
           document_name?: string
           id?: string
           note?: string | null
           person_name?: string
+          public_token_expires_at?: string | null
+          public_token_hash?: string | null
           sent_at?: string | null
           signed_at?: string | null
+          signer_consented_at?: string | null
+          signer_ip?: string | null
+          signer_printed_name?: string | null
+          signer_signature_storage_path?: string | null
+          signer_user_agent?: string | null
+          signing_body_html?: string | null
           status?: string
           updated_at?: string | null
           url?: string | null

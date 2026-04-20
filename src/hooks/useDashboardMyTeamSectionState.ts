@@ -106,6 +106,8 @@ export type TodaySessionStripRow = {
   approved_at: string | null
   rejected_at: string | null
   revoked_at: string | null
+  /** Present for dashboard today strip (split salary gap visibility). */
+  origin?: string | null
   notes: string | null
   job_ledger_id: string | null
   bid_id: string | null

@@ -12,17 +12,68 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.344 → v2.4"
+version_range: "v2.361 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.361)"
+    line: ~1160
+    description: "Stale tally follow-up Posted column adds local time (APP_CALENDAR_TZ)"
+  - name: "Latest Version (v2.360)"
+    line: ~1174
+    description: "Stale tally follow-up modal Posted column: April 16 (Thu) in APP_CALENDAR_TZ"
+  - name: "Latest Version (v2.359)"
+    line: ~1188
+    description: "People Contracts Edit document: Delete unsent with confirm (person_contract_documents DELETE)"
+  - name: "Latest Version (v2.358)"
+    line: ~1184
+    description: "People Contracts Send for signature modal: live email preview (contractSendEmailPreview.ts)"
+  - name: "Latest Version (v2.357)"
+    line: ~1180
+    description: "People Contracts Add document Request Signature: Send button saves and opens Send for signature modal"
+  - name: "Latest Version (v2.356)"
+    line: ~1194
+    description: "People Contracts Send for signature: optional email subject + opening message; send-contract-for-signature"
+  - name: "Latest Version (v2.355)"
+    line: ~1208
+    description: "People Contracts tab: full-width search by person or contract + matching document lines"
+  - name: "Latest Version (v2.354)"
+    line: ~1148
+    description: "People Contracts Manage templates: document names as indented bullets under template title"
+  - name: "Latest Version (v2.353)"
+    line: ~1142
+    description: "People Contracts Assign template modal: search + selectable radiogroup list (no select)"
+  - name: "Latest Version (v2.352)"
+    line: ~1140
+    description: "People Contracts Contract Book View + row cleanup + icon style; Upload Signed save always signed; no Status UI"
+  - name: "Latest Version (v2.351)"
+    line: ~1132
+    description: "People Contracts Contract Book modal; contract_template_documents book_body_html + tags; header + Add document icon"
+  - name: "Latest Version (v2.350)"
+    line: ~1132
+    description: "People Contracts Add → Upload Signed: hide optional signing-page block; save clears signing_body_html + canonical_document_url for that tab"
+  - name: "Latest Version (v2.349)"
+    line: ~1128
+    description: "People Contracts Add → Request Signature: hide Optional after signing block; save clears url/signed_at/note for that tab"
+  - name: "Latest Version (v2.348)"
+    line: ~1138
+    description: "People Contracts Add → Request Signature: no Status dropdown; save forces unsent; helper copy"
+  - name: "Latest Version (v2.347)"
+    line: ~1148
+    description: "People Contracts Add document: Upload Signed vs Request Signature tabs (Edit unchanged); aria tablist + ArrowLeft/ArrowRight"
+  - name: "Latest Version (v2.346)"
+    line: ~1112
+    description: "People Contracts: signing_body_html + canonical_document_url; digital signing via /contract/accept + Edge functions; contract-signer-signatures bucket"
+  - name: "Latest Version (v2.345)"
+    line: ~1112
+    description: "People Pay History Additional: prevailing-wage lines use human description + source_clock_session_id; strip legacy [pw:uuid] in modal and pay report HTML (payStubPrevailingWageLine.ts)"
   - name: "Latest Version (v2.344)"
-    line: ~1092
+    line: ~1112
     description: "Edit Job Delete: nested confirm modal (no window.confirm); Collect Payment hosted Stripe invoice flow (webhook completes flow; Realtime jobs_ledger_invoices; return_collect_payment_to_dispatch); Edge removes terminal-connection-token + create-terminal-collect-payment-intent; update-collect-payment-stripe-customer-email"
   - name: "Latest Version (v2.343)"
-    line: ~1115
+    line: ~1128
     description: "Collect Payment Step 1: Job Book always on (search, collapsible default closed), Ready-to-Bill warning gated on fixtures; Step 2 Call Dispatch in footer; JobBookEditorPanel Work focus+select on Add line, Cost select-all at zero"
   - name: "Latest Version (v2.342)"
-    line: ~1140
+    line: ~1142
     description: "Job Book (job_book_entries): Collect Payment Step 1 add lines from catalog; Settings CRUD + Jobs Stages toolbar modal (JobBookEditorPanel); add_collect_payment_fixture_from_job_book; job_service_type_id on certify payload"
   - name: "Latest Version (v2.341)"
     line: ~1155
@@ -31,10 +82,10 @@ key_sections:
     line: ~1170
     description: "Send Back (RTB→Working) cancels in-progress collect payment flow; modal notice; update_job_status"
   - name: "Latest Version (v2.339)"
-    line: ~1185
+    line: ~1182
     description: "Subcontractor Collect Payment: certify → dispatch queue → Stripe Terminal; job_collect_payment_flows; dashboard button variants (hosted invoice + webhook completion in v2.344)"
   - name: "Latest Version (v2.338)"
-    line: ~1105
+    line: ~1196
     description: "Dashboard team Ready to Bill; subcontractor Job Detail Job Total hidden; Assigned Jobs title opens Job Detail"
   - name: "Latest Version (v2.337)"
     line: ~1088
@@ -859,6 +910,23 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.361 — **Stale tally follow-up**: **Posted** column adds **time of day** (**`April 16 (Thu) · 3:45 PM`**, **`APP_CALENDAR_TZ`**) — **`DashboardStaleTallyStaffFollowUpModal.tsx`**](#latest-updates-v2361)
+**New:** [v2.360 — **Stale tally follow-up** (**`DashboardStaleTallyStaffFollowUpModal`**): **Posted** column **`April 16 (Thu)`** (**`APP_CALENDAR_TZ`**)](#latest-updates-v2360)
+**New:** [v2.359 — **People** **Contracts** **Edit document**: **Delete** for **`unsent`** rows + **confirm** modal (`People.tsx`, **`person_contract_documents` DELETE**)](#latest-updates-v2359)
+**New:** [v2.358 — **People** **Contracts** **Send for signature**: **Email preview** (subject + HTML body; placeholder signing link) — **`contractSendEmailPreview.ts`** + **`People.tsx`**](#latest-updates-v2358)
+**New:** [v2.357 — **People** **Contracts** **Add document** → **Request Signature**: **Send** saves then opens **Send for signature** (`People.tsx`)](#latest-updates-v2357)
+**New:** [v2.356 — **People** **Contracts** **Send for signature**: optional **email subject** + **opening message** (`People.tsx`, Edge **`send-contract-for-signature`**)](#latest-updates-v2356)
+**New:** [v2.355 — **People** **Contracts** tab: **search** (person + contract) + **matching documents** lines (`People.tsx`)](#latest-updates-v2355)
+**New:** [v2.354 — **People** **Contracts** **Manage templates**: indented document list under each template (`People.tsx`)](#latest-updates-v2354)
+**New:** [v2.353 — **People** **Contracts** **Assign template** modal: **search** + **radiogroup** list (`People.tsx`)](#latest-updates-v2353)
+**New:** [v2.352 — **People** **Contracts** **Contract Book** **View** + **Upload Signed** **status** polish (`ContractBookModal.tsx`, `People.tsx`)](#latest-updates-v2352)
+**New:** [v2.351 — **People** **Contracts** **Contract Book**: migration **`book_body_html`** + **`tags`** on **`contract_template_documents`**; modal (**`ContractBookModal`**) + **Contracts** header + icon by **Contract text** (`People.tsx`)](#latest-updates-v2351)
+**New:** [v2.350 — **People** **Contracts** **Add document** **Upload Signed**: no **Optional — signing page content** block; **Save** clears **`signing_body_html`** / **`canonical_document_url`** for that tab (`People.tsx`)](#latest-updates-v2350)
+**New:** [v2.349 — **People** **Contracts** **Add document** **Request Signature**: no **Optional — after signing** block; **Save** clears **`url`** / **`signed_at`** / **`note`** for that tab (`People.tsx`)](#latest-updates-v2349)
+**New:** [v2.348 — **People** **Contracts** **Add document** **Request Signature**: **Status** not editable; **Save** forces **`unsent`**; helper explains **Send** → **Sent** / signer → **Signed** (`People.tsx`)](#latest-updates-v2348)
+**New:** [v2.347 — **People** **Contracts** **Add document**: **Upload Signed** / **Request Signature** tabs (field grouping + helpers; **Edit document** unchanged); **`role="tablist"`** + Arrow keys](#latest-updates-v2347)
+**New:** [v2.346 — **People** **Contracts**: **`signing_body_html`** + **`canonical_document_url`**; **Send**/**Resend** signing email; public **`/contract/accept`** + Edge **`get-contract-for-signer`** / **`accept-contract`** / **`send-contract-for-signature`** (`sanitizeContractSigningHtml`, **`contract-signer-signatures`**)](#latest-updates-v2346)
+**New:** [v2.345 — **Pay History** **Additional**: **prevailing wage** top-up lines — human **`description`** + **`source_clock_session_id`**; legacy **`[pw:uuid]`** prefix stripped in **modal** + **pay report** (`stripPrevailingWageTag`, **`payStubPrevailingWageLine.ts`**)](#latest-updates-v2345)
 **New:** [v2.344 — **Edit Job** **Delete** in-app **confirm** modal; **Collect Payment** **hosted Stripe invoice** + **`update-collect-payment-stripe-customer-email`** (Terminal device Edge functions removed; **`complete_job_collect_payment_flow_for_invoice`**, Realtime **`jobs_ledger_invoices`**, **`return_collect_payment_to_dispatch`**)](#latest-updates-v2344)
 **New:** [v2.343 — **Collect Payment** Step 1: **Job Book** always available (**search**, collapsible **default closed**), **Ready-to-Bill** warning only with no fixtures; Step 2 **Call Dispatch** in **footer**; **`JobBookEditorPanel`** **Work**/**Cost** typing UX](#latest-updates-v2343)
 **New:** [v2.342 — **Job Book** (`job_book_entries`): **Collect Payment** Step 1 **Add** from read-only **Work**/**Cost** catalog; **Settings** CRUD (dev/master/assistant); **`add_collect_payment_fixture_from_job_book`** + **`job_service_type_id`** on certify payload](#latest-updates-v2342)
@@ -1091,6 +1159,186 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.361)
+
+**Date**: 2026-04-21
+
+### **Dashboard** / **Quickfill** — **Stale tally follow-up** — **Posted** (time)
+
+- **[`DashboardStaleTallyStaffFollowUpModal.tsx`](src/components/DashboardStaleTallyStaffFollowUpModal.tsx)** — **Posted** appends local **time** (12-hour, **`posted_at`** in **`APP_CALENDAR_TZ`**), e.g. **April 16 (Thu) · 3:45 PM**.
+
+---
+
+## Latest Updates (v2.360)
+
+**Date**: 2026-04-21
+
+### **Dashboard** / **Quickfill** — **Stale tally follow-up** — **Posted** column
+
+- **[`DashboardStaleTallyStaffFollowUpModal.tsx`](src/components/DashboardStaleTallyStaffFollowUpModal.tsx)** — **Posted** uses full month + day + short weekday in **`APP_CALENDAR_TZ`** (e.g. **April 16 (Thu)**) instead of short month + year.
+
+---
+
+## Latest Updates (v2.359)
+
+**Date**: 2026-04-21
+
+### **People** — **Contracts** — **Edit document** — delete **unsent**
+
+- **[`People.tsx`](src/pages/People.tsx)** — **Edit document** modal: **Delete** (beside **Cancel**) when the saved status is **`unsent`**; nested **Delete document?** confirm (`z-index` 12); **`withSupabaseRetry`** + **`DELETE`** on **`person_contract_documents`**; not shown for **sent** / **signed**.
+
+---
+
+## Latest Updates (v2.358)
+
+**Date**: 2026-04-21
+
+### **People** — **Contracts** — **Send for signature** — email preview
+
+- **[`contractSendEmailPreview.ts`](src/lib/contractSendEmailPreview.ts)** — Builds subject + HTML/text matching Edge **`send-contract-for-signature`** (placeholder URL until send).
+- **[`People.tsx`](src/pages/People.tsx)** — **Send for signature** modal: **Email preview** block (subject + scrollable HTML); **Unable to load preview** if the document row is missing from local state.
+
+---
+
+## Latest Updates (v2.357)
+
+**Date**: 2026-04-21
+
+### **People** — **Contracts** — **Add document** → **Request Signature** — **Send**
+
+- **[`People.tsx`](src/pages/People.tsx)** — **Add document** on **Request Signature**: **Send** (beside **Save**) saves the row, then opens the existing **Send for signature** modal when contract text or canonical URL is present; **Upload Signed** / **Edit document** unchanged. **contractsError** shown in the add/edit modal; cleared when opening **Add document**.
+
+---
+
+## Latest Updates (v2.356)
+
+**Date**: 2026-04-21
+
+### **People** — **Contracts** — **Send for signature** email
+
+- **[`People.tsx`](src/pages/People.tsx)** — **Send for signature** / **Resend** modal: optional **Email subject** and **Opening message** (plain text); omitted fields keep prior defaults.
+- **[`send-contract-for-signature`](supabase/functions/send-contract-for-signature/index.ts)** — Request body **`email_subject`** (max 200, clamped) and **`email_intro_plain`** (max 4000, clamped; HTML-escaped for the HTML part). Document line and signing link are always appended server-side.
+
+---
+
+## Latest Updates (v2.355)
+
+**Date**: 2026-04-21
+
+### **People** — **Contracts** tab — search
+
+- **[`People.tsx`](src/pages/People.tsx)** — **Contracts** tab: full-width **Search people and contracts** field above the **Person** / **Status** table (case-insensitive substring). Filters rows to people whose **name** matches or who have a **contract document name** that matches. When the query is non-empty and any **document names** match, a **Matching contract documents** region lists single-line **`Person — document — status`** entries (`unsent` / `sent` / `signed`). **No matches** row when the filter matches nobody and the search is active.
+
+---
+
+## Latest Updates (v2.354)
+
+**Date**: 2026-04-21
+
+### **People** — **Contracts** — **Manage templates** list layout
+
+- **[`People.tsx`](src/pages/People.tsx)** — **Manage templates** modal: each template shows its **document names** as an **indented bulleted list** below the template title (replaces inline **`(Doc1, Doc2)`**). Row uses **`alignItems: 'flex-start'`** so **Edit** / **Delete** stay top-aligned when there are many documents.
+
+---
+
+## Latest Updates (v2.353)
+
+**Date**: 2026-04-21
+
+### **People** — **Contracts** — **Assign template** modal
+
+- **[`People.tsx`](src/pages/People.tsx)** — **Assign template to {person}** (expanded person row): **Search templates** filters template **names** (case-insensitive); scrollable list with **`role="radiogroup"`** / per-row **`role="radio"`**, **`aria-checked`** / **`aria-disabled`** for **already assigned**; selection clears if filtered out. Replaces native **`<select>`**; search resets on open, cancel, and successful assign.
+
+---
+
+## Latest Updates (v2.352)
+
+**Date**: 2026-04-21
+
+### **People** — **Contracts** — **Contract Book** UX + **Upload Signed** status
+
+- **Contract Book** — [`ContractBookModal.tsx`](src/components/contracts/ContractBookModal.tsx): **View** per row (toggle) shows full library body via **`sanitizeContractSigningHtml`** + **`dangerouslySetInnerHTML`**; empty body shows **No library body yet** only inside the panel. List rows no longer show a text preview or empty-state line under the document name. **Edit** still clears the expanded view. Top helper paragraph removed from the modal.
+- **Add/Edit document** — [`People.tsx`](src/pages/People.tsx): **Contract text** book icon is **blue** (`#2563eb`), borderless / transparent (not a boxed button).
+- **Add document** — **Upload Signed** — [`People.tsx`](src/pages/People.tsx): **`saveContractDocument`** sets **`status: 'signed'`** whenever **`isAddUploadSignedTab`** (add flow is not tied to a **Status** control). **`Upload Signed`** / **`Request Signature`** tab clicks and Arrow Left/Right sync **`contractDocumentFormStatus`** (**`signed`** vs **`unsent`**). **Upload Signed** panel: link, signed date, note only (no **Status** row). **Edit document** remains a full form with **Status** `<select>`.
+
+---
+
+## Latest Updates (v2.351)
+
+**Date**: 2026-04-21
+
+### **People** — **Contracts** — **Contract Book**
+
+- **Schema** — [`20260420175612_contract_template_documents_book_body_and_tags.sql`](supabase/migrations/20260420175612_contract_template_documents_book_body_and_tags.sql): **`contract_template_documents.book_body_html`**, **`tags`** (`TEXT[]`).
+- **UI** — [`ContractBookModal.tsx`](src/components/contracts/ContractBookModal.tsx): list template documents with template name + tag badges; **Edit** saves sanitized HTML and tags. **Contracts** tab header **Contract Book** button; **Add/Edit document** modal: book icon beside **Contract text**. [`ContractBookIcon.tsx`](src/components/icons/ContractBookIcon.tsx).
+
+---
+
+## Latest Updates (v2.350)
+
+**Date**: 2026-04-21
+
+### **People** — **Contracts** — **Add document** — **Upload Signed** — no optional signing-page block
+
+- **[`People.tsx`](src/pages/People.tsx)** — **Add document** → **Upload Signed**: removed the **Optional — signing page content if you also use Send for signature** section (contract text + canonical URL). **`saveContractDocument`** sets **`signing_body_html`** and **`canonical_document_url`** to **`null`** when saving from that tab (`!editingContractDocument && contractDocumentAddTab === 'upload_signed'`). **Request Signature** and **Edit document** unchanged.
+
+---
+
+## Latest Updates (v2.349)
+
+**Date**: 2026-04-21
+
+### **People** — **Contracts** — **Add document** — **Request Signature** — no after-signing block
+
+- **[`People.tsx`](src/pages/People.tsx)** — **Add document** → **Request Signature**: removed the **Optional — after signing** section (signed/reference link, signed date, note). **`saveContractDocument`** also sets **`url`**, **`signed_at`**, and **`note`** to **`null`** when saving from that tab so tab-switching does not persist hidden fields. **Upload Signed** and **Edit document** unchanged.
+
+---
+
+## Latest Updates (v2.348)
+
+**Date**: 2026-04-21
+
+### **People** — **Contracts** — **Add document** — **Request Signature** — application-owned **status**
+
+- **[`People.tsx`](src/pages/People.tsx)** — **Add document** → **Request Signature**: **Status** dropdown removed; short helper explains **Unsent** until row **Send**, then **Sent** / **Signed** via Edge; **`saveContractDocument`** sets **`status: 'unsent'`** when saving from that tab (`!editingContractDocument && contractDocumentAddTab === 'request_signature'`). **Upload Signed** tab does not use a **Status** control; **`saveContractDocument`** forces **`status: 'signed'`** for that add path (**v2.352**). **Edit document** still uses the full **Status** `<select>`.
+
+---
+
+## Latest Updates (v2.347)
+
+**Date**: 2026-04-21
+
+### **People** — **Contracts** — **Add document** — **Upload Signed** / **Request Signature** tabs
+
+- **[`People.tsx`](src/pages/People.tsx)** — **Add document** only: tab strip (**Upload Signed** | **Request Signature**) with `role="tablist"`, `aria-selected`, `aria-controls`, and Arrow Left/Right to switch tabs; **Upload Signed** emphasizes signed/reference link, signed date, note (optional signing-page subsection removed in **v2.350**; **saved status** is always **signed** for that add path in **v2.352**); **Request Signature** emphasizes contract text + canonical **Check link** (**Status** / after-signing UI refined in **v2.348** / **v2.349**). **Edit document** remains a single full form (no tabs). `contractDocumentAddTab` resets to **Request Signature** on **+ Add document**.
+
+---
+
+## Latest Updates (v2.346)
+
+**Date**: 2026-04-20
+
+### **People** — **Contracts** — inline HTML, canonical URL, digital signing
+
+- **Schema** — [`20260420164136_person_contract_documents_signing_and_content.sql`](supabase/migrations/20260420164136_person_contract_documents_signing_and_content.sql): **`person_contract_documents.signing_body_html`**, **`canonical_document_url`**, **`public_token_hash`**, **`public_token_expires_at`**, signer fields; Storage bucket **`contract-signer-signatures`** (staff read policy).
+- **Staff UI** — [`People.tsx`](src/pages/People.tsx) Contracts tab: edit modal fields for contract text and canonical URL; **Signed / reference link** (legacy **`url`**); **Send** / **Resend** email modal; HTML/Link badges on rows; Users tab document-dot indicator counts any of HTML, canonical URL, or reference link.
+- **Public** — [`ContractAccept.tsx`](src/pages/ContractAccept.tsx) route **`/contract/accept?t=<token>`**; [`sanitizeContractSigningHtml`](src/lib/sanitizeContractSigningHtml.ts) (browser **DOMParser** allowlist, no extra bundle); [`ContractAcceptSignatureForm`](src/components/contracts/ContractAcceptSignatureForm.tsx) reuses Estimates **typed/draw** signature pattern.
+- **Edge** — **`get-contract-for-signer`**, **`accept-contract`**, **`send-contract-for-signature`** (see [`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md)).
+
+---
+
+## Latest Updates (v2.345)
+
+**Date**: 2026-04-21
+
+### **People** — **Pay History** — **Additional** — **prevailing wage** description UX
+
+- **Behavior**: New prevailing-wage top-up rows store a **human-readable** **`description`** only (for example `Prevailing top-up YYYY-MM-DD: $…/hr − $…/hr`). **`source_clock_session_id`** links the line to the **clock session** and enforces **one row per stub per session** (migration **[`20260420051645_pay_stub_additional_lines_source_clock_session.sql`](supabase/migrations/20260420051645_pay_stub_additional_lines_source_clock_session.sql)**). The app **no longer** prefixes **`[pw:<uuid>] `** in **`description`** for dedup.
+- **Legacy**: Older rows may still have that prefix. **[`stripPrevailingWageTag`](src/lib/payStubPrevailingWageLine.ts)** removes it for the **Additional** modal (**`LineEditor`**, target line **`<select>`**, **Change Line to hit Target** saves) and for itemized **Additional** lines in **pay stub HTML** (**[`buildPayStubHtml`](src/pages/People.tsx)**). **[`parsePrevailingSessionId`](src/lib/payStubPrevailingWageLine.ts)** still reads the tag when present so **`existingLineForSession`** keeps working until a row is re-saved without the prefix.
+- **Files**: [`PayStubAdditionalModal.tsx`](src/components/pay/PayStubAdditionalModal.tsx), [`payStubPrevailingWageLine.ts`](src/lib/payStubPrevailingWageLine.ts), [`People.tsx`](src/pages/People.tsx)
+
 ---
 
 ## Latest Updates (v2.344)
@@ -3187,13 +3435,13 @@ when_to_read:
 
 ### People — Pay History (Additional lines, Net Pay)
 
-- **`pay_stub_additional_lines`**: Per-stub lines with `quantity`, `rate`, and generated `line_total` (nearest cent). **Net Pay** = gross − sum(**Less**) + sum(**Additional**). Triggers keep installment totals ≤ Net Pay when Additional changes (`validate_pay_stub_payments_vs_net` / `pay_stub_payments_enforce_total_fn` updated).
-- **Ledger**: Column **Additional** (clickable, including **$0.00**) opens **Additional** modal ([`src/components/pay/PayStubAdditionalModal.tsx`](src/components/pay/PayStubAdditionalModal.tsx)): add/remove lines, quick flat amount (qty 1), **target total Additional** with solve for **rate** or **quantity** on a chosen line. Locked when installments fully cover Net Pay.
+- **`pay_stub_additional_lines`**: Per-stub lines with `quantity`, `rate`, and generated `line_total` (nearest cent). **Net Pay** = gross − sum(**Less**) + sum(**Additional**). Triggers keep installment totals ≤ Net Pay when Additional changes (`validate_pay_stub_payments_vs_net` / `pay_stub_payments_enforce_total_fn` updated). Optional **`source_clock_session_id`** links a line to a **clock session** (prevailing-wage top-up); **`description`** is human-readable (**v2.345** — no **`[pw:uuid]`** prefix on new rows; legacy prefix stripped in UI and pay report HTML via [`stripPrevailingWageTag`](src/lib/payStubPrevailingWageLine.ts)).
+- **Ledger**: Column **Additional** (clickable, including **$0.00**) opens **Additional** modal ([`src/components/pay/PayStubAdditionalModal.tsx`](src/components/pay/PayStubAdditionalModal.tsx)): add/remove lines, quick flat amount (qty 1), **target total Additional** with solve for **rate** or **quantity** on a chosen line, **prevailing wage** table from **approved** sessions in the stub period. Locked when installments fully cover Net Pay.
 - **Less modal** takes **`additionalSum`** so Net Pay and locks stay aligned ([`PayStubLessModal.tsx`](src/components/pay/PayStubLessModal.tsx)).
 - **Pay report HTML**: **Additional** (if any), then **Less** (if any), then **Net Pay** always; pending offsets unchanged after that block.
 - **Helpers**: [`stubNetPay(gross, less, additional?)`](src/lib/payStubDeductions.ts), [`sumPayStubAdditionalAmounts`](src/lib/payStubDeductions.ts).
 
-**Files**: [`supabase/migrations/20270329150000_pay_stub_additional_lines.sql`](supabase/migrations/20270329150000_pay_stub_additional_lines.sql), [`src/pages/People.tsx`](src/pages/People.tsx), [`src/components/pay/PayStubAdditionalModal.tsx`](src/components/pay/PayStubAdditionalModal.tsx), [`src/components/pay/PayStubLessModal.tsx`](src/components/pay/PayStubLessModal.tsx), [`src/lib/payStubDeductions.ts`](src/lib/payStubDeductions.ts), [`src/types/database.ts`](src/types/database.ts)
+**Files**: [`supabase/migrations/20270329150000_pay_stub_additional_lines.sql`](supabase/migrations/20270329150000_pay_stub_additional_lines.sql), [`supabase/migrations/20260420051645_pay_stub_additional_lines_source_clock_session.sql`](supabase/migrations/20260420051645_pay_stub_additional_lines_source_clock_session.sql), [`src/pages/People.tsx`](src/pages/People.tsx), [`src/components/pay/PayStubAdditionalModal.tsx`](src/components/pay/PayStubAdditionalModal.tsx), [`src/lib/payStubPrevailingWageLine.ts`](src/lib/payStubPrevailingWageLine.ts), [`src/components/pay/PayStubLessModal.tsx`](src/components/pay/PayStubLessModal.tsx), [`src/lib/payStubDeductions.ts`](src/lib/payStubDeductions.ts), [`src/types/database.ts`](src/types/database.ts)
 
 ---
 

@@ -188,15 +188,6 @@ function todayIsoDate(): string {
   return `${y}-${m}-${day}`
 }
 
-function isoDatePlusDays(days: number): string {
-  const d = new Date()
-  d.setDate(d.getDate() + days)
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
 function jobLedgerHasCustomerForBilling(customerId: string | null | undefined): boolean {
   return customerId != null && String(customerId).trim().length > 0
 }
@@ -364,7 +355,7 @@ export default function SendRecordInvoiceModal({
   const [ensureError, setEnsureError] = useState<string | null>(null)
   const [ensureLoading, setEnsureLoading] = useState(false)
 
-  const [stripeDueDate, setStripeDueDate] = useState(() => isoDatePlusDays(30))
+  const [stripeDueDate, setStripeDueDate] = useState(todayIsoDate)
   const [editDueDateOpen, setEditDueDateOpen] = useState(false)
   const [draftDueYmd, setDraftDueYmd] = useState('')
   const [draftServiceYmd, setDraftServiceYmd] = useState('')
@@ -433,7 +424,9 @@ export default function SendRecordInvoiceModal({
     if (!job) return
     const hasCustomerEmail = (job.customer_email ?? '').trim().length > 0
     setTab(hasCustomerEmail ? 'stripe' : 'housecallpro')
-    setSentDate(todayIsoDate())
+    const billCustomerOpenYmd = todayIsoDate()
+    setSentDate(billCustomerOpenYmd)
+    setStripeDueDate(billCustomerOpenYmd)
     const memoDefault = getBillCustomerMemoDefaultOnOpen()
     setExternalNote(memoDefault)
     setOutsideError(null)
@@ -444,7 +437,6 @@ export default function SendRecordInvoiceModal({
     setEnsuredInvoice(null)
     setEnsureError(null)
     setEnsureLoading(false)
-    setStripeDueDate(isoDatePlusDays(30))
     setEditDueDateOpen(false)
     setDraftDueYmd('')
     setDraftServiceYmd('')

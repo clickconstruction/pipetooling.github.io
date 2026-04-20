@@ -34,6 +34,7 @@ const Documents = lazy(() => import('./pages/Documents'))
 const EstimateAcceptStaffPreview = lazy(() => import('./pages/EstimateAcceptStaffPreview'))
 import EstimateAccept from './pages/EstimateAccept'
 import EstimatePublicTerms from './pages/EstimatePublicTerms'
+import ContractAccept from './pages/ContractAccept'
 import { ToastProvider, useToastContext } from './contexts/ToastContext'
 import { registerSW } from 'virtual:pwa-register'
 import { ForceReloadProvider } from './contexts/ForceReloadContext'
@@ -143,6 +144,7 @@ function AppContent() {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/reset-password-confirm" element={<ResetPasswordConfirm />} />
         <Route path="/estimate/accept" element={<EstimateAccept />} />
+        <Route path="/contract/accept" element={<ContractAccept />} />
         <Route path="/estimate/terms" element={<EstimatePublicTerms />} />
         <Route
           path="/estimate/customer-accept-preview/:id"

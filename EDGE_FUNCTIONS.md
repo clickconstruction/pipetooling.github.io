@@ -734,6 +734,55 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ---
 
+### get-contract-for-signer
+
+**Purpose**: Public read of a **sent** person contract document for the signing page (no JWT).
+
+**Endpoint**: `GET /functions/v1/get-contract-for-signer?token=<opaque>`
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+
+**Gateway**: `verify_jwt = false` in [`supabase/config.toml`](supabase/config.toml).
+
+**Behavior**: SHA-256 hash of `token`; load row by **`public_token_hash`** where **`status = sent`**; enforce **`public_token_expires_at`**. Returns **`signing_body_html`**, **`canonical_document_url`** (canonical column, else legacy **`url`**), **`document_name`**, **`person_name`**. If **`status = signed`**, responds **409** with **`code: already_signed`** and thank-you strings.
+
+---
+
+### accept-contract
+
+**Purpose**: Record contract signature (typed or drawn PNG); sets **`status = signed`**, clears token, stores signature in **`contract-signer-signatures`** when drawn.
+
+**Endpoint**: `POST /functions/v1/accept-contract`
+
+**Body**: `{ "token": string, "printedName": string, "signaturePngBase64"?: string, "agreedTerms": true }`
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+
+**Gateway**: `verify_jwt = false`
+
+**Behavior**: Same PNG validation/size limits as **`accept-estimate`**. Idempotent if already **`signed`** (**`200`** + **`alreadySigned: true`**). Captures IP from **`x-forwarded-for`** (first hop) and **`user-agent`**.
+
+---
+
+### send-contract-for-signature
+
+**Purpose**: Verify JWT, ensure caller can read the **`person_contract_documents`** row, require at least one of **`signing_body_html`**, **`canonical_document_url`**, or **`url`**, mint token, set **`status = sent`**, email Resend link to **`{public_origin}/contract/accept?t=…`**.
+
+**Endpoint**: `POST /functions/v1/send-contract-for-signature`
+
+**Body**: `{ "person_contract_document_id": string, "signer_email": string, "public_origin"?: string, "email_subject"?: string, "email_intro_plain"?: string }`
+
+- **`email_subject`** (optional): Plain-text subject after trim; max **200** characters (server clamps). If empty, default is **`Sign contract: {document_name} ({person_name})`**.
+- **`email_intro_plain`** (optional): Opening message only (plain text; control characters stripped; max **4000** characters, server clamps). If empty, default first line is **`Please review and sign your contract.`** The email always includes the **document name**, **person name**, and **signing link** after the intro (HTML intro is escaped; newlines / blank lines become paragraphs or `<br>`).
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` (optional)
+
+**Gateway**: `verify_jwt = false`; JWT validated with **`auth.getUser`** in function.
+
+**Optional**: `ESTIMATE_PUBLIC_ORIGIN` if link base should not come from the client.
+
+---
+
 ### check-estimate-attachment-url
 
 **Purpose**: Authenticated **heuristic** probe for a pasted **Google Drive** or **Google Docs** HTTPS URL (draft “supporting document” field). Classifies responses as **`likely_public`**, **`likely_ok_html`** (2xx HTML without restricted markers — e.g. typical viewer), **`likely_restricted`**, or **`unknown`** for staff guidance only; **does not** enforce access or block sending estimates.

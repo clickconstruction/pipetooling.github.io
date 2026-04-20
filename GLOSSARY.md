@@ -695,11 +695,11 @@ Per-person **backcharges**, **damages**, and **employee credits** (`person_offse
 **See also**: `RECENT_FEATURES.md` → v2.173, v2.174; `src/components/pay/PayStubLessModal.tsx`.
 
 ### pay_stub_additional_lines
-**Additional** lines on a pay stub: **quantity** × **rate**, with **`line_total`** generated in the database as `round(quantity * rate, 2)`. **Net Pay** = **gross_pay** − sum(Less) + sum(Additional line totals). Edits are blocked when installments already fully cover Net Pay, same pattern as **Less**.
+**Additional** lines on a pay stub: **quantity** × **rate**, with **`line_total`** generated in the database as `round(quantity * rate, 2)`. **Net Pay** = **gross_pay** − sum(Less) + sum(Additional line totals). Edits are blocked when installments already fully cover Net Pay, same pattern as **Less**. Optional **`source_clock_session_id`** links a line to **`clock_sessions`** (for example a **prevailing wage** top-up from an approved session in the stub period); partial unique index enforces at most one such row per stub per session. **`description`** is user-facing text only (**v2.345**): new prevailing-wage rows do not embed a machine prefix; **`stripPrevailingWageTag`** in **`payStubPrevailingWageLine.ts`** strips any legacy **`[pw:<uuid>]`** leader for the Additional modal and pay report HTML, while **`parsePrevailingSessionId`** can still read it for dedup on old rows.
 
-**Client helpers**: `src/lib/payStubDeductions.ts`.
+**Client helpers**: `src/lib/payStubDeductions.ts`, `src/lib/payStubPrevailingWageLine.ts`.
 
-**See also**: `RECENT_FEATURES.md` → v2.174; `PROJECT_DOCUMENTATION.md` → People (Pay History); `src/components/pay/PayStubAdditionalModal.tsx`.
+**See also**: `RECENT_FEATURES.md` → v2.345, v2.174; `PROJECT_DOCUMENTATION.md` → People (Pay History); `MIGRATIONS.md` → `20260420051645`; `src/components/pay/PayStubAdditionalModal.tsx`.
 
 ### Trigger
 Automatic database function that fires on INSERT, UPDATE, or DELETE operations.

@@ -93,11 +93,26 @@ function stripRowHasPendingApprovalMerged(
   return row.todaySessions.some((s) => stripSessionIsPendingApprovalMerged(s, optimisticIds))
 }
 
+/**
+ * Split (or multi-block) salary day: completed salary block(s), nothing open — e.g. gap between
+ * morning and afternoon sessions. Keeps the person visible under the default "missing" filter.
+ */
+function stripRowHasClosedSalaryScheduleNoOpenSession(row: ClockedInTodayStripRow): boolean {
+  const active = row.todaySessions.filter((s) => !s.rejected_at && !s.revoked_at)
+  if (active.length === 0) return false
+  if (active.some((s) => s.clocked_out_at == null)) return false
+  return active.some((s) => s.origin === 'salary_schedule')
+}
+
 function stripRowInFocusedClockedInView(
   row: ClockedInTodayStripRow,
   optimisticIds: ReadonlySet<string>,
 ): boolean {
-  return stripRowHasUnassignedSession(row) || stripRowHasPendingApprovalMerged(row, optimisticIds)
+  return (
+    stripRowHasUnassignedSession(row) ||
+    stripRowHasPendingApprovalMerged(row, optimisticIds) ||
+    stripRowHasClosedSalaryScheduleNoOpenSession(row)
+  )
 }
 
 function stripActionsPayloadFromSession(

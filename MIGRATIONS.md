@@ -92,6 +92,20 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### April 2026
 
+#### April 20, 2026
+
+**`20260420164136_person_contract_documents_signing_and_content.sql`**
+- **Purpose**: **People → Contracts** — inline **`signing_body_html`**, **`canonical_document_url`**, public signing token fields, signer audit columns, and private Storage bucket **`contract-signer-signatures`** (staff SELECT policy) for digital signing (parallels Estimates acceptance flow).
+- **Changes**: **`ALTER TABLE person_contract_documents`**; **`INSERT`** **`storage.buckets`**; **`CREATE POLICY`** **`contract_signer_signatures_select`**
+- **Impact**: [`People.tsx`](src/pages/People.tsx), [`ContractAccept.tsx`](src/pages/ContractAccept.tsx), Edge **`get-contract-for-signer`**, **`accept-contract`**, **`send-contract-for-signature`**; **`RECENT_FEATURES.md`** v2.346
+- **Category**: People / Contracts / Storage / Edge
+
+**`20260420175612_contract_template_documents_book_body_and_tags.sql`**
+- **Purpose**: **Contract Book** — **`contract_template_documents.book_body_html`** (nullable library body) and **`tags`** (**`TEXT[]`**, default **`{}`**) for staff-managed default text and labels per template document row.
+- **Changes**: **`ALTER TABLE contract_template_documents`**
+- **Impact**: [`People.tsx`](src/pages/People.tsx), [`ContractBookModal.tsx`](src/components/contracts/ContractBookModal.tsx); **`RECENT_FEATURES.md`** v2.351
+- **Category**: People / Contracts
+
 #### April 21, 2026
 
 **`20260419180746_collect_payment_complete_on_invoice_paid.sql`**
@@ -137,6 +151,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Changes**: **`CREATE TABLE`** **`job_book_entries`**; RLS policies; **`CREATE OR REPLACE`** **`get_collect_payment_certify_payload`**; **`CREATE`** **`add_collect_payment_fixture_from_job_book`** + **`GRANT`**
 - **Impact**: [`CollectPaymentModal.tsx`](src/components/jobs/CollectPaymentModal.tsx), [`JobBookSettingsSection.tsx`](src/components/settings/JobBookSettingsSection.tsx), [`JobBookEditorPanel.tsx`](src/components/settings/JobBookEditorPanel.tsx), [`JobBookModal.tsx`](src/components/jobs/JobBookModal.tsx), [`Settings.tsx`](src/pages/Settings.tsx); **`RECENT_FEATURES.md`** (v2.342 catalog, v2.343 Step 1 UX); **`ACCESS_CONTROL.md`**
 - **Category**: Jobs / Collect Payment / Settings / RLS / RPC
+
+**`20260420051645_pay_stub_additional_lines_source_clock_session.sql`**
+- **Purpose**: Link **`pay_stub_additional_lines`** to an originating **`clock_sessions`** row (for example **prevailing wage** top-up). **Partial unique index** on **`(pay_stub_id, source_clock_session_id)`** when **`source_clock_session_id`** is not null.
+- **Changes**: **`ALTER TABLE`** **`ADD COLUMN`** **`source_clock_session_id`** **`REFERENCES`** **`clock_sessions(id)`** **`ON DELETE SET NULL`**; **`CREATE UNIQUE INDEX`** **`pay_stub_additional_lines_stub_session_uniq`**
+- **Impact**: [`PayStubAdditionalModal.tsx`](src/components/pay/PayStubAdditionalModal.tsx), [`payStubPrevailingWageLine.ts`](src/lib/payStubPrevailingWageLine.ts); **`RECENT_FEATURES.md`** v2.345
+- **Category**: People / Pay History / RLS (column only; RLS unchanged)
 
 #### April 19, 2026
 

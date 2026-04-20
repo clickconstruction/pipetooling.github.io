@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { WriteupsContractsSubTab } from '../components/writeups/WriteupsContractsSubTab'
 import type { WriteupListRow } from '../components/writeups/WriteupEditorModal'
 import type { NcnsListRow } from '../components/writeups/writeupsTimelineTypes'
@@ -14,6 +14,10 @@ import {
 import { HOURS_GRID_FIRST_COL_LABEL } from '../constants/hoursGridFirstCol'
 import { formatCurrency } from '../lib/format'
 import { buildPayReportDocumentTitle } from '../lib/payReportDocumentTitle'
+import { checkGoogleDriveAttachmentUrl } from '../lib/checkGoogleDriveAttachmentUrl'
+import { hasContractSigningContent } from '../lib/contractSigningContent'
+import { buildContractSendEmailPreview } from '../lib/contractSendEmailPreview'
+import { normalizeCustomerAttachmentUrl } from '../lib/estimateCustomerAttachment'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { buildCrewMapFromJobsAndBidRows, type MergedCrewMapRow } from '../utils/crewAssignments'
 import { formatDateRangeLabel } from '../utils/dateRangeLabel'
@@ -33,6 +37,8 @@ import {
   sumPayStubPaymentAmounts,
   type PayStubPaymentRow,
 } from '../lib/payStubPayments'
+import { ContractBookModal } from '../components/contracts/ContractBookModal'
+import { ContractBookIcon } from '../components/icons/ContractBookIcon'
 import { PayStubAdditionalModal } from '../components/pay/PayStubAdditionalModal'
 import { PayStubLessModal } from '../components/pay/PayStubLessModal'
 import { type PersonOffsetInitialDraft, PersonOffsetFormModal } from '../components/pay/PersonOffsetFormModal'
@@ -646,18 +652,38 @@ export default function People() {
 
   // Contracts tab state
   type ContractTemplate = { id: string; name: string; sequence_order: number; created_at: string | null }
-  type ContractTemplateDocument = { id: string; template_id: string; document_name: string; sequence_order: number }
+  type ContractTemplateDocument = {
+    id: string
+    template_id: string
+    document_name: string
+    sequence_order: number
+    book_body_html: string | null
+    tags: string[]
+  }
   type PersonContractAssignment = { id: string; person_name: string; template_id: string }
-  type PersonContractDocument = { id: string; person_name: string; document_name: string; url: string | null; status: string; signed_at: string | null; sent_at: string | null; note: string | null }
+  type PersonContractDocument = {
+    id: string
+    person_name: string
+    document_name: string
+    url: string | null
+    signing_body_html: string | null
+    canonical_document_url: string | null
+    status: string
+    signed_at: string | null
+    sent_at: string | null
+    note: string | null
+  }
   const [contractTemplates, setContractTemplates] = useState<ContractTemplate[]>([])
   const [contractTemplateDocuments, setContractTemplateDocuments] = useState<ContractTemplateDocument[]>([])
   const [personContractAssignments, setPersonContractAssignments] = useState<PersonContractAssignment[]>([])
   const [personContractDocuments, setPersonContractDocuments] = useState<PersonContractDocument[]>([])
   const [contractsLoading, setContractsLoading] = useState(false)
   const [contractsError, setContractsError] = useState<string | null>(null)
+  const [contractsSearchQuery, setContractsSearchQuery] = useState('')
   const [selectedContractsPersonName, setSelectedContractsPersonName] = useState<string | null>(null)
   const [contractsTemplateModalOpen, setContractsTemplateModalOpen] = useState(false)
   const [contractsAssignModalOpen, setContractsAssignModalOpen] = useState(false)
+  const [contractBookModalOpen, setContractBookModalOpen] = useState(false)
   const [editingContractDocument, setEditingContractDocument] = useState<PersonContractDocument | null>(null)
   const [contractDocumentFormPersonName, setContractDocumentFormPersonName] = useState('')
   const [contractDocumentFormDocumentName, setContractDocumentFormDocumentName] = useState('')
@@ -665,8 +691,29 @@ export default function People() {
   const [contractDocumentFormStatus, setContractDocumentFormStatus] = useState<'unsent' | 'sent' | 'signed'>('unsent')
   const [contractDocumentFormSignedAt, setContractDocumentFormSignedAt] = useState('')
   const [contractDocumentFormNote, setContractDocumentFormNote] = useState('')
+  const [contractDocumentFormSigningBodyHtml, setContractDocumentFormSigningBodyHtml] = useState('')
+  const [contractDocumentFormCanonicalUrl, setContractDocumentFormCanonicalUrl] = useState('')
   const [contractDocumentFormSaving, setContractDocumentFormSaving] = useState(false)
+  const [contractDocumentDeleteConfirmOpen, setContractDocumentDeleteConfirmOpen] = useState(false)
+  const [contractDocumentDeleting, setContractDocumentDeleting] = useState(false)
   const [contractDocumentModalOpen, setContractDocumentModalOpen] = useState(false)
+  const [contractSendModalOpen, setContractSendModalOpen] = useState(false)
+  const [contractSendDocId, setContractSendDocId] = useState<string | null>(null)
+  const [contractSendEmail, setContractSendEmail] = useState('')
+  const [contractSendSubject, setContractSendSubject] = useState('')
+  const [contractSendIntro, setContractSendIntro] = useState('')
+  const [contractSendSaving, setContractSendSaving] = useState(false)
+  const [canonicalUrlCheckStatus, setCanonicalUrlCheckStatus] = useState<
+    'idle' | 'loading' | 'success' | 'warn' | 'error'
+  >('idle')
+  const [canonicalUrlCheckMessage, setCanonicalUrlCheckMessage] = useState('')
+  const [contractDocumentAddTab, setContractDocumentAddTab] = useState<'upload_signed' | 'request_signature'>(
+    'request_signature',
+  )
+  const contractAddDocTabBaseId = useId()
+  const assignTemplateSearchInputId = useId()
+  const assignTemplateRadioGroupLabelId = useId()
+  const contractsTabSearchInputId = useId()
   const [editingContractTemplate, setEditingContractTemplate] = useState<ContractTemplate | null>(null)
   const [templateFormName, setTemplateFormName] = useState('')
   const [templateFormDocumentNames, setTemplateFormDocumentNames] = useState<string[]>([])
@@ -678,6 +725,162 @@ export default function People() {
   const [ncnsRows, setNcnsRows] = useState<NcnsListRow[]>([])
   const [writeupsLoading, setWriteupsLoading] = useState(false)
   const [writeupsError, setWriteupsError] = useState<string | null>(null)
+
+  const canonicalUrlIsCheckable = useMemo(
+    () => Boolean(normalizeCustomerAttachmentUrl(contractDocumentFormCanonicalUrl)),
+    [contractDocumentFormCanonicalUrl],
+  )
+
+  const checkCanonicalDocumentUrl = useCallback(async () => {
+    const u = normalizeCustomerAttachmentUrl(contractDocumentFormCanonicalUrl)
+    if (!u) {
+      showToast('Enter a valid https URL first.', 'error')
+      return
+    }
+    setCanonicalUrlCheckStatus('loading')
+    setCanonicalUrlCheckMessage('')
+    const result = await checkGoogleDriveAttachmentUrl(contractDocumentFormCanonicalUrl)
+    if (result.status === 'error' && result.message === 'Not signed in.') {
+      showToast('Not signed in', 'error')
+    }
+    setCanonicalUrlCheckStatus(
+      result.status === 'success' ? 'success' : result.status === 'warn' ? 'warn' : 'error',
+    )
+    setCanonicalUrlCheckMessage(result.message)
+  }, [contractDocumentFormCanonicalUrl, showToast])
+
+  useEffect(() => {
+    if (!contractDocumentModalOpen) return
+    setCanonicalUrlCheckStatus('idle')
+    setCanonicalUrlCheckMessage('')
+  }, [contractDocumentFormCanonicalUrl, contractDocumentModalOpen])
+
+  const contractDocModalContractTextField = (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.25rem' }}>
+        <label style={{ fontSize: '0.8125rem' }}>Contract text (HTML or plain)</label>
+        <button
+          type="button"
+          onClick={() => setContractBookModalOpen(true)}
+          title="Open Contract Book"
+          aria-label="Open Contract Book"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 0,
+            border: 'none',
+            background: 'transparent',
+            color: '#2563eb',
+            cursor: 'pointer',
+            flexShrink: 0,
+            lineHeight: 1,
+          }}
+        >
+          <ContractBookIcon />
+        </button>
+      </div>
+      <textarea
+        value={contractDocumentFormSigningBodyHtml}
+        onChange={(e) => setContractDocumentFormSigningBodyHtml(e.target.value)}
+        placeholder="Optional. Shown on the public signing page (sanitized). Use plain text or simple HTML."
+        rows={6}
+        style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, resize: 'vertical', fontFamily: 'inherit' }}
+      />
+    </div>
+  )
+
+  const contractDocModalCanonicalUrlField = (
+    <div>
+      <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
+        Canonical document URL (Doc / PDF)
+      </label>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <input
+          type="url"
+          value={contractDocumentFormCanonicalUrl}
+          onChange={(e) => setContractDocumentFormCanonicalUrl(e.target.value)}
+          placeholder="https://…"
+          style={{
+            flex: 1,
+            minWidth: 0,
+            padding: '0.5rem',
+            border: '1px solid #d1d5db',
+            borderRadius: 4,
+            boxSizing: 'border-box',
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => void checkCanonicalDocumentUrl()}
+          disabled={canonicalUrlCheckStatus === 'loading' || !canonicalUrlIsCheckable}
+          style={{
+            flexShrink: 0,
+            padding: '0.4rem 0.65rem',
+            fontSize: '0.8125rem',
+            fontWeight: 600,
+            border: '1px solid #d1d5db',
+            borderRadius: 6,
+            background:
+              canonicalUrlIsCheckable && canonicalUrlCheckStatus !== 'loading' ? '#3b82f6' : '#f9fafb',
+            color: canonicalUrlIsCheckable && canonicalUrlCheckStatus !== 'loading' ? '#fff' : '#9ca3af',
+            cursor:
+              canonicalUrlIsCheckable && canonicalUrlCheckStatus !== 'loading' ? 'pointer' : 'not-allowed',
+            opacity: canonicalUrlIsCheckable ? 1 : 0.65,
+          }}
+        >
+          {canonicalUrlCheckStatus === 'loading' ? 'Checking…' : 'Check link'}
+        </button>
+      </div>
+      <span style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginTop: '0.35rem' }}>
+        Drive or Docs URLs only. Does not block saving — hints only.
+      </span>
+      {canonicalUrlCheckStatus === 'success' && canonicalUrlCheckMessage ? (
+        <p
+          role="status"
+          style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: '#15803d', lineHeight: 1.45 }}
+        >
+          {canonicalUrlCheckMessage}
+        </p>
+      ) : null}
+      {canonicalUrlCheckStatus === 'warn' && canonicalUrlCheckMessage ? (
+        <p
+          role="status"
+          style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: '#b45309', lineHeight: 1.45 }}
+        >
+          {canonicalUrlCheckMessage}
+        </p>
+      ) : null}
+      {canonicalUrlCheckStatus === 'error' && canonicalUrlCheckMessage ? (
+        <p role="alert" style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: '#b91c1c', lineHeight: 1.45 }}>
+          {canonicalUrlCheckMessage}
+        </p>
+      ) : null}
+    </div>
+  )
+
+  const handleContractAddTabKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLDivElement>) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+      e.preventDefault()
+      const goRequest = e.key === 'ArrowRight' && contractDocumentAddTab === 'upload_signed'
+      const goUpload = e.key === 'ArrowLeft' && contractDocumentAddTab === 'request_signature'
+      if (goRequest) {
+        setContractDocumentAddTab('request_signature')
+        setContractDocumentFormStatus('unsent')
+        requestAnimationFrame(() => {
+          document.getElementById(`${contractAddDocTabBaseId}-tab-request`)?.focus()
+        })
+      } else if (goUpload) {
+        setContractDocumentAddTab('upload_signed')
+        setContractDocumentFormStatus('signed')
+        requestAnimationFrame(() => {
+          document.getElementById(`${contractAddDocTabBaseId}-tab-upload`)?.focus()
+        })
+      }
+    },
+    [contractAddDocTabBaseId, contractDocumentAddTab, setContractDocumentFormStatus],
+  )
 
   // Review tab state
   type ReviewPeriod = 'today' | 'yesterday' | 'last_week' | 'last_two_weeks' | 'last_month'
@@ -1267,14 +1470,19 @@ export default function People() {
     if (!canAccessContracts) return
     supabase
       .from('person_contract_documents')
-      .select('person_name, url')
+      .select('person_name, url, signing_body_html, canonical_document_url')
       .then(({ data }) => {
-        const rows = (data ?? []) as Array<{ person_name: string; url: string | null }>
+        const rows = (data ?? []) as Array<{
+          person_name: string
+          url: string | null
+          signing_body_html: string | null
+          canonical_document_url: string | null
+        }>
         const byPerson = new Map<string, { total: number; withUrl: number }>()
         for (const r of rows) {
           const p = byPerson.get(r.person_name) ?? { total: 0, withUrl: 0 }
           p.total++
-          if (r.url?.trim()) p.withUrl++
+          if (r.url?.trim() || r.signing_body_html?.trim() || r.canonical_document_url?.trim()) p.withUrl++
           byPerson.set(r.person_name, p)
         }
         const map: Record<string, 'green' | 'yellow' | 'red'> = {}
@@ -4199,9 +4407,17 @@ export default function People() {
     setContractsError(null)
     const [templatesRes, templateDocsRes, assignmentsRes, documentsRes] = await Promise.all([
       supabase.from('contract_templates').select('id, name, sequence_order, created_at').order('sequence_order'),
-      supabase.from('contract_template_documents').select('id, template_id, document_name, sequence_order').order('template_id').order('sequence_order'),
+      supabase
+        .from('contract_template_documents')
+        .select('id, template_id, document_name, sequence_order, book_body_html, tags')
+        .order('template_id')
+        .order('sequence_order'),
       supabase.from('person_contract_assignments').select('id, person_name, template_id'),
-      supabase.from('person_contract_documents').select('id, person_name, document_name, url, status, signed_at, sent_at, note'),
+      supabase
+        .from('person_contract_documents')
+        .select(
+          'id, person_name, document_name, url, signing_body_html, canonical_document_url, status, signed_at, sent_at, note',
+        ),
     ])
     setContractsLoading(false)
     if (templatesRes.error) setContractsError(templatesRes.error.message)
@@ -4344,37 +4560,302 @@ export default function People() {
     return 'green'
   }
 
-  async function saveContractDocument() {
+  const contractsPersonNamesSorted = useMemo(() => {
+    return [...new Set([...people.map((p) => p.name), ...users.map((u) => u.name)])]
+      .filter((n): n is string => Boolean(n?.trim()))
+      .sort((a, b) => a.localeCompare(b))
+  }, [people, users])
+
+  const contractsSearchNormalized = useMemo(() => contractsSearchQuery.trim().toLowerCase(), [contractsSearchQuery])
+
+  const contractsPersonNamesFiltered = useMemo(() => {
+    if (!contractsSearchNormalized) return contractsPersonNamesSorted
+    return contractsPersonNamesSorted.filter((personName) => {
+      if (personName.toLowerCase().includes(contractsSearchNormalized)) return true
+      return getDocumentsForPerson(personName).some(({ document_name }) =>
+        document_name.toLowerCase().includes(contractsSearchNormalized),
+      )
+    })
+  }, [
+    contractsPersonNamesSorted,
+    contractsSearchNormalized,
+    contractTemplates,
+    contractTemplateDocuments,
+    personContractAssignments,
+    personContractDocuments,
+  ])
+
+  const contractDocumentSearchLines = useMemo(() => {
+    if (!contractsSearchNormalized) return []
+    const lines: { personName: string; document_name: string; status: string }[] = []
+    for (const personName of contractsPersonNamesSorted) {
+      for (const row of getDocumentsForPerson(personName)) {
+        if (row.document_name.toLowerCase().includes(contractsSearchNormalized)) {
+          lines.push({
+            personName,
+            document_name: row.document_name,
+            status: row.doc?.status ?? 'unsent',
+          })
+        }
+      }
+    }
+    lines.sort(
+      (a, b) => a.personName.localeCompare(b.personName) || a.document_name.localeCompare(b.document_name),
+    )
+    return lines
+  }, [
+    contractsSearchNormalized,
+    contractsPersonNamesSorted,
+    contractTemplates,
+    contractTemplateDocuments,
+    personContractAssignments,
+    personContractDocuments,
+  ])
+
+  const contractSendEmailPreview = useMemo(() => {
+    if (!contractSendDocId) return null
+    const doc = personContractDocuments.find((d) => d.id === contractSendDocId)
+    if (!doc) return { kind: 'missing' as const }
+    const origin =
+      typeof window !== 'undefined'
+        ? window.location.origin.replace(/\/$/, '')
+        : 'https://pipetooling.github.io'
+    const linkPlaceholder = `${origin}/contract/accept?t=…`
+    return {
+      kind: 'ok' as const,
+      ...buildContractSendEmailPreview({
+        documentName: doc.document_name,
+        personName: doc.person_name,
+        emailSubject: contractSendSubject,
+        emailIntroPlain: contractSendIntro,
+        linkPlaceholder,
+      }),
+    }
+  }, [contractSendDocId, personContractDocuments, contractSendSubject, contractSendIntro])
+
+  function getContractDocumentUpsertPayload():
+    | { error: string }
+    | {
+        payload: {
+          person_name: string
+          document_name: string
+          url: string | null
+          signing_body_html: string | null
+          canonical_document_url: string | null
+          status: 'unsent' | 'sent' | 'signed'
+          signed_at: string | null
+          note: string | null
+        }
+      } {
     const personName = contractDocumentFormPersonName.trim()
     const documentName = contractDocumentFormDocumentName.trim()
     if (!personName || !documentName) {
-      setContractsError('Person and document name are required.')
+      return { error: 'Person and document name are required.' }
+    }
+    const isAddRequestSignatureTab =
+      !editingContractDocument && contractDocumentAddTab === 'request_signature'
+    const isAddUploadSignedTab =
+      !editingContractDocument && contractDocumentAddTab === 'upload_signed'
+    const statusForSave: 'unsent' | 'sent' | 'signed' = isAddRequestSignatureTab
+      ? 'unsent'
+      : isAddUploadSignedTab
+        ? 'signed'
+        : contractDocumentFormStatus
+    return {
+      payload: {
+        person_name: personName,
+        document_name: documentName,
+        url: isAddRequestSignatureTab ? null : contractDocumentFormUrl.trim() || null,
+        signing_body_html: isAddUploadSignedTab
+          ? null
+          : contractDocumentFormSigningBodyHtml.trim() || null,
+        canonical_document_url: isAddUploadSignedTab
+          ? null
+          : contractDocumentFormCanonicalUrl.trim() || null,
+        status: statusForSave,
+        signed_at: isAddRequestSignatureTab ? null : contractDocumentFormSignedAt.trim() || null,
+        note: isAddRequestSignatureTab ? null : contractDocumentFormNote.trim() || null,
+      },
+    }
+  }
+
+  async function saveContractDocument() {
+    const built = getContractDocumentUpsertPayload()
+    if ('error' in built) {
+      setContractsError(built.error)
       return
     }
     setContractDocumentFormSaving(true)
     setContractsError(null)
-    const payload = {
-      person_name: personName,
-      document_name: documentName,
-      url: contractDocumentFormUrl.trim() || null,
-      status: contractDocumentFormStatus as 'unsent' | 'sent' | 'signed',
-      signed_at: contractDocumentFormSignedAt.trim() || null,
-      note: contractDocumentFormNote.trim() || null,
-    }
     try {
       await withSupabaseRetry(
         async () =>
-          supabase.from('person_contract_documents').upsert(payload, {
-            onConflict: 'person_name,document_name',
-          }),
+          supabase
+            .from('person_contract_documents')
+            .upsert(built.payload, {
+              onConflict: 'person_name,document_name',
+            })
+            .select('id')
+            .single(),
         'save contract document'
       )
       setContractDocumentModalOpen(false)
+      setContractDocumentDeleteConfirmOpen(false)
       loadContracts()
     } catch (e) {
       setContractsError(e instanceof Error ? e.message : 'Failed to save document')
     } finally {
       setContractDocumentFormSaving(false)
+    }
+  }
+
+  async function deleteContractDocument() {
+    if (!editingContractDocument || editingContractDocument.status !== 'unsent') return
+    setContractDocumentDeleting(true)
+    setContractsError(null)
+    try {
+      await withSupabaseRetry(
+        async () =>
+          supabase.from('person_contract_documents').delete().eq('id', editingContractDocument.id),
+        'delete contract document',
+      )
+      setContractDocumentDeleteConfirmOpen(false)
+      setContractDocumentModalOpen(false)
+      setEditingContractDocument(null)
+      showToast('Document deleted.', 'success')
+      void loadContracts()
+    } catch (e) {
+      setContractsError(e instanceof Error ? e.message : 'Failed to delete document')
+    } finally {
+      setContractDocumentDeleting(false)
+    }
+  }
+
+  async function saveContractDocumentAndOpenSend() {
+    if (editingContractDocument || contractDocumentAddTab !== 'request_signature') return
+    const built = getContractDocumentUpsertPayload()
+    if ('error' in built) {
+      setContractsError(built.error)
+      return
+    }
+    if (
+      !hasContractSigningContent({
+        signing_body_html: built.payload.signing_body_html,
+        canonical_document_url: built.payload.canonical_document_url,
+        url: built.payload.url,
+      })
+    ) {
+      setContractsError(
+        'Add contract text, a canonical document URL, or a reference link before sending for signature.',
+      )
+      return
+    }
+    setContractDocumentFormSaving(true)
+    setContractsError(null)
+    try {
+      const row = await withSupabaseRetry<{ id: string }>(
+        async () =>
+          supabase
+            .from('person_contract_documents')
+            .upsert(built.payload, {
+              onConflict: 'person_name,document_name',
+            })
+            .select('id')
+            .single(),
+        'save contract document',
+      )
+      if (!row.id) {
+        setContractsError('Could not save document.')
+        return
+      }
+      setContractDocumentModalOpen(false)
+      setContractDocumentDeleteConfirmOpen(false)
+      setContractSendDocId(row.id)
+      setContractSendEmail('')
+      setContractSendSubject('')
+      setContractSendIntro('')
+      setContractsError(null)
+      setContractSendModalOpen(true)
+      void loadContracts()
+    } catch (e) {
+      setContractsError(e instanceof Error ? e.message : 'Failed to save document')
+    } finally {
+      setContractDocumentFormSaving(false)
+    }
+  }
+
+  async function sendContractForSignature() {
+    if (!contractSendDocId || !contractSendEmail.trim()) {
+      setContractsError('Enter a valid signer email.')
+      return
+    }
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRe.test(contractSendEmail.trim())) {
+      setContractsError('Enter a valid email address.')
+      return
+    }
+    setContractSendSaving(true)
+    setContractsError(null)
+    try {
+      const { data: sess } = await supabase.auth.getSession()
+      const jwt = sess.session?.access_token
+      if (!jwt) {
+        setContractsError('Not signed in.')
+        return
+      }
+      const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-contract-for-signature`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${jwt}`,
+            apikey: anon,
+          },
+          body: JSON.stringify({
+            person_contract_document_id: contractSendDocId,
+            signer_email: contractSendEmail.trim(),
+            public_origin: typeof window !== 'undefined' ? window.location.origin : undefined,
+            ...(contractSendSubject.trim()
+              ? { email_subject: contractSendSubject.trim() }
+              : {}),
+            ...(contractSendIntro.trim()
+              ? { email_intro_plain: contractSendIntro.trim() }
+              : {}),
+          }),
+        },
+      )
+      const json = (await res.json()) as {
+        ok?: boolean
+        accept_url?: string
+        emailed?: boolean
+        email_error?: string
+        warning?: string
+        error?: string
+      }
+      if (!res.ok || !json.ok) {
+        setContractsError(json.error || 'Send failed')
+        return
+      }
+      showToast(
+        json.emailed
+          ? 'Signing link emailed.'
+          : json.warning || json.email_error
+            ? `Link ready${json.accept_url ? ` — ${json.accept_url}` : ''}`
+            : 'Signing link created.',
+        json.emailed ? 'success' : 'info',
+      )
+      setContractSendModalOpen(false)
+      setContractSendDocId(null)
+      setContractSendEmail('')
+      setContractSendSubject('')
+      setContractSendIntro('')
+      void loadContracts()
+    } catch (e) {
+      setContractsError(e instanceof Error ? e.message : 'Send failed')
+    } finally {
+      setContractSendSaving(false)
     }
   }
 
@@ -4418,7 +4899,13 @@ export default function People() {
         for (const docName of toRemove) {
           for (const a of assignees) {
             const pcd = personContractDocuments.find((d) => d.person_name === a.person_name && d.document_name === docName)
-            const hasData = pcd && (!!pcd.url?.trim() || !!pcd.signed_at || !!pcd.note?.trim())
+            const hasData =
+              pcd &&
+              (!!pcd.url?.trim() ||
+                !!pcd.signed_at ||
+                !!pcd.note?.trim() ||
+                !!pcd.signing_body_html?.trim() ||
+                !!pcd.canonical_document_url?.trim())
             if (pcd && !hasData) {
               await withSupabaseRetry(
                 async () => supabase.from('person_contract_documents').delete().eq('id', pcd.id),
@@ -4502,7 +4989,21 @@ export default function People() {
   }
 
   const [assignTemplateSelectedId, setAssignTemplateSelectedId] = useState<string | null>(null)
+  const [assignTemplateSearchQuery, setAssignTemplateSearchQuery] = useState('')
   const [assignTemplateSaving, setAssignTemplateSaving] = useState(false)
+
+  const filteredAssignContractTemplates = useMemo(() => {
+    const q = assignTemplateSearchQuery.trim().toLowerCase()
+    if (!q) return contractTemplates
+    return contractTemplates.filter((t) => t.name.toLowerCase().includes(q))
+  }, [contractTemplates, assignTemplateSearchQuery])
+
+  useEffect(() => {
+    if (assignTemplateSelectedId == null) return
+    if (!filteredAssignContractTemplates.some((t) => t.id === assignTemplateSelectedId)) {
+      setAssignTemplateSelectedId(null)
+    }
+  }, [filteredAssignContractTemplates, assignTemplateSelectedId])
 
   async function assignTemplateToPerson() {
     const personName = selectedContractsPersonName
@@ -4536,6 +5037,7 @@ export default function People() {
       }
       setContractsAssignModalOpen(false)
       setAssignTemplateSelectedId(null)
+      setAssignTemplateSearchQuery('')
       loadContracts()
     } catch (e) {
       setContractsError(e instanceof Error ? e.message : 'Failed to assign template')
@@ -10168,19 +10670,86 @@ export default function People() {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
             <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>Contracts</h2>
-            <button
-              type="button"
-              onClick={() => setContractsTemplateModalOpen(true)}
-              style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: 'pointer' }}
-            >
-              Manage templates
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setContractBookModalOpen(true)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  padding: '0.35rem 0.75rem',
+                  fontSize: '0.875rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 6,
+                  background: '#fff',
+                  cursor: 'pointer',
+                }}
+              >
+                <ContractBookIcon />
+                Contract Book
+              </button>
+              <button
+                type="button"
+                onClick={() => setContractsTemplateModalOpen(true)}
+                style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: 'pointer' }}
+              >
+                Manage templates
+              </button>
+            </div>
           </div>
           {contractsError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{contractsError}</p>}
           {contractsLoading ? (
             <p style={{ color: '#6b7280' }}>Loading…</p>
           ) : (
             <>
+              <div style={{ marginBottom: '0.75rem' }}>
+                <label htmlFor={contractsTabSearchInputId} style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.35rem', color: '#374151' }}>
+                  Search people and contracts
+                </label>
+                <input
+                  id={contractsTabSearchInputId}
+                  type="search"
+                  value={contractsSearchQuery}
+                  onChange={(e) => setContractsSearchQuery(e.target.value)}
+                  placeholder="Search by person or contract name…"
+                  autoComplete="off"
+                  aria-label="Search people and contracts"
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    padding: '0.5rem 0.65rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: 6,
+                    fontSize: '0.875rem',
+                  }}
+                />
+              </div>
+              {contractsSearchNormalized && contractDocumentSearchLines.length > 0 ? (
+                <div
+                  role="region"
+                  aria-label="Matching contract documents"
+                  style={{
+                    marginBottom: '0.75rem',
+                    padding: '0.5rem 0.75rem',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: 6,
+                    background: '#fafafa',
+                    maxHeight: 200,
+                    overflowY: 'auto',
+                    fontSize: '0.8125rem',
+                  }}
+                >
+                  {contractDocumentSearchLines.map((line) => (
+                    <div
+                      key={`${line.personName}-${line.document_name}`}
+                      style={{ padding: '0.2rem 0', color: '#374151' }}
+                    >
+                      {line.personName} — {line.document_name} — {line.status}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                   <thead style={{ background: '#f9fafb' }}>
@@ -10192,15 +10761,21 @@ export default function People() {
                   </thead>
                   <tbody>
                     {(() => {
-                      const personNames = [...new Set([...people.map((p) => p.name), ...users.map((u) => u.name)])].filter((n): n is string => Boolean(n?.trim())).sort((a, b) => a.localeCompare(b))
-                      if (personNames.length === 0) {
+                      if (contractsPersonNamesSorted.length === 0) {
                         return (
                           <tr>
                             <td colSpan={3} style={{ padding: '1rem', color: '#6b7280' }}>No people in roster. Add people in Users tab first.</td>
                           </tr>
                         )
                       }
-                      return personNames.map((personName) => {
+                      if (contractsPersonNamesFiltered.length === 0 && contractsSearchNormalized) {
+                        return (
+                          <tr>
+                            <td colSpan={3} style={{ padding: '1rem', color: '#6b7280' }}>No matches.</td>
+                          </tr>
+                        )
+                      }
+                      return contractsPersonNamesFiltered.map((personName) => {
                         const docs = getDocumentsForPerson(personName)
                         const status = getAggregateStatus(docs)
                         const isExpanded = selectedContractsPersonName === personName
@@ -10268,6 +10843,7 @@ export default function People() {
                                           setContractsAssignModalOpen(true)
                                           setContractsError(null)
                                           setAssignTemplateSelectedId(null)
+                                          setAssignTemplateSearchQuery('')
                                         }}
                                         style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                                       >
@@ -10277,12 +10853,18 @@ export default function People() {
                                         type="button"
                                         onClick={() => {
                                           setEditingContractDocument(null)
+                                          setContractsError(null)
                                           setContractDocumentFormPersonName(personName)
                                           setContractDocumentFormDocumentName('')
                                           setContractDocumentFormUrl('')
+                                          setContractDocumentFormSigningBodyHtml('')
+                                          setContractDocumentFormCanonicalUrl('')
                                           setContractDocumentFormStatus('unsent')
                                           setContractDocumentFormSignedAt('')
                                           setContractDocumentFormNote('')
+                                          setCanonicalUrlCheckStatus('idle')
+                                          setCanonicalUrlCheckMessage('')
+                                          setContractDocumentAddTab('request_signature')
                                           setContractDocumentModalOpen(true)
                                         }}
                                         style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer' }}
@@ -10298,7 +10880,7 @@ export default function People() {
                                           <tr>
                                             <th style={{ padding: '0.5rem', textAlign: 'left' }}>Document</th>
                                             <th style={{ padding: '0.5rem', textAlign: 'left' }}>Status</th>
-                                            <th style={{ padding: '0.5rem', textAlign: 'left' }}>URL</th>
+                                            <th style={{ padding: '0.5rem', textAlign: 'left' }}>Ref link</th>
                                             <th style={{ padding: '0.5rem', textAlign: 'left' }}>Signed</th>
                                             <th style={{ padding: '0.5rem', textAlign: 'left' }}>Note</th>
                                             <th style={{ padding: '0.5rem', textAlign: 'left' }}>Actions</th>
@@ -10327,6 +10909,34 @@ export default function People() {
                                                   </span>
                                                 )}
                                                 <span>{document_name}</span>
+                                                {doc?.signing_body_html?.trim() ? (
+                                                  <span
+                                                    style={{
+                                                      marginLeft: '0.25rem',
+                                                      fontSize: '0.65rem',
+                                                      padding: '0.1rem 0.3rem',
+                                                      borderRadius: 4,
+                                                      backgroundColor: '#dbeafe',
+                                                      color: '#1e40af',
+                                                    }}
+                                                  >
+                                                    HTML
+                                                  </span>
+                                                ) : null}
+                                                {doc?.canonical_document_url?.trim() ? (
+                                                  <span
+                                                    style={{
+                                                      marginLeft: '0.25rem',
+                                                      fontSize: '0.65rem',
+                                                      padding: '0.1rem 0.3rem',
+                                                      borderRadius: 4,
+                                                      backgroundColor: '#fef3c7',
+                                                      color: '#92400e',
+                                                    }}
+                                                  >
+                                                    Link
+                                                  </span>
+                                                ) : null}
                                               </td>
                                               <td style={{ padding: '0.5rem' }}>{doc?.status ?? 'unsent'}</td>
                                               <td style={{ padding: '0.5rem' }}>
@@ -10341,23 +10951,61 @@ export default function People() {
                                               <td style={{ padding: '0.5rem' }}>{doc?.signed_at ?? '—'}</td>
                                               <td style={{ padding: '0.5rem' }}>{doc?.note ?? '—'}</td>
                                               <td style={{ padding: '0.5rem' }}>
-                                                <button
-                                                  type="button"
-                                                  onClick={(e) => {
-                                                    e.stopPropagation()
-                                                    setEditingContractDocument(doc)
-                                                    setContractDocumentFormPersonName(personName)
-                                                    setContractDocumentFormDocumentName(document_name)
-                                                    setContractDocumentFormUrl(doc?.url ?? '')
-                                                    setContractDocumentFormStatus((doc?.status as 'unsent' | 'sent' | 'signed') ?? 'unsent')
-                                                    setContractDocumentFormSignedAt(doc?.signed_at ?? '')
-                                                    setContractDocumentFormNote(doc?.note ?? '')
-                                                    setContractDocumentModalOpen(true)
+                                                <div
+                                                  style={{
+                                                    display: 'flex',
+                                                    flexWrap: 'wrap',
+                                                    alignItems: 'center',
+                                                    gap: '0.35rem',
                                                   }}
-                                                  style={{ marginRight: '0.35rem', padding: '0.2rem 0.4rem', fontSize: '0.75rem' }}
                                                 >
-                                                  Edit
-                                                </button>
+                                                  <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation()
+                                                      setEditingContractDocument(doc)
+                                                      setContractDocumentFormPersonName(personName)
+                                                      setContractDocumentFormDocumentName(document_name)
+                                                      setContractDocumentFormUrl(doc?.url ?? '')
+                                                      setContractDocumentFormSigningBodyHtml(doc?.signing_body_html ?? '')
+                                                      setContractDocumentFormCanonicalUrl(doc?.canonical_document_url ?? '')
+                                                      setContractDocumentFormStatus((doc?.status as 'unsent' | 'sent' | 'signed') ?? 'unsent')
+                                                      setContractDocumentFormSignedAt(doc?.signed_at ?? '')
+                                                      setContractDocumentFormNote(doc?.note ?? '')
+                                                      setCanonicalUrlCheckStatus('idle')
+                                                      setCanonicalUrlCheckMessage('')
+                                                      setContractDocumentModalOpen(true)
+                                                    }}
+                                                    style={{ padding: '0.2rem 0.4rem', fontSize: '0.75rem' }}
+                                                  >
+                                                    Edit
+                                                  </button>
+                                                  {doc && hasContractSigningContent(doc) && doc.status !== 'signed' ? (
+                                                    <button
+                                                      type="button"
+                                                      onClick={(e) => {
+                                                        e.stopPropagation()
+                                                        setContractSendDocId(doc.id)
+                                                        setContractSendEmail('')
+                                                        setContractSendSubject('')
+                                                        setContractSendIntro('')
+                                                        setContractsError(null)
+                                                        setContractSendModalOpen(true)
+                                                      }}
+                                                      style={{
+                                                        padding: '0.2rem 0.4rem',
+                                                        fontSize: '0.75rem',
+                                                        background: '#0ea5e9',
+                                                        color: '#fff',
+                                                        border: 'none',
+                                                        borderRadius: 4,
+                                                        cursor: 'pointer',
+                                                      }}
+                                                    >
+                                                      {doc.status === 'sent' ? 'Resend' : 'Send'}
+                                                    </button>
+                                                  ) : null}
+                                                </div>
                                               </td>
                                             </tr>
                                           ))}
@@ -10510,12 +11158,29 @@ export default function People() {
                   {contractTemplates.map((t) => {
                     const docs = contractTemplateDocuments.filter((d) => d.template_id === t.id).map((d) => d.document_name).sort()
                     return (
-                      <li key={t.id} style={{ marginBottom: '0.5rem', padding: '0.5rem', background: '#f9fafb', borderRadius: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
+                      <li key={t.id} style={{ marginBottom: '0.5rem', padding: '0.5rem', background: '#f9fafb', borderRadius: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
                           <strong>{t.name}</strong>
-                          {docs.length > 0 && <span style={{ color: '#6b7280', fontSize: '0.8125rem', marginLeft: '0.5rem' }}>({docs.join(', ')})</span>}
+                          {docs.length > 0 ? (
+                            <ul
+                              style={{
+                                margin: '0.25rem 0 0',
+                                paddingLeft: '1.25rem',
+                                listStyle: 'disc',
+                                listStylePosition: 'outside',
+                                color: '#6b7280',
+                                fontSize: '0.8125rem',
+                              }}
+                            >
+                              {docs.map((docName) => (
+                                <li key={docName} style={{ marginBottom: '0.15rem' }}>
+                                  {docName}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
                         </div>
-                        <div style={{ display: 'flex', gap: '0.35rem' }}>
+                        <div style={{ display: 'flex', gap: '0.35rem', flexShrink: 0 }}>
                           <button
                             type="button"
                             onClick={() => openTemplateForm(t)}
@@ -10543,33 +11208,95 @@ export default function People() {
 
       {contractsAssignModalOpen && activeTab === 'contracts' && canAccessContracts && selectedContractsPersonName && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 360 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 'min(92vw, 520px)', width: '100%' }}>
             <h3 style={{ margin: '0 0 1rem', fontSize: '1.125rem' }}>Assign template to {selectedContractsPersonName}</h3>
             {contractsError && <p style={{ color: '#b91c1c', marginBottom: '0.75rem', fontSize: '0.875rem' }}>{contractsError}</p>}
             {contractTemplates.length === 0 ? (
               <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' }}>No templates. Create one in Manage templates first.</p>
             ) : (
               <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.5rem' }}>Select template</label>
-                <select
-                  value={assignTemplateSelectedId ?? ''}
-                  onChange={(e) => setAssignTemplateSelectedId(e.target.value || null)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                <label htmlFor={assignTemplateSearchInputId} style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.35rem' }}>
+                  Search templates
+                </label>
+                <input
+                  id={assignTemplateSearchInputId}
+                  type="search"
+                  value={assignTemplateSearchQuery}
+                  onChange={(e) => setAssignTemplateSearchQuery(e.target.value)}
+                  placeholder="Type to filter…"
+                  autoComplete="off"
+                  aria-label="Search templates"
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: 4,
+                    marginBottom: '0.65rem',
+                    boxSizing: 'border-box',
+                  }}
+                />
+                <p id={assignTemplateRadioGroupLabelId} style={{ fontSize: '0.8125rem', margin: '0 0 0.5rem' }}>
+                  Select template
+                </p>
+                <div
+                  role="radiogroup"
+                  aria-labelledby={assignTemplateRadioGroupLabelId}
+                  style={{
+                    maxHeight: 280,
+                    overflowY: 'auto',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: 6,
+                    padding: '0.35rem',
+                  }}
                 >
-                  <option value="">— Select —</option>
-                  {contractTemplates.map((t) => {
-                    const alreadyAssigned = personContractAssignments.some(
-                      (a) => a.person_name === selectedContractsPersonName && a.template_id === t.id
-                    )
-                    const docCount = contractTemplateDocuments.filter((d) => d.template_id === t.id).length
-                    const docLabel = docCount > 0 ? ` (${docCount} docs)` : ''
-                    return (
-                      <option key={t.id} value={t.id} disabled={alreadyAssigned}>
-                        {t.name}{docLabel}{alreadyAssigned ? ' — already assigned' : ''}
-                      </option>
-                    )
-                  })}
-                </select>
+                  {filteredAssignContractTemplates.length === 0 ? (
+                    <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: '0.5rem 0.35rem' }}>No templates match your search.</p>
+                  ) : (
+                    filteredAssignContractTemplates.map((t) => {
+                      const alreadyAssigned = personContractAssignments.some(
+                        (a) => a.person_name === selectedContractsPersonName && a.template_id === t.id
+                      )
+                      const docCount = contractTemplateDocuments.filter((d) => d.template_id === t.id).length
+                      const docLabel = docCount > 0 ? ` (${docCount} docs)` : ''
+                      const selected = assignTemplateSelectedId === t.id
+                      return (
+                        <div
+                          key={t.id}
+                          role="radio"
+                          aria-checked={selected}
+                          aria-disabled={alreadyAssigned}
+                          tabIndex={alreadyAssigned ? -1 : 0}
+                          onClick={() => {
+                            if (!alreadyAssigned) setAssignTemplateSelectedId(t.id)
+                          }}
+                          onKeyDown={(e) => {
+                            if (alreadyAssigned) return
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              setAssignTemplateSelectedId(t.id)
+                            }
+                          }}
+                          style={{
+                            padding: '0.5rem 0.65rem',
+                            borderRadius: 4,
+                            cursor: alreadyAssigned ? 'not-allowed' : 'pointer',
+                            opacity: alreadyAssigned ? 0.55 : 1,
+                            background: selected ? '#eff6ff' : alreadyAssigned ? '#f9fafb' : 'transparent',
+                            border: selected ? '1px solid #93c5fd' : '1px solid transparent',
+                            marginBottom: 2,
+                            fontSize: '0.875rem',
+                          }}
+                        >
+                          <span style={{ fontWeight: 600 }}>{t.name}</span>
+                          {docLabel}
+                          {alreadyAssigned ? (
+                            <span style={{ color: '#6b7280', fontWeight: 400 }}> — already assigned</span>
+                          ) : null}
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
               </div>
             )}
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
@@ -10583,7 +11310,12 @@ export default function People() {
               </button>
               <button
                 type="button"
-                onClick={() => { setContractsAssignModalOpen(false); setAssignTemplateSelectedId(null); setContractsError(null) }}
+                onClick={() => {
+                  setContractsAssignModalOpen(false)
+                  setAssignTemplateSelectedId(null)
+                  setAssignTemplateSearchQuery('')
+                  setContractsError(null)
+                }}
                 style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: 'pointer' }}
               >
                 Cancel
@@ -10595,22 +11327,95 @@ export default function People() {
 
       {contractDocumentModalOpen && activeTab === 'contracts' && canAccessContracts && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 360 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 'min(92vw, 520px)', maxHeight: '90vh', overflow: 'auto' }}>
             <h3 style={{ margin: '0 0 1rem', fontSize: '1.125rem' }}>{editingContractDocument ? 'Edit document' : 'Add document'}</h3>
+            {contractsError ? (
+              <p style={{ color: '#b91c1c', fontSize: '0.875rem', margin: '0 0 0.75rem' }}>{contractsError}</p>
+            ) : null}
+            {!editingContractDocument ? (
+              <div
+                role="tablist"
+                aria-label="Add document workflow"
+                onKeyDown={handleContractAddTabKeyDown}
+                style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  id={`${contractAddDocTabBaseId}-tab-upload`}
+                  aria-selected={contractDocumentAddTab === 'upload_signed'}
+                  aria-controls={`${contractAddDocTabBaseId}-panel-upload`}
+                  tabIndex={contractDocumentAddTab === 'upload_signed' ? 0 : -1}
+                  onClick={() => {
+                    setContractDocumentAddTab('upload_signed')
+                    setContractDocumentFormStatus('signed')
+                  }}
+                  style={{
+                    padding: '0.4rem 0.75rem',
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    border: '1px solid #d1d5db',
+                    borderRadius: 6,
+                    background: contractDocumentAddTab === 'upload_signed' ? '#eff6ff' : '#fff',
+                    color: contractDocumentAddTab === 'upload_signed' ? '#1d4ed8' : '#374151',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Upload Signed
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  id={`${contractAddDocTabBaseId}-tab-request`}
+                  aria-selected={contractDocumentAddTab === 'request_signature'}
+                  aria-controls={`${contractAddDocTabBaseId}-panel-request`}
+                  tabIndex={contractDocumentAddTab === 'request_signature' ? 0 : -1}
+                  onClick={() => {
+                    setContractDocumentAddTab('request_signature')
+                    setContractDocumentFormStatus('unsent')
+                  }}
+                  style={{
+                    padding: '0.4rem 0.75rem',
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    border: '1px solid #d1d5db',
+                    borderRadius: 6,
+                    background: contractDocumentAddTab === 'request_signature' ? '#eff6ff' : '#fff',
+                    color: contractDocumentAddTab === 'request_signature' ? '#1d4ed8' : '#374151',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Request Signature
+                </button>
+              </div>
+            ) : null}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>Person</label>
+                <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
+                  Person
+                  <span aria-hidden="true" style={{ color: '#b91c1c' }}>
+                    {' '}
+                    *
+                  </span>
+                </label>
                 <input
                   type="text"
                   value={contractDocumentFormPersonName}
                   onChange={(e) => setContractDocumentFormPersonName(e.target.value)}
                   readOnly
                   disabled
+                  aria-required
                   style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#f9fafb' }}
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>Document name</label>
+                <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
+                  Document name
+                  <span aria-hidden="true" style={{ color: '#b91c1c' }}>
+                    {' '}
+                    *
+                  </span>
+                </label>
                 <input
                   type="text"
                   value={contractDocumentFormDocumentName}
@@ -10618,65 +11423,396 @@ export default function People() {
                   placeholder="e.g. Farm Work Agreement"
                   readOnly={!!editingContractDocument}
                   disabled={!!editingContractDocument}
+                  required={!editingContractDocument}
+                  aria-required={!editingContractDocument}
                   style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: editingContractDocument ? '#f9fafb' : undefined }}
                 />
               </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>URL</label>
-                <input
-                  type="url"
-                  value={contractDocumentFormUrl}
-                  onChange={(e) => setContractDocumentFormUrl(e.target.value)}
-                  placeholder="https://..."
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>Status</label>
-                <select
-                  value={contractDocumentFormStatus}
-                  onChange={(e) => setContractDocumentFormStatus(e.target.value as 'unsent' | 'sent' | 'signed')}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              {editingContractDocument ? (
+                <>
+                  {contractDocModalContractTextField}
+                  {contractDocModalCanonicalUrlField}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
+                      Signed / reference link
+                    </label>
+                    <input
+                      type="url"
+                      value={contractDocumentFormUrl}
+                      onChange={(e) => setContractDocumentFormUrl(e.target.value)}
+                      placeholder="Optional link to a signed copy or other reference"
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    />
+                  </div>
+                  <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: 0, lineHeight: 1.45 }}>
+                    To use <strong>Send for signature</strong>, fill at least one of: contract text, canonical URL, or signed/reference link (not required to save).
+                  </p>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>Status</label>
+                    <select
+                      value={contractDocumentFormStatus}
+                      onChange={(e) => setContractDocumentFormStatus(e.target.value as 'unsent' | 'sent' | 'signed')}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    >
+                      <option value="unsent">Unsent</option>
+                      <option value="sent">Sent</option>
+                      <option value="signed">Signed</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>Signed date</label>
+                    <input
+                      type="date"
+                      value={contractDocumentFormSignedAt}
+                      onChange={(e) => setContractDocumentFormSignedAt(e.target.value)}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>Note</label>
+                    <textarea
+                      value={contractDocumentFormNote}
+                      onChange={(e) => setContractDocumentFormNote(e.target.value)}
+                      rows={2}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, resize: 'vertical' }}
+                    />
+                  </div>
+                </>
+              ) : contractDocumentAddTab === 'upload_signed' ? (
+                  <div
+                    role="tabpanel"
+                    id={`${contractAddDocTabBaseId}-panel-upload`}
+                    aria-labelledby={`${contractAddDocTabBaseId}-tab-upload`}
+                  >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <p style={{ fontSize: '0.8125rem', color: '#4b5563', margin: 0, lineHeight: 1.45 }}>
+                        Use this when you already have a signed copy (link to PDF or Drive). Add signed date and note as needed.
+                      </p>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
+                          Signed / reference link
+                        </label>
+                        <input
+                          type="url"
+                          value={contractDocumentFormUrl}
+                          onChange={(e) => setContractDocumentFormUrl(e.target.value)}
+                          placeholder="Optional link to a signed copy or other reference"
+                          style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>Signed date</label>
+                        <input
+                          type="date"
+                          value={contractDocumentFormSignedAt}
+                          onChange={(e) => setContractDocumentFormSignedAt(e.target.value)}
+                          style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>Note</label>
+                        <textarea
+                          value={contractDocumentFormNote}
+                          onChange={(e) => setContractDocumentFormNote(e.target.value)}
+                          rows={2}
+                          style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, resize: 'vertical' }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+              ) : (
+                  <div
+                    role="tabpanel"
+                    id={`${contractAddDocTabBaseId}-panel-request`}
+                    aria-labelledby={`${contractAddDocTabBaseId}-tab-request`}
+                  >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <p style={{ fontSize: '0.8125rem', color: '#4b5563', margin: 0, lineHeight: 1.45 }}>
+                        Prepare what appears on the public signing page. Use <strong>Send</strong> below to save and open the email step, or <strong>Save</strong> and use <strong>Send</strong> on the document row later.
+                      </p>
+                      {contractDocModalContractTextField}
+                      {contractDocModalCanonicalUrlField}
+                    </div>
+                  </div>
+              )}
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                marginTop: '1rem',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '0.5rem',
+              }}
+            >
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setContractDocumentModalOpen(false)
+                    setContractDocumentDeleteConfirmOpen(false)
+                  }}
+                  style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: 'pointer' }}
                 >
-                  <option value="unsent">Unsent</option>
-                  <option value="sent">Sent</option>
-                  <option value="signed">Signed</option>
-                </select>
+                  Cancel
+                </button>
+                {editingContractDocument?.status === 'unsent' ? (
+                  <button
+                    type="button"
+                    onClick={() => setContractDocumentDeleteConfirmOpen(true)}
+                    disabled={contractDocumentFormSaving || contractDocumentDeleting}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      border: '1px solid #fecaca',
+                      borderRadius: 6,
+                      background: '#fef2f2',
+                      color: '#b91c1c',
+                      cursor:
+                        contractDocumentFormSaving || contractDocumentDeleting ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    Delete
+                  </button>
+                ) : null}
               </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>Signed date</label>
-                <input
-                  type="date"
-                  value={contractDocumentFormSignedAt}
-                  onChange={(e) => setContractDocumentFormSignedAt(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>Note</label>
-                <textarea
-                  value={contractDocumentFormNote}
-                  onChange={(e) => setContractDocumentFormNote(e.target.value)}
-                  rows={2}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, resize: 'vertical' }}
-                />
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={saveContractDocument}
+                  disabled={contractDocumentFormSaving}
+                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, cursor: contractDocumentFormSaving ? 'not-allowed' : 'pointer' }}
+                >
+                  {contractDocumentFormSaving ? 'Saving…' : 'Save'}
+                </button>
+                {!editingContractDocument && contractDocumentAddTab === 'request_signature' ? (
+                  <button
+                    type="button"
+                    onClick={() => void saveContractDocumentAndOpenSend()}
+                    disabled={contractDocumentFormSaving}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      background: '#0ea5e9',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: 6,
+                      cursor: contractDocumentFormSaving ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {contractDocumentFormSaving ? 'Saving…' : 'Send'}
+                  </button>
+                ) : null}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', justifyContent: 'flex-end' }}>
+          </div>
+        </div>
+      )}
+
+      {contractDocumentDeleteConfirmOpen &&
+        contractDocumentModalOpen &&
+        activeTab === 'contracts' &&
+        canAccessContracts &&
+        editingContractDocument?.status === 'unsent' && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.45)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 12,
+            }}
+            onClick={() => {
+              if (!contractDocumentDeleting) setContractDocumentDeleteConfirmOpen(false)
+            }}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="contract-delete-confirm-title"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: 'white',
+                padding: '1.5rem',
+                borderRadius: 8,
+                minWidth: 320,
+                maxWidth: 'min(92vw, 420px)',
+              }}
+            >
+              <h3 id="contract-delete-confirm-title" style={{ margin: '0 0 0.75rem', fontSize: '1.125rem' }}>
+                Delete document?
+              </h3>
+              <p style={{ fontSize: '0.875rem', color: '#4b5563', margin: '0 0 1rem', lineHeight: 1.45 }}>
+                This removes <strong>{editingContractDocument.document_name}</strong> for{' '}
+                <strong>{editingContractDocument.person_name}</strong>. This cannot be undone.
+              </p>
+              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => setContractDocumentDeleteConfirmOpen(false)}
+                  disabled={contractDocumentDeleting}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: 6,
+                    background: '#fff',
+                    cursor: contractDocumentDeleting ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void deleteContractDocument()}
+                  disabled={contractDocumentDeleting}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    border: 'none',
+                    borderRadius: 6,
+                    background: '#b91c1c',
+                    color: '#fff',
+                    cursor: contractDocumentDeleting ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {contractDocumentDeleting ? 'Deleting…' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+      {contractBookModalOpen && activeTab === 'contracts' && canAccessContracts && (
+        <ContractBookModal
+          open={contractBookModalOpen}
+          onClose={() => setContractBookModalOpen(false)}
+          templates={contractTemplates}
+          templateDocuments={contractTemplateDocuments}
+          onSaved={() => void loadContracts()}
+        />
+      )}
+
+      {contractSendModalOpen && activeTab === 'contracts' && canAccessContracts && contractSendDocId && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 11 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: '90vw' }}>
+            <h3 style={{ margin: '0 0 0.75rem', fontSize: '1.125rem' }}>Send for signature</h3>
+            {contractsError ? <p style={{ color: '#b91c1c', fontSize: '0.875rem' }}>{contractsError}</p> : null}
+            <label style={{ display: 'block', marginTop: '0.75rem', fontSize: '0.8125rem' }}>
+              <span style={{ fontWeight: 600 }}>Signer email</span>
+              <input
+                type="email"
+                value={contractSendEmail}
+                onChange={(e) => setContractSendEmail(e.target.value)}
+                placeholder="name@example.com"
+                style={{ display: 'block', width: '100%', marginTop: '0.25rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box', fontWeight: 400 }}
+              />
+            </label>
+            <label style={{ display: 'block', marginTop: '0.75rem', fontSize: '0.8125rem' }}>
+              <span style={{ fontWeight: 600 }}>Email subject (optional)</span>
+              <input
+                type="text"
+                value={contractSendSubject}
+                onChange={(e) => setContractSendSubject(e.target.value)}
+                placeholder="Default: Sign contract: …"
+                maxLength={200}
+                style={{ display: 'block', width: '100%', marginTop: '0.25rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box', fontWeight: 400 }}
+              />
+            </label>
+            <label style={{ display: 'block', marginTop: '0.75rem', fontSize: '0.8125rem' }}>
+              <span style={{ fontWeight: 600 }}>Opening message (optional, plain text)</span>
+              <textarea
+                value={contractSendIntro}
+                onChange={(e) => setContractSendIntro(e.target.value)}
+                placeholder="Default: Please review and sign your contract. Leave blank to use the default opening line."
+                rows={4}
+                maxLength={4000}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  marginTop: '0.25rem',
+                  padding: '0.5rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  boxSizing: 'border-box',
+                  resize: 'vertical',
+                  fontFamily: 'inherit',
+                  fontWeight: 400,
+                }}
+              />
+            </label>
+            <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '0.5rem 0 0' }}>
+              The email always includes the document name and a link to the signing page after your message.
+            </p>
+            {contractSendEmailPreview ? (
+              <div style={{ marginTop: '0.75rem' }}>
+                <div style={{ fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.35rem' }}>Email preview</div>
+                {contractSendEmailPreview.kind === 'missing' ? (
+                  <p style={{ fontSize: '0.8125rem', color: '#6b7280', margin: 0 }}>Unable to load preview.</p>
+                ) : (
+                  <>
+                    <div style={{ fontSize: '0.8125rem', marginBottom: '0.35rem', lineHeight: 1.45 }}>
+                      <span style={{ fontWeight: 600 }}>Subject: </span>
+                      {contractSendEmailPreview.subject}
+                    </div>
+                    <div
+                      style={{
+                        border: '1px solid #e5e7eb',
+                        borderRadius: 6,
+                        padding: '0.75rem',
+                        maxHeight: 220,
+                        overflow: 'auto',
+                        fontSize: '0.875rem',
+                        lineHeight: 1.5,
+                        background: '#fafafa',
+                        color: '#111827',
+                      }}
+                      dangerouslySetInnerHTML={{ __html: contractSendEmailPreview.htmlBody }}
+                    />
+                    <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '0.35rem 0 0' }}>
+                      The signing link is generated when you send.
+                    </p>
+                  </>
+                )}
+              </div>
+            ) : null}
+            <div
+              style={{
+                display: 'flex',
+                marginTop: '1rem',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '0.5rem',
+              }}
+            >
               <button
                 type="button"
-                onClick={saveContractDocument}
-                disabled={contractDocumentFormSaving}
-                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, cursor: contractDocumentFormSaving ? 'not-allowed' : 'pointer' }}
-              >
-                {contractDocumentFormSaving ? 'Saving…' : 'Save'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setContractDocumentModalOpen(false)}
+                onClick={() => {
+                  setContractSendModalOpen(false)
+                  setContractSendDocId(null)
+                  setContractSendEmail('')
+                  setContractSendSubject('')
+                  setContractSendIntro('')
+                  setContractsError(null)
+                }}
                 style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: 'pointer' }}
               >
                 Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void sendContractForSignature()}
+                disabled={contractSendSaving}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: '#0ea5e9',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: contractSendSaving ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {contractSendSaving ? 'Sending…' : 'Send email'}
               </button>
             </div>
           </div>
