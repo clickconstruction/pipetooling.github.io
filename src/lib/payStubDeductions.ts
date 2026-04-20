@@ -21,6 +21,8 @@ export type PayStubAdditionalLineRow = {
   line_total: number
   created_at: string | null
   created_by: string | null
+  /** When set, prevailing-wage helper line tied to this clock session (unique per stub when DB enforces). */
+  source_clock_session_id?: string | null
 }
 
 export function sumPayStubDeductionAmounts(rows: PayStubDeductionRow[] | undefined): number {

@@ -45,6 +45,7 @@ import {
   sumPayStubAdditionalAmounts,
   sumPayStubDeductionAmounts,
 } from '../lib/payStubDeductions'
+import { stripPrevailingWageTag } from '../lib/payStubPrevailingWageLine'
 import { findPersonUserDuplicates, mergePersonIntoUser } from '../lib/mergePersonUserDuplicates'
 import {
   deleteLabel,
@@ -485,6 +486,16 @@ export default function People() {
   const [payStubAdditionalByStubId, setPayStubAdditionalByStubId] = useState<Record<string, PayStubAdditionalLineRow[]>>({})
   const [payStubLessModalStub, setPayStubLessModalStub] = useState<PayStubRow | null>(null)
   const [payStubAdditionalModalStub, setPayStubAdditionalModalStub] = useState<PayStubRow | null>(null)
+  const payStubAdditionalSubjectUserId = useMemo(() => {
+    if (!payStubAdditionalModalStub) return null
+    const n = payStubAdditionalModalStub.person_name.trim()
+    const u = users.find((x) => (x.name ?? '').trim() === n)
+    return u?.id ?? null
+  }, [payStubAdditionalModalStub, users])
+  const payStubAdditionalBaseHourlyWage = useMemo(() => {
+    if (!payStubAdditionalModalStub) return 0
+    return Number(payConfig[payStubAdditionalModalStub.person_name]?.hourly_wage ?? 0)
+  }, [payStubAdditionalModalStub, payConfig])
   const [payStubsLoading, setPayStubsLoading] = useState(false)
   const [payStubGeneratorPerson, setPayStubGeneratorPerson] = useState('')
   const [payStubPeriodStart, setPayStubPeriodStart] = useState(() => {
@@ -2543,7 +2554,7 @@ export default function People() {
             async () =>
               await supabase
                 .from('pay_stub_additional_lines')
-                .select('id, pay_stub_id, description, quantity, rate, line_total, created_at, created_by')
+                .select('id, pay_stub_id, description, quantity, rate, line_total, created_at, created_by, source_clock_session_id')
                 .in('pay_stub_id', chunk)
                 .order('created_at', { ascending: true }),
             'load pay stub additional lines',
@@ -2862,7 +2873,7 @@ export default function People() {
         if (addLines.length > 0) {
           block += '<div style="margin-top: 0.75rem;"><strong>Additional</strong></div>'
           for (const A of addLines) {
-            block += `<div class="meta">- ${escapeHtml(A.description)}: ${A.quantity} × $${formatCurrency(A.rate)} = $${formatCurrency(A.line_total)}</div>`
+            block += `<div class="meta">- ${escapeHtml(stripPrevailingWageTag(A.description))}: ${A.quantity} × $${formatCurrency(A.rate)} = $${formatCurrency(A.line_total)}</div>`
           }
           block += `<div class="meta"><strong>Total Additional: $${formatCurrency(addTotal)}</strong></div>`
         }
@@ -7084,44 +7095,62 @@ export default function People() {
                             <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{stub.hours_total.toFixed(2)}</td>
                             <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(stub.gross_pay)}</td>
                             <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>
-                              <button
-                                type="button"
-                                onClick={() => setPayStubLessModalStub(stub)}
-                                title="Edit Less (deductions)"
-                                aria-label={`Less for ${stub.person_name}, ${ledgerPayPeriodShortLabel(stub.period_start, stub.period_end)}: $${formatCurrency(lessSum)}`}
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  padding: 0,
-                                  cursor: 'pointer',
-                                  color: '#2563eb',
-                                  textDecoration: 'underline',
-                                  fontSize: 'inherit',
-                                  fontFamily: 'inherit',
-                                }}
-                              >
-                                ${formatCurrency(lessSum)}
-                              </button>
+                              {fully ? (
+                                <span
+                                  title="Fully paid — change payments first to edit Less"
+                                  aria-label={`Less for ${stub.person_name}, ${ledgerPayPeriodShortLabel(stub.period_start, stub.period_end)}: $${formatCurrency(lessSum)}, not editable, fully paid`}
+                                >
+                                  ${formatCurrency(lessSum)}
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setPayStubLessModalStub(stub)}
+                                  title="Edit Less (deductions)"
+                                  aria-label={`Less for ${stub.person_name}, ${ledgerPayPeriodShortLabel(stub.period_start, stub.period_end)}: $${formatCurrency(lessSum)}`}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    padding: 0,
+                                    cursor: 'pointer',
+                                    color: '#2563eb',
+                                    textDecoration: 'underline',
+                                    fontSize: 'inherit',
+                                    fontFamily: 'inherit',
+                                  }}
+                                >
+                                  ${formatCurrency(lessSum)}
+                                </button>
+                              )}
                             </td>
                             <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>
-                              <button
-                                type="button"
-                                onClick={() => setPayStubAdditionalModalStub(stub)}
-                                title="Edit Additional pay lines"
-                                aria-label={`Additional for ${stub.person_name}, ${ledgerPayPeriodShortLabel(stub.period_start, stub.period_end)}: $${formatCurrency(addSumLedger)}`}
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  padding: 0,
-                                  cursor: 'pointer',
-                                  color: '#2563eb',
-                                  textDecoration: 'underline',
-                                  fontSize: 'inherit',
-                                  fontFamily: 'inherit',
-                                }}
-                              >
-                                ${formatCurrency(addSumLedger)}
-                              </button>
+                              {fully ? (
+                                <span
+                                  title="Fully paid — change payments first to edit Additional"
+                                  aria-label={`Additional for ${stub.person_name}, ${ledgerPayPeriodShortLabel(stub.period_start, stub.period_end)}: $${formatCurrency(addSumLedger)}, not editable, fully paid`}
+                                >
+                                  ${formatCurrency(addSumLedger)}
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setPayStubAdditionalModalStub(stub)}
+                                  title="Edit Additional pay lines"
+                                  aria-label={`Additional for ${stub.person_name}, ${ledgerPayPeriodShortLabel(stub.period_start, stub.period_end)}: $${formatCurrency(addSumLedger)}`}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    padding: 0,
+                                    cursor: 'pointer',
+                                    color: '#2563eb',
+                                    textDecoration: 'underline',
+                                    fontSize: 'inherit',
+                                    fontFamily: 'inherit',
+                                  }}
+                                >
+                                  ${formatCurrency(addSumLedger)}
+                                </button>
+                              )}
                             </td>
                             <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(netPayLedger)}</td>
                             <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(paidSum)}</td>
@@ -7300,6 +7329,11 @@ export default function People() {
           deductions={payStubDeductionsByStubId[payStubAdditionalModalStub.id] ?? []}
           payments={payStubPaymentsByStubId[payStubAdditionalModalStub.id] ?? []}
           authUserId={authUser?.id ?? null}
+          subjectUserId={payStubAdditionalSubjectUserId}
+          baseHourlyWage={payStubAdditionalBaseHourlyWage}
+          onOpenMyTimeForDay={({ dateStr, subjectUserId, subjectDisplayName }) => {
+            setHoursMyTimeEditor({ dateStr, subjectUserId, subjectDisplayName })
+          }}
           onClose={() => setPayStubAdditionalModalStub(null)}
           onSaved={async () => {
             await loadPayStubs()
