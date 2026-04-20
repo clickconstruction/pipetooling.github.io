@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Stripe from 'https://esm.sh/stripe@16.12.0?target=deno'
+import { customerEmailFromStripeInvoice } from '../_shared/stripeInvoiceCustomerEmail.ts'
 import {
   anyStripeApiKeyConfigured,
   resolveStripeBillingMode,
@@ -24,18 +25,6 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })
-}
-
-function customerEmailFromInvoice(inv: Stripe.Invoice): string {
-  const direct = typeof inv.customer_email === 'string' ? inv.customer_email.trim() : ''
-  if (direct) return direct
-  const cust = inv.customer
-  if (cust != null && typeof cust === 'object' && !('deleted' in cust && (cust as { deleted?: boolean }).deleted)) {
-    const c = cust as Stripe.Customer
-    const em = typeof c.email === 'string' ? c.email.trim() : ''
-    if (em) return em
-  }
-  return ''
 }
 
 async function persistSendAfterStripeEmail(args: {
@@ -125,14 +114,82 @@ serve(async (req) => {
       )
     }
 
-    const { data: invRow, error: invErr } = await userClient
-      .from('jobs_ledger_invoices')
-      .select('id, status, stripe_invoice_id')
-      .eq('id', jobsLedgerInvoiceId)
+    const { data: roleRow, error: roleErr } = await userClient
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
       .maybeSingle()
 
-    if (invErr || !invRow) {
-      return jsonResponse({ error: 'Invoice not found or access denied' }, 403)
+    if (roleErr || !roleRow?.role) {
+      return jsonResponse({ error: 'Could not resolve user role' }, 403)
+    }
+
+    const callerRole = roleRow.role
+    const isSubcontractor = callerRole === 'subcontractor'
+
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    if (!serviceKey?.trim()) {
+      return jsonResponse({ error: 'Server misconfigured: SUPABASE_SERVICE_ROLE_MISSING' }, 500)
+    }
+    const admin = createClient(supabaseUrl, serviceKey)
+
+    let invRow: { id: string; status: string; stripe_invoice_id: string | null }
+
+    if (isSubcontractor) {
+      const { data: inv, error: invErr } = await admin
+        .from('jobs_ledger_invoices')
+        .select('id, job_id, status, stripe_invoice_id')
+        .eq('id', jobsLedgerInvoiceId)
+        .maybeSingle()
+
+      if (invErr || !inv) {
+        return jsonResponse({ error: 'Invoice not found or access denied' }, 403)
+      }
+
+      const { data: tm } = await admin
+        .from('jobs_ledger_team_members')
+        .select('job_id')
+        .eq('job_id', inv.job_id)
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      if (!tm) {
+        return jsonResponse({ error: 'Invoice not found or access denied' }, 403)
+      }
+
+      const { data: flow } = await admin
+        .from('job_collect_payment_flows')
+        .select('status, jobs_ledger_invoice_id')
+        .eq('job_id', inv.job_id)
+        .maybeSingle()
+
+      if (
+        !flow ||
+        flow.status !== 'approved_for_terminal' ||
+        flow.jobs_ledger_invoice_id == null ||
+        String(flow.jobs_ledger_invoice_id) !== String(inv.id)
+      ) {
+        return jsonResponse(
+          {
+            error:
+              'Only an active collect payment request can email this invoice from the field',
+          },
+          403,
+        )
+      }
+
+      invRow = { id: inv.id, status: inv.status, stripe_invoice_id: inv.stripe_invoice_id }
+    } else {
+      const { data: inv, error: invErr } = await userClient
+        .from('jobs_ledger_invoices')
+        .select('id, status, stripe_invoice_id')
+        .eq('id', jobsLedgerInvoiceId)
+        .maybeSingle()
+
+      if (invErr || !inv) {
+        return jsonResponse({ error: 'Invoice not found or access denied' }, 403)
+      }
+      invRow = inv
     }
 
     const stripeInvoiceId = (invRow.stripe_invoice_id ?? '').trim()
@@ -143,12 +200,6 @@ serve(async (req) => {
     if (invRow.status !== 'billed') {
       return jsonResponse({ error: 'Invoice must be Billed Awaiting Payment to send from Stripe' }, 400)
     }
-
-    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-    if (!serviceKey?.trim()) {
-      return jsonResponse({ error: 'Server misconfigured: SUPABASE_SERVICE_ROLE_MISSING' }, 500)
-    }
-    const admin = createClient(supabaseUrl, serviceKey)
 
     const stripe = new Stripe(stripeSecret, { apiVersion: '2024-06-20' })
 
@@ -183,7 +234,7 @@ serve(async (req) => {
       return jsonResponse({ error: 'Nothing left to collect on this Stripe invoice' }, 400)
     }
 
-    const email = customerEmailFromInvoice(inv)
+    const email = customerEmailFromStripeInvoice(inv)
     if (!email) {
       return jsonResponse(
         { error: 'Stripe has no email for this customer; add an email in Stripe or on the customer record' },

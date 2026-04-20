@@ -31,6 +31,7 @@ import StripeInvoiceFooterDevSettingsBlock from '../components/settings/StripeIn
 import PhysicalInvoiceFooterDevSettingsBlock from '../components/settings/PhysicalInvoiceFooterDevSettingsBlock'
 import BillCustomerMemoDevSettingsBlock from '../components/settings/BillCustomerMemoDevSettingsBlock'
 import PhysicalInvoiceIssuerDevSettingsBlock from '../components/settings/PhysicalInvoiceIssuerDevSettingsBlock'
+import JobBookSettingsSection from '../components/settings/JobBookSettingsSection'
 import TeamFeedbackMasterAggregates from '../components/team-feedback/TeamFeedbackMasterAggregates'
 import type { Database } from '../types/database'
 import {
@@ -6659,6 +6660,10 @@ export default function Settings() {
             </div>
           )}
         </div>
+      )}
+
+      {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
+        <JobBookSettingsSection onDbError={(msg) => setError(msg)} />
       )}
 
       {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (

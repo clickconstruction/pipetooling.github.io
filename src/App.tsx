@@ -19,6 +19,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Templates = lazy(() => import('./pages/Templates'))
 const People = lazy(() => import('./pages/People'))
 const Jobs = lazy(() => import('./pages/Jobs'))
+const JobsAccountsReceivable = lazy(() => import('./pages/JobsAccountsReceivable'))
 const Banking = lazy(() => import('./pages/Banking'))
 const Materials = lazy(() => import('./pages/Materials'))
 const Quickfill = lazy(() => import('./pages/Quickfill'))
@@ -191,6 +192,7 @@ function AppContent() {
           <Route path="projects/:id/edit" element={<ProjectForm />} />
           <Route path="workflows/:projectId" element={<Workflow />} />
           <Route path="jobs" element={<Jobs />} />
+          <Route path="accounts-receivable" element={<JobsAccountsReceivable />} />
           <Route path="schedule-dispatch" element={<ScheduleDispatch />} />
           <Route path="banking" element={<Banking />} />
           <Route path="quickfill" element={<ErrorBoundary><Quickfill /></ErrorBoundary>} />

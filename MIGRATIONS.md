@@ -5,11 +5,11 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-04-16
+last_updated: 2026-04-21
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: ~88
+total_migrations: ~94
 date_range: "Through March 24, 2027"
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -92,12 +92,64 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### April 2026
 
+#### April 21, 2026
+
+**`20260419180746_collect_payment_complete_on_invoice_paid.sql`**
+- **Purpose**: **Hosted invoice collect payment** — **`complete_job_collect_payment_flow_for_invoice(p_stripe_invoice_id)`** sets **`job_collect_payment_flows`** to **`terminal_completed`** when **`invoice.paid`** matches **`approved_for_terminal`** (**service role**). **`get_collect_payment_certify_payload`** adds **`collect_invoice`** JSON (**billed** **`jobs_ledger_invoices`** row linked from flow: **`hosted_invoice_url`**, **`stripe_invoice_id`**).
+- **Changes**: **`CREATE OR REPLACE`** RPCs; **`REVOKE`/`GRANT`** on **`complete_job_collect_payment_flow_for_invoice`**
+- **Impact**: [`stripe-webhook`](supabase/functions/stripe-webhook/index.ts), [`CollectPaymentModal.tsx`](src/components/jobs/CollectPaymentModal.tsx); **`RECENT_FEATURES.md`** v2.344
+- **Category**: Jobs / Billing / Stripe / RPC
+
+**`20260419183243_collect_payment_certify_payload_customer_email.sql`**
+- **Purpose**: Certify payload includes **`billing_customer`** (**email** / **name** from **`jobs_ledger`** + **`customers`**) for Step 3 display and **`update-collect-payment-stripe-customer-email`** alignment.
+- **Changes**: **`CREATE OR REPLACE`** **`get_collect_payment_certify_payload`**
+- **Impact**: [`CollectPaymentModal.tsx`](src/components/jobs/CollectPaymentModal.tsx); **`RECENT_FEATURES.md`** v2.344
+- **Category**: Jobs / RPC
+
+**`20260419201229_collect_payment_return_to_dispatch.sql`**
+- **Purpose**: **`return_collect_payment_to_dispatch(p_job_id, p_note)`** — subcontractor moves flow from **`approved_for_terminal`** back to **`pending_dispatch`** with a note; **`certify_mode`** **`returned_from_terminal`** on **`job_collect_payment_flows`**.
+- **Changes**: **`ALTER`** **`job_collect_payment_flows_certify_mode_check`**; **`CREATE OR REPLACE`** RPC
+- **Impact**: [`CollectPaymentModal.tsx`](src/components/jobs/CollectPaymentModal.tsx); **`RECENT_FEATURES.md`** v2.344
+- **Category**: Jobs / RPC
+
+**`20260419202031_collect_payment_return_set_initiated_by.sql`**
+- **Purpose**: **`return_collect_payment_to_dispatch`** sets **`initiated_by_user_id`** to the subcontractor returning the job (queue display).
+- **Changes**: **`CREATE OR REPLACE`** **`return_collect_payment_to_dispatch`**
+- **Impact**: [`DashboardFieldCollectPaymentQueue.tsx`](src/components/dashboard/DashboardFieldCollectPaymentQueue.tsx); **`RECENT_FEATURES.md`** v2.344
+- **Category**: Jobs / RPC
+
+**`20260419223818_jobs_ledger_invoices_supabase_realtime.sql`**
+- **Purpose**: Add **`jobs_ledger_invoices`** to **`supabase_realtime`** publication so the field queue can refresh when invoice rows change (e.g. **`hosted_invoice_url`**, **`stripe_invoice_status`**) without relying on **`job_collect_payment_flows`** updates alone.
+- **Changes**: **`ALTER PUBLICATION supabase_realtime ADD TABLE`** (idempotent **`DO`** block)
+- **Impact**: [`DashboardFieldCollectPaymentQueue.tsx`](src/components/dashboard/DashboardFieldCollectPaymentQueue.tsx); **`RECENT_FEATURES.md`** v2.344
+- **Category**: Jobs / Realtime
+
+**`20260419231724_collect_payment_payload_invoice_sent_at.sql`**
+- **Purpose**: **`collect_invoice`** in **`get_collect_payment_certify_payload`** includes **`sent_to_customer_at`** for Step 3 (“invoice emailed” UX).
+- **Changes**: **`CREATE OR REPLACE`** **`get_collect_payment_certify_payload`**
+- **Impact**: [`CollectPaymentModal.tsx`](src/components/jobs/CollectPaymentModal.tsx); **`RECENT_FEATURES.md`** v2.344
+- **Category**: Jobs / RPC
+
+#### April 20, 2026
+
+**`20260420021701_job_book_entries_collect_payment.sql`**
+- **Purpose**: **Job Book** — org-wide catalog **`job_book_entries`** (**Work** / **Cost** / optional **`service_type_id`**) used on **Collect Payment** Step 1 (and in **Settings** / **Jobs** for maintenance). **RLS**: **SELECT** for all **`authenticated`**; **INSERT/UPDATE/DELETE** for **`dev`**, **`master_technician`**, **`assistant`** only. **`add_collect_payment_fixture_from_job_book`**: **subcontractor** on RTB team job inserts one **`jobs_ledger_fixtures`** row and syncs **`jobs_ledger.revenue`**. **`get_collect_payment_certify_payload`** adds **`job_service_type_id`** (from linked **`bids.service_type_id`**) for client-side catalog filtering.
+- **Changes**: **`CREATE TABLE`** **`job_book_entries`**; RLS policies; **`CREATE OR REPLACE`** **`get_collect_payment_certify_payload`**; **`CREATE`** **`add_collect_payment_fixture_from_job_book`** + **`GRANT`**
+- **Impact**: [`CollectPaymentModal.tsx`](src/components/jobs/CollectPaymentModal.tsx), [`JobBookSettingsSection.tsx`](src/components/settings/JobBookSettingsSection.tsx), [`JobBookEditorPanel.tsx`](src/components/settings/JobBookEditorPanel.tsx), [`JobBookModal.tsx`](src/components/jobs/JobBookModal.tsx), [`Settings.tsx`](src/pages/Settings.tsx); **`RECENT_FEATURES.md`** (v2.342 catalog, v2.343 Step 1 UX); **`ACCESS_CONTROL.md`**
+- **Category**: Jobs / Collect Payment / Settings / RLS / RPC
+
 #### April 19, 2026
+
+**`20260419230155_update_job_status_cancel_collect_payment_flow.sql`**
+- **Purpose**: **Ready to Bill → Working** (**`update_job_status`**) also **cancels** an in-progress **`job_collect_payment_flows`** row when **`status IN ('draft','pending_dispatch','approved_for_terminal')`** (sets **`cancelled`**, clears dispatch/terminal fields). Return JSON adds **`cancelled_collect_payment_flows`** count.
+- **Changes**: **`CREATE OR REPLACE FUNCTION`** **`update_job_status`**
+- **Impact**: [`Dashboard.tsx`](src/pages/Dashboard.tsx), [`Jobs.tsx`](src/pages/Jobs.tsx) send-back UX; field queue no longer shows **`pending_dispatch`** for that job; **`RECENT_FEATURES.md`** v2.340
+- **Category**: Jobs / Billing / RPC
 
 **`20260419161731_job_collect_payment_flows.sql`**
 - **Purpose**: **Subcontractor field collect payment** — certify billable lines → staff **Approve for Terminal** → **Stripe Terminal** (PWA). Table **`job_collect_payment_flows`** (status machine, certify/dispatch/Stripe ids); **RLS** (team read, staff read; mutations via **`SECURITY DEFINER`** RPCs only); **Realtime** publication when missing. RPCs: **`get_collect_payment_certify_payload`**, **`submit_collect_payment_certification`**, **`approve_collect_payment_for_terminal`**, **`complete_job_collect_payment_flow_terminal`** (service role). **`list_ready_to_bill_assigned_jobs_for_dashboard()`** gains **`collect_payment_button_variant`** (`default` | `pending_dispatch` | `ready_terminal`).
 - **Changes**: **`CREATE TABLE`** **`job_collect_payment_flows`**; policies; triggers; **`CREATE OR REPLACE`** RPCs; **`DROP`/`CREATE`** list RTB RPC with extra column
-- **Impact**: [`CollectPaymentModal.tsx`](src/components/jobs/CollectPaymentModal.tsx), [`DashboardFieldCollectPaymentQueue.tsx`](src/components/dashboard/DashboardFieldCollectPaymentQueue.tsx), [`Dashboard.tsx`](src/pages/Dashboard.tsx); Edge **`terminal-connection-token`**, **`create-terminal-collect-payment-intent`**; **`stripe-webhook`** `payment_intent.succeeded` branch; types; **`RECENT_FEATURES.md`** v2.339
+- **Impact**: [`CollectPaymentModal.tsx`](src/components/jobs/CollectPaymentModal.tsx), [`DashboardFieldCollectPaymentQueue.tsx`](src/components/dashboard/DashboardFieldCollectPaymentQueue.tsx), [`Dashboard.tsx`](src/pages/Dashboard.tsx); Edge **`terminal-connection-token`**, **`create-terminal-collect-payment-intent`** (removed **v2.344** — hosted invoice + **`complete_job_collect_payment_flow_for_invoice`**); **`stripe-webhook`** `invoice.paid` / legacy `payment_intent.succeeded` branches; types; **`RECENT_FEATURES.md`** v2.339, v2.344
 - **Category**: Jobs / Billing / Stripe Terminal / RPC
 
 **`20260419154440_list_ready_to_bill_assigned_jobs_for_dashboard.sql`**

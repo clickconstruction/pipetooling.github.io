@@ -4,6 +4,7 @@ import { BankingSortingConfigModal } from '../BankingSortingConfigModal'
 import type { BankingSortingConfigV1 } from '../../lib/bankingSortingConfig'
 import {
   BANKING_SORTING_CONFIG_VERSION,
+  bankSortingConfigsFilterEqual,
   defaultBankingSortingConfig,
   fetchBankPaymentsSortingConfigFromAppSettings,
   loadBankPaymentsSortingConfig,
@@ -127,6 +128,8 @@ export type BankPaymentsModalProps = {
   authUserId: string | undefined
   authRole: string | null
   billedRows: StageRow[]
+  /** True while parent jobs list is still loading and billed rows are not yet available (deep link open). */
+  billedTargetsLoading?: boolean
   onApplied: () => void | Promise<void>
   /** Applied breakdown: open Edit job for this jobs_ledger id (e.g. from Jobs + JobFormModalContext). */
   onOpenEditJob?: (jobId: string) => void
@@ -140,6 +143,7 @@ export default function BankPaymentsModal({
   authUserId,
   authRole,
   billedRows,
+  billedTargetsLoading = false,
   onApplied,
   onOpenEditJob,
 }: BankPaymentsModalProps) {
@@ -359,12 +363,12 @@ export default function BankPaymentsModal({
       const { config, rowExists } = await fetchBankPaymentsSortingConfigFromAppSettings()
       if (cancelled) return
       if (rowExists) {
-        setSortingConfig(config)
+        setSortingConfig((prev) => (bankSortingConfigsFilterEqual(prev, config) ? prev : config))
         saveBankPaymentsSortingConfigToLocalCache(config)
         return
       }
       const local = loadBankPaymentsSortingConfig(authUserId)
-      setSortingConfig(local)
+      setSortingConfig((prev) => (bankSortingConfigsFilterEqual(prev, local) ? prev : local))
       saveBankPaymentsSortingConfigToLocalCache(local)
       if (authRole === 'dev') {
         try {
@@ -641,6 +645,7 @@ export default function BankPaymentsModal({
       aria-labelledby="accounts-receivable-modal-title"
     >
       <div
+        aria-busy={listLoading}
         style={{
           background: 'white',
           borderRadius: 8,
@@ -742,7 +747,55 @@ export default function BankPaymentsModal({
           </div>
         )}
 
-        <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+        <div style={{ position: 'relative', display: 'flex', flex: 1, flexDirection: 'column', minHeight: 0 }}>
+          {listLoading ? (
+            <div
+              role="status"
+              aria-live="polite"
+              style={{
+                position: 'absolute',
+                inset: 0,
+                zIndex: 2,
+                background: 'rgba(255,255,255,0.94)',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                padding: '1.25rem',
+                gap: '1rem',
+                boxSizing: 'border-box',
+              }}
+            >
+              <p style={{ margin: 0, textAlign: 'center', fontSize: '0.875rem', color: '#374151', fontWeight: 600 }}>
+                Loading bank transactions…
+              </p>
+              <div style={{ display: 'flex', flex: 1, minHeight: 200, gap: '1rem', alignItems: 'stretch' }}>
+                <div style={{ flex: '0 0 42%', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div
+                      key={i}
+                      className="dashboard-skeleton-pulse"
+                      style={{ height: 44, borderRadius: 6, background: '#e5e7eb' }}
+                    />
+                  ))}
+                </div>
+                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div className="dashboard-skeleton-pulse" style={{ height: 72, borderRadius: 6, background: '#e5e7eb' }} />
+                  <div className="dashboard-skeleton-pulse" style={{ height: 120, borderRadius: 6, background: '#e5e7eb' }} />
+                  <div className="dashboard-skeleton-pulse" style={{ height: 88, borderRadius: 6, background: '#e5e7eb' }} />
+                </div>
+              </div>
+            </div>
+          ) : null}
+          <div
+            style={{
+              display: 'flex',
+              flex: 1,
+              minHeight: 0,
+              opacity: listLoading ? 0.35 : 1,
+              pointerEvents: listLoading ? 'none' : 'auto',
+            }}
+            aria-hidden={listLoading}
+          >
           <div
             style={{
               width: '42%',
@@ -825,7 +878,6 @@ export default function BankPaymentsModal({
               Show fully applied and returned deposits
             </label>
             <div style={{ flex: 1, overflow: 'auto' }}>
-              {listLoading && <p style={{ padding: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>Loading…</p>}
               {listError && (
                 <p style={{ padding: '1rem', fontSize: '0.875rem', color: '#b91c1c' }}>{listError}</p>
               )}
@@ -993,8 +1045,16 @@ export default function BankPaymentsModal({
                         <strong>Applied to jobs:</strong> {formatMoney(Number(selected.consumed))}
                       </div>
                       {arAllocationsLoading ? (
-                        <div style={{ marginTop: 8, fontSize: '0.8125rem', color: '#6b7280' }}>
-                          Loading breakdown…
+                        <div style={{ marginTop: 10 }}>
+                          <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>Loading breakdown…</div>
+                          <div
+                            className="dashboard-skeleton-pulse"
+                            style={{ height: 14, borderRadius: 4, background: '#e5e7eb', maxWidth: '85%' }}
+                          />
+                          <div
+                            className="dashboard-skeleton-pulse"
+                            style={{ height: 14, borderRadius: 4, background: '#e5e7eb', maxWidth: '65%', marginTop: 6 }}
+                          />
                         </div>
                       ) : arAllocationsError ? (
                         <div style={{ marginTop: 8, fontSize: '0.8125rem', color: '#b91c1c' }}>
@@ -1126,7 +1186,9 @@ export default function BankPaymentsModal({
                       <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.5rem' }}>Allocations</div>
                       {targets.length === 0 ? (
                         <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                          No eligible billed lines (non-Stripe with balance).
+                          {billedTargetsLoading
+                            ? 'Loading billed job lines…'
+                            : 'No eligible billed lines (non-Stripe with balance).'}
                         </p>
                       ) : (
                         <>
@@ -1380,6 +1442,7 @@ export default function BankPaymentsModal({
             </div>
           </div>
         </div>
+      </div>
       </div>
 
       <BankingSortingConfigModal

@@ -80,3 +80,36 @@ export function buildReadyToBillDashboardUnits<
   }
   return out
 }
+
+/** For Field queue **Prepare Bill**: same target as Dashboard Ready to Bill **Bill Customer** for `jobId`. */
+export type ResolveReadyToBillBillCustomerTargetResult<J, I> =
+  | { mode: 'invoice'; inv: I }
+  | { mode: 'job'; job: J }
+  | { mode: 'none' }
+  | { mode: 'ambiguous'; count: number }
+
+export function resolveReadyToBillBillCustomerTarget<
+  J extends { id: string },
+  I extends { id: string; job_id: string },
+>(
+  jobId: string,
+  units: ReadyToBillDashboardUnit<J, I>[],
+): ResolveReadyToBillBillCustomerTargetResult<J, I> {
+  const bundle = units.find(
+    (u): u is { kind: 'job_bundle'; job: J; inv: I } =>
+      u.kind === 'job_bundle' && u.job.id === jobId,
+  )
+  if (bundle) return { mode: 'invoice', inv: bundle.inv }
+
+  const jobUnit = units.find(
+    (u): u is { kind: 'job'; job: J } => u.kind === 'job' && u.job.id === jobId,
+  )
+  if (jobUnit) return { mode: 'job', job: jobUnit.job }
+
+  const invUnits = units.filter(
+    (u): u is { kind: 'invoice'; inv: I } => u.kind === 'invoice' && u.inv.job_id === jobId,
+  )
+  if (invUnits.length === 1) return { mode: 'invoice', inv: invUnits[0]!.inv }
+  if (invUnits.length > 1) return { mode: 'ambiguous', count: invUnits.length }
+  return { mode: 'none' }
+}

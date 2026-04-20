@@ -14,6 +14,7 @@ import { supabase } from '../lib/supabase'
 import { pageUnderlineTabStyle } from '../lib/pageUnderlineTabStyle'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { useAuth } from '../hooks/useAuth'
+import { useSendBackCollectPaymentFlowNotice } from '../hooks/useSendBackCollectPaymentFlowNotice'
 import { useMercuryLedgerNicknames } from '../hooks/useMercuryLedgerNicknames'
 import { useToastContext } from '../contexts/ToastContext'
 import { withSupabaseRetry } from '../utils/errorHandling'
@@ -27,6 +28,8 @@ import { jobBillingContextFromJob } from '../lib/jobBillingContext'
 import { useBillCustomerModal } from '../contexts/BillCustomerModalContext'
 import { canRoleUseArBankCount, useArBankUnallocatedCount } from '../hooks/useArBankUnallocatedCount'
 import BankPaymentsModal from '../components/jobs/BankPaymentsModal'
+import JobBookModal from '../components/jobs/JobBookModal'
+import JobBookIcon from '../components/icons/JobBookIcon'
 import BilledPaymentConfirmationModal from '../components/jobs/BilledPaymentConfirmationModal'
 import BilledBillViewModal from '../components/jobs/BilledBillViewModal'
 import { StripeInvoiceSendFromStripeButton } from '../components/jobs/StripeInvoiceSendFromStripeButton'
@@ -46,7 +49,6 @@ import {
   deriveStagesBillingActivityDetail,
   deriveStagesFieldReferenceYmd,
   deriveStagesFieldTooltip,
-  mergeMaxScheduleWorkDateByJobId,
 } from '../lib/stagesJobReferenceDates'
 import {
   clearReturnEditJobFromStages,
@@ -63,7 +65,12 @@ import {
 } from '../lib/voidStripeInvoiceForRevert'
 import { getAccessTokenForEdgeFunctions } from '../lib/supabaseAccessTokenForEdge'
 import { syncJobToReadyToBillIfNoBilledInvoicesRemain } from '../lib/syncJobToReadyToBillIfNoBilledInvoicesRemain'
-import { pickLinkedEstimateForStagesBanner } from '../lib/pickLinkedEstimateForStagesBanner'
+import { runJobsStagesSerializedPipeline } from '../lib/jobsStagesSerializedPipeline'
+import {
+  shouldResyncJobsAfterUpdateJobStatusFailure,
+  toastForUpdateJobStatusFailure,
+} from '../lib/updateJobStatusClientFeedback'
+import { fetchJobsLedgerWithDetailsForStages } from '../lib/fetchJobsLedgerWithDetailsForStages'
 import {
   buildBilledStageRows,
   buildJobsStagesBoardLists,
@@ -81,13 +88,8 @@ import {
   STAGES_SCHEDULE_SESSION_SEARCH_MIN_CHARS,
 } from '../lib/jobsStagesScheduleSessionSearch'
 
-type JobsLedgerRow = Database['public']['Tables']['jobs_ledger']['Row']
 type CustomerRow = Database['public']['Tables']['customers']['Row']
-type JobsLedgerMaterial = Database['public']['Tables']['jobs_ledger_materials']['Row']
-type JobsLedgerFixture = Database['public']['Tables']['jobs_ledger_fixtures']['Row']
-type JobsLedgerPayment = Database['public']['Tables']['jobs_ledger_payments']['Row']
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
-type JobsLedgerTeamMember = Database['public']['Tables']['jobs_ledger_team_members']['Row']
 type InspectionRow = Database['public']['Tables']['inspections']['Row']
 type UserRow = { id: string; name: string; email: string | null; role: string }
 
@@ -632,6 +634,12 @@ export default function Jobs() {
   const [searchQuery, setSearchQuery] = useState('')
   const [billingSortAsc, setBillingSortAsc] = useState(false) // false = highest HCP first (desc, largest to smallest)
   const loadJobsInFlightRef = useRef(false)
+  /** When true, run `loadJobs` again after the in-flight fetch completes (coalesced skip). */
+  const loadJobsPendingRef = useRef(false)
+  /** Debounce timer for post-Stages-mutation refresh (coalesce rapid moves into one fetch). */
+  const loadJobsAfterMutationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  /** Coalesce rapid `useEffect` dependency churn (tab/customer) into one `loadJobs`. */
+  const loadJobsFromEffectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   /** Loaded for Stages/Billing implied-customer hints and refreshed when job form saves. */
   const [customers, setCustomers] = useState<CustomerRow[]>([])
   const [createPartialInvoiceJob, setCreatePartialInvoiceJob] = useState<JobWithDetails | null>(null)
@@ -835,6 +843,7 @@ export default function Jobs() {
   })
   const [billedTotalByNameModalOpen, setBilledTotalByNameModalOpen] = useState(false)
   const [billedTotalByNameExpandedName, setBilledTotalByNameExpandedName] = useState<string | null>(null)
+  const [jobBookModalOpen, setJobBookModalOpen] = useState(false)
   const [capableToBillModalOpen, setCapableToBillModalOpen] = useState(false)
   const [whenInvoiceBillModal, setWhenInvoiceBillModal] = useState<{
     invoiceId: string
@@ -850,7 +859,6 @@ export default function Jobs() {
   const [stagesStatusUpdatingId, setStagesStatusUpdatingId] = useState<string | null>(null)
   const [stagesInvoiceUpdatingId, setStagesInvoiceUpdatingId] = useState<string | null>(null)
   const stagesInvoiceMutationLockRef = useRef<string | null>(null)
-  const stagesJobStatusMutationLockRef = useRef<string | null>(null)
   const stagesInvoiceSendBackConfirmLockRef = useRef(false)
   const [viewReportsJob, setViewReportsJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string } | null>(null)
   const [readyForBillingJob, setReadyForBillingJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
@@ -877,6 +885,7 @@ export default function Jobs() {
   const [sendBackInvoiceStripeExplainerAfterFailure, setSendBackInvoiceStripeExplainerAfterFailure] = useState(false)
   const [sendBackChecked, setSendBackChecked] = useState(false)
   const [sendBackStatusEventLine, setSendBackStatusEventLine] = useState<string | null>(null)
+  const sendBackCollectPaymentNotice = useSendBackCollectPaymentFlowNotice(sendBackJob)
   const [sendBackConfirmJob, setSendBackConfirmJob] = useState<{ id: string; toStatus: 'ready_to_bill' | 'billed' } | null>(null)
   const [confirmJobStatusJob, setConfirmJobStatusJob] = useState<{ id: string; toStatus: 'billed' | 'paid'; message: string } | null>(null)
   const [stagesHamMode, setStagesHamMode] = useState(() => {
@@ -1093,168 +1102,63 @@ export default function Jobs() {
     return false
   }
 
+  const LOAD_JOBS_AFTER_MUTATION_MS = 300
+  const LOAD_JOBS_FROM_EFFECT_DEBOUNCE_MS = 50
+
   async function loadJobs() {
     if (!authUser?.id) {
       setLoading(false)
       return
     }
-    if (loadJobsInFlightRef.current) return
+    if (loadJobsInFlightRef.current) {
+      loadJobsPendingRef.current = true
+      return
+    }
     loadJobsInFlightRef.current = true
     setLoading(true)
     setError(null)
     try {
-    const customerFilter = searchParams.get('customer')
-    let query = supabase
-      .from('jobs_ledger')
-      .select(
-        `
-        *,
-        jobs_ledger_materials(*),
-        jobs_ledger_fixtures(*),
-        jobs_ledger_payments(*),
-        jobs_ledger_invoices(*),
-        jobs_ledger_team_members(*, users(name)),
-        reports(job_ledger_id),
-        projects:project_id(id, name),
-        bids:bid_id(id, project_name, bid_number)
-      `
-      )
-      .order('hcp_number', { ascending: false })
-    if (customerFilter) {
-      query = query.eq('customer_id', customerFilter)
-    }
-    const { data, error: jobsErr } = await query
-    if (jobsErr) {
-      setError(jobsErr.message)
+      const customerFilter = searchParams.get('customer')
+      const result = await fetchJobsLedgerWithDetailsForStages({ customerFilter })
+      if (!result.ok) {
+        setError(result.error)
+        setLoading(false)
+        return []
+      }
+      setJobs(result.jobs)
       setLoading(false)
-      return []
-    }
-    const rows = (data ?? []) as Array<
-      JobsLedgerRow & {
-        jobs_ledger_materials?: JobsLedgerMaterial[]
-        jobs_ledger_fixtures?: JobsLedgerFixture[]
-        jobs_ledger_payments?: JobsLedgerPayment[]
-        jobs_ledger_invoices?: JobsLedgerInvoice[]
-        jobs_ledger_team_members?: (JobsLedgerTeamMember & { users: { name: string } | null })[]
-        reports?: Array<{ job_ledger_id: string | null }>
-        projects?: { id: string; name: string } | null
-        bids?: { id: string; project_name: string | null; bid_number: string | null } | null
-      }
-    >
-    if (rows.length === 0) {
-      setJobs([])
-      setLoading(false)
-      return []
-    }
-    const jobsWithDetails: JobWithDetails[] = rows.map((row) => {
-      const {
-        jobs_ledger_materials: mat,
-        jobs_ledger_fixtures: fix,
-        jobs_ledger_payments: pay,
-        jobs_ledger_invoices: inv,
-        jobs_ledger_team_members: team,
-        reports: rep,
-        projects: proj,
-        bids: bidEmbed,
-        ...job
-      } = row
-      return {
-        ...job,
-        materials: (mat ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
-        fixtures: (fix ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
-        payments: (pay ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
-        invoices: (inv ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
-        team_members: team ?? [],
-        report_count: (rep ?? []).length,
-        project: proj ?? null,
-        linkedBid: bidEmbed ?? null,
-        last_schedule_work_date: null,
-      }
-    })
-
-    const SCHEDULE_BLOCKS_IN_CHUNK = 150
-    let scheduleMaxByJobId = new Map<string, string>()
-    try {
-      const ids = jobsWithDetails.map((j) => j.id)
-      for (let i = 0; i < ids.length; i += SCHEDULE_BLOCKS_IN_CHUNK) {
-        const chunk = ids.slice(i, i + SCHEDULE_BLOCKS_IN_CHUNK)
-        const { data: blockRows, error: blocksErr } = await supabase
-          .from('job_schedule_blocks')
-          .select('job_id, work_date')
-          .in('job_id', chunk)
-        if (blocksErr) throw new Error(blocksErr.message)
-        const part = mergeMaxScheduleWorkDateByJobId(
-          (blockRows ?? []) as Array<{ job_id: string; work_date: string }>,
-        )
-        for (const [jobId, ymd] of part) {
-          const prev = scheduleMaxByJobId.get(jobId)
-          if (prev == null || ymd > prev) scheduleMaxByJobId.set(jobId, ymd)
-        }
-      }
-    } catch (e) {
-      console.warn('loadJobs: job_schedule_blocks batch failed', e)
-      scheduleMaxByJobId = new Map()
-    }
-
-    const ESTIMATES_STAGES_BANNER_CHUNK = 150
-    const estimateCandidatesByJobId = new Map<
-      string,
-      Array<{
-        estimate_number: number
-        title: string
-        status: Database['public']['Enums']['estimate_status']
-        updated_at: string | null
-      }>
-    >()
-    try {
-      const ids = jobsWithDetails.map((j) => j.id)
-      for (let i = 0; i < ids.length; i += ESTIMATES_STAGES_BANNER_CHUNK) {
-        const chunk = ids.slice(i, i + ESTIMATES_STAGES_BANNER_CHUNK)
-        const rows = await withSupabaseRetry(
-          async () =>
-            supabase
-              .from('estimates')
-              .select('job_ledger_id, estimate_number, title, status, updated_at')
-              .in('job_ledger_id', chunk),
-          'load estimates for stages banner',
-        )
-        const list = (rows ?? []) as Array<{
-          job_ledger_id: string | null
-          estimate_number: number
-          title: string
-          status: Database['public']['Enums']['estimate_status']
-          updated_at: string | null
-        }>
-        for (const row of list) {
-          const jid = row.job_ledger_id
-          if (!jid) continue
-          const cur = estimateCandidatesByJobId.get(jid) ?? []
-          cur.push({
-            estimate_number: row.estimate_number,
-            title: row.title,
-            status: row.status,
-            updated_at: row.updated_at,
-          })
-          estimateCandidatesByJobId.set(jid, cur)
-        }
-      }
-    } catch (e) {
-      console.warn('loadJobs: estimates stages banner batch failed', e)
-      estimateCandidatesByJobId.clear()
-    }
-
-    const jobsWithSchedule: JobWithDetails[] = jobsWithDetails.map((j) => ({
-      ...j,
-      last_schedule_work_date: scheduleMaxByJobId.get(j.id) ?? null,
-      linkedEstimateForStages: pickLinkedEstimateForStagesBanner(estimateCandidatesByJobId.get(j.id) ?? []),
-    }))
-    setJobs(jobsWithSchedule)
-    setLoading(false)
-    return jobsWithSchedule
+      return result.jobs
     } finally {
       loadJobsInFlightRef.current = false
+      if (loadJobsPendingRef.current) {
+        loadJobsPendingRef.current = false
+        void loadJobs()
+      }
     }
   }
+
+  function scheduleLoadJobsAfterMutation() {
+    if (loadJobsAfterMutationTimerRef.current) {
+      clearTimeout(loadJobsAfterMutationTimerRef.current)
+    }
+    loadJobsAfterMutationTimerRef.current = setTimeout(() => {
+      loadJobsAfterMutationTimerRef.current = null
+      void loadJobs()
+    }, LOAD_JOBS_AFTER_MUTATION_MS)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (loadJobsAfterMutationTimerRef.current) {
+        clearTimeout(loadJobsAfterMutationTimerRef.current)
+        loadJobsAfterMutationTimerRef.current = null
+      }
+      if (loadJobsFromEffectTimerRef.current) {
+        clearTimeout(loadJobsFromEffectTimerRef.current)
+        loadJobsFromEffectTimerRef.current = null
+      }
+    }
+  }, [])
 
   function toggleStagesHamMode() {
     setStagesHamMode((prev) => {
@@ -1280,66 +1184,118 @@ export default function Jobs() {
     })
   }
 
-  async function updateJobStatus(jobId: string, toStatus: 'working' | 'ready_to_bill' | 'billed' | 'paid'): Promise<boolean> {
-    if (stagesJobStatusMutationLockRef.current === jobId) return false
-    stagesJobStatusMutationLockRef.current = jobId
+  /** RPC + loadJobs; not queued — use via `updateJobStatus` or inside `moveJobToReadyToBillWithStripePrep`’s serialized block only. */
+  async function executeUpdateJobStatus(
+    jobId: string,
+    toStatus: 'working' | 'ready_to_bill' | 'billed' | 'paid',
+  ): Promise<boolean> {
     setStagesStatusUpdatingId(jobId)
     setError(null)
     try {
       const { data, error: err } = await supabase.rpc('update_job_status', { p_job_id: jobId, p_to_status: toStatus })
       if (err) {
-        setError(err.message)
+        const { text, variant } = toastForUpdateJobStatusFailure(err.message)
+        showToast(text, variant)
+        if (shouldResyncJobsAfterUpdateJobStatusFailure(err.message)) void loadJobs()
         return false
       }
       const result = data as { error?: string } | null
       if (result?.error) {
-        setError(result.error)
+        const { text, variant } = toastForUpdateJobStatusFailure(result.error)
+        showToast(text, variant)
+        if (shouldResyncJobsAfterUpdateJobStatusFailure(result.error)) void loadJobs()
         return false
       }
-      await loadJobs()
+      setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, status: toStatus } : j)))
+      scheduleLoadJobsAfterMutation()
       return true
     } finally {
       setStagesStatusUpdatingId(null)
-      if (stagesJobStatusMutationLockRef.current === jobId) {
-        stagesJobStatusMutationLockRef.current = null
-      }
     }
+  }
+
+  async function updateJobStatus(jobId: string, toStatus: 'working' | 'ready_to_bill' | 'billed' | 'paid'): Promise<boolean> {
+    return runJobsStagesSerializedPipeline(() => executeUpdateJobStatus(jobId, toStatus))
   }
 
   /** Void Stripe (or revert non-Stripe) on all billed lines, then move job to Ready to Bill. */
   async function moveJobToReadyToBillWithStripePrep(jobId: string): Promise<boolean> {
-    const token = await getAccessTokenForEdgeFunctions()
-    if (!token) {
-      setError('Not signed in')
-      return false
-    }
-    const prep = await prepareBilledInvoicesBeforeJobRevertToReadyToBill({
-      jobId,
-      authRole,
-      accessToken: token,
+    return runJobsStagesSerializedPipeline(async () => {
+      const token = await getAccessTokenForEdgeFunctions()
+      if (!token) {
+        setError('Not signed in')
+        return false
+      }
+      const prep = await prepareBilledInvoicesBeforeJobRevertToReadyToBill({
+        jobId,
+        authRole,
+        accessToken: token,
+      })
+      if (!prep.ok) {
+        setError(prep.message)
+        return false
+      }
+      return executeUpdateJobStatus(jobId, 'ready_to_bill')
     })
-    if (!prep.ok) {
-      setError(prep.message)
-      return false
-    }
-    return updateJobStatus(jobId, 'ready_to_bill')
   }
 
   /** Send back from Billed: void Stripe when needed, else delete billed row (RPC). */
   async function revertBilledInvoiceToReadyToBill(inv: InvoiceWithJob): Promise<boolean> {
-    if (!invoiceNeedsStripeVoidForRevert(inv)) {
+    return runJobsStagesSerializedPipeline(async () => {
+      if (!invoiceNeedsStripeVoidForRevert(inv)) {
+        if (stagesInvoiceMutationLockRef.current === inv.id) return false
+        stagesInvoiceMutationLockRef.current = inv.id
+        setStagesInvoiceUpdatingId(inv.id)
+        setError(null)
+        try {
+          const data = await withSupabaseRetry(
+            async () => await supabase.rpc('delete_billed_invoice_on_send_back', { p_invoice_id: inv.id }),
+            'delete_billed_invoice_on_send_back',
+          )
+          const result = data as { ok?: boolean; deleted?: boolean; error?: string } | null
+          if (!result?.ok) {
+            setError(result?.error ?? 'Failed to send back invoice')
+            return false
+          }
+          const sync = await syncJobToReadyToBillIfNoBilledInvoicesRemain(supabase, inv.job_id)
+          if (!sync.ok) {
+            setError(sync.message)
+            return false
+          }
+          scheduleLoadJobsAfterMutation()
+          return true
+        } catch (e: unknown) {
+          setError(e instanceof Error ? e.message : 'Failed to send back invoice')
+          return false
+        } finally {
+          setStagesInvoiceUpdatingId(null)
+          if (stagesInvoiceMutationLockRef.current === inv.id) {
+            stagesInvoiceMutationLockRef.current = null
+          }
+        }
+      }
       if (stagesInvoiceMutationLockRef.current === inv.id) return false
       stagesInvoiceMutationLockRef.current = inv.id
       setStagesInvoiceUpdatingId(inv.id)
       setError(null)
       try {
-        const data = await withSupabaseRetry(
-          async () => await supabase.rpc('delete_billed_invoice_on_send_back', { p_invoice_id: inv.id }),
-          'delete_billed_invoice_on_send_back',
-        )
-        const result = data as { ok?: boolean; deleted?: boolean; error?: string } | null
-        if (!result?.ok) {
-          setError(result?.error ?? 'Failed to send back invoice')
+        const token = await getAccessTokenForEdgeFunctions()
+        if (!token) {
+          setError('Not signed in')
+          return false
+        }
+        const r = await invokeVoidStripeInvoiceForRevert({
+          invoiceId: inv.id,
+          stripeModeForBilling: stripeModeForBillingFromRole(authRole),
+          accessToken: token,
+        })
+        if (!r.ok) {
+          setError(r.message)
+          return false
+        }
+        const cleaned = await ensureLedgerInvoiceRemovedAfterStripeSendBack(inv.id)
+        if (!cleaned.ok) {
+          setError(cleaned.message)
           return false
         }
         const sync = await syncJobToReadyToBillIfNoBilledInvoicesRemain(supabase, inv.job_id)
@@ -1347,73 +1303,34 @@ export default function Jobs() {
           setError(sync.message)
           return false
         }
-        await loadJobs()
+        scheduleLoadJobsAfterMutation()
         return true
-      } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : 'Failed to send back invoice')
-        return false
       } finally {
         setStagesInvoiceUpdatingId(null)
         if (stagesInvoiceMutationLockRef.current === inv.id) {
           stagesInvoiceMutationLockRef.current = null
         }
       }
-    }
-    if (stagesInvoiceMutationLockRef.current === inv.id) return false
-    stagesInvoiceMutationLockRef.current = inv.id
-    setStagesInvoiceUpdatingId(inv.id)
-    setError(null)
-    try {
-      const token = await getAccessTokenForEdgeFunctions()
-      if (!token) {
-        setError('Not signed in')
-        return false
-      }
-      const r = await invokeVoidStripeInvoiceForRevert({
-        invoiceId: inv.id,
-        stripeModeForBilling: stripeModeForBillingFromRole(authRole),
-        accessToken: token,
-      })
-      if (!r.ok) {
-        setError(r.message)
-        return false
-      }
-      const cleaned = await ensureLedgerInvoiceRemovedAfterStripeSendBack(inv.id)
-      if (!cleaned.ok) {
-        setError(cleaned.message)
-        return false
-      }
-      const sync = await syncJobToReadyToBillIfNoBilledInvoicesRemain(supabase, inv.job_id)
-      if (!sync.ok) {
-        setError(sync.message)
-        return false
-      }
-      await loadJobs()
-      return true
-    } finally {
-      setStagesInvoiceUpdatingId(null)
-      if (stagesInvoiceMutationLockRef.current === inv.id) {
-        stagesInvoiceMutationLockRef.current = null
-      }
-    }
+    })
   }
 
   async function deleteInvoice(invoiceId: string) {
-    if (stagesInvoiceMutationLockRef.current === invoiceId) return
-    stagesInvoiceMutationLockRef.current = invoiceId
-    setStagesInvoiceUpdatingId(invoiceId)
-    setError(null)
-    try {
-      const data = await withSupabaseRetry(
-        async () => await supabase.rpc('delete_ready_to_bill_invoice', { p_invoice_id: invoiceId }),
-        'delete_ready_to_bill_invoice',
-      )
-      const result = data as { ok?: boolean; deleted?: boolean; error?: string } | null
+    await runJobsStagesSerializedPipeline(async () => {
+      if (stagesInvoiceMutationLockRef.current === invoiceId) return
+      stagesInvoiceMutationLockRef.current = invoiceId
+      setStagesInvoiceUpdatingId(invoiceId)
+      setError(null)
+      try {
+        const data = await withSupabaseRetry(
+          async () => await supabase.rpc('delete_ready_to_bill_invoice', { p_invoice_id: invoiceId }),
+          'delete_ready_to_bill_invoice',
+        )
+        const result = data as { ok?: boolean; deleted?: boolean; error?: string } | null
       if (!result?.ok) {
         setError(result?.error ?? 'Failed to delete invoice')
         return
       }
-      await loadJobs()
+      scheduleLoadJobsAfterMutation()
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to delete invoice')
     } finally {
@@ -1422,6 +1339,7 @@ export default function Jobs() {
         stagesInvoiceMutationLockRef.current = null
       }
     }
+    })
   }
 
   useEffect(() => {
@@ -3438,8 +3356,21 @@ ${totalsHtml}
 
   useEffect(() => {
     if (authLoading || !authUser?.id) return
-    if (activeTab === 'stages' || activeTab === 'billing') loadJobs()
     loadUsers()
+    if (activeTab !== 'stages' && activeTab !== 'billing') return
+    if (loadJobsFromEffectTimerRef.current) {
+      clearTimeout(loadJobsFromEffectTimerRef.current)
+    }
+    loadJobsFromEffectTimerRef.current = setTimeout(() => {
+      loadJobsFromEffectTimerRef.current = null
+      void loadJobs()
+    }, LOAD_JOBS_FROM_EFFECT_DEBOUNCE_MS)
+    return () => {
+      if (loadJobsFromEffectTimerRef.current) {
+        clearTimeout(loadJobsFromEffectTimerRef.current)
+        loadJobsFromEffectTimerRef.current = null
+      }
+    }
   }, [authUser?.id, authLoading, customerParamForJobsReload, activeTab])
 
   useEffect(() => {
@@ -3493,6 +3424,19 @@ ${totalsHtml}
         setSearchParams((p) => {
           const next = new URLSearchParams(p)
           next.set('tab', 'parts')
+          return next
+        }, { replace: true })
+      }
+      return
+    }
+    // When openBankPayments is present, force Stages tab so AR deep link can open the modal
+    const openBankPaymentsWant = searchParams.get('openBankPayments') === 'true' || searchParams.get('openBankPayments') === '1'
+    if (openBankPaymentsWant && canRoleUseArBankCount(authRole) && !isPrimary) {
+      setActiveTab('stages')
+      if (tab !== 'stages') {
+        setSearchParams((p) => {
+          const next = new URLSearchParams(p)
+          next.set('tab', 'stages')
           return next
         }, { replace: true })
       }
@@ -3660,7 +3604,6 @@ ${totalsHtml}
   useEffect(() => {
     const wantsOpen = openBankPaymentsParam === 'true' || openBankPaymentsParam === '1'
     if (!wantsOpen) return
-    if (loading) return
 
     const stripOpenBankPaymentsParam = () => {
       setSearchParams(
@@ -3688,7 +3631,7 @@ ${totalsHtml}
     }
     setBankPaymentsModalOpen(true)
     stripOpenBankPaymentsParam()
-  }, [openBankPaymentsParam, loading, authRole, myRole, activeTab, setSearchParams])
+  }, [openBankPaymentsParam, authRole, myRole, activeTab, setSearchParams])
 
   // When editLabor=hcp is in URL and labor jobs are loaded, open edit or new labor modal
   const editLaborHcp = searchParams.get('editLabor')
@@ -4967,7 +4910,15 @@ ${totalsHtml}
         <div>
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
           {loading && (
-            <p style={{ color: '#6b7280', marginBottom: '1rem' }}>Loading jobs…</p>
+            <p style={{ color: '#6b7280', marginBottom: '1rem' }}>
+              Loading jobs…
+              {(searchParams.get('openBankPayments') === 'true' || searchParams.get('openBankPayments') === '1') && (
+                <>
+                  <br />
+                  <span style={{ fontSize: '0.8125rem' }}>Opening Accounts Receivable when ready.</span>
+                </>
+              )}
+            </p>
           )}
           <div style={{ marginBottom: '1rem' }}>
             <span
@@ -5018,6 +4969,32 @@ ${totalsHtml}
               }
               style={{ flex: 1, padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
             />
+            {(['dev', 'master_technician', 'assistant'] as const).some(
+              (r) => r === authRole || r === myRole,
+            ) ? (
+              <button
+                type="button"
+                onClick={() => setJobBookModalOpen(true)}
+                title="Job Book"
+                aria-label="Job Book"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 36,
+                  height: 36,
+                  flexShrink: 0,
+                  padding: 0,
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  background: 'white',
+                  cursor: 'pointer',
+                  color: '#6b7280',
+                }}
+              >
+                <JobBookIcon size={20} />
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={toggleStagesIncludeScheduleTimeInSearch}
@@ -10961,12 +10938,18 @@ ${totalsHtml}
         authUserId={authUser?.id}
         authRole={authRole}
         billedRows={bankPaymentsModalBilledRows}
+        billedTargetsLoading={loading && bankPaymentsModalBilledRows.length === 0}
         onApplied={async () => {
           await loadJobs()
         }}
         onOpenEditJob={(jobId) =>
           jobFormModal?.openEditJob(jobId, { onSaved: () => void loadJobs() })
         }
+      />
+      <JobBookModal
+        open={jobBookModalOpen}
+        onClose={() => setJobBookModalOpen(false)}
+        onDbError={(msg) => showToast(msg, 'error')}
       />
       <BilledBillViewModal
         invoice={viewBillInvoice}
@@ -11204,6 +11187,9 @@ ${totalsHtml}
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
               {sendBackJob.hcpNumber} · {sendBackJob.jobName}
             </p>
+            {sendBackJob.toStatus === 'working' && sendBackCollectPaymentNotice != null && (
+              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#92400e' }}>{sendBackCollectPaymentNotice}</p>
+            )}
             {sendBackStatusEventLine != null && (
               <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
                 {sendBackStatusEventLine}

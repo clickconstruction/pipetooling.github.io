@@ -46,6 +46,35 @@ export async function invokeVoidStripeInvoiceForRevert(params: {
   return { ok: false, message: 'Unexpected response from server' }
 }
 
+/** Subcontractor Collect Payment step 3 → Send back: Edge uses service role after team + flow checks. */
+export async function invokeVoidStripeInvoiceForCollectPaymentSendBack(params: {
+  jobId: string
+  invoiceId: string
+  stripeModeForBilling: BillingStripeModePref
+  accessToken: string
+}): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data: raw, error: fnErr } = await supabase.functions.invoke('void-stripe-invoice-for-revert', {
+    body: {
+      jobs_ledger_invoice_id: params.invoiceId,
+      collect_payment_send_back_job_id: params.jobId,
+      ...stripeModeInvokeBody(params.stripeModeForBilling),
+    },
+    headers: { Authorization: `Bearer ${params.accessToken}` },
+  })
+  if (fnErr) {
+    const detail = await readEdgeFunctionErrorBody(fnErr)
+    return { ok: false, message: detail ?? formatErrorMessage(fnErr, 'Failed to void Stripe invoice') }
+  }
+  const body = raw as Record<string, unknown> | null
+  if (body && typeof body.error === 'string' && body.error.length > 0) {
+    return { ok: false, message: body.error }
+  }
+  if (body?.success === true) {
+    return { ok: true }
+  }
+  return { ok: false, message: 'Unexpected response from server' }
+}
+
 const NOT_BILLED_SEND_BACK_ERROR = 'Invoice is not Billed Awaiting Payment'
 
 /**

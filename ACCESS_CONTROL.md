@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-04-15
+last_updated: 2026-04-21
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -547,6 +547,7 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 |---------|-----|--------|-----------|-----|-----------|---------|----------------|
 | People & accounts (`#settings-people`): adoption, master sharing, primaries/superintendents, Share Cost Matrix and Teams (dev); dev-only user tools and Task Dispatch above sharing | ✅ | ✅ (sharing block only) | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Team Hours Sharing (leader → member links for My Team; Dashboard & alerts); **Leader dashboard** column (full vs strip only) **editable dev-only** | ✅ | ✅ view | ✅ view | ❌ | ❌ | ❌ | ❌ |
+| **Job Book** (`job_book_entries`): **SELECT** all **authenticated** (e.g. **Collect Payment** Step 1 catalog); **INSERT/UPDATE/DELETE** **dev** / **master_technician** / **assistant** only (**Settings → Job Book**) | ✅ | ✅ | ✅ | ✅ read | ✅ read | ✅ read | ✅ read |
 
 ### Customer Management
 

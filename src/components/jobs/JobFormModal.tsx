@@ -27,6 +27,7 @@ import { MoneyDecimalAmountInput } from '../MoneyDecimalAmountInput'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { resolveCustomerIdForJobPayload } from '../../lib/jobLedgerCustomer'
+import { revenueDollarsFromFixtures } from '../../lib/revenueFromJobFixtures'
 import { resolveEffectiveJobMasterUserId } from '../../lib/resolveEffectiveJobMasterUserId'
 import { getBillingStripeModePref, stripeModeInvokeBody } from '../../lib/billingStripeModePref'
 import { getAccessTokenForEdgeFunctions } from '../../lib/supabaseAccessTokenForEdge'
@@ -99,19 +100,6 @@ const FIXTURE_SCOPE_FIELD_LABEL_VISUALLY_HIDDEN: CSSProperties = {
   clip: 'rect(0, 0, 0, 0)',
   whiteSpace: 'nowrap',
   borderWidth: 0,
-}
-
-/** Job Total: sum of Specific Work extended amounts (named rows only). */
-function revenueDollarsFromFixtures(fixtures: FixtureRow[]): number {
-  let s = 0
-  for (const f of fixtures) {
-    if (!(f.name ?? '').trim()) continue
-    const c = Number(f.count)
-    const qty = Number.isFinite(c) && c > 0 ? c : 1
-    const unit = f.line_unit_price ?? 0
-    s += qty * (Number.isFinite(unit) ? unit : 0)
-  }
-  return Math.round(s * 100) / 100
 }
 
 function localDateYYYYMMDD(): string {
@@ -398,6 +386,7 @@ export type JobFormModalProps = {
   initialJob: JobWithDetails | null
   newJobProjectId?: string | null
   billingCustomerHighlightInitial: boolean
+  fixturesSectionHighlightInitial: boolean
   alsoOpenCreateCustomerModal: boolean
   onClose: () => void
   onSaved: (() => void) | null
@@ -411,6 +400,7 @@ export default function JobFormModal({
   initialJob,
   newJobProjectId = null,
   billingCustomerHighlightInitial,
+  fixturesSectionHighlightInitial,
   alsoOpenCreateCustomerModal,
   onClose,
   onSaved,
@@ -526,6 +516,7 @@ export default function JobFormModal({
   const [customerExpanded, setCustomerExpanded] = useState(false)
   const [projectFilesPlansExpanded, setProjectFilesPlansExpanded] = useState(false)
   const [billingCustomerHighlight, setBillingCustomerHighlight] = useState(false)
+  const [fixturesSectionHighlight, setFixturesSectionHighlight] = useState(false)
   const [dateMet, setDateMet] = useState('')
   const [lastBillDate, setLastBillDate] = useState('')
   const jobFormMissingFields: string[] = []
@@ -547,6 +538,7 @@ export default function JobFormModal({
   const [contractorsDropdownOpen, setContractorsDropdownOpen] = useState(false)
   const contractorsDropdownRef = useRef<HTMLDivElement | null>(null)
   const billingCustomerHighlightRef = useRef<HTMLDivElement | null>(null)
+  const fixturesSectionHighlightRef = useRef<HTMLDivElement | null>(null)
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [newInvoiceAmount, setNewInvoiceAmount] = useState('')
@@ -560,6 +552,7 @@ export default function JobFormModal({
   const [movingJobToReadyToBill, setMovingJobToReadyToBill] = useState(false)
   const [paymentRemoveConfirmRowId, setPaymentRemoveConfirmRowId] = useState<string | null>(null)
   const [unlinkMercuryConfirmRowId, setUnlinkMercuryConfirmRowId] = useState<string | null>(null)
+  const [deleteJobConfirmOpen, setDeleteJobConfirmOpen] = useState(false)
   const [unlinkingMercuryPaymentId, setUnlinkingMercuryPaymentId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [materialsAccordionOpen, setMaterialsAccordionOpen] = useState<MaterialsAccordionKey | null>('billed')
@@ -668,18 +661,22 @@ export default function JobFormModal({
     setCreateCustomerFromJobModalOpen(false)
     setBillViewInvoice(null)
     setBillingCustomerHighlight(false)
+    setFixturesSectionHighlight(false)
     setNewInvoiceAmount('')
     setNewInvoiceAmountInputFocused(false)
     setPaymentRemoveConfirmRowId(null)
     setUnlinkMercuryConfirmRowId(null)
+    setDeleteJobConfirmOpen(false)
     onClose()
   }
 
-  function applyEditJob(job: JobWithDetails, billingGate: boolean) {
+  function applyEditJob(job: JobWithDetails, billingGate: boolean, fixturesGate: boolean) {
     setPaymentRemoveConfirmRowId(null)
     setUnlinkMercuryConfirmRowId(null)
+    setDeleteJobConfirmOpen(false)
     setBillViewInvoice(null)
     setBillingCustomerHighlight(billingGate)
+    setFixturesSectionHighlight(fixturesGate)
     setEditing(job)
     setHcpNumber(job.hcp_number ?? '')
     setJobName(job.job_name ?? '')
@@ -769,12 +766,14 @@ export default function JobFormModal({
     setContractorsSearch('')
     setContractorsDropdownOpen(false)
     setBillingCustomerHighlight(false)
+    setFixturesSectionHighlight(false)
     setSourceEstimateForJob(null)
     setContractModalEstimateId(null)
     setNewInvoiceAmount('')
     setNewInvoiceAmountInputFocused(false)
     setPaymentRemoveConfirmRowId(null)
     setUnlinkMercuryConfirmRowId(null)
+    setDeleteJobConfirmOpen(false)
   }
 
   useLayoutEffect(() => {
@@ -855,7 +854,7 @@ export default function JobFormModal({
             onClose()
             return
           }
-          applyEditJob(job, billingCustomerHighlightInitial)
+          applyEditJob(job, billingCustomerHighlightInitial, fixturesSectionHighlightInitial)
           if (alsoOpenCreateCustomerModal && (job.customer_name ?? '').trim()) {
             setCreateCustomerFromJobType('residential')
             setCreateCustomerFromJobModalOpen(true)
@@ -1084,6 +1083,20 @@ export default function JobFormModal({
     })
     return () => cancelAnimationFrame(id)
   }, [billingCustomerHighlight])
+
+  useEffect(() => {
+    if (!fixturesSectionHighlight) return
+    const id = requestAnimationFrame(() => {
+      fixturesSectionHighlightRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    })
+    return () => cancelAnimationFrame(id)
+  }, [fixturesSectionHighlight])
+
+  useEffect(() => {
+    if (!fixturesSectionHighlight) return
+    const t = window.setTimeout(() => setFixturesSectionHighlight(false), 2500)
+    return () => window.clearTimeout(t)
+  }, [fixturesSectionHighlight])
 
   useEffect(() => {
     if (customerId && customers.length > 0) {
@@ -2083,6 +2096,11 @@ export default function JobFormModal({
     return true
   }
 
+  async function confirmDeleteJob() {
+    if (!editing) return
+    await deleteJob(editing.id)
+  }
+
   if (!initDone) {
     return (
       <div
@@ -3037,7 +3055,20 @@ export default function JobFormModal({
             </div>
           </div>
           <hr style={{ margin: '0.75rem auto', border: 'none', borderTop: '1px solid #9ca3af', width: '50%' }} />
-          <div style={{ marginBottom: '1rem' }}>
+          <div
+            ref={fixturesSectionHighlightRef}
+            style={{
+              marginBottom: '1rem',
+              borderRadius: 8,
+              ...(fixturesSectionHighlight
+                ? {
+                    padding: '0.75rem',
+                    background: '#eff6ff',
+                    border: '2px solid #93c5fd',
+                  }
+                : {}),
+            }}
+          >
             <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#374151', marginBottom: '0.75rem' }}>Specific Work (Fixtures / Tie-ins / Repair)</div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>
               <colgroup>
@@ -4807,12 +4838,7 @@ export default function JobFormModal({
             {editing && authRole !== 'primary' && (
               <button
                 type="button"
-                onClick={async () => {
-                  if (!editing) return
-                  if (!confirm('Delete this job from Billing?')) return
-                  const ok = await deleteJob(editing.id)
-                  if (ok) closeForm()
-                }}
+                onClick={() => setDeleteJobConfirmOpen(true)}
                 disabled={deletingId === editing?.id}
                 style={{
                   padding: '0.5rem 1rem',
@@ -5048,6 +5074,92 @@ export default function JobFormModal({
                 }}
               >
                 {unlinkingMercuryPaymentId === unlinkMercuryConfirmRowId ? 'Removing…' : 'Unlink and remove'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {deleteJobConfirmOpen && editing && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: JOB_FORM_NESTED_OVERLAY_Z_INDEX,
+          }}
+          onClick={() => {
+            if (deletingId === editing.id) return
+            setDeleteJobConfirmOpen(false)
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="job-form-delete-job-confirm-title"
+            style={{
+              background: 'white',
+              padding: '1.5rem',
+              borderRadius: 8,
+              minWidth: 360,
+              maxWidth: 480,
+              maxHeight: '90vh',
+              overflow: 'auto',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2
+              id="job-form-delete-job-confirm-title"
+              style={{ margin: '0 0 0.75rem', fontSize: '1.125rem', fontWeight: 600, color: '#111827' }}
+            >
+              Delete job from Billing?
+            </h2>
+            <div style={{ fontSize: '0.875rem', color: '#374151', lineHeight: 1.5, marginBottom: '1rem' }}>
+              <p style={{ margin: '0 0 0.5rem' }}>
+                <strong>HCP:</strong> {(editing.hcp_number ?? '').trim() || '—'}{' '}
+                <strong>Job:</strong> {(editing.job_name ?? '').trim() || '—'}
+              </p>
+              <p style={{ margin: 0, color: '#6b7280' }}>
+                This permanently removes the job from Billing. This cannot be undone.
+              </p>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (deletingId === editing.id) return
+                  setDeleteJobConfirmOpen(false)
+                }}
+                disabled={deletingId === editing.id}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: '#f3f4f6',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 6,
+                  cursor: deletingId === editing.id ? 'not-allowed' : 'pointer',
+                  fontSize: '0.875rem',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmDeleteJob()}
+                disabled={deletingId === editing.id}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: deletingId === editing.id ? '#9ca3af' : '#b91c1c',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: deletingId === editing.id ? 'not-allowed' : 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                }}
+              >
+                {deletingId === editing.id ? 'Deleting…' : 'Delete'}
               </button>
             </div>
           </div>

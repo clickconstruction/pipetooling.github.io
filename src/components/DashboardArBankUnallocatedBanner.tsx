@@ -8,7 +8,7 @@ export default function DashboardArBankUnallocatedBanner({ count, loading, onGoT
   if (loading || count === 0) {
     return null
   }
-  const ariaLabel = `Go to Jobs Stages Accounts Receivable, ${count} unallocated bank transaction${count === 1 ? '' : 's'}`
+  const ariaLabel = `Go to Accounts Receivable, ${count} unallocated bank transaction${count === 1 ? '' : 's'}`
   return (
     <button
       type="button"
@@ -55,7 +55,7 @@ export default function DashboardArBankUnallocatedBanner({ count, loading, onGoT
           {count === 1
             ? 'One Mercury transaction still has balance to apply — '
             : `${count} Mercury transactions still have balance to apply — `}
-          match them to billed lines in Jobs → Stages → Accounts Receivable.
+          match them to billed lines in Accounts Receivable.
         </div>
       </div>
     </button>

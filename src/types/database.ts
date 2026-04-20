@@ -2685,6 +2685,41 @@ export type Database = {
           },
         ]
       }
+      job_book_entries: {
+        Row: {
+          created_at: string | null
+          id: string
+          sequence_order: number
+          service_type_id: string | null
+          unit_cost: number
+          work_label: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          sequence_order?: number
+          service_type_id?: string | null
+          unit_cost: number
+          work_label: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          sequence_order?: number
+          service_type_id?: string | null
+          unit_cost?: number
+          work_label?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_book_entries_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_collect_payment_flows: {
         Row: {
           certified_at: string | null
@@ -8054,6 +8089,10 @@ export type Database = {
         }
         Returns: Json
       }
+      add_collect_payment_fixture_from_job_book: {
+        Args: { p_job_book_entry_id: string; p_job_id: string }
+        Returns: Json
+      }
       apply_mercury_bank_payment_allocations: {
         Args: {
           p_allocations: Json
@@ -8140,6 +8179,10 @@ export type Database = {
         Returns: boolean
       }
       check_out_project: { Args: { p_project_id: string }; Returns: Json }
+      complete_job_collect_payment_flow_for_invoice: {
+        Args: { p_stripe_invoice_id: string }
+        Returns: Json
+      }
       complete_job_collect_payment_flow_terminal: {
         Args: { p_stripe_payment_intent_id: string }
         Returns: Json
@@ -8912,6 +8955,10 @@ export type Database = {
           error_message: string
           restored_count: number
         }[]
+      }
+      return_collect_payment_to_dispatch: {
+        Args: { p_job_id: string; p_note: string }
+        Returns: Json
       }
       revoke_clock_sessions: {
         Args: { p_session_ids: string[] }

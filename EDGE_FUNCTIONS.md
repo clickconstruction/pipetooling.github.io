@@ -5,13 +5,13 @@ file: EDGE_FUNCTIONS.md
 type: API Reference
 purpose: Complete API documentation for all 10+ Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-03-30
+last_updated: 2026-04-21
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
 runtime: "Deno (TypeScript)"
 authentication: "Manual JWT validation"
-total_functions: 12
+total_functions: 34
 
 key_sections:
   - name: "create-user"
@@ -99,10 +99,9 @@ when_to_read:
    - [claim-dev](#claim-dev)
    - [test-email](#test-email)
    - [create-stripe-invoice](#create-stripe-invoice)
-   - [terminal-connection-token](#terminal-connection-token)
-   - [create-terminal-collect-payment-intent](#create-terminal-collect-payment-intent)
    - [send-physical-invoice-email](#send-physical-invoice-email)
    - [send-stripe-invoice](#send-stripe-invoice)
+   - [update-collect-payment-stripe-customer-email](#update-collect-payment-stripe-customer-email)
    - [get-stripe-invoice-details](#get-stripe-invoice-details)
    - [record-stripe-invoice-out-of-band-payment](#record-stripe-invoice-out-of-band-payment)
    - [preview-stripe-invoice](#preview-stripe-invoice)
@@ -116,6 +115,8 @@ when_to_read:
 ## Overview
 
 PipeTooling uses Supabase Edge Functions (Deno runtime) for privileged server-side operations that require elevated permissions or external API access. All functions use manual JWT validation with gateway verification disabled.
+
+**Field collect payment (Stripe):** The app uses **hosted Stripe invoices** and **`stripe-webhook`** (**`invoice.paid`**) with **`complete_job_collect_payment_flow_for_invoice`** — not physical Stripe Terminal readers. **`update-collect-payment-stripe-customer-email`** lets subcontractors correct payer email before **`send-stripe-invoice`**. Older **`terminal-connection-token`** / **`create-terminal-collect-payment-intent`** functions are **not** in the repo (see **`RECENT_FEATURES.md`** v2.344).
 
 ### Key Characteristics
 - **Runtime**: Deno (TypeScript)
@@ -1454,67 +1455,6 @@ If **`stripe_invoice_id`** and **`hosted_invoice_url`** are already set, returns
 
 ---
 
-### terminal-connection-token
-
-**Purpose**: Issue a Stripe **Terminal connection token** for the platform account so the PWA can initialize **`@stripe/terminal-js`** and discover/connect readers. Caller must have an approved **`job_collect_payment_flows`** row (**`approved_for_terminal`**) for **`job_id`**: **subcontractor** on the job team, or **dev / master_technician / assistant** (testing).
-
-**Endpoint**: `POST /functions/v1/terminal-connection-token`
-
-**Authentication**: Bearer JWT; **`auth.getUser`** in the function. **`verify_jwt = false`** on the gateway.
-
-**Required secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, Stripe secret for resolved mode (**`STRIPE_SECRET_KEY`** / live per [`stripeSecrets.ts`](supabase/functions/_shared/stripeSecrets.ts)).
-
-#### Request body
-
-```typescript
-interface Body {
-  job_id: string
-  stripe_mode?: 'test' | 'live'
-}
-```
-
-#### Success (200)
-
-```json
-{ "secret": "<connection_token_secret>", "stripe_mode": "test" }
-```
-
-**Client**: [`CollectPaymentModal.tsx`](src/components/jobs/CollectPaymentModal.tsx) — **`onFetchConnectionToken`**.
-
-**Deploy**: `supabase functions deploy terminal-connection-token --no-verify-jwt`
-
----
-
-### create-terminal-collect-payment-intent
-
-**Purpose**: Create or reuse a **`card_present`** **PaymentIntent** for collecting the **open balance** on the Stripe invoice linked from **`job_collect_payment_flows`** (after staff **`create-stripe-invoice`** and dispatch **`approve_collect_payment_for_terminal`**). Sets metadata **`pipe_collect_flow`**, **`jobs_ledger_invoice_id`**, **`job_id`** for **`stripe-webhook`** completion.
-
-**Endpoint**: `POST /functions/v1/create-terminal-collect-payment-intent`
-
-**Authentication**: Bearer JWT. **Only `subcontractor`** may call (team member + flow **`approved_for_terminal`**). **`verify_jwt = false`** on the gateway.
-
-**Required secrets**: Same Stripe + Supabase service stack as **terminal-connection-token**.
-
-#### Request body
-
-Same as **terminal-connection-token** (`job_id`, optional `stripe_mode`).
-
-#### Success (200)
-
-```json
-{
-  "payment_intent_client_secret": "pi_…_secret_…",
-  "payment_intent_id": "pi_…",
-  "stripe_mode": "test"
-}
-```
-
-**Client**: [`CollectPaymentModal.tsx`](src/components/jobs/CollectPaymentModal.tsx) — **`collectPaymentMethod`** / **`processPayment`**.
-
-**Deploy**: `supabase functions deploy create-terminal-collect-payment-intent --no-verify-jwt`
-
----
-
 ### send-physical-invoice-email
 
 **Purpose**: Email the customer a **PDF invoice** (generated in the app to match the on-screen preview) via **Resend**, then persist the same **`jobs_ledger_invoices`** billing fields as **HouseCall Pro / Physical** manual save (**`status: billed`**, **`external_send_channel: physical`**, **`sent_to_customer_at`**, **`external_send_note`**, **`amount`**). When **`billing_kind`** is **`job`**, also calls **`update_job_status`** to **`billed`**. The client may send a **detailed** multi-section PDF (Specific Work + materials + payment history) built from the job ledger; the Edge function only validates and attaches **`pdf_base64`**.
@@ -1567,11 +1507,13 @@ interface SendPhysicalInvoiceEmailBody {
 
 ### send-stripe-invoice
 
-**Purpose**: Call Stripe **`invoices.sendInvoice`** for an open billed line so Stripe emails the customer the payment link. After Stripe accepts the send, updates **`jobs_ledger_invoices`** with **`sent_to_customer_at`** (now) and **`stripe_invoice_status`** from the returned invoice (service role; retries a few times on transient DB errors). Each successful send **overwrites** **`sent_to_customer_at`** (latest send only). On success, also **INSERT** into **`jobs_ledger_invoice_stripe_email_sends`** (append-only log for the confirm modal **Most recent sends** list; insert failure is **logged** only—the HTTP response still **200** if the invoice row updated). Used for the primary **Send Email invoice from Stripe** control and for **Resend invoice email** on Jobs **Stages** **Last activity** ([`StripeInvoiceSendFromStripeButton`](src/components/jobs/StripeInvoiceSendFromStripeButton.tsx)).
+**Purpose**: Call Stripe **`invoices.sendInvoice`** for an open billed line so Stripe emails the customer the payment link. After Stripe accepts the send, updates **`jobs_ledger_invoices`** with **`sent_to_customer_at`** (now) and **`stripe_invoice_status`** from the returned invoice (service role; retries a few times on transient DB errors). Each successful send **overwrites** **`sent_to_customer_at`** (latest send only). On success, also **INSERT** into **`jobs_ledger_invoice_stripe_email_sends`** (append-only log for the confirm modal **Most recent sends** list; insert failure is **logged** only—the HTTP response still **200** if the invoice row updated). Used for the primary **Send Email invoice from Stripe** control and for **Resend invoice email** on Jobs **Stages** **Last activity** ([`StripeInvoiceSendFromStripeButton`](src/components/jobs/StripeInvoiceSendFromStripeButton.tsx)), and for **Email invoice to customer** on Dashboard **Collect Payment** step 3 ([`CollectPaymentModal`](src/components/jobs/CollectPaymentModal.tsx)).
+
+Pre-send validation uses **[`customerEmailFromStripeInvoice`](supabase/functions/_shared/stripeInvoiceCustomerEmail.ts)** on the retrieved invoice (**expanded Customer `email` first**, then **`invoice.customer_email`**).
 
 **Endpoint**: `POST /functions/v1/send-stripe-invoice`
 
-**Authentication**: Bearer JWT + RLS **`SELECT`** on the invoice (**`verify_jwt = false`** on the gateway).
+**Authentication**: Bearer JWT (**`verify_jwt = false`** on the gateway). **Staff** (dev / master_technician / assistant / primary): invoice row loaded with the user-scoped client (**RLS** **`SELECT`** on **`jobs_ledger_invoices`**). **Subcontractor**: invoice row loaded with **service role** only after **`jobs_ledger_team_members`** proves the caller is on the job **and** **`job_collect_payment_flows`** for that job is **`approved_for_terminal`** with **`jobs_ledger_invoice_id`** matching the request (collect-payment field flow only).
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, **`SUPABASE_SERVICE_ROLE_KEY`**, Stripe secret for the chosen mode (`STRIPE_SECRET_KEY_TEST` / `STRIPE_SECRET_KEY_LIVE` or legacy key).
 
@@ -1593,13 +1535,52 @@ If the DB persist fails, the function may return **502** with **`stripe_may_have
 
 ---
 
+### update-collect-payment-stripe-customer-email
+
+**Purpose**: Let a **subcontractor** on **Collect Payment** step 3 correct the payer email before **Email invoice to customer**. Updates the Stripe **Customer** `email` via **`customers.update`**, then updates the **open** Stripe invoice’s **`customer_email`** via **`invoices.update`** (keeps invoice snapshot aligned; UI resolution still prefers expanded Customer in **[`customerEmailFromStripeInvoice`](supabase/functions/_shared/stripeInvoiceCustomerEmail.ts)**), then syncs **`jobs_ledger.customer_email`** and merges **`customers.contact_info.email`** (preserving **`phone`**) with the service role so office data and **`get_collect_payment_certify_payload`** stay aligned with **`send-stripe-invoice`** / **`get-stripe-invoice-details`**.
+
+**Endpoint**: `POST /functions/v1/update-collect-payment-stripe-customer-email`
+
+**Authentication**: Bearer JWT (**`verify_jwt = false`** on the gateway). **Subcontractor only** (v1): same **service-role** gate as **`send-stripe-invoice`** — **`jobs_ledger_team_members`** for the invoice’s job **and** **`job_collect_payment_flows`** **`approved_for_terminal`** with **`jobs_ledger_invoice_id`** matching the request. Non-subcontractors receive **403**.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, **`SUPABASE_SERVICE_ROLE_KEY`**, Stripe secret for the chosen mode.
+
+#### Request body
+
+```typescript
+interface UpdateCollectPaymentStripeCustomerEmailBody {
+  jobs_ledger_invoice_id: string
+  customer_email: string
+  stripe_mode?: 'test' | 'live'
+}
+```
+
+#### Success (200)
+
+```json
+{ "success": true, "customer_email": "payer@example.com", "stripe_mode": "live" }
+```
+
+#### Errors
+
+- **400** — Missing invoice id, invalid/empty email, invoice not **billed**, no **`stripe_invoice_id`**, job has no **`customer_id`**, customer **`master_user_id`** mismatch vs job, missing **`stripe_customer_id`**, Stripe **`customers.update`** failure (including **missing Stripe customer** — contact office; v1 does not auto-create customers).
+- **401** — Missing or invalid JWT.
+- **403** — Not a subcontractor, or collect-payment gate failed (not on job team / flow not approved for this invoice).
+- **502** — Stripe error (other than handled missing customer), **`invoices.update`** failure after **`customers.update`** (customer may be updated on Stripe; invoice email not synced — contact office), or partial DB failure after both Stripe updates.
+
+**Client**: [`CollectPaymentModal.tsx`](src/components/jobs/CollectPaymentModal.tsx) step 3 **Change email**.
+
+**Gateway JWT**: Deploy with **`supabase functions deploy update-collect-payment-stripe-customer-email --no-verify-jwt`** when the hosted gateway still enforces JWT.
+
+---
+
 ### get-stripe-invoice-details
 
-**Purpose**: **`invoices.retrieve`** + line items for a billed **`jobs_ledger_invoices`** row with **`stripe_invoice_id`**. Used by **Hosted bill** UI.
+**Purpose**: **`invoices.retrieve`** (with **`expand: ['customer']`**) + line items for a billed **`jobs_ledger_invoices`** row with **`stripe_invoice_id`**. Used by **Hosted bill** UI and **Collect Payment** step 3 (Stripe-resolved customer email). Response **`customer_email`** matches **`send-stripe-invoice`** resolution (**expanded Customer `email` first**, then **`invoice.customer_email`**) per **[`customerEmailFromStripeInvoice`](supabase/functions/_shared/stripeInvoiceCustomerEmail.ts)**.
 
 **Endpoint**: `POST /functions/v1/get-stripe-invoice-details`
 
-**Authentication**: Bearer JWT + RLS **`SELECT`** on the invoice (**`verify_jwt = false`** on the gateway).
+**Authentication**: Bearer JWT (**`verify_jwt = false`** on the gateway). **Staff** (non–`subcontractor`): invoice row loaded with the user-scoped client (**RLS** **`SELECT`**). **`subcontractor`**: invoice row loaded with **service role** only after **`jobs_ledger_team_members`** and **`job_collect_payment_flows`** **`approved_for_terminal`** with **`jobs_ledger_invoice_id`** matching the request (same gate as **`send-stripe-invoice`** for field email); memo/footer backfill uses **service role** for subs.
 
 **Success body** (partial): includes **`memo`** (Stripe **`description`**) and **`footer`** (Stripe **`footer`**) as separate strings when present. May service-backfill **`stripe_invoice_memo`** / **`stripe_invoice_footer`** on the ledger row when empty.
 
@@ -1733,7 +1714,7 @@ interface Body {
 
 ### stripe-webhook
 
-**Purpose**: Handle Stripe invoice lifecycle events: **`invoice.paid`** marks the matching **`jobs_ledger_invoices`** row paid via **`mark_invoice_paid_from_stripe`**; **`payment_intent.succeeded`** for Terminal field collection (metadata **`pipe_collect_flow`** + **`jobs_ledger_invoice_id`**) calls **`mark_invoice_paid_from_stripe`** then **`complete_job_collect_payment_flow_terminal`**; **`invoice.updated`**, **`invoice.voided`**, and **`invoice.payment_failed`** sync **`stripe_invoice_status`** only (does not downgrade app **`status`** when the row is already **`paid`**).
+**Purpose**: Handle Stripe invoice lifecycle events: **`invoice.paid`** / **`invoice.payment_succeeded`** marks the matching **`jobs_ledger_invoices`** row paid via **`mark_invoice_paid_from_stripe`**, then **`complete_job_collect_payment_flow_for_invoice`** when a **`job_collect_payment_flows`** row is **`approved_for_terminal`** for that Stripe invoice (field collect payment hosted page). **`invoice.updated`**, **`invoice.voided`**, and **`invoice.payment_failed`** sync **`stripe_invoice_status`** only (does not downgrade app **`status`** when the row is already **`paid`**).
 
 **Endpoint**: `POST /functions/v1/stripe-webhook`
 
@@ -1754,15 +1735,14 @@ interface Body {
 
 1. **`constructEvent`** on raw body.
 2. **Dedupe:** insert **`stripe_event_id`** into **`stripe_webhook_events`** (unique). On conflict, respond **`200`** with **`{ "received": true, "duplicate": true }`** and skip processing (reduces duplicate work when Stripe retries). **Dev UI:** Banking → Stripe → **Data** reads this table ([`BankingStripeWebhookEventsPanel.tsx`](src/components/BankingStripeWebhookEventsPanel.tsx); **`RECENT_FEATURES.md`** v2.284).
-3. On **`invoice.paid`**, resolve **`jobs_ledger_invoices`** by **`stripe_invoice_id`**; invoke **`mark_invoice_paid_from_stripe`** when appropriate; update **`stripe_invoice_status`** to **`paid`** only when the RPC succeeds (or the row was already **`paid`**). On lookup errors, RPC errors, or RPC JSON **`{ error }`** (business rule), respond **`200`** with **`applied: false`** and a **`reason`** (e.g. **`invoice_lookup_failed`**, **`mark_paid_rpc_failed`**, **`mark_paid_rejected`**) — **do not** return **`5xx`** for those paths so Stripe does not retry-storm.
-4. On **`payment_intent.succeeded`**, when **`metadata.pipe_collect_flow === '1'`** and **`metadata.jobs_ledger_invoice_id`** is set, call **`mark_invoice_paid_from_stripe`** then **`complete_job_collect_payment_flow_terminal`** (service role); log RPC failures without **`5xx`** where appropriate.
-5. On **`invoice.updated`**, **`invoice.voided`**, and **`invoice.payment_failed`**, resolve by **`stripe_invoice_id`** and **PATCH** **`stripe_invoice_status`** from the Stripe object’s **`status`** (skip downgrading when DB row **`status`** is already **`paid`** and Stripe is not **`paid`**).
-6. **Unhandled exceptions:** respond **`200`** with **`applied: false`**, **`reason: unhandled_exception`** (logged) so Stripe stops retrying; fix data/code and replay from Stripe Dashboard if needed.
-7. **Misconfigured secrets:** respond **`200`** with **`reason: misconfigured`** (no retries). **`400`** only for missing/invalid **`Stripe-Signature`**.
+3. On **`invoice.paid`** / **`invoice.payment_succeeded`**, resolve **`jobs_ledger_invoices`** by **`stripe_invoice_id`**; invoke **`mark_invoice_paid_from_stripe`** when appropriate; update **`stripe_invoice_status`** to **`paid`** only when the RPC succeeds (or the row was already **`paid`**). Then call **`complete_job_collect_payment_flow_for_invoice`** (service role); log failures without failing the webhook. On lookup errors, RPC errors, or RPC JSON **`{ error }`** (business rule), respond **`200`** with **`applied: false`** and a **`reason`** (e.g. **`invoice_lookup_failed`**, **`mark_paid_rpc_failed`**, **`mark_paid_rejected`**) — **do not** return **`5xx`** for those paths so Stripe does not retry-storm.
+4. On **`invoice.updated`**, **`invoice.voided`**, and **`invoice.payment_failed`**, resolve by **`stripe_invoice_id`** and **PATCH** **`stripe_invoice_status`** from the Stripe object’s **`status`** (skip downgrading when DB row **`status`** is already **`paid`** and Stripe is not **`paid`**).
+5. **Unhandled exceptions:** respond **`200`** with **`applied: false`**, **`reason: unhandled_exception`** (logged) so Stripe stops retrying; fix data/code and replay from Stripe Dashboard if needed.
+6. **Misconfigured secrets:** respond **`200`** with **`reason: misconfigured`** (no retries). **`400`** only for missing/invalid **`Stripe-Signature`**.
 
 **Response shape (examples):** `{ "received": true }`, `{ "received": true, "applied": false, "reason": "…" }`, `{ "received": true, "duplicate": true }`, `{ "received": true, "skipped": "unknown invoice" }`.
 
-**Ops**: Point Stripe webhook URL at **`https://<project-ref>.supabase.co/functions/v1/stripe-webhook`**. In the Stripe Dashboard, subscribe the endpoint to **`invoice.paid`**, **`payment_intent.succeeded`**, **`invoice.updated`**, **`invoice.voided`**, and **`invoice.payment_failed`**. Use test mode keys in development. When **`applied`** is **`false`**, check **Supabase Edge Function logs** (`stripe-webhook`) and **Stripe → Webhooks → delivery** details — do not rely on HTTP **`5xx`** to surface most failures.
+**Ops**: Point Stripe webhook URL at **`https://<project-ref>.supabase.co/functions/v1/stripe-webhook`**. In the Stripe Dashboard, subscribe the endpoint to **`invoice.paid`**, **`invoice.payment_succeeded`**, **`invoice.updated`**, **`invoice.voided`**, and **`invoice.payment_failed`** (and any other events you still rely on). Use test mode keys in development. When **`applied`** is **`false`**, check **Supabase Edge Function logs** (`stripe-webhook`) and **Stripe → Webhooks → delivery** details — do not rely on HTTP **`5xx`** to surface most failures.
 
 **Gateway JWT**: **`verify_jwt = false`** in [`supabase/config.toml`](supabase/config.toml). Deploy with **`--no-verify-jwt`**.
 

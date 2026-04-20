@@ -27,3 +27,11 @@ export function setBillingStripeModePref(p: BillingStripeModePref): void {
 export function stripeModeInvokeBody(pref: BillingStripeModePref): { stripe_mode: BillingStripeModePref } {
   return { stripe_mode: pref }
 }
+
+/** Stripe Dashboard deep link for an invoice (test vs live path). */
+export function stripeDashboardInvoiceUrl(invoiceId: string, mode: BillingStripeModePref): string {
+  const id = encodeURIComponent(invoiceId.trim())
+  return mode === 'test'
+    ? `https://dashboard.stripe.com/test/invoices/${id}`
+    : `https://dashboard.stripe.com/invoices/${id}`
+}

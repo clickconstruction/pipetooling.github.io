@@ -6,6 +6,8 @@ export type OpenEditJobOptions = {
   initialJob?: JobWithDetails
   onSaved?: () => void
   billingCustomerHighlight?: boolean
+  /** Scroll to Specific Work and flash highlight briefly (e.g. Field queue “Add Line Items”). */
+  fixturesSectionHighlight?: boolean
   /** After opening edit, open "Create customer from job" when customer name is present (billing flow). */
   alsoOpenCreateCustomerModal?: boolean
 }
@@ -31,6 +33,7 @@ type InternalOpenState =
       job_id: string
       initialJob: JobWithDetails | null
       billingCustomerHighlight: boolean
+      fixturesSectionHighlight: boolean
       alsoOpenCreateCustomerModal: boolean
       onSaved: (() => void) | null
     }
@@ -58,6 +61,7 @@ export function JobFormModalProvider({ children }: { children: React.ReactNode }
       job_id: jobId,
       initialJob: options?.initialJob ?? null,
       billingCustomerHighlight: options?.billingCustomerHighlight ?? false,
+      fixturesSectionHighlight: options?.fixturesSectionHighlight ?? false,
       alsoOpenCreateCustomerModal: options?.alsoOpenCreateCustomerModal ?? false,
       onSaved: options?.onSaved ?? null,
     })
@@ -95,6 +99,7 @@ export function JobFormModalProvider({ children }: { children: React.ReactNode }
           editJobId={openState.job_id}
           initialJob={openState.initialJob}
           billingCustomerHighlightInitial={openState.billingCustomerHighlight}
+          fixturesSectionHighlightInitial={openState.fixturesSectionHighlight}
           alsoOpenCreateCustomerModal={openState.alsoOpenCreateCustomerModal}
           onClose={closeJobForm}
           onSaved={openState.onSaved}
@@ -107,6 +112,7 @@ export function JobFormModalProvider({ children }: { children: React.ReactNode }
           initialJob={null}
           newJobProjectId={openState.projectId}
           billingCustomerHighlightInitial={false}
+          fixturesSectionHighlightInitial={false}
           alsoOpenCreateCustomerModal={false}
           onClose={closeJobForm}
           onSaved={openState.onSaved}

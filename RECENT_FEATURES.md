@@ -7,17 +7,32 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-19
+last_updated: 2026-04-21
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.339 → v2.4"
+version_range: "v2.344 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.344)"
+    line: ~1092
+    description: "Edit Job Delete: nested confirm modal (no window.confirm); Collect Payment hosted Stripe invoice flow (webhook completes flow; Realtime jobs_ledger_invoices; return_collect_payment_to_dispatch); Edge removes terminal-connection-token + create-terminal-collect-payment-intent; update-collect-payment-stripe-customer-email"
+  - name: "Latest Version (v2.343)"
+    line: ~1115
+    description: "Collect Payment Step 1: Job Book always on (search, collapsible default closed), Ready-to-Bill warning gated on fixtures; Step 2 Call Dispatch in footer; JobBookEditorPanel Work focus+select on Add line, Cost select-all at zero"
+  - name: "Latest Version (v2.342)"
+    line: ~1140
+    description: "Job Book (job_book_entries): Collect Payment Step 1 add lines from catalog; Settings CRUD + Jobs Stages toolbar modal (JobBookEditorPanel); add_collect_payment_fixture_from_job_book; job_service_type_id on certify payload"
+  - name: "Latest Version (v2.341)"
+    line: ~1155
+    description: "Field queue Line Items + Stripe line match (red rows, footer); Prepare Bill blue/green; Add Line Items → Edit Job Specific Work highlight; Collect Payment step headers centered; stripeInvoiceDetailsResponse"
+  - name: "Latest Version (v2.340)"
+    line: ~1170
+    description: "Send Back (RTB→Working) cancels in-progress collect payment flow; modal notice; update_job_status"
   - name: "Latest Version (v2.339)"
-    line: ~1072
-    description: "Subcontractor Collect Payment: certify → dispatch queue → Stripe Terminal; job_collect_payment_flows; dashboard button variants"
+    line: ~1185
+    description: "Subcontractor Collect Payment: certify → dispatch queue → Stripe Terminal; job_collect_payment_flows; dashboard button variants (hosted invoice + webhook completion in v2.344)"
   - name: "Latest Version (v2.338)"
     line: ~1105
     description: "Dashboard team Ready to Bill; subcontractor Job Detail Job Total hidden; Assigned Jobs title opens Job Detail"
@@ -844,7 +859,12 @@ when_to_read:
 ---
 
 ## Table of Contents
-**New:** [v2.339 — **Subcontractor** **Collect Payment**: certify → dispatch → **Stripe Terminal** (`job_collect_payment_flows`, field queue, Terminal Edge)](#latest-updates-v2339)
+**New:** [v2.344 — **Edit Job** **Delete** in-app **confirm** modal; **Collect Payment** **hosted Stripe invoice** + **`update-collect-payment-stripe-customer-email`** (Terminal device Edge functions removed; **`complete_job_collect_payment_flow_for_invoice`**, Realtime **`jobs_ledger_invoices`**, **`return_collect_payment_to_dispatch`**)](#latest-updates-v2344)
+**New:** [v2.343 — **Collect Payment** Step 1: **Job Book** always available (**search**, collapsible **default closed**), **Ready-to-Bill** warning only with no fixtures; Step 2 **Call Dispatch** in **footer**; **`JobBookEditorPanel`** **Work**/**Cost** typing UX](#latest-updates-v2343)
+**New:** [v2.342 — **Job Book** (`job_book_entries`): **Collect Payment** Step 1 **Add** from read-only **Work**/**Cost** catalog; **Settings** CRUD (dev/master/assistant); **`add_collect_payment_fixture_from_job_book`** + **`job_service_type_id`** on certify payload](#latest-updates-v2342)
+**New:** [v2.341 — **Field queue** **Line Items** + Stripe **line match** (red rows, Job total footer); **Prepare Bill** blue/green; **Add Line Items** → **Edit Job** **Specific Work** highlight; **Collect Payment** step titles **centered** (`fieldQueueFixtureStripeLineMatch`, `stripeInvoiceDetailsResponse`)](#latest-updates-v2341)
+**New:** [v2.340 — **Send Back** (RTB→Working) **cancels** in-progress **Collect payment** flow; modal notice (`update_job_status`, `useSendBackCollectPaymentFlowNotice`)](#latest-updates-v2340)
+**New:** [v2.339 — **Subcontractor** **Collect Payment**: certify → dispatch → **Stripe Terminal** (`job_collect_payment_flows`, field queue; **v2.344** replaces device Terminal with **hosted invoice** + webhook completion)](#latest-updates-v2339)
 **New:** [v2.338 — **Dashboard**: team **Ready to Bill**; **Job Detail**: **Job Total** hidden for subcontractors; **Assigned Jobs** title → **Job Detail**](#latest-updates-v2338)
 **New:** [v2.337 — **Job Detail**: section heading **Assigned Team** (read-only **`team_members`**)](#latest-updates-v2337)
 **New:** [v2.336 — **Jobs** **Stages** **Accounts Receivable**: always clickable (role-only); modal targets ignore Stages search; **Edit Job** Mercury **Unlink and remove** + **Ref** abbrev + copy; **Memo (optional)** in AR modal](#latest-updates-v2336)
@@ -1073,6 +1093,76 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
+## Latest Updates (v2.344)
+
+**Date**: 2026-04-21
+
+### **Edit Job** — **Delete** confirmation **modal**
+
+- **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)** — Footer **Delete** opens a nested overlay (**`JOB_FORM_NESTED_OVERLAY_Z_INDEX`**, same pattern as payment-remove confirm): title **Delete job from Billing?**, **HCP** + **Job** lines (em dash when blank), warning that removal is permanent; **Cancel** / **Delete**; destructive **Delete** shows **Deleting…** while **`deleteJob`** runs. Replaces **`window.confirm('Delete this job from Billing?')`**. **`deleteJobConfirmOpen`** is cleared in **`closeForm`**, **`applyEditJob`**, and **`resetNewForm`** so switching jobs cannot leave a stale dialog.
+
+### **Collect Payment** — **hosted Stripe invoice** (device Terminal Edge functions removed)
+
+- **Edge** — **`terminal-connection-token`** and **`create-terminal-collect-payment-intent`** removed from the repo (no longer used). Step 3 uses the **hosted invoice** URL from **`jobs_ledger_invoices`** (and **`send-stripe-invoice`** / **`get-stripe-invoice-details`** as before). **`update-collect-payment-stripe-customer-email`** updates Stripe Customer + open invoice email + syncs **`jobs_ledger.customer_email`** / **`customers.contact_info`** for subcontractors on the flow. **`stripe-webhook`** **`invoice.paid`** / **`invoice.payment_succeeded`**: after **`mark_invoice_paid_from_stripe`**, calls **`complete_job_collect_payment_flow_for_invoice`** so **`job_collect_payment_flows`** moves from **`approved_for_terminal`** to **`terminal_completed`** when the paid Stripe invoice matches the flow’s **`stripe_invoice_id`** (DB status name kept for compatibility). **`get-stripe-invoice-details`**, **`send-stripe-invoice`**, **`void-stripe-invoice-for-revert`** updated for the same gates and payload shapes where needed.
+- **Migrations** — **[`20260419180746_collect_payment_complete_on_invoice_paid.sql`](supabase/migrations/20260419180746_collect_payment_complete_on_invoice_paid.sql)** — **`complete_job_collect_payment_flow_for_invoice(text)`**; **`get_collect_payment_certify_payload`** adds **`collect_invoice`** (billed row + **`hosted_invoice_url`** / **`stripe_invoice_id`**); **[`20260419183243_collect_payment_certify_payload_customer_email.sql`](supabase/migrations/20260419183243_collect_payment_certify_payload_customer_email.sql)** — **`billing_customer`** on certify payload; **[`20260419201229_collect_payment_return_to_dispatch.sql`](supabase/migrations/20260419201229_collect_payment_return_to_dispatch.sql)** + **[`20260419202031_collect_payment_return_set_initiated_by.sql`](supabase/migrations/20260419202031_collect_payment_return_set_initiated_by.sql)** — **`return_collect_payment_to_dispatch`** (subcontractor send-back to dispatch queue; **`certify_mode`** **`returned_from_terminal`**); **[`20260419223818_jobs_ledger_invoices_supabase_realtime.sql`](supabase/migrations/20260419223818_jobs_ledger_invoices_supabase_realtime.sql)** — **`jobs_ledger_invoices`** on **`supabase_realtime`** (field queue without mutating **`job_collect_payment_flows`**); **[`20260419231724_collect_payment_payload_invoice_sent_at.sql`](supabase/migrations/20260419231724_collect_payment_payload_invoice_sent_at.sql)** — **`sent_to_customer_at`** on **`collect_invoice`** in payload. See **`MIGRATIONS.md`** (April 21, 2026).
+- **[`CollectPaymentModal.tsx`](src/components/jobs/CollectPaymentModal.tsx)** / **[`DashboardFieldCollectPaymentQueue.tsx`](src/components/dashboard/DashboardFieldCollectPaymentQueue.tsx)** — Staff primary action label **Approve for payment** (opens hosted payment page for the subcontractor after approval).
+
+---
+
+## Latest Updates (v2.343)
+
+**Date**: 2026-04-21
+
+### **Collect Payment** — Step 1 **Job Book** polish + Step 2 **Call Dispatch** placement
+
+- **[`CollectPaymentModal.tsx`](src/components/jobs/CollectPaymentModal.tsx)** — Step 1 always loads **`job_book_entries`** when the modal is open on certify (not only when the fixtures list is empty). **Add line items from Job Book** is a collapsible block (**default collapsed**) below the line-items table and above **Certify** / **Request correction**; full-width **search** narrows catalog rows by **Work** label (case-insensitive). Amber **No Ready-to-Bill invoice row yet** appears only when there is **no** draft **`invoice`** and **zero** **`fixtures`** (after adding a line from Job Book, the message hides). **Step 2**: **Call Dispatch** **`tel:`** link moved from the dialog header to the **footer** beside **Close** (**Close** left, call control right).
+
+### **Job Book** editor — empty-feel typing (**Settings** + **Jobs** modal)
+
+- **[`JobBookEditorPanel.tsx`](src/components/settings/JobBookEditorPanel.tsx)** — After **Add line**, **Work** receives focus with **New line** fully selected so the first keystroke replaces the placeholder; **Cost ($)** selects all on focus when the amount is **0**. Uses **`useLayoutEffect`** + **`requestAnimationFrame`** so focus works after insert. Shared by **Settings → Job Book** and **[`JobBookModal.tsx`](src/components/jobs/JobBookModal.tsx)**.
+
+---
+
+## Latest Updates (v2.342)
+
+**Date**: 2026-04-20
+
+### **Job Book** — **Collect Payment** Step 1 + **Settings**
+
+- **Migration** — [`20260420021701_job_book_entries_collect_payment.sql`](supabase/migrations/20260420021701_job_book_entries_collect_payment.sql): **`job_book_entries`** (**`work_label`**, **`unit_cost`**, optional **`service_type_id`**); **RLS** **SELECT** all **`authenticated`**; **IUD** **`dev`** / **`master_technician`** / **`assistant`**. **`get_collect_payment_certify_payload`** returns **`job_service_type_id`** (from **`jobs_ledger`** → **`bids.service_type_id`**) for client-side catalog filtering. **`add_collect_payment_fixture_from_job_book`**: **subcontractor** on **RTB** team job appends **`jobs_ledger_fixtures`** and recomputes **`jobs_ledger.revenue`**.
+- **[`JobBookSettingsSection.tsx`](src/components/settings/JobBookSettingsSection.tsx)** / **[`JobBookEditorPanel.tsx`](src/components/settings/JobBookEditorPanel.tsx)**, **[`Settings.tsx`](src/pages/Settings.tsx)** — Collapsible **Job Book (Collect Payment line items)** for staff: table **Work**, **Cost ($)**, **Service type** (**All types** or one **`service_types`** row), **Reorder** column with **@dnd-kit** drag handle (persists **`sequence_order`** 0..n−1), **Add line**, trash icon with in-app **Delete Job Book line?** confirm modal (`z-index` above **`JobBookModal`**).
+- **[`Jobs.tsx`](src/pages/Jobs.tsx)** — **Stages** toolbar (after search): book icon opens **[`JobBookModal.tsx`](src/components/jobs/JobBookModal.tsx)** with the same editor (**dev** / **master_technician** / **assistant**); errors as toast.
+- **[`CollectPaymentModal.tsx`](src/components/jobs/CollectPaymentModal.tsx)** — Initial ship: read-only **Work** | **Cost** + **Add** per catalog row; filters universal + matching **`job_service_type_id`**. (**v2.343** — catalog fetch + UI always on Step 1; search, collapse default, invoice warning gate, Step 2 call control in footer — see **v2.343** above.)
+
+---
+
+## Latest Updates (v2.341)
+
+**Date**: 2026-04-19
+
+### **Dashboard** — **Field: Waiting for Approval** — **Line Items** vs Stripe invoice
+
+- **[`DashboardFieldCollectPaymentQueue.tsx`](src/components/dashboard/DashboardFieldCollectPaymentQueue.tsx)** — Staff queue (**dev** / **master_technician** / **assistant**): read-only **Line Items** grid (job **`jobs_ledger_fixtures`** + Stripe **`get-stripe-invoice-details`** for the subcontractor’s invoice pick). **[`fieldQueueFixtureStripeLineMatch.ts`](src/lib/fieldQueueFixtureStripeLineMatch.ts)** (**[`fieldQueueFixtureStripeLineMatch.test.ts`](src/lib/fieldQueueFixtureStripeLineMatch.test.ts)**) heuristically pairs fixtures to invoice lines; **unmatched** rows use a **red** row background. **Job total** footer row: helper *Items in red are not included on the selected invoice.* in **`#b91c1c`**, shown only when at least one row is red (**`hasUnmatchedInvoiceRows`**). **Prepare Bill**: **blue** when the job has **no** billed Stripe invoice options, **green** when at least one exists. **Add Line Items** (when there are no named fixtures): opens **Edit Job** with **`fixturesSectionHighlight`** — scroll + short highlight on **Specific Work** (**[`JobFormModalContext.tsx`](src/contexts/JobFormModalContext.tsx)**, **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)**). Invoice details cache clears on queue **`load`**.
+- **[`stripeInvoiceDetailsResponse.ts`](src/lib/stripeInvoiceDetailsResponse.ts)** — Shared **`parseStripeInvoiceDetailsResponse`** + types; **[`HostedStripeBillPanel.tsx`](src/components/jobs/HostedStripeBillPanel.tsx)** consumes the same parser.
+
+### **Collect Payment** — centered step titles
+
+- **[`CollectPaymentModal.tsx`](src/components/jobs/CollectPaymentModal.tsx)** — **Step N of M: …** label uses **`textAlign: 'center'`** for **all** steps (matches steps 2–3; step 1 was previously left-aligned).
+
+---
+
+## Latest Updates (v2.340)
+
+**Date**: 2026-04-19
+
+### **Ready to Bill — Send Back** cancels **Collect payment** flow
+
+- **Migration** — [`20260419230155_update_job_status_cancel_collect_payment_flow.sql`](supabase/migrations/20260419230155_update_job_status_cancel_collect_payment_flow.sql): **`update_job_status`** on **ready_to_bill → working** also sets **`job_collect_payment_flows`** to **`cancelled`** when status is **`draft`**, **`pending_dispatch`**, or **`approved_for_terminal`** (clears dispatch/Stripe scratch fields). JSON return adds **`cancelled_collect_payment_flows`** (row count).
+- **[`Dashboard.tsx`](src/pages/Dashboard.tsx)** / **[`Jobs.tsx`](src/pages/Jobs.tsx)** — Send Back confirmation modal loads flow status and shows an amber paragraph when a cancellable step is in progress (**step 1–3** copy aligned with **`CollectPaymentModal`**).
+- **[`useSendBackCollectPaymentFlowNotice.ts`](src/hooks/useSendBackCollectPaymentFlowNotice.ts)**, **[`collectPaymentFlowSendBackNotice.ts`](src/lib/collectPaymentFlowSendBackNotice.ts)** — shared fetch + copy; unit test on copy helper.
+
+---
+
 ## Latest Updates (v2.339)
 
 **Date**: 2026-04-19
@@ -1082,7 +1172,7 @@ when_to_read:
 - **Migration** — [`20260419161731_job_collect_payment_flows.sql`](supabase/migrations/20260419161731_job_collect_payment_flows.sql): **`job_collect_payment_flows`**, RPCs **`get_collect_payment_certify_payload`**, **`submit_collect_payment_certification`**, **`approve_collect_payment_for_terminal`**, **`complete_job_collect_payment_flow_terminal`**; **`list_ready_to_bill_assigned_jobs_for_dashboard()`** adds **`collect_payment_button_variant`** (`default` | `pending_dispatch` | `ready_terminal`).
 - **[`CollectPaymentModal.tsx`](src/components/jobs/CollectPaymentModal.tsx)** — Three-step wizard: certify or request correction; await dispatch (**Realtime** on flow row + refresh); Stripe Terminal via **`@stripe/terminal-js`** (**simulated** readers in dev). Depends on office **Stripe billed** invoice + dispatch approval.
 - **[`Dashboard.tsx`](src/pages/Dashboard.tsx)** — Subcontractor **Collect Payment** button: amber **pending** after certify, **green / white** when **`ready_terminal`**; opens **`CollectPaymentModal`**; **`DashboardFieldCollectPaymentQueue`** for dev / master / assistant (**Approve for Terminal**).
-- **Edge** — [`terminal-connection-token`](supabase/functions/terminal-connection-token/index.ts), [`create-terminal-collect-payment-intent`](supabase/functions/create-terminal-collect-payment-intent/index.ts); [`stripe-webhook`](supabase/functions/stripe-webhook/index.ts) **`payment_intent.succeeded`** with **`pipe_collect_flow`** metadata completes the flow and ledger paid state.
+- **Edge** — **`terminal-connection-token`**, **`create-terminal-collect-payment-intent`** (removed in **v2.344**; use **`stripe-webhook`** **`invoice.paid`** + **`complete_job_collect_payment_flow_for_invoice`** for hosted invoice completion). [`stripe-webhook`](supabase/functions/stripe-webhook/index.ts) may still handle legacy **`payment_intent.succeeded`** paths where applicable.
 - **Migration** — [`20270419120002_list_mercury_bank_payments_returned_column.sql`](supabase/migrations/20270419120002_list_mercury_bank_payments_returned_column.sql): restores **`returned`** + **`includeHiddenArDeposits`** / legacy **`includeFullyApplied`** visibility on Mercury AR list/count (**`20270419120001`** had dropped them).
 
 ---

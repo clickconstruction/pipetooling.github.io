@@ -372,6 +372,9 @@ verify_jwt = false
 [functions.send-stripe-invoice]
 verify_jwt = false
 
+[functions.update-collect-payment-stripe-customer-email]
+verify_jwt = false
+
 [functions.void-stripe-invoice-for-revert]
 verify_jwt = false
 
@@ -379,12 +382,6 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.stripe-webhook]
-verify_jwt = false
-
-[functions.terminal-connection-token]
-verify_jwt = false
-
-[functions.create-terminal-collect-payment-intent]
 verify_jwt = false
 
 # Cron: POST with X-Cron-Secret + service role RPC (salary auto clock_sessions).

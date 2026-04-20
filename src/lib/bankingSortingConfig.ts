@@ -110,6 +110,34 @@ function normalizeConfig(raw: unknown): BankingSortingConfigV1 | null {
   }
 }
 
+/**
+ * True when two configs would send the same filter to `list_mercury_transactions_for_bank_payments`
+ * (ignores array order). Used to skip redundant state updates that would retrigger list fetches.
+ */
+export function bankSortingConfigsFilterEqual(a: BankingSortingConfigV1, b: BankingSortingConfigV1): boolean {
+  return normalizeBankSortingConfigForCompare(a) === normalizeBankSortingConfigForCompare(b)
+}
+
+function normalizeBankSortingConfigForCompare(cfg: BankingSortingConfigV1): string {
+  const kinds = [...cfg.kinds].map((s) => s.trim()).sort((x, y) => x.localeCompare(y))
+  const accountIds = [...cfg.accountIds].map((s) => s.trim()).sort((x, y) => x.localeCompare(y))
+  const debitCardIds = [...cfg.debitCardIds]
+    .map((s) => s.trim().toLowerCase())
+    .filter((s) => s.length > 0)
+    .sort((x, y) => x.localeCompare(y))
+  const exC = [...cfg.excludeCounterpartyContains].map((s) => s.trim()).sort((x, y) => x.localeCompare(y))
+  const exN = [...cfg.excludeNoteContains].map((s) => s.trim()).sort((x, y) => x.localeCompare(y))
+  return JSON.stringify({
+    v: cfg.v,
+    kinds,
+    accountIds,
+    debitCardIds,
+    startDateYmd: cfg.startDateYmd.trim(),
+    excludeCounterpartyContains: exC,
+    excludeNoteContains: exN,
+  })
+}
+
 export function loadBankingSortingConfig(userId: string | undefined): BankingSortingConfigV1 {
   if (!userId || typeof window === 'undefined') return defaultBankingSortingConfig()
   try {

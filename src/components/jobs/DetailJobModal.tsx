@@ -1111,7 +1111,7 @@ export default function DetailJobModal({
                           Number(f.line_unit_price) > 0 ? (
                             <span style={{ color: '#6b7280' }}>
                               {' '}
-                              @ ${formatCurrency(Number(f.line_unit_price))} ea.
+                              @ {formatCurrency(Number(f.line_unit_price))} ea.
                             </span>
                           ) : null}
                         </span>

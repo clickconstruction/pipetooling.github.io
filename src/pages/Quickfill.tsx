@@ -743,7 +743,10 @@ function QuickfillPage() {
               <DashboardArBankUnallocatedBanner
                 count={arBankUnallocatedCount ?? 0}
                 loading={arBankUnallocatedCount === null}
-                onGoToAr={() => navigate('/jobs?tab=stages&openBankPayments=true')}
+                onGoToAr={() => {
+                  showToast('Opening Accounts Receivable…', 'info', 2800)
+                  navigate('/accounts-receivable')
+                }}
               />
             )}
             <DashboardTallyStaleStaffBanner

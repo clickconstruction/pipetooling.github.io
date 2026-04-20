@@ -12,6 +12,7 @@ import {
   stripeInvoiceDescriptionFromStripe,
   stripeInvoiceFooterFromStripe,
 } from '../_shared/stripeInvoiceMemoFromStripe.ts'
+import { customerEmailFromStripeInvoice } from '../_shared/stripeInvoiceCustomerEmail.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -103,14 +104,89 @@ serve(async (req) => {
       )
     }
 
-    const { data: invRow, error: invErr } = await userClient
-      .from('jobs_ledger_invoices')
-      .select('id, stripe_invoice_id, stripe_invoice_memo, stripe_invoice_footer')
-      .eq('id', jobsLedgerInvoiceId)
+    const { data: roleRow, error: roleErr } = await userClient
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
       .maybeSingle()
 
-    if (invErr || !invRow) {
-      return jsonResponse({ error: 'Invoice not found or access denied' }, 403)
+    if (roleErr || !roleRow?.role) {
+      return jsonResponse({ error: 'Could not resolve user role' }, 403)
+    }
+
+    const isSubcontractor = roleRow.role === 'subcontractor'
+
+    type InvRow = {
+      id: string
+      job_id: string
+      stripe_invoice_id: string | null
+      stripe_invoice_memo: string | null
+      stripe_invoice_footer: string | null
+    }
+
+    let invRow: InvRow
+    let adminForSub: ReturnType<typeof createClient> | null = null
+
+    if (isSubcontractor) {
+      const sk = serviceKey?.trim()
+      if (!sk) {
+        return jsonResponse({ error: 'Server misconfigured: SUPABASE_SERVICE_ROLE_MISSING' }, 500)
+      }
+      adminForSub = createClient(supabaseUrl, sk)
+      const { data: inv, error: invErr } = await adminForSub
+        .from('jobs_ledger_invoices')
+        .select('id, job_id, stripe_invoice_id, stripe_invoice_memo, stripe_invoice_footer')
+        .eq('id', jobsLedgerInvoiceId)
+        .maybeSingle()
+
+      if (invErr || !inv) {
+        return jsonResponse({ error: 'Invoice not found or access denied' }, 403)
+      }
+
+      const { data: tm } = await adminForSub
+        .from('jobs_ledger_team_members')
+        .select('job_id')
+        .eq('job_id', inv.job_id)
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      if (!tm) {
+        return jsonResponse({ error: 'Invoice not found or access denied' }, 403)
+      }
+
+      const { data: flow } = await adminForSub
+        .from('job_collect_payment_flows')
+        .select('status, jobs_ledger_invoice_id')
+        .eq('job_id', inv.job_id)
+        .maybeSingle()
+
+      if (
+        !flow ||
+        flow.status !== 'approved_for_terminal' ||
+        flow.jobs_ledger_invoice_id == null ||
+        String(flow.jobs_ledger_invoice_id) !== String(inv.id)
+      ) {
+        return jsonResponse(
+          {
+            error:
+              'Only an active collect payment request can load this invoice from the field',
+          },
+          403,
+        )
+      }
+
+      invRow = inv as InvRow
+    } else {
+      const { data: inv, error: invErr } = await userClient
+        .from('jobs_ledger_invoices')
+        .select('id, job_id, stripe_invoice_id, stripe_invoice_memo, stripe_invoice_footer')
+        .eq('id', jobsLedgerInvoiceId)
+        .maybeSingle()
+
+      if (invErr || !inv) {
+        return jsonResponse({ error: 'Invoice not found or access denied' }, 403)
+      }
+      invRow = inv as InvRow
     }
 
     const stripeInvoiceId = (invRow.stripe_invoice_id ?? '').trim()
@@ -119,13 +195,23 @@ serve(async (req) => {
     }
 
     const stripe = new Stripe(stripeSecret, { apiVersion: '2024-06-20' })
-    const inv = await stripe.invoices.retrieve(stripeInvoiceId)
+    const inv = await stripe.invoices.retrieve(stripeInvoiceId, { expand: ['customer'] })
     const listed = await stripe.invoices.listLineItems(stripeInvoiceId, { limit: 100 })
     const lines = linesPayloadFromLineItems(listed.data)
 
     const num = inv.number
     const cname = inv.customer_name
-    const cemail = inv.customer_email
+    const resolvedEmail = customerEmailFromStripeInvoice(inv)
+    const cemail = resolvedEmail.length > 0 ? resolvedEmail : null
+    let customer_name_out =
+      typeof cname === 'string' && cname.trim() ? cname.trim() : null
+    if (!customer_name_out && inv.customer != null && typeof inv.customer === 'object') {
+      const cust = inv.customer as Stripe.Customer
+      if (!('deleted' in cust && cust.deleted)) {
+        const nm = typeof cust.name === 'string' ? cust.name.trim() : ''
+        if (nm) customer_name_out = nm
+      }
+    }
     const seller_name = await stripeSellerDisplayName(stripe, inv)
 
     const ap = inv.amount_paid
@@ -148,7 +234,15 @@ serve(async (req) => {
     if (memoFromStripe && !memoStored) backfill.stripe_invoice_memo = memoFromStripe
     if (footerFromStripe && !footerStored) backfill.stripe_invoice_footer = footerFromStripe
     if (Object.keys(backfill).length > 0) {
-      if (serviceKey) {
+      if (isSubcontractor && adminForSub) {
+        const { error: bfErr } = await adminForSub
+          .from('jobs_ledger_invoices')
+          .update(backfill)
+          .eq('id', jobsLedgerInvoiceId)
+        if (bfErr) {
+          console.warn('get-stripe-invoice-details: memo/footer sub backfill failed', bfErr)
+        }
+      } else if (serviceKey) {
         const admin = createClient(supabaseUrl, serviceKey)
         const { error: bfErr } = await admin
           .from('jobs_ledger_invoices')
@@ -180,8 +274,9 @@ serve(async (req) => {
       paid_at,
       due_date: typeof inv.due_date === 'number' ? inv.due_date : null,
       invoice_number: typeof num === 'string' && num.trim() ? num.trim() : null,
-      customer_name: typeof cname === 'string' && cname.trim() ? cname.trim() : null,
-      customer_email: typeof cemail === 'string' && cemail.trim() ? cemail.trim() : null,
+      customer_name: customer_name_out,
+      /** Resolved like send-stripe-invoice: invoice customer_email, then expanded Customer.email */
+      customer_email: cemail,
       seller_name,
       memo: memoFromStripe,
       footer: footerFromStripe,

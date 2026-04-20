@@ -27,6 +27,7 @@ import { useAppActivityHeartbeat } from '../hooks/useAppActivityHeartbeat'
 import { hardReloadFromRoot } from '../lib/hardReload'
 import { prefetchDashboardPhase1 } from '../lib/dashboardPrefetch'
 import { impersonationExitDisplayLabel, impersonationExitTitle } from '../lib/impersonationUiLabels'
+import { IMPERSONATION_CHROME_BUTTON_STYLE } from '../lib/impersonationSession'
 
 const navStyle = ({ isActive }: { isActive: boolean }) => ({
   fontWeight: isActive ? 600 : undefined,
@@ -838,12 +839,7 @@ export default function Layout() {
               title={impersonationTooltipTitle}
               aria-label="Back to your original signed-in account"
               style={{
-                padding: '0.35rem 0.75rem',
-                background: '#fef3c7',
-                color: '#92400e',
-                border: '1px solid #f59e0b',
-                borderRadius: 4,
-                fontWeight: 600,
+                ...IMPERSONATION_CHROME_BUTTON_STYLE,
                 maxWidth: isMobile ? '6.5rem' : '14rem',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
