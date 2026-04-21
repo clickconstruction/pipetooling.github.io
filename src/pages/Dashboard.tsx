@@ -4530,6 +4530,12 @@ export default function Dashboard() {
           jobsWorkedTodayRows={myTeam.jobsWorkedTodayStripRows}
           showScopeToggle={showClockStripScopeToggle}
           clockStripScope={clockStripScope}
+          clockStripNarrowScopeLabel={
+            role === 'dev' || role === 'master_technician' ? 'Everyone' : undefined
+          }
+          clockStripWideScopeLabel={
+            role === 'dev' || role === 'master_technician' ? 'Organization' : undefined
+          }
           onClockStripScopeChange={setClockStripScopePersist}
           showJobBidColumn={showClockStripScopeToggle}
           onJobBidSaved={(patch) => {

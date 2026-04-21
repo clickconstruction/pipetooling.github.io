@@ -7,6 +7,7 @@ import { arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '../lib/supabase'
 import { loadJsPDF } from '../lib/loadJsPDF'
+import { fetchBidBoardNotesUnreadCounts } from '../lib/bidBoardNotesUnreadCounts'
 import { upsertBidNotesReadWatermark } from '../lib/userBidNotesReadState'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { formatCompactNoteDateTime } from '../utils/dateUtils'
@@ -28,6 +29,7 @@ import { OPEN_BID_EDIT_QUERY, useBidPreview } from '../contexts/BidPreviewModalC
 import { NumericEntryPad } from '../components/NumericEntryPad'
 import { MoneyDecimalAmountInput } from '../components/MoneyDecimalAmountInput'
 import { PartFormModal } from '../components/PartFormModal'
+import { BidBoardNotesExpandIcon } from '../components/icons/BidBoardNotesExpandIcon'
 import { TakeoffPartEditIcon } from '../components/icons/TakeoffPartEditIcon'
 import { BidNotesTable, type BidSubmissionEntry } from '../components/bidNotes/BidNotesTable'
 import { CustomerNotesTable } from '../components/customerNotes/CustomerNotesTable'
@@ -474,6 +476,16 @@ function BidWorkflowTabTitleWithPreview({ bid, previewEnabled, onOpenPreview, h2
       {' '}
       {label}
     </h2>
+  )
+}
+
+/** Bid Board “Bid #” cell: smaller “B” prefix, number at inherited size. */
+function BidBoardBidNumberMark({ bidNumber }: { bidNumber: string }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.05em', font: 'inherit' }}>
+      <span style={{ fontSize: '0.7em', lineHeight: 1, fontWeight: 600 }}>B</span>
+      <span>{bidNumber}</span>
+    </span>
   )
 }
 
@@ -1096,6 +1108,10 @@ export default function Bids() {
   const [bidBoardSearchQuery, setBidBoardSearchQuery] = useState('')
   const [expandedBidBoardBidId, setExpandedBidBoardBidId] = useState<string | null>(null)
   const [bidBoardNotesTab, setBidBoardNotesTab] = useState<'bid' | 'customer' | 'all'>('all')
+  const [bidBoardNotesUnreadByBidId, setBidBoardNotesUnreadByBidId] = useState<Record<string, number>>({})
+  const bidBoardUnreadFetchSeqRef = useRef(0)
+  const bidsForBoardUnreadRef = useRef(bids)
+  bidsForBoardUnreadRef.current = bids
   const [bidFormOpen, setBidFormOpen] = useState(false)
   const [pendingBidFormFocus, setPendingBidFormFocus] = useState<'projectName' | 'gcBuilder' | null>(null)
   const [editingBid, setEditingBid] = useState<BidWithBuilder | null>(null)
@@ -9190,32 +9206,104 @@ export default function Bids() {
     if (expandedBidBoardBidId) setBidBoardNotesTab('all')
   }, [expandedBidBoardBidId])
 
+  useEffect(() => {
+    if (!authUser?.id || bids.length === 0) {
+      bidBoardUnreadFetchSeqRef.current += 1
+      setBidBoardNotesUnreadByBidId({})
+      return
+    }
+    const seq = ++bidBoardUnreadFetchSeqRef.current
+    let cancelled = false
+    const payload = bids.map((b) => ({ id: b.id, customer_id: b.customer_id ?? null }))
+    void fetchBidBoardNotesUnreadCounts(authUser.id, payload)
+      .then((map) => {
+        if (!cancelled && seq === bidBoardUnreadFetchSeqRef.current) setBidBoardNotesUnreadByBidId(map)
+      })
+      .catch(() => {
+        if (!cancelled && seq === bidBoardUnreadFetchSeqRef.current) setBidBoardNotesUnreadByBidId({})
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [bids, authUser?.id])
+
+  useEffect(() => {
+    if (!expandedBidBoardBidId || !authUser?.id) return
+    const bidId = expandedBidBoardBidId
+    let cancelled = false
+    void (async () => {
+      try {
+        await upsertBidNotesReadWatermark(authUser.id, bidId)
+      } catch {
+        return
+      }
+      if (cancelled) return
+      setBidBoardNotesUnreadByBidId((prev) => ({ ...prev, [bidId]: 0 }))
+      const payload = bidsForBoardUnreadRef.current.map((b) => ({ id: b.id, customer_id: b.customer_id ?? null }))
+      const seq = ++bidBoardUnreadFetchSeqRef.current
+      try {
+        const map = await fetchBidBoardNotesUnreadCounts(authUser.id, payload)
+        if (!cancelled && seq === bidBoardUnreadFetchSeqRef.current) setBidBoardNotesUnreadByBidId(map)
+      } catch {
+        if (!cancelled && seq === bidBoardUnreadFetchSeqRef.current) {
+          setBidBoardNotesUnreadByBidId((prev) => ({ ...prev, [bidId]: 0 }))
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [expandedBidBoardBidId, authUser?.id])
+
   const bidBoardTableHead = (
     <thead style={{ background: '#f9fafb' }}>
       <tr>
         <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb', width: '2rem' }} title="Notes" aria-label="Notes" />
-        <th style={{ padding: 0, textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Project<br />Folder</th>
-        <th style={{ padding: 0, textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Job<br />Plans</th>
-        <th style={{ padding: 0, textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Count<br />Tool</th>
-        <th style={{ padding: 0, textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Bid<br />Sub</th>
-        <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>GC/Builder</th>
         <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Bid #</th>
-        <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Project Name</th>
-        <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Address</th>
-        <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Account<br />Man</th>
-        <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Bid</th>
-        <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Bid<br />Date</th>
-        <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Distance<br />to Office</th>
-        <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Last<br />Contact</th>
-        <th style={{ padding: 0, textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Counts</th>
-        <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }} title="Preview" aria-label="Preview" />
-        <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }} title="Edit" aria-label="Edit" />
+        <th style={{ padding: 0, textAlign: 'center', borderBottom: '1px solid #e5e7eb', fontSize: '0.6875rem', lineHeight: 1.25 }}>Project<br />Folder</th>
+        <th style={{ padding: 0, textAlign: 'center', borderBottom: '1px solid #e5e7eb', fontSize: '0.6875rem', lineHeight: 1.25 }}>Job<br />Plans</th>
+        <th style={{ padding: 0, textAlign: 'center', borderBottom: '1px solid #e5e7eb', fontSize: '0.6875rem', lineHeight: 1.25 }}>Count<br />Tool</th>
+        <th style={{ padding: 0, textAlign: 'center', borderBottom: '1px solid #e5e7eb', fontSize: '0.6875rem', lineHeight: 1.25 }}>Bid<br />Send</th>
+        <th
+          style={{
+            padding: '0.0625rem',
+            textAlign: 'center',
+            borderBottom: '1px solid #e5e7eb',
+            fontSize: '0.6875rem',
+            lineHeight: 1.25,
+          }}
+          title="GC or builder and project name"
+          aria-label="GC or builder and project name"
+        >
+          GC/Builder<br />Project Name
+        </th>
+        <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb', fontSize: '0.6875rem', lineHeight: 1.25 }}>Address</th>
+        <th
+          style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb', fontSize: '0.6875rem', lineHeight: 1.25 }}
+          title="Account manager and estimator"
+          aria-label="Account manager and estimator"
+        >
+          Account Man<br />Estimator
+        </th>
+        <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb', fontSize: '0.6875rem', lineHeight: 1.25 }}>Bid</th>
+        <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb', fontSize: '0.6875rem', lineHeight: 1.25 }}>Bid<br />Date</th>
+        <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb', fontSize: '0.6875rem', lineHeight: 1.25 }}>Distance<br />to Office</th>
+        <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb', fontSize: '0.6875rem', lineHeight: 1.25 }}>Last<br />Contact</th>
+        <th
+          style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}
+          title="Open counts, preview bid, edit bid"
+          aria-label="Open counts, preview bid, edit bid"
+        />
       </tr>
     </thead>
   )
 
   function renderBidBoardTableRow(bid: BidWithBuilder) {
     const notesExpanded = expandedBidBoardBidId === bid.id
+    const notesUnreadRaw = bidBoardNotesUnreadByBidId[bid.id] ?? 0
+    const notesUnreadBadgeText = notesUnreadRaw > 9 ? '9+' : notesUnreadRaw > 0 ? String(notesUnreadRaw) : null
+    const notesUnreadTitleSuffix = notesUnreadRaw > 0 ? ` (${notesUnreadRaw} unread)` : ''
+    const notesUnreadAriaSuffix = notesUnreadRaw > 0 ? `, ${notesUnreadRaw} unread` : ''
     return (
       <Fragment key={bid.id}>
         <tr
@@ -9234,25 +9322,92 @@ export default function Bids() {
           }}
         >
           <td style={{ padding: '0.0625rem', textAlign: 'center', verticalAlign: 'middle' }}>
-            <button
-              type="button"
-              onClick={() => setExpandedBidBoardBidId((cur) => (cur === bid.id ? null : bid.id))}
-              aria-expanded={notesExpanded}
-              aria-controls={`bid-board-notes-${bid.id}`}
-              title={notesExpanded ? 'Hide bid and customer notes' : 'Show bid and customer notes'}
-              style={{
-                padding: '0.125rem 0.25rem',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                color: '#6b7280',
-                fontSize: '0.75rem',
-                lineHeight: 1,
-              }}
-            >
-              <span aria-hidden>{notesExpanded ? '\u25BC' : '\u25B6'}</span>
-            </button>
+            <span style={{ position: 'relative', display: 'inline-flex' }}>
+              <button
+                type="button"
+                onClick={() => setExpandedBidBoardBidId((cur) => (cur === bid.id ? null : bid.id))}
+                aria-expanded={notesExpanded}
+                aria-controls={`bid-board-notes-${bid.id}`}
+                title={
+                  notesExpanded
+                    ? 'Hide bid and customer notes'
+                    : `Show bid and customer notes${notesUnreadTitleSuffix}`
+                }
+                aria-label={
+                  notesExpanded
+                    ? 'Hide bid and customer notes'
+                    : `Show bid and customer notes${notesUnreadAriaSuffix}`
+                }
+                style={{
+                  padding: '0.125rem 0.25rem',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#6b7280',
+                  lineHeight: 1,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <BidBoardNotesExpandIcon expanded={notesExpanded} />
+              </button>
+              {notesUnreadBadgeText != null ? (
+                <span
+                  aria-hidden
+                  style={{
+                    position: 'absolute',
+                    top: -4,
+                    right: -4,
+                    minWidth: '0.875rem',
+                    height: '0.875rem',
+                    padding: notesUnreadRaw > 9 ? '0 3px' : 0,
+                    borderRadius: 999,
+                    background: '#ef4444',
+                    color: '#fff',
+                    fontSize: '0.5625rem',
+                    fontWeight: 700,
+                    lineHeight: '0.875rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    pointerEvents: 'none',
+                    boxSizing: 'content-box',
+                  }}
+                >
+                  {notesUnreadBadgeText}
+                </span>
+              ) : null}
+            </span>
           </td>
+        <td style={{ padding: '0.0625rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
+          {(() => {
+            const num = (bid as { bid_number?: string | null }).bid_number?.trim()
+            if (!num) return '-'
+            const label = `B${num}`
+            if (!bidPreview) return <BidBoardBidNumberMark bidNumber={num} />
+            const a11y = `Preview bid ${label}`
+            return (
+              <button
+                type="button"
+                onClick={() => bidPreview.openBidPreviewFromBid(bid)}
+                title={a11y}
+                aria-label={a11y}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  color: '#3b82f6',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  font: 'inherit',
+                }}
+              >
+                <BidBoardBidNumberMark bidNumber={num} />
+              </button>
+            )
+          })()}
+        </td>
         <td style={{ padding: 0, textAlign: 'center' }}>
           {bid.drive_link ? (
             <a href={bid.drive_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(bid.drive_link!) }} style={{ color: '#3b82f6', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -9297,51 +9452,45 @@ export default function Bids() {
             '-'
           )}
         </td>
-        <td style={{ padding: '0.0625rem', maxWidth: 200, whiteSpace: 'normal', wordBreak: 'break-word', textAlign: 'center' }}>
-          {(bid.customers || bid.bids_gc_builders) ? (
-            <button
-              type="button"
-              onClick={() => openGcBuilderOrCustomerModal(bid)}
-              style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', padding: 0, textDecoration: 'none' }}
-            >
-              {bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'}
-            </button>
-          ) : (
-            '-'
-          )}
-        </td>
-        <td style={{ padding: '0.0625rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
-          {(() => {
-            const num = (bid as { bid_number?: string | null }).bid_number?.trim()
-            if (!num) return '-'
-            const label = `B${num}`
-            if (!bidPreview) return label
-            const a11y = `Preview bid ${label}`
-            return (
+        <td
+          style={{
+            padding: '0.0625rem',
+            maxWidth: 200,
+            whiteSpace: 'normal',
+            wordBreak: 'break-word',
+            textAlign: 'center',
+            fontSize: '0.75rem',
+            lineHeight: 1.35,
+            verticalAlign: 'middle',
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+            {(bid.customers || bid.bids_gc_builders) ? (
               <button
                 type="button"
-                onClick={() => bidPreview.openBidPreviewFromBid(bid)}
-                title={a11y}
-                aria-label={a11y}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  padding: 0,
-                  color: '#3b82f6',
-                  cursor: 'pointer',
-                  textDecoration: 'underline',
-                  font: 'inherit',
-                }}
+                onClick={() => openGcBuilderOrCustomerModal(bid)}
+                style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', padding: 0, textDecoration: 'none', font: 'inherit' }}
               >
-                {label}
+                {bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'}
               </button>
-            )
-          })()}
+            ) : (
+              '-'
+            )}
+            <span>{bid.project_name ?? '-'}</span>
+          </div>
         </td>
-        <td style={{ padding: '0.0625rem', maxWidth: 200, whiteSpace: 'normal', wordBreak: 'break-word', textAlign: 'center' }}>
-          {bid.project_name ?? '-'}
-        </td>
-        <td style={{ padding: '0.0625rem', maxWidth: 200, whiteSpace: 'normal', wordBreak: 'break-word', textAlign: 'center' }} title={bid.address ?? ''}>
+        <td
+          style={{
+            padding: '0.0625rem',
+            maxWidth: 200,
+            whiteSpace: 'normal',
+            wordBreak: 'break-word',
+            textAlign: 'center',
+            fontSize: '0.75rem',
+            lineHeight: 1.35,
+          }}
+          title={bid.address ?? ''}
+        >
           {bid.address ? (
             <a
               href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(bid.address)}`}
@@ -9360,33 +9509,67 @@ export default function Bids() {
             '-'
           )}
         </td>
-        <td style={{ padding: '0.0625rem', textAlign: 'center' }}>
+        <td
+          style={{
+            padding: '0.0625rem',
+            textAlign: 'center',
+            fontSize: '0.6875rem',
+            lineHeight: 1.35,
+            wordBreak: 'break-word',
+            verticalAlign: 'middle',
+          }}
+        >
           {(() => {
-            const am = (bid as { account_manager?: EstimatorUser | EstimatorUser[] | null | undefined }).account_manager
-            const amNorm = am == null ? null : Array.isArray(am) ? am[0] ?? null : am
-            if (amNorm) return amNorm.name || amNorm.email
-            const est = Array.isArray(bid.estimator) ? bid.estimator[0] : bid.estimator
-            return est ? (est.name || est.email) : '—'
+            const amRaw = bid.account_manager
+            const amNorm = amRaw == null ? null : Array.isArray(amRaw) ? amRaw[0] ?? null : amRaw
+            const estRaw = bid.estimator
+            const estNorm = estRaw == null ? null : Array.isArray(estRaw) ? estRaw[0] ?? null : estRaw
+            const amLine = amNorm ? (amNorm.name || amNorm.email) : '—'
+            const estLine = estNorm ? (estNorm.name || estNorm.email) : '—'
+            const isSelfAm = Boolean(authUser?.id && amNorm?.id === authUser.id)
+            const isSelfEst = Boolean(authUser?.id && estNorm?.id === authUser.id)
+            const selfLineStyle = {
+              backgroundColor: '#111827',
+              color: '#ffffff',
+              padding: '0.125rem 0.35rem',
+              borderRadius: 4,
+              display: 'inline-block' as const,
+              maxWidth: '100%',
+              textAlign: 'center' as const,
+              boxSizing: 'border-box' as const,
+            }
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                <span title={isSelfAm ? 'You' : undefined} style={isSelfAm ? selfLineStyle : undefined}>
+                  {amLine}
+                </span>
+                <span title={isSelfEst ? 'You' : undefined} style={isSelfEst ? selfLineStyle : undefined}>
+                  {estLine}
+                </span>
+              </div>
+            )
           })()}
         </td>
-        <td style={{ padding: '0.0625rem', textAlign: 'center' }}>{formatBidValueShort(bid.bid_value != null ? Number(bid.bid_value) : null)}</td>
-        <td style={{ padding: '0.0625rem', textAlign: 'center' }}>
+        <td style={{ padding: '0.0625rem', textAlign: 'center', fontSize: '0.6875rem', lineHeight: 1.35 }}>
+          {formatBidValueShort(bid.bid_value != null ? Number(bid.bid_value) : null)}
+        </td>
+        <td style={{ padding: '0.0625rem', textAlign: 'center', fontSize: '0.6875rem', lineHeight: 1.35 }}>
           {(() => {
             const parts = formatDateYYMMDDParts(bid.bid_due_date)
             return parts ? (
-              <div style={{ lineHeight: 1.2 }}>
+              <div style={{ lineHeight: 1.25 }}>
                 <div>{parts.date}</div>
                 <div>{parts.bracket}</div>
               </div>
             ) : '—'
           })()}
         </td>
-        <td style={{ padding: '0.0625rem', textAlign: 'center' }}>
+        <td style={{ padding: '0.0625rem', textAlign: 'center', fontSize: '0.6875rem', lineHeight: 1.35 }}>
           {bid.distance_from_office != null && bid.distance_from_office !== ''
             ? `${Number.isNaN(Number(bid.distance_from_office)) ? bid.distance_from_office : Math.round(Number(bid.distance_from_office))}mi`
             : '—'}
         </td>
-        <td style={{ padding: '0.0625rem', textAlign: 'center' }}>
+        <td style={{ padding: '0.0625rem', textAlign: 'center', fontSize: '0.6875rem', lineHeight: 1.35 }}>
           <button
             type="button"
             onClick={() => handleLastContactClick(bid)}
@@ -9397,6 +9580,7 @@ export default function Bids() {
               cursor: 'pointer',
               padding: 0,
               textDecoration: 'none',
+              font: 'inherit',
             }}
           >
             {bid.last_contact ? (() => {
@@ -9407,49 +9591,55 @@ export default function Bids() {
             })() : '+'}
           </button>
         </td>
-        <td style={{ padding: 0, textAlign: 'center' }}>
-          <button
-            type="button"
-            onClick={() => selectBidAndSyncUrl(bid, 'counts')}
-            title="Open in Counts"
-            style={{ padding: 0, background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280' }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = '#3b82f6' }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = '#6b7280' }}
+        <td style={{ padding: '0.0625rem', textAlign: 'center', verticalAlign: 'middle' }}>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.25rem',
+            }}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={20} height={20} fill="currentColor" aria-hidden>
-              <path d="M348 62.7C330.7 52.7 309.3 52.7 292 62.7L207.8 111.3C190.5 121.3 179.8 139.8 179.8 159.8L179.8 261.7L91.5 312.7C74.2 322.7 63.5 341.2 63.5 361.2L63.5 458.5C63.5 478.5 74.2 497 91.5 507L175.8 555.6C193.1 565.6 214.5 565.6 231.8 555.6L320.1 504.6L408.4 555.6C425.7 565.6 447.1 565.6 464.4 555.6L548.5 507C565.8 497 576.5 478.5 576.5 458.5L576.5 361.2C576.5 341.2 565.8 322.7 548.5 312.7L460.2 261.7L460.2 159.8C460.2 139.8 449.5 121.3 432.2 111.3L348 62.7zM296 356.6L296 463.1L207.7 514.1C206.5 514.8 205.1 515.2 203.7 515.2L203.7 409.9L296 356.6zM527.4 357.2C528.1 358.4 528.5 359.8 528.5 361.2L528.5 458.5C528.5 461.4 527 464 524.5 465.4L440.2 514C439 514.7 437.6 515.1 436.2 515.1L436.2 409.8L527.4 357.2zM412.3 159.8L412.3 261.7L320 315L320 208.5L411.2 155.9C411.9 157.1 412.3 158.5 412.3 159.9z"/>
-            </svg>
-          </button>
-        </td>
-        <td style={{ padding: '0.0625rem', textAlign: 'center' }}>
-          <button
-            type="button"
-            onClick={() => bidPreview?.openBidPreviewFromBid(bid)}
-            title="Preview bid"
-            aria-label="Preview bid"
-            style={{ padding: 0, background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280' }}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={20} height={20} fill="currentColor" aria-hidden>
-              <path d="M320 128C213.4 128 128 213.4 128 320C128 426.6 213.4 512 320 512C426.6 512 512 426.6 512 320C512 213.4 426.6 128 320 128zM320 192C391.6 192 448 248.4 448 320C448 391.6 391.6 448 320 448C248.4 448 192 391.6 192 320C192 248.4 248.4 192 320 192zM320 256C282.3 256 256 282.3 256 320C256 357.7 282.3 384 320 384C357.7 384 384 357.7 384 320C384 282.3 357.7 256 320 256z" />
-            </svg>
-          </button>
-        </td>
-        <td style={{ padding: '0.0625rem', textAlign: 'center' }}>
-          <button
-            type="button"
-            onClick={() => openEditBid(bid)}
-            title="Edit bid"
-            style={{ padding: 0, background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" fill="currentColor" aria-hidden="true">
-              <path d="M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 128.4 320C128.4 312.3 128.9 304.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5zM320.3 400C364.5 399.8 400.2 363.9 400 319.7C399.8 275.5 363.9 239.8 319.7 240C275.5 240.2 239.8 276.1 240 320.3C240.2 364.5 276.1 400.2 320.3 400z" />
-            </svg>
-          </button>
+            <button
+              type="button"
+              onClick={() => selectBidAndSyncUrl(bid, 'counts')}
+              title="Open in Counts"
+              style={{ padding: 0, background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280' }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = '#3b82f6' }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = '#6b7280' }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={20} height={20} fill="currentColor" aria-hidden>
+                <path d="M348 62.7C330.7 52.7 309.3 52.7 292 62.7L207.8 111.3C190.5 121.3 179.8 139.8 179.8 159.8L179.8 261.7L91.5 312.7C74.2 322.7 63.5 341.2 63.5 361.2L63.5 458.5C63.5 478.5 74.2 497 91.5 507L175.8 555.6C193.1 565.6 214.5 565.6 231.8 555.6L320.1 504.6L408.4 555.6C425.7 565.6 447.1 565.6 464.4 555.6L548.5 507C565.8 497 576.5 478.5 576.5 458.5L576.5 361.2C576.5 341.2 565.8 322.7 548.5 312.7L460.2 261.7L460.2 159.8C460.2 139.8 449.5 121.3 432.2 111.3L348 62.7zM296 356.6L296 463.1L207.7 514.1C206.5 514.8 205.1 515.2 203.7 515.2L203.7 409.9L296 356.6zM527.4 357.2C528.1 358.4 528.5 359.8 528.5 361.2L528.5 458.5C528.5 461.4 527 464 524.5 465.4L440.2 514C439 514.7 437.6 515.1 436.2 515.1L436.2 409.8L527.4 357.2zM412.3 159.8L412.3 261.7L320 315L320 208.5L411.2 155.9C411.9 157.1 412.3 158.5 412.3 159.9z"/>
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => bidPreview?.openBidPreviewFromBid(bid)}
+              title="Preview bid"
+              aria-label="Preview bid"
+              style={{ padding: 0, background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280' }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={20} height={20} fill="currentColor" aria-hidden>
+                <path d="M320 128C213.4 128 128 213.4 128 320C128 426.6 213.4 512 320 512C426.6 512 512 426.6 512 320C512 213.4 426.6 128 320 128zM320 192C391.6 192 448 248.4 448 320C448 391.6 391.6 448 320 448C248.4 448 192 391.6 192 320C192 248.4 248.4 192 320 192zM320 256C282.3 256 256 282.3 256 320C256 357.7 282.3 384 320 384C357.7 384 384 357.7 384 320C384 282.3 357.7 256 320 256z" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => openEditBid(bid)}
+              title="Edit bid"
+              style={{ padding: 0, background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" fill="currentColor" aria-hidden="true">
+                <path d="M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 128.4 320C128.4 312.3 128.9 304.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5zM320.3 400C364.5 399.8 400.2 363.9 400 319.7C399.8 275.5 363.9 239.8 319.7 240C275.5 240.2 239.8 276.1 240 320.3C240.2 364.5 276.1 400.2 320.3 400z" />
+              </svg>
+            </button>
+          </div>
         </td>
       </tr>
         {notesExpanded ? (
           <tr id={`bid-board-notes-${bid.id}`} style={{ background: '#f9fafb' }}>
-            <td colSpan={17} style={{ padding: '1rem', borderTop: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb', verticalAlign: 'top' }}>
+            <td colSpan={14} style={{ padding: '1rem', borderTop: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb', verticalAlign: 'top' }}>
               <BidBoardNotesPanel
                 bid={bid}
                 notesTab={bidBoardNotesTab}
@@ -9944,7 +10134,7 @@ export default function Bids() {
                           <tbody>
                             {sectionBids.length === 0 ? (
                               <tr>
-                                <td colSpan={17} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+                                <td colSpan={14} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
                                   No bids in this group
                                 </td>
                               </tr>

@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '../lib/supabase'
+import { fetchDispatchScheduledJobsForAssigneeDay, type DispatchScheduledJobForAssign } from '../lib/jobScheduleBlocks'
 import { useToastContext } from '../contexts/ToastContext'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import type { Database, Json } from '../types/database'
+import { APP_CALENDAR_TZ, denverCalendarDayKey } from '../utils/dateUtils'
 import { formatMercuryDebitCardIdCompact, mercuryDebitCardIdFromRaw } from '../lib/mercuryRawDebitCard'
 import { pushRecentPersonUserId, readRecentPersonUserIds } from '../lib/mercuryAllocRecentPersonUserIds'
 import { shortUuidPrefix } from '../lib/shortUuidPrefix'
@@ -81,19 +83,35 @@ function formatCurrency(n: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
 }
 
-/** Banking sorting Posted column (short date). */
+/** Assign modal summary Posted cell: e.g. Tue, Apr 19 in company calendar (America/Chicago). */
 function formatPostedDate(iso: string | null): string {
   if (!iso) return '—'
   try {
     const d = new Date(iso)
     if (Number.isNaN(d.getTime())) return iso
-    return d.toLocaleString('en-US', {
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone: APP_CALENDAR_TZ,
+      weekday: 'short',
       month: 'short',
       day: 'numeric',
-      year: 'numeric',
-    })
+    }).format(d)
   } catch {
     return iso
+  }
+}
+
+function bidDisplayLabel(bidNumber: string | null, projectName: string | null): string {
+  const b = typeof bidNumber === 'string' && bidNumber.trim() !== '' ? `B${bidNumber.trim()}` : 'Bid'
+  const p = typeof projectName === 'string' && projectName.trim() !== '' ? projectName.trim() : ''
+  return p !== '' ? `${b} · ${p}` : b
+}
+
+function dispatchScheduledJobToSearchRow(d: DispatchScheduledJobForAssign): JobSearchRow {
+  return {
+    id: d.jobId,
+    hcp_number: d.hcp_number,
+    job_name: d.job_name,
+    job_address: d.job_address,
   }
 }
 
@@ -271,10 +289,17 @@ export function MercuryTransactionAllocationsModal({
   const [jobResults, setJobResults] = useState<JobSearchRow[]>([])
   const [jobSearchLoading, setJobSearchLoading] = useState(false)
   const [recentPersonIds, setRecentPersonIds] = useState<string[]>([])
+  const [staffDayScheduleJobs, setStaffDayScheduleJobs] = useState<DispatchScheduledJobForAssign[]>([])
+  const [staffDaySessionJobs, setStaffDaySessionJobs] = useState<JobSearchRow[]>([])
+  const [staffDaySessionBids, setStaffDaySessionBids] = useState<{ id: string; label: string }[]>([])
+  const [staffDayContextLoading, setStaffDayContextLoading] = useState(false)
+  const [staffDayContextError, setStaffDayContextError] = useState<string | null>(null)
 
   const txAmount = transaction ? Number(transaction.amount) : 0
   const displayTotal = Math.abs(txAmount)
   const allocationSign = (txAmount === 0 ? 1 : Math.sign(txAmount)) as 1 | -1
+
+  const showStaffTallyDayContext = Boolean(tallySelfService && tallyActAsUserId && transaction?.posted_at)
 
   // Re-seed only when the modal opens or the transaction / user identity changes — not when the parent
   // passes new object/array refs for the same row (e.g. stale tally follow-up rebuilds `transaction` each render).
@@ -344,6 +369,149 @@ export function MercuryTransactionAllocationsModal({
     }
     setRecentPersonIds(readRecentPersonUserIds(recentPersonPicksStorageKey))
   }, [open, recentPersonPicksStorageKey])
+
+  useEffect(() => {
+    if (!open || !tallySelfService || !tallyActAsUserId || !transaction?.posted_at) {
+      setStaffDayScheduleJobs([])
+      setStaffDaySessionJobs([])
+      setStaffDaySessionBids([])
+      setStaffDayContextLoading(false)
+      setStaffDayContextError(null)
+      return
+    }
+    const ms = new Date(transaction.posted_at).getTime()
+    if (!Number.isFinite(ms)) {
+      setStaffDayScheduleJobs([])
+      setStaffDaySessionJobs([])
+      setStaffDaySessionBids([])
+      setStaffDayContextError('Invalid posted date.')
+      setStaffDayContextLoading(false)
+      return
+    }
+    const workDateYmd = denverCalendarDayKey(ms)
+    let cancelled = false
+    setStaffDayContextLoading(true)
+    setStaffDayContextError(null)
+    setStaffDayScheduleJobs([])
+    setStaffDaySessionJobs([])
+    setStaffDaySessionBids([])
+
+    void (async () => {
+      const errParts: string[] = []
+      try {
+        const schedRes = await fetchDispatchScheduledJobsForAssigneeDay(tallyActAsUserId, workDateYmd)
+        if (cancelled) return
+        if (schedRes.error) errParts.push(schedRes.error)
+        setStaffDayScheduleJobs(schedRes.data ?? [])
+
+        type SessRow = { work_date: string; job_ledger_id: string | null; bid_id: string | null }
+        const sessRows = await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('clock_sessions')
+              .select('work_date, job_ledger_id, bid_id')
+              .eq('user_id', tallyActAsUserId)
+              .eq('work_date', workDateYmd)
+              .is('rejected_at', null)
+              .is('revoked_at', null),
+          'MercuryTransactionAllocationsModal staff tally day clock_sessions',
+        )
+        if (cancelled) return
+        const rows = (sessRows ?? []) as SessRow[]
+
+        const jobOrder: string[] = []
+        const bidOrder: string[] = []
+        const seenJ = new Set<string>()
+        const seenB = new Set<string>()
+        for (const r of rows) {
+          if (r.job_ledger_id) {
+            const id = r.job_ledger_id
+            if (!seenJ.has(id)) {
+              seenJ.add(id)
+              jobOrder.push(id)
+            }
+          } else if (r.bid_id) {
+            const id = r.bid_id
+            if (!seenB.has(id)) {
+              seenB.add(id)
+              bidOrder.push(id)
+            }
+          }
+        }
+
+        const sessionJobs: JobSearchRow[] = []
+        if (jobOrder.length > 0) {
+          const jobRows = await withSupabaseRetry(
+            async () =>
+              supabase
+                .from('jobs_ledger')
+                .select('id, hcp_number, job_name, job_address')
+                .in('id', jobOrder),
+            'MercuryTransactionAllocationsModal staff day jobs_ledger',
+          )
+          if (cancelled) return
+          const byId = new Map(
+            ((jobRows ?? []) as { id: string; hcp_number: string | null; job_name: string | null; job_address: string | null }[]).map(
+              (j) => [j.id, j],
+            ),
+          )
+          for (const id of jobOrder) {
+            const row = byId.get(id)
+            const hn = row?.hcp_number?.trim() ?? ''
+            const jn = row?.job_name?.trim() ?? ''
+            const ja = row?.job_address?.trim() ?? ''
+            sessionJobs.push({
+              id,
+              hcp_number: hn,
+              job_name: jn || '—',
+              job_address: ja,
+            })
+          }
+        }
+
+        const sessionBids: { id: string; label: string }[] = []
+        if (bidOrder.length > 0) {
+          const bidRows = await withSupabaseRetry(
+            async () =>
+              supabase.from('bids').select('id, bid_number, project_name').in('id', bidOrder),
+            'MercuryTransactionAllocationsModal staff day bids',
+          )
+          if (cancelled) return
+          const byId = new Map(
+            ((bidRows ?? []) as { id: string; bid_number: string | null; project_name: string | null }[]).map((b) => [
+              b.id,
+              b,
+            ]),
+          )
+          for (const id of bidOrder) {
+            const row = byId.get(id)
+            sessionBids.push({
+              id,
+              label: bidDisplayLabel(row?.bid_number ?? null, row?.project_name ?? null),
+            })
+          }
+        }
+
+        if (cancelled) return
+        setStaffDaySessionJobs(sessionJobs)
+        setStaffDaySessionBids(sessionBids)
+        setStaffDayContextError(errParts.length > 0 ? errParts.join(' ') : null)
+      } catch (e) {
+        if (!cancelled) {
+          setStaffDayContextError(e instanceof Error ? e.message : 'Could not load schedule and sessions for that day.')
+          setStaffDayScheduleJobs([])
+          setStaffDaySessionJobs([])
+          setStaffDaySessionBids([])
+        }
+      } finally {
+        if (!cancelled) setStaffDayContextLoading(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [open, tallySelfService, tallyActAsUserId, transaction?.posted_at, transaction?.id])
 
   const allocationSum = useMemo(() => {
     let sum = 0
@@ -749,6 +917,112 @@ export function MercuryTransactionAllocationsModal({
               </div>
             )}
           </>
+        ) : null}
+
+        {showStaffTallyDayContext ? (
+          <div style={{ marginBottom: '1rem' }}>
+            {staffDayContextLoading ? (
+              <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.5rem' }}>Loading schedule and sessions…</div>
+            ) : null}
+            {staffDayContextError ? (
+              <div style={{ fontSize: '0.75rem', color: '#b91c1c', marginBottom: '0.5rem' }}>{staffDayContextError}</div>
+            ) : null}
+
+            <div style={{ marginBottom: '0.75rem' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.35rem' }}>
+                Scheduled jobs that day
+              </div>
+              {staffDayScheduleJobs.length === 0 && !staffDayContextLoading ? (
+                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>None on schedule</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {staffDayScheduleJobs.map((d) => {
+                    const addr = (d.job_address ?? '').trim()
+                    return (
+                      <button
+                        key={d.jobId}
+                        type="button"
+                        onClick={() => addJobLine(dispatchScheduledJobToSearchRow(d))}
+                        style={{
+                          display: 'block',
+                          width: '100%',
+                          textAlign: 'left',
+                          padding: '0.45rem 0.65rem',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: 6,
+                          background: '#fff',
+                          cursor: 'pointer',
+                          fontSize: '0.8125rem',
+                          fontFamily: 'inherit',
+                        }}
+                      >
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <div style={{ fontWeight: 600 }}>
+                            {d.windowsLabel}
+                            <span style={{ fontWeight: 400, color: '#64748b' }}> | </span>
+                            <span style={{ fontWeight: 600 }}>{d.hcp_number}</span> {d.job_name}
+                          </div>
+                          {addr !== '' ? (
+                            <div style={{ fontSize: '0.8125rem', color: '#6b7280', fontWeight: 400 }}>{addr}</div>
+                          ) : null}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginBottom: '0.25rem' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.35rem' }}>
+                Clock sessions that day
+              </div>
+              {staffDaySessionJobs.length === 0 && staffDaySessionBids.length === 0 && !staffDayContextLoading ? (
+                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>No job or bid on sessions</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {staffDaySessionJobs.map((r) => (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => addJobLine(r)}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '0.45rem 0.65rem',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: 6,
+                        background: '#fff',
+                        cursor: 'pointer',
+                        fontSize: '0.8125rem',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      <span style={{ fontWeight: 600 }}>{r.hcp_number}</span> {r.job_name}
+                      <span style={{ color: '#6b7280' }}> · {r.job_address}</span>
+                    </button>
+                  ))}
+                  {staffDaySessionBids.map((b) => (
+                    <div
+                      key={b.id}
+                      style={{
+                        padding: '0.45rem 0.65rem',
+                        border: '1px dashed #e5e7eb',
+                        borderRadius: 6,
+                        fontSize: '0.8125rem',
+                        color: '#64748b',
+                        background: '#f8fafc',
+                      }}
+                    >
+                      {b.label}
+                      <div style={{ fontSize: '0.72rem', marginTop: 4 }}>Splits use jobs only — use job search if you need a job line.</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         ) : null}
 
         <div style={{ fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.35rem' }}>Job splits</div>

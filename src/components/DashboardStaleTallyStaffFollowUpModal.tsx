@@ -5,6 +5,7 @@ import type { Database, Json } from '../types/database'
 import { MercuryTransactionAllocationsModal } from './MercuryTransactionAllocationsModal'
 import { PersonOffsetFormModal, type PersonOffsetInitialDraft } from './pay/PersonOffsetFormModal'
 import { parseTallyJobSplitsJson } from '../lib/tallyJobSplits'
+import { isUnlinkedMercuryRowStaleForTallyStaffFollowUp } from '../lib/tallyStaleMinAgeDays'
 import { useToastContext } from '../contexts/ToastContext'
 import { fetchOffsetPersonNameOptions } from '../lib/offsetPersonNameOptions'
 import { useAuth } from '../hooks/useAuth'
@@ -113,7 +114,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
   const [personOffsetNameOptions, setPersonOffsetNameOptions] = useState<string[] | null>(null)
   const [personOffsetCreateDraft, setPersonOffsetCreateDraft] = useState<PersonOffsetInitialDraft | null>(null)
   const [backchargeBusyTxId, setBackchargeBusyTxId] = useState<string | null>(null)
-  const [showAllUnlinked, setShowAllUnlinked] = useState(false)
+  const [showAllUnlinked, setShowAllUnlinked] = useState(true)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -142,7 +143,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
       setPersonOffsetNameOptions(null)
       setPersonOffsetCreateDraft(null)
       setBackchargeBusyTxId(null)
-      setShowAllUnlinked(false)
+      setShowAllUnlinked(true)
       return
     }
     void load()
@@ -402,8 +403,16 @@ export function DashboardStaleTallyStaffFollowUpModal({
                         </tr>
                       </thead>
                       <tbody>
-                        {g.rows.map((r) => (
-                          <tr key={r.mercury_transaction_id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                        {g.rows.map((r) => {
+                          const rowStale = isUnlinkedMercuryRowStaleForTallyStaffFollowUp(r.posted_at, minAgeDays)
+                          return (
+                            <tr
+                              key={r.mercury_transaction_id}
+                              style={{
+                                borderBottom: '1px solid #f3f4f6',
+                                background: rowStale ? '#fef2f2' : undefined,
+                              }}
+                            >
                             <td style={{ padding: '0.45rem 0.65rem', whiteSpace: 'nowrap' }}>{formatPostedShort(r.posted_at)}</td>
                             <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                               {formatCurrency(Number(r.amount))}
@@ -472,8 +481,9 @@ export function DashboardStaleTallyStaffFollowUpModal({
                                 </button>
                               </div>
                             </td>
-                          </tr>
-                        ))}
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>

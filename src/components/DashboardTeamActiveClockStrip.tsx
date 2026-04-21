@@ -511,6 +511,8 @@ export function DashboardTeamActiveClockStrip({
   jobsWorkedTodayRows = [],
   showScopeToggle = false,
   clockStripScope = 'team',
+  clockStripNarrowScopeLabel = 'My team',
+  clockStripWideScopeLabel = 'Everyone',
   onClockStripScopeChange,
   showJobBidColumn = false,
   onJobBidSaved,
@@ -530,6 +532,10 @@ export function DashboardTeamActiveClockStrip({
   jobsWorkedTodayRows?: readonly JobsWorkedTodayStripRow[]
   showScopeToggle?: boolean
   clockStripScope?: 'team' | 'everyone'
+  /** Left control (`team` scope); default "My team". */
+  clockStripNarrowScopeLabel?: string
+  /** Right control (`everyone` scope); default "Everyone". */
+  clockStripWideScopeLabel?: string
   onClockStripScopeChange?: (scope: 'team' | 'everyone') => void
   showJobBidColumn?: boolean
   onJobBidSaved?: (patch: AssignSessionJobSavedPatch) => void
@@ -903,7 +909,10 @@ export function DashboardTeamActiveClockStrip({
       <div style={stripTableHost}>
         {scopeShowsOverlay ? (
           <div style={stripScopeOverlay}>
-            <div role="group" aria-label="Clocked-in list scope">
+            <div
+              role="group"
+              aria-label={`Clocked-in list scope: ${clockStripNarrowScopeLabel}, ${clockStripWideScopeLabel}`}
+            >
               <button
                 type="button"
                 aria-pressed={clockStripScope === 'team'}
@@ -915,7 +924,7 @@ export function DashboardTeamActiveClockStrip({
                   marginRight: -1,
                 }}
               >
-                My team
+                {clockStripNarrowScopeLabel}
               </button>
               <button
                 type="button"
@@ -927,7 +936,7 @@ export function DashboardTeamActiveClockStrip({
                   borderBottomLeftRadius: 0,
                 }}
               >
-                Everyone
+                {clockStripWideScopeLabel}
               </button>
             </div>
           </div>
