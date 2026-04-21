@@ -92,6 +92,328 @@ function formatBidStaffDisplayName(u: EstimatorUser | EstimatorUser[] | null | u
   return (one.name?.trim() || one.email || '—').slice(0, 200)
 }
 
+type BidBoardStaffOutcomeRow = {
+  userId: string
+  displayName: string
+  notYetWonOrLost: number
+  won: number
+  lost: number
+}
+
+/** Minimum bids in role (on filtered list) to appear in staff outcome tables. */
+const BID_BOARD_STAFF_MIN_BIDS = 3
+
+type BidBoardStaffOutcomesByRole = {
+  estimators: BidBoardStaffOutcomeRow[]
+  accountManagers: BidBoardStaffOutcomeRow[]
+  estimatorsHadAnyAssignment: boolean
+  accountManagersHadAnyAssignment: boolean
+}
+
+function sortBidBoardStaffOutcomeRows(rows: BidBoardStaffOutcomeRow[]): BidBoardStaffOutcomeRow[] {
+  return [...rows].sort((a, b) => {
+    const sentA = a.notYetWonOrLost + a.won + a.lost
+    const sentB = b.notYetWonOrLost + b.won + b.lost
+    if (sentB !== sentA) return sentB - sentA
+    const cmp = a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' })
+    if (cmp !== 0) return cmp
+    return a.userId.localeCompare(b.userId)
+  })
+}
+
+/** Won % for Scoreboard / Estimating Health: decided = won + lost; null when no decided bids. */
+function staffOutcomeWonPctDisplay(row: BidBoardStaffOutcomeRow): { decided: number; pct: number | null } {
+  const decided = row.won + row.lost
+  if (decided === 0) return { decided: 0, pct: null }
+  return { decided, pct: (100 * row.won) / decided }
+}
+
+function BidBoardEstimatingHealthWonPctSliderRow({ row }: { row: BidBoardStaffOutcomeRow }) {
+  const { pct } = staffOutcomeWonPctDisplay(row)
+  const pctStr = pct === null ? '—' : `${pct.toFixed(1)}%`
+  return (
+    <div
+      role="group"
+      aria-label={pct === null ? `${row.displayName}, no decided bids` : `${row.displayName}, Won percent ${pctStr}`}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.5rem',
+        padding: '0.35rem 0.5rem',
+        borderBottom: '1px solid #e5e7eb',
+      }}
+    >
+      <div style={{ flex: '0 1 9rem', minWidth: 0, fontSize: '0.8125rem', color: '#374151' }}>{row.displayName}</div>
+      <div style={{ flex: 1, minWidth: 0, position: 'relative', padding: '6px 0' }}>
+        <div
+          aria-hidden
+          style={{
+            height: 10,
+            position: 'relative',
+            borderRadius: 4,
+            border: '1px solid #e5e7eb',
+            overflow: 'visible',
+            opacity: pct === null ? 0.45 : 1,
+            background:
+              'linear-gradient(90deg, #fee2e2 0%, #fee2e2 20%, #fef9c3 20%, #fef9c3 40%, #dcfce7 40%, #dcfce7 60%, #fef9c3 60%, #fef9c3 80%, #fee2e2 80%, #fee2e2 100%)',
+          }}
+        >
+          {pct !== null ? (
+            <div
+              style={{
+                position: 'absolute',
+                left: `${pct}%`,
+                top: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: 5,
+                height: 18,
+                background: '#111827',
+                borderRadius: 2,
+                boxShadow: '0 1px 2px rgba(0,0,0,0.12)',
+              }}
+            />
+          ) : null}
+        </div>
+      </div>
+      <div
+        style={{
+          flex: '0 0 auto',
+          minWidth: '3.25rem',
+          textAlign: 'right',
+          fontSize: '0.8125rem',
+          fontWeight: 600,
+          color: '#374151',
+        }}
+      >
+        {pctStr}
+      </div>
+    </div>
+  )
+}
+
+function BidBoardEstimatingHealthWonPctSliders({ stats }: { stats: BidBoardStaffOutcomesByRole }) {
+  if (stats.estimators.length === 0 && stats.accountManagers.length === 0) return null
+  return (
+    <div style={{ margin: '0 0 0.625rem 0', border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+      {stats.estimators.length > 0 ? (
+        <>
+          <div
+            style={{
+              padding: '0.375rem 0.75rem',
+              background: '#f9fafb',
+              borderBottom: '1px solid #e5e7eb',
+              fontSize: '0.875rem',
+              fontWeight: 600,
+            }}
+          >
+            Estimators
+          </div>
+          {stats.estimators.map((row) => (
+            <BidBoardEstimatingHealthWonPctSliderRow key={`est-health-${row.userId}`} row={row} />
+          ))}
+        </>
+      ) : null}
+      {stats.accountManagers.length > 0 ? (
+        <>
+          <div
+            style={{
+              padding: '0.375rem 0.75rem',
+              background: '#f9fafb',
+              borderBottom: '1px solid #e5e7eb',
+              borderTop: stats.estimators.length > 0 ? '1px solid #e5e7eb' : undefined,
+              fontSize: '0.875rem',
+              fontWeight: 600,
+            }}
+          >
+            Account managers
+          </div>
+          {stats.accountManagers.map((row) => (
+            <BidBoardEstimatingHealthWonPctSliderRow key={`am-health-${row.userId}`} row={row} />
+          ))}
+        </>
+      ) : null}
+    </div>
+  )
+}
+
+/** Sent bid, outcome not won / lost / started_or_complete — same as Bid Board "Not yet won or lost" (excludes unsent). */
+function isBidBoardPendingNotYetWonOrLost(bid: BidWithBuilder): boolean {
+  if (!bid.bid_date_sent) return false
+  const o = bid.outcome
+  if (o === 'won' || o === 'lost' || o === 'started_or_complete') return false
+  return true
+}
+
+/** Won = won + started_or_complete; decided bids only. Separate tallies per role; rows only if bidCount >= BID_BOARD_STAFF_MIN_BIDS. */
+function computeBidBoardStaffOutcomeStatsByRole(bids: BidWithBuilder[]): BidBoardStaffOutcomesByRole {
+  const estTally = new Map<string, { won: number; lost: number; bidCount: number; notYetWonOrLost: number }>()
+  const amTally = new Map<string, { won: number; lost: number; bidCount: number; notYetWonOrLost: number }>()
+  const estNames = new Map<string, string>()
+  const amNames = new Map<string, string>()
+
+  for (const bid of bids) {
+    const o = bid.outcome
+    const isWonLike = o === 'won' || o === 'started_or_complete'
+    const isLost = o === 'lost'
+    const isPendingNywol = isBidBoardPendingNotYetWonOrLost(bid)
+
+    const eid = bid.estimator_id
+    if (eid) {
+      if (!estTally.has(eid)) estTally.set(eid, { won: 0, lost: 0, bidCount: 0, notYetWonOrLost: 0 })
+      const t = estTally.get(eid)!
+      t.bidCount += 1
+      const n = formatBidStaffDisplayName(bid.estimator)
+      if (n !== '—') estNames.set(eid, n)
+      if (isWonLike) t.won += 1
+      else if (isLost) t.lost += 1
+      else if (isPendingNywol) t.notYetWonOrLost += 1
+    }
+
+    const amid = bid.account_manager_id
+    if (amid) {
+      if (!amTally.has(amid)) amTally.set(amid, { won: 0, lost: 0, bidCount: 0, notYetWonOrLost: 0 })
+      const t = amTally.get(amid)!
+      t.bidCount += 1
+      const n = formatBidStaffDisplayName(bid.account_manager)
+      if (n !== '—') amNames.set(amid, n)
+      if (isWonLike) t.won += 1
+      else if (isLost) t.lost += 1
+      else if (isPendingNywol) t.notYetWonOrLost += 1
+    }
+  }
+
+  for (const uid of estTally.keys()) {
+    if (!estNames.has(uid)) estNames.set(uid, '—')
+  }
+  for (const uid of amTally.keys()) {
+    if (!amNames.has(uid)) amNames.set(uid, '—')
+  }
+
+  const toRows = (
+    tally: Map<string, { won: number; lost: number; bidCount: number; notYetWonOrLost: number }>,
+    names: Map<string, string>
+  ): BidBoardStaffOutcomeRow[] =>
+    sortBidBoardStaffOutcomeRows(
+      [...tally.entries()]
+        .filter(([, v]) => v.bidCount >= BID_BOARD_STAFF_MIN_BIDS)
+        .map(([userId, { won, lost, notYetWonOrLost }]) => ({
+          userId,
+          displayName: names.get(userId) ?? '—',
+          notYetWonOrLost,
+          won,
+          lost,
+        }))
+    )
+
+  return {
+    estimators: toRows(estTally, estNames),
+    accountManagers: toRows(amTally, amNames),
+    estimatorsHadAnyAssignment: estTally.size > 0,
+    accountManagersHadAnyAssignment: amTally.size > 0,
+  }
+}
+
+type StaffOutcomeDrilldownMetric = 'sent' | 'notYetWonOrLost' | 'won' | 'lost'
+type StaffOutcomeDrilldownRole = 'estimator' | 'account_manager'
+
+type StaffOutcomeDrilldownState = {
+  userId: string
+  staffDisplayName: string
+  role: StaffOutcomeDrilldownRole
+  metric: StaffOutcomeDrilldownMetric
+}
+
+function staffOutcomeDrilldownMetricLabel(metric: StaffOutcomeDrilldownMetric): string {
+  switch (metric) {
+    case 'sent':
+      return 'Sent'
+    case 'notYetWonOrLost':
+      return 'Not yet won or lost'
+    case 'won':
+      return 'Won'
+    case 'lost':
+      return 'Lost'
+  }
+}
+
+function staffOutcomeDrilldownRolePhrase(role: StaffOutcomeDrilldownRole): string {
+  return role === 'estimator' ? 'estimator' : 'account manager'
+}
+
+function filterBidsForStaffOutcomeDrilldown(
+  bids: BidWithBuilder[],
+  args: { userId: string; role: StaffOutcomeDrilldownRole; metric: StaffOutcomeDrilldownMetric }
+): BidWithBuilder[] {
+  const { userId, role, metric } = args
+  return bids.filter((bid) => {
+    if (role === 'estimator') {
+      if (bid.estimator_id !== userId) return false
+    } else if (bid.account_manager_id !== userId) {
+      return false
+    }
+    if (metric === 'sent') return Boolean(bid.bid_date_sent)
+    const o = bid.outcome
+    const isWonLike = o === 'won' || o === 'started_or_complete'
+    const isLost = o === 'lost'
+    const isPendingNywol = isBidBoardPendingNotYetWonOrLost(bid)
+    if (metric === 'won') return isWonLike
+    if (metric === 'lost') return isLost
+    return isPendingNywol
+  })
+}
+
+function sortStaffOutcomeDrilldownBids(bids: BidWithBuilder[]): BidWithBuilder[] {
+  return [...bids].sort((a, b) => {
+    const pa = (a.project_name ?? '').toLowerCase()
+    const pb = (b.project_name ?? '').toLowerCase()
+    const c = pa.localeCompare(pb, undefined, { sensitivity: 'base' })
+    if (c !== 0) return c
+    return a.id.localeCompare(b.id)
+  })
+}
+
+function StaffOutcomeDrilldownCountCell({
+  count,
+  userId,
+  displayName,
+  role,
+  metric,
+  onOpen,
+}: {
+  count: number
+  userId: string
+  displayName: string
+  role: StaffOutcomeDrilldownRole
+  metric: StaffOutcomeDrilldownMetric
+  onOpen: (s: StaffOutcomeDrilldownState) => void
+}) {
+  const tdStyle: CSSProperties = { padding: '0.375rem 0.75rem', fontSize: '0.875rem', textAlign: 'right' }
+  if (count <= 0) return <td style={tdStyle}>{count}</td>
+  const metricLabel = staffOutcomeDrilldownMetricLabel(metric)
+  const rolePhrase = staffOutcomeDrilldownRolePhrase(role)
+  return (
+    <td style={tdStyle}>
+      <button
+        type="button"
+        onClick={() => onOpen({ userId, staffDisplayName: displayName, role, metric })}
+        aria-label={`View ${count} bids, ${metricLabel}, ${displayName} as ${rolePhrase}`}
+        style={{
+          padding: 0,
+          margin: 0,
+          border: 'none',
+          background: 'none',
+          color: '#3b82f6',
+          cursor: 'pointer',
+          font: 'inherit',
+          textDecoration: 'underline',
+        }}
+      >
+        {count}
+      </button>
+    </td>
+  )
+}
+
 const BID_DATE_SENT_ATTESTATION_NULLS: Record<
   | 'bid_date_sent_attested_at'
   | 'bid_date_sent_attested_by'
@@ -1112,6 +1434,7 @@ export default function Bids() {
   const bidBoardUnreadFetchSeqRef = useRef(0)
   const bidsForBoardUnreadRef = useRef(bids)
   bidsForBoardUnreadRef.current = bids
+  const [staffOutcomeDrilldown, setStaffOutcomeDrilldown] = useState<StaffOutcomeDrilldownState | null>(null)
   const [bidFormOpen, setBidFormOpen] = useState(false)
   const [pendingBidFormFocus, setPendingBidFormFocus] = useState<'projectName' | 'gcBuilder' | null>(null)
   const [editingBid, setEditingBid] = useState<BidWithBuilder | null>(null)
@@ -1241,6 +1564,7 @@ export default function Bids() {
   const [bidBoardSectionOpen, setBidBoardSectionOpen] = useState({ unsent: true, pending: true, won: true, startedOrComplete: true, lost: false })
   const [bidBoardDeepLinkHighlightId, setBidBoardDeepLinkHighlightId] = useState<string | null>(null)
   const [bidBoardDeepLinkHighlightGen, setBidBoardDeepLinkHighlightGen] = useState(0)
+  const [scoreboardDetailsExpanded, setScoreboardDetailsExpanded] = useState(false)
   const bidBoardDeepLinkTimeoutRef = useRef<number | null>(null)
   const bidBoardPendingScrollBidIdRef = useRef<string | null>(null)
   const submissionFollowupPendingDeepLinkBidIdRef = useRef<string | null>(null)
@@ -8987,6 +9311,27 @@ export default function Bids() {
     return buckets
   }, [filteredBidsForBidBoard])
 
+  const bidBoardStaffOutcomeByRole = useMemo(
+    () => computeBidBoardStaffOutcomeStatsByRole(filteredBidsForBidBoard),
+    [filteredBidsForBidBoard]
+  )
+
+  const staffOutcomeDrilldownBids = useMemo(() => {
+    if (!staffOutcomeDrilldown) return []
+    return sortStaffOutcomeDrilldownBids(
+      filterBidsForStaffOutcomeDrilldown(filteredBidsForBidBoard, staffOutcomeDrilldown)
+    )
+  }, [staffOutcomeDrilldown, filteredBidsForBidBoard])
+
+  useEffect(() => {
+    if (!staffOutcomeDrilldown) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setStaffOutcomeDrilldown(null)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [staffOutcomeDrilldown])
+
   const BID_BOARD_SECTION_CONFIG = [
     { key: 'unsent' as const, label: 'Unsent bids' },
     { key: 'pending' as const, label: 'Not yet won or lost' },
@@ -9291,8 +9636,8 @@ export default function Bids() {
         <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb', fontSize: '0.6875rem', lineHeight: 1.25 }}>Last<br />Contact</th>
         <th
           style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}
-          title="Open counts, preview bid, edit bid"
-          aria-label="Open counts, preview bid, edit bid"
+          title="Open counts, edit bid"
+          aria-label="Open counts, edit bid"
         />
       </tr>
     </thead>
@@ -9615,17 +9960,6 @@ export default function Bids() {
             </button>
             <button
               type="button"
-              onClick={() => bidPreview?.openBidPreviewFromBid(bid)}
-              title="Preview bid"
-              aria-label="Preview bid"
-              style={{ padding: 0, background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280' }}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={20} height={20} fill="currentColor" aria-hidden>
-                <path d="M320 128C213.4 128 128 213.4 128 320C128 426.6 213.4 512 320 512C426.6 512 512 426.6 512 320C512 213.4 426.6 128 320 128zM320 192C391.6 192 448 248.4 448 320C448 391.6 391.6 448 320 448C248.4 448 192 391.6 192 320C192 248.4 248.4 192 320 192zM320 256C282.3 256 256 282.3 256 320C256 357.7 282.3 384 320 384C357.7 384 384 357.7 384 320C384 282.3 357.7 256 320 256z" />
-              </svg>
-            </button>
-            <button
-              type="button"
               onClick={() => openEditBid(bid)}
               title="Edit bid"
               style={{ padding: 0, background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
@@ -9687,6 +10021,186 @@ export default function Bids() {
         {error && (
           <div style={{ padding: '0.75rem', background: '#fee2e2', color: '#991b1b', borderRadius: 4, marginBottom: '1rem' }}>
             {error}
+          </div>
+        )}
+
+        {staffOutcomeDrilldown && (
+          <div
+            role="presentation"
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.45)',
+              zIndex: 2100,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '1rem',
+            }}
+            onClick={() => setStaffOutcomeDrilldown(null)}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="bid-board-staff-drilldown-title"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: 'white',
+                borderRadius: 8,
+                maxWidth: 1100,
+                width: '100%',
+                maxHeight: '90vh',
+                overflow: 'auto',
+                boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
+                padding: '1rem 1.25rem',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'space-between',
+                  gap: '1rem',
+                  marginBottom: '0.75rem',
+                }}
+              >
+                <h3 id="bid-board-staff-drilldown-title" style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600 }}>
+                  {staffOutcomeDrilldown.staffDisplayName} — {staffOutcomeDrilldownMetricLabel(staffOutcomeDrilldown.metric)} (
+                  {staffOutcomeDrilldownBids.length} bids)
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setStaffOutcomeDrilldown(null)}
+                  style={{
+                    padding: '0.35rem 0.75rem',
+                    background: '#f3f4f6',
+                    border: '1px solid #d1d5db',
+                    borderRadius: 4,
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+              {staffOutcomeDrilldownBids.length === 0 ? (
+                <p style={{ margin: 0, color: '#6b7280' }}>No bids in this group.</p>
+              ) : (
+                <div style={{ overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
+                    <thead style={{ background: '#f9fafb' }}>
+                      <tr>
+                        <th
+                          scope="col"
+                          style={{
+                            padding: '0.5rem 0.75rem',
+                            textAlign: 'left',
+                            borderBottom: '1px solid #e5e7eb',
+                            fontSize: '0.8125rem',
+                          }}
+                        >
+                          Bid #
+                        </th>
+                        <th
+                          scope="col"
+                          style={{
+                            padding: '0.5rem 0.75rem',
+                            textAlign: 'left',
+                            borderBottom: '1px solid #e5e7eb',
+                            fontSize: '0.8125rem',
+                          }}
+                        >
+                          GC/Builder
+                        </th>
+                        <th
+                          scope="col"
+                          style={{
+                            padding: '0.5rem 0.75rem',
+                            textAlign: 'left',
+                            borderBottom: '1px solid #e5e7eb',
+                            fontSize: '0.8125rem',
+                          }}
+                        >
+                          Project name
+                        </th>
+                        <th
+                          scope="col"
+                          style={{
+                            padding: '0.5rem 0.75rem',
+                            textAlign: 'left',
+                            borderBottom: '1px solid #e5e7eb',
+                            fontSize: '0.8125rem',
+                          }}
+                        >
+                          Address
+                        </th>
+                        <th
+                          scope="col"
+                          style={{
+                            padding: '0.5rem 0.75rem',
+                            textAlign: 'right',
+                            borderBottom: '1px solid #e5e7eb',
+                            fontSize: '0.8125rem',
+                          }}
+                        >
+                          Bid
+                        </th>
+                        <th
+                          scope="col"
+                          style={{
+                            padding: '0.5rem 0.75rem',
+                            textAlign: 'center',
+                            borderBottom: '1px solid #e5e7eb',
+                            fontSize: '0.8125rem',
+                          }}
+                        >
+                          Bid date
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {staffOutcomeDrilldownBids.map((bid) => {
+                        const num = (bid as { bid_number?: string | null }).bid_number?.trim()
+                        const gc = bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'
+                        const parts = formatDateYYMMDDParts(bid.bid_due_date)
+                        return (
+                          <tr key={bid.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                            <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', whiteSpace: 'nowrap' }}>
+                              {num ? <BidBoardBidNumberMark bidNumber={num} /> : '—'}
+                            </td>
+                            <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem' }}>{gc}</td>
+                            <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem' }}>
+                              {bid.project_name ?? '—'}
+                            </td>
+                            <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem' }}>{bid.address ?? '—'}</td>
+                            <td
+                              style={{
+                                padding: '0.5rem 0.75rem',
+                                fontSize: '0.875rem',
+                                textAlign: 'right',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {formatBidValueShort(bid.bid_value != null ? Number(bid.bid_value) : null)}
+                            </td>
+                            <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', textAlign: 'center' }}>
+                              {parts ? (
+                                <div style={{ lineHeight: 1.25 }}>
+                                  <div>{parts.date}</div>
+                                  <div>{parts.bracket}</div>
+                                </div>
+                              ) : (
+                                '—'
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -10148,6 +10662,434 @@ export default function Bids() {
                   </div>
                 )
               })}
+              <div style={{ marginTop: '1.5rem' }}>
+                <h3
+                  id="bid-board-estimating-health-heading"
+                  style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 0.35rem 0' }}
+                >
+                  Estimating Health
+                </h3>
+                <div style={{ margin: '0 0 0.625rem 0', border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                  <table
+                    aria-label="Won percent bands for interpreting the Won % column"
+                    style={{ width: '100%', borderCollapse: 'collapse' }}
+                  >
+                    <tbody>
+                      <tr style={{ background: '#f9fafb' }}>
+                        {(['0% – 20%', '20% – 40%', '40% – 60%', '60% – 80%', '80% – 100%'] as const).map((label, i) => (
+                          <th
+                            key={label}
+                            scope="col"
+                            style={{
+                              padding: '0.375rem 0.35rem',
+                              textAlign: 'center',
+                              borderBottom: '1px solid #e5e7eb',
+                              ...(i < 4 ? { borderRight: '1px solid #e5e7eb' } : {}),
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              color: '#374151',
+                            }}
+                          >
+                            {label}
+                          </th>
+                        ))}
+                      </tr>
+                      <tr>
+                        {(
+                          [
+                            'Charging too Much',
+                            "We're full on work",
+                            'Balanced',
+                            "We're hungry for work",
+                            'Charging too little',
+                          ] as const
+                        ).map((label, i) => (
+                          <td
+                            key={i}
+                            style={{
+                              padding: '0.375rem 0.35rem',
+                              textAlign: 'center',
+                              ...(i < 4 ? { borderRight: '1px solid #e5e7eb' } : {}),
+                              fontSize: '0.75rem',
+                              color: '#4b5563',
+                              verticalAlign: 'top',
+                              lineHeight: 1.25,
+                            }}
+                          >
+                            {label}
+                          </td>
+                        ))}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <BidBoardEstimatingHealthWonPctSliders stats={bidBoardStaffOutcomeByRole} />
+                <div style={{ margin: '0 0 0.75rem 0' }}>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr auto 1fr',
+                      alignItems: 'center',
+                      marginBottom: '0.35rem',
+                    }}
+                  >
+                    <div aria-hidden style={{ minWidth: 0 }} />
+                    <h3
+                      id="bid-board-staff-outcomes-heading"
+                      style={{ fontSize: '1rem', fontWeight: 600, margin: 0, textAlign: 'center' }}
+                    >
+                      Scoreboard
+                    </h3>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', minWidth: 0 }}>
+                      <button
+                        type="button"
+                        onClick={() => setScoreboardDetailsExpanded((v) => !v)}
+                        aria-expanded={scoreboardDetailsExpanded}
+                        aria-controls="bid-board-scoreboard-details"
+                        style={{
+                          padding: 0,
+                          border: 'none',
+                          background: 'none',
+                          cursor: 'pointer',
+                          color: '#6b7280',
+                          fontSize: '0.8125rem',
+                          textDecoration: 'underline',
+                        }}
+                      >
+                        {scoreboardDetailsExpanded ? 'Hide details' : 'Details'}
+                      </button>
+                    </div>
+                  </div>
+                  <div
+                    id="bid-board-scoreboard-details"
+                    hidden={!scoreboardDetailsExpanded}
+                    style={{ marginTop: scoreboardDetailsExpanded ? '0.35rem' : 0 }}
+                  >
+                    <p style={{ margin: 0, color: '#6b7280', fontSize: '0.8125rem' }}>
+                      Only people with {BID_BOARD_STAFF_MIN_BIDS} or more bids in that role are listed. Counts reflect the filtered bid
+                      list above. The Not yet won or lost column counts sent bids still open (same as that board section; unsent bids are
+                      not included). Won % uses decided bids only (Won + Lost). Each role is counted separately. Counts greater than zero
+                      are clickable to list matching bids. Sent is bids with a sent date in that role (same as Not yet won or lost + Won
+                      # + Lost #).
+                    </p>
+                  </div>
+                </div>
+                {!bidBoardStaffOutcomeByRole.estimatorsHadAnyAssignment &&
+                !bidBoardStaffOutcomeByRole.accountManagersHadAnyAssignment ? (
+                  <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>
+                    No estimator or account manager assigned on these bids.
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <div>
+                      <h4
+                        id="bid-board-staff-est-heading"
+                        style={{ fontSize: '0.9375rem', fontWeight: 600, margin: '0 0 0.5rem 0' }}
+                      >
+                        Estimators
+                      </h4>
+                      {bidBoardStaffOutcomeByRole.estimators.length === 0 ? (
+                        <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>
+                          {bidBoardStaffOutcomeByRole.estimatorsHadAnyAssignment
+                            ? `No estimators with ${BID_BOARD_STAFF_MIN_BIDS} or more bids in this list.`
+                            : 'No estimators assigned on these bids.'}
+                        </p>
+                      ) : (
+                        <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'auto' }}>
+                          <table
+                            aria-labelledby="bid-board-staff-est-heading"
+                            style={{ width: '100%', borderCollapse: 'collapse', minWidth: 600 }}
+                          >
+                            <thead style={{ background: '#f9fafb' }}>
+                              <tr>
+                                <th
+                                  scope="col"
+                                  style={{
+                                    padding: '0.375rem 0.75rem',
+                                    textAlign: 'left',
+                                    borderBottom: '1px solid #e5e7eb',
+                                    fontSize: '0.8125rem',
+                                  }}
+                                >
+                                  Name
+                                </th>
+                                <th
+                                  scope="col"
+                                  style={{
+                                    padding: '0.375rem 0.75rem',
+                                    textAlign: 'right',
+                                    borderBottom: '1px solid #e5e7eb',
+                                    fontSize: '0.8125rem',
+                                  }}
+                                  title="Bids with a sent date (sum of Not yet won or lost, Won #, and Lost #)"
+                                >
+                                  Sent
+                                </th>
+                                <th
+                                  scope="col"
+                                  style={{
+                                    padding: '0.375rem 0.75rem',
+                                    textAlign: 'right',
+                                    borderBottom: '1px solid #e5e7eb',
+                                    fontSize: '0.6875rem',
+                                    lineHeight: 1.25,
+                                  }}
+                                  title="Sent bids not yet won or lost (excludes unsent)"
+                                >
+                                  Not yet<br />
+                                  won or lost
+                                </th>
+                                <th
+                                  scope="col"
+                                  style={{
+                                    padding: '0.375rem 0.75rem',
+                                    textAlign: 'right',
+                                    borderBottom: '1px solid #e5e7eb',
+                                    fontSize: '0.8125rem',
+                                  }}
+                                >
+                                  Won #
+                                </th>
+                                <th
+                                  scope="col"
+                                  style={{
+                                    padding: '0.375rem 0.75rem',
+                                    textAlign: 'right',
+                                    borderBottom: '1px solid #e5e7eb',
+                                    fontSize: '0.8125rem',
+                                  }}
+                                >
+                                  Lost #
+                                </th>
+                                <th
+                                  scope="col"
+                                  style={{
+                                    padding: '0.375rem 0.75rem',
+                                    textAlign: 'right',
+                                    borderBottom: '1px solid #e5e7eb',
+                                    fontSize: '0.8125rem',
+                                  }}
+                                >
+                                  Won %
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {bidBoardStaffOutcomeByRole.estimators.map((row) => {
+                                const decided = row.won + row.lost
+                                const wonPct =
+                                  decided === 0 ? '—' : `${((100 * row.won) / decided).toFixed(1)}%`
+                                const sent = row.notYetWonOrLost + row.won + row.lost
+                                return (
+                                  <tr key={`est-${row.userId}`} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                    <td style={{ padding: '0.375rem 0.75rem', fontSize: '0.875rem' }}>
+                                      {row.displayName}
+                                    </td>
+                                    <StaffOutcomeDrilldownCountCell
+                                      count={sent}
+                                      userId={row.userId}
+                                      displayName={row.displayName}
+                                      role="estimator"
+                                      metric="sent"
+                                      onOpen={setStaffOutcomeDrilldown}
+                                    />
+                                    <StaffOutcomeDrilldownCountCell
+                                      count={row.notYetWonOrLost}
+                                      userId={row.userId}
+                                      displayName={row.displayName}
+                                      role="estimator"
+                                      metric="notYetWonOrLost"
+                                      onOpen={setStaffOutcomeDrilldown}
+                                    />
+                                    <StaffOutcomeDrilldownCountCell
+                                      count={row.won}
+                                      userId={row.userId}
+                                      displayName={row.displayName}
+                                      role="estimator"
+                                      metric="won"
+                                      onOpen={setStaffOutcomeDrilldown}
+                                    />
+                                    <StaffOutcomeDrilldownCountCell
+                                      count={row.lost}
+                                      userId={row.userId}
+                                      displayName={row.displayName}
+                                      role="estimator"
+                                      metric="lost"
+                                      onOpen={setStaffOutcomeDrilldown}
+                                    />
+                                    <td
+                                      style={{
+                                        padding: '0.375rem 0.75rem',
+                                        fontSize: '0.875rem',
+                                        textAlign: 'right',
+                                      }}
+                                    >
+                                      {wonPct}
+                                    </td>
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <h4
+                        id="bid-board-staff-am-heading"
+                        style={{ fontSize: '0.9375rem', fontWeight: 600, margin: '0 0 0.5rem 0' }}
+                      >
+                        Account managers
+                      </h4>
+                      {bidBoardStaffOutcomeByRole.accountManagers.length === 0 ? (
+                        <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>
+                          {bidBoardStaffOutcomeByRole.accountManagersHadAnyAssignment
+                            ? `No account managers with ${BID_BOARD_STAFF_MIN_BIDS} or more bids in this list.`
+                            : 'No account managers assigned on these bids.'}
+                        </p>
+                      ) : (
+                        <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'auto' }}>
+                          <table
+                            aria-labelledby="bid-board-staff-am-heading"
+                            style={{ width: '100%', borderCollapse: 'collapse', minWidth: 600 }}
+                          >
+                            <thead style={{ background: '#f9fafb' }}>
+                              <tr>
+                                <th
+                                  scope="col"
+                                  style={{
+                                    padding: '0.375rem 0.75rem',
+                                    textAlign: 'left',
+                                    borderBottom: '1px solid #e5e7eb',
+                                    fontSize: '0.8125rem',
+                                  }}
+                                >
+                                  Name
+                                </th>
+                                <th
+                                  scope="col"
+                                  style={{
+                                    padding: '0.375rem 0.75rem',
+                                    textAlign: 'right',
+                                    borderBottom: '1px solid #e5e7eb',
+                                    fontSize: '0.8125rem',
+                                  }}
+                                  title="Bids with a sent date (sum of Not yet won or lost, Won #, and Lost #)"
+                                >
+                                  Sent
+                                </th>
+                                <th
+                                  scope="col"
+                                  style={{
+                                    padding: '0.375rem 0.75rem',
+                                    textAlign: 'right',
+                                    borderBottom: '1px solid #e5e7eb',
+                                    fontSize: '0.6875rem',
+                                    lineHeight: 1.25,
+                                  }}
+                                  title="Sent bids not yet won or lost (excludes unsent)"
+                                >
+                                  Not yet<br />
+                                  won or lost
+                                </th>
+                                <th
+                                  scope="col"
+                                  style={{
+                                    padding: '0.375rem 0.75rem',
+                                    textAlign: 'right',
+                                    borderBottom: '1px solid #e5e7eb',
+                                    fontSize: '0.8125rem',
+                                  }}
+                                >
+                                  Won #
+                                </th>
+                                <th
+                                  scope="col"
+                                  style={{
+                                    padding: '0.375rem 0.75rem',
+                                    textAlign: 'right',
+                                    borderBottom: '1px solid #e5e7eb',
+                                    fontSize: '0.8125rem',
+                                  }}
+                                >
+                                  Lost #
+                                </th>
+                                <th
+                                  scope="col"
+                                  style={{
+                                    padding: '0.375rem 0.75rem',
+                                    textAlign: 'right',
+                                    borderBottom: '1px solid #e5e7eb',
+                                    fontSize: '0.8125rem',
+                                  }}
+                                >
+                                  Won %
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {bidBoardStaffOutcomeByRole.accountManagers.map((row) => {
+                                const decided = row.won + row.lost
+                                const wonPct =
+                                  decided === 0 ? '—' : `${((100 * row.won) / decided).toFixed(1)}%`
+                                const sent = row.notYetWonOrLost + row.won + row.lost
+                                return (
+                                  <tr key={`am-${row.userId}`} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                    <td style={{ padding: '0.375rem 0.75rem', fontSize: '0.875rem' }}>
+                                      {row.displayName}
+                                    </td>
+                                    <StaffOutcomeDrilldownCountCell
+                                      count={sent}
+                                      userId={row.userId}
+                                      displayName={row.displayName}
+                                      role="account_manager"
+                                      metric="sent"
+                                      onOpen={setStaffOutcomeDrilldown}
+                                    />
+                                    <StaffOutcomeDrilldownCountCell
+                                      count={row.notYetWonOrLost}
+                                      userId={row.userId}
+                                      displayName={row.displayName}
+                                      role="account_manager"
+                                      metric="notYetWonOrLost"
+                                      onOpen={setStaffOutcomeDrilldown}
+                                    />
+                                    <StaffOutcomeDrilldownCountCell
+                                      count={row.won}
+                                      userId={row.userId}
+                                      displayName={row.displayName}
+                                      role="account_manager"
+                                      metric="won"
+                                      onOpen={setStaffOutcomeDrilldown}
+                                    />
+                                    <StaffOutcomeDrilldownCountCell
+                                      count={row.lost}
+                                      userId={row.userId}
+                                      displayName={row.displayName}
+                                      role="account_manager"
+                                      metric="lost"
+                                      onOpen={setStaffOutcomeDrilldown}
+                                    />
+                                    <td
+                                      style={{
+                                        padding: '0.375rem 0.75rem',
+                                        fontSize: '0.875rem',
+                                        textAlign: 'right',
+                                      }}
+                                    >
+                                      {wonPct}
+                                    </td>
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
