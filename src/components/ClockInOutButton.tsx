@@ -877,7 +877,10 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
     }
   }
 
-  function renderScheduledDispatchPicks(disabled: boolean, useLastLike: 'clockIn' | 'focusOrReview') {
+  function renderScheduledDispatchPicks(
+    disabled: boolean,
+    useLastLike: 'clockIn' | 'updateFocus' | 'clockOutReview',
+  ) {
     if (scheduledDispatchJobs.length === 0) return null
     const base =
       useLastLike === 'clockIn'
@@ -902,7 +905,6 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
           flexDirection: 'column',
           gap: 6,
           marginBottom: '0.5rem',
-          ...(useLastLike === 'focusOrReview' ? { maxHeight: 160, overflow: 'auto' as const } : {}),
         }}
       >
         {scheduledDispatchJobs.map((d) => {
@@ -1382,7 +1384,17 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
         >
           <div
             id="update-focus-modal"
-            style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 480, width: '90%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
+            style={{
+              background: 'white',
+              padding: '1.5rem',
+              borderRadius: 8,
+              maxWidth: 480,
+              width: '90%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              boxSizing: 'border-box',
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             <style>{`#update-focus-modal textarea:focus,#update-focus-modal input[type=text]:focus,#update-focus-modal input[type=text]:focus-visible{outline:2px solid #3b82f6;outline-offset:2px}`}</style>
@@ -1406,7 +1418,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
             </label>
             <div style={{ marginBottom: '0.5rem' }}>
               <div style={{ marginBottom: '0.25rem' }}>
-                <span style={{ fontWeight: 500 }}>Job or Bid (optional)</span>
+                <span style={{ fontWeight: 500 }}>What Job or Bid are you going to work on?</span>
               </div>
               {selectedAssociation && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
@@ -1431,7 +1443,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
                   </button>
                 </div>
               )}
-              {renderScheduledDispatchPicks(updateFocusLoading, 'focusOrReview')}
+              {renderScheduledDispatchPicks(updateFocusLoading, 'updateFocus')}
               {renderUnifiedJobBidSearchRow(updateFocusLoading)}
               {(unifiedSearchResults.length > 0 || (assignedJobsListLoading && !unifiedSearchText.trim())) && (
                 <div style={{ maxHeight: 160, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4, marginTop: '0.25rem' }}>
@@ -1502,7 +1514,17 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
         >
           <div
             id="clock-out-review-modal"
-            style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 480, width: '90%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
+            style={{
+              background: 'white',
+              padding: '1.5rem',
+              borderRadius: 8,
+              maxWidth: 480,
+              width: '90%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              boxSizing: 'border-box',
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             <style>{`#clock-out-review-modal textarea:focus,#clock-out-review-modal input[type=text]:focus,#clock-out-review-modal input[type=text]:focus-visible{outline:2px solid #dc2626;outline-offset:2px}`}</style>
@@ -1524,7 +1546,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
             </label>
             <div style={{ marginBottom: '0.5rem' }}>
               <div style={{ marginBottom: '0.25rem' }}>
-                <span style={{ fontWeight: 500 }}>Job or Bid (optional)</span>
+                <span style={{ fontWeight: 500 }}>What Job or Bid were you working on?</span>
               </div>
               {selectedAssociation && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
@@ -1549,7 +1571,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
                   </button>
                 </div>
               )}
-              {renderScheduledDispatchPicks(clockOutSaving, 'focusOrReview')}
+              {renderScheduledDispatchPicks(clockOutSaving, 'clockOutReview')}
               {renderUnifiedJobBidSearchRow(clockOutSaving)}
               {(unifiedSearchResults.length > 0 || (assignedJobsListLoading && !unifiedSearchText.trim())) && (
                 <div style={{ maxHeight: 160, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4, marginTop: '0.25rem' }}>
