@@ -1,14 +1,35 @@
-import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useEffect, useState, type CSSProperties } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import AuthPublicLandingLayout from '../components/AuthPublicLandingLayout'
 import EstimateCustomerThankYou from '../components/estimates/EstimateCustomerThankYou'
 import { ContractAcceptSignatureForm } from '../components/contracts/ContractAcceptSignatureForm'
 import { contractBodyHasRenderableDisplay } from '../lib/contractBodyFormat'
 import { ContractBodyDisplay } from '../components/contracts/ContractBodyDisplay'
 import type { EstimateAcceptSubmitPayload } from '../components/estimates/EstimateAcceptBody'
+import { useAuth } from '../hooks/useAuth'
+import { supabase } from '../lib/supabase'
+import { withSupabaseRetry } from '../utils/errorHandling'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
+
+const contractThankYouPrimaryLinkStyle: CSSProperties = {
+  marginTop: '1.5rem',
+  display: 'inline-block',
+  padding: '0.5rem 1.25rem',
+  fontWeight: 600,
+  background: '#ea580c',
+  color: 'white',
+  borderRadius: 6,
+  textDecoration: 'none',
+  textAlign: 'center',
+}
+
+type ContractThankYouCtaState =
+  | { status: 'waiting_auth' }
+  | { status: 'anon' }
+  | { status: 'fetching' }
+  | { status: 'signed_in'; pendingCount: number }
 
 type LoadPayload = {
   id: string
@@ -22,17 +43,55 @@ type LoadPayload = {
 export default function ContractAccept() {
   const [params] = useSearchParams()
   const token = params.get('t')?.trim() ?? ''
+  const { user, loading: authLoading } = useAuth()
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [payload, setPayload] = useState<LoadPayload | null>(null)
   const [alreadySigned, setAlreadySigned] = useState(false)
   const [thankYouTitle, setThankYouTitle] = useState('Thank you')
-  const [thankYouBody, setThankYouBody] = useState('This record has already been completed.')
+  const [thankYouBody, setThankYouBody] = useState('')
   const [printedName, setPrintedName] = useState('')
   const [agreed, setAgreed] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
+  const [thankYouCta, setThankYouCta] = useState<ContractThankYouCtaState>({ status: 'waiting_auth' })
+
+  const showThankYou = done || alreadySigned
+
+  useEffect(() => {
+    if (!showThankYou) {
+      setThankYouCta({ status: 'waiting_auth' })
+      return
+    }
+    if (authLoading) {
+      setThankYouCta({ status: 'waiting_auth' })
+      return
+    }
+    if (!user) {
+      setThankYouCta({ status: 'anon' })
+      return
+    }
+
+    let cancelled = false
+    setThankYouCta({ status: 'fetching' })
+    void (async () => {
+      try {
+        const rows = (await withSupabaseRetry(
+          () => supabase.rpc('list_my_contract_dashboard_prompts'),
+          'list_my_contract_dashboard_prompts',
+        )) as Array<{ id: string }>
+        if (cancelled) return
+        setThankYouCta({ status: 'signed_in', pendingCount: rows.length })
+      } catch {
+        if (!cancelled) setThankYouCta({ status: 'signed_in', pendingCount: 0 })
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [showThankYou, authLoading, user])
 
   useEffect(() => {
     if (!token) {
@@ -62,8 +121,8 @@ export default function ContractAccept() {
         if (res.status === 409 && json.code === 'already_signed') {
           setAlreadySigned(true)
           setPayload(null)
-          if (json.thank_you_title) setThankYouTitle(json.thank_you_title)
-          if (json.thank_you_body) setThankYouBody(json.thank_you_body)
+          setThankYouTitle('Thank you')
+          setThankYouBody('')
           setLoading(false)
           return
         }
@@ -127,11 +186,11 @@ export default function ContractAccept() {
       if (json.alreadySigned) {
         setAlreadySigned(true)
         setThankYouTitle('Thank you')
-        setThankYouBody('This contract was already signed.')
+        setThankYouBody('')
         return
       }
       setThankYouTitle('Thank you')
-      setThankYouBody('Your signature has been recorded.')
+      setThankYouBody('')
       setDone(true)
     } catch {
       setError('Could not record signature. Try again later.')
@@ -163,7 +222,30 @@ export default function ContractAccept() {
       >
         <div className="auth-public-landing__signin-stack auth-public-landing__signin-stack--wide">
           <div className="auth-public-landing__signin-box auth-public-landing__estimate-thankyou-inner">
-            <EstimateCustomerThankYou title={thankYouTitle} body={thankYouBody} />
+            <EstimateCustomerThankYou
+              title={thankYouTitle}
+              body={thankYouBody}
+              footerImageSrc={`${import.meta.env.BASE_URL}pup.jpg`}
+            />
+            <div style={{ textAlign: 'center', padding: '0 1rem 1.5rem' }}>
+              {thankYouCta.status === 'waiting_auth' || thankYouCta.status === 'fetching' ? (
+                <p style={{ margin: '0.5rem 0 0', fontSize: '0.9rem', color: '#6b7280' }}>
+                  Checking for more contracts…
+                </p>
+              ) : thankYouCta.status === 'anon' ? (
+                <Link to="/sign-in" style={contractThankYouPrimaryLinkStyle}>
+                  Sign in
+                </Link>
+              ) : thankYouCta.status === 'signed_in' && thankYouCta.pendingCount > 0 ? (
+                <Link to="/dashboard" style={contractThankYouPrimaryLinkStyle}>
+                  Go to dashboard
+                </Link>
+              ) : thankYouCta.status === 'signed_in' ? (
+                <Link to="/dashboard" style={contractThankYouPrimaryLinkStyle}>
+                  Return to PipeTooling
+                </Link>
+              ) : null}
+            </div>
           </div>
         </div>
       </AuthPublicLandingLayout>

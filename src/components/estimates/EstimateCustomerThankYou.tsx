@@ -6,13 +6,17 @@ export type EstimateCustomerThankYouProps = {
   previewBanner?: string
   title?: string
   body?: string
+  /** Defaults to chick.png */
+  footerImageSrc?: string
 }
 
 export default function EstimateCustomerThankYou({
   previewBanner,
   title = 'Thank you',
   body = DEFAULT_THANK_YOU_BODY,
+  footerImageSrc = `${import.meta.env.BASE_URL}chick.png`,
 }: EstimateCustomerThankYouProps) {
+  const showBody = (body ?? '').trim().length > 0
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif', padding: '2rem', maxWidth: 640, margin: '0 auto' }}>
       {previewBanner ? (
@@ -38,9 +42,11 @@ export default function EstimateCustomerThankYou({
         }}
       >
         <h1 style={{ color: '#166534', margin: '0 0 0.75rem' }}>{title}</h1>
-        <p style={{ margin: '0 0 1.25rem', lineHeight: 1.5 }}>{body}</p>
+        {showBody ? (
+          <p style={{ margin: '0 0 1.25rem', lineHeight: 1.5 }}>{body}</p>
+        ) : null}
         <img
-          src={`${import.meta.env.BASE_URL}chick.png`}
+          src={footerImageSrc}
           alt=""
           style={{ maxWidth: 320, width: '100%', height: 'auto', display: 'block', borderRadius: 8 }}
         />
