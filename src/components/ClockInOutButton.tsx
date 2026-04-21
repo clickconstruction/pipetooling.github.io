@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useDailyGoalsGate } from '../contexts/DailyGoalsGateContext'
 import { useToastContext } from '../contexts/ToastContext'
 import {
   formatUnifiedResult,
+  formatUnifiedJobSchedulePrimaryLine,
   getBidServiceTypeTag,
   type JobSearchResult,
   type BidSearchResult,
@@ -48,7 +49,7 @@ type TodaySession = {
   bid_id: string | null
 }
 
-function dispatchScheduledJobToUnified(d: DispatchScheduledJobForAssign): UnifiedSearchResult {
+function dispatchScheduledJobToUnified(d: DispatchScheduledJobForAssign): Extract<UnifiedSearchResult, { source: 'job' }> {
   return {
     source: 'job',
     id: d.jobId,
@@ -65,6 +66,45 @@ function computeTotalSecondsToday(sessions: TodaySession[]): number {
     const outMs = s.clocked_out_at ? new Date(s.clocked_out_at).getTime() : now
     return sum + Math.floor((outMs - inMs) / 1000)
   }, 0)
+}
+
+/** Bid search args for `search_bids_for_clock` from toggle state (Clock In modals). */
+function buildClockBidsSearchParams(
+  p_search_text: string,
+  opts: {
+    serviceTypes: Array<{ id: string; name: string }>
+    enabledBidServiceTypeIds: string[]
+    subcontractorServiceTypeIds: string[] | null
+  },
+): { p_search_text: string; p_service_type_id?: string; p_service_type_ids?: string[] } {
+  const bidsParams: { p_search_text: string; p_service_type_id?: string; p_service_type_ids?: string[] } = { p_search_text }
+  const typeIds = new Set(opts.serviceTypes.map((t) => t.id))
+  const enabled = opts.enabledBidServiceTypeIds.filter((id) => typeIds.has(id))
+
+  if (opts.subcontractorServiceTypeIds && opts.subcontractorServiceTypeIds.length > 0) {
+    const allowed = opts.subcontractorServiceTypeIds
+    const effective = allowed.filter((id) => enabled.includes(id))
+    // Last-type-off is a no-op; if empty, keep full allowlist.
+    bidsParams.p_service_type_ids = effective.length > 0 ? effective : allowed
+    return bidsParams
+  }
+
+  if (opts.serviceTypes.length <= 1) {
+    if (enabled.length === 1) bidsParams.p_service_type_id = enabled[0]
+    return bidsParams
+  }
+
+  if (enabled.length === 1) {
+    bidsParams.p_service_type_id = enabled[0]
+    return bidsParams
+  }
+  if (enabled.length === opts.serviceTypes.length) {
+    return bidsParams
+  }
+  if (enabled.length > 1) {
+    bidsParams.p_service_type_ids = enabled
+  }
+  return bidsParams
 }
 
 type Props = {
@@ -104,7 +144,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
   const [unifiedSearchResults, setUnifiedSearchResults] = useState<UnifiedSearchResult[]>([])
   const [selectedAssociation, setSelectedAssociation] = useState<UnifiedSearchResult | null>(null)
   const [serviceTypes, setServiceTypes] = useState<Array<{ id: string; name: string }>>([])
-  const [selectedBidServiceTypeId, setSelectedBidServiceTypeId] = useState<string>('')
+  const [enabledBidServiceTypeIds, setEnabledBidServiceTypeIds] = useState<string[]>([])
   const [subcontractorServiceTypeIds, setSubcontractorServiceTypeIds] = useState<string[] | null>(null)
   const [lastSelectedJobBid, setLastSelectedJobBid] = useState<UnifiedSearchResult | null>(null)
   const assignedJobsShownRef = useRef(false)
@@ -444,12 +484,11 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
         return
       }
       const q = unifiedSearchText.trim()
-      const bidsParams: { p_search_text: string; p_service_type_id?: string; p_service_type_ids?: string[] } = { p_search_text: q }
-      if (subcontractorServiceTypeIds && subcontractorServiceTypeIds.length > 0) {
-        bidsParams.p_service_type_ids = subcontractorServiceTypeIds
-      } else if (selectedBidServiceTypeId) {
-        bidsParams.p_service_type_id = selectedBidServiceTypeId
-      }
+      const bidsParams = buildClockBidsSearchParams(q, {
+        serviceTypes,
+        enabledBidServiceTypeIds,
+        subcontractorServiceTypeIds,
+      })
       Promise.all([
         supabase.rpc('search_jobs_ledger', { search_text: q }),
         supabase.rpc('search_bids_for_clock', bidsParams),
@@ -464,7 +503,15 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
       })
     }, 300)
     return () => clearTimeout(t)
-  }, [clockInModalOpen, updateFocusModalOpen, clockOutReviewOpen, unifiedSearchText, selectedBidServiceTypeId, subcontractorServiceTypeIds])
+  }, [
+    clockInModalOpen,
+    updateFocusModalOpen,
+    clockOutReviewOpen,
+    unifiedSearchText,
+    enabledBidServiceTypeIds,
+    subcontractorServiceTypeIds,
+    serviceTypes,
+  ])
 
   useEffect(() => {
     if (!(clockInModalOpen || updateFocusModalOpen || clockOutReviewOpen)) return
@@ -486,14 +533,20 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
             : (me?.role === 'subcontractor' && subIds && subIds.length > 0)
               ? types.filter((t) => subIds.includes(t.id))
               : types
+        const filteredIds = filtered.map((t) => t.id)
         if (filtered.length === 1) {
-          setSelectedBidServiceTypeId(filtered[0]!.id)
+          setEnabledBidServiceTypeIds([filtered[0]!.id])
         } else {
-          setSelectedBidServiceTypeId((prev) => (prev === '' || (prev && filtered.some((t) => t.id === prev)) ? prev : ''))
+          setEnabledBidServiceTypeIds((prev) => {
+            const kept = prev.filter((id) => filteredIds.includes(id))
+            if (kept.length === 0) return filteredIds
+            const missing = filteredIds.filter((id) => !kept.includes(id))
+            return missing.length > 0 ? [...kept, ...missing] : kept
+          })
         }
         setServiceTypes(filtered)
       } else {
-        setSelectedBidServiceTypeId('')
+        setEnabledBidServiceTypeIds(types.map((t) => t.id))
         setServiceTypes(types)
         setSubcontractorServiceTypeIds(null)
       }
@@ -829,9 +882,9 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
     const base =
       useLastLike === 'clockIn'
         ? {
-            border: '1px solid #fed7aa',
+            border: '1px solid #bfdbfe',
             borderRadius: 6,
-            background: '#fff7ed',
+            background: '#eff6ff',
           }
         : {
             border: '1px solid #d1d5db',
@@ -840,30 +893,31 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
           }
     const selected =
       useLastLike === 'clockIn'
-        ? { border: '1px solid #fdba74', background: '#ffedd5' }
+        ? { border: '1px solid #3b82f6', background: '#dbeafe' }
         : { border: '1px solid #9ca3af', background: '#f3f4f6' }
     return (
       <div
         style={{
-          maxHeight: 160,
-          overflow: 'auto',
           display: 'flex',
           flexDirection: 'column',
           gap: 6,
-          marginTop: '0.25rem',
           marginBottom: '0.5rem',
+          ...(useLastLike === 'focusOrReview' ? { maxHeight: 160, overflow: 'auto' as const } : {}),
         }}
       >
         {scheduledDispatchJobs.map((d) => {
           const u = dispatchScheduledJobToUnified(d)
           const win = d.windowsLabel?.trim()
+          const { title, address } = formatUnifiedJobSchedulePrimaryLine(u)
           const isSelected = selectedAssociation?.source === 'job' && selectedAssociation.id === d.jobId
+          const line1 = win ? `${win} | ${title}` : title
+          const titleAttr = address ? `${line1}\n${address}` : line1
           return (
             <button
               key={d.jobId}
               type="button"
               disabled={disabled}
-              title={win || undefined}
+              title={titleAttr || undefined}
               onClick={() => {
                 setSelectedAssociation(u)
                 setUnifiedSearchResults([])
@@ -881,13 +935,143 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
                 ...(isSelected ? { ...base, ...selected } : base),
               }}
             >
-              On schedule: {formatUnifiedResult(u)}
-              {win ? (
-                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{win}</div>
+              <div>{line1}</div>
+              {address ? (
+                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{address}</div>
               ) : null}
             </button>
           )
         })}
+      </div>
+    )
+  }
+
+  function renderUseLastJobBidShortcut(opts: { disabled: boolean; useLastStyle: 'clockIn' | 'focusOrReview' }) {
+    const showUseLast = Boolean(lastSelectedJobBid && !useLastHiddenBySchedule)
+    if (!showUseLast || !lastSelectedJobBid) return null
+    const useLastBtnStyle: CSSProperties =
+      opts.useLastStyle === 'clockIn'
+        ? {
+            padding: '0.25rem 0.5rem',
+            fontSize: '0.8125rem',
+            border: '1px solid #bfdbfe',
+            borderRadius: 6,
+            background: '#eff6ff',
+            cursor: opts.disabled ? 'not-allowed' : 'pointer',
+          }
+        : {
+            padding: '0.25rem 0.5rem',
+            fontSize: '0.8125rem',
+            border: '1px solid #d1d5db',
+            borderRadius: 4,
+            background: 'white',
+            cursor: opts.disabled ? 'not-allowed' : 'pointer',
+          }
+    return (
+      <div style={{ marginTop: '0.5rem' }}>
+        <button
+          type="button"
+          onClick={() => setSelectedAssociation(lastSelectedJobBid)}
+          disabled={opts.disabled}
+          style={{ ...useLastBtnStyle, alignSelf: 'flex-start' }}
+        >
+          Use last: {formatUnifiedResult(lastSelectedJobBid)}
+        </button>
+      </div>
+    )
+  }
+
+  function renderUnifiedJobBidSearchRow(disabled: boolean) {
+    const enabledSet = new Set(enabledBidServiceTypeIds)
+    const toggles =
+      serviceTypes.length > 1 ? (
+        <div
+          role="group"
+          aria-label="Bid service types to include in search"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '0.22rem',
+            flexShrink: 0,
+          }}
+        >
+          {serviceTypes.map((st) => {
+            const on = enabledSet.has(st.id)
+            const tagInfo = getBidServiceTypeTag(st.name)
+            const label = (tagInfo?.tag ?? st.name.slice(0, 4)).toUpperCase()
+            const borderColor = tagInfo?.color ?? '#d1d5db'
+            return (
+              <button
+                key={st.id}
+                type="button"
+                disabled={disabled}
+                aria-pressed={on}
+                aria-label={`${on ? 'Hide' : 'Show'} ${st.name} bids in search`}
+                onClick={() => {
+                  setEnabledBidServiceTypeIds((prev) => {
+                    if (prev.includes(st.id)) {
+                      if (prev.length <= 1) return prev
+                      return prev.filter((id) => id !== st.id)
+                    }
+                    return [...prev, st.id]
+                  })
+                  setUnifiedSearchResults([])
+                }}
+                style={{
+                  padding: '0.1rem 0.3rem',
+                  fontSize: '0.6875rem',
+                  lineHeight: 1,
+                  fontWeight: 600,
+                  letterSpacing: '0.02em',
+                  borderRadius: 3,
+                  border: `1px solid ${borderColor}`,
+                  background: on ? borderColor : 'white',
+                  color: on ? '#fff' : '#374151',
+                  cursor: disabled ? 'not-allowed' : 'pointer',
+                  opacity: disabled ? 0.6 : 1,
+                }}
+              >
+                {label}
+              </button>
+            )
+          })}
+        </div>
+      ) : null
+
+    return (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '0.35rem',
+          width: '100%',
+        }}
+      >
+        {toggles}
+        <input
+          type="text"
+          value={unifiedSearchText}
+          onChange={(e) => {
+            setUnifiedSearchText(e.target.value)
+            setSelectedAssociation(null)
+            assignedJobsShownRef.current = false
+          }}
+          placeholder="Search to choose other job or bid"
+          disabled={disabled}
+          style={{
+            flex: 1,
+            minWidth: 0,
+            padding: '0.25rem 0.4rem',
+            boxSizing: 'border-box',
+            border: '1px solid #d1d5db',
+            borderRadius: 4,
+            background: '#fff',
+            fontSize: '0.75rem',
+            lineHeight: 1.3,
+          }}
+        />
       </div>
     )
   }
@@ -1075,7 +1259,18 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
         >
           <div
             id="clock-in-modal"
-            style={{ background: '#fefcfb', padding: '1.5rem', borderRadius: 12, maxWidth: 480, width: '90%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', borderTop: '4px solid #ff6600' }}
+            style={{
+              background: '#fefcfb',
+              padding: '1.5rem',
+              borderRadius: 12,
+              maxWidth: 480,
+              width: '90%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              boxSizing: 'border-box',
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+              borderTop: '4px solid #ff6600',
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             <style>{`#clock-in-modal textarea:focus,#clock-in-modal textarea:focus-visible,#clock-in-modal input[type=text]:focus,#clock-in-modal input[type=text]:focus-visible,#clock-in-modal button:focus-visible{outline:2px solid #ff6600;outline-offset:2px}`}</style>
@@ -1086,27 +1281,16 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
                 ref={clockInNotesRef}
                 value={clockInNotes}
                 onChange={(e) => setClockInNotes(e.target.value)}
-                placeholder="e.g. Rough-in at 123 Main St, or finishing trim in Unit 4"
+                placeholder="e.g. Rough-in, Bid for Kiki, Hydrostatic test"
                 rows={3}
                 disabled={actionLoading}
                 style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box', border: '2px solid #64748b', borderRadius: 6, background: '#fff' }}
               />
             </label>
             <div style={{ marginBottom: '0.5rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
-                <span style={{ fontWeight: 500 }}>Link to a job or bid (optional)</span>
-                {lastSelectedJobBid && !useLastHiddenBySchedule && (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedAssociation(lastSelectedJobBid)}
-                    disabled={actionLoading}
-                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #fed7aa', borderRadius: 6, background: '#fff7ed', cursor: actionLoading ? 'not-allowed' : 'pointer' }}
-                  >
-                    Use last: {formatUnifiedResult(lastSelectedJobBid)}
-                  </button>
-                )}
+              <div style={{ marginBottom: '0.25rem' }}>
+                <span style={{ fontWeight: 500 }}>What job or bid should we change for your time?</span>
               </div>
-              {renderScheduledDispatchPicks(actionLoading, 'clockIn')}
               {selectedAssociation && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                   <span style={{ flex: 1, padding: '0.5rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -1130,27 +1314,8 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
                   </button>
                 </div>
               )}
-              <input
-                type="text"
-                value={unifiedSearchText}
-                onChange={(e) => { setUnifiedSearchText(e.target.value); setSelectedAssociation(null); assignedJobsShownRef.current = false }}
-                placeholder="Search by HCP #, bid #, project name, or address"
-                disabled={actionLoading}
-                style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box', border: '2px solid #64748b', borderRadius: 6, background: '#fff' }}
-              />
-              {serviceTypes.length === 1 ? null : serviceTypes.length > 1 ? (
-                <select
-                  value={selectedBidServiceTypeId}
-                  onChange={(e) => { setSelectedBidServiceTypeId(e.target.value); setUnifiedSearchResults([]) }}
-                  disabled={actionLoading}
-                  style={{ width: '100%', padding: '0.5rem', marginTop: '0.5rem', border: '1px solid #d1d5db', borderRadius: 6 }}
-                >
-                  <option value="">Show all types ({serviceTypes.map((st) => st.name).join(', ')})</option>
-                  {serviceTypes.map((st) => (
-                    <option key={st.id} value={st.id}>{st.name}</option>
-                  ))}
-                </select>
-              ) : null}
+              {renderScheduledDispatchPicks(actionLoading, 'clockIn')}
+              {renderUnifiedJobBidSearchRow(actionLoading)}
               {(unifiedSearchResults.length > 0 || (assignedJobsListLoading && !unifiedSearchText.trim())) && (
                 <div style={{ maxHeight: 160, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4, marginTop: '0.25rem' }}>
                   {assignedJobsListLoading && unifiedSearchResults.length === 0 && !unifiedSearchText.trim() ? (
@@ -1177,6 +1342,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
                   )}
                 </div>
               )}
+              {renderUseLastJobBidShortcut({ disabled: actionLoading, useLastStyle: 'clockIn' })}
             </div>
             {clockInError && (
               <p style={{ color: '#dc2626', fontSize: '0.875rem', margin: '0 0 0.75rem 0' }}>
@@ -1239,20 +1405,9 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
               />
             </label>
             <div style={{ marginBottom: '0.5rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
+              <div style={{ marginBottom: '0.25rem' }}>
                 <span style={{ fontWeight: 500 }}>Job or Bid (optional)</span>
-                {lastSelectedJobBid && !useLastHiddenBySchedule && (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedAssociation(lastSelectedJobBid)}
-                    disabled={updateFocusLoading}
-                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: updateFocusLoading ? 'not-allowed' : 'pointer' }}
-                  >
-                    Use last: {formatUnifiedResult(lastSelectedJobBid)}
-                  </button>
-                )}
               </div>
-              {renderScheduledDispatchPicks(updateFocusLoading, 'focusOrReview')}
               {selectedAssociation && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                   <span style={{ flex: 1, padding: '0.5rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -1276,27 +1431,8 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
                   </button>
                 </div>
               )}
-              <input
-                type="text"
-                value={unifiedSearchText}
-                onChange={(e) => { setUnifiedSearchText(e.target.value); setSelectedAssociation(null); assignedJobsShownRef.current = false }}
-                placeholder="Search by HCP #, bid #, project name, or address"
-                disabled={updateFocusLoading}
-                style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box', border: '2px solid #64748b', borderRadius: 6, background: '#fff' }}
-              />
-              {serviceTypes.length === 1 ? null : serviceTypes.length > 1 ? (
-                <select
-                  value={selectedBidServiceTypeId}
-                  onChange={(e) => { setSelectedBidServiceTypeId(e.target.value); setUnifiedSearchResults([]) }}
-                  disabled={updateFocusLoading}
-                  style={{ width: '100%', padding: '0.5rem', marginTop: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                >
-                  <option value="">Show all types ({serviceTypes.map((st) => st.name).join(', ')})</option>
-                  {serviceTypes.map((st) => (
-                    <option key={st.id} value={st.id}>{st.name}</option>
-                  ))}
-                </select>
-              ) : null}
+              {renderScheduledDispatchPicks(updateFocusLoading, 'focusOrReview')}
+              {renderUnifiedJobBidSearchRow(updateFocusLoading)}
               {(unifiedSearchResults.length > 0 || (assignedJobsListLoading && !unifiedSearchText.trim())) && (
                 <div style={{ maxHeight: 160, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4, marginTop: '0.25rem' }}>
                   {assignedJobsListLoading && unifiedSearchResults.length === 0 && !unifiedSearchText.trim() ? (
@@ -1323,6 +1459,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
                   )}
                 </div>
               )}
+              {renderUseLastJobBidShortcut({ disabled: updateFocusLoading, useLastStyle: 'focusOrReview' })}
             </div>
             {updateFocusError && (
               <p style={{ color: '#dc2626', fontSize: '0.875rem', margin: '0 0 0.75rem 0' }}>{updateFocusError}</p>
@@ -1386,20 +1523,9 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
               />
             </label>
             <div style={{ marginBottom: '0.5rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
+              <div style={{ marginBottom: '0.25rem' }}>
                 <span style={{ fontWeight: 500 }}>Job or Bid (optional)</span>
-                {lastSelectedJobBid && !useLastHiddenBySchedule && (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedAssociation(lastSelectedJobBid)}
-                    disabled={clockOutSaving}
-                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: clockOutSaving ? 'not-allowed' : 'pointer' }}
-                  >
-                    Use last: {formatUnifiedResult(lastSelectedJobBid)}
-                  </button>
-                )}
               </div>
-              {renderScheduledDispatchPicks(clockOutSaving, 'focusOrReview')}
               {selectedAssociation && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                   <span style={{ flex: 1, padding: '0.5rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -1423,34 +1549,8 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
                   </button>
                 </div>
               )}
-              <input
-                type="text"
-                value={unifiedSearchText}
-                onChange={(e) => {
-                  setUnifiedSearchText(e.target.value)
-                  setSelectedAssociation(null)
-                  assignedJobsShownRef.current = false
-                }}
-                placeholder="Search by HCP #, bid #, project name, or address"
-                disabled={clockOutSaving}
-                style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box', border: '2px solid #64748b', borderRadius: 6, background: '#fff' }}
-              />
-              {serviceTypes.length === 1 ? null : serviceTypes.length > 1 ? (
-                <select
-                  value={selectedBidServiceTypeId}
-                  onChange={(e) => {
-                    setSelectedBidServiceTypeId(e.target.value)
-                    setUnifiedSearchResults([])
-                  }}
-                  disabled={clockOutSaving}
-                  style={{ width: '100%', padding: '0.5rem', marginTop: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                >
-                  <option value="">Show all types ({serviceTypes.map((st) => st.name).join(', ')})</option>
-                  {serviceTypes.map((st) => (
-                    <option key={st.id} value={st.id}>{st.name}</option>
-                  ))}
-                </select>
-              ) : null}
+              {renderScheduledDispatchPicks(clockOutSaving, 'focusOrReview')}
+              {renderUnifiedJobBidSearchRow(clockOutSaving)}
               {(unifiedSearchResults.length > 0 || (assignedJobsListLoading && !unifiedSearchText.trim())) && (
                 <div style={{ maxHeight: 160, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4, marginTop: '0.25rem' }}>
                   {assignedJobsListLoading && unifiedSearchResults.length === 0 && !unifiedSearchText.trim() ? (
@@ -1491,6 +1591,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
                   )}
                 </div>
               )}
+              {renderUseLastJobBidShortcut({ disabled: clockOutSaving, useLastStyle: 'focusOrReview' })}
             </div>
             {clockOutReviewError && (
               <p style={{ color: '#dc2626', fontSize: '0.875rem', margin: '0 0 0.75rem 0' }}>{clockOutReviewError}</p>

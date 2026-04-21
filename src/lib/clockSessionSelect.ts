@@ -1,6 +1,6 @@
 /** Select for dashboard today clock strip (work_date = today): times, memo, job/bid embeds. */
 export const CLOCK_SESSION_TODAY_STRIP_SELECT =
-  'id, user_id, clocked_in_at, clocked_out_at, approved_at, rejected_at, revoked_at, notes, job_ledger_id, bid_id, origin, users!clock_sessions_user_id_fkey(name), jobs_ledger!clock_sessions_job_ledger_id_fkey(hcp_number, job_name, job_address), bids!clock_sessions_bid_id_fkey(bid_number, project_name, address, customers(name))'
+  'id, user_id, clocked_in_at, clocked_out_at, approved_at, rejected_at, revoked_at, notes, job_ledger_id, bid_id, origin, salary_segment_index, users!clock_sessions_user_id_fkey(name), jobs_ledger!clock_sessions_job_ledger_id_fkey(hcp_number, job_name, job_address), bids!clock_sessions_bid_id_fkey(bid_number, project_name, address, customers(name))'
 
 /** Month grid + day modal: own sessions with job/bid embeds (no GPS / approver joins). */
 export const CLOCK_SESSION_CALENDAR_SELECT =

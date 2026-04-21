@@ -7,16 +7,19 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-22
+last_updated: 2026-04-21
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.367 → v2.4"
+version_range: "v2.368 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.368)"
+    line: ~1188
+    description: "Public /contract/accept: no For line; title-only thank-you + pup.jpg + Dashboard/Sign-in CTA (list_my_contract_dashboard_prompts)"
   - name: "Latest Version (v2.367)"
-    line: ~1184
+    line: ~1225
     description: "Dashboard Jobs worked today: aggregate row for no job/no bid (split salary unassigned segments); JOBS_WORKED_TODAY_UNASSIGNED_ID; muted label, no job link"
   - name: "Latest Version (v2.366)"
     line: ~1200
@@ -928,6 +931,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.368 — **Public** **`/contract/accept`**: no **For:** signer line; **title-only** thank-you + **`public/pup.jpg`** + **`list_my_contract_dashboard_prompts`** CTA (**Go to dashboard** / **Return to PipeTooling** / **Sign in**) — **`ContractAccept.tsx`**, **`EstimateCustomerThankYou`** **`footerImageSrc`**](#latest-updates-v2368)
 **New:** [v2.367 — **Dashboard** **Jobs worked today**: **No job or bid** aggregate row (**split-day** / unassigned segments); **`JOBS_WORKED_TODAY_UNASSIGNED_ID`**; muted label (**no** job **`Link`**) — **`useDashboardMyTeamSectionState`**, **`DashboardTeamActiveClockStrip`**](#latest-updates-v2367)
 **New:** [v2.366 — **Bill Customer**: **`jobs_ledger.status`** → **billed** when the job is **fully invoiced out** (**Stripe**, **HouseCall Pro**, **Physical**) — **`maybePromoteJobToBilledAfterCustomerInvoice`** (**`promoteJobToBilledIfFullyInvoiced.ts`**); Edge **`send-physical-invoice-email`** persists invoice only](#latest-updates-v2366)
 **New:** [v2.365 — **People** **Contracts**: **lineage** (**Ver.**), **Applied version** pin, **Edit** in **⋯**; **Contract Book** save → **`create_pending_contract_versions_after_book_save`** (signed → new **`unsent`** row)](#latest-updates-v2365)
@@ -1183,6 +1187,18 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.368)
+
+**Date**: 2026-04-21
+
+### **People / public signing** — **`/contract/accept`** thank-you and signing page polish
+
+- **Signing view** — [`ContractAccept.tsx`](src/pages/ContractAccept.tsx): document **title**, optional **Open full document** / scrollable signing body, and [`ContractAcceptSignatureForm`](src/components/contracts/ContractAcceptSignatureForm.tsx). The **For:** **`person_name`** line is **not** shown ( **`person_name`** remains on **`person_contract_documents`** for staff in **People** and in Resend email context).
+- **Thank-you** — Reuses [`EstimateCustomerThankYou`](src/components/estimates/EstimateCustomerThankYou.tsx): **`footerImageSrc`** **`public/pup.jpg`** on this page only (estimate accept still uses **`chick.png`** via default). **Body** paragraph omitted (**title-only** “Thank you”); [`EstimateCustomerThankYou`](src/components/estimates/EstimateCustomerThankYou.tsx) skips the **body** `<p>` when **`body`** trims empty so other callers are unchanged.
+- **Post-sign CTA** — [`useAuth`](src/hooks/useAuth.ts) + **`list_my_contract_dashboard_prompts`** ([`20260420234856_person_contract_documents_dashboard_prompt_after_clock_in.sql`](supabase/migrations/20260420234856_person_contract_documents_dashboard_prompt_after_clock_in.sql)): while resolving, **Checking for more contracts…**; if signed in and RPC returns rows, primary link **Go to dashboard** → **`/dashboard`**; if signed in and none, **Return to PipeTooling** → **`/dashboard`**; if logged out, **Sign in** → **`/sign-in`**. **`get-contract-for-signer`** **409** **`already_signed`** thank-you strings from the Edge response are not applied to this UI (same title-only treatment).
+
 ---
 
 ## Latest Updates (v2.367)

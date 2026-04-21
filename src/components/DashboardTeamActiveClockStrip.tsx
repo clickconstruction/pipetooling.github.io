@@ -503,7 +503,7 @@ const stripScopeOverlay: CSSProperties = {
   zIndex: 3,
 }
 
-/** Open clock sessions plus "Clocked in today" summary (Dashboard). Mount when there are open sessions or today rows so the tick interval runs when needed. */
+/** Open clock sessions plus "Clocked in today" summary (Dashboard). Mount when there are open sessions or today rows so the tick interval runs when needed. Omits the "Currently In" table when `sessions` is empty (and `hideCurrentlyInTable` is false). */
 export function DashboardTeamActiveClockStrip({
   sessions,
   hoursTodayByUserId,
@@ -821,6 +821,7 @@ export function DashboardTeamActiveClockStrip({
     (clockedInTodayTableMode === 'missing' || clockedInTodayFocusedRows.length < clockedInTodayRows.length)
   const clockedInTodayColSpan = 3
   const scopeShowsOverlay = showScopeToggle && !!onClockStripScopeChange
+  const showCurrentlyInTable = !hideCurrentlyInTable && sessions.length > 0
   const scopeHeaderReserve: CSSProperties = scopeShowsOverlay
     ? { paddingRight: 'clamp(8.5rem, 22vw, 10.5rem)' }
     : {}
@@ -931,7 +932,7 @@ export function DashboardTeamActiveClockStrip({
             </div>
           </div>
         ) : null}
-        {!hideCurrentlyInTable ? (
+        {showCurrentlyInTable ? (
         <div style={{ overflowX: 'auto' }} aria-live="polite">
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
@@ -1149,7 +1150,7 @@ export function DashboardTeamActiveClockStrip({
         ) : null}
         <div
           style={{
-            borderTop: '1px solid #e5e7eb',
+            borderTop: showCurrentlyInTable ? '1px solid #e5e7eb' : 'none',
           }}
         >
           {clockedInTodayRows.length === 0 ? (

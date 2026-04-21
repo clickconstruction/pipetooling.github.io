@@ -32,3 +32,14 @@ export function formatUnifiedResult(r: UnifiedSearchResult): string {
   const prefix = `B${(r.bid_number || '').trim() || '—'}`
   return `${prefix} · ${r.project_name || '—'} - ${r.address || r.customer_name || '—'}`
 }
+
+/** J{hcp} · job name (no address) + trimmed address for two-line schedule quick-picks. */
+export function formatUnifiedJobSchedulePrimaryLine(
+  r: Extract<UnifiedSearchResult, { source: 'job' }>,
+): { title: string; address: string } {
+  const prefix = `J${(r.hcp_number || '').trim() || '—'}`
+  return {
+    title: `${prefix} · ${r.job_name || '—'}`,
+    address: (r.job_address || '').trim(),
+  }
+}

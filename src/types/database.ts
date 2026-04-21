@@ -9219,6 +9219,10 @@ export type Database = {
         Args: { p_target: string; p_viewer: string }
         Returns: boolean
       }
+      subcontractor_can_read_jobs_ledger_row: {
+        Args: { p_job_id: string }
+        Returns: boolean
+      }
       submit_collect_payment_certification: {
         Args: {
           p_correction_notes?: string

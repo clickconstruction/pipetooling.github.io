@@ -420,6 +420,13 @@ export function SalaryWorkScheduleSettings({
         showToast('Split segments must total 8 hours', 'error')
         return
       }
+      if (mode === 'split' && toPgTime(segmentBStart) === toPgTime(segmentAStart)) {
+        showToast(
+          'Split day: second block cannot start at the same time as the first. Set segment B to after the first block (or re-pick a break) so the afternoon window is not identical to the morning window.',
+          'error',
+        )
+        return
+      }
       if (mode === 'split') {
         const brOpts = validSplitBreakMinutesForAnchor({
           segmentAStart,
@@ -469,6 +476,13 @@ export function SalaryWorkScheduleSettings({
         }
         if (ovMode === 'split' && ovADur + (480 - ovADur) !== 480) {
           showToast('Override segments must total 8 hours', 'error')
+          return
+        }
+        if (ovMode === 'split' && toPgTime(ovBStart) === toPgTime(ovAStart)) {
+          showToast(
+            'Split override: second block start cannot match the first. Adjust times or the break so segment B is after segment A ends.',
+            'error',
+          )
           return
         }
         if (ovMode === 'split') {

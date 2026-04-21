@@ -15,6 +15,14 @@ function effectiveSalaryTz(template: TemplateRow | null, override: OverrideRo | 
   return APP_CALENDAR_TZ
 }
 
+export function getSalaryScheduleWindowsUtc(
+  workDateYmd: string,
+  template: TemplateRow,
+  overrideForDate: OverrideRo | null | undefined,
+): Array<{ start: number; end: number }> | null {
+  return buildScheduleWindowsUtc(workDateYmd, template, overrideForDate)
+}
+
 function buildScheduleWindowsUtc(
   workDateYmd: string,
   template: TemplateRow,
@@ -38,7 +46,12 @@ function buildScheduleWindowsUtc(
       const t1 = salaryPgTimeToHms(sbTimeStr)
       const start1 = salaryZonedWallClockToUtcMs(workDateYmd, t1.h, t1.m, t1.s, tz)
       if (start1 != null) {
-        windows.push({ start: start1, end: start1 + sbDur * 60 * 1000 })
+        const end0 = start0 + saDur * 60 * 1000
+        let s1 = start1
+        if (s1 === start0) {
+          s1 = end0
+        }
+        windows.push({ start: s1, end: s1 + sbDur * 60 * 1000 })
       }
     }
   }
@@ -62,7 +75,7 @@ export function getSalarySyntheticClockInIso(params: {
   })
   if (resolution.kind !== 'scheduled') return null
 
-  const windows = buildScheduleWindowsUtc(workDateYmd, template, overrideForDate)
+  const windows = getSalaryScheduleWindowsUtc(workDateYmd, template, overrideForDate)
   if (!windows || windows.length === 0) return null
 
   for (const w of windows) {
