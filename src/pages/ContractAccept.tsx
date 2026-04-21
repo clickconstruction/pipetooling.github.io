@@ -284,9 +284,6 @@ export default function ContractAccept() {
       <div className="auth-public-landing__signin-stack auth-public-landing__signin-stack--wide">
         <div className="auth-public-landing__signin-box" style={{ maxWidth: 720 }}>
           <h1 style={{ fontSize: '1.35rem', marginTop: 0 }}>{payload.document_name}</h1>
-          <p style={{ fontSize: '0.95rem', color: '#374151', marginBottom: '1rem' }}>
-            <strong>For:</strong> {payload.person_name}
-          </p>
 
           {canonical ? (
             <p style={{ marginBottom: '1rem' }}>
