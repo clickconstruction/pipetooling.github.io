@@ -68,12 +68,16 @@ export type MyTimeDayClusterVisualProps = {
   rejectSessionBusyId?: string | null
   /** Dashboard clock preview: strip and actions non-interactive. */
   readOnlyView?: boolean
+  /** Strip-origin My Time: show “Salaried” under bottom time next to the vertical strip. */
+  salariedStripFooterLabel?: boolean
   dispatchScheduleAssigneeUserId?: string
   dispatchScheduleWorkDateYmd?: string
   draftLocalJobBidAssign?: (
     target: AssignSessionJobPopoverSession,
     selection: UnifiedSearchResult | null,
   ) => void
+  /** False for the last cluster in the day timeline: no bottom separator under the final block. */
+  showClusterBottomDivider?: boolean
 }
 
 export function MyTimeDayClusterVisual({
@@ -104,9 +108,11 @@ export function MyTimeDayClusterVisual({
   onRejectSession,
   rejectSessionBusyId = null,
   readOnlyView = false,
+  salariedStripFooterLabel = false,
   dispatchScheduleAssigneeUserId,
   dispatchScheduleWorkDateYmd,
   draftLocalJobBidAssign,
+  showClusterBottomDivider = true,
 }: MyTimeDayClusterVisualProps) {
   const openLastCluster = !lastS.clocked_out_at
   const compactMerge = useMyTimeCompactMergeMedia()
@@ -152,7 +158,7 @@ export function MyTimeDayClusterVisual({
         alignItems: 'stretch',
         gap: compactMerge ? 5 : 10,
         padding: '0.5rem 0',
-        borderBottom: '2px solid #d1d5db',
+        borderBottom: showClusterBottomDivider ? '2px solid #d1d5db' : 'none',
       }}
     >
       <div
@@ -406,6 +412,21 @@ export function MyTimeDayClusterVisual({
             </button>
           ) : null}
         </div>
+        {salariedStripFooterLabel ? (
+          <span
+            style={{
+              fontSize: '0.65rem',
+              color: '#9ca3af',
+              fontWeight: 500,
+              lineHeight: 1.15,
+              textAlign: compactMerge ? 'left' : 'center',
+              pointerEvents: 'none',
+              alignSelf: compactMerge ? 'flex-start' : undefined,
+            }}
+          >
+            Salaried
+          </span>
+        ) : null}
       </div>
       <div
         style={{

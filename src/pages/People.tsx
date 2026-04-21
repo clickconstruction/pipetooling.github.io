@@ -45,11 +45,7 @@ import { CLOCK_SESSION_LIST_SELECT } from '../lib/clockSessionSelect'
 import { approveClockSessions } from '../lib/approveClockSessions'
 import { clockSessionMatchesSearch } from '../lib/clockSessionSearch'
 import { cascadePersonNameInPayTables } from '../lib/cascadePersonName'
-import {
-  denverWorkDateToday,
-  removeSalaryScheduleForUser,
-  syncSalaryClockSessionsForUserDay,
-} from '../lib/salaryScheduleSync'
+import { denverWorkDateToday, syncSalaryClockSessionsForUserDay } from '../lib/salaryScheduleSync'
 import {
   isPayStubFullyPaid,
   PAY_STUB_PAY_FULLY_TOLERANCE,
@@ -396,6 +392,8 @@ export default function People() {
   const [mergeDuplicates, setMergeDuplicates] = useState<Array<{ personName: string; userDisplayName: string; email: string }>>([])
   const [mergingPersonName, setMergingPersonName] = useState<string | null>(null)
   const [payConfigModalOpen, setPayConfigModalOpen] = useState(false)
+  /** Roster name → still has salary_work_schedule_templates row (for pay config modal orphan indicator). */
+  const [salaryTemplateByPersonName, setSalaryTemplateByPersonName] = useState<Record<string, boolean>>({})
   const [salariedWorkdaysModalOpen, setSalariedWorkdaysModalOpen] = useState(false)
 
   useEffect(() => {
@@ -1965,6 +1963,49 @@ export default function People() {
     }
     return sections
   }, [people, users])
+
+  const loadPayConfigSalaryTemplateIndicators = useCallback(async () => {
+    const nameSet = new Set<string>()
+    for (const sec of payConfigRosterSections) {
+      for (const raw of sec.names) {
+        const t = raw.trim()
+        if (t) nameSet.add(t)
+      }
+    }
+    const names = [...nameSet]
+    const nameToUid = new Map<string, string>()
+    for (const u of users) {
+      const tn = u.name?.trim()
+      if (tn && nameSet.has(tn)) nameToUid.set(tn, u.id)
+    }
+    const uids = [...new Set(nameToUid.values())]
+    if (uids.length === 0) {
+      setSalaryTemplateByPersonName({})
+      return
+    }
+    try {
+      const rows = await withSupabaseRetry(
+        async () =>
+          supabase.from('salary_work_schedule_templates').select('user_id').in('user_id', uids),
+        'pay config salary template indicators',
+      )
+      const list = (rows ?? []) as Array<{ user_id: string }>
+      const templateUids = new Set(list.map((r) => r.user_id))
+      const out: Record<string, boolean> = {}
+      for (const n of names) {
+        const uid = nameToUid.get(n)
+        out[n] = uid != null && templateUids.has(uid)
+      }
+      setSalaryTemplateByPersonName(out)
+    } catch {
+      setSalaryTemplateByPersonName({})
+    }
+  }, [payConfigRosterSections, users])
+
+  useEffect(() => {
+    if (!payConfigModalOpen || !canAccessPay) return
+    void loadPayConfigSalaryTemplateIndicators()
+  }, [payConfigModalOpen, canAccessPay, loadPayConfigSalaryTemplateIndicators])
 
   const resolvePersonIdForUsersRow = useCallback(
     (
@@ -5995,9 +6036,28 @@ export default function People() {
             )
           }
         } else if (stoppedBeingSalary) {
-          if (uidMatch) {
-            const { error: rmErr } = await removeSalaryScheduleForUser(uidMatch)
-            if (rmErr) showToast(rmErr, 'error')
+          try {
+            const payload = await withSupabaseRetry(
+              async () =>
+                supabase.rpc('pay_staff_clear_salary_schedule_by_person_name', {
+                  p_person_name: personName.trim(),
+                }),
+              'pay_staff_clear_salary_schedule_by_person_name',
+            )
+            const result = payload as { ok?: boolean; message?: string }
+            if (result?.ok === true) {
+              showToast('Salaried work schedule removed.', 'success')
+              void loadPayConfigSalaryTemplateIndicators()
+            } else {
+              showToast(
+                typeof result?.message === 'string' && result.message.length > 0
+                  ? result.message
+                  : 'Could not remove salaried work schedule.',
+                'error',
+              )
+            }
+          } catch (e) {
+            showToast(formatErrorMessage(e, 'Could not remove salaried work schedule'), 'error')
           }
         }
       }
@@ -8801,6 +8861,7 @@ export default function People() {
                 payConfigDraft={payConfigDraft}
                 payConfigSaving={payConfigSaving}
                 isDev={isDev}
+                salaryTemplateByPersonName={salaryTemplateByPersonName}
                 onUpsertPayConfig={upsertPayConfig}
                 onHourlyWageChange={updatePayConfigHourlyWage}
               />

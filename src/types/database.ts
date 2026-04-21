@@ -9041,6 +9041,10 @@ export type Database = {
         }
         Returns: Json
       }
+      pay_staff_clear_salary_schedule_by_person_name: {
+        Args: { p_person_name: string }
+        Returns: Json
+      }
       preview_merge_customers: {
         Args: { p_survivor: string; p_victim: string }
         Returns: Json

@@ -83,6 +83,12 @@ import {
 import type { UnifiedSearchResult } from '../utils/unifiedJobBidSearch'
 import { isDraftPeopleHoursSessionId } from '../lib/peopleHoursManualDraftSession'
 import { partitionMixedClusterSingleSegmentToRowIntervals } from '../lib/myTimeMixedClusterSingleSegmentPartition'
+import { syncSalaryClockSessionsForUserDay } from '../lib/salaryScheduleSync'
+import {
+  resolveCalendarWorkday,
+  UNPAID_TIME_OFF_LABEL,
+} from '../lib/resolveCalendarWorkday'
+import type { Database } from '../types/database'
 
 export type { DayEditorSession }
 
@@ -266,6 +272,13 @@ type Props = {
   onMarkNotComingIn?: () => void | Promise<void>
   /** Dashboard clock preview: allow splits/assign/notes; disable Adjust times, force clock-out, reject, NCNS. */
   clockTimesReadOnly?: boolean
+  /** Dashboard strip Today → My Time: show “Salaried” under each Visual cluster’s vertical strip when pay config is salary. */
+  showSalariedLabelUnderVisualStrip?: boolean
+  /**
+   * Dashboard strip: when the day loads with zero `clock_sessions`, run salary sync (unless unpaid time off / no schedule)
+   * so split schedule rows materialize before editing.
+   */
+  prefetchSalarySessionsWhenEmpty?: boolean
   /**
    * People Hours grid: proportional scale pre-fills `sessions` so initial snapshot matches the target times.
    * Without this, Close sees no dirty clusters and skips persist. When true, empty dirty still persists all clusters.
@@ -297,6 +310,8 @@ export function DashboardMyTimeDayEditorModal({
   showMarkNotComingIn = false,
   onMarkNotComingIn,
   clockTimesReadOnly = false,
+  showSalariedLabelUnderVisualStrip = false,
+  prefetchSalarySessionsWhenEmpty = false,
   peopleHoursGridProportionalSeed = false,
   onPatchSeededSessionsJobBid,
 }: Props) {
@@ -348,6 +363,9 @@ export function DashboardMyTimeDayEditorModal({
   const [sessionsFetchError, setSessionsFetchError] = useState<string | null>(null)
   const [resolvedSubjectLabel, setResolvedSubjectLabel] = useState<string | null>(null)
   const [sessionsFetchNonce, setSessionsFetchNonce] = useState(0)
+  const salaryStripPrefetchDoneKeyRef = useRef<string | null>(null)
+  const [salarySchedulePrefetchBusy, setSalarySchedulePrefetchBusy] = useState(false)
+  const [stripEmptyDayHint, setStripEmptyDayHint] = useState<'time_off' | 'no_work' | null>(null)
   const [forceClockOutSession, setForceClockOutSession] = useState<DayEditorSession | null>(null)
   const [adjustTimesSession, setAdjustTimesSession] = useState<DayEditorSession | null>(null)
   const [rejectSessionConfirm, setRejectSessionConfirm] = useState<DayEditorSession | null>(null)
@@ -586,6 +604,11 @@ export function DashboardMyTimeDayEditorModal({
     }
   }, [sessionsProp.length, inSaveableRange, effectiveSubjectUserId, dateStr, sessionsFetchNonce])
 
+  useEffect(() => {
+    salaryStripPrefetchDoneKeyRef.current = null
+    setStripEmptyDayHint(null)
+  }, [dateStr, effectiveSubjectUserId])
+
   const fetchDaySessionsForEditor = useCallback(async (): Promise<DayEditorSession[]> => {
     if (!effectiveSubjectUserId || !dateStr) return []
     const data = await withSupabaseRetry(
@@ -609,6 +632,119 @@ export function DashboardMyTimeDayEditorModal({
     return raw.map((s) => normalizeDayEditorSession(s))
   }, [sessionsProp, fetchedSessions])
   const pendingAuthForFetch = sessionsProp.length === 0 && !subjectUserIdProp && !authReady
+
+  useEffect(() => {
+    if (!prefetchSalarySessionsWhenEmpty) return
+    if (sessionsProp.length > 0) return
+    if (sessionsLoading) return
+    if (fetchedSessions === null) return
+    if (fetchedSessions.length > 0) return
+    if (!inSaveableRange || !effectiveSubjectUserId) return
+
+    const key = `${effectiveSubjectUserId}|${dateStr}`
+    if (salaryStripPrefetchDoneKeyRef.current === key) return
+    salaryStripPrefetchDoneKeyRef.current = key
+
+    let cancelled = false
+    setSalarySchedulePrefetchBusy(true)
+    setStripEmptyDayHint(null)
+
+    type TemplateRow = Database['public']['Tables']['salary_work_schedule_templates']['Row']
+    type OverrideRow = Database['public']['Tables']['salary_work_schedule_day_overrides']['Row']
+    type TimeOffRow = Database['public']['Tables']['user_time_off']['Row']
+
+    void (async () => {
+      try {
+        const templateRes = await withSupabaseRetry(
+          async () =>
+            supabase.from('salary_work_schedule_templates').select('*').eq('user_id', effectiveSubjectUserId).maybeSingle(),
+          'my time strip salary template probe',
+        )
+        if (cancelled) return
+        const tmpl = templateRes as TemplateRow | null
+        if (!tmpl) {
+          setSalarySchedulePrefetchBusy(false)
+          return
+        }
+
+        const [overrideRes, timeOffRes] = await Promise.all([
+          withSupabaseRetry(
+            async () =>
+              supabase
+                .from('salary_work_schedule_day_overrides')
+                .select('*')
+                .eq('user_id', effectiveSubjectUserId)
+                .eq('work_date', dateStr)
+                .maybeSingle(),
+            'my time strip salary day override',
+          ),
+          withSupabaseRetry(
+            async () =>
+              supabase
+                .from('user_time_off')
+                .select('*')
+                .eq('user_id', effectiveSubjectUserId)
+                .lte('start_date', dateStr)
+                .gte('end_date', dateStr),
+            'my time strip user time off',
+          ),
+        ])
+        if (cancelled) return
+
+        const overrideRow = overrideRes as OverrideRow | null
+        const timeOffRows = (timeOffRes ?? []) as TimeOffRow[]
+        const resolution = resolveCalendarWorkday({
+          workDateYmd: dateStr,
+          timeOffRows,
+          template: tmpl,
+          overrideForDate: overrideRow,
+        })
+
+        if (resolution.kind === 'time_off') {
+          setStripEmptyDayHint('time_off')
+          setSalarySchedulePrefetchBusy(false)
+          return
+        }
+        if (resolution.kind === 'none') {
+          setStripEmptyDayHint('no_work')
+          setSalarySchedulePrefetchBusy(false)
+          return
+        }
+
+        const { error } = await syncSalaryClockSessionsForUserDay(effectiveSubjectUserId, dateStr)
+        if (cancelled) return
+        if (error) {
+          showToast(error, 'error')
+          setSalarySchedulePrefetchBusy(false)
+          return
+        }
+        setSessionsFetchNonce((n) => n + 1)
+        setSalarySchedulePrefetchBusy(false)
+      } catch (e: unknown) {
+        if (!cancelled) {
+          showToast(formatErrorMessage(e, 'Could not sync salary sessions'), 'error')
+          setSalarySchedulePrefetchBusy(false)
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    prefetchSalarySessionsWhenEmpty,
+    sessionsProp.length,
+    sessionsLoading,
+    fetchedSessions,
+    inSaveableRange,
+    effectiveSubjectUserId,
+    dateStr,
+    showToast,
+  ])
+
+  useEffect(() => {
+    if (resolvedSessions.length > 0) setStripEmptyDayHint(null)
+  }, [resolvedSessions.length])
 
   const sortedSessions = useMemo(
     () =>
@@ -2323,10 +2459,18 @@ export function DashboardMyTimeDayEditorModal({
           </div>
         ) : sessionsFetchError ? (
           <p style={{ margin: 0, fontSize: '0.875rem', color: '#b91c1c' }}>{sessionsFetchError}</p>
-        ) : pendingAuthForFetch || (sessionsProp.length === 0 && sessionsLoading) ? (
+        ) : pendingAuthForFetch ||
+          (sessionsProp.length === 0 && sessionsLoading) ||
+          (prefetchSalarySessionsWhenEmpty && salarySchedulePrefetchBusy) ? (
           <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>Loading sessions…</p>
         ) : resolvedSessions.length === 0 ? (
-          <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>No sessions this day.</p>
+          <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
+            {stripEmptyDayHint === 'time_off'
+              ? `No sessions this day — ${UNPAID_TIME_OFF_LABEL}.`
+              : stripEmptyDayHint === 'no_work'
+                ? 'No scheduled work this day (e.g. weekend or no shift blocks).'
+                : 'No sessions this day.'}
+          </p>
         ) : (
           <>
             {myTimeCompactLayout ? (
@@ -2422,6 +2566,7 @@ export function DashboardMyTimeDayEditorModal({
                   const formOverlapDividerBelow =
                     nextClusterBlock != null &&
                     hasPairwiseClockIntervalOverlap([...c, ...nextClusterBlock.sessions], nowTick)
+                  const showClusterBottomDivider = idx !== timelineItems.length - 1
 
                   return (
                     <Fragment key={clusterId}>
@@ -2482,6 +2627,8 @@ export function DashboardMyTimeDayEditorModal({
                           draftLocalJobBidAssign={
                             onPatchSeededSessionsJobBid ? draftLocalJobBidAssign : undefined
                           }
+                          salariedStripFooterLabel={showSalariedLabelUnderVisualStrip}
+                          showClusterBottomDivider={showClusterBottomDivider}
                         />
                       ) : (
                         <MyTimeDayClusterForm
@@ -2517,6 +2664,7 @@ export function DashboardMyTimeDayEditorModal({
                           dispatchScheduleAssigneeUserId={effectiveSubjectUserId ?? undefined}
                           dispatchScheduleWorkDateYmd={dateStr}
                           overlapDividerBelow={formOverlapDividerBelow}
+                          showClusterBottomDivider={showClusterBottomDivider}
                           draftLocalJobBidAssign={
                             onPatchSeededSessionsJobBid ? draftLocalJobBidAssign : undefined
                           }

@@ -91,6 +91,7 @@ import {
 } from '../lib/buildReadyToBillDashboardUnits'
 import { wouldEnsureNothingLeftToBillForJob } from '../lib/wouldEnsureNothingLeftToBillForJob'
 import { syncSalaryClockSessionsForUserDay } from '../lib/salaryScheduleSync'
+import { fetchSalariedUserIdSetFromUserIds } from '../lib/salaryPayConfigGate'
 import { recordNotComingInForUserAsStaff } from '../lib/notComingInTimeOff'
 import {
   AssignedSkeleton,
@@ -669,6 +670,31 @@ export default function Dashboard() {
     [sessionsForStrip, myTeam.clockedInTodayStripRows],
   )
 
+  const stripPayGateUserIds = useMemo(() => {
+    const ids = new Set<string>()
+    if (authUser?.id) ids.add(authUser.id)
+    for (const id of myTeam.memberUserIds) ids.add(id)
+    for (const s of sessionsForStrip) ids.add(s.user_id)
+    for (const r of myTeam.clockedInTodayStripRows) ids.add(r.userId)
+    return [...ids]
+  }, [authUser?.id, myTeam.memberUserIds, sessionsForStrip, myTeam.clockedInTodayStripRows])
+
+  const [stripSalariedUserIds, setStripSalariedUserIds] = useState<ReadonlySet<string>>(() => new Set())
+
+  useEffect(() => {
+    if (stripPayGateUserIds.length === 0) {
+      setStripSalariedUserIds(new Set())
+      return
+    }
+    let cancelled = false
+    void fetchSalariedUserIdSetFromUserIds(stripPayGateUserIds).then((set) => {
+      if (!cancelled) setStripSalariedUserIds(set)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [stripPayGateUserIds])
+
   const hoursDaysCorrectRange = useMemo(() => {
     const { start: w0, end: w1 } = getDefaultWeekRange()
     const { start: l0, end: l1 } = getLastWeekRange()
@@ -702,6 +728,8 @@ export default function Dashboard() {
     subjectUserId: string
     displayName: string
     dateStr: string
+    showSalariedStripFooter: boolean
+    clockTimesReadOnly: boolean
   } | null>(null)
   const openStripMyTimeEditor = useCallback(
     (p: { subjectUserId: string; displayName: string }) => {
@@ -710,10 +738,30 @@ export default function Dashboard() {
         showToast(HOURS_DAY_CORRECT_BLOCK_TOAST, 'warning')
         return
       }
-      setStripMyTimeEditor({ ...p, dateStr })
+      setStripMyTimeEditor({
+        ...p,
+        dateStr,
+        showSalariedStripFooter: stripSalariedUserIds.has(p.subjectUserId),
+        clockTimesReadOnly: !showClockStripScopeToggle,
+      })
     },
-    [hoursDaysCorrectSet, myTeam.clockStripWorkDateYmd, showToast],
+    [
+      hoursDaysCorrectSet,
+      myTeam.clockStripWorkDateYmd,
+      showClockStripScopeToggle,
+      showToast,
+      stripSalariedUserIds,
+    ],
   )
+
+  useEffect(() => {
+    setStripMyTimeEditor((prev) => {
+      if (!prev) return prev
+      const shouldShow = stripSalariedUserIds.has(prev.subjectUserId)
+      if (shouldShow === prev.showSalariedStripFooter) return prev
+      return { ...prev, showSalariedStripFooter: shouldShow }
+    })
+  }, [stripSalariedUserIds])
   const isMobile = useIsMobile()
   const [subscribedSteps, setSubscribedSteps] = useState<SubscribedStep[]>([])
   const [assignedSteps, setAssignedSteps] = useState<AssignedStep[]>([])
@@ -941,8 +989,10 @@ export default function Dashboard() {
       subjectUserId: authUser.id,
       displayName: clockDisplayName?.trim() || 'You',
       dateStr,
+      showSalariedStripFooter: stripSalariedUserIds.has(authUser.id),
+      clockTimesReadOnly: true,
     })
-  }, [authUser?.id, clockDisplayName, hoursDaysCorrectSet, showToast])
+  }, [authUser?.id, clockDisplayName, hoursDaysCorrectSet, showToast, stripSalariedUserIds])
   const openJobDetailFromDashboardJobRow = useCallback(
     (j: { id: string; hcp_number: string | null; job_name: string | null; job_address: string | null }) => {
       const hcp = (j.hcp_number ?? '').trim() || '—'
@@ -4515,7 +4565,9 @@ export default function Dashboard() {
           sessions={[]}
           subjectUserId={stripMyTimeEditor.subjectUserId}
           subjectDisplayName={stripMyTimeEditor.displayName}
-          clockTimesReadOnly
+          showSalariedLabelUnderVisualStrip={stripMyTimeEditor.showSalariedStripFooter}
+          prefetchSalarySessionsWhenEmpty
+          clockTimesReadOnly={stripMyTimeEditor.clockTimesReadOnly}
           jobLabels={{}}
           bidLabels={{}}
           allowNcnsFromMyTime={showClockStripScopeToggle}

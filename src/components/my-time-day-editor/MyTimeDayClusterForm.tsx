@@ -122,6 +122,8 @@ export type MyTimeDayClusterFormProps = {
   ) => void
   /** Double gray rule under this card when the next timeline cluster overlaps in time (Form only). */
   overlapDividerBelow?: boolean
+  /** False for the last cluster in the day timeline: no bottom separator under the final block. */
+  showClusterBottomDivider?: boolean
 }
 
 export function MyTimeDayClusterForm({
@@ -153,6 +155,7 @@ export function MyTimeDayClusterForm({
   dispatchScheduleWorkDateYmd,
   draftLocalJobBidAssign,
   overlapDividerBelow = false,
+  showClusterBottomDivider = true,
 }: MyTimeDayClusterFormProps) {
   const timeOnlyMode = denverSameCalendarDay(t0, t1)
   const anchorYmd = anchorDateYmdFromClusterStart(t0)
@@ -265,7 +268,11 @@ export function MyTimeDayClusterForm({
         width: '100%',
         maxWidth: '100%',
         padding: '0.5rem 0',
-        borderBottom: overlapDividerBelow ? '5px double #d1d5db' : '2px solid #d1d5db',
+        borderBottom: !showClusterBottomDivider
+          ? 'none'
+          : overlapDividerBelow
+            ? '5px double #d1d5db'
+            : '2px solid #d1d5db',
         boxSizing: 'border-box',
       }}
     >

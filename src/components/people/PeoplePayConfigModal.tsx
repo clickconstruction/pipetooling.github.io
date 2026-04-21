@@ -11,6 +11,8 @@ export type PeoplePayConfigModalProps = {
   payConfigDraft: Record<string, string>
   payConfigSaving: boolean
   isDev: boolean
+  /** Roster name → user still has salary_work_schedule_templates (materialized schedule). */
+  salaryTemplateByPersonName: Record<string, boolean>
   onUpsertPayConfig: (personName: string, patch: Partial<PayConfigRow>) => void
   onHourlyWageChange: (personName: string, rawValue: string) => void
 }
@@ -21,6 +23,7 @@ function PayConfigRowTr({
   payConfigDraft,
   payConfigSaving,
   isDev,
+  salaryTemplateActive,
   onUpsertPayConfig,
   onHourlyWageChange,
 }: {
@@ -29,6 +32,7 @@ function PayConfigRowTr({
   payConfigDraft: Record<string, string>
   payConfigSaving: boolean
   isDev: boolean
+  salaryTemplateActive: boolean
   onUpsertPayConfig: (personName: string, patch: Partial<PayConfigRow>) => void
   onHourlyWageChange: (personName: string, rawValue: string) => void
 }) {
@@ -55,12 +59,33 @@ function PayConfigRowTr({
         />
       </td>
       <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
-        <input
-          type="checkbox"
-          checked={c.is_salary}
-          onChange={(e) => onUpsertPayConfig(n, { is_salary: e.target.checked })}
-          disabled={payConfigSaving}
-        />
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={c.is_salary}
+            onChange={(e) => onUpsertPayConfig(n, { is_salary: e.target.checked })}
+            disabled={payConfigSaving}
+          />
+          {!c.is_salary && salaryTemplateActive ? (
+            <span
+              role="img"
+              title="Salaried workday template still exists for this login user—schedule-driven sessions may continue until removed. Unchecking Salary runs cleanup when names match users.name."
+              aria-label="Salaried workday template still exists; materialized salary sessions may continue."
+              style={{ display: 'inline-flex', color: '#d97706', flexShrink: 0 }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} fill="currentColor" aria-hidden>
+                <path d="M320 64C461.4 64 576 178.6 576 320C576 461.4 461.4 576 320 576C178.6 576 64 461.4 64 320C64 178.6 178.6 64 320 64zM296 184L296 320C296 328 300 335.5 306.7 340L402.7 404C413.7 411.4 428.6 408.4 436 397.3C443.4 386.2 440.4 371.4 429.3 364L344 307.2L344 184C344 170.7 333.3 160 320 160C306.7 160 296 170.7 296 184z" />
+              </svg>
+            </span>
+          ) : null}
+        </div>
       </td>
       <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
         <input
@@ -100,6 +125,7 @@ export function PeoplePayConfigModal({
   payConfigDraft,
   payConfigSaving,
   isDev,
+  salaryTemplateByPersonName,
   onUpsertPayConfig,
   onHourlyWageChange,
 }: PeoplePayConfigModalProps) {
@@ -270,6 +296,7 @@ export function PeoplePayConfigModal({
                         payConfigDraft={payConfigDraft}
                         payConfigSaving={payConfigSaving}
                         isDev={isDev}
+                        salaryTemplateActive={salaryTemplateByPersonName[n] === true}
                         onUpsertPayConfig={onUpsertPayConfig}
                         onHourlyWageChange={onHourlyWageChange}
                       />
