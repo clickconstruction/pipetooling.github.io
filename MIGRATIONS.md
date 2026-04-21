@@ -9,7 +9,7 @@ last_updated: 2026-04-21
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: ~94
+total_migrations: ~95
 date_range: "Through March 24, 2027"
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -94,6 +94,18 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### April 20, 2026
 
+**`20260420234856_person_contract_documents_dashboard_prompt_after_clock_in.sql`**
+- **Purpose**: **Dashboard post–clock-in contract reminder** — **`person_contract_documents.dashboard_prompt_after_clock_in`** (staff-set); RPC **`list_my_contract_dashboard_prompts()`** returns unsigned flagged rows for the current user (roster **email** + **name** or **`users.name`** match).
+- **Changes**: **`ALTER TABLE person_contract_documents`**; **`CREATE FUNCTION list_my_contract_dashboard_prompts`**
+- **Impact**: [`People.tsx`](src/pages/People.tsx), [`Dashboard.tsx`](src/pages/Dashboard.tsx), Edge **`get-contract-signing-link-for-self`**; **`RECENT_FEATURES.md`** v2.364
+- **Category**: People / Contracts / RPC / Dashboard
+
+**`20260420220523_revert_stripe_oob_invoice_payment.sql`**
+- **Purpose**: **Undo Stripe out-of-band** — **`revert_stripe_oob_invoice_payment`** removes **`jobs_ledger_payments`** for the invoice, sets invoice **billed**, recomputes **`payments_made`**, **`paid`→`billed`** via **`update_job_status`** when needed, audit **`stripe_oob_payment_reverts`**, resets **`job_collect_payment_flows`** from **`terminal_completed`** to **`approved_for_terminal`** when **`stripe_invoice_id`** matches.
+- **Changes**: **`CREATE TABLE stripe_oob_payment_reverts`** + RLS; **`CREATE FUNCTION revert_stripe_oob_invoice_payment`**
+- **Impact**: Edge **`reverse-stripe-invoice-out-of-band-payment`**, [`HostedStripeBillPanel.tsx`](src/components/jobs/HostedStripeBillPanel.tsx); **`RECENT_FEATURES.md`** v2.362; client refresh after unwind (**`onAfterOobUnwindSuccess`**, **`JobFormModal`** **`refreshEditingJobAndHydratePayments`**) — v2.363
+- **Category**: Jobs / Billing / Stripe / RPC
+
 **`20260420164136_person_contract_documents_signing_and_content.sql`**
 - **Purpose**: **People → Contracts** — inline **`signing_body_html`**, **`canonical_document_url`**, public signing token fields, signer audit columns, and private Storage bucket **`contract-signer-signatures`** (staff SELECT policy) for digital signing (parallels Estimates acceptance flow).
 - **Changes**: **`ALTER TABLE person_contract_documents`**; **`INSERT`** **`storage.buckets`**; **`CREATE POLICY`** **`contract_signer_signatures_select`**
@@ -107,6 +119,60 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Category**: People / Contracts
 
 #### April 21, 2026
+
+**`20260421015435_contract_body_book_and_signing_format.sql`**
+- **Purpose**: **Contract body format** — **`contract_template_documents.book_body_format`** and **`person_contract_documents.signing_body_format`** (`html`|`plain`, default **`html`**) so staff can store plain text without HTML parsing on public/staff previews.
+- **Changes**: **`ALTER TABLE`** both tables + **`CHECK`** constraints
+- **Impact**: [`ContractBookModal.tsx`](src/components/contracts/ContractBookModal.tsx), [`People.tsx`](src/pages/People.tsx), [`ContractAccept.tsx`](src/pages/ContractAccept.tsx), [`PersonContractSignedRecordModal.tsx`](src/components/contracts/PersonContractSignedRecordModal.tsx), Edge **`get-contract-for-signer`**
+- **Category**: People / Contracts
+
+**`20260421025157_contract_body_format_allow_markdown.sql`**
+- **Purpose**: Extend **`book_body_format`** / **`signing_body_format`** **`CHECK`** to allow **`markdown`** (stored source in `*_body_html` columns; client renders MD→HTML→sanitize).
+- **Changes**: **`DROP CONSTRAINT`** / **`ADD CONSTRAINT`** on both tables; **`COMMENT ON COLUMN`**
+- **Impact**: [`contractBodyFormat.ts`](src/lib/contractBodyFormat.ts), [`ContractBodyDisplay.tsx`](src/components/contracts/ContractBodyDisplay.tsx), contract UI toggles
+- **Category**: People / Contracts
+
+**`20260421044527_update_contract_book_entry.sql`**
+- **Purpose**: **`update_contract_book_entry`** — atomic **Contract Book** save (library **`book_body_*`**, **`tags`**) plus optional **document name** rename that cascades to matching **`person_contract_documents`** for template assignees.
+- **Changes**: **`CREATE OR REPLACE FUNCTION`** **`update_contract_book_entry`** (initial signature without **`canonical_document_url`**)
+- **Impact**: [`ContractBookModal.tsx`](src/components/contracts/ContractBookModal.tsx); superseded by later migrations extending the RPC
+- **Category**: People / Contracts / RPC
+
+**`20260421051202_contract_template_documents_canonical_url.sql`**
+- **Purpose**: **`contract_template_documents.canonical_document_url`** (optional authoritative Doc/PDF link per library row); RPC signature gains **`p_canonical_document_url`**.
+- **Changes**: **`ALTER TABLE`**; **`DROP FUNCTION`** / **`CREATE OR REPLACE`** **`update_contract_book_entry`**
+- **Impact**: [`ContractBookModal.tsx`](src/components/contracts/ContractBookModal.tsx), [`People.tsx`](src/pages/People.tsx)
+- **Category**: People / Contracts / RPC
+
+**`20260421052041_contract_template_documents_updated_at.sql`**
+- **Purpose**: **`contract_template_documents.updated_at`** (not null, default now) + **`BEFORE UPDATE`** trigger — drives **Applied version** “latest library row” logic when **`applied_contract_template_document_id`** is null.
+- **Changes**: **`ALTER TABLE`**; **`CREATE TRIGGER`** **`update_contract_template_documents_updated_at`**
+- **Impact**: [`People.tsx`](src/pages/People.tsx) (Applied version display)
+- **Category**: People / Contracts
+
+**`20260421053133_update_contract_book_entry_sync_signing_to_assignees.sql`**
+- **Purpose**: On **Contract Book** save, push library body + canonical URL into **`person_contract_documents`** for all template assignees (bulk sync to signer-facing rows).
+- **Changes**: **`CREATE OR REPLACE`** **`update_contract_book_entry`**
+- **Impact**: Superseded by **`20260421053919`** (revert — per-assignee signing copies must not be bulk-overwritten)
+- **Category**: People / Contracts / RPC
+
+**`20260421053919_revert_update_contract_book_entry_person_signing_sync.sql`**
+- **Purpose**: **Revert** bulk sync from book save — person signing text is edited per assignee; **`update_contract_book_entry`** updates library + renames person rows on name change only (no mass **`UPDATE`** of signing fields). **Supersedes** the behavior introduced in **`20260421053133`**.
+- **Changes**: **`CREATE OR REPLACE`** **`update_contract_book_entry`**
+- **Impact**: [`People.tsx`](src/pages/People.tsx), [`ContractBookModal.tsx`](src/components/contracts/ContractBookModal.tsx)
+- **Category**: People / Contracts / RPC
+
+**`20260421054257_applied_contract_template_document_id.sql`**
+- **Purpose**: **`person_contract_documents.applied_contract_template_document_id`** — optional FK pin to **`contract_template_documents`** for **Applied version** display; **`NULL`** = use max **`contract_template_documents.updated_at`** among assigned templates’ rows with the same **`document_name`**.
+- **Changes**: **`ALTER TABLE`** **`ADD COLUMN`** **`REFERENCES`** **`contract_template_documents`**
+- **Impact**: [`People.tsx`](src/pages/People.tsx)
+- **Category**: People / Contracts
+
+**`20260421055733_contract_lineage_versions.sql`**
+- **Purpose**: **Versioned** person contracts: **`contract_lineage_id`**, **`lineage_version`**, **`supersedes_person_contract_document_id`**; **`create_pending_contract_versions_after_book_save`** inserts a new **`unsent`** row when the latest row in a lineage is **`signed`** and **Contract Book** saved; **`update_contract_book_entry`** calls it after updating the library row.
+- **Changes**: **`ALTER TABLE`** / **`DROP CONSTRAINT`** / indexes; **`CREATE OR REPLACE`** **`create_pending_contract_versions_after_book_save`**, **`update_contract_book_entry`**
+- **Impact**: [`People.tsx`](src/pages/People.tsx); **`RECENT_FEATURES.md`** v2.365
+- **Category**: People / Contracts / RPC
 
 **`20260419180746_collect_payment_complete_on_invoice_paid.sql`**
 - **Purpose**: **Hosted invoice collect payment** — **`complete_job_collect_payment_flow_for_invoice(p_stripe_invoice_id)`** sets **`job_collect_payment_flows`** to **`terminal_completed`** when **`invoice.paid`** matches **`approved_for_terminal`** (**service role**). **`get_collect_payment_certify_payload`** adds **`collect_invoice`** JSON (**billed** **`jobs_ledger_invoices`** row linked from flow: **`hosted_invoice_url`**, **`stripe_invoice_id`**).

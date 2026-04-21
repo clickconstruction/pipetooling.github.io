@@ -8,10 +8,11 @@ import {
   type CSSProperties,
 } from 'react'
 import { Link } from 'react-router-dom'
-import type {
-  ClockedInTodayStripRow,
-  JobsWorkedTodayStripRow,
-  TodaySessionStripRow,
+import {
+  JOBS_WORKED_TODAY_UNASSIGNED_ID,
+  type ClockedInTodayStripRow,
+  type JobsWorkedTodayStripRow,
+  type TodaySessionStripRow,
 } from '../hooks/useDashboardMyTeamSectionState'
 import { approveClockSessions } from '../lib/approveClockSessions'
 import { supabase } from '../lib/supabase'
@@ -1730,10 +1731,11 @@ export function DashboardTeamActiveClockStrip({
                 <tbody hidden={jobsWorkedTodaySectionCollapsed}>
                   {jobsWorkedTodayRows.map((job) => {
                     const hasSessions = job.sessions.length > 0
+                    const isUnassignedAggregateRow =
+                      job.jobLedgerId === JOBS_WORKED_TODAY_UNASSIGNED_ID
                     const jobDetailExpanded =
                       hasSessions && !collapsedJobsWorkedTodayJobLedgerIds.has(job.jobLedgerId)
                     const jobDetailId = `jobs-worked-today-detail-${job.jobLedgerId}`
-                    const jobHref = `/jobs?edit=${encodeURIComponent(job.jobLedgerId)}`
                     const totalH = job.totalSeconds / 3600
                     const jobLinkStatsLabel = `${formatHoursH(totalH)} today, ${job.distinctPeopleCount} ${
                       job.distinctPeopleCount === 1 ? 'person' : 'people'
@@ -1803,19 +1805,33 @@ export function DashboardTeamActiveClockStrip({
                                   minWidth: 0,
                                 }}
                               >
-                                <Link
-                                  to={jobHref}
-                                  style={{
-                                    ...clockedInTodayDetailLink,
-                                    fontWeight: 600,
-                                    flex: '0 1 auto',
-                                    minWidth: 0,
-                                  }}
-                                  title={`${job.label} — ${jobLinkStatsLabel}`}
-                                  aria-label={`Open job ${job.label}, ${jobLinkStatsLabel}`}
-                                >
-                                  {job.label}
-                                </Link>
+                                {isUnassignedAggregateRow ? (
+                                  <span
+                                    style={{
+                                      fontWeight: 600,
+                                      flex: '0 1 auto',
+                                      minWidth: 0,
+                                      color: '#6b7280',
+                                    }}
+                                    title={`${job.label} — ${jobLinkStatsLabel}`}
+                                  >
+                                    {job.label}
+                                  </span>
+                                ) : (
+                                  <Link
+                                    to={`/jobs?edit=${encodeURIComponent(job.jobLedgerId)}`}
+                                    style={{
+                                      ...clockedInTodayDetailLink,
+                                      fontWeight: 600,
+                                      flex: '0 1 auto',
+                                      minWidth: 0,
+                                    }}
+                                    title={`${job.label} — ${jobLinkStatsLabel}`}
+                                    aria-label={`Open job ${job.label}, ${jobLinkStatsLabel}`}
+                                  >
+                                    {job.label}
+                                  </Link>
+                                )}
                                 <span
                                   style={{
                                     flexShrink: 0,

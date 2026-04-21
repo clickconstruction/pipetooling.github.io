@@ -4855,8 +4855,16 @@ export default function Settings() {
       return
     }
     setSetPasswordSubmitting(true)
+    const { data: sess } = await supabase.auth.getSession()
+    const token = sess.session?.access_token
+    if (!token) {
+      setSetPasswordSubmitting(false)
+      setSetPasswordError('Not signed in. Please sign in again.')
+      return
+    }
     const { data, error: eFn } = await supabase.functions.invoke('set-user-password', {
       body: { user_id: setPasswordUser.id, password: setPasswordValue },
+      headers: { Authorization: `Bearer ${token}` },
     })
     setSetPasswordSubmitting(false)
     if (eFn) {

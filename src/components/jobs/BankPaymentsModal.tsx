@@ -35,7 +35,7 @@ import {
   type StageRow,
 } from '../../lib/jobsStagesBoard'
 import { useMercuryLedgerNicknames } from '../../hooks/useMercuryLedgerNicknames'
-import { denverCalendarDayKey, formatWorkDateYmdFriendly } from '../../utils/dateUtils'
+import { APP_CALENDAR_TZ, denverCalendarDayKey, formatWorkDateYmdFriendly } from '../../utils/dateUtils'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import type { Database } from '../../types/database'
 
@@ -205,7 +205,7 @@ export default function BankPaymentsModal({
       const memo = (c.external_memo ?? '').toLowerCase()
       const amountStr = formatMoney(Math.abs(Number(c.amount))).toLowerCase()
       const posted = c.posted_at
-        ? new Date(c.posted_at).toLocaleDateString('en-US', { timeZone: 'America/Chicago' }).toLowerCase()
+        ? new Date(c.posted_at).toLocaleDateString('en-US', { timeZone: APP_CALENDAR_TZ }).toLowerCase()
         : ''
       return (
         cp.includes(q) ||
@@ -892,7 +892,7 @@ export default function BankPaymentsModal({
               {filteredCandidates.map((c) => {
                 const active = c.mercury_transaction_id === selectedId
                 const posted = c.posted_at
-                  ? new Date(c.posted_at).toLocaleDateString('en-US', { timeZone: 'America/Chicago' })
+                  ? new Date(c.posted_at).toLocaleDateString('en-US', { timeZone: APP_CALENDAR_TZ })
                   : '—'
                 return (
                   <button

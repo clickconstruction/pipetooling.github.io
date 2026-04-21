@@ -53,7 +53,7 @@ serve(async (req) => {
     const { data: row, error } = await admin
       .from('person_contract_documents')
       .select(
-        'id, person_name, document_name, signing_body_html, canonical_document_url, url, status, public_token_expires_at, signer_printed_name',
+        'id, person_name, document_name, signing_body_html, signing_body_format, canonical_document_url, url, status, public_token_expires_at, signer_printed_name',
       )
       .eq('public_token_hash', tokenHash)
       .maybeSingle()
@@ -69,6 +69,7 @@ serve(async (req) => {
       status: string
       public_token_expires_at: string | null
       signing_body_html: string | null
+      signing_body_format: string
       canonical_document_url: string | null
       url: string | null
       person_name: string
@@ -117,6 +118,7 @@ serve(async (req) => {
         person_name: r.person_name,
         document_name: r.document_name,
         signing_body_html: r.signing_body_html,
+        signing_body_format: r.signing_body_format,
         canonical_document_url: canonical,
       }),
       {

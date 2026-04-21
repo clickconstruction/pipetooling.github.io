@@ -98,6 +98,9 @@ export function ContractAcceptSignatureForm({
 
   const primaryBtnStyle: CSSProperties = {
     marginTop: '1rem',
+    marginLeft: 'auto',
+    marginRight: 'auto',
+    display: 'block',
     padding: '0.5rem 1.25rem',
     fontWeight: 600,
     background: '#ea580c',
@@ -116,11 +119,30 @@ export function ContractAcceptSignatureForm({
         borderTop: '1px solid #e5e7eb',
       }}
     >
-      <h2 id={headingId} style={{ fontSize: '1.15rem', fontWeight: 700, margin: '0 0 1rem' }}>
-        Sign contract
+      <h2
+        id={headingId}
+        style={{ fontSize: '1.15rem', fontWeight: 700, margin: '0 0 1rem', textAlign: 'center' }}
+      >
+        Accept document
       </h2>
 
-      <label style={{ display: 'block', marginTop: '0.75rem' }}>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          width: '100%',
+        }}
+      >
+      <label
+        style={{
+          display: 'block',
+          marginTop: '0.75rem',
+          width: '100%',
+          maxWidth: 400,
+          textAlign: 'center',
+        }}
+      >
         <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.35rem' }}>
           Your name
           <span aria-hidden="true"> *</span>
@@ -138,6 +160,7 @@ export function ContractAcceptSignatureForm({
             maxWidth: 400,
             padding: '0.5rem',
             boxSizing: 'border-box',
+            textAlign: 'center',
           }}
         />
       </label>
@@ -150,6 +173,8 @@ export function ContractAcceptSignatureForm({
           gap: '0.5rem',
           flexWrap: 'wrap',
           marginTop: '0.75rem',
+          justifyContent: 'center',
+          width: '100%',
         }}
       >
         <button
@@ -177,7 +202,7 @@ export function ContractAcceptSignatureForm({
       </div>
 
       {acceptMode === 'type' ? (
-        <div style={{ marginTop: '0.75rem' }}>
+        <div style={{ marginTop: '0.75rem', width: '100%', maxWidth: 400 }}>
           <EstimateAcceptTypedSignatureLine
             printedName={printedName}
             placeholderName={NAME_PLACEHOLDER}
@@ -187,11 +212,11 @@ export function ContractAcceptSignatureForm({
           />
         </div>
       ) : (
-        <div style={{ marginTop: '0.75rem' }}>
+        <div style={{ marginTop: '0.75rem', width: '100%', maxWidth: 400, textAlign: 'center' }}>
           <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.35rem' }}>
             Sign below (use your finger or mouse)
           </span>
-          <div style={{ width: '100%', maxWidth: 400 }}>
+          <div style={{ width: '100%', maxWidth: 400, marginLeft: 'auto', marginRight: 'auto' }}>
             <canvas
               ref={canvasRef}
               style={{
@@ -228,6 +253,7 @@ export function ContractAcceptSignatureForm({
           </button>
         </div>
       )}
+      </div>
 
       <p
         style={{
@@ -240,18 +266,34 @@ export function ContractAcceptSignatureForm({
       >
         {SIGNATURE_DISCLOSURE}
       </p>
-      <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', marginTop: 0 }}>
-        <input
-          type="checkbox"
-          checked={agreed}
-          onChange={(e) => onAgreedChange(e.target.checked)}
-          disabled={submitting}
-        />
-        <span>I have read and agree to this contract.</span>
-      </label>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          width: '100%',
+        }}
+      >
+        <label
+          style={{
+            display: 'flex',
+            gap: '0.5rem',
+            alignItems: 'flex-start',
+            marginTop: 0,
+            textAlign: 'left',
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={agreed}
+            onChange={(e) => onAgreedChange(e.target.checked)}
+            disabled={submitting}
+          />
+          <span>I have read and agree to this contract.</span>
+        </label>
+      </div>
 
       {(formError || fieldHint) ? (
-        <p style={{ color: '#b91c1c', marginTop: '0.75rem' }}>{formError || fieldHint}</p>
+        <p style={{ color: '#b91c1c', marginTop: '0.75rem', textAlign: 'center' }}>{formError || fieldHint}</p>
       ) : null}
 
       <button

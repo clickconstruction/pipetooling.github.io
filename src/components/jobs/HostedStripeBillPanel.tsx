@@ -16,6 +16,7 @@ import {
 } from '../../lib/stripeInvoiceDetailsResponse'
 import { StripeInvoiceSharePanel } from './StripeInvoiceSharePanel'
 import { StripeInvoiceSendFromStripeButton } from './StripeInvoiceSendFromStripeButton'
+import UnwindStripeOobPaymentModal from './UnwindStripeOobPaymentModal'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 type JobsLedgerPayment = Database['public']['Tables']['jobs_ledger_payments']['Row']
@@ -150,21 +151,27 @@ const stripeHeroAmountText: CSSProperties = {
 export function HostedStripeBillPanel({
   invoice,
   onAfterStripeDetailsLoaded,
+  onAfterOobUnwindSuccess,
 }: {
   invoice: InvoiceWithJobForBillView
   /** Runs after a successful `get-stripe-invoice-details` (server backfill has returned). */
   onAfterStripeDetailsLoaded?: () => void
+  /** After Undo out-of-band payment succeeds (Stripe + DB revert); not called on ordinary invoice loads. */
+  onAfterOobUnwindSuccess?: () => void | Promise<void>
 }) {
   const { role: authRole } = useAuth()
   const stripeModeForBilling = authRole === 'dev' ? getBillingStripeModePref() : 'live'
 
   const onLoadedRef = useRef(onAfterStripeDetailsLoaded)
   onLoadedRef.current = onAfterStripeDetailsLoaded
+  const onOobUnwindRef = useRef(onAfterOobUnwindSuccess)
+  onOobUnwindRef.current = onAfterOobUnwindSuccess
 
   const [stripeDetail, setStripeDetail] = useState<StripeInvoiceDetailsSuccess | null>(null)
   const [stripeLoading, setStripeLoading] = useState(false)
   const [stripeError, setStripeError] = useState<string | null>(null)
   const [stripeDetailsGeneration, setStripeDetailsGeneration] = useState(0)
+  const [unwindOobOpen, setUnwindOobOpen] = useState(false)
 
   const inv = invoice
   const job = invoice.job
@@ -178,6 +185,13 @@ export function HostedStripeBillPanel({
   const stripeId = (inv.stripe_invoice_id ?? '').trim()
   const hostedUrl = (inv.hosted_invoice_url ?? '').trim()
   const isStripeHosted = Boolean(stripeId && hostedUrl)
+  const canUnwindStripeOob =
+    inv.status === 'paid' &&
+    isStripeHosted &&
+    (authRole === 'dev' ||
+      authRole === 'master_technician' ||
+      authRole === 'assistant' ||
+      authRole === 'primary')
 
   useEffect(() => {
     if (!isStripeHosted) {
@@ -531,6 +545,37 @@ export function HostedStripeBillPanel({
               recordedLastSendAt={inv.sent_to_customer_at}
             />
           ) : null}
+          {canUnwindStripeOob && stripeDetail && !stripeError ? (
+            <div style={{ marginTop: '0.75rem' }}>
+              <button
+                type="button"
+                onClick={() => setUnwindOobOpen(true)}
+                style={{
+                  padding: '0.4rem 0.65rem',
+                  fontSize: '0.8125rem',
+                  fontWeight: 500,
+                  color: '#991b1b',
+                  background: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                }}
+              >
+                Undo out-of-band payment…
+              </button>
+            </div>
+          ) : null}
+          <UnwindStripeOobPaymentModal
+            invoice={unwindOobOpen ? inv : null}
+            stripeModeForBilling={stripeModeForBilling}
+            open={unwindOobOpen}
+            onClose={() => setUnwindOobOpen(false)}
+            onSuccess={async () => {
+              setStripeDetailsGeneration((g) => g + 1)
+              onLoadedRef.current?.()
+              await onOobUnwindRef.current?.()
+            }}
+          />
         </>
       ) : (
         <div

@@ -1040,6 +1040,7 @@ export type Database = {
           revoked_at: string | null
           revoked_by: string | null
           salary_segment_index: number | null
+          salary_split_derived: boolean
           user_id: string
           work_date: string
         }
@@ -1065,6 +1066,7 @@ export type Database = {
           revoked_at?: string | null
           revoked_by?: string | null
           salary_segment_index?: number | null
+          salary_split_derived?: boolean
           user_id: string
           work_date: string
         }
@@ -1090,6 +1092,7 @@ export type Database = {
           revoked_at?: string | null
           revoked_by?: string | null
           salary_segment_index?: number | null
+          salary_split_derived?: boolean
           user_id?: string
           work_date?: string
         }
@@ -1166,31 +1169,40 @@ export type Database = {
       }
       contract_template_documents: {
         Row: {
+          book_body_format: string
           book_body_html: string | null
+          canonical_document_url: string | null
           created_at: string | null
           document_name: string
           id: string
           sequence_order: number
           tags: string[]
           template_id: string
+          updated_at: string
         }
         Insert: {
+          book_body_format?: string
           book_body_html?: string | null
+          canonical_document_url?: string | null
           created_at?: string | null
           document_name: string
           id?: string
           sequence_order?: number
           tags?: string[]
           template_id: string
+          updated_at?: string
         }
         Update: {
+          book_body_format?: string
           book_body_html?: string | null
+          canonical_document_url?: string | null
           created_at?: string | null
           document_name?: string
           id?: string
           sequence_order?: number
           tags?: string[]
           template_id?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -5054,10 +5066,14 @@ export type Database = {
       }
       person_contract_documents: {
         Row: {
+          applied_contract_template_document_id: string | null
           canonical_document_url: string | null
+          contract_lineage_id: string
           created_at: string | null
+          dashboard_prompt_after_clock_in: boolean
           document_name: string
           id: string
+          lineage_version: number
           note: string | null
           person_name: string
           public_token_expires_at: string | null
@@ -5069,16 +5085,22 @@ export type Database = {
           signer_printed_name: string | null
           signer_signature_storage_path: string | null
           signer_user_agent: string | null
+          signing_body_format: string
           signing_body_html: string | null
           status: string
+          supersedes_person_contract_document_id: string | null
           updated_at: string | null
           url: string | null
         }
         Insert: {
+          applied_contract_template_document_id?: string | null
           canonical_document_url?: string | null
+          contract_lineage_id: string
           created_at?: string | null
+          dashboard_prompt_after_clock_in?: boolean
           document_name: string
           id?: string
+          lineage_version?: number
           note?: string | null
           person_name: string
           public_token_expires_at?: string | null
@@ -5090,16 +5112,22 @@ export type Database = {
           signer_printed_name?: string | null
           signer_signature_storage_path?: string | null
           signer_user_agent?: string | null
+          signing_body_format?: string
           signing_body_html?: string | null
           status?: string
+          supersedes_person_contract_document_id?: string | null
           updated_at?: string | null
           url?: string | null
         }
         Update: {
+          applied_contract_template_document_id?: string | null
           canonical_document_url?: string | null
+          contract_lineage_id?: string
           created_at?: string | null
+          dashboard_prompt_after_clock_in?: boolean
           document_name?: string
           id?: string
+          lineage_version?: number
           note?: string | null
           person_name?: string
           public_token_expires_at?: string | null
@@ -5111,12 +5139,29 @@ export type Database = {
           signer_printed_name?: string | null
           signer_signature_storage_path?: string | null
           signer_user_agent?: string | null
+          signing_body_format?: string
           signing_body_html?: string | null
           status?: string
+          supersedes_person_contract_document_id?: string | null
           updated_at?: string | null
           url?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "person_contract_documents_applied_contract_template_docume_fkey"
+            columns: ["applied_contract_template_document_id"]
+            isOneToOne: false
+            referencedRelation: "contract_template_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_contract_documents_supersedes_fkey"
+            columns: ["supersedes_person_contract_document_id"]
+            isOneToOne: false
+            referencedRelation: "person_contract_documents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       person_license_cost_lines: {
         Row: {
@@ -6546,6 +6591,58 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stripe_oob_payment_reverts: {
+        Row: {
+          created_at: string
+          created_by_user_id: string
+          id: string
+          invoice_id: string
+          job_id: string
+          reason: string
+          stripe_credit_note_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by_user_id: string
+          id?: string
+          invoice_id: string
+          job_id: string
+          reason: string
+          stripe_credit_note_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by_user_id?: string
+          id?: string
+          invoice_id?: string
+          job_id?: string
+          reason?: string
+          stripe_credit_note_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stripe_oob_payment_reverts_created_by_user_id_fkey"
+            columns: ["created_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stripe_oob_payment_reverts_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stripe_oob_payment_reverts_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
             referencedColumns: ["id"]
           },
         ]
@@ -8173,6 +8270,8 @@ export type Database = {
         Returns: boolean
       }
       auth_user_can_merge_customers: { Args: never; Returns: boolean }
+      auto_clock_out_eod_if_due: { Args: never; Returns: undefined }
+      auto_clock_out_open_sessions_eod: { Args: never; Returns: undefined }
       bump_user_app_activity: {
         Args: { p_seconds?: number }
         Returns: undefined
@@ -8257,6 +8356,10 @@ export type Database = {
           p_revenue?: number
         }
         Returns: string
+      }
+      create_pending_contract_versions_after_book_save: {
+        Args: { p_contract_template_document_id: string }
+        Returns: undefined
       }
       create_po_from_job_tally: {
         Args: { p_entries: Json; p_job_id: string }
@@ -8691,6 +8794,14 @@ export type Database = {
           returned: boolean
         }[]
       }
+      list_my_contract_dashboard_prompts: {
+        Args: never
+        Returns: {
+          document_name: string
+          id: string
+          status: string
+        }[]
+      }
       list_my_linked_mercury_debit_cards_for_tally: {
         Args: never
         Returns: {
@@ -9003,6 +9114,15 @@ export type Database = {
         Args: { p_job_id: string; p_note: string }
         Returns: Json
       }
+      revert_stripe_oob_invoice_payment: {
+        Args: {
+          p_invoice_id: string
+          p_reason: string
+          p_stripe_credit_note_id?: string
+          p_stripe_invoice_status_after?: string
+        }
+        Returns: Json
+      }
       revoke_clock_sessions: {
         Args: { p_session_ids: string[] }
         Returns: {
@@ -9152,6 +9272,17 @@ export type Database = {
             Args: { p_bids_count_id: string; p_new_order: number }
             Returns: undefined
           }
+      update_contract_book_entry: {
+        Args: {
+          p_book_body_format: string
+          p_book_body_html: string
+          p_canonical_document_url: string
+          p_contract_template_document_id: string
+          p_document_name: string
+          p_tags: string[]
+        }
+        Returns: undefined
+      }
       update_job_status: {
         Args: { p_job_id: string; p_to_status: string }
         Returns: Json

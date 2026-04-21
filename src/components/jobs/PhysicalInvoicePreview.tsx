@@ -311,21 +311,18 @@ export function PhysicalInvoicePreview({
               </div>
             ) : null}
             {hasLegal ? (
-              <>
-                <div
-                  style={{
-                    width: '100%',
-                    height: 3,
-                    background: '#d1d5db',
-                    borderRadius: 1,
-                    marginBottom: '0.5rem',
-                  }}
-                  aria-hidden
-                />
+              <div
+                style={{
+                  marginTop: taglineTrim || licenseTrim ? '0.65rem' : 0,
+                  paddingTop: '0.65rem',
+                  borderTop: '1px solid #e5e7eb',
+                }}
+              >
+                <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#374151', marginBottom: 4 }}>Footer</div>
                 <div style={{ fontSize: '0.875rem', color: '#111827', whiteSpace: 'pre-wrap', lineHeight: 1.35 }}>
                   {d.footer}
                 </div>
-              </>
+              </div>
             ) : null}
           </div>
         ) : null}
@@ -401,17 +398,8 @@ export function PhysicalInvoicePreview({
         </div>
       ) : null}
       {d.footer ? (
-        <div style={{ marginTop: '0.65rem' }}>
-          <div
-            style={{
-              width: '100%',
-              height: 3,
-              background: '#d1d5db',
-              borderRadius: 1,
-              marginBottom: '0.5rem',
-            }}
-            aria-hidden
-          />
+        <div style={{ marginTop: '0.65rem', paddingTop: '0.65rem', borderTop: '1px solid #e5e7eb' }}>
+          <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#374151', marginBottom: 4 }}>Footer</div>
           <div style={{ fontSize: '0.875rem', color: '#111827', whiteSpace: 'pre-wrap', lineHeight: 1.35 }}>{d.footer}</div>
         </div>
       ) : null}

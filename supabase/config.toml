@@ -381,6 +381,9 @@ verify_jwt = false
 [functions.record-stripe-invoice-out-of-band-payment]
 verify_jwt = false
 
+[functions.reverse-stripe-invoice-out-of-band-payment]
+verify_jwt = false
+
 [functions.stripe-webhook]
 verify_jwt = false
 
@@ -427,6 +430,10 @@ verify_jwt = false
 [functions.send-contract-for-signature]
 verify_jwt = false
 
+# Signer: JWT in function; mints /contract/accept link without email (dashboard clock-in prompt).
+[functions.get-contract-signing-link-for-self]
+verify_jwt = false
+
 # Bill Customer physical invoice: Resend email with PDF; JWT + RLS in function (same pattern as send-estimate-to-customer).
 [functions.send-physical-invoice-email]
 verify_jwt = false
@@ -445,6 +452,42 @@ verify_jwt = false
 
 # Same as test-email: JWT validated in function (getUser + users.role); gateway returned Invalid JWT for browser sessions.
 [functions.login-as-user]
+verify_jwt = false
+
+# Dev: set another user's password via admin API. JWT + users.role=dev in function; gateway verify_jwt caused 401 on invoke.
+[functions.set-user-password]
+verify_jwt = false
+
+# Staff/dev: Bearer + getUser + role checks in function (archive / restore / create user / claim dev).
+[functions.archive-user]
+verify_jwt = false
+
+[functions.restore-user]
+verify_jwt = false
+
+[functions.create-user]
+verify_jwt = false
+
+[functions.claim-dev]
+verify_jwt = false
+
+# Push: Bearer + getUser in function.
+[functions.send-checklist-notification]
+verify_jwt = false
+
+[functions.send-report-notification]
+verify_jwt = false
+
+# Dev-only: X-Dev-Login-Secret + DEV_LOGIN_SECRET; no session JWT (gateway JWT would block).
+[functions.dev-login]
+verify_jwt = false
+
+# Cron / infra: not browser session; auth via X-Cron-Secret / CRON_SECRET in function.
+[functions.send-scheduled-reminders]
+verify_jwt = false
+
+# DB webhook / service role: Bearer is service role or TEAM_LEAD_CLOCK_WEBHOOK_SECRET in function.
+[functions.notify-team-lead-clock]
 verify_jwt = false
 
 [edge_runtime]

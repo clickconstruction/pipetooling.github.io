@@ -11,7 +11,7 @@ difficulty: Intermediate
 
 runtime: "Deno (TypeScript)"
 authentication: "Manual JWT validation"
-total_functions: 34
+total_functions: 35
 
 key_sections:
   - name: "create-user"
@@ -104,6 +104,7 @@ when_to_read:
    - [update-collect-payment-stripe-customer-email](#update-collect-payment-stripe-customer-email)
    - [get-stripe-invoice-details](#get-stripe-invoice-details)
    - [record-stripe-invoice-out-of-band-payment](#record-stripe-invoice-out-of-band-payment)
+   - [reverse-stripe-invoice-out-of-band-payment](#reverse-stripe-invoice-out-of-band-payment)
    - [preview-stripe-invoice](#preview-stripe-invoice)
    - [void-stripe-invoice-for-revert](#void-stripe-invoice-for-revert)
    - [stripe-webhook](#stripe-webhook)
@@ -780,6 +781,28 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 **Gateway**: `verify_jwt = false`; JWT validated with **`auth.getUser`** in function.
 
 **Optional**: `ESTIMATE_PUBLIC_ORIGIN` if link base should not come from the client.
+
+---
+
+### get-contract-signing-link-for-self
+
+**Purpose**: Authenticated signer (not staff) mints a fresh **`/contract/accept?t=…`** link for their own **`person_contract_documents`** row when **`dashboard_prompt_after_clock_in`** is true. Does **not** send email. Same token rotation semantics as **`send-contract-for-signature`** (invalidates any prior emailed link for that row).
+
+**Endpoint**: `POST /functions/v1/get-contract-signing-link-for-self`
+
+**Body**: `{ "person_contract_document_id": string, "public_origin"?: string }`
+
+**Identity**: Caller must match roster + auth the same way as **`list_my_contract_dashboard_prompts`** ( **`users.name`** equals **`person_name`**, or a non-archived **`people`** row with the same **`person_name`** and **`email`** as **`users.email`**).
+
+**Success** (**200** JSON): `{ "ok": true, "accept_url": string }`
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+
+**Gateway**: `verify_jwt = false`; JWT validated with **`auth.getUser`** in function.
+
+**Optional**: `ESTIMATE_PUBLIC_ORIGIN` for link base.
+
+**Implementation**: [`supabase/functions/get-contract-signing-link-for-self/index.ts`](supabase/functions/get-contract-signing-link-for-self/index.ts)
 
 ---
 
@@ -1506,7 +1529,7 @@ If **`stripe_invoice_id`** and **`hosted_invoice_url`** are already set, returns
 
 ### send-physical-invoice-email
 
-**Purpose**: Email the customer a **PDF invoice** (generated in the app to match the on-screen preview) via **Resend**, then persist the same **`jobs_ledger_invoices`** billing fields as **HouseCall Pro / Physical** manual save (**`status: billed`**, **`external_send_channel: physical`**, **`sent_to_customer_at`**, **`external_send_note`**, **`amount`**). When **`billing_kind`** is **`job`**, also calls **`update_job_status`** to **`billed`**. The client may send a **detailed** multi-section PDF (Specific Work + materials + payment history) built from the job ledger; the Edge function only validates and attaches **`pdf_base64`**.
+**Purpose**: Email the customer a **PDF invoice** (generated in the app to match the on-screen preview) via **Resend**, then persist the **`jobs_ledger_invoices`** billing fields as a **Physical** send (**`status: billed`**, **`external_send_channel: physical`**, **`sent_to_customer_at`**, **`external_send_note`**, **`amount`**). It does **not** call **`update_job_status`** on **`jobs_ledger`**. After a **200** response, **[`SendRecordInvoiceModal`](src/components/jobs/SendRecordInvoiceModal.tsx)** runs **`maybePromoteJobToBilledAfterCustomerInvoice`** ([`promoteJobToBilledIfFullyInvoiced.ts`](src/lib/promoteJobToBilledIfFullyInvoiced.ts)) — the same helper used after **Stripe** **`create-stripe-invoice`** and **HouseCall Pro** manual bill — so when the job is **fully invoiced out** (no **`ready_to_bill`** rows; **`jobBillingUnallocatedDollars`** ~ 0), the **job** moves to **billed** together with the invoice line regardless of billing channel. The client may send a **detailed** multi-section PDF (Specific Work + materials + payment history) built from the job ledger; the Edge function only validates and attaches **`pdf_base64`**.
 
 **Endpoint**: `POST /functions/v1/send-physical-invoice-email`
 
@@ -1520,8 +1543,6 @@ If **`stripe_invoice_id`** and **`hosted_invoice_url`** are already set, returns
 interface SendPhysicalInvoiceEmailBody {
   jobs_ledger_invoice_id: string
   job_id: string
-  /** Omit or **`job`**: run **`update_job_status`** to **`billed`**. **`invoice`**: invoice-row-only (e.g. Dashboard invoice context). */
-  billing_kind?: 'job' | 'invoice'
   amount_dollars: number
   sent_to_customer_at: string // ISO timestamp
   external_send_note?: string | null
@@ -1548,7 +1569,7 @@ interface SendPhysicalInvoiceEmailBody {
 - **403** — Invoice or job not visible under RLS.
 - **502** — Resend API error.
 
-**Client**: [`SendRecordInvoiceModal.tsx`](src/components/jobs/SendRecordInvoiceModal.tsx) (**Physical invoice** tab). **`subject`** is **[`physicalInvoiceEmailSubject`](src/lib/physicalInvoiceDocument.ts)** (**`Click Plumbing Invoice [#…]`**). **`email_text`** / **`email_html`** are built by **[`buildPhysicalInvoiceEmailBodies`](src/lib/physicalInvoiceDocument.ts)** (HTML summary: bold issuer **tagline** under the intro; no **Service date** or **Issuer** block—PDF is authoritative).
+**Client**: [`SendRecordInvoiceModal.tsx`](src/components/jobs/SendRecordInvoiceModal.tsx) (**Physical invoice** tab) invokes this Edge Function, then **`maybePromoteJobToBilledAfterCustomerInvoice`** on success. **`subject`** is **[`physicalInvoiceEmailSubject`](src/lib/physicalInvoiceDocument.ts)** (**`Click Plumbing Invoice [#…]`**). **`email_text`** / **`email_html`** are built by **[`buildPhysicalInvoiceEmailBodies`](src/lib/physicalInvoiceDocument.ts)** (HTML summary: bold issuer **tagline** under the intro; no **Service date** or **Issuer** block—PDF is authoritative).
 
 **Deploy**: `supabase functions deploy send-physical-invoice-email --no-verify-jwt` if the hosted gateway still enforces JWT.
 
@@ -1672,6 +1693,49 @@ interface RecordStripeInvoiceOobBody {
 
 ---
 
+### reverse-stripe-invoice-out-of-band-payment
+
+**Purpose**: Undo a **PipeTooling-recorded** Stripe **out-of-band** close: requires Stripe Invoice metadata **`pt_payment_type`** (set by **record-stripe-invoice-out-of-band-payment**) and **no** Stripe **`charge`** on the invoice (rejects normal card/ACH collects). Computes the credit amount as Stripe **`amount_paid`** when it is a positive number; when OOB leaves **`status = paid`** but **`amount_paid`** is **0**, uses invoice **`total`** instead. Creates a Stripe **credit note** for that amount minus existing credit notes on the invoice; when the path used **`total`** ( **`amount_paid`** not positive), sets **`out_of_band_amount`** on **`creditNotes.create`** to the new note amount so the sum of refund / **`credit_amount`** / **`out_of_band_amount`** matches Stripe’s **`post_payment_amount`**. Then calls RPC **`revert_stripe_oob_invoice_payment`** to remove **`jobs_ledger_payments`** for that invoice, set **`jobs_ledger_invoices.status`** to **`billed`**, recompute **`jobs_ledger.payments_made`**, optionally **`update_job_status`** **`paid`→`billed`**, append **`stripe_oob_payment_reverts`**, and reset **`job_collect_payment_flows`** from **`terminal_completed`** to **`approved_for_terminal`** when the **`stripe_invoice_id`** matches.
+
+**Endpoint**: `POST /functions/v1/reverse-stripe-invoice-out-of-band-payment`
+
+**Authentication**: Bearer JWT + RLS **`SELECT`** on **`jobs_ledger_invoices`** (**`verify_jwt = false`** on the gateway; JWT validated in-function). Roles enforced again in the RPC (dev / master_technician / assistant / primary + job access).
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, Stripe secret for the chosen mode.
+
+#### Request body
+
+```typescript
+interface ReverseStripeInvoiceOobBody {
+  jobs_ledger_invoice_id: string
+  reason: string // min 3 chars; stored in audit table
+  stripe_mode?: 'test' | 'live'
+}
+```
+
+#### Success (200)
+
+```json
+{
+  "success": true,
+  "stripe_invoice_id": "in_…",
+  "stripe_credit_note_id": "cn_…",
+  "stripe_invoice_status_after": "open"
+}
+```
+
+#### Errors
+
+- **400** — Invoice not **Paid** in PipeTooling, missing OOB metadata, invoice has a **charge**, Stripe invoice not **paid**, or neither **`amount_paid`** nor **`total`** yields a positive credit amount (**`Stripe invoice has no amount paid`**).
+- **409** — Stripe credit note may have succeeded but RPC returned a business error (check both systems).
+- **502** — Stripe API or RPC failure after credit note (partial state possible; message includes warning).
+
+**Webhook**: Subscribe to **`credit_note.created`** so [`stripe-webhook`](supabase/functions/stripe-webhook/index.ts) can **`invoices.retrieve`** and **`syncJobsLedgerStripeInvoiceStatus`**.
+
+**Gateway JWT**: [`supabase/config.toml`](supabase/config.toml) **`verify_jwt = false`**. Deploy with **`supabase functions deploy reverse-stripe-invoice-out-of-band-payment --no-verify-jwt`**.
+
+---
+
 ### preview-stripe-invoice
 
 **Purpose**: Return a **Stripe-accurate** invoice preview for a **`jobs_ledger_invoices`** row in **Ready to Bill** using **`invoices.createPreview`** (no Stripe customer creation, no DB writes).
@@ -1763,7 +1827,7 @@ interface Body {
 
 ### stripe-webhook
 
-**Purpose**: Handle Stripe invoice lifecycle events: **`invoice.paid`** / **`invoice.payment_succeeded`** marks the matching **`jobs_ledger_invoices`** row paid via **`mark_invoice_paid_from_stripe`**, then **`complete_job_collect_payment_flow_for_invoice`** when a **`job_collect_payment_flows`** row is **`approved_for_terminal`** for that Stripe invoice (field collect payment hosted page). **`invoice.updated`**, **`invoice.voided`**, and **`invoice.payment_failed`** sync **`stripe_invoice_status`** only (does not downgrade app **`status`** when the row is already **`paid`**).
+**Purpose**: Handle Stripe invoice lifecycle events: **`invoice.paid`** / **`invoice.payment_succeeded`** marks the matching **`jobs_ledger_invoices`** row paid via **`mark_invoice_paid_from_stripe`**, then **`complete_job_collect_payment_flow_for_invoice`** when a **`job_collect_payment_flows`** row is **`approved_for_terminal`** for that Stripe invoice (field collect payment hosted page). **`invoice.updated`**, **`invoice.voided`**, and **`invoice.payment_failed`** sync **`stripe_invoice_status`** only (does not downgrade app **`status`** when the row is already **`paid`**). **`credit_note.created`** **`invoices.retrieve`** + **`syncJobsLedgerStripeInvoiceStatus`** after **reverse-stripe-invoice-out-of-band-payment** credit notes.
 
 **Endpoint**: `POST /functions/v1/stripe-webhook`
 

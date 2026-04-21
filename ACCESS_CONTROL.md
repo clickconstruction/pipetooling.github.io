@@ -89,6 +89,11 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 - **Database**: Foreign key relationships enforce data ownership
 - **Edge Functions**: Role validation before privileged operations
 
+### Stripe out-of-band payment unwind (v2.362, refinements v2.363)
+- **Who**: **`dev`**, **`master_technician`**, **`assistant`**, and **`primary`** with the same job-access pattern as **`mark_invoice_paid`** (RPC **`revert_stripe_oob_invoice_payment`** enforces this).
+- **Where**: **Hosted Stripe bill** panel (**`HostedStripeBillPanel`**) when the ledger invoice is **Paid** — **Undo out-of-band payment** issues a Stripe **credit note** (no card charge on the invoice) and reverts the ledger row to **Billed**. **v2.363**: optional **`onAfterOobUnwindSuccess`** refreshes **Edit Job** **Payments received** and **Bill Customer** success-screen job snapshots so **`jobs_ledger_payments`** removals match the form without reopening the editor.
+- **Audit**: Staff with job access may **`SELECT`** **`stripe_oob_payment_reverts`**; **`dev`** has full table access.
+
 ---
 
 ## User Roles

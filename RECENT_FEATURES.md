@@ -7,22 +7,40 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-21
+last_updated: 2026-04-22
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.361 → v2.4"
+version_range: "v2.367 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.367)"
+    line: ~1184
+    description: "Dashboard Jobs worked today: aggregate row for no job/no bid (split salary unassigned segments); JOBS_WORKED_TODAY_UNASSIGNED_ID; muted label, no job link"
+  - name: "Latest Version (v2.366)"
+    line: ~1200
+    description: "Bill Customer: job → billed when fully invoiced out (Stripe / HCP / Physical) via maybePromoteJobToBilledAfterCustomerInvoice; send-physical-invoice-email no longer updates job status"
+  - name: "Latest Version (v2.365)"
+    line: ~1200
+    description: "People Contracts: contract lineage (Ver. column), applied version pin, Edit in ⋯ menu; create_pending_contract_versions_after_book_save on Contract Book save"
+  - name: "Latest Version (v2.364)"
+    line: ~1220
+    description: "Dashboard contract signing prompt after clock-in; People Contracts Dashboard checkbox; list_my_contract_dashboard_prompts + get-contract-signing-link-for-self"
+  - name: "Latest Version (v2.363)"
+    line: ~1230
+    description: "OOB unwind Stripe edge cases (total + out_of_band credit note); Edit Job Payments received + Bill Customer refresh after unwind"
+  - name: "Latest Version (v2.362)"
+    line: ~1235
+    description: "Undo Stripe out-of-band payment (credit note + RPC + Hosted bill UI)"
   - name: "Latest Version (v2.361)"
-    line: ~1160
+    line: ~1248
     description: "Stale tally follow-up Posted column adds local time (APP_CALENDAR_TZ)"
   - name: "Latest Version (v2.360)"
-    line: ~1174
+    line: ~1258
     description: "Stale tally follow-up modal Posted column: April 16 (Thu) in APP_CALENDAR_TZ"
   - name: "Latest Version (v2.359)"
-    line: ~1188
+    line: ~1268
     description: "People Contracts Edit document: Delete unsent with confirm (person_contract_documents DELETE)"
   - name: "Latest Version (v2.358)"
     line: ~1184
@@ -910,6 +928,12 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.367 — **Dashboard** **Jobs worked today**: **No job or bid** aggregate row (**split-day** / unassigned segments); **`JOBS_WORKED_TODAY_UNASSIGNED_ID`**; muted label (**no** job **`Link`**) — **`useDashboardMyTeamSectionState`**, **`DashboardTeamActiveClockStrip`**](#latest-updates-v2367)
+**New:** [v2.366 — **Bill Customer**: **`jobs_ledger.status`** → **billed** when the job is **fully invoiced out** (**Stripe**, **HouseCall Pro**, **Physical**) — **`maybePromoteJobToBilledAfterCustomerInvoice`** (**`promoteJobToBilledIfFullyInvoiced.ts`**); Edge **`send-physical-invoice-email`** persists invoice only](#latest-updates-v2366)
+**New:** [v2.365 — **People** **Contracts**: **lineage** (**Ver.**), **Applied version** pin, **Edit** in **⋯**; **Contract Book** save → **`create_pending_contract_versions_after_book_save`** (signed → new **`unsent`** row)](#latest-updates-v2365)
+**New:** [v2.364 — **Dashboard** **contract signing** prompt after **clock-in**; **People** per-document **Dashboard** checkbox; **`list_my_contract_dashboard_prompts`** + **`get-contract-signing-link-for-self`**](#latest-updates-v2364)
+**New:** [v2.363 — **Undo OOB** **Stripe** fixes + **Payments received** / **Bill Customer** refresh after unwind (`onAfterOobUnwindSuccess`, **`refreshEditingJobAndHydratePayments`**)](#latest-updates-v2363)
+**New:** [v2.362 — **Stripe** **hosted bill**: **Undo out-of-band payment** (credit note + **`revert_stripe_oob_invoice_payment`**, **`reverse-stripe-invoice-out-of-band-payment`**, **`UnwindStripeOobPaymentModal`**)](#latest-updates-v2362)
 **New:** [v2.361 — **Stale tally follow-up**: **Posted** column adds **time of day** (**`April 16 (Thu) · 3:45 PM`**, **`APP_CALENDAR_TZ`**) — **`DashboardStaleTallyStaffFollowUpModal.tsx`**](#latest-updates-v2361)
 **New:** [v2.360 — **Stale tally follow-up** (**`DashboardStaleTallyStaffFollowUpModal`**): **Posted** column **`April 16 (Thu)`** (**`APP_CALENDAR_TZ`**)](#latest-updates-v2360)
 **New:** [v2.359 — **People** **Contracts** **Edit document**: **Delete** for **`unsent`** rows + **confirm** modal (`People.tsx`, **`person_contract_documents` DELETE**)](#latest-updates-v2359)
@@ -1159,6 +1183,83 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.367)
+
+**Date**: 2026-04-22
+
+### **Dashboard** — **Jobs worked today** includes **unassigned** time (**no job**, **no bid**)
+
+- **Hook** — [`useDashboardMyTeamSectionState.ts`](src/hooks/useDashboardMyTeamSectionState.ts): **`jobsWorkedTodayStripRows`** collects sessions where **`!job_ledger_id && !bid_id`** (same **`rejected_at`** / **`revoked_at`** filters as job rows), sorts by **`clocked_in_at`**, and **`unshift`**s one **[`JobsWorkedTodayStripRow`](src/hooks/useDashboardMyTeamSectionState.ts)** **first** with **`jobLedgerId: JOBS_WORKED_TODAY_UNASSIGNED_ID`** (**`'__no_job_or_bid__'`**), **`label`** **No job or bid**, **`addressLine: null`**, plus **`totalSeconds`** / **`distinctPeopleCount`**. Real job rows remain sorted alphabetically by **`label`** after that. **Bid-only** sessions (no job, bid set) are still omitted here (same as before).
+- **Strip** — [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx): that row renders a **muted** **`span`** instead of a **`Link`** to **`/jobs?edit=…`** (no “open job” **`aria-label`**). Expand/collapse still keys off **`job.jobLedgerId`** (sentinel works like a stable id).
+- **Why** — On **split salary** days, the **first** segment can be **unassigned** while a **second** segment is job-linked; **Clocked in today** already listed both—**Jobs worked today** previously only grouped by **`job_ledger_id`**, so the unassigned block was invisible in that subsection.
+
+---
+
+## Latest Updates (v2.366)
+
+**Date**: 2026-04-22
+
+### **Bill Customer** — Job and invoice move together (all billing channels)
+
+- **Client** — [`promoteJobToBilledIfFullyInvoiced.ts`](src/lib/promoteJobToBilledIfFullyInvoiced.ts): **`maybePromoteJobToBilledAfterCustomerInvoice(jobId)`** runs after a bill is successfully recorded from **`SendRecordInvoiceModal`** on **Stripe bill** (**`create-stripe-invoice`**), **HouseCall Pro** (**`confirmOutsideBill`**), and **Physical invoice** (**`send-physical-invoice-email`**). It refetches the job and, when there are no **`ready_to_bill`** **`jobs_ledger_invoices`** rows and **`jobBillingUnallocatedDollars`** ([`jobsStagesBoard.ts`](src/lib/jobsStagesBoard.ts)) is within **±$0.005** of zero (same “fully allocated” notion as Stages), calls **`update_job_status`** to set **`jobs_ledger.status`** to **billed**, chaining **working** → **ready_to_bill** first when **`update_job_status`** requires it. If promotion fails, the modal shows the error on the tab that just succeeded (**Stripe** / **outside** / **Physical**).
+- **Edge** — [`send-physical-invoice-email`](supabase/functions/send-physical-invoice-email/index.ts): removed **`billing_kind`** and **`update_job_status`** from this path so **Physical** does not double-promote or diverge from **Stripe**/**HCP**; job promotion is owned by the shared client helper above.
+- **Docs** — [`PROJECT_DOCUMENTATION.md`](PROJECT_DOCUMENTATION.md) Jobs §6 **Bill Customer**; [`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md) **send-physical-invoice-email**.
+
+---
+
+## Latest Updates (v2.365)
+
+**Date**: 2026-04-21
+
+### **People** — **Contracts** — **Lineage**, **Applied version**, **Contract Book** → **pending re-sign**
+
+- **DB** — [`20260421055733_contract_lineage_versions.sql`](supabase/migrations/20260421055733_contract_lineage_versions.sql): **`person_contract_documents`**: **`contract_lineage_id`**, **`lineage_version`**, **`supersedes_person_contract_document_id`**; unique **`(person_name, contract_lineage_id, lineage_version)`** (replaces one-row-per-name unique). **`create_pending_contract_versions_after_book_save(p_contract_template_document_id)`**: after **Contract Book** updates, for each assignee whose **latest** row for that document name is **`signed`**, inserts a new **`unsent`** row (next **`lineage_version`**, current book body + format + canonical URL, **`applied_contract_template_document_id`** = saved library row). **`update_contract_book_entry`** ends with **`PERFORM create_pending_contract_versions_after_book_save(...)`** (does not overwrite **`unsent`**/**`sent`** rows in place).
+- **DB** — [`20260421054257_applied_contract_template_document_id.sql`](supabase/migrations/20260421054257_applied_contract_template_document_id.sql): **`applied_contract_template_document_id`** → **`contract_template_documents`** (optional pin for which library row drives **Applied version** display; **`NULL`** = latest **`updated_at`** among assigned templates’ matching document names — legacy behavior).
+- **DB** — [`20260421053919_revert_update_contract_book_entry_person_signing_sync.sql`](supabase/migrations/20260421053919_revert_update_contract_book_entry_person_signing_sync.sql): **Reverts** bulk copy of book text into all assignee **`person_contract_documents`** on save — person signing copies are maintained per assignee; book save still updates the library row and renames matching person rows when the **document name** changes (see **`20260421053133`** for the superseded sync behavior). **`create_pending_contract_versions_after_book_save`** is added in **`20260421055733`** (below).
+- **UI** — [`People.tsx`](src/pages/People.tsx): **Contracts** table shows multiple rows per logical contract (**Ver.** = **`lineage_version`**); **Applied version** uses pinned template doc or max **`contract_template_documents.updated_at`**; row **⋯** menu holds **Edit** (and related actions) for a cleaner primary row.
+
+---
+
+## Latest Updates (v2.364)
+
+**Date**: 2026-04-20
+
+### **People / Dashboard** — **Contract signing** reminder after **clock-in**
+
+- **DB** — [`20260420234856_person_contract_documents_dashboard_prompt_after_clock_in.sql`](supabase/migrations/20260420234856_person_contract_documents_dashboard_prompt_after_clock_in.sql): **`person_contract_documents.dashboard_prompt_after_clock_in`**; RPC **`list_my_contract_dashboard_prompts()`** (signer identity via roster email + name or **`users.name`**).
+- **Edge** — [`get-contract-signing-link-for-self`](supabase/functions/get-contract-signing-link-for-self/index.ts): authenticated signer mints **`/contract/accept`** URL without email (same token rotation as send).
+- **People** — [`People.tsx`](src/pages/People.tsx): per-document **Dashboard** checkbox in the expanded row **Actions**; edit/add form option **Remind on Dashboard after clock-in (until signed)**.
+- **Dashboard** — [`ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx) **`onClockInSuccess`**; [`DashboardContractSigningPromptModal.tsx`](src/components/DashboardContractSigningPromptModal.tsx); [`Dashboard.tsx`](src/pages/Dashboard.tsx) opens the modal when the RPC returns rows after a successful clock-in.
+
+---
+
+## Latest Updates (v2.363)
+
+**Date**: 2026-04-21
+
+### **Billing** — **Undo OOB** Stripe reliability + **Payments received** sync
+
+- **Edge** — [`reverse-stripe-invoice-out-of-band-payment`](supabase/functions/reverse-stripe-invoice-out-of-band-payment/index.ts): When Stripe marks an out-of-band close **`paid`** but leaves **`amount_paid`** at **0**, the credit-note amount falls back to invoice **`total`**. **`creditNotes.create`** sets **`out_of_band_amount`** to the note amount in that path so Stripe’s **`post_payment_amount`** allocation rule is satisfied (refund / **`credit_amount`** / **`out_of_band_amount`** sum).
+- **Edit Job** — [`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx): **`paymentRowsFromJob`**, **`refreshEditingJobAndHydratePayments`** — after a successful unwind, refetches the job, reapplies **Payments received** form rows from **`jobs_ledger_payments`**, and refreshes **[`BilledBillViewModal`](src/components/jobs/BilledBillViewModal.tsx)** invoice snapshot when View bill is open (local **`payments`** state is no longer stuck on pre-unwind rows).
+- **Hosted bill** — [`HostedStripeBillPanel.tsx`](src/components/jobs/HostedStripeBillPanel.tsx) optional **`onAfterOobUnwindSuccess`** (invoked only from **`UnwindStripeOobPaymentModal`** success — not on every **`get-stripe-invoice-details`** load, so unsaved payment edits are not wiped when opening View bill).
+- **Bill Customer** — [`BillCustomerModalContext.tsx`](src/contexts/BillCustomerModalContext.tsx) **`openBillCustomer`** option **`onAfterOobUnwindSuccess`**; [`SendRecordInvoiceModal.tsx`](src/components/jobs/SendRecordInvoiceModal.tsx) refetches the job and updates **`stripeSuccessInvoice`** after unwind so the success-screen hosted panel shows current applied amounts.
+
+---
+
+## Latest Updates (v2.362)
+
+**Date**: 2026-04-21
+
+### **Billing** — **Undo Stripe out-of-band payment**
+
+- **Edge** — [`reverse-stripe-invoice-out-of-band-payment`](supabase/functions/reverse-stripe-invoice-out-of-band-payment/index.ts): Stripe **credit note** (credits **`amount_paid`** when &gt; **0**, else invoice **`total`**; minus existing credit notes) when invoice has PipeTooling OOB metadata (**`pt_payment_type`**) and **no** Stripe **charge**; **`out_of_band_amount`** on the credit note when **`amount_paid`** was **0**; then RPC **`revert_stripe_oob_invoice_payment`**.
+- **DB** — Migration **`20260420220523_revert_stripe_oob_invoice_payment`**: RPC + audit **`stripe_oob_payment_reverts`**; **`job_collect_payment_flows`** **`terminal_completed`** → **`approved_for_terminal`** when **`stripe_invoice_id`** matches.
+- **Webhook** — [`stripe-webhook`](supabase/functions/stripe-webhook/index.ts): **`credit_note.created`** re-**`retrieve`** invoice and **`syncJobsLedgerStripeInvoiceStatus`**.
+- **UI** — [`UnwindStripeOobPaymentModal.tsx`](src/components/jobs/UnwindStripeOobPaymentModal.tsx), [`HostedStripeBillPanel.tsx`](src/components/jobs/HostedStripeBillPanel.tsx) (**Undo out-of-band payment…** when invoice **Paid**, dev/master/assistant/primary). **v2.363** adds ledger/UI refresh after unwind (see above).
+- **Docs** — [`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md) **reverse-stripe-invoice-out-of-band-payment**; [`ACCESS_CONTROL.md`](ACCESS_CONTROL.md) billing matrix note.
+
 ---
 
 ## Latest Updates (v2.361)
@@ -1651,7 +1752,7 @@ when_to_read:
 ### **Bill Customer** — **Physical invoice** emails **PDF** to customer
 
 - **[`SendRecordInvoiceModal.tsx`](src/components/jobs/SendRecordInvoiceModal.tsx)** — **Physical invoice** tab: preview (matches PDF), line on bill / memo / invoice date / due date, **Send email**. **HouseCall Pro** tab unchanged (date, memo, Save). Client builds PDF via **`jspdf`** ([`physicalInvoicePdf.ts`](src/lib/physicalInvoicePdf.ts)) from the same document model as **[`PhysicalInvoicePreview`](src/components/jobs/PhysicalInvoicePreview.tsx)** ([`physicalInvoiceDocument.ts`](src/lib/physicalInvoiceDocument.ts)).
-- **Edge [`send-physical-invoice-email`](supabase/functions/send-physical-invoice-email/index.ts)** — Validates JWT + RLS; verifies **`customer_email`** matches **`jobs_ledger.customer_email`**; **Resend** with attachment; then updates **`jobs_ledger_invoices`** (**`external_send_channel: physical`**) and **`update_job_status`** when **`billing_kind`** is **`job`**. **`RESEND_API_KEY`**, **`verify_jwt = false`** in [`config.toml`](supabase/config.toml). Documented in **[`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md)**.
+- **Edge [`send-physical-invoice-email`](supabase/functions/send-physical-invoice-email/index.ts)** — Validates JWT + RLS; verifies **`customer_email`** matches **`jobs_ledger.customer_email`**; **Resend** with attachment; then updates **`jobs_ledger_invoices`** (**`external_send_channel: physical`**). **`RESEND_API_KEY`**, **`verify_jwt = false`** in [`config.toml`](supabase/config.toml). **v2.366**: job **`billed`** promotion is **not** done here — **[`maybePromoteJobToBilledAfterCustomerInvoice`](src/lib/promoteJobToBilledIfFullyInvoiced.ts)** in **`SendRecordInvoiceModal`** runs after success for **Physical** (and **Stripe** / **HouseCall Pro**) so all channels stay consistent. Documented in **[`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md)**.
 
 ---
 

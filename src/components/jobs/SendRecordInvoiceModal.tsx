@@ -27,6 +27,7 @@ import {
   stripeInvoiceFooterActivePreset,
 } from '../../lib/stripeInvoiceFooter'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
+import { maybePromoteJobToBilledAfterCustomerInvoice } from '../../lib/promoteJobToBilledIfFullyInvoiced'
 import { StripeBillPreSubmitPreview } from './StripeBillPreSubmitPreview'
 import StripeBillingModeToggle from './StripeBillingModeToggle'
 import { HostedStripeBillPanel, type InvoiceWithJobForBillView } from './HostedStripeBillPanel'
@@ -321,6 +322,7 @@ export default function SendRecordInvoiceModal({
   onClose,
   onSuccess,
   onAfterEnsureSuccess,
+  onAfterOobUnwindSuccess,
   jobUpdating,
   invoiceUpdating,
   overlayZIndex = 60,
@@ -329,6 +331,7 @@ export default function SendRecordInvoiceModal({
   onClose: () => void
   onSuccess: () => Promise<void>
   onAfterEnsureSuccess?: () => void | Promise<void>
+  onAfterOobUnwindSuccess?: () => void | Promise<void>
   jobUpdating: boolean
   invoiceUpdating: boolean
   /** Use &gt; JobFormModal (1010) when opened from Edit Job */
@@ -336,6 +339,8 @@ export default function SendRecordInvoiceModal({
 }) {
   const onAfterEnsureSuccessRef = useRef(onAfterEnsureSuccess)
   onAfterEnsureSuccessRef.current = onAfterEnsureSuccess
+  const onAfterOobUnwindSuccessRef = useRef(onAfterOobUnwindSuccess)
+  onAfterOobUnwindSuccessRef.current = onAfterOobUnwindSuccess
 
   const { role: authRole } = useAuth()
 
@@ -379,6 +384,8 @@ export default function SendRecordInvoiceModal({
     invoice_preview: StripeInvoiceLinesSnapshot | null
   } | null>(null)
   const [stripeSuccessInvoice, setStripeSuccessInvoice] = useState<InvoiceWithJobForBillView | null>(null)
+  const stripeSuccessInvoiceRef = useRef<InvoiceWithJobForBillView | null>(null)
+  stripeSuccessInvoiceRef.current = stripeSuccessInvoice
 
   const [stripePreview, setStripePreview] = useState<StripeInvoicePreviewSuccess | null>(null)
   const [stripePreviewLoading, setStripePreviewLoading] = useState(false)
@@ -393,6 +400,17 @@ export default function SendRecordInvoiceModal({
   const kind = payload?.kind ?? 'job'
   const job = payload?.job ?? null
   const invoice = payload?.kind === 'invoice' ? payload.invoice : null
+
+  const handleHostedStripeOobUnwindSuccess = useCallback(async () => {
+    const invSnap = stripeSuccessInvoiceRef.current
+    const jobId = job?.id ?? null
+    if (jobId && invSnap) {
+      const fresh = await fetchJobWithDetailsById(jobId)
+      const row = fresh?.invoices?.find((i) => i.id === invSnap.id)
+      if (fresh && row) setStripeSuccessInvoice({ ...row, job: fresh })
+    }
+    await onAfterOobUnwindSuccessRef.current?.()
+  }, [job?.id])
 
   const activeStripeFooterPreset = stripeInvoiceFooterActivePreset(stripeInvoiceFooter)
   const physicalFooterPresets = useMemo(() => listPhysicalInvoiceFooterPresets(), [open])
@@ -732,7 +750,6 @@ export default function SendRecordInvoiceModal({
         body: {
           jobs_ledger_invoice_id: invId,
           job_id: job.id,
-          billing_kind: kind === 'invoice' ? 'invoice' : 'job',
           amount_dollars: amt,
           sent_to_customer_at: sentAt,
           external_send_note: externalNote.trim() || null,
@@ -753,6 +770,11 @@ export default function SendRecordInvoiceModal({
       const resp = invokeData as { success?: boolean; error?: string } | null
       if (resp && typeof resp.error === 'string' && resp.error.length > 0) {
         setPhysicalError(resp.error)
+        return
+      }
+      const promote = await maybePromoteJobToBilledAfterCustomerInvoice(job.id)
+      if (!promote.ok) {
+        setPhysicalError(promote.error)
         return
       }
       await onSuccess()
@@ -809,12 +831,11 @@ export default function SendRecordInvoiceModal({
               .eq('id', invId),
           'record outside bill on ensured invoice'
         )
-        const data = await withSupabaseRetry(
-          () => supabase.rpc('update_job_status', { p_job_id: job.id, p_to_status: 'billed' }),
-          'job status billed after outside bill'
-        )
-        const res = data as { error?: string } | null
-        if (res?.error) throw new Error(res.error)
+      }
+      const promote = await maybePromoteJobToBilledAfterCustomerInvoice(job.id)
+      if (!promote.ok) {
+        setOutsideError(promote.error)
+        return
       }
       await onSuccess()
       onClose()
@@ -891,16 +912,10 @@ export default function SendRecordInvoiceModal({
         return
       }
 
-      if (kind === 'job') {
-        const dataRpc = await withSupabaseRetry(
-          () => supabase.rpc('update_job_status', { p_job_id: job.id, p_to_status: 'billed' }),
-          'job status billed after stripe invoice',
-        )
-        const res = dataRpc as { error?: string } | null
-        if (res?.error) {
-          setStripeError(res.error)
-          return
-        }
+      const promote = await maybePromoteJobToBilledAfterCustomerInvoice(job.id)
+      if (!promote.ok) {
+        setStripeError(promote.error)
+        return
       }
 
       const fresh = await fetchJobWithDetailsById(job.id)
@@ -1624,7 +1639,10 @@ export default function SendRecordInvoiceModal({
                     : ''}
                   .
                 </p>
-                <HostedStripeBillPanel invoice={stripeSuccessInvoice} />
+                <HostedStripeBillPanel
+                  invoice={stripeSuccessInvoice}
+                  onAfterOobUnwindSuccess={handleHostedStripeOobUnwindSuccess}
+                />
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
                   <button
                     type="button"

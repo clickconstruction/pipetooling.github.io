@@ -47,6 +47,7 @@ import { useSupplyHousesAPTotal } from '../hooks/useSupplyHousesAPTotal'
 import { useSubLaborDueTotal } from '../hooks/useSubLaborDueTotal'
 import { useIsMobile } from '../hooks/useIsMobile'
 import ClockInOutButton from '../components/ClockInOutButton'
+import { DashboardContractSigningPromptModal } from '../components/DashboardContractSigningPromptModal'
 import TeamFeedbackWizard from '../components/team-feedback/TeamFeedbackWizard'
 import { fetchTeamFeedbackSettings } from '../lib/teamFeedback'
 import DashboardMyTimeSection from '../components/DashboardMyTimeSection'
@@ -78,6 +79,7 @@ import BilledPaymentConfirmationModal, { type InvoiceWithJobLike } from '../comp
 import { getNextDisplayOrders } from '../utils/checklistOrder'
 import { denverCalendarDayKey, getDefaultWeekRange, getLastWeekRange } from '../utils/dateUtils'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import { readEdgeFunctionErrorBody } from '../lib/readEdgeFunctionErrorBody'
 import { fetchDashboardPhase1 } from '../lib/dashboardBootQueries'
 import { readDashboardBootCache, writeDashboardBootCache } from '../lib/dashboardBootCache'
 import { displayNameFromAuthUser } from '../lib/displayNameFromAuthUser'
@@ -870,6 +872,8 @@ export default function Dashboard() {
     [userName, authUser],
   )
   const [dashboardSelfIsSalary, setDashboardSelfIsSalary] = useState(false)
+  /** Same rule as ClockInOutButton salaryUiActive: pay is_salary plus salary_work_schedule_templates row. */
+  const [dashboardSalaryScheduleClockActive, setDashboardSalaryScheduleClockActive] = useState(false)
   useEffect(() => {
     const name = clockDisplayName?.trim()
     if (!name) {
@@ -893,6 +897,39 @@ export default function Dashboard() {
       cancelled = true
     }
   }, [clockDisplayName])
+  useEffect(() => {
+    const name = clockDisplayName?.trim()
+    const uid = authUser?.id
+    if (!name || !uid) {
+      setDashboardSalaryScheduleClockActive(false)
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const [pay, tmpl] = await Promise.all([
+          withSupabaseRetry(
+            async () =>
+              supabase.from('people_pay_config').select('is_salary').eq('person_name', name).maybeSingle(),
+            'dashboard salary schedule people_pay_config is_salary',
+          ),
+          withSupabaseRetry(
+            async () =>
+              supabase.from('salary_work_schedule_templates').select('user_id').eq('user_id', uid).maybeSingle(),
+            'dashboard salary_work_schedule_templates for user',
+          ),
+        ])
+        if (cancelled) return
+        const sal = !!(pay as { is_salary?: boolean } | null)?.is_salary
+        setDashboardSalaryScheduleClockActive(sal && !!tmpl)
+      } catch {
+        if (!cancelled) setDashboardSalaryScheduleClockActive(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [clockDisplayName, authUser?.id])
   const openMyTimePreviewFromClock = useCallback(() => {
     if (!authUser?.id) return
     const dateStr = denverCalendarDayKey(Date.now())
@@ -921,6 +958,60 @@ export default function Dashboard() {
   )
   const [teamFeedbackHomeEnabled, setTeamFeedbackHomeEnabled] = useState(false)
   const [teamFeedbackWizardOpen, setTeamFeedbackWizardOpen] = useState(false)
+  const [contractSigningPromptOpen, setContractSigningPromptOpen] = useState(false)
+  const [contractSigningPromptRows, setContractSigningPromptRows] = useState<
+    Array<{ id: string; document_name: string; status: string }>
+  >([])
+  const [contractSigningPromptOpeningId, setContractSigningPromptOpeningId] = useState<string | null>(null)
+  /** Guards salary visit-time RPC so React Strict Mode double-mount does not open the modal twice. */
+  const contractSigningVisitPromptEpochRef = useRef(0)
+
+  const fetchContractDashboardPromptRows = useCallback(async () => {
+    return (await withSupabaseRetry(
+      () => supabase.rpc('list_my_contract_dashboard_prompts'),
+      'list_my_contract_dashboard_prompts',
+    )) as Array<{ id: string; document_name: string; status: string }>
+  }, [])
+
+  const runContractSigningPromptFromRpc = useCallback(async () => {
+    try {
+      const rows = await fetchContractDashboardPromptRows()
+      if (rows.length > 0) {
+        setContractSigningPromptRows(rows)
+        setContractSigningPromptOpen(true)
+      }
+    } catch {
+      /* ignore — do not block clock-in on RPC failure */
+    }
+  }, [fetchContractDashboardPromptRows])
+
+  const handleClockInSuccessContractPrompt = useCallback(async () => {
+    if (!authUser?.id) return
+    await runContractSigningPromptFromRpc()
+  }, [authUser?.id, runContractSigningPromptFromRpc])
+
+  useEffect(() => {
+    if (!authUser?.id || !dashboardSalaryScheduleClockActive) return
+    contractSigningVisitPromptEpochRef.current += 1
+    const epoch = contractSigningVisitPromptEpochRef.current
+    let cancelled = false
+    void (async () => {
+      try {
+        const rows = await fetchContractDashboardPromptRows()
+        if (cancelled || epoch !== contractSigningVisitPromptEpochRef.current) return
+        if (rows.length > 0) {
+          setContractSigningPromptRows(rows)
+          setContractSigningPromptOpen(true)
+        }
+      } catch {
+        /* ignore */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [authUser?.id, dashboardSalaryScheduleClockActive, fetchContractDashboardPromptRows])
+
   const [dispatchRequestsOpen, setDispatchRequestsOpen] = useState(true)
   const [dispatchDismissedModalOpen, setDispatchDismissedModalOpen] = useState(false)
 
@@ -1144,6 +1235,34 @@ export default function Dashboard() {
       cancelled = true
     }
   }, [authUser?.id])
+
+  const openContractSigningPageForDoc = useCallback(
+    async (personContractDocumentId: string) => {
+      setContractSigningPromptOpeningId(personContractDocumentId)
+      try {
+        const origin = typeof window !== 'undefined' ? window.location.origin.replace(/\/$/, '') : ''
+        const { data: raw, error: fnErr } = await supabase.functions.invoke('get-contract-signing-link-for-self', {
+          body: { person_contract_document_id: personContractDocumentId, public_origin: origin },
+        })
+        if (fnErr) {
+          const detail = await readEdgeFunctionErrorBody(fnErr)
+          showToast(detail ?? fnErr.message ?? 'Could not open signing page', 'error')
+          return
+        }
+        const json = raw as { ok?: boolean; accept_url?: string; error?: string }
+        if (!json?.ok || !json.accept_url) {
+          showToast(json?.error ?? 'Could not open signing page', 'error')
+          return
+        }
+        window.location.assign(json.accept_url)
+      } catch (e) {
+        showToast(e instanceof Error ? e.message : 'Could not open signing page', 'error')
+      } finally {
+        setContractSigningPromptOpeningId(null)
+      }
+    },
+    [showToast],
+  )
 
   useEffect(() => {
     if (!authUser?.id) {
@@ -3894,6 +4013,7 @@ export default function Dashboard() {
             userId={authUser.id}
             userName={clockDisplayName}
             onOpenMyTimeDayEditor={dashboardSelfIsSalary ? undefined : openMyTimePreviewFromClock}
+            onClockInSuccess={handleClockInSuccessContractPrompt}
           />
         </div>
       )}
@@ -3926,6 +4046,13 @@ export default function Dashboard() {
           skipIntro
         />
       )}
+      <DashboardContractSigningPromptModal
+        open={contractSigningPromptOpen}
+        rows={contractSigningPromptRows}
+        openingDocId={contractSigningPromptOpeningId}
+        onClose={() => setContractSigningPromptOpen(false)}
+        onOpenSigningPage={openContractSigningPageForDoc}
+      />
       {role === 'assistant' && tallyAndPinnedBlock}
       {role === 'assistant' && authUser?.id && showClockActivityStrip && (
         <DashboardTeamActiveClockStrip

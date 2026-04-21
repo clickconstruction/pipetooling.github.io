@@ -87,7 +87,6 @@ serve(async (req) => {
     const body = (await req.json()) as {
       jobs_ledger_invoice_id?: string
       job_id?: string
-      billing_kind?: string
       amount_dollars?: number
       sent_to_customer_at?: string
       external_send_note?: string | null
@@ -101,7 +100,6 @@ serve(async (req) => {
 
     const invoiceId = typeof body.jobs_ledger_invoice_id === 'string' ? body.jobs_ledger_invoice_id.trim() : ''
     const jobId = typeof body.job_id === 'string' ? body.job_id.trim() : ''
-    const billingKind = body.billing_kind === 'invoice' ? 'invoice' : 'job'
     const amountRaw = body.amount_dollars
     const amount =
       typeof amountRaw === 'number' && Number.isFinite(amountRaw)
@@ -215,27 +213,6 @@ serve(async (req) => {
         },
         500,
       )
-    }
-
-    if (billingKind === 'job') {
-      const { data: rpcData, error: rpcErr } = await userClient.rpc('update_job_status', {
-        p_job_id: jobId,
-        p_to_status: 'billed',
-      })
-      if (rpcErr) {
-        console.error('send-physical-invoice-email: update_job_status', rpcErr)
-        return jsonResponse(
-          {
-            error:
-              'Email was sent and the invoice was marked billed, but job status could not be updated to Billed.',
-          },
-          500,
-        )
-      }
-      const rpcObj = rpcData as { error?: string } | null
-      if (rpcObj && typeof rpcObj.error === 'string' && rpcObj.error.length > 0) {
-        return jsonResponse({ error: rpcObj.error }, 400)
-      }
     }
 
     return jsonResponse({ success: true })

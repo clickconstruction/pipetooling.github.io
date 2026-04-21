@@ -72,9 +72,11 @@ type Props = {
   userName: string | null
   /** Opens My Time day editor (e.g. Dashboard read-only preview). */
   onOpenMyTimeDayEditor?: () => void
+  /** Called after a successful clock-in (new open session), after sessions refresh. */
+  onClockInSuccess?: () => void
 }
 
-export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEditor }: Props) {
+export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEditor, onClockInSuccess }: Props) {
   const { user: authUser } = useAuth()
   const { showToast } = useToastContext()
   const { notifyFirstClockInOfDay } = useDailyGoalsGate()
@@ -678,6 +680,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
       const workDate = denverCalendarDayKey(now.getTime())
       await fetchSessions()
       await notifyFirstClockInOfDay(workDate, userId)
+      onClockInSuccess?.()
     } catch (e) {
       setClockInError(e instanceof Error ? e.message : 'Failed to clock in')
     } finally {
@@ -813,6 +816,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
       const workDate = denverCalendarDayKey(now.getTime())
       await fetchSessions()
       await notifyFirstClockInOfDay(workDate, userId)
+      onClockInSuccess?.()
     } catch (e) {
       setUpdateFocusError(e instanceof Error ? e.message : 'Failed to switch focus')
     } finally {

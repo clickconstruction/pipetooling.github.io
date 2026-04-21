@@ -123,6 +123,22 @@ function newEmptyPaymentRow(): PaymentRow {
   }
 }
 
+function paymentRowsFromJob(job: JobWithDetails): PaymentRow[] {
+  if (job.payments?.length) {
+    return job.payments.map((p) => ({
+      id: p.id,
+      amount: Number(p.amount),
+      paid_on: p.paid_on ? String(p.paid_on).slice(0, 10) : null,
+      note: p.note ?? null,
+      payment_type: p.payment_type ?? null,
+      reference_number: p.reference_number ?? null,
+      invoice_id: p.invoice_id ?? null,
+      mercury_transaction_id: p.mercury_transaction_id ?? null,
+    }))
+  }
+  return [newEmptyPaymentRow()]
+}
+
 function mercuryLinkedPaymentRow(row: PaymentRow): boolean {
   return row.mercury_transaction_id != null && String(row.mercury_transaction_id).trim().length > 0
 }
@@ -149,6 +165,14 @@ function stripeBillInvoiceForPaymentRow(
   const inv = (job.invoices ?? []).find((i) => i.id === row.invoice_id)
   if (!inv || !jobsLedgerInvoiceIsStripeLinked(inv)) return null
   return inv
+}
+
+/** Manual payment lines that may be removed from the form (persist on Save); Stripe/Mercury/invoice-linked excluded. */
+function canRemovePaymentRowFromForm(row: PaymentRow, job: JobWithDetails | null): boolean {
+  if (mercuryLinkedPaymentRow(row)) return false
+  if (paymentRowLinkedToInvoice(row)) return false
+  if (stripeBillInvoiceForPaymentRow(row, job)) return false
+  return true
 }
 
 function formatCurrency(n: number): string {
@@ -526,6 +550,18 @@ export default function JobFormModal({
   const [googleDriveLink, setGoogleDriveLink] = useState('')
   const [jobPlansLink, setJobPlansLink] = useState('')
   const [payments, setPayments] = useState<PaymentRow[]>(() => [newEmptyPaymentRow()])
+  const refreshEditingJobAndHydratePayments = useCallback((jobId: string) => {
+    void fetchJobWithDetailsById(jobId).then((found) => {
+      if (!found) return
+      setEditing(found)
+      setPayments(paymentRowsFromJob(found))
+      setBillViewInvoice((prev) => {
+        if (!prev) return prev
+        const row = found.invoices?.find((i) => i.id === prev.id)
+        return row ? { ...row, job: found } : prev
+      })
+    })
+  }, [])
   const [materials, setMaterials] = useState<MaterialRow[]>([{ id: crypto.randomUUID(), description: '', amount: 0 }])
   const [fixtures, setFixtures] = useState<FixtureRow[]>([
     { id: crypto.randomUUID(), name: '', count: 1, line_unit_price: null, line_description: '' },
@@ -700,20 +736,7 @@ export default function JobFormModal({
     setGoogleDriveLink(job.google_drive_link ?? '')
     setJobPlansLink(job.job_plans_link ?? '')
     setProjectFilesPlansExpanded(false)
-    setPayments(
-      job.payments?.length
-        ? job.payments.map((p) => ({
-            id: p.id,
-            amount: Number(p.amount),
-            paid_on: p.paid_on ? String(p.paid_on).slice(0, 10) : null,
-            note: p.note ?? null,
-            payment_type: p.payment_type ?? null,
-            reference_number: p.reference_number ?? null,
-            invoice_id: p.invoice_id ?? null,
-            mercury_transaction_id: p.mercury_transaction_id ?? null,
-          }))
-        : [newEmptyPaymentRow()],
-    )
+    setPayments(paymentRowsFromJob(job))
     setMaterials(
       job.materials.length > 0
         ? job.materials.map((m) => ({ id: m.id, description: m.description, amount: Number(m.amount) }))
@@ -1561,6 +1584,9 @@ export default function JobFormModal({
           const found = await fetchJobWithDetailsById(jobId)
           if (found) setEditing(found)
         },
+        onAfterOobUnwindSuccess: async () => {
+          refreshEditingJobAndHydratePayments(jobId)
+        },
       })
       return
     }
@@ -1640,7 +1666,20 @@ export default function JobFormModal({
   }
 
   function removePaymentRow(id: string) {
-    setPayments((prev) => (prev.length <= 1 ? prev : prev.filter((r) => r.id !== id)))
+    setPayments((prev) => {
+      const row = prev.find((r) => r.id === id)
+      if (!row) return prev
+      if (
+        mercuryLinkedPaymentRow(row) ||
+        paymentRowLinkedToInvoice(row) ||
+        stripeBillInvoiceForPaymentRow(row, editing)
+      ) {
+        return prev
+      }
+      const next = prev.filter((r) => r.id !== id)
+      if (next.length === 0) return [newEmptyPaymentRow()]
+      return next
+    })
   }
 
   function requestRemovePaymentRow(row: PaymentRow) {
@@ -1655,11 +1694,7 @@ export default function JobFormModal({
       )
       return
     }
-    if (payments.length <= 1) {
-      showToast(
-        'At least one payment line must stay in this form. Add another line first, or set this row’s amount to $0 if you don’t need a payment here.',
-        'info',
-      )
+    if (!canRemovePaymentRowFromForm(row, editing)) {
       return
     }
     setPaymentRemoveConfirmRowId(row.id)
@@ -1668,7 +1703,7 @@ export default function JobFormModal({
   function confirmRemovePaymentRow() {
     if (!paymentRemoveConfirmRowId) return
     const row = payments.find((r) => r.id === paymentRemoveConfirmRowId)
-    if (!row || payments.length <= 1 || paymentRowLinkedToInvoice(row) || mercuryLinkedPaymentRow(row)) {
+    if (!row || !canRemovePaymentRowFromForm(row, editing)) {
       setPaymentRemoveConfirmRowId(null)
       return
     }
@@ -1992,6 +2027,31 @@ export default function JobFormModal({
         }
         for (const uid of toRemove) {
           await supabase.from('jobs_ledger_team_members').delete().eq('job_id', editing.id).eq('user_id', uid)
+        }
+
+        const statusBeforeSave = normalizeJobsLedgerStatus(editing.status)
+        if (statusBeforeSave === 'paid' && revNum > paymentsMadeNum + 0.01) {
+          try {
+            const data = await withSupabaseRetry(
+              async () =>
+                supabase.rpc('update_job_status', { p_job_id: editing.id, p_to_status: 'billed' }),
+              'update_job_status_save_job_paid_to_billed',
+            )
+            const result = data as { error?: string } | null
+            if (result?.error) {
+              showToast(
+                `Job saved, but the job could not be moved back to Billed: ${result.error}`,
+                'error',
+              )
+            } else {
+              showToast('Job saved. Job moved back to Billed (balance still due).', 'success')
+            }
+          } catch (e: unknown) {
+            showToast(
+              formatPostgrestOrUnknownError(e, 'Job saved but failed to move job to Billed'),
+              'error',
+            )
+          }
         }
       } else {
         const effectiveMasterId = await resolveEffectiveJobMasterUserId(supabase, authUser.id, projectId || null)
@@ -3847,6 +3907,9 @@ export default function JobFormModal({
                                   const found = await fetchJobWithDetailsById(editing.id)
                                   if (found) setEditing(found)
                                 },
+                                onAfterOobUnwindSuccess: async () => {
+                                  refreshEditingJobAndHydratePayments(editing.id)
+                                },
                               })
                             }}
                             style={{
@@ -4076,6 +4139,7 @@ export default function JobFormModal({
                     return payments.map((row, idx) => {
                     const stripePaymentLocked = Boolean(stripeBillInvoiceForPaymentRow(row, editing))
                     const mercuryPaymentLocked = mercuryLinkedPaymentRow(row)
+                    const payRowCanRemove = canRemovePaymentRowFromForm(row, editing)
                     const paymentReadOnly = stripePaymentLocked || mercuryPaymentLocked
                     const noteTrim = (row.note ?? '').trim()
                     const ptTrim = (row.payment_type ?? '').trim()
@@ -4293,51 +4357,74 @@ export default function JobFormModal({
                                 {unlinkingMercuryPaymentId === row.id ? 'Removing…' : 'Unlink and remove'}
                               </button>
                             ) : mercuryPaymentLocked ? null : idx === lastUnlockedPaymentIdx ? (
-                              <button
-                                type="button"
-                                onClick={addPaymentRow}
-                                title="Add payment line"
-                                aria-label="Add payment line"
+                              <div
                                 style={{
-                                  padding: '0.35rem 0.5rem',
-                                  fontSize: '1rem',
-                                  fontWeight: 600,
-                                  lineHeight: 1,
-                                  background: '#3b82f6',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: 6,
-                                  cursor: 'pointer',
                                   display: 'inline-flex',
                                   alignItems: 'center',
-                                  justifyContent: 'center',
-                                  minWidth: '1.75rem',
+                                  justifyContent: 'flex-end',
+                                  gap: '0.35rem',
+                                  flexWrap: 'wrap',
                                 }}
                               >
-                                +
-                              </button>
+                                <button
+                                  type="button"
+                                  onClick={addPaymentRow}
+                                  title="Add payment line"
+                                  aria-label="Add payment line"
+                                  style={{
+                                    padding: '0.35rem 0.5rem',
+                                    fontSize: '1rem',
+                                    fontWeight: 600,
+                                    lineHeight: 1,
+                                    background: '#3b82f6',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: 6,
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    minWidth: '1.75rem',
+                                  }}
+                                >
+                                  +
+                                </button>
+                                {payRowCanRemove ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => requestRemovePaymentRow(row)}
+                                    title="Remove"
+                                    aria-label="Remove payment row"
+                                    style={{
+                                      padding: '0.35rem',
+                                      background: 'transparent',
+                                      color: '#991b1c',
+                                      border: 'none',
+                                      borderRadius: 4,
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                    }}
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z" /></svg>
+                                  </button>
+                                ) : null}
+                              </div>
                             ) : (
                               <button
                                 type="button"
                                 onClick={() => requestRemovePaymentRow(row)}
+                                disabled={!payRowCanRemove}
                                 title="Remove"
                                 aria-label="Remove payment row"
                                 style={{
                                   padding: '0.35rem',
-                                  background:
-                                    payments.length <= 1 || paymentRowLinkedToInvoice(row) || mercuryPaymentLocked
-                                      ? '#f3f4f6'
-                                      : 'transparent',
-                                  color:
-                                    payments.length <= 1 || paymentRowLinkedToInvoice(row) || mercuryPaymentLocked
-                                      ? '#9ca3af'
-                                      : '#991b1c',
+                                  background: !payRowCanRemove ? '#f3f4f6' : 'transparent',
+                                  color: !payRowCanRemove ? '#9ca3af' : '#991b1c',
                                   border: 'none',
                                   borderRadius: 4,
-                                  cursor:
-                                    payments.length <= 1 || paymentRowLinkedToInvoice(row) || mercuryPaymentLocked
-                                      ? 'not-allowed'
-                                      : 'pointer',
+                                  cursor: !payRowCanRemove ? 'not-allowed' : 'pointer',
                                   display: 'inline-flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
@@ -4919,6 +5006,9 @@ export default function JobFormModal({
                   This removes a payment of{' '}
                   <strong style={{ fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(paymentRemovePreview.rowAmt)}</strong> from this job.
                 </p>
+                <p style={{ margin: '0 0 0.75rem', color: '#6b7280' }}>
+                  The payment line is removed from this form now; click <strong>Save</strong> on the job to update the database.
+                </p>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', marginBottom: '1rem' }}>
                   <tbody>
                     <tr>
@@ -5322,6 +5412,10 @@ export default function JobFormModal({
       <BilledBillViewModal
         invoice={billViewInvoice}
         onAfterStripeDetailsLoaded={refetchEditingFromBillView}
+        onAfterOobUnwindSuccess={() => {
+          const jobId = editingIdRef.current
+          if (jobId) refreshEditingJobAndHydratePayments(jobId)
+        }}
         onClose={() => {
           const jobId = editing?.id ?? null
           const invId = billViewInvoice?.id ?? null

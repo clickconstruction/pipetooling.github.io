@@ -19,6 +19,10 @@ function copy404Plugin() {
 }
 
 export default defineConfig({
+  /** Avoid stale optimize-cache 504 / "Outdated Optimize Dep" when deps change (e.g. marked). */
+  optimizeDeps: {
+    include: ['marked'],
+  },
   test: {
     globals: true,
     environment: 'node',

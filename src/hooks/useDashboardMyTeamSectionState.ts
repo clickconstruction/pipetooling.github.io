@@ -166,8 +166,12 @@ export type ClockedInTodayStripRow = {
   hasIntervalOverlapToday: boolean
 }
 
-/** One row per job for the dashboard "Jobs worked today" subsection (job-linked sessions only). */
+/** Sentinel for aggregate row of sessions with no job and no bid (not a UUID). */
+export const JOBS_WORKED_TODAY_UNASSIGNED_ID = '__no_job_or_bid__'
+
+/** One row per job for the dashboard "Jobs worked today" subsection; includes job-linked rows and optionally one aggregate row for no job/bid. */
 export type JobsWorkedTodayStripRow = {
+  /** Real job id, or `JOBS_WORKED_TODAY_UNASSIGNED_ID` for the aggregate no-job/no-bid row. */
   jobLedgerId: string
   label: string
   addressLine: string | null
@@ -1034,8 +1038,13 @@ export function useDashboardMyTeamSectionState(
 
   const jobsWorkedTodayStripRows = useMemo((): JobsWorkedTodayStripRow[] => {
     const byJob = new Map<string, TodaySessionStripRow[]>()
+    const unassignedNoJobBid: TodaySessionStripRow[] = []
     for (const row of todaySessionsForStripScope) {
       if (row.rejected_at || row.revoked_at) continue
+      if (!row.job_ledger_id && !row.bid_id) {
+        unassignedNoJobBid.push(row)
+        continue
+      }
       if (!row.job_ledger_id) continue
       const jid = row.job_ledger_id
       const list = byJob.get(jid)
@@ -1074,6 +1083,22 @@ export function useDashboardMyTeamSectionState(
     out.sort((a, b) =>
       a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }),
     )
+    if (unassignedNoJobBid.length > 0) {
+      unassignedNoJobBid.sort((a, b) => a.clocked_in_at.localeCompare(b.clocked_in_at))
+      let totalSeconds = 0
+      for (const s of unassignedNoJobBid) {
+        totalSeconds += sessionDurationSeconds(s.clocked_in_at, s.clocked_out_at, todayHoursNowMs)
+      }
+      const distinctPeopleCount = new Set(unassignedNoJobBid.map((s) => s.user_id)).size
+      out.unshift({
+        jobLedgerId: JOBS_WORKED_TODAY_UNASSIGNED_ID,
+        label: 'No job or bid',
+        addressLine: null,
+        totalSeconds,
+        distinctPeopleCount,
+        sessions: unassignedNoJobBid,
+      })
+    }
     return out
   }, [todaySessionsForStripScope, todayHoursNowMs])
 

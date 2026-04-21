@@ -8,6 +8,7 @@ export type OpenBillCustomerOptions = {
   payload: SendRecordInvoicePayload
   onSuccess?: () => void | Promise<void>
   onAfterEnsureSuccess?: () => void | Promise<void>
+  onAfterOobUnwindSuccess?: () => void | Promise<void>
 }
 
 type BillCustomerModalContextValue = {
@@ -23,12 +24,14 @@ export function BillCustomerModalProvider({ children }: { children: React.ReactN
   const callbacksRef = useRef<{
     onSuccess: (() => void | Promise<void>) | null
     onAfterEnsureSuccess: (() => void | Promise<void>) | null
-  }>({ onSuccess: null, onAfterEnsureSuccess: null })
+    onAfterOobUnwindSuccess: (() => void | Promise<void>) | null
+  }>({ onSuccess: null, onAfterEnsureSuccess: null, onAfterOobUnwindSuccess: null })
 
   const openBillCustomer = useCallback((opts: OpenBillCustomerOptions) => {
     callbacksRef.current = {
       onSuccess: opts.onSuccess ?? null,
       onAfterEnsureSuccess: opts.onAfterEnsureSuccess ?? null,
+      onAfterOobUnwindSuccess: opts.onAfterOobUnwindSuccess ?? null,
     }
     setSession(opts.payload)
   }, [])
@@ -53,6 +56,9 @@ export function BillCustomerModalProvider({ children }: { children: React.ReactN
         }}
         onAfterEnsureSuccess={async () => {
           await callbacksRef.current.onAfterEnsureSuccess?.()
+        }}
+        onAfterOobUnwindSuccess={async () => {
+          await callbacksRef.current.onAfterOobUnwindSuccess?.()
         }}
         jobUpdating={false}
         invoiceUpdating={false}

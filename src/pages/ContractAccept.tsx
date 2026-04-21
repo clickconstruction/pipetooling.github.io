@@ -3,7 +3,8 @@ import { useSearchParams } from 'react-router-dom'
 import AuthPublicLandingLayout from '../components/AuthPublicLandingLayout'
 import EstimateCustomerThankYou from '../components/estimates/EstimateCustomerThankYou'
 import { ContractAcceptSignatureForm } from '../components/contracts/ContractAcceptSignatureForm'
-import { sanitizeContractSigningHtml } from '../lib/sanitizeContractSigningHtml'
+import { contractBodyHasRenderableDisplay } from '../lib/contractBodyFormat'
+import { ContractBodyDisplay } from '../components/contracts/ContractBodyDisplay'
 import type { EstimateAcceptSubmitPayload } from '../components/estimates/EstimateAcceptBody'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
@@ -14,6 +15,7 @@ type LoadPayload = {
   person_name: string
   document_name: string
   signing_body_html: string | null
+  signing_body_format: string
   canonical_document_url: string | null
 }
 
@@ -76,6 +78,8 @@ export default function ContractAccept() {
           person_name: String(json.person_name ?? ''),
           document_name: String(json.document_name ?? ''),
           signing_body_html: json.signing_body_html ?? null,
+          signing_body_format:
+            typeof json.signing_body_format === 'string' && json.signing_body_format ? json.signing_body_format : 'html',
           canonical_document_url: json.canonical_document_url ?? null,
         })
       } catch {
@@ -184,7 +188,10 @@ export default function ContractAccept() {
 
   if (!payload) return null
 
-  const safeHtml = sanitizeContractSigningHtml(payload.signing_body_html ?? '')
+  const hasRenderableSigningBody = contractBodyHasRenderableDisplay(
+    payload.signing_body_html,
+    payload.signing_body_format,
+  )
   const canonical = payload.canonical_document_url?.trim()
 
   return (
@@ -212,7 +219,7 @@ export default function ContractAccept() {
             </p>
           ) : null}
 
-          {safeHtml ? (
+          {hasRenderableSigningBody ? (
             <div
               style={{
                 maxHeight: 'min(50vh, 420px)',
@@ -224,12 +231,15 @@ export default function ContractAccept() {
                 fontSize: '0.9rem',
                 marginBottom: '0.5rem',
               }}
-              // eslint-disable-next-line react/no-danger -- sanitized in sanitizeContractSigningHtml (DOMParser allowlist)
-              dangerouslySetInnerHTML={{ __html: safeHtml }}
-            />
+            >
+              <ContractBodyDisplay
+                format={payload.signing_body_format}
+                bodyHtml={payload.signing_body_html}
+              />
+            </div>
           ) : null}
 
-          {!safeHtml && !canonical ? (
+          {!hasRenderableSigningBody && !canonical ? (
             <p style={{ color: '#6b7280' }}>No document content was provided for this link.</p>
           ) : null}
 

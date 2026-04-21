@@ -260,6 +260,20 @@ serve(async (req) => {
       if (stripeInvId && st) {
         await syncJobsLedgerStripeInvoiceStatus(admin, stripeInvId, st, eventForLog)
       }
+    } else if (event.type === 'credit_note.created') {
+      const cn = event.data.object as Stripe.CreditNote
+      const invRef = cn.invoice
+      const stripeInvId = typeof invRef === 'string' ? invRef : invRef?.id
+      if (stripeInvId) {
+        try {
+          const inv = await stripe.invoices.retrieve(stripeInvId)
+          if (inv.status) {
+            await syncJobsLedgerStripeInvoiceStatus(admin, stripeInvId, inv.status, eventForLog)
+          }
+        } catch (e) {
+          webhookLog('warn', eventForLog, 'credit_note.created: retrieve invoice failed', e)
+        }
+      }
     }
 
     return jsonOk({ received: true })

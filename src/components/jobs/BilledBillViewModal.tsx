@@ -7,12 +7,14 @@ export default function BilledBillViewModal({
   invoice,
   onClose,
   onAfterStripeDetailsLoaded,
+  onAfterOobUnwindSuccess,
   overlayZIndex = 60,
 }: {
   invoice: InvoiceWithJobForBillView | null
   onClose: () => void
   /** After `get-stripe-invoice-details` succeeds (memo backfill committed server-side). */
   onAfterStripeDetailsLoaded?: () => void
+  onAfterOobUnwindSuccess?: () => void | Promise<void>
   overlayZIndex?: number
 }) {
   const { role } = useAuth()
@@ -87,7 +89,11 @@ export default function BilledBillViewModal({
         </div>
         <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>{subtitle}</p>
 
-        <HostedStripeBillPanel invoice={invoice} onAfterStripeDetailsLoaded={onAfterStripeDetailsLoaded} />
+        <HostedStripeBillPanel
+          invoice={invoice}
+          onAfterStripeDetailsLoaded={onAfterStripeDetailsLoaded}
+          onAfterOobUnwindSuccess={onAfterOobUnwindSuccess}
+        />
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
           <button

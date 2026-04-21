@@ -103,6 +103,17 @@ export interface CreateTakeoffEntryWithItemsResult {
   success: boolean
 }
 
+/** Parameters for `update_contract_book_entry` (Contract Book save + optional rename cascade). */
+export interface UpdateContractBookEntryParams {
+  p_contract_template_document_id: string
+  p_document_name: string
+  p_book_body_html: string | null
+  p_book_body_format: string
+  p_tags: string[]
+  /** Trimmed; empty clears canonical in DB (RPC uses NULLIF). */
+  p_canonical_document_url: string
+}
+
 /**
  * Helper type to extend Supabase client with RPC function types
  * 
@@ -134,5 +145,9 @@ export interface DatabaseFunctions {
   create_takeoff_entry_with_items: {
     Args: CreateTakeoffEntryWithItemsParams
     Returns: CreateTakeoffEntryWithItemsResult
+  }
+  update_contract_book_entry: {
+    Args: UpdateContractBookEntryParams
+    Returns: null
   }
 }
