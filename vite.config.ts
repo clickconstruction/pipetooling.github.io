@@ -21,7 +21,7 @@ function copy404Plugin() {
 export default defineConfig({
   /** Avoid stale optimize-cache 504 / "Outdated Optimize Dep" when deps change (e.g. marked). */
   optimizeDeps: {
-    include: ['marked'],
+    include: ['marked', 'leaflet', 'react-leaflet', '@geoman-io/leaflet-geoman-free'],
   },
   test: {
     globals: true,

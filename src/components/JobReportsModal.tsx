@@ -7,6 +7,7 @@ import type { UserRole } from '../hooks/useAuth'
 type ReportWithJobInfo = ReportForView & {
   job_ledger_id: string | null
   project_id: string | null
+  bid_id: string | null
   created_by_user_id?: string | null
 }
 

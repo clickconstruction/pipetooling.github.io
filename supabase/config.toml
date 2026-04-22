@@ -450,6 +450,14 @@ verify_jwt = false
 [functions.street-view-preview]
 verify_jwt = false
 
+# Dev: batch geocode addresses (Nominatim) and upsert public.address_geocodes; JWT + users.role=dev in function.
+[functions.geocode-address-batch]
+verify_jwt = false
+
+# Same as geocode-address-batch: dev-only; validate JWT in handler.
+[functions.geocode-one]
+verify_jwt = false
+
 # Same as test-email: JWT validated in function (getUser + users.role); gateway returned Invalid JWT for browser sessions.
 [functions.login-as-user]
 verify_jwt = false

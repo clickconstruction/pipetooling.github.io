@@ -8,7 +8,13 @@ type ReportTemplate = Database['public']['Tables']['report_templates']['Row']
 type ReportTemplateField = Database['public']['Tables']['report_template_fields']['Row']
 type Report = Database['public']['Tables']['reports']['Row']
 
-type JobSearchResult = { id: string; source: 'job_ledger' | 'project'; display_name: string; hcp_number: string; address?: string }
+type JobSearchResult = {
+  id: string
+  source: 'job_ledger' | 'project' | 'bid'
+  display_name: string
+  hcp_number: string
+  address?: string
+}
 
 type Props = {
   open: boolean
@@ -16,7 +22,7 @@ type Props = {
   onSaved: () => void
   authUserId: string | null
   userRole?: UserRole | null
-  initialJob?: { id: string; source: 'job_ledger' | 'project'; display_name: string; hcp_number: string; address?: string }
+  initialJob?: { id: string; source: 'job_ledger' | 'project' | 'bid'; display_name: string; hcp_number: string; address?: string }
   initialTemplateName?: string
 }
 
@@ -76,23 +82,27 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
     if (!open || !authUserId) return
     supabase
       .from('reports')
-      .select('id, job_ledger_id, project_id, created_at')
+      .select('id, job_ledger_id, project_id, bid_id, created_at')
       .eq('created_by_user_id', authUserId)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
       .then(async ({ data }) => {
-        const r = data as (Report & { job_ledger_id?: string; project_id?: string }) | null
+        const r = data as (Report & { job_ledger_id?: string | null; project_id?: string | null; bid_id?: string | null }) | null
         if (!r) {
           setLastReportJob(null)
           return
         }
-        const source = r.job_ledger_id ? 'job_ledger' : 'project'
-        const id = r.job_ledger_id ?? r.project_id
+        const source: JobSearchResult['source'] = r.bid_id
+          ? 'bid'
+          : r.job_ledger_id
+            ? 'job_ledger'
+            : 'project'
+        const id = r.bid_id ?? r.job_ledger_id ?? r.project_id
         if (!id) return
         const { data: row } = await supabase.rpc('get_job_display_for_report', { p_source: source, p_id: id })
         const first = (row as JobSearchResult[] | null)?.[0]
-        if (first) setLastReportJob(first)
+        if (first) setLastReportJob({ ...first, source })
       })
   }, [open, authUserId])
 
@@ -142,7 +152,13 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
     const fields = templateFields[selectedTemplateId] ?? []
     const parts: string[] = []
     if (selectedJob) {
-      parts.push(`Job: ${selectedJob.display_name}${selectedJob.hcp_number ? ` (HCP: ${selectedJob.hcp_number})` : ''}`)
+      if (selectedJob.source === 'bid') {
+        parts.push(
+          `Bid: ${selectedJob.display_name}${selectedJob.hcp_number ? ` (Bid #${selectedJob.hcp_number})` : ''}`,
+        )
+      } else {
+        parts.push(`Job: ${selectedJob.display_name}${selectedJob.hcp_number ? ` (HCP: ${selectedJob.hcp_number})` : ''}`)
+      }
     }
     for (const f of fields) {
       const val = (fieldValues[f.label] ?? '').trim()
@@ -176,6 +192,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
     }
     const jobLedgerId = selectedJob.source === 'job_ledger' ? selectedJob.id : null
     const projectId = selectedJob.source === 'project' ? selectedJob.id : null
+    const bidId = selectedJob.source === 'bid' ? selectedJob.id : null
 
     let reportedAtLat: number | null = null
     let reportedAtLng: number | null = null
@@ -200,12 +217,13 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
 
     if (userRole === 'estimator') {
       // Use RPC - SECURITY DEFINER bypasses RLS (fixes estimator insert policy issues)
-      // RPC accepts null for one of job_ledger_id/project_id; generated types are stricter
+      // RPC accepts null for two of job_ledger_id / project_id / bid_id; generated types are stricter
       const { data: reportId, error: rpcErr } = await supabase.rpc('insert_report', {
         p_template_id: selectedTemplateId,
         p_field_values: fv,
         p_job_ledger_id: jobLedgerId,
         p_project_id: projectId,
+        p_bid_id: bidId,
         p_reported_at_lat: reportedAtLat ?? undefined,
         p_reported_at_lng: reportedAtLng ?? undefined,
       } as never)
@@ -218,7 +236,11 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
         template_id: selectedTemplateId,
         created_by_user_id: createdByUserId,
         field_values: fv,
-        ...(jobLedgerId ? { job_ledger_id: jobLedgerId, project_id: null } : { job_ledger_id: null, project_id: projectId! }),
+        ...(bidId
+          ? { job_ledger_id: null, project_id: null, bid_id: bidId }
+          : jobLedgerId
+            ? { job_ledger_id: jobLedgerId, project_id: null, bid_id: null }
+            : { job_ledger_id: null, project_id: projectId!, bid_id: null }),
         ...(reportedAtLat != null &&
           reportedAtLng != null && { reported_at_lat: reportedAtLat, reported_at_lng: reportedAtLng }),
       }).select('id').single()
@@ -247,7 +269,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
   const canSubmit = selectedJob && selectedTemplateId && authUserId
 
   const missingFields: string[] = []
-  if (!selectedJob) missingFields.push('Job')
+  if (!selectedJob) missingFields.push('Job, project, or bid')
   if (!selectedTemplateId) missingFields.push('Report type')
 
   return (
@@ -261,7 +283,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-              <p style={{ margin: 0, fontWeight: 500 }}>Select job *</p>
+              <p style={{ margin: 0, fontWeight: 500 }}>Job, project, or bid *</p>
               {lastReportJob && (
                 <button
                   type="button"
@@ -278,13 +300,19 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
                   }}
                   style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: searchMode === 'last' ? '2px solid #3b82f6' : '1px solid #d1d5db', background: searchMode === 'last' ? '#eff6ff' : 'white', borderRadius: 4, cursor: 'pointer' }}
                 >
-                  Same job as last report
+                  Same as last report
                 </button>
               )}
             </div>
             {selectedJob && (
               <div style={{ margin: 0, padding: '0.5rem', background: '#f3f4f6', borderRadius: 4 }}>
-                <div>Selected: {selectedJob.display_name} (HCP: {selectedJob.hcp_number || '—'})</div>
+                <div>
+                  Selected: {selectedJob.display_name} (
+                  {selectedJob.source === 'bid'
+                    ? `Bid #${selectedJob.hcp_number || '—'}`
+                    : `HCP: ${selectedJob.hcp_number || '—'}`}
+                  )
+                </div>
                 {selectedJob.address && <div style={{ marginTop: '0.25rem', color: '#4b5563', fontSize: '0.875rem' }}>{selectedJob.address}</div>}
               </div>
             )}
@@ -301,7 +329,12 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
                   }}
                   style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: '#2563eb', textDecoration: 'underline', font: 'inherit' }}
                 >
-                  {lastReportJob.display_name}{lastReportJob.hcp_number ? ` (HCP: ${lastReportJob.hcp_number})` : ''}
+                  {lastReportJob.display_name}
+                  {lastReportJob.hcp_number
+                    ? lastReportJob.source === 'bid'
+                      ? ` (Bid #${lastReportJob.hcp_number})`
+                      : ` (HCP: ${lastReportJob.hcp_number})`
+                    : ''}
                 </button>
               </p>
             )}
@@ -309,7 +342,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
               type="text"
               value={jobSearchText}
               onChange={(e) => { setJobSearchText(e.target.value); setSearchMode('search'); setSelectedJob(null) }}
-              placeholder="Search by HCP #, project name, or address"
+              placeholder="Search job HCP, project, bid #, or address"
               style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
             />
             {searchMode === 'search' && searchResults.length > 0 && (
@@ -319,9 +352,18 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
                     key={`${r.source}-${r.id}`}
                     type="button"
                     onClick={() => { setSelectedJob(r); setSearchResults([]) }}
-                    style={{ display: 'block', width: '100%', padding: '0.5rem 0.75rem', textAlign: 'left', border: 'none', background: selectedJob?.id === r.id ? '#eff6ff' : 'white', cursor: 'pointer', borderBottom: '1px solid #e5e7eb' }}
+                    style={{ display: 'block', width: '100%', padding: '0.5rem 0.75rem', textAlign: 'left', border: 'none', background: selectedJob?.id === r.id && selectedJob?.source === r.source ? '#eff6ff' : 'white', cursor: 'pointer', borderBottom: '1px solid #e5e7eb' }}
                   >
-                    {r.display_name} {r.hcp_number ? `(HCP: ${r.hcp_number})` : ''}{r.address ? `  -  ${r.address}` : ''}
+                    {r.source === 'bid' ? (
+                      <span style={{ marginRight: 6, fontSize: '0.65rem', fontWeight: 700, color: '#7c3aed' }}>BID</span>
+                    ) : null}
+                    {r.display_name}{' '}
+                    {r.hcp_number
+                      ? r.source === 'bid'
+                        ? `(Bid #${r.hcp_number})`
+                        : `(HCP: ${r.hcp_number})`
+                      : ''}
+                    {r.address ? `  -  ${r.address}` : ''}
                   </button>
                 ))}
               </div>

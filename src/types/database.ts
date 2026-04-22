@@ -39,6 +39,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      address_geocodes: {
+        Row: {
+          address_normalized: string
+          geocode_error: string | null
+          geocoded_at: string
+          lat: number
+          lng: number
+        }
+        Insert: {
+          address_normalized: string
+          geocode_error?: string | null
+          geocoded_at?: string
+          lat: number
+          lng: number
+        }
+        Update: {
+          address_normalized?: string
+          geocode_error?: string | null
+          geocoded_at?: string
+          lat?: number
+          lng?: number
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           key: string
@@ -6271,6 +6295,7 @@ export type Database = {
       }
       reports: {
         Row: {
+          bid_id: string | null
           created_at: string | null
           created_by_user_id: string
           field_values: Json
@@ -6283,6 +6308,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          bid_id?: string | null
           created_at?: string | null
           created_by_user_id: string
           field_values?: Json
@@ -6295,6 +6321,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          bid_id?: string | null
           created_at?: string | null
           created_by_user_id?: string
           field_values?: Json
@@ -6307,6 +6334,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "reports_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "reports_created_by_user_id_fkey"
             columns: ["created_by_user_id"]
@@ -8658,6 +8692,7 @@ export type Database = {
           }
         | {
             Args: {
+              p_bid_id?: string
               p_field_values: Json
               p_job_ledger_id: string
               p_project_id: string
@@ -8697,7 +8732,12 @@ export type Database = {
           last_note_at: string
           last_note_author_name: string
           last_note_body: string
+          last_report_at: string
+          last_report_author_name: string
+          last_report_preview: string
+          last_report_template_name: string
           note_count: number
+          report_count: number
         }[]
       }
       leader_replace_clock_session_cluster_mixed: {
@@ -8832,6 +8872,7 @@ export type Database = {
       list_my_reports: {
         Args: never
         Returns: {
+          bid_id: string
           created_at: string
           created_by_name: string
           created_by_user_id: string
@@ -8871,9 +8912,47 @@ export type Database = {
           revenue: number
         }[]
       }
+      list_reports_for_bid: {
+        Args: { p_bid_id: string }
+        Returns: {
+          bid_id: string
+          created_at: string
+          created_by_name: string
+          created_by_user_id: string
+          field_values: Json
+          id: string
+          job_display_name: string
+          job_hcp_number: string
+          reported_at_lat: number
+          reported_at_lng: number
+          template_id: string
+          template_name: string
+          updated_at: string
+        }[]
+      }
+      list_reports_for_job_ledger: {
+        Args: { p_job_id: string }
+        Returns: {
+          created_at: string
+          created_by_name: string
+          created_by_user_id: string
+          field_values: Json
+          id: string
+          job_display_name: string
+          job_hcp_number: string
+          job_ledger_id: string
+          project_id: string
+          reported_at_lat: number
+          reported_at_lng: number
+          template_id: string
+          template_name: string
+          updated_at: string
+        }[]
+      }
       list_reports_with_job_info: {
         Args: never
         Returns: {
+          bid_id: string
           created_at: string
           created_by_name: string
           created_by_user_id: string

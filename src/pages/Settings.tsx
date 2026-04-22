@@ -4222,19 +4222,35 @@ export default function Settings() {
         const editDays = (reportSettings as { value_num?: number } | null)?.value_num ?? 2
         setMyReportsReportEditWindowDays(typeof editDays === 'number' ? editDays : 2)
         const arr = Array.isArray(data) ? data : []
-        const list = arr.map((r: { id: string; template_id: string; template_name: string; job_display_name: string; job_ledger_id?: string | null; project_id?: string | null; created_at: string; created_by_name: string; field_values?: unknown; reported_at_lat?: number | null; reported_at_lng?: number | null }) => ({
-          id: r.id,
-          template_id: r.template_id,
-          template_name: r.template_name,
-          job_display_name: r.job_display_name,
-          job_ledger_id: r.job_ledger_id ?? null,
-          project_id: r.project_id ?? null,
-          created_at: r.created_at,
-          created_by_name: r.created_by_name,
-          field_values: r.field_values as Record<string, string> | undefined,
-          reported_at_lat: r.reported_at_lat ?? null,
-          reported_at_lng: r.reported_at_lng ?? null,
-        }))
+        const list = arr.map(
+          (r: {
+            id: string
+            template_id: string
+            template_name: string
+            job_display_name: string
+            job_ledger_id?: string | null
+            project_id?: string | null
+            bid_id?: string | null
+            created_at: string
+            created_by_name: string
+            field_values?: unknown
+            reported_at_lat?: number | null
+            reported_at_lng?: number | null
+          }) => ({
+            id: r.id,
+            template_id: r.template_id,
+            template_name: r.template_name,
+            job_display_name: r.job_display_name,
+            job_ledger_id: r.job_ledger_id ?? null,
+            project_id: r.project_id ?? null,
+            bid_id: r.bid_id ?? null,
+            created_at: r.created_at,
+            created_by_name: r.created_by_name,
+            field_values: r.field_values as Record<string, string> | undefined,
+            reported_at_lat: r.reported_at_lat ?? null,
+            reported_at_lng: r.reported_at_lng ?? null,
+          }),
+        )
         setMyReports(list)
       } finally {
         setMyReportsLoading(false)

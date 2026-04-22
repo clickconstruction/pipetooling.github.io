@@ -7,8 +7,9 @@ import {
   type UnifiedNotesAddingKind,
 } from '../bidBoard/UnifiedBidCustomerNotes'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
+import { BidBoardFieldReportsList } from './BidBoardFieldReportsList'
 
-export type BidBoardNotesTab = 'all' | 'bid' | 'customer'
+export type BidBoardNotesTab = 'all' | 'bid' | 'customer' | 'reports'
 
 export type BidBoardNotesPanelBid = {
   id: string
@@ -106,7 +107,8 @@ export function BidBoardNotesPanel({
         style={{
           padding: '0.25rem 0.65rem',
           border: 'none',
-          background: notesTab === 'customer' ? '#3b82f6' : '#ffffff',
+          borderRight: '1px solid #d1d5db',
+          background: notesTab === 'customer' ? '#16a34a' : '#ffffff',
           color: notesTab === 'customer' ? '#ffffff' : '#374151',
           cursor: !bid.customers?.id ? 'not-allowed' : 'pointer',
           fontWeight: notesTab === 'customer' ? 600 : 400,
@@ -115,6 +117,25 @@ export function BidBoardNotesPanel({
         }}
       >
         Customer
+      </button>
+      <button
+        type="button"
+        role="tab"
+        id={`${idPrefix}-tab-reports-${bid.id}`}
+        aria-selected={notesTab === 'reports'}
+        aria-controls={panelId}
+        onClick={() => onNotesTabChange('reports')}
+        style={{
+          padding: '0.25rem 0.65rem',
+          border: 'none',
+          background: notesTab === 'reports' ? '#3b82f6' : '#ffffff',
+          color: notesTab === 'reports' ? '#ffffff' : '#374151',
+          cursor: 'pointer',
+          fontWeight: notesTab === 'reports' ? 600 : 400,
+          fontSize: '0.875rem',
+        }}
+      >
+        Reports
       </button>
     </div>
   )
@@ -155,11 +176,13 @@ export function BidBoardNotesPanel({
         role="tabpanel"
         id={panelId}
         aria-labelledby={
-          notesTab === 'bid'
-            ? `${idPrefix}-tab-bid-${bid.id}`
-            : notesTab === 'customer'
-              ? `${idPrefix}-tab-customer-${bid.id}`
-              : `${idPrefix}-tab-all-${bid.id}`
+          notesTab === 'all'
+            ? `${idPrefix}-tab-all-${bid.id}`
+            : notesTab === 'bid'
+              ? `${idPrefix}-tab-bid-${bid.id}`
+              : notesTab === 'customer'
+                ? `${idPrefix}-tab-customer-${bid.id}`
+                : `${idPrefix}-tab-reports-${bid.id}`
         }
       >
         {notesTab === 'bid' ? (
@@ -173,12 +196,15 @@ export function BidBoardNotesPanel({
               hasBidsAbove={false}
               onLoadError={onLoadError}
               onMutated={mutCustomer}
+              useBidBoardCustomerChrome
             />
           ) : (
             <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
               No linked customer — customer notes are not available for this bid.
             </p>
           )
+        ) : notesTab === 'reports' ? (
+          <BidBoardFieldReportsList bidId={bid.id} onLoadError={onLoadError} />
         ) : (
           <UnifiedBidCustomerNotes
             bidId={bid.id}

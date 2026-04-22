@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import type { JobThreadNoteRow } from '../components/JobThreadNotesPanel'
+import type { JobThreadActivityItem, JobThreadNoteRow } from '../components/JobThreadNotesPanel'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import {
+  reportForViewFromJobLedgerRow,
+  type ReportForJobLedgerRow,
+} from '../lib/reportForViewFromJobLedgerRow'
 
 type ToastFn = (message: string, type: 'success' | 'info' | 'warning' | 'error') => void
 
@@ -10,6 +14,11 @@ export type JobThreadNoteStats = {
   last_note_at: string | null
   last_note_body: string | null
   last_note_author_name: string | null
+  report_count: number
+  last_report_at: string | null
+  last_report_author_name: string | null
+  last_report_template_name: string | null
+  last_report_preview: string | null
 }
 
 function rpcNum(v: unknown): number {
@@ -27,17 +36,34 @@ function rpcStr(v: unknown): string | null {
   return String(v)
 }
 
+export const EMPTY_JOB_THREAD_STATS: JobThreadNoteStats = {
+  note_count: 0,
+  last_note_at: null,
+  last_note_body: null,
+  last_note_author_name: null,
+  report_count: 0,
+  last_report_at: null,
+  last_report_author_name: null,
+  last_report_template_name: null,
+  last_report_preview: null,
+}
+
 /** Normalize PostgREST / RPC row (snake_case; tolerate camelCase or string bigints). */
 function statsFromRpcRow(r: unknown): JobThreadNoteStats {
   if (r == null || typeof r !== 'object') {
-    return { note_count: 0, last_note_at: null, last_note_body: null, last_note_author_name: null }
+    return { ...EMPTY_JOB_THREAD_STATS }
   }
   const o = r as Record<string, unknown>
   return {
     note_count: rpcNum(o.note_count ?? o.noteCount),
     last_note_at: rpcStr(o.last_note_at ?? o.lastNoteAt),
     last_note_body: rpcStr(o.last_note_body ?? o.lastNoteBody),
-    last_note_author_name: rpcStr(o.last_note_author_name ?? o.lastNoteAuthorName),
+    last_note_author_name: rpcStr(o.last_note_author_name ?? o.last_noteAuthorName),
+    report_count: rpcNum(o.report_count ?? o.reportCount),
+    last_report_at: rpcStr(o.last_report_at ?? o.lastReportAt),
+    last_report_author_name: rpcStr(o.last_report_author_name ?? o.lastReportAuthorName),
+    last_report_template_name: rpcStr(o.last_report_template_name ?? o.lastReportTemplateName),
+    last_report_preview: rpcStr(o.last_report_preview ?? o.lastReportPreview),
   }
 }
 
@@ -59,6 +85,38 @@ function makeOptimisticThreadNote(body: string, authorDisplayName: string | null
   }
 }
 
+function sortActivityByTime(items: JobThreadActivityItem[]): JobThreadActivityItem[] {
+  return [...items].sort((a, b) => {
+    const ta = a.kind === 'note' ? a.note.created_at : a.report.created_at
+    const tb = b.kind === 'note' ? b.note.created_at : b.report.created_at
+    return new Date(ta).getTime() - new Date(tb).getTime()
+  })
+}
+
+function buildActivityFromServer(
+  rowsRaw: JobThreadNoteRow[],
+  reportRows: ReportForJobLedgerRow[],
+  prevActivity: JobThreadActivityItem[] | undefined,
+  quiet: boolean,
+  flight: { jobId: string; optimisticId: string } | null,
+  jobId: string,
+): JobThreadActivityItem[] {
+  const noteItems: JobThreadActivityItem[] = rowsRaw.map((n) => ({ kind: 'note' as const, note: n }))
+  const reportItems: JobThreadActivityItem[] = reportRows.map((r) => ({
+    kind: 'report' as const,
+    report: reportForViewFromJobLedgerRow(r),
+  }))
+  let combined = sortActivityByTime([...noteItems, ...reportItems])
+
+  if (quiet && flight?.jobId === jobId) {
+    const opt = (prevActivity ?? []).find((i) => i.kind === 'note' && i.note.id === flight.optimisticId)
+    if (opt && opt.kind === 'note' && !rowsRaw.some((r) => r.id === opt.note.id)) {
+      combined = sortActivityByTime([...combined, opt])
+    }
+  }
+  return combined
+}
+
 const THREAD_NOTE_SELECT =
   'id, body, created_at, author:users!jobs_ledger_thread_notes_author_user_id_fkey(name)' as const
 
@@ -72,7 +130,7 @@ export function useJobThreadNotes(
 ) {
   const realtimeChannelId = useId()
   const [expandedJobThreadId, setExpandedJobThreadId] = useState<string | null>(null)
-  const [jobThreadNotesByJobId, setJobThreadNotesByJobId] = useState<Record<string, JobThreadNoteRow[]>>({})
+  const [jobThreadActivityByJobId, setJobThreadActivityByJobId] = useState<Record<string, JobThreadActivityItem[]>>({})
   const [jobThreadNotesLoadingId, setJobThreadNotesLoadingId] = useState<string | null>(null)
   const [jobThreadSubmittingId, setJobThreadSubmittingId] = useState<string | null>(null)
   const [jobThreadDraft, setJobThreadDraft] = useState('')
@@ -88,29 +146,41 @@ export function useJobThreadNotes(
       const quiet = opts?.quiet === true
       if (!quiet) setJobThreadNotesLoadingId(jobId)
       try {
-        const data = await withSupabaseRetry(
-          async () =>
-            supabase.from('jobs_ledger_thread_notes').select(THREAD_NOTE_SELECT).eq('job_id', jobId).order('created_at', {
-              ascending: true,
-            }),
-          'load jobs_ledger_thread_notes',
-        )
-        const rowsRaw = (data as JobThreadNoteRow[] | null) ?? []
-        setJobThreadNotesByJobId((prev) => {
-          const merged = (() => {
-            const flight = inFlightThreadNoteRef.current
-            if (quiet && flight?.jobId === jobId) {
-              const opt = (prev[jobId] ?? []).find((n) => n.id === flight.optimisticId)
-              if (opt && !rowsRaw.some((r) => r.id === opt.id)) {
-                return [...rowsRaw, opt].sort(
-                  (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
-                )
-              }
+        const [notesData, reportData] = await Promise.all([
+          withSupabaseRetry(
+            async () =>
+              supabase.from('jobs_ledger_thread_notes').select(THREAD_NOTE_SELECT).eq('job_id', jobId).order('created_at', {
+                ascending: true,
+              }),
+            'load jobs_ledger_thread_notes',
+          ),
+          withSupabaseRetry(
+            async () => supabase.rpc('list_reports_for_job_ledger', { p_job_id: jobId }),
+            'list_reports_for_job_ledger',
+          ),
+        ])
+        const rowsRaw = (notesData as JobThreadNoteRow[] | null) ?? []
+        const reportRows = (reportData as ReportForJobLedgerRow[] | null) ?? []
+
+        setJobThreadActivityByJobId((prev) => {
+          const merged = buildActivityFromServer(
+            rowsRaw,
+            reportRows,
+            prev[jobId],
+            quiet,
+            inFlightThreadNoteRef.current,
+            jobId,
+          )
+
+          const lastNote = (() => {
+            for (let i = merged.length - 1; i >= 0; i--) {
+              const it = merged[i]
+              if (it == null) continue
+              if (it.kind === 'note' && it.note.body?.trim()) return it.note
             }
-            return rowsRaw
+            return undefined
           })()
-          const last = merged[merged.length - 1]
-          if (last?.body?.trim()) {
+          if (lastNote?.body?.trim()) {
             setJobThreadStatsByJobId((sprev) => {
               const cur = sprev[jobId]
               if (!cur || (cur.last_note_body ?? '').trim()) return sprev
@@ -118,8 +188,8 @@ export function useJobThreadNotes(
                 ...sprev,
                 [jobId]: {
                   ...cur,
-                  last_note_body: last.body,
-                  last_note_author_name: last.author?.name?.trim() ?? cur.last_note_author_name,
+                  last_note_body: lastNote.body,
+                  last_note_author_name: lastNote.author?.name?.trim() ?? cur.last_note_author_name,
                 },
               }
             })
@@ -200,12 +270,25 @@ export function useJobThreadNotes(
   useEffect(() => {
     if (!authUserId) return
     const channel = supabase
-      .channel(`jobs-ledger-thread-notes-${realtimeChannelId}`)
+      .channel(`jobs-ledger-thread-activity-${realtimeChannelId}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'jobs_ledger_thread_notes' },
         (payload) => {
           const jid = (payload.new as { job_id?: string } | null)?.job_id
+          if (jid && expandedJobThreadIdRef.current === jid) {
+            void loadJobThreadNotesForJob(jid, { quiet: true })
+          }
+          if (jid) {
+            void mergeJobThreadStatsForJobIds([jid])
+          }
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'reports' },
+        (payload) => {
+          const jid = (payload.new as { job_ledger_id?: string | null } | null)?.job_ledger_id
           if (jid && expandedJobThreadIdRef.current === jid) {
             void loadJobThreadNotesForJob(jid, { quiet: true })
           }
@@ -226,15 +309,18 @@ export function useJobThreadNotes(
       if (!authUserId || !body) return
       const optimistic = makeOptimisticThreadNote(body, authorDisplayName ?? null)
       inFlightThreadNoteRef.current = { jobId, optimisticId: optimistic.id }
-      setJobThreadNotesByJobId((prev) => ({
+      const optimisticItem: JobThreadActivityItem = { kind: 'note', note: optimistic }
+      setJobThreadActivityByJobId((prev) => ({
         ...prev,
-        [jobId]: [...(prev[jobId] ?? []), optimistic],
+        [jobId]: sortActivityByTime([...(prev[jobId] ?? []), optimisticItem]),
       }))
       setJobThreadStatsByJobId((prev) => {
         const cur = prev[jobId]
         return {
           ...prev,
           [jobId]: {
+            ...EMPTY_JOB_THREAD_STATS,
+            ...cur,
             note_count: (cur?.note_count ?? 0) + 1,
             last_note_at: optimistic.created_at,
             last_note_body: body,
@@ -261,13 +347,13 @@ export function useJobThreadNotes(
         )
         if (inserted == null) throw new Error('No note row returned')
         const row = inserted as unknown as JobThreadNoteRow
-        setJobThreadNotesByJobId((prev) => {
+        setJobThreadActivityByJobId((prev) => {
           const list = prev[jobId] ?? []
-          const idx = list.findIndex((n) => n.id === optimistic.id)
-          if (idx < 0) return { ...prev, [jobId]: [...list, row] }
+          const idx = list.findIndex((i) => i.kind === 'note' && i.note.id === optimistic.id)
+          if (idx < 0) return { ...prev, [jobId]: sortActivityByTime([...list, { kind: 'note', note: row }]) }
           const next = [...list]
-          next[idx] = row
-          return { ...prev, [jobId]: next }
+          next[idx] = { kind: 'note', note: row }
+          return { ...prev, [jobId]: sortActivityByTime(next) }
         })
         inFlightThreadNoteRef.current = null
         const stats = await withSupabaseRetry(
@@ -283,9 +369,11 @@ export function useJobThreadNotes(
         }
       } catch (e: unknown) {
         inFlightThreadNoteRef.current = null
-        setJobThreadNotesByJobId((prev) => ({
+        setJobThreadActivityByJobId((prev) => ({
           ...prev,
-          [jobId]: (prev[jobId] ?? []).filter((n) => n.id !== optimistic.id),
+          [jobId]: (prev[jobId] ?? []).filter(
+            (i) => !(i.kind === 'note' && i.note.id === optimistic.id),
+          ),
         }))
         void mergeJobThreadStatsForJobIds([jobId])
         setJobThreadDraft(body)
@@ -300,7 +388,7 @@ export function useJobThreadNotes(
   return {
     expandedJobThreadId,
     setExpandedJobThreadId,
-    jobThreadNotesByJobId,
+    jobThreadActivityByJobId,
     jobThreadNotesLoadingId,
     jobThreadSubmittingId,
     jobThreadDraft,

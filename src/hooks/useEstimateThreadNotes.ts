@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { JobThreadNoteRow } from '../components/JobThreadNotesPanel'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
-import type { JobThreadNoteStats } from './useJobThreadNotes'
+import { EMPTY_JOB_THREAD_STATS, type JobThreadNoteStats } from './useJobThreadNotes'
 
 export type EstimateThreadNoteStats = JobThreadNoteStats
 
@@ -25,7 +25,7 @@ function rpcStr(v: unknown): string | null {
 
 function statsFromRpcRow(r: unknown): EstimateThreadNoteStats {
   if (r == null || typeof r !== 'object') {
-    return { note_count: 0, last_note_at: null, last_note_body: null, last_note_author_name: null }
+    return { ...EMPTY_JOB_THREAD_STATS }
   }
   const o = r as Record<string, unknown>
   return {
@@ -33,6 +33,11 @@ function statsFromRpcRow(r: unknown): EstimateThreadNoteStats {
     last_note_at: rpcStr(o.last_note_at ?? o.lastNoteAt),
     last_note_body: rpcStr(o.last_note_body ?? o.lastNoteBody),
     last_note_author_name: rpcStr(o.last_note_author_name ?? o.lastNoteAuthorName),
+    report_count: rpcNum(o.report_count ?? o.reportCount),
+    last_report_at: rpcStr(o.last_report_at ?? o.lastReportAt),
+    last_report_author_name: rpcStr(o.last_report_author_name ?? o.lastReportAuthorName),
+    last_report_template_name: rpcStr(o.last_report_template_name ?? o.lastReportTemplateName),
+    last_report_preview: rpcStr(o.last_report_preview ?? o.lastReportPreview),
   }
 }
 
@@ -232,6 +237,8 @@ export function useEstimateThreadNotes(
         return {
           ...prev,
           [estimateId]: {
+            ...EMPTY_JOB_THREAD_STATS,
+            ...cur,
             note_count: (cur?.note_count ?? 0) + 1,
             last_note_at: optimistic.created_at,
             last_note_body: body,

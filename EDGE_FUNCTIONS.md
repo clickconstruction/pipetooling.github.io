@@ -884,6 +884,61 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ---
 
+### geocode-address-batch
+
+**Purpose**: **Dev-only** batch geocoding for the **Map** page. Normalizes addresses, reads/writes **`public.address_geocodes`** via the user’s JWT (RLS), and for cache misses: **OpenStreetMap Nominatim** first, then **Google Geocoding API** if **`GOOGLE_MAPS_API_KEY`** is set and Nominatim does not return coordinates (rate-limited **~1.1s** between *Nominatim* request rounds server-side). There is **no** extra inter-address delay before the Google attempt in the same row.
+
+**Endpoint**: `POST /functions/v1/geocode-address-batch`
+
+**Body** (JSON): `{ "addresses": string[] }` — display strings (e.g. job street); max **20** per request.
+
+**Response** (**200** JSON): `{ "results": { "address_normalized": string, "lat": number, "lng": number }[] }`
+
+**Headers**: `Authorization: Bearer <user_jwt>`, `apikey: <anon_key>`, `Content-Type: application/json`.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, optional **`GOOGLE_MAPS_API_KEY`** (same as [`street-view-preview`](#street-view-preview); enable **Geocoding API** in Google Cloud; key stays on the server). If the key is unset, behavior matches **Nominatim-only** (rows Nominatim cannot resolve are omitted from `results`).
+
+**Gateway**: `verify_jwt = false`; **`auth.getUser()`** + **`users.role = 'dev'`** in the function (**403** otherwise).
+
+**Errors**: **401** not signed in; **403** not dev; **400** bad body or too many addresses; **500** DB or upsert failure.
+
+**Deploy**: `supabase functions deploy geocode-address-batch`
+
+**Implementation**: [`supabase/functions/geocode-address-batch/index.ts`](supabase/functions/geocode-address-batch/index.ts) + shared [`supabase/functions/_shared/googleGeocode.ts`](supabase/functions/_shared/googleGeocode.ts). **Map** page uses the single-address function below; this batch function remains for bulk or scripts.
+
+---
+
+### geocode-one
+
+**Purpose**: **Dev-only** single-address geocoding: same **`address_geocodes`** cache and upsert as batch. For a miss: **Nominatim** first, then **Google Geocoding API** if **`GOOGLE_MAPS_API_KEY`** is set and Nominatim does not return usable coordinates. One address per request for clearer logs. The **Map** app calls it **sequentially** and only waits **~1100ms** after responses that used **Nominatim** live (not cache, not a Google-only success); see **Client pacing** and **`source`**.
+
+**Endpoint**: `POST /functions/v1/geocode-one`
+
+**Body** (JSON):
+
+- Default: `{ "address": string }` — display string (trimmed, min length **3**).
+- **Google refresh (Map review modal):** `{ "address": string, "refresh_google_only": true }` — **skips** the **`address_geocodes` cache and Nominatim**; calls **only** the Google Geocoding API, then **upserts**. Use when a pin is wrong or the address was edited in the app. Requires **`GOOGLE_MAPS_API_KEY`**; if missing, returns **`ok: false`** with **`error`**: **`google_unconfigured`**. On success, **`refreshed`: `true`** is included with **`source`: `"google"`**.
+
+**Response** (**200** JSON):
+
+- Success: `{ "ok": true, "address_normalized": string, "lat": number, "lng": number, "fromCache": boolean, "source": "cache" | "nominatim" | "google", "refreshed"?: true }` — when **`fromCache` is** `true`, **`source`** is **`cache`**; when coordinates were just written, **`source`** is **`nominatim`** or **`google`**. **`refreshed`** is set for **`refresh_google_only`** successes.
+- Failure: `{ "ok": false, "address_normalized": string, "error": string, "detail"?: string }` — same **`error`** codes as above. When Google’s JSON includes **`error_message`**, a sanitized, length-capped copy is included as **`detail`** (API key–like substrings redacted) so the Map UI can show *why* **REQUEST_DENIED** / quota / etc. failed.
+- Auth / validation errors: `{ "error": string }` with **401** / **403** / **400** as appropriate; **500** on DB/upsert failure.
+
+**Headers**: `Authorization: Bearer <user_jwt>`, `apikey: <anon_key>`, `Content-Type: application/json`.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, optional **`GOOGLE_MAPS_API_KEY`** (enable **Geocoding API** in Google Cloud; same key as Street View is typical). If unset, Nominatim miss returns **`ok: false`** (e.g. **`not_found`**) as before.
+
+**Gateway**: `verify_jwt = false`; **`auth.getUser()`** + **`users.role = 'dev'`** in the function (**403** otherwise).
+
+**Client pacing**: The batch function waits **~1.1s** between *rows* for Nominatim. The Map hook waits **~1100ms** after each **`geocode-one`** success whose **`source`** is **`nominatim`** (Nominatim public etiquette). It does **not** add that delay after **cache** hits or after **`source: "google"`** so back-to-back Google resolutions stay fast. Coordinates are still stored in **`address_geocodes`** the same as today; follow Google’s Maps Platform terms for your deployment.
+
+**Deploy**: `supabase functions deploy geocode-one`
+
+**Implementation**: [`supabase/functions/geocode-one/index.ts`](supabase/functions/geocode-one/index.ts) + shared [`supabase/functions/_shared/googleGeocode.ts`](supabase/functions/_shared/googleGeocode.ts); client: [`src/hooks/useMapPageData.ts`](src/hooks/useMapPageData.ts) + Map UI: [`src/components/map/MapPageView.tsx`](src/components/map/MapPageView.tsx) + **Review geocodes** modal: [`src/components/map/MapGeocodeReviewModal.tsx`](src/components/map/MapGeocodeReviewModal.tsx), [`src/lib/map/invokeGeocodeOneRefreshGoogleOnly.ts`](src/lib/map/invokeGeocodeOneRefreshGoogleOnly.ts).
+
+---
+
 ### send-checklist-notification
 
 **Purpose**: Send Web Push notifications for checklist events (completion, test)

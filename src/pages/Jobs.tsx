@@ -1070,7 +1070,7 @@ export default function Jobs() {
   const {
     expandedJobThreadId,
     setExpandedJobThreadId,
-    jobThreadNotesByJobId,
+    jobThreadActivityByJobId,
     jobThreadNotesLoadingId,
     jobThreadSubmittingId,
     jobThreadDraft,
@@ -5287,11 +5287,26 @@ ${totalsHtml}
               const jobId = job.id
               const stat = jobThreadStatsByJobId[jobId]
               const count = stat?.note_count ?? 0
-              const notes = jobThreadNotesByJobId[jobId]
-              const lastNote = notes?.length ? notes[notes.length - 1] : undefined
-              const fromThreadBody = (lastNote?.body ?? '').trim()
+              const activity = jobThreadActivityByJobId[jobId]
+              let fromThreadBody = ''
+              let lastChronologicalNoteAuthor: string | undefined
+              if (activity?.length) {
+                for (let i = activity.length - 1; i >= 0; i--) {
+                  const it = activity[i]
+                  if (it == null) continue
+                  if (it.kind === 'note') {
+                    fromThreadBody = (it.note.body ?? '').trim()
+                    lastChronologicalNoteAuthor = it.note.author?.name?.trim() || undefined
+                    break
+                  }
+                }
+              }
               const titleForEmpty = 'Job notes thread'
-              const titleWithNotes = count > 0 ? `${count} thread note(s)` : titleForEmpty
+              const reportCount = stat?.report_count ?? 0
+              const titleParts: string[] = []
+              if (count > 0) titleParts.push(`${count} thread note(s)`)
+              if (reportCount > 0) titleParts.push(`${reportCount} field report(s)`)
+              const titleWithNotes = titleParts.length > 0 ? titleParts.join(' · ') : titleForEmpty
               const expanded = expandedJobThreadId === jobId
               const scheduleNoTeam = (job.team_members?.length ?? 0) === 0
 
@@ -5503,7 +5518,13 @@ ${totalsHtml}
                 )
               }
 
-              if (count === 0 || !stat?.last_note_at) {
+              function threadActivityWireMs(iso: string | null | undefined): number | null {
+                if (iso == null || !String(iso).trim()) return null
+                const t = Date.parse(String(iso))
+                return Number.isNaN(t) ? null : t
+              }
+
+              if (!stat) {
                 return (
                   <td style={tdShellStyle}>
                     {renderStagesLastActivityLeadingControls()}
@@ -5517,10 +5538,35 @@ ${totalsHtml}
                   </td>
                 )
               }
-              const meta = getDispatchNoteDisplayMeta(stat.last_note_at)
-              const author =
-                stat.last_note_author_name?.trim() || lastNote?.author?.name?.trim() || ''
-              const body = (stat.last_note_body ?? '').trim() || fromThreadBody
+              const tNote = threadActivityWireMs(stat.last_note_at)
+              const tReport = threadActivityWireMs(stat.last_report_at)
+              if (tNote == null && tReport == null) {
+                return (
+                  <td style={tdShellStyle}>
+                    {renderStagesLastActivityLeadingControls()}
+                    <div style={lastActivityMainColumnStyle}>
+                      <div {...lastActivityBodyInteractiveProps(titleForEmpty)}>
+                        <span style={{ fontSize: '0.8125rem', color: '#9ca3af' }}>—</span>
+                      </div>
+                      {renderStagesStripeEmailedCustomerHint()}
+                      {renderStagesInvoiceJumpChips(job)}
+                    </div>
+                  </td>
+                )
+              }
+              const useReport = tReport != null && (tNote == null || tReport > tNote)
+              const atIso = useReport ? stat.last_report_at! : stat.last_note_at!
+              const meta = getDispatchNoteDisplayMeta(atIso)
+              const author = useReport
+                ? stat.last_report_author_name?.trim() || ''
+                : stat.last_note_author_name?.trim() || lastChronologicalNoteAuthor || ''
+              const body = useReport
+                ? (() => {
+                    const tmpl = (stat.last_report_template_name ?? '').trim() || 'Report'
+                    const prev = (stat.last_report_preview ?? '').trim()
+                    return prev ? `Report: ${tmpl}\n${prev}` : `Report: ${tmpl}`
+                  })()
+                : (stat.last_note_body ?? '').trim() || fromThreadBody
               return (
                 <td style={{ ...tdShellStyle, maxWidth: 280 }}>
                   {renderStagesLastActivityLeadingControls()}
@@ -6031,7 +6077,7 @@ ${totalsHtml}
                                 }}
                               >
                                 <JobThreadNotesPanel
-                                  notes={jobThreadNotesByJobId[j.id] ?? []}
+                                  activity={jobThreadActivityByJobId[j.id] ?? []}
                                   loading={jobThreadNotesLoadingId === j.id}
                                   canPost={!!authUser}
                                   draft={jobThreadDraft}
@@ -6653,7 +6699,7 @@ ${totalsHtml}
                                     }}
                                   >
                                     <JobThreadNotesPanel
-                                      notes={jobThreadNotesByJobId[j.id] ?? []}
+                                      activity={jobThreadActivityByJobId[j.id] ?? []}
                                       loading={jobThreadNotesLoadingId === j.id}
                                       canPost={!!authUser}
                                       draft={jobThreadDraft}
@@ -6990,7 +7036,7 @@ ${totalsHtml}
                                     }}
                                   >
                                     <JobThreadNotesPanel
-                                      notes={jobThreadNotesByJobId[job.id] ?? []}
+                                      activity={jobThreadActivityByJobId[job.id] ?? []}
                                       loading={jobThreadNotesLoadingId === job.id}
                                       canPost={!!authUser}
                                       draft={jobThreadDraft}

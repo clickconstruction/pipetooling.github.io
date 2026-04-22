@@ -12,11 +12,26 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.372 → v2.4"
+version_range: "v2.377 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.377)"
+    line: ~1212
+    description: "Dev Map: Review geocodes modal; `geocode-one` `refresh_google_only` Google-only re-geocode; invoke helper + 200ms pacing"
+  - name: "Latest Version (v2.376)"
+    line: ~1224
+    description: "Dev Map geocoding: Nominatim then Google (GOOGLE_MAPS_API_KEY) in geocode-one + geocode-address-batch; response `source`; client 1100ms only after Nominatim"
+  - name: "Latest Version (v2.375)"
+    line: ~1236
+    description: "Dev Map: per-address `geocode-one` Edge + sequential client pacing; collapsible geocode progress list in MapPageView; batch function kept for scripts"
+  - name: "Latest Version (v2.374)"
+    line: ~1236
+    description: "Dev Map page: jobs/bids/estimates on OSM + Geoman draw; Turf filter table; `address_geocodes` + Edge `geocode-address-batch` (Nominatim)"
+  - name: "Latest Version (v2.373)"
+    line: ~1215
+    description: "Bids: Bid Board notes Customer tab and customer notes use green (tab pill, Add row, list shell); `useBidBoardCustomerChrome` on `CustomerNotesTable`"
   - name: "Latest Version (v2.372)"
-    line: ~1202
+    line: ~1228
     description: "Clock In/Out: punch writes first, GPS/IP location patched async; shorter getCurrentPosition timeout (3.5s); post-success Promise.all (sessions + goals / team feedback)"
   - name: "Latest Version (v2.371)"
     line: ~1218
@@ -1200,6 +1215,61 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.377)
+
+**Date**: 2026-04-22
+
+### **Dev** **Map** — Review geocodes + Google-only refresh
+
+- **Edge** — [`geocode-one`](supabase/functions/geocode-one/index.ts): JSON **`refresh_google_only: true`** with **`address`** bypasses cache and Nominatim, calls only Google, upserts; **`google_unconfigured`** when the key is missing; success may include **`refreshed: true`**. See [`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md).
+- **App** — [`MapPageView`](src/components/map/MapPageView.tsx) **Review geocodes** opens [`MapGeocodeReviewModal`](src/components/map/MapGeocodeReviewModal.tsx): unique geocoded addresses (current layer view), last **`geocoded_at`**, references by kind; **Rerun Google for selected** uses [`invokeGeocodeOneRefreshGoogleOnly`](src/lib/map/invokeGeocodeOneRefreshGoogleOnly.ts) with **200ms** pacing, then **Reload data** to refresh pins. **[`mapGeocodeErrorMessage`](src/hooks/useMapPageData.ts)** includes **`google_unconfigured`**.
+
+---
+
+## Latest Updates (v2.376)
+
+**Date**: 2026-04-22
+
+### **Dev** **Map** — Google Geocoding fallback (after Nominatim)
+
+- **Edge** — [`googleGeocode.ts`](supabase/functions/_shared/googleGeocode.ts) calls **Google Geocoding API** with **`GOOGLE_MAPS_API_KEY`** (enable **Geocoding API** in Google Cloud; same key as Street View). [**`geocode-one`**](supabase/functions/geocode-one/index.ts) and [**`geocode-address-batch`**](supabase/functions/geocode-address-batch/index.ts) try Nominatim first, then Google on miss; success JSON includes **`source`**: `cache` | `nominatim` | `google` on `geocode-one`.
+- **App** — [`useMapPageData.ts`](src/hooks/useMapPageData.ts) applies the **~1100ms** inter-call delay only when **`source === 'nominatim'`** (not cache / not Google). See [`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md).
+
+---
+
+## Latest Updates (v2.375)
+
+**Date**: 2026-04-21
+
+### **Dev** **Map** (`/map`) — per-address geocoding + progress
+
+- **Edge** — **`geocode-one`**: dev-only, single `POST { address }`, same cache and Nominatim policy as **`geocode-address-batch`**; response includes **`fromCache`**. **`geocode-address-batch`** unchanged for bulk/scripts.
+- **App** — [`useMapPageData`](src/hooks/useMapPageData.ts) invokes **`geocode-one`** sequentially with **~1100ms** between non-cache calls; map entities merge after each success. [`MapPageView`](src/components/map/MapPageView.tsx) collapsible **Geocoding (n/total)** list with per-row status. See [`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md).
+
+---
+
+## Latest Updates (v2.374)
+
+**Date**: 2026-04-22
+
+### **Dev** **Map** (`/map`) — jobs, bids, estimates, draw + table
+
+- **DB** — Migration **`20270422160000_address_geocodes_for_map`**: **`address_geocodes`** (normalized key, lat/lng, dev RLS). Regenerate types if needed.
+- **Edge** — **`geocode-address-batch`**: dev-only, Nominatim batch with delay, upsert cache; **`config.toml`** `verify_jwt = false`; see [`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md).
+- **App** — [`MapPageView`](src/components/map/MapPageView.tsx) + [`useMapPageData`](src/hooks/useMapPageData.ts): Leaflet/OSM, **Geoman** rectangle/polygon, **Turf** `booleanPointInPolygon`, layer toggles, table with links (`/jobs?edit=`, `/bids?bidId=`, `/estimates/:id`). Estimates: address from `for_address`, then job, then customer.
+
+---
+
+## Latest Updates (v2.373)
+
+**Date**: 2026-04-22
+
+### **Bids** — **Bid Board notes** / **Submission & Followup** — **Customer** lane (green)
+
+- **UI** — [`BidBoardNotesPanel`](src/components/bids/BidBoardNotesPanel.tsx) **Customer** tab pill uses **green** when selected (aligned with `UnifiedBidCustomerNotes` customer styling). [`CustomerNotesTable`](src/components/customerNotes/CustomerNotesTable.tsx) **`useBidBoardCustomerChrome`**: green **Add row** button, list shell (`#f0fdf4` + left **#16a34a** border), optional heading color when a title is shown. Enabled from Bid Board and **Submission & Followup** in [`Bids.tsx`](src/pages/Bids.tsx). Other `CustomerNotesTable` embeds (Customers, Estimates) unchanged (default blue **Add row**).
+
 ---
 
 ## Latest Updates (v2.372)

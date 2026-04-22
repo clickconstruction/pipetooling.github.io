@@ -39,7 +39,7 @@ import {
   UnifiedBidCustomerNotesActionButtons,
   type UnifiedNotesAddingKind,
 } from '../components/bidBoard/UnifiedBidCustomerNotes'
-import { BidBoardNotesPanel } from '../components/bids/BidBoardNotesPanel'
+import { BidBoardNotesPanel, type BidBoardNotesTab } from '../components/bids/BidBoardNotesPanel'
 import { BidsWorkingBoard } from '../components/bids/BidsWorkingBoard'
 import { BidFormModal, type BidServiceTypeSwitchSibling } from '../components/bids/BidFormModal'
 import { SupplyHouseWebsiteLink } from '../components/SupplyHouseWebsiteLink'
@@ -1430,7 +1430,7 @@ export default function Bids() {
   // Bid Board
   const [bidBoardSearchQuery, setBidBoardSearchQuery] = useState('')
   const [expandedBidBoardBidId, setExpandedBidBoardBidId] = useState<string | null>(null)
-  const [bidBoardNotesTab, setBidBoardNotesTab] = useState<'bid' | 'customer' | 'all'>('all')
+  const [bidBoardNotesTab, setBidBoardNotesTab] = useState<BidBoardNotesTab>('all')
   const [bidBoardNotesUnreadByBidId, setBidBoardNotesUnreadByBidId] = useState<Record<string, number>>({})
   const bidBoardUnreadFetchSeqRef = useRef(0)
   const bidsForBoardUnreadRef = useRef(bids)
@@ -9251,6 +9251,24 @@ export default function Bids() {
     </span>
   )
 
+  const bidsBidCostsTabButton =
+    myRole === 'dev' ? (
+      <button
+        type="button"
+        onClick={() => {
+          setActiveTab('bid-costs')
+          setSearchParams((p) => {
+            const next = new URLSearchParams(p)
+            next.set('tab', 'bid-costs')
+            return next
+          })
+        }}
+        style={tabStyle(activeTab === 'bid-costs')}
+      >
+        Bid Costs
+      </button>
+    ) : null
+
   const submissionUnsent = filteredBidsForSubmission.filter((b) => !b.bid_date_sent && b.outcome !== 'won' && b.outcome !== 'lost' && b.outcome !== 'started_or_complete')
   const submissionPending = filteredBidsForSubmission.filter((b) => b.bid_date_sent && b.outcome !== 'won' && b.outcome !== 'lost' && b.outcome !== 'started_or_complete')
   const submissionWon = filteredBidsForSubmission
@@ -10489,6 +10507,7 @@ export default function Bids() {
               Builder Review
             </button>
             {bidsWorkingTabButton}
+            {bidsBidCostsTabButton}
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', minWidth: 0 }}>
             <button
@@ -10544,23 +10563,8 @@ export default function Bids() {
                   Builder Review
                 </button>
                 {bidsWorkingTabButton}
+                {bidsBidCostsTabButton}
               </>
-            )}
-            {myRole === 'dev' && (
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('bid-costs')
-                  setSearchParams((p) => {
-                    const next = new URLSearchParams(p)
-                    next.set('tab', 'bid-costs')
-                    return next
-                  })
-                }}
-                style={tabStyle(activeTab === 'bid-costs')}
-              >
-                Bid Costs
-              </button>
             )}
           </div>
           <div
@@ -16580,7 +16584,7 @@ export default function Bids() {
                     style={{
                       padding: '0.5rem 1rem',
                       border: 'none',
-                      background: submissionFollowupNotesTab === 'customer' ? '#3b82f6' : '#ffffff',
+                      background: submissionFollowupNotesTab === 'customer' ? '#16a34a' : '#ffffff',
                       color: submissionFollowupNotesTab === 'customer' ? '#ffffff' : '#374151',
                       cursor: !selectedBidForSubmission.customers?.id ? 'not-allowed' : 'pointer',
                       fontWeight: submissionFollowupNotesTab === 'customer' ? 600 : 400,
@@ -16625,6 +16629,7 @@ export default function Bids() {
                       adding={submissionFollowupCustomerTableAdding}
                       onAddingChange={setSubmissionFollowupCustomerTableAdding}
                       hideFooterAddButton
+                      useBidBoardCustomerChrome
                     />
                   ) : (
                     <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>

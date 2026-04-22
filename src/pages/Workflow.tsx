@@ -137,7 +137,7 @@ export default function Workflow() {
   const {
     expandedJobThreadId: expandedWorkflowJobThreadId,
     setExpandedJobThreadId: setExpandedWorkflowJobThreadId,
-    jobThreadNotesByJobId: workflowJobThreadNotesByJobId,
+    jobThreadActivityByJobId: workflowJobThreadActivityByJobId,
     jobThreadNotesLoadingId: workflowJobThreadNotesLoadingId,
     jobThreadSubmittingId: workflowJobThreadSubmittingId,
     jobThreadDraft: workflowJobThreadDraft,
@@ -2271,7 +2271,7 @@ export default function Workflow() {
             {expandedWorkflowJobThreadId && (
               <div style={{ width: '100%', maxWidth: 560, alignSelf: 'stretch' }}>
                 <JobThreadNotesPanel
-                  notes={workflowJobThreadNotesByJobId[expandedWorkflowJobThreadId] ?? []}
+                  activity={workflowJobThreadActivityByJobId[expandedWorkflowJobThreadId] ?? []}
                   loading={workflowJobThreadNotesLoadingId === expandedWorkflowJobThreadId}
                   canPost={!!authUser}
                   draft={workflowJobThreadDraft}

@@ -346,6 +346,11 @@ export type CustomerNotesTableProps = {
   onAddingChange?: (adding: boolean) => void
   /** Hide bottom "Add row" when the parent provides add controls. */
   hideFooterAddButton?: boolean
+  /**
+   * When true (e.g. Bid Board Customer tab), green Add row and section chrome
+   * aligned with `UnifiedBidCustomerNotes` customer styling.
+   */
+  useBidBoardCustomerChrome?: boolean
 }
 
 export function CustomerNotesTable({
@@ -359,6 +364,7 @@ export function CustomerNotesTable({
   adding: addingProp,
   onAddingChange,
   hideFooterAddButton = false,
+  useBidBoardCustomerChrome = false,
 }: CustomerNotesTableProps) {
   const headingLabel = title === undefined ? 'Customer notes' : title
   const [internalAdding, setInternalAdding] = useState(false)
@@ -384,17 +390,46 @@ export function CustomerNotesTable({
     borderTop: hasBidsAbove ? '1px solid #e5e7eb' : 'none',
   }
 
+  const listShellStyle: CSSProperties = useBidBoardCustomerChrome
+    ? {
+        border: '1px solid #bbf7d0',
+        borderLeft: '3px solid #16a34a',
+        borderRadius: 4,
+        overflow: 'hidden',
+        background: '#f0fdf4',
+      }
+    : {
+        border: '1px solid #e5e7eb',
+        borderRadius: 4,
+        overflow: 'hidden',
+        background: '#f9fafb',
+      }
+
+  const addRowButtonStyle: CSSProperties = useBidBoardCustomerChrome
+    ? { padding: '0.25rem 0.65rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }
+    : { padding: '0.25rem 0.65rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }
+
   return (
     <div style={sectionStyle} aria-label={`Customer notes for ${customerName}`}>
       {headingLabel ? (
-        <div style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+        <div
+          style={{
+            fontSize: '0.875rem',
+            fontWeight: 600,
+            marginBottom: '0.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.35rem',
+            ...(useBidBoardCustomerChrome ? { color: '#166534' } : {}),
+          }}
+        >
           {headingLabel}
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="14" height="14" fill="currentColor" aria-hidden="true">
             <path d="M160 544C124.7 544 96 515.3 96 480L96 160C96 124.7 124.7 96 160 96L480 96C515.3 96 544 124.7 544 160L544 373.5C544 390.5 537.3 406.8 525.3 418.8L418.7 525.3C406.7 537.3 390.4 544 373.4 544L160 544zM485.5 368L392 368C378.7 368 368 378.7 368 392L368 485.5L485.5 368z" />
           </svg>
         </div>
       ) : null}
-      <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden', background: '#f9fafb' }}>
+      <div style={listShellStyle}>
         {loading && entries.length === 0 && !adding ? (
           <div style={{ padding: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>Loading…</div>
         ) : null}
@@ -423,11 +458,7 @@ export function CustomerNotesTable({
       </div>
       {!adding && !hideFooterAddButton && (
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.75rem' }}>
-          <button
-            type="button"
-            onClick={() => setAdding(true)}
-            style={{ padding: '0.25rem 0.65rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-          >
+          <button type="button" onClick={() => setAdding(true)} style={addRowButtonStyle}>
             Add row
           </button>
         </div>

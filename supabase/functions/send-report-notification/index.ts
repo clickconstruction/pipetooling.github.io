@@ -70,7 +70,7 @@ serve(async (req) => {
     // Fetch report
     const { data: reportRow, error: reportErr } = await adminClient
       .from('reports')
-      .select('id, template_id, created_by_user_id, job_ledger_id, project_id')
+      .select('id, template_id, created_by_user_id, job_ledger_id, project_id, bid_id')
       .eq('id', report_id)
       .single()
 
@@ -97,22 +97,35 @@ serve(async (req) => {
       .single()
     const creatorName = (creatorRow as { name: string | null } | null)?.name ?? 'Someone'
 
-    // Fetch job display
+    // Fetch job / project / bid display
     let jobDisplay = 'Unknown job'
-    if (reportRow.job_ledger_id) {
+    const r = reportRow as {
+      job_ledger_id: string | null
+      project_id: string | null
+      bid_id: string | null
+    }
+    if (r.job_ledger_id) {
       const { data: jl } = await adminClient
         .from('jobs_ledger')
         .select('job_name')
-        .eq('id', reportRow.job_ledger_id)
+        .eq('id', r.job_ledger_id)
         .single()
       jobDisplay = (jl as { job_name: string | null } | null)?.job_name ?? jobDisplay
-    } else if (reportRow.project_id) {
+    } else if (r.project_id) {
       const { data: proj } = await adminClient
         .from('projects')
         .select('name')
-        .eq('id', reportRow.project_id)
+        .eq('id', r.project_id)
         .single()
       jobDisplay = (proj as { name: string | null } | null)?.name ?? jobDisplay
+    } else if (r.bid_id) {
+      const { data: bid } = await adminClient
+        .from('bids')
+        .select('project_name, gc_contact_name')
+        .eq('id', r.bid_id)
+        .single()
+      const b = bid as { project_name: string | null; gc_contact_name: string | null } | null
+      jobDisplay = b?.project_name?.trim() || b?.gc_contact_name?.trim() || 'Bid'
     }
 
     const pushTitle = `New ${templateName}`

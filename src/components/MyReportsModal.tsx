@@ -7,6 +7,7 @@ export type ReportForMyReports = {
   job_display_name: string
   job_ledger_id?: string | null
   project_id?: string | null
+  bid_id?: string | null
   created_at: string
   created_by_name: string
   field_values?: Record<string, string>
@@ -35,7 +36,7 @@ function matchesSearch(report: ReportForMyReports, q: string): boolean {
 }
 
 function getJobKey(report: ReportForMyReports): string {
-  return report.job_ledger_id ?? report.project_id ?? report.job_display_name ?? 'unknown'
+  return report.job_ledger_id ?? report.project_id ?? report.bid_id ?? report.job_display_name ?? 'unknown'
 }
 
 export default function MyReportsModal({

@@ -616,6 +616,25 @@ export default function Layout() {
             </button>
           )}
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.125rem' }}>
+            {role === 'dev' && (
+              <NavLink
+                to="/map"
+                style={({ isActive }) => ({
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  padding: '0.5rem',
+                  color: 'inherit',
+                  textDecoration: 'none',
+                  ...(isActive && { borderBottom: '1px solid currentColor' }),
+                })}
+                title="Map"
+                aria-label="Map"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" fill="currentColor" aria-hidden="true">
+                  <path d="M352 348.4C416.1 333.9 464 276.5 464 208C464 128.5 399.5 64 320 64C240.5 64 176 128.5 176 208C176 276.5 223.9 333.9 288 348.4L288 544C288 561.7 302.3 576 320 576C337.7 576 352 561.7 352 544L352 348.4zM328 160C297.1 160 272 185.1 272 216C272 229.3 261.3 240 248 240C234.7 240 224 229.3 224 216C224 158.6 270.6 112 328 112C341.3 112 352 122.7 352 136C352 149.3 341.3 160 328 160z" />
+                </svg>
+              </NavLink>
+            )}
             <NavLink
               to="/calendar"
               style={({ isActive }) => ({

@@ -15,6 +15,7 @@ const ProjectNewGate = lazy(() => import('./pages/ProjectNewGate'))
 const Workflow = lazy(() => import('./pages/Workflow'))
 const Settings = lazy(() => import('./pages/Settings'))
 const Calendar = lazy(() => import('./pages/Calendar'))
+const Map = lazy(() => import('./pages/Map'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Templates = lazy(() => import('./pages/Templates'))
 const People = lazy(() => import('./pages/People'))
@@ -200,6 +201,7 @@ function AppContent() {
           <Route path="quickfill" element={<ErrorBoundary><Quickfill /></ErrorBoundary>} />
           <Route path="people" element={<People />} />
           <Route path="calendar" element={<Calendar />} />
+          <Route path="map" element={<Map />} />
           <Route path="templates" element={<Templates />} />
           <Route path="materials" element={<Materials />} />
           <Route path="estimates" element={<Estimates />} />

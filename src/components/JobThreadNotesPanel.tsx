@@ -1,4 +1,7 @@
+import { useState } from 'react'
 import { getDispatchNoteDisplayMeta } from '../utils/dispatchNoteDisplay'
+import ReportViewModal, { type ReportForView } from './ReportViewModal'
+import { firstNonEmptyFieldValueSummary } from '../lib/reportForViewFromJobLedgerRow'
 
 export type JobThreadNoteRow = {
   id: string
@@ -7,8 +10,15 @@ export type JobThreadNoteRow = {
   author: { name: string | null } | null
 }
 
+export type JobThreadActivityItem =
+  | { kind: 'note'; note: JobThreadNoteRow }
+  | { kind: 'report'; report: ReportForView }
+
 type JobThreadNotesPanelProps = {
-  notes: JobThreadNoteRow[]
+  /** Merged notes + job field reports (Jobs Stages / Workflow). When set, `notes` is ignored. */
+  activity?: JobThreadActivityItem[]
+  /** Note-only (e.g. Job detail modal). Used when `activity` is omitted. */
+  notes?: JobThreadNoteRow[]
   loading: boolean
   canPost: boolean
   draft: string
@@ -85,6 +95,7 @@ function JobThreadWeekDispatchButton({
 }
 
 export function JobThreadNotesPanel({
+  activity: activityProp,
   notes,
   loading,
   canPost,
@@ -92,7 +103,7 @@ export function JobThreadNotesPanel({
   onDraftChange,
   onSubmit,
   submitting,
-  emptyLabel = 'No thread notes yet.',
+  emptyLabel = 'No activity yet.',
   sectionTitle = 'Job activity / notes',
   showSectionTitle = true,
   showEmptyPlaceholder = true,
@@ -100,6 +111,15 @@ export function JobThreadNotesPanel({
   scheduleAction,
   scheduleDispatchAction,
 }: JobThreadNotesPanelProps) {
+  const [viewingReport, setViewingReport] = useState<ReportForView | null>(null)
+
+  const activity: JobThreadActivityItem[] =
+    activityProp ??
+    (notes ?? []).map((n) => ({
+      kind: 'note' as const,
+      note: n,
+    }))
+
   return (
     <div
       style={{
@@ -117,39 +137,102 @@ export function JobThreadNotesPanel({
         </div>
       ) : null}
       {loading ? (
-        <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: '0 0 0.75rem 0' }}>Loading notes…</p>
+        <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: '0 0 0.75rem 0' }}>Loading…</p>
       ) : (
         <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 0.75rem 0' }}>
-          {notes.length === 0 ? (
+          {activity.length === 0 ? (
             showEmptyPlaceholder ? (
               <li style={{ color: '#6b7280', fontSize: '0.875rem' }}>{emptyLabel}</li>
             ) : null
           ) : (
-            notes.map((n) => {
-              const authorName = n.author?.name?.trim() || 'Unknown'
-              const { weekdayTimeChicago, daysAgoLabel } = getDispatchNoteDisplayMeta(n.created_at)
+            activity.map((item) => {
+              if (item.kind === 'note') {
+                const n = item.note
+                const authorName = n.author?.name?.trim() || 'Unknown'
+                const { weekdayTimeChicago, daysAgoLabel } = getDispatchNoteDisplayMeta(n.created_at)
+                return (
+                  <li
+                    key={`n-${n.id}`}
+                    style={{
+                      padding: '0.5rem 0',
+                      borderBottom: '1px solid #f3f4f6',
+                      fontSize: '0.8125rem',
+                    }}
+                  >
+                    <div style={{ color: '#6b7280', marginBottom: 2 }}>
+                      <strong style={{ color: '#111827' }}>{authorName}</strong>
+                      <span style={{ marginLeft: '0.5rem' }}>
+                        {weekdayTimeChicago} · {daysAgoLabel}
+                      </span>
+                    </div>
+                    <div style={{ color: '#1f2937', whiteSpace: 'pre-wrap' }}>{n.body}</div>
+                  </li>
+                )
+              }
+              const r = item.report
+              const { weekdayTimeChicago, daysAgoLabel } = getDispatchNoteDisplayMeta(r.created_at)
+              const summary = firstNonEmptyFieldValueSummary(r)
               return (
                 <li
-                  key={n.id}
+                  key={`r-${r.id}`}
                   style={{
                     padding: '0.5rem 0',
                     borderBottom: '1px solid #f3f4f6',
                     fontSize: '0.8125rem',
+                    borderLeft: '3px solid #93c5fd',
+                    paddingLeft: '0.5rem',
+                    marginLeft: 0,
                   }}
                 >
                   <div style={{ color: '#6b7280', marginBottom: 2 }}>
-                    <strong style={{ color: '#111827' }}>{authorName}</strong>
+                    <span
+                      style={{
+                        fontSize: '0.65rem',
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        color: '#2563eb',
+                        marginRight: '0.35rem',
+                        verticalAlign: 'middle',
+                      }}
+                    >
+                      Report
+                    </span>
+                    <strong style={{ color: '#111827' }}>{r.created_by_name?.trim() || 'Unknown'}</strong>
                     <span style={{ marginLeft: '0.5rem' }}>
                       {weekdayTimeChicago} · {daysAgoLabel}
                     </span>
                   </div>
-                  <div style={{ color: '#1f2937', whiteSpace: 'pre-wrap' }}>{n.body}</div>
+                  <div style={{ color: '#1f2937' }}>
+                    <span style={{ fontWeight: 600 }}>{r.template_name}</span>
+                    {summary ? (
+                      <div style={{ marginTop: 4, whiteSpace: 'pre-wrap' }}>{summary}</div>
+                    ) : null}
+                    <div style={{ marginTop: 6 }}>
+                      <button
+                        type="button"
+                        onClick={() => setViewingReport(r)}
+                        style={{
+                          padding: '0.2rem 0.5rem',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          background: '#eff6ff',
+                          color: '#1d4ed8',
+                          border: '1px solid #93c5fd',
+                          borderRadius: 4,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        View full report
+                      </button>
+                    </div>
+                  </div>
                 </li>
               )
             })
           )}
         </ul>
       )}
+      <ReportViewModal open={viewingReport != null} report={viewingReport} onClose={() => setViewingReport(null)} />
       {!canPost && (scheduleAction || scheduleDispatchAction) ? (
         <div
           style={{
