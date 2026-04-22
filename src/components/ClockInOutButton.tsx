@@ -21,6 +21,8 @@ import {
 import { fetchWorkingBoardClockBidPicks, type WorkingBoardClockBidPick } from '../lib/fetchWorkingBoardClockBidPicks'
 import { syncSalaryClockSessionsForUserDay } from '../lib/salaryScheduleSync'
 import { resolveClockPunchCoordinates } from '../lib/resolveClockPunchCoordinates'
+import { buildClockBidsSearchParams } from '../lib/clockBidsSearchParams'
+import BidServiceTypeSearchToggles from './BidServiceTypeSearchToggles'
 import TeamFeedbackWizard from './team-feedback/TeamFeedbackWizard'
 
 function formatElapsed(seconds: number): string {
@@ -67,45 +69,6 @@ function computeTotalSecondsToday(sessions: TodaySession[]): number {
     const outMs = s.clocked_out_at ? new Date(s.clocked_out_at).getTime() : now
     return sum + Math.floor((outMs - inMs) / 1000)
   }, 0)
-}
-
-/** Bid search args for `search_bids_for_clock` from toggle state (Clock In modals). */
-function buildClockBidsSearchParams(
-  p_search_text: string,
-  opts: {
-    serviceTypes: Array<{ id: string; name: string }>
-    enabledBidServiceTypeIds: string[]
-    subcontractorServiceTypeIds: string[] | null
-  },
-): { p_search_text: string; p_service_type_id?: string; p_service_type_ids?: string[] } {
-  const bidsParams: { p_search_text: string; p_service_type_id?: string; p_service_type_ids?: string[] } = { p_search_text }
-  const typeIds = new Set(opts.serviceTypes.map((t) => t.id))
-  const enabled = opts.enabledBidServiceTypeIds.filter((id) => typeIds.has(id))
-
-  if (opts.subcontractorServiceTypeIds && opts.subcontractorServiceTypeIds.length > 0) {
-    const allowed = opts.subcontractorServiceTypeIds
-    const effective = allowed.filter((id) => enabled.includes(id))
-    // Last-type-off is a no-op; if empty, keep full allowlist.
-    bidsParams.p_service_type_ids = effective.length > 0 ? effective : allowed
-    return bidsParams
-  }
-
-  if (opts.serviceTypes.length <= 1) {
-    if (enabled.length === 1) bidsParams.p_service_type_id = enabled[0]
-    return bidsParams
-  }
-
-  if (enabled.length === 1) {
-    bidsParams.p_service_type_id = enabled[0]
-    return bidsParams
-  }
-  if (enabled.length === opts.serviceTypes.length) {
-    return bidsParams
-  }
-  if (enabled.length > 1) {
-    bidsParams.p_service_type_ids = enabled
-  }
-  return bidsParams
 }
 
 type Props = {
@@ -1081,63 +1044,6 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
   }
 
   function renderUnifiedJobBidSearchRow(disabled: boolean) {
-    const enabledSet = new Set(enabledBidServiceTypeIds)
-    const toggles =
-      serviceTypes.length > 1 ? (
-        <div
-          role="group"
-          aria-label="Bid service types to include in search"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '0.22rem',
-            flexShrink: 0,
-          }}
-        >
-          {serviceTypes.map((st) => {
-            const on = enabledSet.has(st.id)
-            const tagInfo = getBidServiceTypeTag(st.name)
-            const label = (tagInfo?.tag ?? st.name.slice(0, 4)).toUpperCase()
-            const borderColor = tagInfo?.color ?? '#d1d5db'
-            return (
-              <button
-                key={st.id}
-                type="button"
-                disabled={disabled}
-                aria-pressed={on}
-                aria-label={`${on ? 'Hide' : 'Show'} ${st.name} bids in search`}
-                onClick={() => {
-                  setEnabledBidServiceTypeIds((prev) => {
-                    if (prev.includes(st.id)) {
-                      if (prev.length <= 1) return prev
-                      return prev.filter((id) => id !== st.id)
-                    }
-                    return [...prev, st.id]
-                  })
-                  setUnifiedSearchResults([])
-                }}
-                style={{
-                  padding: '0.1rem 0.3rem',
-                  fontSize: '0.6875rem',
-                  lineHeight: 1,
-                  fontWeight: 600,
-                  letterSpacing: '0.02em',
-                  borderRadius: 3,
-                  border: `1px solid ${borderColor}`,
-                  background: on ? borderColor : 'white',
-                  color: on ? '#fff' : '#374151',
-                  cursor: disabled ? 'not-allowed' : 'pointer',
-                  opacity: disabled ? 0.6 : 1,
-                }}
-              >
-                {label}
-              </button>
-            )
-          })}
-        </div>
-      ) : null
-
     return (
       <div
         style={{
@@ -1148,7 +1054,13 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
           width: '100%',
         }}
       >
-        {toggles}
+        <BidServiceTypeSearchToggles
+          serviceTypes={serviceTypes}
+          enabledBidServiceTypeIds={enabledBidServiceTypeIds}
+          disabled={disabled}
+          onEnabledChange={setEnabledBidServiceTypeIds}
+          onAfterToggle={() => setUnifiedSearchResults([])}
+        />
         <input
           type="text"
           value={unifiedSearchText}

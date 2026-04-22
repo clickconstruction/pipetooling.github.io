@@ -89,6 +89,16 @@ export default function ChecklistAddModal() {
     [users],
   )
 
+  const canManage = useMemo(
+    () =>
+      role === 'dev' ||
+      role === 'master_technician' ||
+      role === 'assistant' ||
+      role === 'primary' ||
+      role === 'estimator',
+    [role],
+  )
+
   useEffect(() => {
     if (!modalContext?.isOpen) return
     supabase
@@ -177,6 +187,12 @@ export default function ChecklistAddModal() {
     if (!modalContext?.isOpen) return
     syncChecklistTitleTextareaHeight(titleInputRef.current)
   }, [modalContext?.isOpen, form.title])
+
+  useLayoutEffect(() => {
+    if (!modalContext?.isOpen) return
+    if (!canManage) return
+    titleInputRef.current?.focus({ preventScroll: true })
+  }, [modalContext?.isOpen, canManage])
 
   async function generateInstances(itemId: string, item: typeof form) {
     const assigneeIds = item.assigned_to_user_ids?.length ? item.assigned_to_user_ids : []
@@ -270,12 +286,6 @@ export default function ChecklistAddModal() {
 
   if (!modalContext?.isOpen) return null
 
-  const canManage =
-    role === 'dev' ||
-    role === 'master_technician' ||
-    role === 'assistant' ||
-    role === 'primary' ||
-    role === 'estimator'
   if (!canManage) return null
 
   return (

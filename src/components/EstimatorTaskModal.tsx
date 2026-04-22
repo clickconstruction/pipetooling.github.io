@@ -4,7 +4,9 @@ import { useEstimatorTaskModal } from '../contexts/EstimatorTaskModalContext'
 import { useToastContext } from '../contexts/ToastContext'
 import { useAuth } from '../hooks/useAuth'
 import { withSupabaseRetry } from '../utils/errorHandling'
+import { buildClockBidsSearchParams } from '../lib/clockBidsSearchParams'
 import { MapPin, Check } from 'lucide-react'
+import BidServiceTypeSearchToggles from './BidServiceTypeSearchToggles'
 import {
   formatUnifiedResult,
   getBidServiceTypeTag,
@@ -26,7 +28,7 @@ export default function EstimatorTaskModal() {
   const [unifiedSearchResults, setUnifiedSearchResults] = useState<UnifiedSearchResult[]>([])
   const [selectedReference, setSelectedReference] = useState<UnifiedSearchResult | null>(null)
   const [serviceTypes, setServiceTypes] = useState<Array<{ id: string; name: string }>>([])
-  const [selectedBidServiceTypeId, setSelectedBidServiceTypeId] = useState<string>('')
+  const [enabledBidServiceTypeIds, setEnabledBidServiceTypeIds] = useState<string[]>([])
   const [subcontractorServiceTypeIds, setSubcontractorServiceTypeIds] = useState<string[] | null>(null)
   const [referenceNoHits, setReferenceNoHits] = useState(false)
   const [locationLat, setLocationLat] = useState<number | null>(null)
@@ -79,14 +81,20 @@ export default function EstimatorTaskModal() {
               : me?.role === 'subcontractor' && subIds && subIds.length > 0
                 ? types.filter((t) => subIds.includes(t.id))
                 : types
+        const filteredIds = filtered.map((t) => t.id)
         if (filtered.length === 1) {
-          setSelectedBidServiceTypeId(filtered[0]!.id)
+          setEnabledBidServiceTypeIds([filtered[0]!.id])
         } else {
-          setSelectedBidServiceTypeId((prev) => (prev === '' || (prev && filtered.some((t) => t.id === prev)) ? prev : ''))
+          setEnabledBidServiceTypeIds((prev) => {
+            const kept = prev.filter((id) => filteredIds.includes(id))
+            if (kept.length === 0) return filteredIds
+            const missing = filteredIds.filter((id) => !kept.includes(id))
+            return missing.length > 0 ? [...kept, ...missing] : kept
+          })
         }
         setServiceTypes(filtered)
       } else {
-        setSelectedBidServiceTypeId('')
+        setEnabledBidServiceTypeIds(types.map((t) => t.id))
         setServiceTypes(types)
         setSubcontractorServiceTypeIds(null)
       }
@@ -103,12 +111,11 @@ export default function EstimatorTaskModal() {
       }
       const q = unifiedSearchText.trim()
       setReferenceNoHits(false)
-      const bidsParams: { p_search_text: string; p_service_type_id?: string; p_service_type_ids?: string[] } = { p_search_text: q }
-      if (subcontractorServiceTypeIds && subcontractorServiceTypeIds.length > 0) {
-        bidsParams.p_service_type_ids = subcontractorServiceTypeIds
-      } else if (selectedBidServiceTypeId) {
-        bidsParams.p_service_type_id = selectedBidServiceTypeId
-      }
+      const bidsParams = buildClockBidsSearchParams(q, {
+        serviceTypes,
+        enabledBidServiceTypeIds,
+        subcontractorServiceTypeIds,
+      })
       Promise.all([
         supabase.rpc('search_jobs_ledger', { search_text: q }),
         supabase.rpc('search_bids_for_clock', bidsParams),
@@ -124,7 +131,7 @@ export default function EstimatorTaskModal() {
       })
     }, 300)
     return () => clearTimeout(t)
-  }, [modal?.isEstimatorModalOpen, unifiedSearchText, selectedBidServiceTypeId, subcontractorServiceTypeIds])
+  }, [modal?.isEstimatorModalOpen, unifiedSearchText, serviceTypes, enabledBidServiceTypeIds, subcontractorServiceTypeIds])
 
   if (!modal?.isEstimatorModalOpen) return null
 
@@ -247,131 +254,20 @@ export default function EstimatorTaskModal() {
             />
           </label>
           <div style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: '1rem', background: '#f8fafc' }}>
-            <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem' }}>
-              Optional — add any of:
-            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (!('geolocation' in navigator)) {
-                      showToast("Location isn't available on this device.", 'warning')
-                      return
-                    }
-                    setLocationLoading(true)
-                    try {
-                      const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-                        navigator.geolocation.getCurrentPosition(resolve, reject, {
-                          enableHighAccuracy: false,
-                          timeout: 8000,
-                          maximumAge: 60000,
-                        })
-                      })
-                      setLocationLat(pos.coords.latitude)
-                      setLocationLng(pos.coords.longitude)
-                      showToast('Location added!', 'success')
-                    } catch (err) {
-                      const geo = err && typeof err === 'object' && 'code' in err ? (err as { code: number }) : null
-                      const msg =
-                        geo?.code === 1
-                          ? 'Location access was denied. Enable it in your browser to share your spot.'
-                          : geo?.code === 3
-                            ? 'Location took too long. Try again or add an address.'
-                            : "We couldn't find your location. Check browser settings and try again."
-                      showToast(msg, 'warning')
-                    } finally {
-                      setLocationLoading(false)
-                    }
-                  }}
-                  disabled={sending || locationLoading}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.35rem',
-                    padding: '0.4rem 0.75rem',
-                    background: '#eff6ff',
-                    border: '1px solid #bfdbfe',
-                    borderRadius: 9999,
-                    cursor: sending || locationLoading ? 'not-allowed' : 'pointer',
-                    color: '#1d4ed8',
-                    fontSize: '0.875rem',
-                    fontWeight: 500,
-                  }}
-                >
-                  <MapPin size={14} aria-hidden />
-                  {locationLoading ? 'Finding your spot…' : 'Attach this location'}
-                </button>
-                {locationLat != null && locationLng != null && (
-                  <span
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.35rem',
-                      padding: '0.2rem 0.5rem',
-                      background: '#dcfce7',
-                      borderRadius: 4,
-                      fontSize: '0.8125rem',
-                      color: '#166534',
-                    }}
-                  >
-                    <Check size={12} aria-hidden />
-                    Location shared
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setLocationLat(null)
-                        setLocationLng(null)
-                      }}
-                      disabled={sending}
-                      style={{
-                        padding: 0,
-                        background: 'none',
-                        border: 'none',
-                        cursor: sending ? 'not-allowed' : 'pointer',
-                        color: '#6b7280',
-                        fontSize: '1rem',
-                        lineHeight: 1,
-                      }}
-                      aria-label="Remove location"
-                    >
-                      ×
-                    </button>
-                  </span>
-                )}
-                </div>
-                <span style={{ fontSize: '0.8125rem', color: '#6b7280', textAlign: 'center' }}>
-                  Helps the crew find you faster
-                </span>
-              </div>
               <div style={{ marginBottom: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                  <span>Reference Job</span>
+                  <span>Reference Job or Bid</span>
               {serviceTypes.length === 1 ? (
                 <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Filtering by: {serviceTypes[0]!.name}</span>
               ) : serviceTypes.length > 1 ? (
-                <select
-                  value={selectedBidServiceTypeId}
-                  onChange={(e) => {
-                    setSelectedBidServiceTypeId(e.target.value)
-                    setUnifiedSearchResults([])
-                  }}
+                <BidServiceTypeSearchToggles
+                  serviceTypes={serviceTypes}
+                  enabledBidServiceTypeIds={enabledBidServiceTypeIds}
                   disabled={sending}
-                  style={{
-                    minWidth: 120,
-                    maxWidth: 200,
-                    padding: '0.35rem 0.5rem',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: 8,
-                    fontSize: '0.875rem',
-                  }}
-                >
-                  <option value="">All Types ({serviceTypes.map((st) => st.name).join(', ')})</option>
-                  {serviceTypes.map((st) => (
-                    <option key={st.id} value={st.id}>{st.name}</option>
-                  ))}
-                </select>
+                  onEnabledChange={setEnabledBidServiceTypeIds}
+                  onAfterToggle={() => setUnifiedSearchResults([])}
+                />
               ) : null}
             </div>
             <input
@@ -483,95 +379,227 @@ export default function EstimatorTaskModal() {
               </div>
             )}
           </div>
-          <label>
-            <span style={{ display: 'block', marginBottom: '0.25rem', textAlign: 'center' }}>Links</span>
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.5rem' }}>
-              <button
-                type="button"
-                onClick={() => setLinks((prev) => [...prev, ''])}
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              alignItems: 'flex-start',
+              gap: '1rem',
+            }}
+          >
+            <div
+              style={{
+                flex: '1 1 160px',
+                minWidth: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.35rem',
+                alignItems: 'flex-start',
+              }}
+            >
+              <div
                 style={{
-                  display: 'inline-flex',
+                  display: 'flex',
                   alignItems: 'center',
-                  gap: '0.35rem',
-                  padding: '0.35rem 0.65rem',
-                  background: '#eff6ff',
-                  border: '1px solid #bfdbfe',
-                  borderRadius: 9999,
-                  cursor: 'pointer',
-                  color: '#1d4ed8',
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
+                  gap: '0.5rem',
+                  flexWrap: 'wrap',
+                  justifyContent: 'flex-start',
                 }}
               >
-                [+ add]
-              </button>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {links.map((url, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const input = titleInputRef.current
-                      if (input) {
-                        const start = input.selectionStart ?? title.length
-                        const end = input.selectionEnd ?? title.length
-                        const placeholder = `[${i + 1}]`
-                        const newTitle = title.slice(0, start) + placeholder + title.slice(end)
-                        setTitle(newTitle)
-                        setTimeout(() => {
-                          input.focus()
-                          const pos = start + placeholder.length
-                          input.setSelectionRange(pos, pos)
-                        }, 0)
-                      }
-                    }}
-                    style={{
-                      flexShrink: 0,
-                      padding: '0.25rem 0.5rem',
-                      background: '#f3f4f6',
-                      border: '1px solid #e2e8f0',
-                      borderRadius: 8,
-                      cursor: 'pointer',
-                      fontSize: '0.875rem',
-                    }}
-                  >
-                    [{i + 1}]
-                  </button>
-                  <input
-                    type="url"
-                    value={url}
-                    onChange={(e) =>
-                      setLinks((prev) => prev.map((u, j) => (j === i ? e.target.value : u)))
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!('geolocation' in navigator)) {
+                      showToast("Location isn't available on this device.", 'warning')
+                      return
                     }
-                    placeholder="URL"
-                    style={{ flex: 1, padding: '0.5rem 0.75rem', border: '1px solid #e2e8f0', borderRadius: 8 }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setLinks((prev) => prev.filter((_, j) => j !== i))}
+                    setLocationLoading(true)
+                    try {
+                      const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+                        navigator.geolocation.getCurrentPosition(resolve, reject, {
+                          enableHighAccuracy: false,
+                          timeout: 8000,
+                          maximumAge: 60000,
+                        })
+                      })
+                      setLocationLat(pos.coords.latitude)
+                      setLocationLng(pos.coords.longitude)
+                      showToast('Location added!', 'success')
+                    } catch (err) {
+                      const geo = err && typeof err === 'object' && 'code' in err ? (err as { code: number }) : null
+                      const msg =
+                        geo?.code === 1
+                          ? 'Location access was denied. Enable it in your browser to share your spot.'
+                          : geo?.code === 3
+                            ? 'Location took too long. Try again or add an address.'
+                            : "We couldn't find your location. Check browser settings and try again."
+                      showToast(msg, 'warning')
+                    } finally {
+                      setLocationLoading(false)
+                    }
+                  }}
+                  disabled={sending || locationLoading}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    padding: '0.4rem 0.75rem',
+                    background: '#eff6ff',
+                    border: '1px solid #bfdbfe',
+                    borderRadius: 9999,
+                    cursor: sending || locationLoading ? 'not-allowed' : 'pointer',
+                    color: '#1d4ed8',
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                  }}
+                >
+                  <MapPin size={14} aria-hidden />
+                  {locationLoading ? 'Finding your spot…' : 'Attach this location'}
+                </button>
+                {locationLat != null && locationLng != null && (
+                  <span
                     style={{
-                      padding: '0.25rem',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      color: '#6b7280',
-                      fontSize: '1.25rem',
-                      lineHeight: 1,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      padding: '0.2rem 0.5rem',
+                      background: '#dcfce7',
+                      borderRadius: 4,
+                      fontSize: '0.8125rem',
+                      color: '#166534',
                     }}
-                    title="Remove link"
                   >
-                    ×
-                  </button>
-                </div>
-              ))}
+                    <Check size={12} aria-hidden />
+                    Location shared
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLocationLat(null)
+                        setLocationLng(null)
+                      }}
+                      disabled={sending}
+                      style={{
+                        padding: 0,
+                        background: 'none',
+                        border: 'none',
+                        cursor: sending ? 'not-allowed' : 'pointer',
+                        color: '#6b7280',
+                        fontSize: '1rem',
+                        lineHeight: 1,
+                      }}
+                      aria-label="Remove location"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+              </div>
+              <span style={{ fontSize: '0.8125rem', color: '#6b7280', textAlign: 'left' }}>
+                Helps the crew find you faster
+              </span>
             </div>
-            {links.length > 0 && (
-              <p style={{ margin: '0.5rem 0 0', color: '#6b7280', fontSize: '0.8125rem' }}>
-                Use [1], [2] in the title for link placeholders.
-              </p>
-            )}
-          </label>
+            <div style={{ flex: '1 1 160px', minWidth: 0, display: 'block' }}>
+              <span
+                id="estimator-modal-links-label"
+                style={{ display: 'block', marginBottom: '0.25rem', textAlign: 'center' }}
+              >
+                Links
+              </span>
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => setLinks((prev) => [...prev, ''])}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    padding: '0.35rem 0.65rem',
+                    background: '#eff6ff',
+                    border: '1px solid #bfdbfe',
+                    borderRadius: 9999,
+                    cursor: 'pointer',
+                    color: '#1d4ed8',
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                  }}
+                >
+                  [+ add]
+                </button>
+              </div>
+            </div>
+          </div>
+          {links.length > 0 ? (
+              <div
+                role="group"
+                aria-labelledby="estimator-modal-links-label"
+                style={{ width: '100%', minWidth: 0 }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {links.map((url, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const input = titleInputRef.current
+                          if (input) {
+                            const start = input.selectionStart ?? title.length
+                            const end = input.selectionEnd ?? title.length
+                            const placeholder = `[${i + 1}]`
+                            const newTitle = title.slice(0, start) + placeholder + title.slice(end)
+                            setTitle(newTitle)
+                            setTimeout(() => {
+                              input.focus()
+                              const pos = start + placeholder.length
+                              input.setSelectionRange(pos, pos)
+                            }, 0)
+                          }
+                        }}
+                        style={{
+                          flexShrink: 0,
+                          padding: '0.25rem 0.5rem',
+                          background: '#f3f4f6',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: 8,
+                          cursor: 'pointer',
+                          fontSize: '0.875rem',
+                        }}
+                      >
+                        [{i + 1}]
+                      </button>
+                      <input
+                        type="url"
+                        value={url}
+                        onChange={(e) =>
+                          setLinks((prev) => prev.map((u, j) => (j === i ? e.target.value : u)))
+                        }
+                        placeholder="URL"
+                        style={{ flex: 1, minWidth: 0, padding: '0.5rem 0.75rem', border: '1px solid #e2e8f0', borderRadius: 8 }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setLinks((prev) => prev.filter((_, j) => j !== i))}
+                        style={{
+                          padding: '0.25rem',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: '#6b7280',
+                          fontSize: '1.25rem',
+                          lineHeight: 1,
+                        }}
+                        title="Remove link"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <p style={{ margin: '0.5rem 0 0', color: '#6b7280', fontSize: '0.8125rem', textAlign: 'center' }}>
+                  Use [1], [2] in the title for link placeholders.
+                </p>
+              </div>
+            ) : null}
             </div>
           </div>
           {formError && <p style={{ color: '#b91c1c', margin: 0, fontSize: '0.875rem' }}>{formError}</p>}
