@@ -2095,7 +2095,7 @@ export function DashboardMyTimeDayEditorModal({
                         iv.clockedOutMs != null
                           ? new Date(iv.clockedOutMs).toISOString()
                           : null,
-                      notes: coalesced.mergedNotes,
+                      notes: coalesced.rowNotes[i]!,
                     })
                     .eq('id', row.id),
                 'update clock session times after mixed coalesced partition save',

@@ -1,6 +1,6 @@
 import type { SplitClockSegmentPayload } from './splitOwnClockSessionSegments'
 import {
-  partitionMixedClusterEditorSegmentsToRowIntervals,
+  partitionMixedClusterEditorSegmentsToRowNotes,
   partitionMixedClusterSingleSegmentToRowIntervals,
   type PartitionedRowIntervalMs,
 } from './myTimeMixedClusterSingleSegmentPartition'
@@ -9,7 +9,6 @@ import {
   CLUSTER_CONTIGUITY_EPS_MS,
   clusterSharesClockSessionClusterRpcMetadata,
   everySegmentAssignablePerRowOrdered,
-  mergeSegmentNotes,
   sameJobBid,
   sessionRowIntervalMs,
   segmentContainedInRow,
@@ -393,7 +392,8 @@ export function mixedClusterSingleSegmentPartitionInfeasible(
 
 /**
  * Multiple contiguous editor segments spanning the full cluster hull (mid cross-row merge).
- * Persists like the single-segment affine partition: per-row UPDATE of times + merged notes.
+ * Persists like the single-segment affine partition: per-row UPDATE of times + per-row focus notes
+ * aligned with each row’s segment (no single global merged note on every row).
  * Returns null if geometry does not match the hull or partition is infeasible.
  */
 export function coalescedMixedClusterPartitionForSave(
@@ -401,7 +401,7 @@ export function coalescedMixedClusterPartitionForSave(
   split: SplitEditorState,
   segmentNotes: readonly string[],
   nowMs: number
-): { intervals: PartitionedRowIntervalMs[]; mergedNotes: string } | null {
+): { intervals: PartitionedRowIntervalMs[]; rowNotes: string[] } | null {
   if (c.length <= 1 || clusterSharesClockSessionClusterRpcMetadata(c)) return null
   const nSeg = split.boundaries.length - 1
   if (nSeg < 2) return null
@@ -416,17 +416,11 @@ export function coalescedMixedClusterPartitionForSave(
   if (Math.abs(split.boundaries[0]! - hullLo) > eps) return null
   if (Math.abs(split.boundaries[split.boundaries.length - 1]! - hullEnd) > eps) return null
 
-  const intervals = partitionMixedClusterEditorSegmentsToRowIntervals(c, split.boundaries, nowMs)
-  if (!intervals) return null
+  const part = partitionMixedClusterEditorSegmentsToRowNotes(c, split.boundaries, nowMs, segmentNotes)
+  if (!part) return null
+  if (!part.rowNotes.some((n) => n.trim().length > 0)) return null
 
-  let merged = segmentNotes[0]!.trim()
-  for (let i = 1; i < segmentNotes.length; i++) {
-    merged = mergeSegmentNotes(segmentNotes[i]!.trim(), merged)
-  }
-  merged = merged.trim()
-  if (!merged) return null
-
-  return { intervals, mergedNotes: merged }
+  return { intervals: part.intervals, rowNotes: part.rowNotes }
 }
 
 /**

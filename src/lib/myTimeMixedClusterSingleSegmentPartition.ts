@@ -8,6 +8,7 @@
 import {
   CLUSTER_CONTIGUITY_EPS_MS,
   clusterReferenceBoundaries,
+  mergeSegmentNotes,
   MIN_SEGMENT_MS,
   segmentContainedInRow,
   sessionRowIntervalMs,
@@ -77,18 +78,35 @@ export type PartitionedRowIntervalMs = {
   clockedOutMs: number | null
 }
 
+export type PartitionMixedClusterWithRowNotes = {
+  intervals: PartitionedRowIntervalMs[]
+  /** Per `clock_sessions` row, focus note matching the editor segment(s) that own that row’s interval. */
+  rowNotes: string[]
+}
+
+function segNoteTrim(
+  segmentNotes: readonly string[] | null,
+  segIdx: number
+): string {
+  if (segmentNotes == null) return ''
+  return segmentNotes[segIdx]!.trim()
+}
+
 /**
- * Map **multiple** editor segments (full cluster hull) onto one interval per DB row when each
- * segment lies fully inside a single row. Respects internal boundaries (unlike affine single-segment).
+ * Map **multiple** editor segments (full cluster hull) onto one interval per DB row.
+ * When `segmentNotes` is set (length = number of segments), also returns per-row focus notes aligned
+ * with the same geometry as {@link partitionMixedClusterEditorSegmentsToRowIntervals} (no global merge).
  */
-export function partitionMixedClusterEditorSegmentsToRowIntervals(
+export function partitionMixedClusterEditorSegmentsToRowNotes(
   c: DayEditorSession[],
   boundaries: readonly number[],
-  nowMs: number
-): PartitionedRowIntervalMs[] | null {
+  nowMs: number,
+  segmentNotes: readonly string[] | null
+): PartitionMixedClusterWithRowNotes | null {
   const n = c.length
   const nSeg = boundaries.length - 1
   if (n < 2 || nSeg < 2) return null
+  if (segmentNotes != null && segmentNotes.length !== nSeg) return null
 
   const first = c[0]!
   const last = c[n - 1]!
@@ -99,6 +117,8 @@ export function partitionMixedClusterEditorSegmentsToRowIntervals(
 
   if (Math.abs(boundaries[0]! - hullLo) > eps) return null
   if (Math.abs(boundaries[boundaries.length - 1]! - hullEnd) > eps) return null
+
+  const rowNotes: string[] = new Array(n)
 
   if (nSeg === n) {
     const out: PartitionedRowIntervalMs[] = []
@@ -113,8 +133,9 @@ export function partitionMixedClusterEditorSegmentsToRowIntervals(
         if (nowMs - startMs < MIN_SEGMENT_MS) return null
       }
       out.push({ clockedInMs: startMs, clockedOutMs: clockOut })
+      rowNotes[r] = segNoteTrim(segmentNotes, r)
     }
-    return out
+    return { intervals: out, rowNotes }
   }
 
   /**
@@ -146,6 +167,7 @@ export function partitionMixedClusterEditorSegmentsToRowIntervals(
 
       const isClusterLastRow = rowEndInclusive === n - 1
       const useOpenOut = isClusterLastRow && openLast
+      const noteForSeg = segNoteTrim(segmentNotes, s)
 
       if (slice.length === 1) {
         const clockOut = useOpenOut ? null : bHi
@@ -156,6 +178,7 @@ export function partitionMixedClusterEditorSegmentsToRowIntervals(
           if (nowMs - bLo < MIN_SEGMENT_MS) return null
         }
         out.push({ clockedInMs: bLo, clockedOutMs: clockOut })
+        rowNotes[rowStart] = noteForSeg
       } else {
         const pEnd = useOpenOut ? null : bHi
         let part = partitionMixedClusterSingleSegmentToRowIntervals(slice, bLo, pEnd, nowMs)
@@ -166,12 +189,15 @@ export function partitionMixedClusterEditorSegmentsToRowIntervals(
         }
         if (!part) return null
         out.push(...part)
+        for (let r = rowStart; r <= rowEndInclusive; r++) {
+          rowNotes[r] = noteForSeg
+        }
       }
       rowStart = rowEndInclusive + 1
     }
     if (rowStart !== n) return null
     if (out.length !== n) return null
-    return out
+    return { intervals: out, rowNotes }
   }
 
   const rowOfSeg: number[] = []
@@ -200,9 +226,20 @@ export function partitionMixedClusterEditorSegmentsToRowIntervals(
   let j = 0
   for (let r = 0; r < n; r++) {
     if (j >= nSeg || rowOfSeg[j] !== r) return null
+    const jSegStart = j
     const startMs = boundaries[j]!
     while (j + 1 < nSeg && rowOfSeg[j + 1] === r) {
       j++
+    }
+    const jSegEnd = j
+    if (segmentNotes == null) {
+      rowNotes[r] = ''
+    } else {
+      let mergedN = segNoteTrim(segmentNotes, jSegStart)
+      for (let k = jSegStart + 1; k <= jSegEnd; k++) {
+        mergedN = mergeSegmentNotes(mergedN, segNoteTrim(segmentNotes, k))
+      }
+      rowNotes[r] = mergedN
     }
     const endMs = boundaries[j + 1]!
     const clockOut = r === n - 1 && openLast ? null : endMs
@@ -216,7 +253,19 @@ export function partitionMixedClusterEditorSegmentsToRowIntervals(
     j++
   }
   if (j !== nSeg) return null
-  return out
+  return { intervals: out, rowNotes }
+}
+
+/**
+ * Map **multiple** editor segments (full cluster hull) onto one interval per DB row when each
+ * segment lies fully inside a single row. Respects internal boundaries (unlike affine single-segment).
+ */
+export function partitionMixedClusterEditorSegmentsToRowIntervals(
+  c: DayEditorSession[],
+  boundaries: readonly number[],
+  nowMs: number
+): PartitionedRowIntervalMs[] | null {
+  return partitionMixedClusterEditorSegmentsToRowNotes(c, boundaries, nowMs, null)?.intervals ?? null
 }
 
 /**

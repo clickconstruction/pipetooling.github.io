@@ -7,7 +7,7 @@ export type ClockPunchCoordinates = { lat: number; lng: number; source: ClockPun
 
 const GEO_OPTIONS: PositionOptions = {
   enableHighAccuracy: false,
-  timeout: 8000,
+  timeout: 3500,
   maximumAge: 60000,
 }
 

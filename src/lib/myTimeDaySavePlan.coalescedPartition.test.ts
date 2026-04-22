@@ -24,7 +24,7 @@ function mk(
 }
 
 describe('coalescedMixedClusterPartitionForSave', () => {
-  it('returns intervals + merged notes when two segments span full mixed hull', () => {
+  it('returns intervals + per-row notes when two segments span full mixed hull', () => {
     const j1 = 3_600_000
     const j2 = 7_200_000
     const hi = 10_800_000
@@ -42,7 +42,8 @@ describe('coalescedMixedClusterPartitionForSave', () => {
     const r = coalescedMixedClusterPartitionForSave(c, split, split.notes, nowMs)
     expect(r).not.toBeNull()
     expect(r!.intervals.length).toBe(3)
-    expect(r!.mergedNotes.length).toBeGreaterThan(0)
+    // Inner boundary snaps to first row seam: seg0 = row0 only, seg1 = rows 1–2.
+    expect(r!.rowNotes).toEqual(['morning', 'rest', 'rest'])
   })
 
   it('2 segs / 3 rows: inner boundary on row1|row2 seam (merged first two editor segments)', () => {
@@ -66,6 +67,7 @@ describe('coalescedMixedClusterPartitionForSave', () => {
       { clockedInMs: j1, clockedOutMs: j2 },
       { clockedInMs: j2, clockedOutMs: hi },
     ])
+    expect(r!.rowNotes).toEqual(['merged punch rows', 'merged punch rows', 'salary'])
   })
 
   it('2 segs / 3 rows: inner boundary near (within snap) row1|row2 seam still coalesces', () => {
@@ -86,6 +88,7 @@ describe('coalescedMixedClusterPartitionForSave', () => {
     const r = coalescedMixedClusterPartitionForSave(c, split, split.notes, nowMs)
     expect(r).not.toBeNull()
     expect(r!.intervals.length).toBe(3)
+    expect(r!.rowNotes).toEqual(['merged punch rows', 'merged punch rows', 'salary'])
   })
 
   it('2 segs / 3 rows: inner boundary on row0|row1 seam (merged last two editor segments)', () => {
@@ -109,6 +112,7 @@ describe('coalescedMixedClusterPartitionForSave', () => {
       { clockedInMs: j1, clockedOutMs: j2 },
       { clockedInMs: j2, clockedOutMs: hi },
     ])
+    expect(r!.rowNotes).toEqual(['row0', 'merged row1+salary', 'merged row1+salary'])
   })
 
   it('maps each editor segment to its row when segment count equals row count (moved cross-row seam)', () => {
@@ -134,6 +138,7 @@ describe('coalescedMixedClusterPartitionForSave', () => {
       { clockedInMs: t1, clockedOutMs: slip },
       { clockedInMs: slip, clockedOutMs: t3 },
     ])
+    expect(r!.rowNotes).toEqual(['a', 'b', 'c'])
   })
 
   it('returns null when inner boundaries do not span full hull', () => {

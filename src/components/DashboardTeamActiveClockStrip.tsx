@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useState,
   type CSSProperties,
@@ -294,6 +295,16 @@ const stripSectionTh: CSSProperties = {
 /** Chevron column width; also used to indent expanded session rows under the name column. */
 const CLOCKED_IN_TODAY_EXPAND_COL = '1.75rem'
 
+/** Merged CIT+Jobs header: one tight title line in the second column. */
+const mergedHeaderTitleCluster: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  flexWrap: 'wrap',
+  gap: '0.3em',
+  minWidth: 0,
+  maxWidth: '100%',
+}
+
 const JOBS_WORKED_TODAY_COL_SPAN = 2
 
 const clockedInTodayRowTd: CSSProperties = {
@@ -494,13 +505,6 @@ function stripRowHasUnassignedSession(row: ClockedInTodayStripRow): boolean {
 
 const stripTableHost: CSSProperties = {
   position: 'relative',
-}
-
-const stripScopeOverlay: CSSProperties = {
-  position: 'absolute',
-  top: '0.2rem',
-  right: '0.4rem',
-  zIndex: 3,
 }
 
 /** Open clock sessions plus "Clocked in today" summary (Dashboard). Mount when there are open sessions or today rows so the tick interval runs when needed. Omits the "Currently In" table when `sessions` is empty (and `hideCurrentlyInTable` is false). */
@@ -825,70 +829,239 @@ export function DashboardTeamActiveClockStrip({
     clockedInTodayExpandMode === 'full' &&
     clockedInTodayRows.length > 0 &&
     (clockedInTodayTableMode === 'missing' || clockedInTodayFocusedRows.length < clockedInTodayRows.length)
+
+  useLayoutEffect(() => {
+    if (clockedInTodayRows.length === 0) return
+    if (clockedInTodayExpandMode === 'collapsed') return
+    if (clockedInTodayBodyRows.length > 0) return
+    // Unassigned peek with nobody to list: do not snap back to collapsed (merged bar would "eat" the click);
+    // open full list and show all rows if "missing" would still be empty.
+    if (clockedInTodayExpandMode === 'unassignedPeek' && clockedInTodayUnassignedRows.length === 0) {
+      setClockedInTodayExpandMode('full')
+      persistClockedInTodayExpandMode('full')
+      setClockedInTodayTableMode('all')
+      return
+    }
+    setClockedInTodayExpandMode('collapsed')
+    persistClockedInTodayExpandMode('collapsed')
+  }, [
+    clockedInTodayBodyRows.length,
+    clockedInTodayExpandMode,
+    clockedInTodayRows.length,
+    clockedInTodayUnassignedRows.length,
+  ])
+
   const clockedInTodayColSpan = 3
   const scopeShowsOverlay = showScopeToggle && !!onClockStripScopeChange
   const showCurrentlyInTable = !hideCurrentlyInTable && sessions.length > 0
-  const scopeHeaderReserve: CSSProperties = scopeShowsOverlay
-    ? { paddingRight: 'clamp(8.5rem, 22vw, 10.5rem)' }
-    : {}
   const copyJobMixChrome = enableCopyDayJobMix === true && clockedInTodayRows.length > 0
   const showClockedInHeaderChrome = showClockedInTodayToggle || copyJobMixChrome
-  const clockedInTodayHeaderOverlay =
-    showClockedInHeaderChrome ? (
-      <div
-        style={{
-          ...stripScopeOverlay,
-          display: 'flex',
-          gap: 6,
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          justifyContent: 'flex-end',
-          maxWidth: 'min(100%, 24rem)',
-        }}
-      >
-        {copyJobMixChrome ? (
-          <button
-            type="button"
-            aria-pressed={copyDayJobMixMode}
-            onClick={() => setCopyDayJobMixMode((v) => !v)}
-            title="Copy one person’s job time mix to another person’s day"
-            aria-label={
-              copyDayJobMixMode
-                ? 'Exit copy job time mix mode'
-                : 'Turn on copy job time mix: use the copy icon by each name to pick a template person'
-            }
-            style={{
-              ...scopeBtn(copyDayJobMixMode),
-              flexShrink: 0,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-              padding: '0.25rem 0.45rem',
-            }}
-          >
-            <CopyDayJobMixIcon active={copyDayJobMixMode} />
-            <span style={{ fontSize: '0.65rem', lineHeight: 1.2 }}>Mix</span>
-          </button>
-        ) : null}
-        {showClockedInTodayToggle ? (
-          <button
-            type="button"
-            onClick={() =>
-              setClockedInTodayTableMode((m) => (m === 'all' ? 'missing' : 'all'))
-            }
-            style={{ ...scopeBtn(false), flexShrink: 0 }}
-            title="Limit to people with an unassigned session or a closed session pending approval"
-            aria-label={
-              clockedInTodayTableMode === 'all'
-                ? 'Show only people needing attention: unassigned job or bid, or pending clock approval'
-                : 'Show everyone clocked in today'
-            }
-          >
-            {clockedInTodayTableMode === 'all' ? 'Needs attention' : 'Show all'}
-          </button>
-        ) : null}
-      </div>
-    ) : null
+  const showStripTopRightBar = scopeShowsOverlay || showClockedInHeaderChrome
+  const stripTableHostWithTopBar: CSSProperties = {
+    ...stripTableHost,
+    ...(showStripTopRightBar ? { paddingTop: '1.9rem' } : {}),
+  }
+  const stripTopRightHeaderReserve: CSSProperties =
+    scopeShowsOverlay && showClockedInHeaderChrome
+      ? { paddingRight: 'clamp(14rem, 38vw, 22rem)' }
+      : scopeShowsOverlay
+        ? { paddingRight: 'clamp(8.5rem, 22vw, 10.5rem)' }
+        : showClockedInHeaderChrome
+          ? { paddingRight: 'clamp(6.5rem, 18vw, 11rem)' }
+          : {}
+  const mergeClockedInHeaderIntoJobs =
+    clockedInTodayExpandMode === 'collapsed' &&
+    clockedInTodayRows.length > 0 &&
+    jobsWorkedTodayRows.length > 0
+  const stripHeaderChromeInner = showClockedInHeaderChrome ? (
+    <div
+      style={{
+        display: 'flex',
+        gap: 6,
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        justifyContent: 'flex-end',
+        maxWidth: 'min(100%, 24rem)',
+        flexShrink: 1,
+      }}
+    >
+      {copyJobMixChrome ? (
+        <button
+          type="button"
+          aria-pressed={copyDayJobMixMode}
+          onClick={() => setCopyDayJobMixMode((v) => !v)}
+          title="Copy one person’s job time mix to another person’s day"
+          aria-label={
+            copyDayJobMixMode
+              ? 'Exit copy job time mix mode'
+              : 'Turn on copy job time mix: use the copy icon by each name to pick a template person'
+          }
+          style={{
+            ...scopeBtn(copyDayJobMixMode),
+            flexShrink: 0,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            padding: '0.25rem 0.45rem',
+          }}
+        >
+          <CopyDayJobMixIcon active={copyDayJobMixMode} />
+          <span style={{ fontSize: '0.65rem', lineHeight: 1.2 }}>Mix</span>
+        </button>
+      ) : null}
+      {showClockedInTodayToggle ? (
+        <button
+          type="button"
+          onClick={() => setClockedInTodayTableMode((m) => (m === 'all' ? 'missing' : 'all'))}
+          style={{ ...scopeBtn(false), flexShrink: 0 }}
+          title="Limit to people with an unassigned session or a closed session pending approval"
+          aria-label={
+            clockedInTodayTableMode === 'all'
+              ? 'Show only people needing attention: unassigned job or bid, or pending clock approval'
+              : 'Show everyone clocked in today'
+          }
+        >
+          {clockedInTodayTableMode === 'all' ? 'Needs attention' : 'Show all'}
+        </button>
+      ) : null}
+    </div>
+  ) : null
+
+  const citExpandModeToggle = (
+    <button
+      type="button"
+      id="clocked-in-today-section-toggle"
+      aria-expanded={clockedInTodaySectionOpen}
+      aria-controls="clocked-in-today-section-panel"
+      title={
+        clockedInTodayExpandMode === 'collapsed'
+          ? 'Show people with unassigned job or bid only'
+          : clockedInTodayExpandMode === 'unassignedPeek'
+            ? 'Show full clocked-in list with Needs attention / Show all'
+            : 'Collapse clocked-in today'
+      }
+      onClick={() => {
+        setClockedInTodayExpandMode((m) => {
+          const next = cycleClockedInTodayExpandMode(m)
+          persistClockedInTodayExpandMode(next)
+          return next
+        })
+      }}
+      aria-label={
+        clockedInTodayExpandMode === 'collapsed'
+          ? `Show unassigned only: people with no job or bid today, out of ${clockedInTodayRows.length} ${
+              clockedInTodayRows.length === 1 ? 'person' : 'people'
+            } clocked in`
+          : clockedInTodayExpandMode === 'unassignedPeek'
+            ? `Expand to full list and filters, ${clockedInTodayRows.length} ${
+                clockedInTodayRows.length === 1 ? 'person' : 'people'
+              }`
+            : `Collapse to header only, ${clockedInTodayRows.length} ${
+                clockedInTodayRows.length === 1 ? 'person' : 'people'
+              }`
+      }
+      style={{
+        border: 'none',
+        background: 'none',
+        padding: '0.1rem',
+        cursor: 'pointer',
+        fontSize: '0.65rem',
+        color: STRIP_SECTION_HEAD_TEXT,
+        lineHeight: 1,
+      }}
+    >
+      <span aria-hidden>
+        {clockedInTodayExpandMode === 'collapsed' ? '\u25B6' : '\u25BC'}
+      </span>
+    </button>
+  )
+
+  /** Same CIT expand behavior as `citExpandModeToggle`, with id; used in merged header title when Jobs tbody is visible (only one chevron in column 1). */
+  const citExpandModeTitleButton = (
+    <button
+      type="button"
+      id="clocked-in-today-section-toggle"
+      aria-expanded={clockedInTodaySectionOpen}
+      aria-controls="clocked-in-today-section-panel"
+      title={
+        clockedInTodayExpandMode === 'collapsed'
+          ? 'Show people with unassigned job or bid only'
+          : clockedInTodayExpandMode === 'unassignedPeek'
+            ? 'Show full clocked-in list with Needs attention / Show all'
+            : 'Collapse clocked-in today'
+      }
+      onClick={() => {
+        setClockedInTodayExpandMode((m) => {
+          const next = cycleClockedInTodayExpandMode(m)
+          persistClockedInTodayExpandMode(next)
+          return next
+        })
+      }}
+      aria-label={
+        clockedInTodayExpandMode === 'collapsed'
+          ? `Show unassigned only: people with no job or bid today, out of ${clockedInTodayRows.length} ${
+              clockedInTodayRows.length === 1 ? 'person' : 'people'
+            } clocked in`
+          : clockedInTodayExpandMode === 'unassignedPeek'
+            ? `Expand to full list and filters, ${clockedInTodayRows.length} ${
+                clockedInTodayRows.length === 1 ? 'person' : 'people'
+              }`
+            : `Collapse to header only, ${clockedInTodayRows.length} ${
+                clockedInTodayRows.length === 1 ? 'person' : 'people'
+              }`
+      }
+      style={{
+        border: 'none',
+        background: 'none',
+        padding: 0,
+        margin: 0,
+        cursor: 'pointer',
+        font: 'inherit',
+        fontWeight: 600,
+        color: STRIP_SECTION_HEAD_TEXT,
+        lineHeight: 1.2,
+        textAlign: 'left' as const,
+      }}
+    >
+      Clocked in today ({clockedInTodayRows.length})
+    </button>
+  )
+
+  /** Same Jobs section toggle as column-1 glyph, with id; used in merged header title when both sections collapsed (only CIT chevron in column 1). */
+  const jobsExpandModeTitleButton = (
+    <button
+      type="button"
+      id="jobs-worked-today-section-toggle"
+      aria-expanded={!jobsWorkedTodaySectionCollapsed}
+      aria-controls="jobs-worked-today-section-panel"
+      onClick={() => {
+        setJobsWorkedTodaySectionCollapsed((v) => {
+          const next = !v
+          persistJobsWorkedTodaySectionCollapsed(next)
+          return next
+        })
+      }}
+      aria-label={
+        jobsWorkedTodaySectionCollapsed
+          ? `Show jobs worked today, ${jobsWorkedTodayRows.length} jobs`
+          : `Hide jobs worked today, ${jobsWorkedTodayRows.length} jobs`
+      }
+      style={{
+        border: 'none',
+        background: 'none',
+        padding: 0,
+        margin: 0,
+        cursor: 'pointer',
+        font: 'inherit',
+        fontWeight: 600,
+        color: STRIP_SECTION_HEAD_TEXT,
+        lineHeight: 1.2,
+        textAlign: 'left' as const,
+      }}
+    >
+      Jobs worked today ({jobsWorkedTodayRows.length})
+    </button>
+  )
 
   const rejectModalBusy =
     stripRejectConfirm != null && stripApproveBusy.has(stripRejectConfirm.sessionId)
@@ -906,39 +1079,59 @@ export function DashboardTeamActiveClockStrip({
         marginBottom: '1rem',
       }}
     >
-      <div style={stripTableHost}>
-        {scopeShowsOverlay ? (
-          <div style={stripScopeOverlay}>
-            <div
-              role="group"
-              aria-label={`Clocked-in list scope: ${clockStripNarrowScopeLabel}, ${clockStripWideScopeLabel}`}
-            >
-              <button
-                type="button"
-                aria-pressed={clockStripScope === 'team'}
-                onClick={() => onClockStripScopeChange!('team')}
-                style={{
-                  ...scopeBtn(clockStripScope === 'team'),
-                  borderTopRightRadius: 0,
-                  borderBottomRightRadius: 0,
-                  marginRight: -1,
-                }}
+      <div style={stripTableHostWithTopBar}>
+        {showStripTopRightBar ? (
+          <div
+            style={{
+              position: 'absolute',
+              top: '0.2rem',
+              right: '0.4rem',
+              zIndex: 5,
+              display: 'flex',
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+              flexWrap: 'wrap',
+              columnGap: 10,
+              rowGap: 4,
+              maxWidth: 'calc(100% - 0.8rem)',
+              boxSizing: 'border-box',
+            }}
+          >
+            {stripHeaderChromeInner}
+            {scopeShowsOverlay ? (
+              <div
+                role="group"
+                aria-label={`Clocked-in list scope: ${clockStripNarrowScopeLabel}, ${clockStripWideScopeLabel}`}
+                style={{ display: 'inline-flex', flexShrink: 0 }}
               >
-                {clockStripNarrowScopeLabel}
-              </button>
-              <button
-                type="button"
-                aria-pressed={clockStripScope === 'everyone'}
-                onClick={() => onClockStripScopeChange!('everyone')}
-                style={{
-                  ...scopeBtn(clockStripScope === 'everyone'),
-                  borderTopLeftRadius: 0,
-                  borderBottomLeftRadius: 0,
-                }}
-              >
-                {clockStripWideScopeLabel}
-              </button>
-            </div>
+                <button
+                  type="button"
+                  aria-pressed={clockStripScope === 'team'}
+                  onClick={() => onClockStripScopeChange!('team')}
+                  style={{
+                    ...scopeBtn(clockStripScope === 'team'),
+                    borderTopRightRadius: 0,
+                    borderBottomRightRadius: 0,
+                    marginRight: -1,
+                  }}
+                >
+                  {clockStripNarrowScopeLabel}
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={clockStripScope === 'everyone'}
+                  onClick={() => onClockStripScopeChange!('everyone')}
+                  style={{
+                    ...scopeBtn(clockStripScope === 'everyone'),
+                    borderTopLeftRadius: 0,
+                    borderBottomLeftRadius: 0,
+                  }}
+                >
+                  {clockStripWideScopeLabel}
+                </button>
+              </div>
+            ) : null}
           </div>
         ) : null}
         {showCurrentlyInTable ? (
@@ -960,11 +1153,11 @@ export function DashboardTeamActiveClockStrip({
                   Session | In
                 </th>
                 {showJobBidColumn ? (
-                  <th scope="col" style={{ ...stripSectionTh, maxWidth: 220, ...scopeHeaderReserve }}>
+                  <th scope="col" style={{ ...stripSectionTh, maxWidth: 220, ...stripTopRightHeaderReserve }}>
                     Job or bid
                   </th>
                 ) : (
-                  <th scope="col" style={{ ...stripSectionTh, maxWidth: 200, ...scopeHeaderReserve }}>
+                  <th scope="col" style={{ ...stripSectionTh, maxWidth: 200, ...stripTopRightHeaderReserve }}>
                     Focus
                   </th>
                 )}
@@ -1172,14 +1365,9 @@ export function DashboardTeamActiveClockStrip({
               role="region"
               aria-labelledby="clocked-in-today-section-toggle"
             >
-              <div
-                style={{
-                  position: 'relative',
-                  ...(showClockedInHeaderChrome ? { minHeight: '2.25rem' } : {}),
-                }}
-              >
-                {clockedInTodayHeaderOverlay}
+              <div style={{ position: 'relative' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  {mergeClockedInHeaderIntoJobs ? null : (
                   <thead>
                     <tr style={{ background: STRIP_SECTION_HEAD_BG }}>
                       <th
@@ -1190,52 +1378,7 @@ export function DashboardTeamActiveClockStrip({
                           verticalAlign: 'middle',
                         }}
                       >
-                        <button
-                          type="button"
-                          id="clocked-in-today-section-toggle"
-                          aria-expanded={clockedInTodaySectionOpen}
-                          aria-controls="clocked-in-today-section-panel"
-                          title={
-                            clockedInTodayExpandMode === 'collapsed'
-                              ? 'Show people with unassigned job or bid only'
-                              : clockedInTodayExpandMode === 'unassignedPeek'
-                                ? 'Show full clocked-in list with Needs attention / Show all'
-                                : 'Collapse clocked-in today'
-                          }
-                          onClick={() => {
-                            setClockedInTodayExpandMode((m) => {
-                              const next = cycleClockedInTodayExpandMode(m)
-                              persistClockedInTodayExpandMode(next)
-                              return next
-                            })
-                          }}
-                          aria-label={
-                            clockedInTodayExpandMode === 'collapsed'
-                              ? `Show unassigned only: people with no job or bid today, out of ${clockedInTodayRows.length} ${
-                                  clockedInTodayRows.length === 1 ? 'person' : 'people'
-                                } clocked in`
-                              : clockedInTodayExpandMode === 'unassignedPeek'
-                                ? `Expand to full list and filters, ${clockedInTodayRows.length} ${
-                                    clockedInTodayRows.length === 1 ? 'person' : 'people'
-                                  }`
-                                : `Collapse to header only, ${clockedInTodayRows.length} ${
-                                    clockedInTodayRows.length === 1 ? 'person' : 'people'
-                                  }`
-                          }
-                          style={{
-                            border: 'none',
-                            background: 'none',
-                            padding: '0.1rem',
-                            cursor: 'pointer',
-                            fontSize: '0.65rem',
-                            color: STRIP_SECTION_HEAD_TEXT,
-                            lineHeight: 1,
-                          }}
-                        >
-                          <span aria-hidden>
-                            {clockedInTodayExpandMode === 'collapsed' ? '\u25B6' : '\u25BC'}
-                          </span>
-                        </button>
+                        {citExpandModeToggle}
                       </th>
                       <th
                         scope="col"
@@ -1255,39 +1398,16 @@ export function DashboardTeamActiveClockStrip({
                         scope="col"
                         style={{
                           ...stripSectionTh,
-                          ...(showClockedInHeaderChrome
-                            ? { paddingRight: 'clamp(8rem, 20vw, 12rem)' }
-                            : {}),
+                          ...stripTopRightHeaderReserve,
                         }}
                       >
                         {clockedInTodaySectionOpen ? 'Today | First clock-in' : ''}
                       </th>
                     </tr>
                   </thead>
+                  )}
                   <tbody hidden={!clockedInTodaySectionOpen}>
-                    {!clockedInTodaySectionOpen ? null : clockedInTodayBodyRows.length === 0 ? (
-                      <tr>
-                        <td
-                          colSpan={clockedInTodayColSpan}
-                          style={{
-                            ...td,
-                            borderBottom: '1px solid #e5e7eb',
-                            padding: '0.35rem 0.4rem 0.5rem',
-                            fontSize: '0.75rem',
-                            color: '#6b7280',
-                            ...(showClockedInHeaderChrome
-                              ? { paddingRight: 'clamp(8rem, 20vw, 12rem)' }
-                              : {}),
-                          }}
-                        >
-                          {clockedInTodayExpandMode === 'unassignedPeek'
-                            ? 'No unassigned job/bid sessions today.'
-                            : clockedInTodayTableMode === 'missing'
-                              ? 'No sessions need attention today (unassigned job/bid or pending approval).'
-                              : 'No rows to display.'}
-                        </td>
-                      </tr>
-                    ) : (
+                    {!clockedInTodaySectionOpen ? null : clockedInTodayBodyRows.length === 0 ? null : (
                       clockedInTodayBodyRows.map((row) => {
                   const hasDetail = row.todaySessions.length > 0
                   const expanded = hasDetail && !collapsedClockedInTodayUserIds.has(row.userId)
@@ -1382,9 +1502,7 @@ export function DashboardTeamActiveClockStrip({
                             ...clockedInTodayRowTd,
                             textAlign: 'left',
                             whiteSpace: 'nowrap' as const,
-                            ...(showClockedInHeaderChrome
-                              ? { paddingRight: 'clamp(8rem, 20vw, 12rem)' }
-                              : {}),
+                            ...stripTopRightHeaderReserve,
                           }}
                         >
                           {onOpenStripMyTimeEditor ? (
@@ -1674,67 +1792,163 @@ export function DashboardTeamActiveClockStrip({
         {jobsWorkedTodayRows.length > 0 ? (
           <div
             style={{
-              borderTop: '1px solid #e5e7eb',
+              borderTop: mergeClockedInHeaderIntoJobs ? 'none' : '1px solid #e5e7eb',
             }}
           >
             <div
               id="jobs-worked-today-section-panel"
               role="region"
               aria-labelledby="jobs-worked-today-section-toggle"
+              style={{ position: 'relative' }}
             >
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <table
+                style={{
+                  width: '100%',
+                  borderCollapse: 'collapse',
+                  ...(mergeClockedInHeaderIntoJobs ? { tableLayout: 'fixed' as const } : {}),
+                }}
+              >
+                {mergeClockedInHeaderIntoJobs ? (
+                  <colgroup>
+                    <col style={{ width: CLOCKED_IN_TODAY_EXPAND_COL }} />
+                    <col />
+                  </colgroup>
+                ) : null}
                 <thead>
                   <tr style={{ background: STRIP_SECTION_HEAD_BG }}>
                     <th
                       style={{
                         ...stripSectionTh,
                         width: CLOCKED_IN_TODAY_EXPAND_COL,
-                        textAlign: 'center',
+                        minWidth: CLOCKED_IN_TODAY_EXPAND_COL,
+                        maxWidth: mergeClockedInHeaderIntoJobs ? CLOCKED_IN_TODAY_EXPAND_COL : undefined,
+                        textAlign: mergeClockedInHeaderIntoJobs ? ('left' as const) : ('center' as const),
                         verticalAlign: 'middle',
+                        ...(mergeClockedInHeaderIntoJobs
+                          ? { paddingRight: 2, boxSizing: 'border-box' as const }
+                          : {}),
                       }}
                     >
-                      <button
-                        type="button"
-                        id="jobs-worked-today-section-toggle"
-                        aria-expanded={!jobsWorkedTodaySectionCollapsed}
-                        aria-controls="jobs-worked-today-section-panel"
-                        onClick={() => {
-                          setJobsWorkedTodaySectionCollapsed((v) => {
-                            const next = !v
-                            persistJobsWorkedTodaySectionCollapsed(next)
-                            return next
-                          })
-                        }}
-                        aria-label={
-                          jobsWorkedTodaySectionCollapsed
-                            ? `Show jobs worked today, ${jobsWorkedTodayRows.length} jobs`
-                            : `Hide jobs worked today, ${jobsWorkedTodayRows.length} jobs`
-                        }
-                        style={{
-                          border: 'none',
-                          background: 'none',
-                          padding: '0.1rem',
-                          cursor: 'pointer',
-                          fontSize: '0.65rem',
-                          color: STRIP_SECTION_HEAD_TEXT,
-                          lineHeight: 1,
-                        }}
-                      >
-                        <span aria-hidden>
-                          {jobsWorkedTodaySectionCollapsed ? '\u25B6' : '\u25BC'}
-                        </span>
-                      </button>
+                      {mergeClockedInHeaderIntoJobs ? (
+                        <div
+                          style={{
+                            display: 'inline-flex',
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'flex-start',
+                            flexWrap: 'nowrap',
+                            gap: 5,
+                            width: '100%',
+                          }}
+                        >
+                          {jobsWorkedTodaySectionCollapsed ? (
+                            citExpandModeToggle
+                          ) : (
+                            <button
+                              type="button"
+                              id="jobs-worked-today-section-toggle"
+                              aria-expanded={!jobsWorkedTodaySectionCollapsed}
+                              aria-controls="jobs-worked-today-section-panel"
+                              onClick={() => {
+                                setJobsWorkedTodaySectionCollapsed((v) => {
+                                  const next = !v
+                                  persistJobsWorkedTodaySectionCollapsed(next)
+                                  return next
+                                })
+                              }}
+                              aria-label={
+                                jobsWorkedTodaySectionCollapsed
+                                  ? `Show jobs worked today, ${jobsWorkedTodayRows.length} jobs`
+                                  : `Hide jobs worked today, ${jobsWorkedTodayRows.length} jobs`
+                              }
+                              style={{
+                                border: 'none',
+                                background: 'none',
+                                padding: '0.1rem',
+                                cursor: 'pointer',
+                                fontSize: '0.65rem',
+                                color: STRIP_SECTION_HEAD_TEXT,
+                                lineHeight: 1,
+                              }}
+                            >
+                              <span aria-hidden>
+                                {jobsWorkedTodaySectionCollapsed ? '\u25B6' : '\u25BC'}
+                              </span>
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          id="jobs-worked-today-section-toggle"
+                          aria-expanded={!jobsWorkedTodaySectionCollapsed}
+                          aria-controls="jobs-worked-today-section-panel"
+                          onClick={() => {
+                            setJobsWorkedTodaySectionCollapsed((v) => {
+                              const next = !v
+                              persistJobsWorkedTodaySectionCollapsed(next)
+                              return next
+                            })
+                          }}
+                          aria-label={
+                            jobsWorkedTodaySectionCollapsed
+                              ? `Show jobs worked today, ${jobsWorkedTodayRows.length} jobs`
+                              : `Hide jobs worked today, ${jobsWorkedTodayRows.length} jobs`
+                          }
+                          style={{
+                            border: 'none',
+                            background: 'none',
+                            padding: '0.1rem',
+                            cursor: 'pointer',
+                            fontSize: '0.65rem',
+                            color: STRIP_SECTION_HEAD_TEXT,
+                            lineHeight: 1,
+                          }}
+                        >
+                          <span aria-hidden>
+                            {jobsWorkedTodaySectionCollapsed ? '\u25B6' : '\u25BC'}
+                          </span>
+                        </button>
+                      )}
                     </th>
                     <th
                       scope="col"
-                      aria-label={`Jobs worked today; each row shows job name with today's hours and people (${jobsWorkedTodayRows.length} jobs)`}
+                      aria-label={
+                        mergeClockedInHeaderIntoJobs
+                          ? `Names of people clocked in today, ${clockedInTodayRows.length} ${
+                              clockedInTodayRows.length === 1 ? 'person' : 'people'
+                            }; jobs worked today, ${jobsWorkedTodayRows.length} ${
+                              jobsWorkedTodayRows.length === 1 ? 'job' : 'jobs'
+                            }`
+                          : `Jobs worked today; each row shows job name with today's hours and people (${jobsWorkedTodayRows.length} jobs)`
+                      }
                       style={{
                         ...stripSectionTh,
-                        ...(scopeShowsOverlay ? { paddingRight: 'clamp(8rem, 20vw, 12rem)' } : {}),
+                        ...(mergeClockedInHeaderIntoJobs ? { minWidth: 0 } : {}),
+                        ...stripTopRightHeaderReserve,
                       }}
                     >
-                      <span style={srOnly}>{'Expand session rows per job. '}</span>
-                      Jobs worked today ({jobsWorkedTodayRows.length})
+                      {mergeClockedInHeaderIntoJobs ? (
+                        !jobsWorkedTodaySectionCollapsed ? (
+                          <div style={mergedHeaderTitleCluster}>
+                            <span style={srOnly}>{'Expand session rows. '}</span>
+                            {citExpandModeTitleButton}
+                            <span style={srOnly}>{' '}</span>
+                            <span>Jobs worked today ({jobsWorkedTodayRows.length})</span>
+                          </div>
+                        ) : (
+                          <div style={mergedHeaderTitleCluster}>
+                            <span style={srOnly}>{'Expand session rows. '}</span>
+                            <span>Clocked in today ({clockedInTodayRows.length})</span>
+                            {jobsExpandModeTitleButton}
+                          </div>
+                        )
+                      ) : (
+                        <>
+                          <span style={srOnly}>{'Expand session rows per job. '}</span>
+                          Jobs worked today ({jobsWorkedTodayRows.length})
+                        </>
+                      )}
                     </th>
                   </tr>
                 </thead>
@@ -1793,10 +2007,10 @@ export function DashboardTeamActiveClockStrip({
                               </button>
                             ) : null}
                           </td>
-                          <td
+                            <td
                             style={{
                               ...clockedInTodayRowTd,
-                              ...(scopeShowsOverlay ? { paddingRight: 'clamp(8rem, 20vw, 12rem)' } : {}),
+                              ...stripTopRightHeaderReserve,
                             }}
                           >
                             <div

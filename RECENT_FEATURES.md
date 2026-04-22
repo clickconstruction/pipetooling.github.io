@@ -12,32 +12,41 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.369 → v2.4"
+version_range: "v2.372 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.372)"
+    line: ~1202
+    description: "Clock In/Out: punch writes first, GPS/IP location patched async; shorter getCurrentPosition timeout (3.5s); post-success Promise.all (sessions + goals / team feedback)"
+  - name: "Latest Version (v2.371)"
+    line: ~1218
+    description: "My Time coalesced save: per-row focus notes for mixed clusters (partitionMixedClusterEditorSegmentsToRowNotes); not one merged note on every clock_sessions row"
+  - name: "Latest Version (v2.370)"
+    line: ~1215
+    description: "Task Dispatch + Estimator send modals: shared toggles, clockBidsSearchParams, layout parity with full-width link rows; Clock In uses shared toggles"
   - name: "Latest Version (v2.369)"
-    line: ~1195
+    line: ~1235
     description: "Bids Unsent/Working Kanban: system Working column + Clock In quick picks; Bid Board / tab copy and pipe grouping; inbox badge position"
   - name: "Latest Version (v2.368)"
-    line: ~1209
+    line: ~1249
     description: "Public /contract/accept: no For line; title-only thank-you + pup.jpg + Dashboard/Sign-in CTA (list_my_contract_dashboard_prompts)"
   - name: "Latest Version (v2.367)"
-    line: ~1221
+    line: ~1260
     description: "Dashboard Jobs worked today: aggregate row for no job/no bid (split salary unassigned segments); JOBS_WORKED_TODAY_UNASSIGNED_ID; muted label, no job link"
   - name: "Latest Version (v2.366)"
-    line: ~1233
+    line: ~1272
     description: "Bill Customer: job → billed when fully invoiced out (Stripe / HCP / Physical) via maybePromoteJobToBilledAfterCustomerInvoice; send-physical-invoice-email no longer updates job status"
   - name: "Latest Version (v2.365)"
-    line: ~1245
+    line: ~1284
     description: "People Contracts: contract lineage (Ver. column), applied version pin, Edit in ⋯ menu; create_pending_contract_versions_after_book_save on Contract Book save"
   - name: "Latest Version (v2.364)"
-    line: ~1258
+    line: ~1296
     description: "Dashboard contract signing prompt after clock-in; People Contracts Dashboard checkbox; list_my_contract_dashboard_prompts + get-contract-signing-link-for-self"
   - name: "Latest Version (v2.363)"
-    line: ~1271
+    line: ~1309
     description: "OOB unwind Stripe edge cases (total + out_of_band credit note); Edit Job Payments received + Bill Customer refresh after unwind"
   - name: "Latest Version (v2.362)"
-    line: ~1284
+    line: ~1322
     description: "Undo Stripe out-of-band payment (credit note + RPC + Hosted bill UI)"
   - name: "Latest Version (v2.361)"
     line: ~1298
@@ -1023,6 +1032,7 @@ when_to_read:
 **New:** [v2.332 — Dashboard **Unallocated bank deposits**; AR sorting **counterparty/note** excludes; **Bank Payments** allocation layout (amount row + footer **Add allocation**)](#latest-updates-v2332)
 **New:** [v2.331 — **Bank Payments**: Mercury **Kind** badge label + color (`bank_payments_kind_badges_v1`)](#latest-updates-v2331)
 **New:** [v2.330 — Pay History: **Generate Custom Pay Report** modal; Jobs **Bank payments** **Accounts Receivable Sorting** UI (nicknames); AR filter blob later moved to org-wide **`app_settings`** in **v2.334**](#latest-updates-v2330)
+**New:** [v2.371 — My Time: coalesced mixed-cluster **Save** applies **per-row** focus notes (`partitionMixedClusterEditorSegmentsToRowNotes`, `coalescedMixedClusterPartitionForSave`)](#latest-updates-v2371)
 **New:** [v2.329 — Bids: **Cover Letter** Google Docs paste HTML; **Submission** URL deep link; note **datetime-local**](#latest-updates-v2329)
 **New:** [v2.279 — Bids: Bid Preview from **B#**; Submission notes toolbar; **notify-dispatch-request** gateway JWT](#latest-updates-v2279)
 **New:** [v2.251 — Jobs worked today: approve controls (Clocked in today parity)](#latest-updates-v2251)
@@ -1190,6 +1200,45 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.372)
+
+**Date**: 2026-04-22
+
+### **Dashboard** **Clock In / Out** — faster punch (deferred location, parallel refresh)
+
+- **Perf** — [`resolveClockPunchCoordinates.ts`](src/lib/resolveClockPunchCoordinates.ts): **`timeout` 8s → 3.5s** for `getCurrentPosition` (IP fallback unchanged).
+- **Two-phase location** — [`patchClockPunchSessionLocations.ts`](src/lib/patchClockPunchSessionLocations.ts): after a successful **clock in**, **clock out**, or hourly **Update focus** (close + open session), **`schedule*LocationPatch`** runs in the background: **`resolveClockPunchCoordinates`** then **`UPDATE`** the same row(s) with **`clock_*_lat` / `clock_*_lng` / `clock_*_location_source`**. Brief window where a new row has **null** coordinates until the patch completes; reporting already tolerates nulls.
+- **Parallel post-success** — [`ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx): **`Promise.all([fetchSessions(), notifyFirstClockInOfDay(...)])`** on clock in and update focus; **`Promise.all([fetchSessions(), getTeamFeedbackEligibility(...)])`** on clock out before team feedback gate.
+
+**Manual QA** — Slow or denied GPS: punch should complete without waiting the full old GPS cap; list/strip should refresh; coordinates appear shortly after on the session row if GPS/IP succeeded. Salaried **Update focus** (job/bid only) unchanged.
+
+---
+
+## Latest Updates (v2.371)
+
+**Date**: 2026-04-22
+
+### **Dashboard** **My Time** — **Coalesced save**: per-row focus notes on mixed clusters
+
+- **Problem** — When a **mixed-metadata** session cluster had **fewer editor segments than** `clock_sessions` **rows** (e.g. **Merge up** / **Merge down** left two segments over three rows), the coalesced persist path wrote **one** globally merged focus string to **`notes`** on **every** row.
+- **Fix** — [`partitionMixedClusterEditorSegmentsToRowNotes`](src/lib/myTimeMixedClusterSingleSegmentPartition.ts) (and [`partitionMixedClusterEditorSegmentsToRowIntervals`](src/lib/myTimeMixedClusterSingleSegmentPartition.ts) as intervals-only) assigns **`rowNotes[i]`** from the same geometry as the time partition: **1:1** segment↔row when counts match; when **nSeg < n**, all rows in a segment’s slice share that segment’s note; when **nSeg > n** (multiple segments on one row), **mergeSegmentNotes** in segment order for that row only. [`coalescedMixedClusterPartitionForSave`](src/lib/myTimeDaySavePlan.ts) returns **`{ intervals, rowNotes }`**; [`DashboardMyTimeDayEditorModal.tsx`](src/components/DashboardMyTimeDayEditorModal.tsx) **`UPDATE`** uses **`notes: rowNotes[i]`**. Tests: [`myTimeDaySavePlan.coalescedPartition.test.ts`](src/lib/myTimeDaySavePlan.coalescedPartition.test.ts).
+
+---
+
+## Latest Updates (v2.370)
+
+**Date**: 2026-04-22
+
+### **Layout** / **Task Dispatch** / **Estimator Inbox** — **Send** modals aligned with **Clock In** job/bid search
+
+- **Lib** — [`clockBidsSearchParams.ts`](src/lib/clockBidsSearchParams.ts): **`buildClockBidsSearchParams`** builds **`search_bids_for_clock`** arguments from **`enabledBidServiceTypeIds`**, **`serviceTypes`**, and **subcontractor** allowlist rules (moved out of [`ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx)).
+- **UI** — [`BidServiceTypeSearchToggles.tsx`](src/components/BidServiceTypeSearchToggles.tsx): shared tag-style **multi-select** for bid service types (at least one on), **`getBidServiceTypeTag`** / **`aria-pressed`**, used by **Clock** and both send modals.
+- **Clock In** — [`ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx) **`renderUnifiedJobBidSearchRow`** uses **`BidServiceTypeSearchToggles`** + imported **`buildClockBidsSearchParams`**.
+- **Send to Estimator Inbox** — [`EstimatorTaskModal.tsx`](src/components/EstimatorTaskModal.tsx): optional block — **Reference Job or Bid** (full width) with toggles or single-type hint; then **Attach this location** (left) + **Links** / **[+ add]** (right, **flex 1 1 160px**); **URL** row(s) and placeholder hint in a **full-width** group (**`estimator-modal-links-label`**, **`role="group"`**); no **“Optional — add any of:”** line; **Links** / **[+ add]** centered in the right column; state **`enabledBidServiceTypeIds`** (replaces **All Types** **`<select>`**).
+- **Send a task to Dispatch** — [`DispatchTaskModal.tsx`](src/components/DispatchTaskModal.tsx): same structure and state as the estimator send modal; **`dispatch-modal-links-label`** for the links group.
+
 ---
 
 ## Latest Updates (v2.369)

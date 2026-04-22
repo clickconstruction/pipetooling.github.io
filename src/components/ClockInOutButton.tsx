@@ -20,7 +20,11 @@ import {
 } from '../lib/jobScheduleBlocks'
 import { fetchWorkingBoardClockBidPicks, type WorkingBoardClockBidPick } from '../lib/fetchWorkingBoardClockBidPicks'
 import { syncSalaryClockSessionsForUserDay } from '../lib/salaryScheduleSync'
-import { resolveClockPunchCoordinates } from '../lib/resolveClockPunchCoordinates'
+import {
+  scheduleClockInLocationPatch,
+  scheduleClockOutLocationPatch,
+  scheduleUpdateFocusLocationPatches,
+} from '../lib/patchClockPunchSessionLocations'
 import { buildClockBidsSearchParams } from '../lib/clockBidsSearchParams'
 import BidServiceTypeSearchToggles from './BidServiceTypeSearchToggles'
 import TeamFeedbackWizard from './team-feedback/TeamFeedbackWizard'
@@ -682,29 +686,32 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
     setClockInError(null)
     try {
       const now = new Date()
-      const punchIn = await resolveClockPunchCoordinates(supabase)
-      const { error: err } = await supabase.from('clock_sessions').insert({
-        user_id: userId,
-        clocked_in_at: now.toISOString(),
-        work_date: denverCalendarDayKey(now.getTime()),
-        notes: clockInNotes.trim(),
-        job_ledger_id: selectedAssociation?.source === 'job' ? selectedAssociation?.id : null,
-        bid_id: selectedAssociation?.source === 'bid' ? selectedAssociation?.id : null,
-        ...(punchIn != null && {
-          clock_in_lat: punchIn.lat,
-          clock_in_lng: punchIn.lng,
-          clock_in_location_source: punchIn.source,
-        }),
-      })
-      if (err) throw err
+      const inserted = await withSupabaseRetry(
+        async () =>
+          supabase
+            .from('clock_sessions')
+            .insert({
+              user_id: userId,
+              clocked_in_at: now.toISOString(),
+              work_date: denverCalendarDayKey(now.getTime()),
+              notes: clockInNotes.trim(),
+              job_ledger_id: selectedAssociation?.source === 'job' ? selectedAssociation?.id : null,
+              bid_id: selectedAssociation?.source === 'bid' ? selectedAssociation?.id : null,
+            })
+            .select('id')
+            .single(),
+        'clock in',
+      )
+      const clockInId = (inserted as { id: string } | null)?.id
+      if (!clockInId) throw new Error('Clock in did not return a session id')
+      scheduleClockInLocationPatch(supabase, clockInId)
       if (selectedAssociation && userId && typeof localStorage !== 'undefined') {
         localStorage.setItem(`clock_in_last_job_bid_${userId}`, JSON.stringify(selectedAssociation))
         setLastSelectedJobBid(selectedAssociation)
       }
       setClockInModalOpen(false)
       const workDate = denverCalendarDayKey(now.getTime())
-      await fetchSessions()
-      await notifyFirstClockInOfDay(workDate, userId)
+      await Promise.all([fetchSessions(), notifyFirstClockInOfDay(workDate, userId)])
       onClockInSuccess?.()
     } catch (e) {
       setClockInError(e instanceof Error ? e.message : 'Failed to clock in')
@@ -736,33 +743,30 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
     setClockOutReviewError(null)
     setError(null)
     try {
-      const punchOut = await resolveClockPunchCoordinates(supabase)
       const notesTrim = clockOutReviewNotes.trim()
       const jobId = selectedAssociation?.source === 'job' ? selectedAssociation.id : null
       const bidId = selectedAssociation?.source === 'bid' ? selectedAssociation.id : null
-      const { error: err } = await supabase
-        .from('clock_sessions')
-        .update({
-          notes: notesTrim,
-          job_ledger_id: jobId,
-          bid_id: bidId,
-          clocked_out_at: new Date().toISOString(),
-          ...(punchOut != null && {
-            clock_out_lat: punchOut.lat,
-            clock_out_lng: punchOut.lng,
-            clock_out_location_source: punchOut.source,
-          }),
-        })
-        .eq('id', openSession.id)
-      if (err) throw err
+      await withSupabaseRetry(
+        async () =>
+          supabase
+            .from('clock_sessions')
+            .update({
+              notes: notesTrim,
+              job_ledger_id: jobId,
+              bid_id: bidId,
+              clocked_out_at: new Date().toISOString(),
+            })
+            .eq('id', openSession.id),
+        'clock out',
+      )
+      scheduleClockOutLocationPatch(supabase, openSession.id)
       if (selectedAssociation && userId && typeof localStorage !== 'undefined') {
         localStorage.setItem(`clock_in_last_job_bid_${userId}`, JSON.stringify(selectedAssociation))
         setLastSelectedJobBid(selectedAssociation)
       }
       setClockOutReviewOpen(false)
       setOpenSession(null)
-      await fetchSessions()
-      const elig = await getTeamFeedbackEligibility(userId)
+      const [, elig] = await Promise.all([fetchSessions(), getTeamFeedbackEligibility(userId)])
       if (elig.eligible) setTeamFeedbackOpen(true)
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Failed to clock out'
@@ -806,41 +810,43 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
         return
       }
       const now = new Date()
-      const punchFocus = await resolveClockPunchCoordinates(supabase)
-      const { error: errOut } = await supabase
-        .from('clock_sessions')
-        .update({
-          clocked_out_at: now.toISOString(),
-          ...(punchFocus != null && {
-            clock_out_lat: punchFocus.lat,
-            clock_out_lng: punchFocus.lng,
-            clock_out_location_source: punchFocus.source,
-          }),
-        })
-        .eq('id', openSession.id)
-      if (errOut) throw errOut
-      const { error: errIn } = await supabase.from('clock_sessions').insert({
-        user_id: userId,
-        clocked_in_at: now.toISOString(),
-        work_date: denverCalendarDayKey(now.getTime()),
-        notes: updateFocusNotes.trim(),
-        job_ledger_id: selectedAssociation?.source === 'job' ? selectedAssociation?.id : null,
-        bid_id: selectedAssociation?.source === 'bid' ? selectedAssociation?.id : null,
-        ...(punchFocus != null && {
-          clock_in_lat: punchFocus.lat,
-          clock_in_lng: punchFocus.lng,
-          clock_in_location_source: punchFocus.source,
-        }),
-      })
-      if (errIn) throw errIn
+      const closedId = openSession.id
+      await withSupabaseRetry(
+        async () =>
+          supabase
+            .from('clock_sessions')
+            .update({
+              clocked_out_at: now.toISOString(),
+            })
+            .eq('id', closedId),
+        'update focus clock out',
+      )
+      const inserted = await withSupabaseRetry(
+        async () =>
+          supabase
+            .from('clock_sessions')
+            .insert({
+              user_id: userId,
+              clocked_in_at: now.toISOString(),
+              work_date: denverCalendarDayKey(now.getTime()),
+              notes: updateFocusNotes.trim(),
+              job_ledger_id: selectedAssociation?.source === 'job' ? selectedAssociation?.id : null,
+              bid_id: selectedAssociation?.source === 'bid' ? selectedAssociation?.id : null,
+            })
+            .select('id')
+            .single(),
+        'update focus clock in',
+      )
+      const newSessionId = (inserted as { id: string } | null)?.id
+      if (!newSessionId) throw new Error('Update focus did not return a new session id')
+      scheduleUpdateFocusLocationPatches(supabase, closedId, newSessionId)
       if (selectedAssociation && userId && typeof localStorage !== 'undefined') {
         localStorage.setItem(`clock_in_last_job_bid_${userId}`, JSON.stringify(selectedAssociation))
         setLastSelectedJobBid(selectedAssociation)
       }
       setUpdateFocusModalOpen(false)
       const workDate = denverCalendarDayKey(now.getTime())
-      await fetchSessions()
-      await notifyFirstClockInOfDay(workDate, userId)
+      await Promise.all([fetchSessions(), notifyFirstClockInOfDay(workDate, userId)])
       onClockInSuccess?.()
     } catch (e) {
       setUpdateFocusError(e instanceof Error ? e.message : 'Failed to switch focus')
