@@ -316,9 +316,15 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 **`20260408124821_bid_working_board.sql`**
 - **Purpose**: Bids **Working** tab — per-user Kanban columns and bid card placements (only when user is **`estimator_id`** or **`account_manager_id`** on the bid)
-- **Changes**: Tables **`bid_working_board_columns`** (`system_key` **`inbox`** / **`ready`** or custom), **`bid_working_board_placements`** (`PRIMARY KEY (user_id, bid_id)`); helpers **`user_is_bid_estimator_or_account_manager`**, **`user_owns_working_board_column`**; **RLS** (own rows + assignment + column ownership); dev **SELECT** all; **Realtime** publication
+- **Changes**: Tables **`bid_working_board_columns`** (`system_key` **`inbox`** / **`ready`** or custom — **`working`** added in **`20260422001732_bid_working_board_working_column.sql`**), **`bid_working_board_placements`** (`PRIMARY KEY (user_id, bid_id)`); helpers **`user_is_bid_estimator_or_account_manager`**, **`user_owns_working_board_column`**; **RLS** (own rows + assignment + column ownership); dev **SELECT** all; **Realtime** publication
 - **Impact**: [`Bids.tsx`](src/pages/Bids.tsx), [`BidsWorkingBoard.tsx`](src/components/bids/BidsWorkingBoard.tsx), [`BidBoardNotesPanel.tsx`](src/components/bids/BidBoardNotesPanel.tsx), [`database.ts`](src/types/database.ts)
 - **Category**: Bids
+
+**`20260422001732_bid_working_board_working_column.sql`**
+- **Purpose**: Fixed **Working** system column between **Inbox** and **Ready**; extends **`system_key`** check to **`working`**
+- **Changes**: **`DROP`/`ADD`** **`bid_working_board_columns_system_key_check`** (`inbox` / **`working`** / `ready`); per-user backfill: bump **`position >= 1`** by **1_000_000**, insert **`Working`** at **1**, renumber with **`row_number()`** (avoids **`(user_id, position)`** violations during shift)
+- **Impact**: [`BidsWorkingBoard.tsx`](src/components/bids/BidsWorkingBoard.tsx) (three-column bootstrap), [`fetchWorkingBoardClockBidPicks.ts`](src/lib/fetchWorkingBoardClockBidPicks.ts), [`ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx), [`database.ts`](src/types/database.ts)
+- **Category**: Bids / Clock
 
 #### April 7, 2026
 

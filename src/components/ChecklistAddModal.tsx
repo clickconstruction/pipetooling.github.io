@@ -1,8 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import { getNextDisplayOrders } from '../utils/checklistOrder'
+import { SearchableMultiSelect } from './SearchableMultiSelect'
+import { SearchableSelect } from './SearchableSelect'
+import { syncChecklistTitleTextareaHeight } from '../lib/syncChecklistTitleTextareaHeight'
 
 const FALLBACK_ASSIGNEE_EMAIL = 'taunya@clickplumbing.com'
 
@@ -24,6 +27,21 @@ function getDefaultAssigneeId(
   return taunya?.id ?? users[0]?.id ?? null
 }
 
+/**
+ * When assignees were only the current user and the user adds someone else, drop self so the new default is "other only" (they can add self back).
+ */
+function dedupeSoloSelfWhenAddingOthers(
+  prev: string[],
+  next: string[],
+  authUserId: string | null
+): string[] {
+  if (!authUserId || prev.length !== 1 || prev[0] !== authUserId) return next
+  if (next.includes(authUserId) && next.some((id) => id !== authUserId)) {
+    return next.filter((id) => id !== authUserId)
+  }
+  return next
+}
+
 function toLocalDateString(d: Date): string {
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
@@ -42,9 +60,10 @@ export default function ChecklistAddModal() {
   const [recentAssigneeIds, setRecentAssigneeIds] = useState<string[]>([])
   const [role, setRole] = useState<UserRole | null>(null)
   const [reminderScopeModalOpen, setReminderScopeModalOpen] = useState(false)
-  const [repeatSectionOpen, setRepeatSectionOpen] = useState(false)
+  const [advancedSectionOpen, setAdvancedSectionOpen] = useState(false)
+  const [linksSectionOpen, setLinksSectionOpen] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
-  const titleInputRef = useRef<HTMLInputElement>(null)
+  const titleInputRef = useRef<HTMLTextAreaElement | null>(null)
   const [form, setForm] = useState({
     title: '',
     links: [] as string[],
@@ -56,16 +75,30 @@ export default function ChecklistAddModal() {
     start_date: toLocalDateString(new Date()),
     show_until_completed: true,
     notify_on_complete_user_id: '',
-    notify_creator_on_complete: false,
+    notify_creator_on_complete: true,
     reminder_time: '',
     reminder_scope: '' as 'today_only' | 'today_and_overdue' | '',
   })
 
+  const assignToSelectOptions = useMemo(
+    () =>
+      users.map((u) => ({
+        value: u.id,
+        label: u.name?.trim() || u.email,
+      })),
+    [users],
+  )
+
   useEffect(() => {
     if (!modalContext?.isOpen) return
-    supabase.from('users').select('id, name, email').order('name').then(({ data }) => {
-      setUsers((data ?? []) as Array<{ id: string; name: string; email: string }>)
-    })
+    supabase
+      .from('users')
+      .select('id, name, email')
+      .is('archived_at', null)
+      .order('name')
+      .then(({ data }) => {
+        setUsers((data ?? []) as Array<{ id: string; name: string; email: string }>)
+      })
     if (authUser?.id) {
       supabase.from('users').select('role').eq('id', authUser.id).single().then(({ data }) => {
         setRole((data as { role: UserRole } | null)?.role ?? null)
@@ -131,13 +164,19 @@ export default function ChecklistAddModal() {
         start_date: toLocalDateString(new Date()),
         show_until_completed: true,
         notify_on_complete_user_id: '',
-        notify_creator_on_complete: false,
+        notify_creator_on_complete: true,
         reminder_time: '',
         reminder_scope: '',
       })
       setFormError(null)
+      setLinksSectionOpen(false)
     }
   }, [modalContext?.isOpen, modalContext?.initialAssigneeUserId, users, authUser?.id])
+
+  useLayoutEffect(() => {
+    if (!modalContext?.isOpen) return
+    syncChecklistTitleTextareaHeight(titleInputRef.current)
+  }, [modalContext?.isOpen, form.title])
 
   async function generateInstances(itemId: string, item: typeof form) {
     const assigneeIds = item.assigned_to_user_ids?.length ? item.assigned_to_user_ids : []
@@ -253,235 +292,304 @@ export default function ChecklistAddModal() {
       >
         <h3 id="checklist-add-modal-title" style={{ marginTop: 0 }}>Add checklist item</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <label>
-            <span style={{ display: 'block', marginBottom: '0.25rem' }}>Title</span>
-            <input
-              ref={titleInputRef}
-              type="text"
-              value={form.title}
-              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-              style={{ width: '100%', padding: '0.5rem' }}
-            />
-          </label>
-          <label>
-            <span style={{ display: 'block', marginBottom: '0.25rem' }}>Links</span>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {form.links.map((url, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const input = titleInputRef.current
-                      if (input) {
-                        const start = input.selectionStart ?? form.title.length
-                        const end = input.selectionEnd ?? form.title.length
-                        const placeholder = `[${i + 1}]`
-                        const newTitle = form.title.slice(0, start) + placeholder + form.title.slice(end)
-                        setForm((f) => ({ ...f, title: newTitle }))
-                        setTimeout(() => {
-                          input.focus()
-                          const pos = start + placeholder.length
-                          input.setSelectionRange(pos, pos)
-                        }, 0)
-                      }
-                    }}
-                    style={{
-                      flexShrink: 0,
-                      padding: '0.25rem 0.5rem',
-                      background: '#f3f4f6',
-                      border: '1px solid #d1d5db',
-                      borderRadius: 4,
-                      cursor: 'pointer',
-                      fontSize: '0.875rem',
-                    }}
-                  >
-                    [{i + 1}]
-                  </button>
-                  <input
-                    type="url"
-                    value={url}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        links: f.links.map((u, j) => (j === i ? e.target.value : u)),
-                      }))
-                    }
-                    placeholder="URL"
-                    style={{ flex: 1, padding: '0.5rem' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setForm((f) => ({
-                        ...f,
-                        links: f.links.filter((_, j) => j !== i),
-                      }))
-                    }
-                    style={{
-                      padding: '0.25rem',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      color: '#6b7280',
-                      fontSize: '1.25rem',
-                      lineHeight: 1,
-                    }}
-                    title="Remove link"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={() => setForm((f) => ({ ...f, links: [...f.links, ''] }))}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            <div>
+              <textarea
+                ref={titleInputRef}
+                value={form.title}
+                onChange={(e) => {
+                  const t = e.target.value.replace(/\n/g, ' ')
+                  setForm((f) => ({ ...f, title: t }))
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') e.preventDefault()
+                }}
+                rows={1}
+                aria-label="Checklist item title"
                 style={{
-                  alignSelf: 'flex-start',
-                  padding: '0.25rem 0.5rem',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: '#2563eb',
-                  textDecoration: 'underline',
-                  fontSize: '0.875rem',
+                  width: '100%',
+                  minHeight: '2.75rem',
+                  padding: '0.5rem',
+                  boxSizing: 'border-box',
+                  font: 'inherit',
+                  lineHeight: 1.5,
+                  overflowWrap: 'break-word',
+                  wordBreak: 'break-word',
+                  resize: 'none',
+                }}
+              />
+            </div>
+            <div
+              role="group"
+              aria-labelledby="checklist-add-assign-label"
+              style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: '0.25rem' }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  width: '100%',
                 }}
               >
-                [+ add]
-              </button>
-            </div>
-          </label>
-          <label>
-            <span style={{ display: 'block', marginBottom: '0.25rem' }}>Assign to</span>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
-              {users.map((u) => (
-                <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                  <input
-                    type="checkbox"
-                    checked={form.assigned_to_user_ids.includes(u.id)}
-                    onChange={(e) => {
-                      setForm((f) => ({
-                        ...f,
-                        assigned_to_user_ids: e.target.checked
-                          ? [...f.assigned_to_user_ids, u.id]
-                          : f.assigned_to_user_ids.filter((id) => id !== u.id),
-                      }))
-                    }}
-                  />
-                  {u.name || u.email}
-                </label>
-              ))}
-            </div>
-            {recentAssigneeIds.length > 0 && (
-              <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: '#6b7280' }}>
-                Recent:{' '}
-                {recentAssigneeIds
-                  .map((id) => users.find((x) => x.id === id))
-                  .filter((u): u is { id: string; name: string; email: string } => !!u)
-                  .map((u, i) => (
-                    <span key={u.id}>
-                      {i > 0 && ', '}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setForm((f) => ({
-                            ...f,
-                            assigned_to_user_ids: f.assigned_to_user_ids.includes(u.id)
-                              ? f.assigned_to_user_ids
-                              : [...f.assigned_to_user_ids, u.id],
-                          }))
-                        }}
-                        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: '#2563eb', textDecoration: 'underline', fontSize: 'inherit' }}
-                      >
-                        {u.name || u.email}
-                      </button>
-                    </span>
-                  ))}
-              </p>
-            )}
-          </label>
-          <label>
-            <span style={{ display: 'block', marginBottom: '0.25rem' }}>Notify once complete</span>
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-              <select
-                value={form.notify_on_complete_user_id}
-                onChange={(e) => setForm((f) => ({ ...f, notify_on_complete_user_id: e.target.value }))}
-                style={{ padding: '0.5rem', minWidth: 180 }}
-              >
-                <option value="">— Select user —</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>{u.name || u.email}</option>
-                ))}
-              </select>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={form.notify_creator_on_complete}
-                  onChange={(e) => setForm((f) => ({ ...f, notify_creator_on_complete: e.target.checked }))}
+                <span id="checklist-add-assign-label" style={{ display: 'block', flexShrink: 0 }}>
+                  Assign to
+                </span>
+                <div
+                  aria-label={recentAssigneeIds.length > 0 ? 'Recent assignees' : undefined}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    fontSize: '0.75rem',
+                    color: '#6b7280',
+                    textAlign: 'center',
+                  }}
+                >
+                  {recentAssigneeIds.length > 0
+                    ? (
+                        <>
+                          <span style={{ marginRight: '0.5rem' }}>Recent:</span>
+                          {recentAssigneeIds
+                            .map((id) => users.find((x) => x.id === id))
+                            .filter((u): u is { id: string; name: string; email: string } => !!u)
+                            .map((u, i) => (
+                              <span key={u.id}>
+                                {i > 0 && ', '}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setForm((f) => {
+                                      const prev = f.assigned_to_user_ids
+                                      const proposed = prev.includes(u.id)
+                                        ? prev
+                                        : [...prev, u.id]
+                                      return {
+                                        ...f,
+                                        assigned_to_user_ids: dedupeSoloSelfWhenAddingOthers(
+                                          prev,
+                                          proposed,
+                                          authUser?.id ?? null,
+                                        ),
+                                      }
+                                    })
+                                  }}
+                                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: '#2563eb', textDecoration: 'underline', fontSize: 'inherit' }}
+                                >
+                                  {u.name || u.email}
+                                </button>
+                              </span>
+                            ))}
+                        </>
+                      )
+                    : null}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setLinksSectionOpen((o) => !o)}
+                  aria-expanded={linksSectionOpen}
+                  aria-label={linksSectionOpen ? 'Hide links' : 'Show links'}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    padding: '0.25rem 0',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontWeight: 500,
+                    fontSize: '1rem',
+                    color: '#9ca3af',
+                    flexShrink: 0,
+                  }}
+                >
+                  <span aria-hidden>{linksSectionOpen ? '▼' : '▶'}</span>
+                  <span>Links</span>
+                  {form.links.length > 0 ? (
+                    <span style={{ fontSize: '0.875rem', fontWeight: 400, color: 'inherit' }}>({form.links.length})</span>
+                  ) : null}
+                </button>
+              </div>
+              <div style={{ marginTop: '0.25rem' }}>
+                <SearchableMultiSelect
+                  id="checklist-add-assign"
+                  options={assignToSelectOptions}
+                  value={form.assigned_to_user_ids}
+                  onChange={(ids) =>
+                    setForm((f) => ({
+                      ...f,
+                      assigned_to_user_ids: dedupeSoloSelfWhenAddingOthers(
+                        f.assigned_to_user_ids,
+                        ids,
+                        authUser?.id ?? null,
+                      ),
+                    }))
+                  }
+                  listAriaLabel="Assign to"
+                  pinSelectedToTop
                 />
-                {' '}Notify me
-              </label>
+              </div>
             </div>
-          </label>
-          {role === 'dev' && (
-            <>
-              <label>
-                <span style={{ display: 'block', marginBottom: '0.25rem' }}>Remind at (CST, optional)</span>
-                <input
-                  type="time"
-                  value={form.reminder_time}
-                  onChange={(e) => setForm((f) => ({ ...f, reminder_time: e.target.value }))}
-                  style={{ padding: '0.5rem' }}
-                />
-              </label>
-              {form.reminder_time && (
-                <label>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.25rem' }}>
-                    Reminder scope
+            {linksSectionOpen && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+                {form.links.map((url, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <button
                       type="button"
-                      onClick={() => setReminderScopeModalOpen(true)}
+                      onClick={() => {
+                        const input = titleInputRef.current
+                        if (input) {
+                          const start = input.selectionStart ?? form.title.length
+                          const end = input.selectionEnd ?? form.title.length
+                          const placeholder = `[${i + 1}]`
+                          const newTitle = form.title.slice(0, start) + placeholder + form.title.slice(end)
+                          setForm((f) => ({ ...f, title: newTitle }))
+                          setTimeout(() => {
+                            input.focus()
+                            const pos = start + placeholder.length
+                            input.setSelectionRange(pos, pos)
+                          }, 0)
+                        }
+                      }}
                       style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: 2,
+                        flexShrink: 0,
+                        padding: '0.25rem 0.5rem',
+                        background: '#f3f4f6',
+                        border: '1px solid #d1d5db',
+                        borderRadius: 4,
+                        cursor: 'pointer',
+                        fontSize: '0.875rem',
+                      }}
+                    >
+                      [{i + 1}]
+                    </button>
+                    <input
+                      type="url"
+                      value={url}
+                      onChange={(e) =>
+                        setForm((f) => ({
+                          ...f,
+                          links: f.links.map((u, j) => (j === i ? e.target.value : u)),
+                        }))
+                      }
+                      placeholder="URL"
+                      style={{ flex: 1, padding: '0.5rem' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setForm((f) => ({
+                          ...f,
+                          links: f.links.filter((_, j) => j !== i),
+                        }))
+                      }
+                      style={{
+                        padding: '0.25rem',
                         background: 'none',
                         border: 'none',
                         cursor: 'pointer',
                         color: '#6b7280',
+                        fontSize: '1.25rem',
+                        lineHeight: 1,
                       }}
-                      title="What each option means"
+                      title="Remove link"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor">
-                        <path d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM288 224C288 206.3 302.3 192 320 192C337.7 192 352 206.3 352 224C352 241.7 337.7 256 320 256C302.3 256 288 241.7 288 224zM280 288L328 288C341.3 288 352 298.7 352 312L352 400L360 400C373.3 400 384 410.7 384 424C384 437.3 373.3 448 360 448L280 448C266.7 448 256 437.3 256 424C256 410.7 266.7 400 280 400L304 400L304 336L280 336C266.7 336 256 325.3 256 312C256 298.7 266.7 288 280 288z" />
-                      </svg>
+                      ×
                     </button>
-                  </span>
-                  <select
-                    value={form.reminder_scope}
-                    onChange={(e) => setForm((f) => ({ ...f, reminder_scope: e.target.value as 'today_only' | 'today_and_overdue' | '' }))}
-                    style={{ padding: '0.5rem', minWidth: 180 }}
-                  >
-                    <option value="">— Select —</option>
-                    <option value="today_only">Due date</option>
-                    <option value="today_and_overdue">Due date + daily until done</option>
-                  </select>
-                </label>
-              )}
-            </>
-          )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, links: [...f.links, ''] }))}
+                  style={{
+                    alignSelf: 'flex-start',
+                    padding: '0.25rem 0.5rem',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: '#2563eb',
+                    textDecoration: 'underline',
+                    fontSize: '0.875rem',
+                  }}
+                >
+                  [+ add]
+                </button>
+              </div>
+            )}
+          </div>
           <div style={{ marginBottom: '1rem' }}>
-            <button
-              type="button"
-              onClick={() => setRepeatSectionOpen((o) => !o)}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, fontSize: '1rem' }}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '0.75rem',
+                flexWrap: 'wrap',
+                width: '100%',
+                boxSizing: 'border-box',
+              }}
             >
-              {repeatSectionOpen ? '\u25BC' : '\u25B6'} Repeat
-            </button>
-            {repeatSectionOpen && (
+              <button
+                type="button"
+                onClick={() => setAdvancedSectionOpen((o) => !o)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.25rem 0',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontWeight: 500,
+                  fontSize: '1rem',
+                  color: '#9ca3af',
+                  flexShrink: 0,
+                }}
+              >
+                {advancedSectionOpen ? '\u25BC' : '\u25B6'} Advanced
+              </button>
+              <label
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  minWidth: 0,
+                }}
+              >
+                <input
+                  id="checklist-add-notify-creator"
+                  type="checkbox"
+                  checked={form.notify_creator_on_complete}
+                  onChange={(e) => setForm((f) => ({ ...f, notify_creator_on_complete: e.target.checked }))}
+                />
+                Push notify me once complete
+              </label>
+            </div>
+            {advancedSectionOpen && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
                 <label>
-                  <span style={{ display: 'block', marginBottom: '0.25rem' }}>Start date</span>
+                  <span style={{ display: 'block', marginBottom: '0.25rem' }}>Push notify once complete</span>
+                  <div style={{ minWidth: 0 }}>
+                    <SearchableSelect
+                      id="checklist-add-notify-on-complete"
+                      value={form.notify_on_complete_user_id}
+                      onChange={(id) => setForm((f) => ({ ...f, notify_on_complete_user_id: id }))}
+                      options={assignToSelectOptions}
+                      emptyOption={{ value: '', label: '— Select user —' }}
+                      placeholder="— Select user —"
+                      listAriaLabel="Push notify once complete"
+                      searchReplacesTrigger
+                      hideEmptyOptionInListWhenUnset
+                    />
+                  </div>
+                </label>
+                <label>
+                  <span style={{ display: 'block', marginBottom: '0.25rem' }}>Repeat start date</span>
                   <input
                     type="date"
                     value={form.start_date}
@@ -550,6 +658,54 @@ export default function ChecklistAddModal() {
                     style={{ padding: '0.5rem' }}
                   />
                 </label>
+                {role === 'dev' && (
+                  <>
+                    <label>
+                      <span style={{ display: 'block', marginBottom: '0.25rem' }}>Remind at (CST)</span>
+                      <input
+                        type="time"
+                        value={form.reminder_time}
+                        onChange={(e) => setForm((f) => ({ ...f, reminder_time: e.target.value }))}
+                        style={{ padding: '0.5rem' }}
+                      />
+                    </label>
+                    {form.reminder_time && (
+                      <label>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.25rem' }}>
+                          Reminder scope
+                          <button
+                            type="button"
+                            onClick={() => setReminderScopeModalOpen(true)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              padding: 2,
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              color: '#6b7280',
+                            }}
+                            title="What each option means"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor">
+                              <path d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM288 224C288 206.3 302.3 192 320 192C337.7 192 352 206.3 352 224C352 241.7 337.7 256 320 256C302.3 256 288 241.7 288 224zM280 288L328 288C341.3 288 352 298.7 352 312L352 400L360 400C373.3 400 384 410.7 384 424C384 437.3 373.3 448 360 448L280 448C266.7 448 256 437.3 256 424C256 410.7 266.7 400 280 400L304 400L304 336L280 336C266.7 336 256 325.3 256 312C256 298.7 266.7 288 280 288z" />
+                            </svg>
+                          </button>
+                        </span>
+                        <select
+                          value={form.reminder_scope}
+                          onChange={(e) => setForm((f) => ({ ...f, reminder_scope: e.target.value as 'today_only' | 'today_and_overdue' | '' }))}
+                          style={{ padding: '0.5rem', minWidth: 180 }}
+                        >
+                          <option value="">— Select —</option>
+                          <option value="today_only">Due date</option>
+                          <option value="today_and_overdue">Due date + daily until done</option>
+                        </select>
+                      </label>
+                    )}
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -602,12 +758,22 @@ export default function ChecklistAddModal() {
             </div>
           </div>
         )}
-        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.5rem' }}>
-          <button type="button" onClick={saveItem} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
-            Save
-          </button>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '0.5rem',
+            marginTop: '1.5rem',
+            width: '100%',
+            boxSizing: 'border-box',
+          }}
+        >
           <button type="button" onClick={() => modalContext.closeModal()} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>
             Cancel
+          </button>
+          <button type="button" onClick={saveItem} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+            Save
           </button>
         </div>
       </div>

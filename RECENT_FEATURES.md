@@ -7,37 +7,40 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-21
+last_updated: 2026-04-22
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.368 → v2.4"
+version_range: "v2.369 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.369)"
+    line: ~1195
+    description: "Bids Unsent/Working Kanban: system Working column + Clock In quick picks; Bid Board / tab copy and pipe grouping; inbox badge position"
   - name: "Latest Version (v2.368)"
-    line: ~1188
+    line: ~1209
     description: "Public /contract/accept: no For line; title-only thank-you + pup.jpg + Dashboard/Sign-in CTA (list_my_contract_dashboard_prompts)"
   - name: "Latest Version (v2.367)"
-    line: ~1225
+    line: ~1221
     description: "Dashboard Jobs worked today: aggregate row for no job/no bid (split salary unassigned segments); JOBS_WORKED_TODAY_UNASSIGNED_ID; muted label, no job link"
   - name: "Latest Version (v2.366)"
-    line: ~1200
+    line: ~1233
     description: "Bill Customer: job → billed when fully invoiced out (Stripe / HCP / Physical) via maybePromoteJobToBilledAfterCustomerInvoice; send-physical-invoice-email no longer updates job status"
   - name: "Latest Version (v2.365)"
-    line: ~1200
+    line: ~1245
     description: "People Contracts: contract lineage (Ver. column), applied version pin, Edit in ⋯ menu; create_pending_contract_versions_after_book_save on Contract Book save"
   - name: "Latest Version (v2.364)"
-    line: ~1220
+    line: ~1258
     description: "Dashboard contract signing prompt after clock-in; People Contracts Dashboard checkbox; list_my_contract_dashboard_prompts + get-contract-signing-link-for-self"
   - name: "Latest Version (v2.363)"
-    line: ~1230
+    line: ~1271
     description: "OOB unwind Stripe edge cases (total + out_of_band credit note); Edit Job Payments received + Bill Customer refresh after unwind"
   - name: "Latest Version (v2.362)"
-    line: ~1235
+    line: ~1284
     description: "Undo Stripe out-of-band payment (credit note + RPC + Hosted bill UI)"
   - name: "Latest Version (v2.361)"
-    line: ~1248
+    line: ~1298
     description: "Stale tally follow-up Posted column adds local time (APP_CALENDAR_TZ)"
   - name: "Latest Version (v2.360)"
     line: ~1258
@@ -1187,6 +1190,20 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.369)
+
+**Date**: 2026-04-22
+
+### **Bids** — **Unsent/Working** board, **Clock In** quick picks, labels, tab layout
+
+- **DB** — [`20260422001732_bid_working_board_working_column.sql`](supabase/migrations/20260422001732_bid_working_board_working_column.sql): **`bid_working_board_columns.system_key`** may be **`working`**; backfill inserts **Working** at position **1** between **Inbox** and **Ready** (safe position bump + renumber). See **`MIGRATIONS.md`**.
+- **Kanban** — [`BidsWorkingBoard.tsx`](src/components/bids/BidsWorkingBoard.tsx): bootstrap **Inbox (0)**, **Working (1)**, **Ready for Submission (2)**; **Working** column shows muted hint **shows on clock** (tooltip explains Clock In quick picks).
+- **Clock In** — [`fetchWorkingBoardClockBidPicks.ts`](src/lib/fetchWorkingBoardClockBidPicks.ts) + [`ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx): bids placed in the user’s **Working** column load as green quick-pick buttons **after** Dispatch schedule jobs (also **Update Focus** / **clock-out review** modals); **“no quick picks…”** toast counts Working bids.
+- **Bid Board** — First collapsible section label **Unsent / Working Bids** (**`BID_BOARD_UNSENT_SECTION_LABEL`** in [`Bids.tsx`](src/pages/Bids.tsx)); same label on **Submission & Followup** and dev **Bid Costs** unsent section.
+- **Tabs** — Bids **Working** tab button text **`Unsent/Working`** (**`BIDS_WORKING_TAB_LABEL`**); inbox count badge offset adjusted (**`top`/`right`**). Center tab strip: **Counts … Cover Letter** **|** **Submission & Followup** **|** **RFI …** (superintendent: still **Cost Estimate | RFI** with one separator).
+
 ---
 
 ## Latest Updates (v2.368)

@@ -1,5 +1,8 @@
-import { useState, useEffect, useRef, useCallback, Fragment } from 'react'
+import { useState, useEffect, useRef, Fragment, type CSSProperties, type PointerEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { DndContext, closestCenter, type DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
@@ -7,6 +10,8 @@ import { ChecklistItemEditModal } from '../components/ChecklistItemEditModal'
 import ChecklistItemMuteModal from '../components/ChecklistItemMuteModal'
 import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
 import { getNextDisplayOrders } from '../utils/checklistOrder'
+import { withSupabaseRetry } from '../utils/errorHandling'
+import { ChecklistReviewInboxes } from '../components/checklist/ChecklistReviewInboxes'
 
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator'
 type ChecklistTab = 'today' | 'history' | 'review' | 'manage'
@@ -45,11 +50,6 @@ function toLocalDateString(d: Date): string {
   return `${y}-${m}-${day}`
 }
 
-function formatDatetime(iso: string | null): string {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleString()
-}
-
 export default function Checklist() {
   const { user: authUser } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -86,30 +86,6 @@ export default function Checklist() {
 
   const canManageChecklists = role === 'dev' || role === 'master_technician' || role === 'assistant'
   const [editItemId, setEditItemId] = useState<string | null>(null)
-  const [dispatchInboxEligible, setDispatchInboxEligible] = useState(false)
-
-  useEffect(() => {
-    if (!authUser?.id) {
-      setDispatchInboxEligible(false)
-      return
-    }
-    if (role === 'dev') {
-      setDispatchInboxEligible(true)
-      return
-    }
-    let cancelled = false
-    supabase
-      .from('dispatch_group_members')
-      .select('user_id')
-      .eq('user_id', authUser.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!cancelled) setDispatchInboxEligible(!!data)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [authUser?.id, role])
 
   if (loading) return <p style={{ padding: '2rem' }}>Loading…</p>
 
@@ -128,7 +104,7 @@ export default function Checklist() {
           }}
           style={tabStyle(activeTab === 'today')}
         >
-          Today
+          My Today
         </button>
         <button
           type="button"
@@ -186,7 +162,7 @@ export default function Checklist() {
         <ChecklistHistoryTab authUserId={authUser?.id ?? null} canViewOthers={canManageChecklists} canEditHistory={role === 'dev'} setError={setError} />
       )}
       {activeTab === 'review' && canManageChecklists && (
-        <ChecklistOutstandingTab authUserId={authUser?.id ?? null} isDev={role === 'dev'} canManageChecklists={canManageChecklists} dispatchInboxEligible={dispatchInboxEligible} setError={setError} setEditItemId={setEditItemId} />
+        <ChecklistOutstandingTab authUserId={authUser?.id ?? null} isDev={role === 'dev'} canManageChecklists={canManageChecklists} setError={setError} setEditItemId={setEditItemId} />
       )}
       {activeTab === 'manage' && canManageChecklists && (
         <ChecklistManageTab authUserId={authUser?.id ?? null} role={role} setError={setError} setEditItemId={setEditItemId} />
@@ -237,7 +213,12 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
 
   useEffect(() => {
     if (isDev) {
-      supabase.from('users').select('id, name, email').order('name').then(({ data }) => {
+      supabase
+        .from('users')
+        .select('id, name, email')
+        .is('archived_at', null)
+        .order('name')
+        .then(({ data }) => {
         setUsers((data ?? []) as Array<{ id: string; name: string; email: string }>)
       })
     }
@@ -542,7 +523,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
   return (
     <div>
       <section style={{ marginBottom: '2rem' }}>
-        <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Today</h2>
+        <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>My Today</h2>
         {todayInstances.length === 0 ? (
           <p style={{ color: '#6b7280' }}>No checklist items due today.</p>
         ) : (
@@ -838,7 +819,12 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
 
   useEffect(() => {
     if (canViewOthers) {
-      supabase.from('users').select('id, name, email').order('name').then(({ data }) => {
+      supabase
+        .from('users')
+        .select('id, name, email')
+        .is('archived_at', null)
+        .order('name')
+        .then(({ data }) => {
         setUsers((data ?? []) as Array<{ id: string; name: string; email: string }>)
       })
     }
@@ -1081,20 +1067,255 @@ type OutstandingInstance = {
   checklist_items?: { title?: string; links?: string[] | null; repeat_type?: string; reminder_scope?: string | null } | null
 }
 
-type ClosedDispatchRow = {
-  id: string
-  title: string
-  links: string[] | null
-  created_at: string | null
-  closed_at: string | null
-  closed_by_user_id: string | null
-  closed_note: string | null
-  reference_summary: string | null
-  sender: { name: string | null; email: string | null } | null
-  closed_by: { name: string | null } | null
+function OutstandingByPersonSortableRow({
+  inst,
+  userId,
+  dragDisabled,
+  canManageChecklists,
+  isDev,
+  completingInstanceId,
+  deletingInstanceId,
+  onMarkComplete,
+  onDeleteInstance,
+  onOpenFwd,
+  setEditItemId,
+}: {
+  inst: OutstandingInstance
+  userId: string
+  dragDisabled: boolean
+  canManageChecklists: boolean
+  isDev: boolean
+  completingInstanceId: string | null
+  deletingInstanceId: string | null
+  onMarkComplete: (inst: OutstandingInstance) => void
+  onDeleteInstance: (inst: OutstandingInstance) => void
+  onOpenFwd: (inst: OutstandingInstance, rowUserId: string) => void
+  setEditItemId: (id: string) => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: inst.id })
+  const { onPointerDown: sortablePointerDown, ...restSortableListeners } = (listeners ?? {}) as {
+    onPointerDown?: (e: PointerEvent<HTMLButtonElement>) => void
+  } & Record<string, unknown>
+  const style: CSSProperties = {
+    marginBottom: '0.25rem',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.125rem',
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.85 : 1,
+    position: 'relative',
+    zIndex: isDragging ? 2 : undefined,
+  }
+  return (
+    <li ref={setNodeRef} style={style}>
+      {canManageChecklists && (
+        <button
+          type="button"
+          {...attributes}
+          {...restSortableListeners}
+          disabled={dragDisabled}
+          onPointerDown={(e) => {
+            sortablePointerDown?.(e)
+            e.stopPropagation()
+          }}
+          title="Drag to reorder"
+          aria-label={`Drag to reorder: ${inst.checklist_items?.title ?? 'Task'}`}
+          style={{
+            flexShrink: 0,
+            padding: '0.125rem',
+            background: 'none',
+            border: 'none',
+            cursor: dragDisabled ? 'not-allowed' : 'grab',
+            color: '#6b7280',
+            display: 'inline-flex',
+            alignItems: 'center',
+            touchAction: 'none',
+            opacity: dragDisabled ? 0.5 : 1,
+          }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true">
+            <path d="M8 5h2v2H8V5zm3 0h2v2h-2V5zm3 0h2v2h-2V5zM8 9h2v2H8V9zm3 0h2v2h-2V9zm3 0h2v2h-2V9zM8 13h2v2H8v-2zm3 0h2v2h-2v-2zm3 0h2v2h-2v-2zM8 17h2v2H8v-2zm3 0h2v2h-2v-2zm3 0h2v2h-2v-2z" />
+          </svg>
+        </button>
+      )}
+      {isDev && (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 0, flexShrink: 0 }}>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onMarkComplete(inst)
+            }}
+            disabled={completingInstanceId === inst.id}
+            title="Mark complete"
+            aria-label="Mark complete"
+            style={{
+              padding: '0.25rem',
+              background: 'none',
+              border: 'none',
+              cursor: completingInstanceId === inst.id ? 'not-allowed' : 'pointer',
+              color: '#16a34a',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+              <path d="M530.8 134.1C545.1 144.5 548.3 164.5 537.9 178.8L281.9 530.8C276.4 538.4 267.9 543.1 258.5 543.9C249.1 544.7 240 541.2 233.4 534.6L105.4 406.6C92.9 394.1 92.9 373.8 105.4 361.3C117.9 348.8 138.2 348.8 150.7 361.3L252.2 462.8L486.2 141.1C496.6 126.8 516.6 123.6 530.9 134z" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              setEditItemId(inst.checklist_item_id)
+            }}
+            title="Edit"
+            style={{
+              padding: '0.25rem',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: '#374151',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+              <path d="M128.1 64C92.8 64 64.1 92.7 64.1 128L64.1 512C64.1 547.3 92.8 576 128.1 576L274.3 576L285.2 521.5C289.5 499.8 300.2 479.9 315.8 464.3L448 332.1L448 234.6C448 217.6 441.3 201.3 429.3 189.3L322.8 82.7C310.8 70.7 294.5 64 277.6 64L128.1 64zM389.6 240L296.1 240C282.8 240 272.1 229.3 272.1 216L272.1 122.5L389.6 240zM332.3 530.9L320.4 590.5C320.2 591.4 320.1 592.4 320.1 593.4C320.1 601.4 326.6 608 334.7 608C335.7 608 336.6 607.9 337.6 607.7L397.2 595.8C409.6 593.3 421 587.2 429.9 578.3L548.8 459.4L468.8 379.4L349.9 498.3C341 507.2 334.9 518.6 332.4 531zM600.1 407.9C622.2 385.8 622.2 350 600.1 327.9C578 305.8 542.2 305.8 520.1 327.9L491.3 356.7L571.3 436.7L600.1 407.9z" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onDeleteInstance(inst)
+            }}
+            disabled={deletingInstanceId === inst.id}
+            title="Delete"
+            style={{
+              padding: '0.25rem',
+              background: 'none',
+              border: 'none',
+              cursor: deletingInstanceId === inst.id ? 'not-allowed' : 'pointer',
+              color: '#b91c1c',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+              <path d="M232.7 69.9C237.1 56.8 249.3 48 263.1 48L377 48C390.8 48 403 56.8 407.4 69.9L416 96L512 96C529.7 96 544 110.3 544 128C544 145.7 529.7 160 512 160L128 160C110.3 160 96 145.7 96 128C96 110.3 110.3 96 128 96L224 96L232.7 69.9zM128 208L512 208L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 208zM216 272C202.7 272 192 282.7 192 296L192 488C192 501.3 202.7 512 216 512C229.3 512 240 501.3 240 488L240 296C240 282.7 229.3 272 216 272zM320 272C306.7 272 296 282.7 296 296L296 488C296 501.3 306.7 512 320 512C333.3 512 344 501.3 344 488L344 296C344 282.7 333.3 272 320 272zM424 272C410.7 272 400 282.7 400 296L400 488C400 501.3 410.7 512 424 512C437.3 512 448 501.3 448 488L448 296C448 282.7 437.3 272 424 272z" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="fwd-btn-desktop"
+            onClick={(e) => {
+              e.stopPropagation()
+              onOpenFwd(inst, userId)
+            }}
+            title="Forward"
+            aria-label="Forward"
+            style={{
+              flexShrink: 0,
+              padding: '0.25rem',
+              border: 'none',
+              borderRadius: 4,
+              background: 'transparent',
+              color: '#3b82f6',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+              <path d="M371.8 82.4C359.8 87.4 352 99 352 112L352 192L240 192C142.8 192 64 270.8 64 368C64 481.3 145.5 531.9 164.2 542.1C166.7 543.5 169.5 544 172.3 544C183.2 544 192 535.1 192 524.3C192 516.8 187.7 509.9 182.2 504.8C172.8 496 160 478.4 160 448.1C160 395.1 203 352.1 256 352.1L352 352.1L352 432.1C352 445 359.8 456.7 371.8 461.7C383.8 466.7 397.5 463.9 406.7 454.8L566.7 294.8C579.2 282.3 579.2 262 566.7 249.5L406.7 89.5C397.5 80.3 383.8 77.6 371.8 82.6z" />
+            </svg>
+          </button>
+        </span>
+      )}
+      <span style={{ flex: 1 }}>
+        <ChecklistTitleWithLinks title={inst.checklist_items?.title ?? '—'} links={inst.checklist_items?.links} />{' '}
+        <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>({inst.scheduled_date})</span>
+      </span>
+    </li>
+  )
 }
 
-function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, dispatchInboxEligible, setError, setEditItemId }: { authUserId: string | null; isDev: boolean; canManageChecklists: boolean; dispatchInboxEligible: boolean; setError: (s: string | null) => void; setEditItemId: (id: string) => void }) {
+function OutstandingByPersonSortableList({
+  userId,
+  instances,
+  reorderingUserId,
+  canManageChecklists,
+  isDev,
+  onDragEnd,
+  completingInstanceId,
+  deletingInstanceId,
+  onMarkComplete,
+  onDeleteInstance,
+  onOpenFwd,
+  setEditItemId,
+}: {
+  userId: string
+  instances: OutstandingInstance[]
+  reorderingUserId: string | null
+  canManageChecklists: boolean
+  isDev: boolean
+  onDragEnd: (e: DragEndEvent) => void
+  completingInstanceId: string | null
+  deletingInstanceId: string | null
+  onMarkComplete: (inst: OutstandingInstance) => void
+  onDeleteInstance: (inst: OutstandingInstance) => void
+  onOpenFwd: (inst: OutstandingInstance, rowUserId: string) => void
+  setEditItemId: (id: string) => void
+}) {
+  const dragSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
+  const dragDisabled = reorderingUserId === userId
+
+  if (!canManageChecklists) {
+    return (
+      <ul style={{ margin: 0, paddingLeft: '1.5rem', listStyle: 'disc' }}>
+        {instances.map((inst) => (
+          <li key={inst.id} style={{ marginBottom: '0.25rem' }}>
+            <ChecklistTitleWithLinks title={inst.checklist_items?.title ?? '—'} links={inst.checklist_items?.links} />{' '}
+            <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>({inst.scheduled_date})</span>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+
+  return (
+    <DndContext sensors={dragSensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+      <SortableContext items={instances.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+        <ul style={{ margin: 0, paddingLeft: '1.5rem', listStyle: 'disc' }}>
+          {instances.map((inst) => (
+            <OutstandingByPersonSortableRow
+              key={inst.id}
+              inst={inst}
+              userId={userId}
+              dragDisabled={dragDisabled}
+              canManageChecklists={canManageChecklists}
+              isDev={isDev}
+              completingInstanceId={completingInstanceId}
+              deletingInstanceId={deletingInstanceId}
+              onMarkComplete={onMarkComplete}
+              onDeleteInstance={onDeleteInstance}
+              onOpenFwd={onOpenFwd}
+              setEditItemId={setEditItemId}
+            />
+          ))}
+        </ul>
+      </SortableContext>
+    </DndContext>
+  )
+}
+
+function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setError, setEditItemId }: { authUserId: string | null; isDev: boolean; canManageChecklists: boolean; setError: (s: string | null) => void; setEditItemId: (id: string) => void }) {
   const checklistAddModal = useChecklistAddModal()
   const [loading, setLoading] = useState(true)
   const [byUser, setByUser] = useState<Array<{ userId: string; name: string; count: number; instances: OutstandingInstance[] }>>([])
@@ -1108,10 +1329,8 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, dispa
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
   const [deletingInstanceId, setDeletingInstanceId] = useState<string | null>(null)
   const [completingInstanceId, setCompletingInstanceId] = useState<string | null>(null)
-  const [movingItemId, setMovingItemId] = useState<string | null>(null)
-  const [closedDispatchRequests, setClosedDispatchRequests] = useState<ClosedDispatchRow[]>([])
-  const [closedDispatchLoading, setClosedDispatchLoading] = useState(false)
-  const [closedDispatchExpanded, setClosedDispatchExpanded] = useState(false)
+  const [reorderingUserId, setReorderingUserId] = useState<string | null>(null)
+  const [outstandingDeletePending, setOutstandingDeletePending] = useState<OutstandingInstance | null>(null)
 
   const fwdMissingFields: string[] = []
   if (!fwdTitle.trim()) fwdMissingFields.push('Title')
@@ -1132,36 +1351,16 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, dispa
 
   useEffect(() => {
     if (isDev) {
-      supabase.from('users').select('id, name, email').order('name').then(({ data }) => {
+      supabase
+        .from('users')
+        .select('id, name, email')
+        .is('archived_at', null)
+        .order('name')
+        .then(({ data }) => {
         setUsers((data ?? []) as Array<{ id: string; name: string; email: string }>)
       })
     }
   }, [isDev])
-
-  const loadClosedDispatchRequests = useCallback(() => {
-    if (!authUserId || !dispatchInboxEligible) {
-      setClosedDispatchRequests([])
-      return
-    }
-    setClosedDispatchLoading(true)
-    supabase
-      .from('dispatch_requests')
-      .select('id, title, links, created_at, closed_at, closed_by_user_id, closed_note, reference_summary, sender:users!dispatch_requests_from_user_id_fkey(name, email), closed_by:users!dispatch_requests_closed_by_user_id_fkey(name)')
-      .eq('status', 'closed')
-      .order('closed_at', { ascending: false })
-      .then(({ data, error }) => {
-        setClosedDispatchLoading(false)
-        if (error) {
-          console.error('Closed dispatch load:', error)
-          return
-        }
-        setClosedDispatchRequests((data ?? []) as ClosedDispatchRow[])
-      })
-  }, [authUserId, dispatchInboxEligible])
-
-  useEffect(() => {
-    loadClosedDispatchRequests()
-  }, [loadClosedDispatchRequests])
 
   function openFwd(inst: OutstandingInstance, rowUserId: string) {
     const title = inst.checklist_items?.title ?? 'Untitled'
@@ -1170,13 +1369,17 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, dispa
     setFwdAssigneeId(rowUserId)
   }
 
-  async function deleteInstance(inst: OutstandingInstance) {
-    if (!confirm(`Delete this outstanding task: ${inst.checklist_items?.title ?? '—'} (${inst.scheduled_date})?`)) return
+  function openOutstandingDeleteModal(inst: OutstandingInstance) {
+    setOutstandingDeletePending(inst)
+  }
+
+  async function performDeleteOutstandingInstance(inst: OutstandingInstance) {
     setDeletingInstanceId(inst.id)
     setError(null)
     try {
       const { error: err } = await supabase.from('checklist_instances').delete().eq('id', inst.id)
       if (err) throw err
+      setOutstandingDeletePending(null)
       await loadOutstanding()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to delete')
@@ -1190,14 +1393,19 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, dispa
     setCompletingInstanceId(inst.id)
     setError(null)
     try {
-      const { error: err } = await supabase
+      const { data: updatedRows, error: err } = await supabase
         .from('checklist_instances')
         .update({
           completed_at: new Date().toISOString(),
           completed_by_user_id: authUserId,
         })
         .eq('id', inst.id)
+        .select('id')
       if (err) throw err
+      if (!updatedRows?.length) {
+        setError('Could not mark this task complete (no rows updated).')
+        return
+      }
       const { data: item } = await supabase
         .from('checklist_items')
         .select('notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id, title')
@@ -1336,48 +1544,41 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, dispa
     }
   }
 
-  async function moveItem(userId: string, checklistItemId: string, direction: 'up' | 'down') {
-    const row = byUser.find((r) => r.userId === userId)
-    if (!row) return
-    const idx = row.instances.findIndex((i) => i.checklist_item_id === checklistItemId)
-    if (idx < 0) return
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1
-    if (swapIdx < 0 || swapIdx >= row.instances.length) return
-    const curr = row.instances[idx]
-    const other = row.instances[swapIdx]
-    if (!curr || !other) return
-    setMovingItemId(checklistItemId)
+  async function persistOutstandingOrderForUser(userId: string, ordered: OutstandingInstance[]) {
+    setReorderingUserId(userId)
     setError(null)
     try {
-      const { data: currRow } = await supabase
-        .from('checklist_item_assignees')
-        .select('display_order')
-        .eq('checklist_item_id', curr.checklist_item_id)
-        .eq('user_id', userId)
-        .single()
-      const { data: otherRow } = await supabase
-        .from('checklist_item_assignees')
-        .select('display_order')
-        .eq('checklist_item_id', other.checklist_item_id)
-        .eq('user_id', userId)
-        .single()
-      const currOrder = (currRow as { display_order: number } | null)?.display_order ?? 0
-      const otherOrder = (otherRow as { display_order: number } | null)?.display_order ?? 0
-      await supabase
-        .from('checklist_item_assignees')
-        .update({ display_order: otherOrder })
-        .eq('checklist_item_id', curr.checklist_item_id)
-        .eq('user_id', userId)
-      await supabase
-        .from('checklist_item_assignees')
-        .update({ display_order: currOrder })
-        .eq('checklist_item_id', other.checklist_item_id)
-        .eq('user_id', userId)
+      for (let i = 0; i < ordered.length; i++) {
+        const inst = ordered[i]
+        if (!inst) continue
+        await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('checklist_item_assignees')
+              .update({ display_order: i + 1 })
+              .eq('checklist_item_id', inst.checklist_item_id)
+              .eq('user_id', userId),
+          'update checklist assignee display order'
+        )
+      }
       await loadOutstanding()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to reorder')
     } finally {
-      setMovingItemId(null)
+      setReorderingUserId(null)
+    }
+  }
+
+  function onOutstandingDragEnd(userId: string, instances: OutstandingInstance[]) {
+    return (e: DragEndEvent) => {
+      const { active, over } = e
+      if (!over || active.id === over.id) return
+      const oldIndex = instances.findIndex((i) => i.id === active.id)
+      const newIndex = instances.findIndex((i) => i.id === over.id)
+      if (oldIndex < 0 || newIndex < 0) return
+      if (oldIndex === newIndex) return
+      const reordered = arrayMove(instances, oldIndex, newIndex)
+      void persistOutstandingOrderForUser(userId, reordered)
     }
   }
 
@@ -1475,96 +1676,9 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, dispa
     setLoading(false)
   }
 
-  if (loading) return <p>Loading…</p>
-
   return (
     <div>
-      {authUserId && dispatchInboxEligible && (
-        <div style={{ marginBottom: '1.5rem' }}>
-          <button
-            type="button"
-            onClick={() => setClosedDispatchExpanded((o) => !o)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-              padding: 0,
-              margin: 0,
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '1rem',
-              fontWeight: 600,
-              textAlign: 'left',
-            }}
-          >
-            <span aria-hidden>{closedDispatchExpanded ? '▼' : '▶'}</span>
-            Closed dispatch items
-            {!closedDispatchLoading && closedDispatchRequests.length > 0 ? (
-              <span style={{ marginLeft: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: '#2563eb' }}>
-                ({closedDispatchRequests.length} closed)
-              </span>
-            ) : null}
-          </button>
-          {closedDispatchExpanded && (
-            <div style={{ padding: '0.75rem 0 1rem 0' }}>
-              {closedDispatchLoading ? (
-                <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
-              ) : closedDispatchRequests.length === 0 ? (
-                <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No closed dispatch items.</p>
-              ) : (
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                  {closedDispatchRequests.map((req) => {
-                    const fromLabel = req.sender?.name?.trim() || req.sender?.email?.trim() || 'Unknown'
-                    const closedByLabel = req.closed_by?.name?.trim() || 'Unknown'
-                    return (
-                      <li
-                        key={req.id}
-                        style={{
-                          display: 'flex',
-                          flexWrap: 'wrap',
-                          alignItems: 'flex-start',
-                          gap: '0.5rem',
-                          padding: '0.75rem 0',
-                          borderBottom: '1px solid #f3f4f6',
-                          background: '#f9fafb',
-                        }}
-                      >
-                        <div style={{ flex: 1, minWidth: 200 }}>
-                          <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 4 }}>
-                            From {fromLabel}
-                            {req.created_at ? (
-                              <span style={{ marginLeft: '0.5rem' }}>· {formatDatetime(req.created_at)}</span>
-                            ) : null}
-                          </div>
-                          <div style={{ fontWeight: 500 }}>
-                            <ChecklistTitleWithLinks title={req.title} links={req.links ?? []} />
-                          </div>
-                          {req.reference_summary?.trim() ? (
-                            <div style={{ marginTop: 6, fontSize: '0.8125rem', color: '#4b5563' }}>
-                              Ref: {req.reference_summary.trim()}
-                            </div>
-                          ) : null}
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                          <div style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
-                            Closed by {closedByLabel}
-                          </div>
-                          {req.closed_note?.trim() ? (
-                            <div style={{ fontSize: '0.8125rem', color: '#4b5563', marginTop: 2, maxWidth: 200, textAlign: 'right' }}>
-                              "{req.closed_note.trim()}"
-                            </div>
-                          ) : null}
-                        </div>
-                      </li>
-                    )
-                  })}
-                </ul>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+      <ChecklistReviewInboxes />
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
         <h3 style={{ margin: 0 }}>Outstanding by person</h3>
         <div style={{ display: 'flex', gap: '0.25rem' }}>
@@ -1626,7 +1740,9 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, dispa
           </button>
         </div>
       </div>
-      {byUser.length === 0 ? (
+      {loading ? (
+        <p>Loading…</p>
+      ) : byUser.length === 0 ? (
         <p style={{ color: '#6b7280' }}>No outstanding checklist items.</p>
       ) : (
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -1693,103 +1809,20 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, dispa
                 {expandedUserId === userId && (
                   <tr key={`${userId}-detail`}>
                     <td colSpan={4} style={{ padding: '0 0.75rem 0.75rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
-                      <ul style={{ margin: 0, paddingLeft: '1.5rem', listStyle: 'disc' }}>
-                        {instances.map((inst, instIdx) => (
-                          <li key={inst.id} style={{ marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.125rem' }}>
-                            {canManageChecklists && (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 0, flexShrink: 0 }}>
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); moveItem(userId, inst.checklist_item_id, 'up') }}
-                                  disabled={instIdx === 0 || movingItemId === inst.checklist_item_id}
-                                  title="Move up"
-                                  aria-label="Move up"
-                                  style={{ padding: '0.125rem', background: 'none', border: 'none', cursor: instIdx === 0 || movingItemId === inst.checklist_item_id ? 'not-allowed' : 'pointer', color: '#6b7280', display: 'inline-flex', alignItems: 'center', opacity: instIdx === 0 ? 0.4 : 1 }}
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28" fill="currentColor" aria-hidden="true">
-                                    <path d="M7 14l5-5 5 5z" />
-                                  </svg>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); moveItem(userId, inst.checklist_item_id, 'down') }}
-                                  disabled={instIdx === instances.length - 1 || movingItemId === inst.checklist_item_id}
-                                  title="Move down"
-                                  aria-label="Move down"
-                                  style={{ padding: '0.125rem', background: 'none', border: 'none', cursor: instIdx === instances.length - 1 || movingItemId === inst.checklist_item_id ? 'not-allowed' : 'pointer', color: '#6b7280', display: 'inline-flex', alignItems: 'center', opacity: instIdx === instances.length - 1 ? 0.4 : 1 }}
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28" fill="currentColor" aria-hidden="true">
-                                    <path d="M7 10l5 5 5-5z" />
-                                  </svg>
-                                </button>
-                              </span>
-                            )}
-                            {isDev && (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 0, flexShrink: 0 }}>
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); markComplete(inst) }}
-                                  disabled={completingInstanceId === inst.id}
-                                  title="Mark complete"
-                                  aria-label="Mark complete"
-                                  style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: completingInstanceId === inst.id ? 'not-allowed' : 'pointer', color: '#16a34a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                                    <path d="M530.8 134.1C545.1 144.5 548.3 164.5 537.9 178.8L281.9 530.8C276.4 538.4 267.9 543.1 258.5 543.9C249.1 544.7 240 541.2 233.4 534.6L105.4 406.6C92.9 394.1 92.9 373.8 105.4 361.3C117.9 348.8 138.2 348.8 150.7 361.3L252.2 462.8L486.2 141.1C496.6 126.8 516.6 123.6 530.9 134z" />
-                                  </svg>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); setEditItemId(inst.checklist_item_id) }}
-                                  title="Edit"
-                                  style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#374151', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                                    <path d="M128.1 64C92.8 64 64.1 92.7 64.1 128L64.1 512C64.1 547.3 92.8 576 128.1 576L274.3 576L285.2 521.5C289.5 499.8 300.2 479.9 315.8 464.3L448 332.1L448 234.6C448 217.6 441.3 201.3 429.3 189.3L322.8 82.7C310.8 70.7 294.5 64 277.6 64L128.1 64zM389.6 240L296.1 240C282.8 240 272.1 229.3 272.1 216L272.1 122.5L389.6 240zM332.3 530.9L320.4 590.5C320.2 591.4 320.1 592.4 320.1 593.4C320.1 601.4 326.6 608 334.7 608C335.7 608 336.6 607.9 337.6 607.7L397.2 595.8C409.6 593.3 421 587.2 429.9 578.3L548.8 459.4L468.8 379.4L349.9 498.3C341 507.2 334.9 518.6 332.4 531zM600.1 407.9C622.2 385.8 622.2 350 600.1 327.9C578 305.8 542.2 305.8 520.1 327.9L491.3 356.7L571.3 436.7L600.1 407.9z" />
-                                  </svg>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); deleteInstance(inst) }}
-                                  disabled={deletingInstanceId === inst.id}
-                                  title="Delete"
-                                  style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: deletingInstanceId === inst.id ? 'not-allowed' : 'pointer', color: '#b91c1c', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                                    <path d="M232.7 69.9C237.1 56.8 249.3 48 263.1 48L377 48C390.8 48 403 56.8 407.4 69.9L416 96L512 96C529.7 96 544 110.3 544 128C544 145.7 529.7 160 512 160L128 160C110.3 160 96 145.7 96 128C96 110.3 110.3 96 128 96L224 96L232.7 69.9zM128 208L512 208L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 208zM216 272C202.7 272 192 282.7 192 296L192 488C192 501.3 202.7 512 216 512C229.3 512 240 501.3 240 488L240 296C240 282.7 229.3 272 216 272zM320 272C306.7 272 296 282.7 296 296L296 488C296 501.3 306.7 512 320 512C333.3 512 344 501.3 344 488L344 296C344 282.7 333.3 272 320 272zM424 272C410.7 272 400 282.7 400 296L400 488C400 501.3 410.7 512 424 512C437.3 512 448 501.3 448 488L448 296C448 282.7 437.3 272 424 272z" />
-                                  </svg>
-                                </button>
-                                <button
-                                  type="button"
-                                  className="fwd-btn-desktop"
-                                  onClick={(e) => { e.stopPropagation(); openFwd(inst, userId) }}
-                                  title="Forward"
-                                  aria-label="Forward"
-                                  style={{
-                                    flexShrink: 0,
-                                    padding: '0.25rem',
-                                    border: 'none',
-                                    borderRadius: 4,
-                                    background: 'transparent',
-                                    color: '#3b82f6',
-                                    cursor: 'pointer',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                  }}
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                                    <path d="M371.8 82.4C359.8 87.4 352 99 352 112L352 192L240 192C142.8 192 64 270.8 64 368C64 481.3 145.5 531.9 164.2 542.1C166.7 543.5 169.5 544 172.3 544C183.2 544 192 535.1 192 524.3C192 516.8 187.7 509.9 182.2 504.8C172.8 496 160 478.4 160 448.1C160 395.1 203 352.1 256 352.1L352 352.1L352 432.1C352 445 359.8 456.7 371.8 461.7C383.8 466.7 397.5 463.9 406.7 454.8L566.7 294.8C579.2 282.3 579.2 262 566.7 249.5L406.7 89.5C397.5 80.3 383.8 77.6 371.8 82.6z" />
-                                  </svg>
-                                </button>
-                              </span>
-                            )}
-                            <span style={{ flex: 1 }}>
-                              <ChecklistTitleWithLinks title={inst.checklist_items?.title ?? '—'} links={inst.checklist_items?.links} /> <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>({inst.scheduled_date})</span>
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
+                      <OutstandingByPersonSortableList
+                        userId={userId}
+                        instances={instances}
+                        reorderingUserId={reorderingUserId}
+                        canManageChecklists={canManageChecklists}
+                        isDev={isDev}
+                        onDragEnd={onOutstandingDragEnd(userId, instances)}
+                        completingInstanceId={completingInstanceId}
+                        deletingInstanceId={deletingInstanceId}
+                        onMarkComplete={markComplete}
+                        onDeleteInstance={openOutstandingDeleteModal}
+                        onOpenFwd={openFwd}
+                        setEditItemId={setEditItemId}
+                      />
                     </td>
                   </tr>
                 )}
@@ -1797,6 +1830,85 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, dispa
             ))}
           </tbody>
         </table>
+      )}
+      {outstandingDeletePending && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 55,
+            padding: '1rem',
+          }}
+          onClick={() => {
+            if (deletingInstanceId) return
+            setOutstandingDeletePending(null)
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="checklist-outstanding-delete-title"
+            style={{
+              background: 'white',
+              borderRadius: 8,
+              padding: '1.5rem',
+              minWidth: 320,
+              maxWidth: 480,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2
+              id="checklist-outstanding-delete-title"
+              style={{ margin: '0 0 0.75rem', fontSize: '1.125rem', fontWeight: 600, color: '#111827' }}
+            >
+              Delete outstanding task?
+            </h2>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#4b5563', lineHeight: 1.45 }}>
+              <strong>{outstandingDeletePending.checklist_items?.title ?? '—'}</strong>
+              <span style={{ color: '#6b7280' }}> ({outstandingDeletePending.scheduled_date})</span>
+            </p>
+            <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: '#6b7280' }}>
+              This cannot be undone.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => { if (!deletingInstanceId) setOutstandingDeletePending(null) }}
+                disabled={deletingInstanceId === outstandingDeletePending.id}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: '#e5e7eb',
+                  color: '#374151',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: deletingInstanceId ? 'not-allowed' : 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void performDeleteOutstandingInstance(outstandingDeletePending)}
+                disabled={deletingInstanceId === outstandingDeletePending.id}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: '#b91c1c',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: deletingInstanceId === outstandingDeletePending.id ? 'not-allowed' : 'pointer',
+                  fontWeight: 500,
+                }}
+              >
+                {deletingInstanceId === outstandingDeletePending.id ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       {fwdInstance && (
         <div
@@ -1917,6 +2029,8 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
   const [filterUserId, setFilterUserId] = useState<string>('')
   const [muteModalItemId, setMuteModalItemId] = useState<string | null>(null)
   const [muteModalTitle, setMuteModalTitle] = useState('')
+  const [manageDeletePending, setManageDeletePending] = useState<{ id: string; title: string } | null>(null)
+  const [manageDeleteSubmitting, setManageDeleteSubmitting] = useState(false)
 
   useEffect(() => {
     setLoading(true)
@@ -1932,7 +2046,7 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
   }, [])
 
   async function loadUsers() {
-    const { data } = await supabase.from('users').select('id, name, email').order('name')
+    const { data } = await supabase.from('users').select('id, name, email').is('archived_at', null).order('name')
     setUsers((data ?? []) as Array<{ id: string; name: string; email: string }>)
   }
 
@@ -1955,11 +2069,20 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
     setItems((data ?? []) as ChecklistItem[])
   }
 
-  async function deleteItem(id: string) {
-    if (!confirm('Delete this checklist item? Instances will also be removed.')) return
-    const { error } = await supabase.from('checklist_items').delete().eq('id', id)
-    if (error) setError(error.message)
-    else await loadItems()
+  async function performDeleteChecklistItem(id: string) {
+    setManageDeleteSubmitting(true)
+    setError(null)
+    try {
+      const { error } = await supabase.from('checklist_items').delete().eq('id', id)
+      if (error) {
+        setError(error.message)
+        return
+      }
+      setManageDeletePending(null)
+      await loadItems()
+    } finally {
+      setManageDeleteSubmitting(false)
+    }
   }
 
   const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
@@ -2000,10 +2123,10 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
             <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem' }}>Title</th>
             <th style={{ textAlign: 'center', padding: '0.5rem 0.75rem' }}>Assigned to</th>
             <th style={{ textAlign: 'center', padding: '0.5rem 0.75rem' }}>Repeat</th>
-            <th style={{ textAlign: 'center', padding: '0.5rem 0.75rem' }}>Start</th>
+            <th style={{ textAlign: 'center', padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>Start</th>
             <th style={{ textAlign: 'center', padding: '0.5rem 0.75rem' }}>Notify</th>
             {role === 'dev' && <th style={{ textAlign: 'center', padding: '0.5rem 0.75rem' }}>Remind</th>}
-            <th style={{ padding: '0.5rem 0.75rem' }}></th>
+            <th style={{ textAlign: 'right', padding: '0.5rem 0.75rem' }}></th>
           </tr>
         </thead>
         <tbody>
@@ -2022,7 +2145,7 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
                       ? `${item.repeat_days_after} days after completion`
                       : 'Once'}
               </td>
-              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
                 {(() => {
                   const d = new Date(item.start_date + 'T12:00:00')
                   const oneYearAgo = new Date()
@@ -2043,44 +2166,139 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
                     : '—'}
                 </td>
               )}
-              <td style={{ padding: '0.5rem 0.75rem' }}>
-                {isNotificationRecipient(item) && (
+              <td
+                style={{
+                  padding: '0.5rem 0.75rem',
+                  verticalAlign: 'middle',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'flex-end',
+                    gap: '0.25rem',
+                    flexWrap: 'nowrap',
+                  }}
+                >
+                  {isNotificationRecipient(item) && (
+                    <button
+                      type="button"
+                      onClick={() => { setMuteModalItemId(item.id); setMuteModalTitle(item.title) }}
+                      title="Mute notifications for this task"
+                      aria-label="Mute notifications for this task"
+                      style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem' }}
+                    >
+                      🔕
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={() => { setMuteModalItemId(item.id); setMuteModalTitle(item.title) }}
-                    title="Mute notifications for this task"
-                    aria-label="Mute notifications for this task"
-                    style={{ marginRight: '0.5rem', padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem' }}
+                    onClick={() => setEditItemId(item.id)}
+                    title="Edit"
+                    style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#374151', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                   >
-                    🔕
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                      <path d="M128.1 64C92.8 64 64.1 92.7 64.1 128L64.1 512C64.1 547.3 92.8 576 128.1 576L274.3 576L285.2 521.5C289.5 499.8 300.2 479.9 315.8 464.3L448 332.1L448 234.6C448 217.6 441.3 201.3 429.3 189.3L322.8 82.7C310.8 70.7 294.5 64 277.6 64L128.1 64zM389.6 240L296.1 240C282.8 240 272.1 229.3 272.1 216L272.1 122.5L389.6 240zM332.3 530.9L320.4 590.5C320.2 591.4 320.1 592.4 320.1 593.4C320.1 601.4 326.6 608 334.7 608C335.7 608 336.6 607.9 337.6 607.7L397.2 595.8C409.6 593.3 421 587.2 429.9 578.3L548.8 459.4L468.8 379.4L349.9 498.3C341 507.2 334.9 518.6 332.4 531zM600.1 407.9C622.2 385.8 622.2 350 600.1 327.9C578 305.8 542.2 305.8 520.1 327.9L491.3 356.7L571.3 436.7L600.1 407.9z" />
+                    </svg>
                   </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setEditItemId(item.id)}
-                  title="Edit"
-                  style={{ marginRight: '0.5rem', padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#374151', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                    <path d="M128.1 64C92.8 64 64.1 92.7 64.1 128L64.1 512C64.1 547.3 92.8 576 128.1 576L274.3 576L285.2 521.5C289.5 499.8 300.2 479.9 315.8 464.3L448 332.1L448 234.6C448 217.6 441.3 201.3 429.3 189.3L322.8 82.7C310.8 70.7 294.5 64 277.6 64L128.1 64zM389.6 240L296.1 240C282.8 240 272.1 229.3 272.1 216L272.1 122.5L389.6 240zM332.3 530.9L320.4 590.5C320.2 591.4 320.1 592.4 320.1 593.4C320.1 601.4 326.6 608 334.7 608C335.7 608 336.6 607.9 337.6 607.7L397.2 595.8C409.6 593.3 421 587.2 429.9 578.3L548.8 459.4L468.8 379.4L349.9 498.3C341 507.2 334.9 518.6 332.4 531zM600.1 407.9C622.2 385.8 622.2 350 600.1 327.9C578 305.8 542.2 305.8 520.1 327.9L491.3 356.7L571.3 436.7L600.1 407.9z" />
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => deleteItem(item.id)}
-                  title="Delete"
-                  style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#b91c1c', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                    <path d="M232.7 69.9C237.1 56.8 249.3 48 263.1 48L377 48C390.8 48 403 56.8 407.4 69.9L416 96L512 96C529.7 96 544 110.3 544 128C544 145.7 529.7 160 512 160L128 160C110.3 160 96 145.7 96 128C96 110.3 110.3 96 128 96L224 96L232.7 69.9zM128 208L512 208L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 208zM216 272C202.7 272 192 282.7 192 296L192 488C192 501.3 202.7 512 216 512C229.3 512 240 501.3 240 488L240 296C240 282.7 229.3 272 216 272zM320 272C306.7 272 296 282.7 296 296L296 488C296 501.3 306.7 512 320 512C333.3 512 344 501.3 344 488L344 296C344 282.7 333.3 272 320 272zM424 272C410.7 272 400 282.7 400 296L400 488C400 501.3 410.7 512 424 512C437.3 512 448 501.3 448 488L448 296C448 282.7 437.3 272 424 272z" />
-                  </svg>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => setManageDeletePending({ id: item.id, title: item.title?.trim() || 'Untitled' })}
+                    title="Delete"
+                    style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#b91c1c', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                      <path d="M232.7 69.9C237.1 56.8 249.3 48 263.1 48L377 48C390.8 48 403 56.8 407.4 69.9L416 96L512 96C529.7 96 544 110.3 544 128C544 145.7 529.7 160 512 160L128 160C110.3 160 96 145.7 96 128C96 110.3 110.3 96 128 96L224 96L232.7 69.9zM128 208L512 208L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 208zM216 272C202.7 272 192 282.7 192 296L192 488C192 501.3 202.7 512 216 512C229.3 512 240 501.3 240 488L240 296C240 282.7 229.3 272 216 272zM320 272C306.7 272 296 282.7 296 296L296 488C296 501.3 306.7 512 320 512C333.3 512 344 501.3 344 488L344 296C344 282.7 333.3 272 320 272zM424 272C410.7 272 400 282.7 400 296L400 488C400 501.3 410.7 512 424 512C437.3 512 448 501.3 448 488L448 296C448 282.7 437.3 272 424 272z" />
+                    </svg>
+                  </button>
+                </div>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
       {items.length === 0 && <p style={{ color: '#6b7280' }}>No checklist items yet.</p>}
+
+      {manageDeletePending && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 50,
+            padding: '1rem',
+          }}
+          onClick={() => {
+            if (!manageDeleteSubmitting) setManageDeletePending(null)
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="checklist-manage-delete-title"
+            style={{
+              background: 'white',
+              borderRadius: 8,
+              padding: '1.5rem',
+              minWidth: 320,
+              maxWidth: 480,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2
+              id="checklist-manage-delete-title"
+              style={{ margin: '0 0 0.75rem', fontSize: '1.125rem', fontWeight: 600, color: '#111827' }}
+            >
+              Delete checklist item?
+            </h2>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#4b5563', lineHeight: 1.45 }}>
+              <strong>{manageDeletePending.title}</strong>
+            </p>
+            <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: '#6b7280' }}>
+              This removes the item and its instances. This cannot be undone.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => { if (!manageDeleteSubmitting) setManageDeletePending(null) }}
+                disabled={manageDeleteSubmitting}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: '#e5e7eb',
+                  color: '#374151',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: manageDeleteSubmitting ? 'not-allowed' : 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void performDeleteChecklistItem(manageDeletePending.id)}
+                disabled={manageDeleteSubmitting}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: '#b91c1c',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: manageDeleteSubmitting ? 'not-allowed' : 'pointer',
+                  fontWeight: 500,
+                }}
+              >
+                {manageDeleteSubmitting ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ChecklistItemMuteModal
         open={!!muteModalItemId}

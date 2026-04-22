@@ -38,6 +38,10 @@ function formatDatetime(iso: string | null): string {
 }
 
 type EstimatorInboxSectionProps = {
+  /** Collapsible header title. Default "Estimator inbox". */
+  sectionTitle?: string
+  /** Badge in header: count open, count closed, or hide. Default open count. */
+  headerBadge?: 'open' | 'closed' | 'none'
   sectionOpen: boolean
   onToggleSection: () => void
   requests: EstimatorInboxRow[]
@@ -57,6 +61,8 @@ type EstimatorInboxSectionProps = {
 }
 
 export function EstimatorInboxSection({
+  sectionTitle = 'Estimator inbox',
+  headerBadge = 'open',
   sectionOpen,
   onToggleSection,
   requests,
@@ -95,10 +101,12 @@ export function EstimatorInboxSection({
         }}
       >
         <span aria-hidden>{sectionOpen ? '▼' : '▶'}</span>
-        Estimator inbox
-        {!loading && requests.length > 0 ? (
+        {sectionTitle}
+        {!loading && requests.length > 0 && headerBadge !== 'none' ? (
           <span style={{ marginLeft: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: '#2563eb' }}>
-            ({requests.filter((r) => r.status === 'open').length} open)
+            {headerBadge === 'open'
+              ? `(${requests.filter((r) => r.status === 'open').length} open)`
+              : `(${requests.filter((r) => r.status === 'closed').length} closed)`}
           </span>
         ) : null}
       </button>

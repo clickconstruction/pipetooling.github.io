@@ -18,6 +18,7 @@ import {
   fetchDispatchScheduledJobsForAssigneeDay,
   type DispatchScheduledJobForAssign,
 } from '../lib/jobScheduleBlocks'
+import { fetchWorkingBoardClockBidPicks, type WorkingBoardClockBidPick } from '../lib/fetchWorkingBoardClockBidPicks'
 import { syncSalaryClockSessionsForUserDay } from '../lib/salaryScheduleSync'
 import { resolveClockPunchCoordinates } from '../lib/resolveClockPunchCoordinates'
 import TeamFeedbackWizard from './team-feedback/TeamFeedbackWizard'
@@ -156,6 +157,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
   unifiedSearchTextRef.current = unifiedSearchText
   const [assignedJobsListLoading, setAssignedJobsListLoading] = useState(false)
   const [scheduledDispatchJobs, setScheduledDispatchJobs] = useState<DispatchScheduledJobForAssign[]>([])
+  const [workingBoardBidPicks, setWorkingBoardBidPicks] = useState<WorkingBoardClockBidPick[]>([])
   const lastDefaultUnifiedResultsRef = useRef<UnifiedSearchResult[]>([])
   const useLastHiddenBySchedule = useMemo(() => {
     if (lastSelectedJobBid?.source !== 'job') return false
@@ -395,6 +397,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
        if (!clockInModalOpen && !updateFocusModalOpen && !clockOutReviewOpen) {
       setAssignedJobsListLoading(false)
       setScheduledDispatchJobs([])
+      setWorkingBoardBidPicks([])
       noAssignedJobsInfoToastShownRef.current = false
       return
     }
@@ -402,23 +405,26 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
     assignedJobsShownRef.current = true
     setAssignedJobsListLoading(true)
     setScheduledDispatchJobs([])
+    setWorkingBoardBidPicks([])
     const scheduleYmd =
       clockOutReviewOpen && openSession
         ? openSession.work_date.trim() || denverCalendarDayKey(new Date(openSession.clocked_in_at).getTime())
         : denverCalendarDayKey(Date.now())
     void (async () => {
       try {
-        const [data, dispatchRes] = await Promise.all([
+        const [data, dispatchRes, workingPicks] = await Promise.all([
           withSupabaseRetry(
             async () => await supabase.rpc('list_assigned_jobs_for_dashboard'),
             'ClockInOutButton list_assigned_jobs_for_dashboard'
           ),
           fetchDispatchScheduledJobsForAssigneeDay(userId, scheduleYmd),
+          fetchWorkingBoardClockBidPicks(userId),
         ])
         if (requestId !== assignedJobsFetchGenRef.current) return
         if (unifiedSearchTextRef.current.trim() !== '') return
         const dispatchRows = dispatchRes.error ? [] : dispatchRes.data
         setScheduledDispatchJobs(dispatchRows)
+        setWorkingBoardBidPicks(workingPicks)
         const onScheduleIds = new Set(dispatchRows.map((d) => d.jobId))
         const jobs = (data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>
         const mapped: UnifiedSearchResult[] = jobs.map((j) => ({
@@ -431,10 +437,12 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
         const mappedFiltered = mapped.filter((r) => r.source !== 'job' || !onScheduleIds.has(r.id))
         lastDefaultUnifiedResultsRef.current = mappedFiltered
         setUnifiedSearchResults(mappedFiltered)
-        assignedJobsShownRef.current = mappedFiltered.length > 0 || dispatchRows.length > 0
+        assignedJobsShownRef.current =
+          mappedFiltered.length > 0 || dispatchRows.length > 0 || workingPicks.length > 0
         if (
           mappedFiltered.length === 0 &&
           dispatchRows.length === 0 &&
+          workingPicks.length === 0 &&
           !noAssignedJobsInfoToastShownRef.current
         ) {
           noAssignedJobsInfoToastShownRef.current = true
@@ -445,6 +453,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
         assignedJobsShownRef.current = false
         lastDefaultUnifiedResultsRef.current = []
         setScheduledDispatchJobs([])
+        setWorkingBoardBidPicks([])
         setUnifiedSearchResults([])
         showToastRef.current('Could not load your jobs', 'error')
       } finally {
@@ -948,6 +957,94 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
     )
   }
 
+  function renderWorkingBoardBidPicks(
+    disabled: boolean,
+    useLastLike: 'clockIn' | 'updateFocus' | 'clockOutReview',
+  ) {
+    if (workingBoardBidPicks.length === 0) return null
+    const base =
+      useLastLike === 'clockIn'
+        ? {
+            border: '1px solid #a7f3d0',
+            borderRadius: 6,
+            background: '#ecfdf5',
+          }
+        : {
+            border: '1px solid #d1d5db',
+            borderRadius: 4,
+            background: 'white',
+          }
+    const selected =
+      useLastLike === 'clockIn'
+        ? { border: '1px solid #10b981', background: '#d1fae5' }
+        : { border: '1px solid #9ca3af', background: '#f3f4f6' }
+    return (
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+          marginBottom: '0.5rem',
+        }}
+      >
+        {workingBoardBidPicks.map((b) => {
+          const prefix = `B${(b.bid_number || '').trim() || '—'}`
+          const line1 = `${prefix} · ${b.project_name || '—'}`
+          const sub = (b.address || '').trim() || (b.customer_name || '').trim()
+          const titleAttr = sub ? `${line1}\n${sub}` : line1
+          const isSelected = selectedAssociation?.source === 'bid' && selectedAssociation.id === b.id
+          const tag = getBidServiceTypeTag(b.service_type_name)
+          return (
+            <button
+              key={`working-board-${b.id}`}
+              type="button"
+              disabled={disabled}
+              title={titleAttr || undefined}
+              onClick={() => {
+                setSelectedAssociation(b)
+                setUnifiedSearchResults([])
+                setUnifiedSearchText('')
+                assignedJobsShownRef.current = true
+              }}
+              style={{
+                display: 'block',
+                width: '100%',
+                padding: '0.25rem 0.5rem',
+                textAlign: 'left',
+                boxSizing: 'border-box',
+                fontSize: '0.8125rem',
+                cursor: disabled ? 'not-allowed' : 'pointer',
+                ...(isSelected ? { ...base, ...selected } : base),
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                {tag ? (
+                  <span
+                    style={{
+                      padding: '0.1rem 0.35rem',
+                      fontSize: '0.6875rem',
+                      fontWeight: 500,
+                      background: tag.color,
+                      color: '#fff',
+                      borderRadius: 4,
+                      flexShrink: 0,
+                    }}
+                  >
+                    [{tag.tag}]
+                  </span>
+                ) : null}
+                <span>{line1}</span>
+              </div>
+              {sub ? (
+                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{sub}</div>
+              ) : null}
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
+
   function renderUseLastJobBidShortcut(opts: { disabled: boolean; useLastStyle: 'clockIn' | 'focusOrReview' }) {
     const showUseLast = Boolean(lastSelectedJobBid && !useLastHiddenBySchedule)
     if (!showUseLast || !lastSelectedJobBid) return null
@@ -1317,6 +1414,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
                 </div>
               )}
               {renderScheduledDispatchPicks(actionLoading, 'clockIn')}
+              {renderWorkingBoardBidPicks(actionLoading, 'clockIn')}
               {renderUnifiedJobBidSearchRow(actionLoading)}
               {(unifiedSearchResults.length > 0 || (assignedJobsListLoading && !unifiedSearchText.trim())) && (
                 <div style={{ maxHeight: 160, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4, marginTop: '0.25rem' }}>
@@ -1444,6 +1542,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
                 </div>
               )}
               {renderScheduledDispatchPicks(updateFocusLoading, 'updateFocus')}
+              {renderWorkingBoardBidPicks(updateFocusLoading, 'updateFocus')}
               {renderUnifiedJobBidSearchRow(updateFocusLoading)}
               {(unifiedSearchResults.length > 0 || (assignedJobsListLoading && !unifiedSearchText.trim())) && (
                 <div style={{ maxHeight: 160, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4, marginTop: '0.25rem' }}>
@@ -1572,6 +1671,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
                 </div>
               )}
               {renderScheduledDispatchPicks(clockOutSaving, 'clockOutReview')}
+              {renderWorkingBoardBidPicks(clockOutSaving, 'clockOutReview')}
               {renderUnifiedJobBidSearchRow(clockOutSaving)}
               {(unifiedSearchResults.length > 0 || (assignedJobsListLoading && !unifiedSearchText.trim())) && (
                 <div style={{ maxHeight: 160, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4, marginTop: '0.25rem' }}>

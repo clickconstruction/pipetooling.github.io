@@ -10,7 +10,7 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 
-const LIST_MAX_HEIGHT_PX = 240
+const LIST_MAX_HEIGHT_PX = 140
 const DROPDOWN_MARGIN_PX = 2
 const PORTAL_Z_INDEX = 1100
 
@@ -59,6 +59,11 @@ export type SearchableSelectProps = {
   listAriaLabel?: string
   /** Portaled dropdown z-index; raise above modals with higher overlays (default 1100). */
   portalZIndex?: number
+  /**
+   * When true (and `searchable`), opening hides the combobox button and shows the search input
+   * in the same layout slot; the portaled panel lists options only (no second search field).
+   */
+  searchReplacesTrigger?: boolean
 }
 
 /** List rows for the open panel; may hide empty option while selection is still empty. */
@@ -180,7 +185,9 @@ export function SearchableSelect({
   required = false,
   listAriaLabel = 'Options',
   portalZIndex = PORTAL_Z_INDEX,
+  searchReplacesTrigger: searchReplacesTriggerProp = false,
 }: SearchableSelectProps) {
+  const searchReplacesTrigger = searchReplacesTriggerProp && searchable
   const reactId = useId()
   const baseId = idProp ?? reactId
   const listId = `${baseId}-listbox`
@@ -255,7 +262,7 @@ export function SearchableSelect({
       setListPosition(null)
       return
     }
-    const el = triggerRef.current
+    const el = searchReplacesTrigger ? searchInputRef.current : triggerRef.current
     if (!el) {
       setListPosition(null)
       return
@@ -270,19 +277,21 @@ export function SearchableSelect({
 
     const spaceBelow = window.innerHeight - rect.bottom
     const spaceAbove = rect.top
-    const reserve = LIST_MAX_HEIGHT_PX + DROPDOWN_MARGIN_PX + (searchable ? 52 : 0)
+    const extraPortalSearchRow = searchable && !searchReplacesTrigger ? 52 : 0
+    const reserve = LIST_MAX_HEIGHT_PX + DROPDOWN_MARGIN_PX + extraPortalSearchRow
     const placeBelow = spaceBelow >= reserve || spaceBelow >= spaceAbove
 
+    const extraListAbove = searchable && !searchReplacesTrigger ? 48 : 0
     let top: number
     if (placeBelow) {
       top = rect.bottom + DROPDOWN_MARGIN_PX
     } else {
-      top = rect.top - LIST_MAX_HEIGHT_PX - DROPDOWN_MARGIN_PX - (searchable ? 48 : 0)
+      top = rect.top - LIST_MAX_HEIGHT_PX - DROPDOWN_MARGIN_PX - extraListAbove
       if (top < 8) top = 8
     }
 
     setListPosition({ top, left, width })
-  }, [open, searchable])
+  }, [open, searchable, searchReplacesTrigger])
 
   useLayoutEffect(() => {
     updateListPosition()
@@ -450,7 +459,7 @@ export function SearchableSelect({
     listPosition &&
     createPortal(
       <div ref={listPortalRef} style={portalShellStyle(listPosition)}>
-        {searchable && (
+        {searchable && !searchReplacesTrigger && (
           <input
             id={searchInputId}
             ref={searchInputRef}
@@ -553,62 +562,99 @@ export function SearchableSelect({
     )
 
   const triggerMinHeight = 44
+  const showInlineSearch = open && searchReplacesTrigger && !disabled
+
+  const comboboxActivedescendantId =
+    open &&
+    activeIndex >= 0 &&
+    filteredForRender[activeIndex] &&
+    isSelectableOption(filteredForRender[activeIndex])
+      ? `${listId}-opt-${activeIndex}`
+      : undefined
 
   return (
     <div ref={wrapRef} style={{ position: 'relative', width: '100%' }}>
-      <button
-        ref={triggerRef}
-        type="button"
-        id={baseId}
-        disabled={disabled}
-        role="combobox"
-        aria-expanded={open}
-        aria-controls={open ? listId : undefined}
-        aria-haspopup="listbox"
-        aria-required={required || undefined}
-        aria-activedescendant={
-          open &&
-          activeIndex >= 0 &&
-          filteredForRender[activeIndex] &&
-          isSelectableOption(filteredForRender[activeIndex])
-            ? `${listId}-opt-${activeIndex}`
-            : undefined
-        }
-        onClick={() => (open ? close() : openPanel())}
-        onKeyDown={onTriggerKeyDown}
-        style={{
-          width: '100%',
-          minHeight: triggerMinHeight,
-          padding: '0.5rem 0.65rem',
-          border: '1px solid #d1d5db',
-          borderRadius: 4,
-          background: disabled ? '#f3f4f6' : 'white',
-          color: value === '' && emptyOption === undefined ? '#6b7280' : '#111827',
-          cursor: disabled ? 'not-allowed' : 'pointer',
-          boxSizing: 'border-box',
-          fontSize: '0.875rem',
-          textAlign: 'left',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '0.5rem',
-        }}
-      >
-        <span
+      {showInlineSearch ? (
+        <input
+          id={searchInputId}
+          ref={searchInputRef}
+          type="search"
+          autoComplete="off"
+          role="combobox"
+          aria-expanded={true}
+          aria-controls={listId}
+          aria-haspopup="listbox"
+          aria-autocomplete="list"
+          aria-activedescendant={comboboxActivedescendantId}
+          aria-required={required || undefined}
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value)
+            setActiveIndex(-1)
+          }}
+          onKeyDown={onSearchKeyDown}
+          placeholder="Search…"
           style={{
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            flex: 1,
-            minWidth: 0,
+            width: '100%',
+            minHeight: triggerMinHeight,
+            padding: '0.5rem 0.65rem',
+            border: '1px solid #d1d5db',
+            borderRadius: 4,
+            background: 'white',
+            color: '#111827',
+            boxSizing: 'border-box',
+            fontSize: '0.875rem',
+            outline: 'none',
+          }}
+        />
+      ) : (
+        <button
+          ref={triggerRef}
+          type="button"
+          id={baseId}
+          disabled={disabled}
+          role="combobox"
+          aria-expanded={open}
+          aria-controls={open ? listId : undefined}
+          aria-haspopup="listbox"
+          aria-required={required || undefined}
+          aria-activedescendant={comboboxActivedescendantId}
+          onClick={() => (open ? close() : openPanel())}
+          onKeyDown={onTriggerKeyDown}
+          style={{
+            width: '100%',
+            minHeight: triggerMinHeight,
+            padding: '0.5rem 0.65rem',
+            border: '1px solid #d1d5db',
+            borderRadius: 4,
+            background: disabled ? '#f3f4f6' : 'white',
+            color: value === '' && emptyOption === undefined ? '#6b7280' : '#111827',
+            cursor: disabled ? 'not-allowed' : 'pointer',
+            boxSizing: 'border-box',
+            fontSize: '0.875rem',
+            textAlign: 'left',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '0.5rem',
           }}
         >
-          {selectedDisplay}
-        </span>
-        <span aria-hidden style={{ flexShrink: 0, color: '#6b7280', fontSize: '0.65rem' }}>
-          ▾
-        </span>
-      </button>
+          <span
+            style={{
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              flex: 1,
+              minWidth: 0,
+            }}
+          >
+            {selectedDisplay}
+          </span>
+          <span aria-hidden style={{ flexShrink: 0, color: '#6b7280', fontSize: '0.65rem' }}>
+            ▾
+          </span>
+        </button>
+      )}
       {portalContent}
     </div>
   )

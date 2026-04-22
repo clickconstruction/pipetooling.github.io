@@ -21,6 +21,7 @@ import {
 import { decimalHoursToHhMm } from '../lib/format'
 import { loadTeamLaborDataForBids, type TeamLaborBidRow } from '../utils/teamLabor'
 import { useAuth } from '../hooks/useAuth'
+import { useWorkingBoardInboxCount } from '../hooks/useWorkingBoardInboxCount'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useToastContext } from '../contexts/ToastContext'
 import { useNewCustomerModal } from '../contexts/NewCustomerModalContext'
@@ -9196,6 +9197,60 @@ export default function Bids() {
     )
   }, [bids, authUser?.id])
 
+  const BIDS_WORKING_TAB_LABEL = 'Unsent/Working'
+
+  const { inboxCount: workingInboxCount } = useWorkingBoardInboxCount(authUser?.id, workingBoardBids)
+  const workingInboxBadgeText = workingInboxCount > 9 ? '9+' : String(workingInboxCount)
+  const bidsWorkingTabButton = (
+    <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+      <button
+        type="button"
+        onClick={() => {
+          setActiveTab('working')
+          setSearchParams((p) => {
+            const next = new URLSearchParams(p)
+            next.set('tab', 'working')
+            return next
+          })
+        }}
+        aria-label={
+          workingInboxCount > 0
+            ? `${BIDS_WORKING_TAB_LABEL}, ${workingInboxCount} in inbox`
+            : BIDS_WORKING_TAB_LABEL
+        }
+        style={tabStyle(activeTab === 'working')}
+      >
+        {BIDS_WORKING_TAB_LABEL}
+      </button>
+      {workingInboxCount > 0 ? (
+        <span
+          aria-hidden
+          style={{
+            position: 'absolute',
+            top: 2,
+            right: 2,
+            minWidth: '0.875rem',
+            height: '0.875rem',
+            padding: '0 0.2rem',
+            borderRadius: 9999,
+            background: '#dc2626',
+            color: 'white',
+            fontSize: '0.625rem',
+            fontWeight: 700,
+            lineHeight: '0.875rem',
+            textAlign: 'center',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxSizing: 'content-box',
+          }}
+        >
+          {workingInboxBadgeText}
+        </span>
+      ) : null}
+    </span>
+  )
+
   const submissionUnsent = filteredBidsForSubmission.filter((b) => !b.bid_date_sent && b.outcome !== 'won' && b.outcome !== 'lost' && b.outcome !== 'started_or_complete')
   const submissionPending = filteredBidsForSubmission.filter((b) => b.bid_date_sent && b.outcome !== 'won' && b.outcome !== 'lost' && b.outcome !== 'started_or_complete')
   const submissionWon = filteredBidsForSubmission
@@ -9332,8 +9387,10 @@ export default function Bids() {
     return () => document.removeEventListener('keydown', onKey)
   }, [staffOutcomeDrilldown])
 
+  const BID_BOARD_UNSENT_SECTION_LABEL = 'Unsent / Working Bids'
+
   const BID_BOARD_SECTION_CONFIG = [
-    { key: 'unsent' as const, label: 'Unsent bids' },
+    { key: 'unsent' as const, label: BID_BOARD_UNSENT_SECTION_LABEL },
     { key: 'pending' as const, label: 'Not yet won or lost' },
     { key: 'won' as const, label: 'Won' },
     { key: 'startedOrComplete' as const, label: 'Started or Complete' },
@@ -10356,21 +10413,29 @@ export default function Bids() {
           </div>
         )}
 
-      {/* Service Type Filter - for estimators with restrictions, only show allowed types; grayed out on Builder Review */}
+      {/* Service types (left) + primary tabs (center) + New Bid (right); trade toggles grayed on Builder Review */}
       {visibleServiceTypes.length > 0 && (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: '0.5rem',
-          marginBottom: '1rem',
-          flexWrap: 'wrap',
-          opacity: activeTab === 'builder-review' ? 0.5 : 1,
-          pointerEvents: activeTab === 'builder-review' ? 'none' : 'auto',
-          cursor: activeTab === 'builder-review' ? 'not-allowed' : 'default'
-        }}>
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            {visibleServiceTypes.map(st => (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr auto 1fr',
+            alignItems: 'center',
+            gap: '0.5rem',
+            marginBottom: '0.65rem',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              gap: '0.5rem',
+              flexWrap: 'wrap',
+              minWidth: 0,
+              opacity: activeTab === 'builder-review' ? 0.5 : 1,
+              pointerEvents: activeTab === 'builder-review' ? 'none' : 'auto',
+              cursor: activeTab === 'builder-review' ? 'not-allowed' : 'default',
+            }}
+          >
+            {visibleServiceTypes.map((st) => (
               <button
                 key={st.id}
                 type="button"
@@ -10387,86 +10452,126 @@ export default function Bids() {
                   color: selectedServiceTypeId === st.id ? '#3b82f6' : '#374151',
                   borderRadius: 6,
                   fontWeight: selectedServiceTypeId === st.id ? 600 : 400,
-                  cursor: 'pointer'
+                  cursor: 'pointer',
                 }}
               >
                 {st.name}
               </button>
             ))}
           </div>
-          <button
-            type="button"
-            onClick={openNewBid}
-            style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-          >
-            New Bid
-          </button>
-        </div>
-      )}
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', borderBottom: '2px solid #e5e7eb', marginBottom: '2rem', flexWrap: 'wrap' }}>
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab('bid-board')
-            setSearchParams((p) => {
-              const next = new URLSearchParams(p)
-              next.set('tab', 'bid-board')
-              return next
-            })
-          }}
-          style={tabStyle(activeTab === 'bid-board')}
-        >
-          Bid Board
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab('builder-review')
-            setSearchParams((p) => {
-              const next = new URLSearchParams(p)
-              next.set('tab', 'builder-review')
-              return next
-            })
-          }}
-          style={tabStyle(activeTab === 'builder-review')}
-        >
-          Builder Review
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab('working')
-            setSearchParams((p) => {
-              const next = new URLSearchParams(p)
-              next.set('tab', 'working')
-              return next
-            })
-          }}
-          style={tabStyle(activeTab === 'working')}
-        >
-          Working
-        </button>
-        {myRole === 'dev' && (
-          <>
-            <span style={{ color: '#9ca3af', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexWrap: 'wrap', justifyContent: 'center' }}>
             <button
               type="button"
               onClick={() => {
-                setActiveTab('bid-costs')
+                setActiveTab('bid-board')
                 setSearchParams((p) => {
                   const next = new URLSearchParams(p)
-                  next.set('tab', 'bid-costs')
+                  next.set('tab', 'bid-board')
                   return next
                 })
               }}
-              style={tabStyle(activeTab === 'bid-costs')}
+              style={tabStyle(activeTab === 'bid-board')}
             >
-              Bid Costs
+              Bid Board
             </button>
-          </>
-        )}
-        <span style={{ color: '#9ca3af', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('builder-review')
+                setSearchParams((p) => {
+                  const next = new URLSearchParams(p)
+                  next.set('tab', 'builder-review')
+                  return next
+                })
+              }}
+              style={tabStyle(activeTab === 'builder-review')}
+            >
+              Builder Review
+            </button>
+            {bidsWorkingTabButton}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', minWidth: 0 }}>
+            <button
+              type="button"
+              onClick={openNewBid}
+              style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+            >
+              New Bid
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div style={{ borderBottom: '2px solid #e5e7eb', marginBottom: '2rem' }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr auto 1fr',
+            alignItems: 'center',
+            gap: '0.5rem',
+            width: '100%',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexWrap: 'wrap', minWidth: 0 }}>
+            {visibleServiceTypes.length === 0 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('bid-board')
+                    setSearchParams((p) => {
+                      const next = new URLSearchParams(p)
+                      next.set('tab', 'bid-board')
+                      return next
+                    })
+                  }}
+                  style={tabStyle(activeTab === 'bid-board')}
+                >
+                  Bid Board
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('builder-review')
+                    setSearchParams((p) => {
+                      const next = new URLSearchParams(p)
+                      next.set('tab', 'builder-review')
+                      return next
+                    })
+                  }}
+                  style={tabStyle(activeTab === 'builder-review')}
+                >
+                  Builder Review
+                </button>
+                {bidsWorkingTabButton}
+              </>
+            )}
+            {myRole === 'dev' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('bid-costs')
+                  setSearchParams((p) => {
+                    const next = new URLSearchParams(p)
+                    next.set('tab', 'bid-costs')
+                    return next
+                  })
+                }}
+                style={tabStyle(activeTab === 'bid-costs')}
+              >
+                Bid Costs
+              </button>
+            )}
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+              flexWrap: 'wrap',
+              justifyContent: 'center',
+            }}
+          >
         <button
           type="button"
           onClick={() => {
@@ -10539,22 +10644,27 @@ export default function Bids() {
         >
           Cover Letter
         </button>
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab('submission-followup')
-            setSearchParams((p) => {
-              const next = new URLSearchParams(p)
-              next.set('tab', 'submission-followup')
-              return next
-            })
-          }}
-          style={tabStyle(activeTab === 'submission-followup')}
-        >
-          Submission & Followup
-        </button>
         </>
         )}
+        {myRole !== 'superintendent' ? (
+          <>
+            <span style={{ color: '#9ca3af', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('submission-followup')
+                setSearchParams((p) => {
+                  const next = new URLSearchParams(p)
+                  next.set('tab', 'submission-followup')
+                  return next
+                })
+              }}
+              style={tabStyle(activeTab === 'submission-followup')}
+            >
+              Submission & Followup
+            </button>
+          </>
+        ) : null}
         <span style={{ color: '#9ca3af', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
         <button
           type="button"
@@ -10598,6 +10708,9 @@ export default function Bids() {
         >
           Lien Release
         </button>
+          </div>
+          <div aria-hidden style={{ minWidth: 0 }} />
+        </div>
       </div>
 
       {/* Bid Board Tab */}
@@ -11507,8 +11620,7 @@ export default function Bids() {
       {activeTab === 'working' && authUser?.id ? (
         <div>
           <p style={{ margin: '0 0 0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
-            Drag unsent bids between columns. You see bids where you are Estimator or Account Man. New bids appear in Inbox until moved. Sent or
-            closed bids (won, lost, started/complete) stay on the Bid Board and Submission tabs.
+            Drag unsent bids between columns. You see bids where you are Estimator or Account Man. New bids appear in Inbox until moved.
           </p>
           <BidsWorkingBoard
             userId={authUser.id}
@@ -11534,7 +11646,7 @@ export default function Bids() {
           <p style={{ margin: '0 0 1rem', color: '#6b7280', fontSize: '0.875rem' }}>Team labor (clocked) by bid outcome. People and hours from approved clock sessions with a bid selected.</p>
 
           {[
-            { key: 'unsent' as const, label: 'Unsent bids', bids: bidCostsUnsent },
+            { key: 'unsent' as const, label: BID_BOARD_UNSENT_SECTION_LABEL, bids: bidCostsUnsent },
             { key: 'pending' as const, label: 'Not yet won or lost', bids: bidCostsPending },
             { key: 'won' as const, label: 'Won', bids: bidCostsWon },
             { key: 'startedOrComplete' as const, label: 'Started or Complete', bids: bidCostsStartedOrComplete },
@@ -16549,7 +16661,7 @@ export default function Bids() {
             style={{ margin: '1.5rem 0 0.5rem', fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
           >
             <span aria-hidden>{submissionSectionOpen.unsent ? '\u25BC' : '\u25B6'}</span>
-            Unsent bids ({submissionUnsent.length})
+            {BID_BOARD_UNSENT_SECTION_LABEL} ({submissionUnsent.length})
           </button>
           {submissionSectionOpen.unsent && (
             <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>

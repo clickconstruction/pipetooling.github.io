@@ -43,6 +43,10 @@ function formatDatetime(iso: string | null): string {
 type DispatchInboxSectionProps = {
   /** Dashboard: bordered card + collapsible header. Quickfill: body only (parent supplies title). */
   variant?: 'card' | 'embedded'
+  /** Card header only. Default "Dispatch inbox". */
+  sectionTitle?: string
+  /** Header count badge. Default open count; use "closed" for a closed-only list. */
+  headerBadge?: 'open' | 'closed' | 'none'
   sectionOpen: boolean
   onToggleSection: () => void
   requests: DispatchInboxRow[]
@@ -64,6 +68,8 @@ type DispatchInboxSectionProps = {
 
 export function DispatchInboxSection({
   variant = 'card',
+  sectionTitle = 'Dispatch inbox',
+  headerBadge = 'open',
   sectionOpen,
   onToggleSection,
   requests,
@@ -93,7 +99,9 @@ export function DispatchInboxSection({
           {loading ? (
             <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
           ) : requests.length === 0 ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No dispatch requests.</p>
+            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+              {headerBadge === 'closed' ? 'No closed dispatch items.' : 'No dispatch requests.'}
+            </p>
           ) : (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
               {requests.map((req) => {
@@ -541,10 +549,12 @@ export function DispatchInboxSection({
         }}
       >
         <span aria-hidden>{sectionOpen ? '▼' : '▶'}</span>
-        Dispatch inbox
-        {!loading && requests.length > 0 ? (
+        {sectionTitle}
+        {!loading && requests.length > 0 && headerBadge !== 'none' ? (
           <span style={{ marginLeft: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: '#2563eb' }}>
-            ({requests.filter((r) => r.status === 'open').length} open)
+            {headerBadge === 'open'
+              ? `(${requests.filter((r) => r.status === 'open').length} open)`
+              : `(${requests.filter((r) => r.status === 'closed').length} closed)`}
           </span>
         ) : null}
       </button>

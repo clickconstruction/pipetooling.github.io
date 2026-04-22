@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { DispatchAddBlockTimeRange } from '../schedule/DispatchAddBlockTimeRange'
 import { isSelectableOption } from '../SearchableSelect'
-import { ScheduleAssigneeMultiPicker } from './ScheduleAssigneeMultiPicker'
+import { SearchableMultiSelect } from '../SearchableMultiSelect'
 import {
   deleteJobScheduleBlock,
   fetchJobScheduleBlocksForJobDay,
@@ -608,7 +608,7 @@ export function ScheduleJobModal({
               <div style={{ fontSize: '0.7rem', color: '#9ca3af', marginBottom: 6 }}>
                 Linked: same time and note for everyone selected ({assigneeUserIds.length} selected).
               </div>
-              <ScheduleAssigneeMultiPicker
+              <SearchableMultiSelect
                 id="schedule-job-assignee"
                 options={assigneeSelectOptions}
                 value={assigneeUserIds}

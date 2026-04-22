@@ -13,6 +13,7 @@ import {
 } from '@dnd-kit/core'
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { buildColumnBidMap } from '../../lib/bidWorkingBoardColumnMap'
 import { supabase } from '../../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import type { Database } from '../../types/database'
@@ -48,58 +49,6 @@ const workingBoardCollisionDetection: CollisionDetection = (args) => {
   const rect = rectIntersection(args)
   if (rect.length > 0) return rect
   return closestCorners(args)
-}
-
-function sortBidIdsImplicit(aId: string, bId: string, bidMap: Map<string, BidsWorkingBoardBid>): number {
-  const a = bidMap.get(aId)
-  const b = bidMap.get(bId)
-  const an = (a?.project_name ?? '').toLowerCase()
-  const bn = (b?.project_name ?? '').toLowerCase()
-  if (an !== bn) return an.localeCompare(bn)
-  return aId.localeCompare(bId)
-}
-
-function buildColumnBidMap(
-  columns: BidWorkingColumn[],
-  placements: BidWorkingPlacement[],
-  assignedBids: BidsWorkingBoardBid[]
-): Record<string, string[]> {
-  const assignedIds = new Set(assignedBids.map((b) => b.id))
-  const bidMap = new Map(assignedBids.map((b) => [b.id, b]))
-  const placedIds = new Set(placements.map((p) => p.bid_id))
-  const inboxCol = columns.find((c) => c.system_key === 'inbox')
-
-  const byCol: Record<string, { bidId: string; position: number }[]> = {}
-  for (const p of placements) {
-    if (!assignedIds.has(p.bid_id)) continue
-    const key = p.column_id
-    let bucket = byCol[key]
-    if (!bucket) {
-      bucket = []
-      byCol[key] = bucket
-    }
-    bucket.push({ bidId: p.bid_id, position: p.position })
-  }
-  for (const k of Object.keys(byCol)) {
-    const bucket = byCol[k]
-    if (bucket) bucket.sort((x, y) => x.position - y.position)
-  }
-
-  const result: Record<string, string[]> = {}
-  for (const c of columns) {
-    result[c.id] = (byCol[c.id] ?? []).map((x) => x.bidId)
-  }
-
-  if (inboxCol) {
-    const implicit = assignedBids.filter((b) => !placedIds.has(b.id)).map((b) => b.id)
-    implicit.sort((a, b) => sortBidIdsImplicit(a, b, bidMap))
-    const explicitInbox = result[inboxCol.id] ?? []
-    const explicitSet = new Set(explicitInbox)
-    const onlyImplicit = implicit.filter((id) => !explicitSet.has(id))
-    result[inboxCol.id] = [...explicitInbox, ...onlyImplicit]
-  }
-
-  return result
 }
 
 async function persistPlacements(
@@ -402,7 +351,8 @@ export function BidsWorkingBoard({
             async () =>
               supabase.from('bid_working_board_columns').insert([
                 { user_id: userId, system_key: 'inbox', title: 'Inbox', position: 0 },
-                { user_id: userId, system_key: 'ready', title: 'Ready for Submission', position: 1 },
+                { user_id: userId, system_key: 'working', title: 'Working', position: 1 },
+                { user_id: userId, system_key: 'ready', title: 'Ready for Submission', position: 2 },
               ]).select(),
             'bootstrap working board columns'
           )
@@ -664,16 +614,38 @@ export function BidsWorkingBoard({
                 >
                   <div
                     style={{
-                      fontWeight: 600,
-                      fontSize: '0.9375rem',
-                      color: '#374151',
                       flex: 1,
                       minWidth: 0,
-                      wordBreak: 'break-word',
+                      display: 'flex',
+                      flexDirection: 'row',
+                      flexWrap: 'wrap',
+                      alignItems: 'baseline',
+                      gap: '0.35rem',
                       lineHeight: 1.3,
                     }}
                   >
-                    {col.title}
+                    <span
+                      style={{
+                        fontWeight: 600,
+                        fontSize: '0.9375rem',
+                        color: '#374151',
+                        wordBreak: 'break-word',
+                      }}
+                    >
+                      {col.title}
+                    </span>
+                    {col.system_key === 'working' ? (
+                      <span
+                        style={{
+                          fontSize: '0.6875rem',
+                          fontWeight: 400,
+                          color: '#9ca3af',
+                        }}
+                        title="These bids appear as quick picks when you open Clock In"
+                      >
+                        shows on clock
+                      </span>
+                    ) : null}
                   </div>
                   {col.system_key == null && renamingColumnId !== col.id ? (
                     <div

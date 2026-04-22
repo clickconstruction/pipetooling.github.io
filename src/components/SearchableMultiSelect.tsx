@@ -1,19 +1,25 @@
 import { useId, useMemo, useState } from 'react'
 import {
   filterSearchableSelectOptionsByQuery,
+  isSelectableOption,
   isSeparatorOption,
   type SearchableSelectOption,
-} from '../SearchableSelect'
+} from './SearchableSelect'
 
-const LIST_MAX_HEIGHT_PX = 220
+const LIST_MAX_HEIGHT_PX = 140
 
-type Props = {
+export type SearchableMultiSelectProps = {
   id?: string
   options: SearchableSelectOption[]
   value: string[]
-  onChange: (userIds: string[]) => void
+  onChange: (selectedIds: string[]) => void
   disabled?: boolean
   listAriaLabel?: string
+  /**
+   * When true, move selected options to the top of the list (in `value` order) for flat option lists.
+   * Skipped when the filtered list contains separator rows.
+   */
+  pinSelectedToTop?: boolean
 }
 
 function toggleId(selected: string[], id: string, checked: boolean): string[] {
@@ -24,14 +30,16 @@ function toggleId(selected: string[], id: string, checked: boolean): string[] {
   return selected.filter((x) => x !== id)
 }
 
-export function ScheduleAssigneeMultiPicker({
+/** Search field + scrollable checkbox list; supports optional separator options in `options`. */
+export function SearchableMultiSelect({
   id: idProp,
   options,
   value,
   onChange,
   disabled = false,
-  listAriaLabel = 'Team members',
-}: Props) {
+  listAriaLabel = 'Options',
+  pinSelectedToTop = false,
+}: SearchableMultiSelectProps) {
   const reactId = useId()
   const baseId = idProp ?? reactId
   const searchId = `${baseId}-search`
@@ -43,6 +51,29 @@ export function ScheduleAssigneeMultiPicker({
     () => filterSearchableSelectOptionsByQuery(options, query),
     [options, query],
   )
+
+  const rowsToRender = useMemo(() => {
+    if (!pinSelectedToTop || value.length === 0) return filtered
+    if (filtered.some(isSeparatorOption)) return filtered
+    const selectedById = new Map(
+      filtered.filter(isSelectableOption).filter((o) => value.includes(o.value)).map((o) => [o.value, o] as const),
+    )
+    const top: SearchableSelectOption[] = []
+    const used = new Set<string>()
+    for (const id of value) {
+      const row = selectedById.get(id)
+      if (row && !used.has(id)) {
+        top.push(row)
+        used.add(id)
+      }
+    }
+    const rest: SearchableSelectOption[] = []
+    for (const row of filtered) {
+      if (!isSelectableOption(row)) continue
+      if (!value.includes(row.value)) rest.push(row)
+    }
+    return [...top, ...rest]
+  }, [filtered, value, pinSelectedToTop])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -79,10 +110,10 @@ export function ScheduleAssigneeMultiPicker({
           background: 'white',
         }}
       >
-        {filtered.length === 0 ? (
+        {rowsToRender.length === 0 ? (
           <li style={{ padding: '0.75rem', fontSize: '0.875rem', color: '#9ca3af' }}>No matches</li>
         ) : (
-          filtered.map((row, idx) => {
+          rowsToRender.map((row, idx) => {
             if (isSeparatorOption(row)) {
               return (
                 <li
@@ -101,7 +132,7 @@ export function ScheduleAssigneeMultiPicker({
             }
             const checked = value.includes(row.value)
             const rowId = `${listId}-opt-${row.value}`
-            const nextRow = idx + 1 < filtered.length ? filtered[idx + 1] : undefined
+            const nextRow = idx + 1 < rowsToRender.length ? rowsToRender[idx + 1] : undefined
             const nextIsSep = nextRow ? isSeparatorOption(nextRow) : false
             return (
               <li

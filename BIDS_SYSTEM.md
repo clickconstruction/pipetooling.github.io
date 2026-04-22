@@ -5,7 +5,7 @@ file: BIDS_SYSTEM.md
 type: System Documentation
 purpose: Complete documentation of 10-tab Bids system including workflows, book systems, and integrations
 audience: Developers, Estimators, AI Agents
-last_updated: 2026-04-27
+last_updated: 2026-04-22
 estimated_read_time: 30-40 minutes
 difficulty: Intermediate to Advanced
 
@@ -114,8 +114,9 @@ The Bids system is a comprehensive bidding and estimation tool for plumbing cont
 - **dev, master_technician, assistant, estimator**: Full access to all Bids tabs
 - **primary**: Bid Board, RFI, Change Order, Lien Release only (view bids, generate documents; no create/edit bids, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission)
 
-### Working tab (Kanban)
-- Per-user columns persisted in **`bid_working_board_columns`** and **`bid_working_board_placements`** (see **`MIGRATIONS.md`** `20260408124821_bid_working_board.sql`). Default columns **Inbox** and **Ready for Submission**; users add custom columns between. Cards show bids where the current user is **Estimator** or **Account Man**; unplaced bids appear in Inbox. UI: [`BidsWorkingBoard.tsx`](src/components/bids/BidsWorkingBoard.tsx).
+### Unsent/Working tab (Kanban)
+- **UI label**: **Unsent/Working** (URL **`?tab=working`** unchanged). Inbox-only count badge on the tab.
+- Per-user columns in **`bid_working_board_columns`** and **`bid_working_board_placements`** (**`MIGRATIONS.md`**: `20260408124821_bid_working_board.sql`, plus **`20260422001732_bid_working_board_working_column.sql`** for fixed **`system_key` `working`**). Default system columns: **Inbox**, **Working**, **Ready for Submission**; users add **custom** columns (nullable **`system_key`**) as needed. **Working** column shows a muted hint **shows on clock** (bids placed there appear as **Clock In** / **Update Focus** / clock-out review quick picks after Dispatch schedule jobs — [`fetchWorkingBoardClockBidPicks.ts`](src/lib/fetchWorkingBoardClockBidPicks.ts), [`ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx)). Cards: bids where the current user is **Estimator** or **Account Man**; unplaced bids appear in **Inbox**. UI: [`BidsWorkingBoard.tsx`](src/components/bids/BidsWorkingBoard.tsx).
 
 ### Workflow
 1. **Bid Board** - Create and manage bids
@@ -1177,10 +1178,10 @@ One horizontal strip: **+ bid note** and **+ customer note** (left on wide scree
 
 Each section has clickable header with:
 - **Chevron** (▼ expanded, ▶ collapsed)
-- **Item count** (e.g., "Unsent bids (3)")
+- **Item count** (e.g., "Unsent / Working Bids (3)")
 - Click anywhere on header to toggle
 
-#### 1. Unsent Bids
+#### 1. Unsent / Working Bids
 
 **Purpose**: Bids not yet submitted to customer
 
