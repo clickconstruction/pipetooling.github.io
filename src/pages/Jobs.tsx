@@ -9,7 +9,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { pageUnderlineTabStyle } from '../lib/pageUnderlineTabStyle'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
@@ -600,8 +600,13 @@ function stagesJobLevelStripeEmailedHintInvoice(job: JobWithDetails): JobsLedger
   return matches[0]
 }
 
+type JobDetailPrefillLocationState = {
+  jobDetailPrefill?: { prefillRowLabel: string | null; prefillAddress: string | null }
+}
+
 export default function Jobs() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   /** `loadJobs()` only filters by this URL param; avoid refetching all jobs when unrelated search params change. */
   const customerParamForJobsReload = searchParams.get('customer')
@@ -3619,6 +3624,37 @@ ${totalsHtml}
       return next
     }, { replace: true })
   }, [editJobId, jobs, jobsListLoading, jobsListRefreshing, tryOpenEditJob, loadJobs, setSearchParams])
+
+  const jobDetailId = searchParams.get('jobDetail')
+  useEffect(() => {
+    if (!jobDetailId || jobsListLoading || jobsListRefreshing) return
+    const job = jobs.find((j) => j.id === jobDetailId)
+    if (job) {
+      openStagesDetailJobModal(job)
+    } else {
+      const prefill = (location.state as JobDetailPrefillLocationState | null)?.jobDetailPrefill
+      setStagesDetailJobModal({
+        jobId: jobDetailId,
+        prefillRowLabel: prefill?.prefillRowLabel ?? null,
+        prefillAddress: prefill?.prefillAddress ?? null,
+      })
+    }
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p)
+      next.delete('jobDetail')
+      return next
+    }, { replace: true })
+    navigate('.', { replace: true, state: {} })
+  }, [
+    jobDetailId,
+    jobs,
+    jobsListLoading,
+    jobsListRefreshing,
+    openStagesDetailJobModal,
+    setSearchParams,
+    navigate,
+    location.state,
+  ])
 
   const openBankPaymentsParam = searchParams.get('openBankPayments')
   useEffect(() => {

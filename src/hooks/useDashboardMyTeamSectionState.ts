@@ -39,18 +39,21 @@ function optimisticPatchClockSessionRow(row: ClockSessionRow, patch: AssignSessi
       bids: null,
     }
   }
-  return {
-    ...row,
-    bid_id: sel.id,
-    job_ledger_id: null,
-    bids: {
-      bid_number: sel.bid_number ?? null,
-      project_name: sel.project_name ?? null,
-      address: sel.address ?? null,
-      customers: { name: sel.customer_name?.trim() ? sel.customer_name : null },
-    },
-    jobs_ledger: null,
+  if (sel.source === 'bid') {
+    return {
+      ...row,
+      bid_id: sel.id,
+      job_ledger_id: null,
+      bids: {
+        bid_number: sel.bid_number ?? null,
+        project_name: sel.project_name ?? null,
+        address: sel.address ?? null,
+        customers: { name: sel.customer_name?.trim() ? sel.customer_name : null },
+      },
+      jobs_ledger: null,
+    }
   }
+  return row
 }
 
 function weekStartEndEnCA(): { start: string; end: string } {
@@ -141,18 +144,21 @@ function optimisticPatchTodayStripRow(row: TodaySessionStripRow, patch: AssignSe
       bids: null,
     }
   }
-  return {
-    ...row,
-    bid_id: sel.id,
-    job_ledger_id: null,
-    bids: {
-      bid_number: sel.bid_number ?? null,
-      project_name: sel.project_name ?? null,
-      address: sel.address ?? null,
-      customers: { name: sel.customer_name?.trim() ? sel.customer_name : null },
-    },
-    jobs_ledger: null,
+  if (sel.source === 'bid') {
+    return {
+      ...row,
+      bid_id: sel.id,
+      job_ledger_id: null,
+      bids: {
+        bid_number: sel.bid_number ?? null,
+        project_name: sel.project_name ?? null,
+        address: sel.address ?? null,
+        customers: { name: sel.customer_name?.trim() ? sel.customer_name : null },
+      },
+      jobs_ledger: null,
+    }
   }
+  return row
 }
 
 /** One row per user for the dashboard "Clocked in today" table below the open-sessions strip. */

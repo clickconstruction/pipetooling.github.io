@@ -12,11 +12,20 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.385 → v2.4"
+version_range: "v2.388 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.388)"
+    line: ~1260
+    description: "Header global search: minimum 2 characters before RPCs and results panel"
+  - name: "Latest Version (v2.387)"
+    line: ~1272
+    description: "Header search: job → Job Detail modal (jobDetail); bid → Bid Preview + bidId URL"
+  - name: "Latest Version (v2.386)"
+    line: ~1268
+    description: "Layout header global search (dev/master/assistant): jobs, bids, estimates; search_estimates_for_nav RPC"
   - name: "Latest Version (v2.385)"
-    line: ~1248
+    line: ~1260
     description: "Jobs: lazy Paid in Full fetch on expand + fetchPaidJobsIfNeeded; Edit/New guarded until list idle (tryOpenEditJob)"
   - name: "Latest Version (v2.384)"
     line: ~1260
@@ -982,6 +991,9 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.388 — **Header** **search**: **≥ 2** trimmed characters before **`search_*`** RPCs and **results** panel (**`MIN_HEADER_SEARCH_CHARS`**)](#latest-updates-v2388)
+**New:** [v2.387 — **Header** **search** result: **job** → **`/jobs?jobDetail=`** opens **`DetailJobModal`**; **bid** → **`openBidPreview`** + **`/bids?bidId=`**](#latest-updates-v2387)
+**New:** [v2.386 — **Layout** **header** **search** (**dev** / **master** / **assistant**): **jobs**, **bids**, **estimates** (`search_jobs_ledger`, `search_bids_for_clock`, **`search_estimates_for_nav`**); **`HeaderGlobalSearch`** overlay + **Back**](#latest-updates-v2386)
 **New:** [v2.385 — **Jobs** **Stages**: **Paid in Full** loads **`status: paid`** jobs only on **expand** (or **Stages search**); **`fetchPaidJobsIfNeeded`** in **`JobsListCacheContext`**; **Edit** / **New Job** toast if list still **loading**/**refreshing** (**`tryOpenEditJob`**)](#latest-updates-v2385)
 **New:** [v2.384 — **Bids** **Submission & Followup**: **No contact in last** *N* **days** tints list rows (effective last contact vs **Chicago** calendar; **`denverCalendarDaysBetweenInstantAndNow`**)](#latest-updates-v2384)
 **New:** [v2.383 — **Schedule Dispatch** **mobile**: transparent sticky **Person** / **Team member** + white **name pills** (`scheduleDispatchMobileNamePill`); **Bids** **Confirm bid sent** optional **Adds to bid note:** → **`bids_submission_entries`** on save](#latest-updates-v2383)
@@ -1247,6 +1259,37 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.388)
+
+**Date**: 2026-04-23
+
+### **Layout** — **header** **search** — minimum query length
+
+- **[`HeaderGlobalSearch.tsx`](src/components/HeaderGlobalSearch.tsx)**: **`MIN_HEADER_SEARCH_CHARS` = 2** — no **`search_jobs_ledger`** / **`search_bids_for_clock`** / **`search_estimates_for_nav`** until the trimmed query is at least **2** characters; the dropdown (**list** or **No matches.**) appears only then. Shortening the query below **2** clears **`results`** immediately.
+
+---
+
+## Latest Updates (v2.387)
+
+**Date**: 2026-04-23
+
+### **Layout** — **header** **search** — **Job Detail** / **Bid Preview** on result pick
+
+- **[`HeaderGlobalSearch.tsx`](src/components/HeaderGlobalSearch.tsx)**: choosing a **job** navigates to **`/jobs?jobDetail={id}`** with **`location.state.jobDetailPrefill`** (title/address) and **[`Jobs.tsx`](src/pages/Jobs.tsx)** opens **`DetailJobModal`** (then strips **`jobDetail`** from the URL and clears the one-shot state). Choosing a **bid** still goes to **`/bids?bidId=`** and also calls **`BidPreviewModalContext`** **`openBidPreview`**. **Estimates** unchanged (**`/estimates/{estimate_number}`**).
+
+---
+
+## Latest Updates (v2.386)
+
+**Date**: 2026-04-23
+
+### **Layout** — **header** **global** **search** (**dev** / **master** / **assistant**)
+
+- **[`HeaderGlobalSearch.tsx`](src/components/HeaderGlobalSearch.tsx)** + **[`Layout.tsx`](src/components/Layout.tsx)**: magnifying-glass control (mobile **strip** + desktop **toolbar**); full-nav overlay with **search** input and **Back**; debounced **`search_jobs_ledger`**, **`search_bids_for_clock`** (service-type rules aligned with **Clock In** / **Dispatch**), **`search_estimates_for_nav`**. Result pick → **job** / **bid** behavior as of **v2.387** (**Job Detail** + **Bid Preview**); **estimate** → **`/estimates/{estimate_number}`**. **`UnifiedSearchResult`** **`estimate`** branch in **[`unifiedJobBidSearch.ts`](src/utils/unifiedJobBidSearch.ts)**; dashboard optimistic patch ignores **estimate** selections. **`appNavChrome`** wrapper: results panel **`position: absolute; top: 100%`** over **`appMain`** (shadow + **`--app-nav-pad-x`** inset). **Escape** closes like **Back** (**`keydown`** capture on **`window`**, **`preventDefault`** / **`stopPropagation`**). **⌘K** / **Ctrl+K** toggles open/close (skip open when focus is in another **`input`** / **`textarea`** / **`select`** / **`contenteditable`**).
+- **Database**: **[`20270423120000_search_estimates_for_nav.sql`](supabase/migrations/20270423120000_search_estimates_for_nav.sql)** — **SECURITY INVOKER** (RLS), **E** prefix on quote #, **`GRANT`** **`authenticated`**.
+
 ---
 
 ## Latest Updates (v2.385)

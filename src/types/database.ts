@@ -9239,6 +9239,16 @@ export type Database = {
           project_name: string
         }[]
       }
+      search_estimates_for_nav: {
+        Args: { search_text?: string }
+        Returns: {
+          customer_name: string
+          estimate_number: number
+          id: string
+          subtitle: string | null
+          title: string
+        }[]
+      }
       search_jobs_for_reports: {
         Args: { search_text?: string }
         Returns: {

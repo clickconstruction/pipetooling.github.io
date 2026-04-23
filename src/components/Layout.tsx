@@ -22,6 +22,11 @@ import {
 } from '../lib/pinnedTabs'
 import { isEstimatorPathAllowed } from '../lib/layoutRouteAccess'
 import DailyGoalsGateOverlay from './DailyGoalsGateOverlay'
+import {
+  HeaderGlobalSearchNavLayer,
+  HeaderGlobalSearchOpenButton,
+  HeaderGlobalSearchProvider,
+} from './HeaderGlobalSearch'
 import { useDailyGoalsGate } from '../contexts/DailyGoalsGateContext'
 import { useAppActivityHeartbeat } from '../hooks/useAppActivityHeartbeat'
 import { hardReloadFromRoot } from '../lib/hardReload'
@@ -90,6 +95,9 @@ export default function Layout() {
   const dispatchTaskModal = useDispatchTaskModal()
   const estimatorTaskModal = useEstimatorTaskModal()
   const dashboardPrefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const headerSearchEligible =
+    role === 'dev' || role === 'master_technician' || role === 'assistant'
+  const navSearchOverlayBg = impersonating && isMobile ? '#fef3c7' : '#ffffff'
 
   const scheduleDashboardPrefetch = useCallback(() => {
     if (!authUser?.id) return
@@ -298,6 +306,7 @@ export default function Layout() {
             {quickfillIcon}
           </NavLink>
         )}
+        {headerSearchEligible && <HeaderGlobalSearchOpenButton placement="strip" isMobile={isMobile} />}
         {role === 'dev' && !isMobile && (
           <NavLink to="/people?tab=review" style={iconLinkStyle} title="Review" aria-label="Review">
             {reviewIcon}
@@ -429,13 +438,14 @@ export default function Layout() {
     )
   }
 
-  return (
+  const layoutBody = (
     <>
       <DailyGoalsGateOverlay />
       <div
         style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}
         {...(dailyGoalsGateOpen ? { inert: true as const } : {})}
       >
+      <div className="appNavChrome">
       <nav
         className="appNav"
         style={{
@@ -558,6 +568,7 @@ export default function Layout() {
           </span>
         )}
         <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          {headerSearchEligible && <HeaderGlobalSearchOpenButton placement="toolbar" isMobile={isMobile} />}
           {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'estimator') && (
             <button
               type="button"
@@ -995,6 +1006,8 @@ export default function Layout() {
           )}
         </span>
       </nav>
+      {headerSearchEligible ? <HeaderGlobalSearchNavLayer /> : null}
+      </div>
       <main
         className="appMain"
         style={{
@@ -1185,6 +1198,20 @@ export default function Layout() {
     </div>
     </>
   )
+
+  if (headerSearchEligible) {
+    return (
+      <HeaderGlobalSearchProvider
+        authUserId={authUser?.id ?? null}
+        navOverlayBackground={navSearchOverlayBg}
+        isMobile={isMobile}
+      >
+        {layoutBody}
+      </HeaderGlobalSearchProvider>
+    )
+  }
+
+  return layoutBody
 }
 
 function PinIcon({ filled: _filled }: { filled: boolean }) {

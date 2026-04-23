@@ -106,6 +106,12 @@ button {
   --page-wrap-pad: 2rem;
 }
 
+.appNavChrome {
+  position: relative;
+  z-index: 50;
+  overflow: visible;
+}
+
 .appNav {
   padding: var(--app-nav-pad-y) var(--app-nav-pad-x);
   /* iOS: push nav below status bar / notch so menu & settings stay tappable */
