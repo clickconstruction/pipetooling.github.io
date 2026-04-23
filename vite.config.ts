@@ -1,11 +1,14 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { visualizer } from 'rollup-plugin-visualizer'
 import { VitePWA } from 'vite-plugin-pwa'
 import { copyFileSync } from 'fs'
 import { join, resolve } from 'path'
 import { fileURLToPath } from 'url'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
+
+const bundleAnalyze = process.env.ANALYZE === '1'
 
 // Copy index.html to 404.html so GitHub Pages serves the SPA for any path (e.g. /dashboard refresh)
 function copy404Plugin() {
@@ -60,6 +63,21 @@ export default defineConfig({
       },
     }),
     copy404Plugin(),
+    ...(bundleAnalyze
+      ? [
+          // Use emitFile + filename only (no "dist/..." path) so the report is emitted
+          // with Rollup assets. Pin `rollup-plugin-visualizer` to v5: v7+ treemap
+          // resolves template paths with `import.meta.dirname` (Node 20.11+; fails on 20.0).
+          visualizer({
+            filename: 'stats.html',
+            emitFile: true,
+            open: false,
+            gzipSize: true,
+            brotliSize: true,
+            template: 'treemap',
+          }),
+        ]
+      : []),
   ],
   base: '/',
 })

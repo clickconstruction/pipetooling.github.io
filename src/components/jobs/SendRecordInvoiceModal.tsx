@@ -9,7 +9,6 @@ import {
 } from '../../lib/billingStripeModePref'
 import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
-import type { Database } from '../../types/database'
 import type { StripeInvoiceLinesSnapshot, StripeInvoicePreviewSuccess } from '../../lib/stripeInvoicePreview'
 import {
   parseStripeInvoiceLinesSnapshot,
@@ -65,14 +64,10 @@ import {
   type BillCustomerMemoPreset,
 } from '../../lib/billCustomerMemoPresets'
 import type { JobWithDetails } from '../../types/jobWithDetails'
-
-type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
+import type { SendRecordInvoicePayload } from './SendRecordInvoiceModal.types'
 
 export type { JobBillingContext }
-
-export type SendRecordInvoicePayload =
-  | { kind: 'job'; job: JobBillingContext }
-  | { kind: 'invoice'; job: JobBillingContext; invoice: Pick<JobsLedgerInvoice, 'id' | 'amount' | 'status'> }
+export type { SendRecordInvoicePayload }
 
 type BillCustomerMainTab = 'stripe' | 'housecallpro' | 'physical'
 

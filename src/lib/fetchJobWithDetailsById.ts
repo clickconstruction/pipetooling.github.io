@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { buildJobsLedgerFullDetailSelect } from './jobsLedgerEmbedSelects'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import type { JobWithDetails } from '../types/jobWithDetails'
 import type { Database } from '../types/database'
@@ -10,17 +11,7 @@ type JobsLedgerPayment = Database['public']['Tables']['jobs_ledger_payments']['R
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 type JobsLedgerTeamMember = Database['public']['Tables']['jobs_ledger_team_members']['Row']
 
-const JOB_LEDGER_DETAIL_SELECT = `
-        *,
-        jobs_ledger_materials(*),
-        jobs_ledger_fixtures(*),
-        jobs_ledger_payments(*),
-        jobs_ledger_invoices(*),
-        jobs_ledger_team_members(*, users(name)),
-        reports(job_ledger_id),
-        projects:project_id(id, name),
-        bids:bid_id(id, project_name, bid_number)
-      `
+const JOB_LEDGER_DETAIL_SELECT = buildJobsLedgerFullDetailSelect()
 
 function mapRowToJobWithDetails(
   row: JobsLedgerRow & {
@@ -63,8 +54,7 @@ function mapRowToJobWithDetails(
 export async function fetchJobWithDetailsById(jobId: string): Promise<JobWithDetails | null> {
   try {
     const data = await withSupabaseRetry(
-      async () =>
-        await supabase.from('jobs_ledger').select(JOB_LEDGER_DETAIL_SELECT).eq('id', jobId).maybeSingle(),
+      async () => await supabase.from('jobs_ledger').select(JOB_LEDGER_DETAIL_SELECT).eq('id', jobId).maybeSingle(),
       'fetchJobWithDetailsById',
     )
     if (!data) return null

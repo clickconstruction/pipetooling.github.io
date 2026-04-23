@@ -1,5 +1,8 @@
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react'
-import SendRecordInvoiceModal, { type SendRecordInvoicePayload } from '../components/jobs/SendRecordInvoiceModal'
+import { createContext, useCallback, useContext, lazy, Suspense, useMemo, useRef, useState } from 'react'
+import type { SendRecordInvoicePayload } from '../components/jobs/SendRecordInvoiceModal.types'
+
+/** Code-split: modal pulls physical PDF + jspdf; only load when Bill Customer is used. */
+const SendRecordInvoiceModal = lazy(() => import('../components/jobs/SendRecordInvoiceModal'))
 
 /** Above JobFormModal overlay (1010). */
 const BILL_CUSTOMER_OVERLAY_Z_INDEX = 1020
@@ -48,22 +51,24 @@ export function BillCustomerModalProvider({ children }: { children: React.ReactN
   return (
     <BillCustomerModalContext.Provider value={value}>
       {children}
-      <SendRecordInvoiceModal
-        payload={session}
-        onClose={closeBillCustomer}
-        onSuccess={async () => {
-          await callbacksRef.current.onSuccess?.()
-        }}
-        onAfterEnsureSuccess={async () => {
-          await callbacksRef.current.onAfterEnsureSuccess?.()
-        }}
-        onAfterOobUnwindSuccess={async () => {
-          await callbacksRef.current.onAfterOobUnwindSuccess?.()
-        }}
-        jobUpdating={false}
-        invoiceUpdating={false}
-        overlayZIndex={BILL_CUSTOMER_OVERLAY_Z_INDEX}
-      />
+      <Suspense fallback={null}>
+        <SendRecordInvoiceModal
+          payload={session}
+          onClose={closeBillCustomer}
+          onSuccess={async () => {
+            await callbacksRef.current.onSuccess?.()
+          }}
+          onAfterEnsureSuccess={async () => {
+            await callbacksRef.current.onAfterEnsureSuccess?.()
+          }}
+          onAfterOobUnwindSuccess={async () => {
+            await callbacksRef.current.onAfterOobUnwindSuccess?.()
+          }}
+          jobUpdating={false}
+          invoiceUpdating={false}
+          overlayZIndex={BILL_CUSTOMER_OVERLAY_Z_INDEX}
+        />
+      </Suspense>
     </BillCustomerModalContext.Provider>
   )
 }

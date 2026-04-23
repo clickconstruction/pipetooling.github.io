@@ -2,7 +2,7 @@ import { supabase } from './supabase'
 import type { Database } from '../types/database'
 import { APP_SETTINGS_KEY_MAP_DEFAULT_VIEW_V1 } from './appSettingsKeys'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
-import { mapGeocodeErrorMessage } from '../hooks/useMapPageData'
+import { mapGeocodeErrorMessage } from './map/geocodeErrorMessage'
 import type { GeocodeOneOk, GeocodeOneResponse, GeocodeOneFail } from './map/invokeGeocodeOneRefreshGoogleOnly'
 
 /** Fallback when no `app_settings` row or parse fails; matches previous hardcoded Map default. */

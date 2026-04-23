@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+// Leaflet / react-leaflet / Geoman: import only from this file so they stay in the lazy Map route chunk.
 import {
   CircleMarker,
   MapContainer,

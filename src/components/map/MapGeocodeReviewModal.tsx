@@ -4,7 +4,8 @@ import {
   GOOGLE_ONLY_REFRESH_PACING_MS,
   invokeGeocodeOneRefreshGoogleOnly,
 } from '../../lib/map/invokeGeocodeOneRefreshGoogleOnly'
-import { mapGeocodeErrorMessage, type MapPageEntity } from '../../hooks/useMapPageData'
+import { mapGeocodeErrorMessage } from '../../lib/map/geocodeErrorMessage'
+import { type MapPageEntity } from '../../hooks/useMapPageData'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 
 type GroupedRow = {

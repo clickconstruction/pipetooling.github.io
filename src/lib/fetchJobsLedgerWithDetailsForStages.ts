@@ -8,6 +8,7 @@ import { pickLinkedEstimateForStagesBanner } from './pickLinkedEstimateForStages
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import type { Database } from '../types/database'
 import type { JobWithDetails } from '../types/jobWithDetails'
+import { buildJobsListStagesPrimarySelect, JOBS_LEDGER_FIXTURES_EMBED, JOBS_LEDGER_MATERIALS_EMBED } from './jobsLedgerEmbedSelects'
 
 type JobsLedgerRow = Database['public']['Tables']['jobs_ledger']['Row']
 type JobsLedgerMaterial = Database['public']['Tables']['jobs_ledger_materials']['Row']
@@ -24,9 +25,8 @@ export async function fetchJobsLedgerWithDetailsForStages(options: {
   customerFilter?: string | null
 }): Promise<FetchJobsLedgerWithDetailsResult> {
   const customerFilter = options.customerFilter?.trim() || null
+  /** List primary query omits materials/fixtures; those load in a second round (see batch below). */
   type Row = JobsLedgerRow & {
-    jobs_ledger_materials?: JobsLedgerMaterial[]
-    jobs_ledger_fixtures?: JobsLedgerFixture[]
     jobs_ledger_payments?: JobsLedgerPayment[]
     jobs_ledger_invoices?: JobsLedgerInvoice[]
     jobs_ledger_team_members?: (JobsLedgerTeamMember & { users: { name: string } | null })[]
@@ -36,23 +36,10 @@ export async function fetchJobsLedgerWithDetailsForStages(options: {
   }
   let rows: Row[]
   try {
-    const data = await withSupabaseRetry(
+    const data = (await withSupabaseRetry(
       async () => {
-        let q = supabase
-          .from('jobs_ledger')
-          .select(
-            `
-        *,
-        jobs_ledger_materials(*),
-        jobs_ledger_fixtures(*),
-        jobs_ledger_payments(*),
-        jobs_ledger_invoices(*),
-        jobs_ledger_team_members(*, users(name)),
-        reports(job_ledger_id),
-        projects:project_id(id, name),
-        bids:bid_id(id, project_name, bid_number)
-      `,
-          )
+        // No `.limit` here: full list is required for Stages/AR; add keyset pagination later if needed.
+        let q = supabase.from('jobs_ledger').select(buildJobsListStagesPrimarySelect())
           .order('hcp_number', { ascending: false })
         if (customerFilter) {
           q = q.eq('customer_id', customerFilter)
@@ -60,18 +47,16 @@ export async function fetchJobsLedgerWithDetailsForStages(options: {
         return q
       },
       'fetch jobs_ledger for stages',
-    )
-    rows = (data ?? []) as Row[]
+    )) as unknown
+    rows = (data as Row[] | null) ?? []
   } catch (e: unknown) {
     return { ok: false, error: formatErrorMessage(e, 'Failed to load jobs') }
   }
   if (rows.length === 0) {
     return { ok: true, jobs: [] }
   }
-  const jobsWithDetails: JobWithDetails[] = rows.map((row) => {
+  let jobsWithDetails: JobWithDetails[] = rows.map((row) => {
     const {
-      jobs_ledger_materials: mat,
-      jobs_ledger_fixtures: fix,
       jobs_ledger_payments: pay,
       jobs_ledger_invoices: inv,
       jobs_ledger_team_members: team,
@@ -82,8 +67,8 @@ export async function fetchJobsLedgerWithDetailsForStages(options: {
     } = row
     return {
       ...job,
-      materials: (mat ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
-      fixtures: (fix ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
+      materials: [],
+      fixtures: [],
       payments: (pay ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
       invoices: (inv ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
       team_members: team ?? [],
@@ -93,6 +78,47 @@ export async function fetchJobsLedgerWithDetailsForStages(options: {
       last_schedule_work_date: null,
     }
   })
+
+  const MATERIALS_FIXTURES_IN_CHUNK = 150
+  const materialsByJobId = new Map<string, JobsLedgerMaterial[]>()
+  const fixturesByJobId = new Map<string, JobsLedgerFixture[]>()
+  try {
+    const ids = jobsWithDetails.map((j) => j.id)
+    for (let i = 0; i < ids.length; i += MATERIALS_FIXTURES_IN_CHUNK) {
+      const chunk = ids.slice(i, i + MATERIALS_FIXTURES_IN_CHUNK)
+      const [matRes, fixRes] = await Promise.all([
+        withSupabaseRetry(
+          async () =>
+            supabase.from('jobs_ledger_materials').select(JOBS_LEDGER_MATERIALS_EMBED).in('job_id', chunk),
+          'jobs_ledger_materials batch for stages list',
+        ),
+        withSupabaseRetry(
+          async () =>
+            supabase.from('jobs_ledger_fixtures').select(JOBS_LEDGER_FIXTURES_EMBED).in('job_id', chunk),
+          'jobs_ledger_fixtures batch for stages list',
+        ),
+      ])
+      for (const m of (matRes ?? []) as unknown as JobsLedgerMaterial[]) {
+        const jid = m.job_id
+        const arr = materialsByJobId.get(jid) ?? []
+        arr.push(m)
+        materialsByJobId.set(jid, arr)
+      }
+      for (const f of (fixRes ?? []) as unknown as JobsLedgerFixture[]) {
+        const jid = f.job_id
+        const arr = fixturesByJobId.get(jid) ?? []
+        arr.push(f)
+        fixturesByJobId.set(jid, arr)
+      }
+    }
+    jobsWithDetails = jobsWithDetails.map((j) => ({
+      ...j,
+      materials: (materialsByJobId.get(j.id) ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
+      fixtures: (fixturesByJobId.get(j.id) ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
+    }))
+  } catch (e) {
+    console.warn('fetchJobsLedgerWithDetailsForStages: materials/fixtures batch failed', e)
+  }
 
   const SCHEDULE_BLOCKS_IN_CHUNK = 150
   let scheduleMaxByJobId = new Map<string, string>()
