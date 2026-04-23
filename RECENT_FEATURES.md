@@ -12,33 +12,36 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.391 → v2.4"
+version_range: "v2.392 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.392)"
+    line: ~1280
+    description: "Jobs Stages Paid in Full collapsed header: (Expand to load) instead of (—) before lazy merge"
   - name: "Latest Version (v2.391)"
-    line: ~1276
+    line: ~1290
     description: "Jobs Stages pipeline jump bar: Working → Ready to Bill → Billed Awaiting Payment counts + scroll"
   - name: "Latest Version (v2.390)"
-    line: ~1286
+    line: ~1300
     description: "Header search job/bid pick opens modals in place; no navigate to Jobs or Bids"
   - name: "Latest Version (v2.389)"
-    line: ~1296
+    line: ~1310
     description: "Global JobDetailModalProvider; header job pick opens detail immediately"
   - name: "Latest Version (v2.388)"
-    line: ~1306
+    line: ~1320
     description: "Header global search: minimum 2 characters before RPCs and results panel"
   - name: "Latest Version (v2.387)"
-    line: ~1316
+    line: ~1330
     description: "Header search: job → Job Detail modal (jobDetail); bid → Bid Preview + bidId URL"
   - name: "Latest Version (v2.386)"
-    line: ~1326
+    line: ~1340
     description: "Layout header global search (dev/master/assistant): jobs, bids, estimates; search_estimates_for_nav RPC"
   - name: "Latest Version (v2.385)"
-    line: ~1337
+    line: ~1351
     description: "Jobs: lazy Paid in Full fetch on expand + fetchPaidJobsIfNeeded; Edit/New guarded until list idle (tryOpenEditJob)"
   - name: "Latest Version (v2.384)"
     line: ~1260
-    description: "Bids Submission & Followup: No contact in last N days highlights stale rows (Chicago calendar); denverCalendarDaysBetweenInstantAndNow"
+    description: "Bids Submission & Followup: Last Update + stale tint (lists + Bid Preview modal) from note activity only; submissionFollowupStale + BidPreviewModalContext overlay"
   - name: "Latest Version (v2.383)"
     line: ~1272
     description: "Schedule Dispatch mobile: transparent sticky Person/Team member column + white name pills; Bids Confirm bid sent optional Adds to bid note → bids_submission_entries on save"
@@ -1000,6 +1003,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.392 — **Jobs** **Stages** **Paid in Full**: collapsed header **(Expand to load)** when paid list not merged yet (**`Jobs.tsx`**)](#latest-updates-v2392)
 **New:** [v2.391 — **Jobs** **Stages**: **Working** → **Ready to Bill** → **Billed Awaiting Payment** pipeline bar (**`focusStagesSection`**, **`stages-ready-to-bill`**)](#latest-updates-v2391)
 **New:** [v2.390 — **Header** **search**: **job** / **bid** result → **`openJobDetail`** / **`openBidPreview`** on **current** route (**no** **`/jobs`** or **`/bids?bidId=`**)](#latest-updates-v2390)
 **New:** [v2.389 — **`JobDetailModalProvider`** (**`useJobDetailModal`**, **`openJobDetail`**) — single **`DetailJobModal`** in app shell; **Jobs** / **Dashboard** / **Schedule Dispatch hub** / **Field Collect Payment** queue + **header** **job** search](#latest-updates-v2389)
@@ -1007,7 +1011,7 @@ when_to_read:
 **New:** [v2.387 — **Header** **search** result: **job** → **`/jobs?jobDetail=`** opens **`DetailJobModal`**; **bid** → **`openBidPreview`** + **`/bids?bidId=`**](#latest-updates-v2387)
 **New:** [v2.386 — **Layout** **header** **search** (**dev** / **master** / **assistant**): **jobs**, **bids**, **estimates** (`search_jobs_ledger`, `search_bids_for_clock`, **`search_estimates_for_nav`**); **`HeaderGlobalSearch`** overlay + **Back**](#latest-updates-v2386)
 **New:** [v2.385 — **Jobs** **Stages**: **Paid in Full** loads **`status: paid`** jobs only on **expand** (or **Stages search**); **`fetchPaidJobsIfNeeded`** in **`JobsListCacheContext`**; **Edit** / **New Job** toast if list still **loading**/**refreshing** (**`tryOpenEditJob`**)](#latest-updates-v2385)
-**New:** [v2.384 — **Bids** **Submission & Followup**: **No contact in last** *N* **days** tints list rows (effective last contact vs **Chicago** calendar; **`denverCalendarDaysBetweenInstantAndNow`**)](#latest-updates-v2384)
+**New:** [v2.384 — **Bids** **Submission & Followup**: **Last Update** + **Highlight no update** stale tint on **lists** and **Bid Preview** (note-based; **`submissionFollowupStale`**, **`BidPreviewModalContext`**)](#latest-updates-v2384)
 **New:** [v2.383 — **Schedule Dispatch** **mobile**: transparent sticky **Person** / **Team member** + white **name pills** (`scheduleDispatchMobileNamePill`); **Bids** **Confirm bid sent** optional **Adds to bid note:** → **`bids_submission_entries`** on save](#latest-updates-v2383)
 **New:** [v2.382 — **Quickfill** **Prospects**: **Team** **line** chart (last **30** days, **Y** = **Marked + Updated** per person, **`recharts`**) + **`prospectTeamActivityChartData.ts`** — **`ProspectTeamActivityLineChart`**](#latest-updates-v2382)
 **New:** [v2.381 — **Quickfill** **Prospects** section: **warmth** pipeline (**0–3** + **4+**), **Open Prospects**, shared **Team** activity (**`prospectTeamActivity`**, last **30** days; chart UI in **v2.382**) — **`QuickfillProspectsSection`**, **`canAccessProspects`**](#latest-updates-v2381)
@@ -1273,6 +1277,16 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
+## Latest Updates (v2.392)
+
+**Date**: 2026-04-23
+
+### **Jobs** — **Stages** — **Paid in Full** header before lazy load
+
+- **[`Jobs.tsx`](src/pages/Jobs.tsx)**: when **`paid`** jobs are not merged for the current **`jobsListDataKey`**, the section title uses **Paid in Full (Expand to load)** instead of **(—)**.
+
+---
+
 ## Latest Updates (v2.391)
 
 **Date**: 2026-04-23
@@ -1350,9 +1364,11 @@ when_to_read:
 
 **Date**: 2026-04-23
 
-### **Bids** — **Submission & Followup** — stale **last contact** highlight
+### **Bids** — **Submission & Followup** — **Last Update** + stale highlight (note-based)
 
-- Toolbar (**same row** as **Followup sheet for:**): **No contact in last** [number] **days**. Empty = off. When set, **Unsent** and **Not yet won or lost** table rows use a light red background (`#fef2f2`) if **effective last contact** (later of **`bids.last_contact`** and **`lastContactFromEntries`**) is missing or more than **N** whole **company-calendar** days behind today (**[`denverCalendarDaysBetweenInstantAndNow`](src/utils/dateUtils.ts)**). Selected row stays **`#eff6ff`**. Implementation: [`Bids.tsx`](src/pages/Bids.tsx) **`submissionFollowupStaleDaysInput`**, **`isSubmissionBidStaleForThreshold`**.
+- **Last Update** column (**Unsent**, **Not yet won or lost**): relative time from the **latest note activity** for follow-up — the later of the bid’s latest **`bids_submission_entries`** time (`lastContactFromEntries`) and the customer’s latest **`customer_contacts.contact_date`** for **`bid.customer_id`**. **`bids.last_contact`** alone does **not** move this column unless it is reflected in those paths.
+- Toolbar (left: **Highlight no update in last** [number] **days**; **Followup sheet for:** and print on the right): Empty = off. When set, those table rows use a light red background (`#fef2f2`) if that **same** note-based timestamp is missing or more than **N** whole **company-calendar** days behind today (**[`denverCalendarDaysBetweenInstantAndNow`](src/utils/dateUtils.ts)**). Selected row stays **`#eff6ff`**. Stale logic: [`submissionFollowupStale.ts`](src/lib/submissionFollowupStale.ts) (**`effectiveSubmissionBidLastNoteIso`**, **`isSubmissionBidStaleForThreshold`**), [`Bids.tsx`](src/pages/Bids.tsx) **`submissionFollowupStaleDaysInput`**.
+- **Bid Preview** modal: while you are on **Submission & Followup** with a valid **Highlight no update** threshold, the preview dialog panel uses the same **`#fef2f2`** tint when the open bid is stale by that rule. [`Bids.tsx`](src/pages/Bids.tsx) registers maps via **`setSubmissionFollowupStaleOverlay`** on [`BidPreviewModalContext.tsx`](src/contexts/BidPreviewModalContext.tsx); [`BidPreviewModal.tsx`](src/components/bids/BidPreviewModal.tsx) **`staleNoUpdateHighlight`**.
 
 ---
 

@@ -32,6 +32,8 @@ export type BidPreviewModalProps = {
   onNotesMutated?: () => void
   /** After customer notes change; defaults to onNotesMutated when omitted. */
   onNotesMutatedCustomer?: () => void
+  /** Light red panel when Submission & Followup "no update" highlight applies to this bid. */
+  staleNoUpdateHighlight?: boolean
 }
 
 function displayUser(u: EstimatorUser | null | undefined): string {
@@ -126,6 +128,7 @@ export function BidPreviewModal({
   onRequestEditBid,
   onNotesMutated,
   onNotesMutatedCustomer,
+  staleNoUpdateHighlight = false,
 }: BidPreviewModalProps) {
   const { role } = useAuth()
   const { showToast } = useToastContext()
@@ -154,7 +157,7 @@ export function BidPreviewModal({
   }
 
   const modalStyle: CSSProperties = {
-    background: 'white',
+    background: staleNoUpdateHighlight ? '#fef2f2' : 'white',
     padding: '1rem 1.5rem 1.5rem',
     borderRadius: 8,
     maxWidth: 720,

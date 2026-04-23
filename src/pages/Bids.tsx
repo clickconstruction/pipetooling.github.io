@@ -10,7 +10,7 @@ import { loadJsPDF } from '../lib/loadJsPDF'
 import { fetchBidBoardNotesUnreadCounts } from '../lib/bidBoardNotesUnreadCounts'
 import { upsertBidNotesReadWatermark } from '../lib/userBidNotesReadState'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
-import { denverCalendarDaysBetweenInstantAndNow, formatCompactNoteDateTime } from '../utils/dateUtils'
+import { formatCompactNoteDateTime } from '../utils/dateUtils'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { addExpandedPartsToPO, expandTemplate, getTemplatePartsPreview } from '../lib/materialPOUtils'
 import {
@@ -27,6 +27,7 @@ import { useToastContext } from '../contexts/ToastContext'
 import { useNewCustomerModal } from '../contexts/NewCustomerModalContext'
 import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
 import { OPEN_BID_EDIT_QUERY, useBidPreview } from '../contexts/BidPreviewModalContext'
+import { effectiveSubmissionBidLastNoteIso, isSubmissionBidStaleForThreshold } from '../lib/submissionFollowupStale'
 import { NumericEntryPad } from '../components/NumericEntryPad'
 import { MoneyDecimalAmountInput } from '../components/MoneyDecimalAmountInput'
 import { PartFormModal } from '../components/PartFormModal'
@@ -1333,29 +1334,6 @@ function buildLienReleaseText(
   const lienStatusText = 'Lien Status Verification' + '\n' + 'Current status of any lien filings or pencil-copy documentation may be verified at any time by calling: ' + (form.lienStatusPhone || LIEN_RELEASE_DEFAULT_LIEN_PHONE)
   body += sep + conditionalWaiver + '\n' + 'Payment Terms & Late Payment Consequences:' + '\n' + paymentTerms + '\n' + lienStatusText
   return lines.join('\n') + (lines.length > 0 ? '\n\n' : '') + body
-}
-
-function effectiveSubmissionBidLastContactIso(
-  bid: Pick<Bid, 'last_contact' | 'id'>,
-  lastContactFromEntries: Record<string, string>,
-): string | null {
-  const a = bid.last_contact
-  const entry = lastContactFromEntries[bid.id]
-  if (!a) return entry?.trim() ? entry : null
-  if (!entry?.trim()) return a
-  return new Date(entry) > new Date(a) ? entry : a
-}
-
-function isSubmissionBidStaleForThreshold(
-  bid: Pick<Bid, 'last_contact' | 'id'>,
-  lastContactFromEntries: Record<string, string>,
-  thresholdDays: number,
-): boolean {
-  const iso = effectiveSubmissionBidLastContactIso(bid, lastContactFromEntries)
-  if (!iso) return true
-  const ms = new Date(iso).getTime()
-  if (!Number.isFinite(ms)) return true
-  return denverCalendarDaysBetweenInstantAndNow(ms) > thresholdDays
 }
 
 export default function Bids() {
@@ -9369,9 +9347,31 @@ export default function Bids() {
   function submissionFollowupListRowBackground(bid: BidWithBuilder, isSelected: boolean): string | undefined {
     if (isSelected) return '#eff6ff'
     const n = submissionFollowupStaleDaysThresholdParsed
-    if (n != null && isSubmissionBidStaleForThreshold(bid, lastContactFromEntries, n)) return '#fef2f2'
+    if (n != null && isSubmissionBidStaleForThreshold(bid, lastContactFromEntries, customerContacts, n)) return '#fef2f2'
     return undefined
   }
+
+  useEffect(() => {
+    if (!bidPreview) return
+    if (activeTab === 'submission-followup' && submissionFollowupStaleDaysThresholdParsed != null) {
+      bidPreview.setSubmissionFollowupStaleOverlay({
+        thresholdDays: submissionFollowupStaleDaysThresholdParsed,
+        lastContactFromEntries,
+        customerContacts,
+      })
+    } else {
+      bidPreview.setSubmissionFollowupStaleOverlay(null)
+    }
+    return () => {
+      bidPreview.setSubmissionFollowupStaleOverlay(null)
+    }
+  }, [
+    bidPreview,
+    activeTab,
+    submissionFollowupStaleDaysThresholdParsed,
+    lastContactFromEntries,
+    customerContacts,
+  ])
 
   const teamLaborByBidId = useMemo(
     () => new Map(teamLaborDataForBids.map((r) => [r.bidId, r])),
@@ -9546,8 +9546,8 @@ export default function Bids() {
     const trimmed = (url ?? '').trim()
     if (!trimmed) {
       return (
-        <p style={{ margin: '0.25rem 0' }}>
-          <strong>{label}</strong> —
+        <p style={{ margin: '0.25rem 0', color: '#9ca3af', fontWeight: 400 }}>
+          {label} —
         </p>
       )
     }
@@ -9570,7 +9570,7 @@ export default function Bids() {
             e.preventDefault()
             openInExternalBrowser(trimmed)
           }}
-          style={{ color: '#3b82f6' }}
+          style={{ color: '#3b82f6', fontWeight: 600 }}
         >
           {label}
         </a>
@@ -16205,7 +16205,30 @@ export default function Bids() {
         <div>
           {/* Print Followup Sheet UI + list nav when a bid summary is open */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem', width: '100%', boxSizing: 'border-box' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0, flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0, flexShrink: 0, flexWrap: 'wrap' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.875rem', color: '#374151' }}>Highlight no update in last</span>
+                <input
+                  id="submission-followup-stale-days"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  step={1}
+                  value={submissionFollowupStaleDaysInput}
+                  onChange={(e) => setSubmissionFollowupStaleDaysInput(e.target.value)}
+                  placeholder="—"
+                  aria-label="Highlight bids with no update within this many Chicago calendar days"
+                  style={{
+                    width: '3.25rem',
+                    padding: '0.35rem 0.4rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: 4,
+                    fontSize: '0.875rem',
+                    boxSizing: 'border-box',
+                  }}
+                />
+                <span style={{ fontSize: '0.875rem', color: '#374151' }}>days</span>
+              </span>
               {selectedBidForSubmission && (
                 <>
                   <button
@@ -16264,29 +16287,6 @@ export default function Bids() {
               )}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '0.875rem', color: '#374151' }}>No contact in last</span>
-                <input
-                  id="submission-followup-stale-days"
-                  type="number"
-                  inputMode="numeric"
-                  min={1}
-                  step={1}
-                  value={submissionFollowupStaleDaysInput}
-                  onChange={(e) => setSubmissionFollowupStaleDaysInput(e.target.value)}
-                  placeholder="—"
-                  aria-label="Highlight bids with no last contact in this many calendar days (Chicago)"
-                  style={{
-                    width: '3.25rem',
-                    padding: '0.35rem 0.4rem',
-                    border: '1px solid #d1d5db',
-                    borderRadius: 4,
-                    fontSize: '0.875rem',
-                    boxSizing: 'border-box',
-                  }}
-                />
-                <span style={{ fontSize: '0.875rem', color: '#374151' }}>days</span>
-              </span>
               <label htmlFor="account-manager-print" style={{ fontWeight: 500 }}>
                 Followup sheet for:
               </label>
@@ -16430,136 +16430,165 @@ export default function Bids() {
                 </div>
               </div>
               <div style={{ marginBottom: '1rem', fontSize: '0.875rem' }}>
-                <p style={{ margin: '0.25rem 0' }}><strong>Bid Size</strong> {formatCompactCurrency(selectedBidForSubmission.bid_value != null ? Number(selectedBidForSubmission.bid_value) : null)}</p>
-                <p style={{ margin: '0.25rem 0' }}>
-                  <strong>Account Man</strong> {formatBidStaffDisplayName(selectedBidForSubmission.account_manager)}
-                </p>
-                <p style={{ margin: '0.25rem 0' }}>
-                  <strong>Estimator</strong> {formatBidStaffDisplayName(selectedBidForSubmission.estimator)}
-                </p>
-                <p style={{ margin: '1.5rem 0' }} />
-                {(selectedBidForSubmission.customers || selectedBidForSubmission.bids_gc_builders) ? (
-                  <>
-                    <p style={{ margin: '0.25rem 0' }}>
-                      <strong>Builder:</strong>{' '}
-                      <button
-                        type="button"
-                        onClick={() => openGcBuilderOrCustomerModal(selectedBidForSubmission)}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#3b82f6',
-                          cursor: 'pointer',
-                          textDecoration: 'underline',
-                          padding: 0,
-                          textAlign: 'left',
-                        }}
-                      >
-                        {selectedBidForSubmission.customers?.name ?? selectedBidForSubmission.bids_gc_builders?.name}
-                      </button>
-                    </p>
-                    {(() => {
-                      const addr = selectedBidForSubmission.customers?.address ?? selectedBidForSubmission.bids_gc_builders?.address
-                      if (!addr?.trim()) return null
-                      return <p style={{ margin: '0.25rem 0' }}>{addr}</p>
-                    })()}
-                    {(() => {
-                      const phone = selectedBidForSubmission.customers
-                        ? extractContactInfo(selectedBidForSubmission.customers.contact_info ?? null).phone
-                        : selectedBidForSubmission.bids_gc_builders?.contact_number
-                      if (!phone?.trim()) return null
-                      return <p style={{ margin: '0.25rem 0' }}>{phone}</p>
-                    })()}
-                    {(() => {
-                      const email = selectedBidForSubmission.customers
-                        ? extractContactInfo(selectedBidForSubmission.customers.contact_info ?? null).email
-                        : selectedBidForSubmission.bids_gc_builders?.email
-                      if (!email?.trim()) return null
-                      return <p style={{ margin: '0.25rem 0' }}>{email}</p>
-                    })()}
-                  </>
-                ) : (
-                  <p style={{ margin: '0.25rem 0' }}>
-                    <button
-                      type="button"
-                      onClick={() => openEditBid(selectedBidForSubmission, { focus: 'gcBuilder' })}
-                      aria-label="Add builder for this bid"
-                      style={{
-                        padding: '0.375rem 0.75rem',
-                        fontSize: '0.875rem',
-                        background: '#f3f4f6',
-                        border: '1px solid #d1d5db',
-                        borderRadius: 4,
-                        cursor: 'pointer',
-                        color: '#374151',
-                        fontWeight: 500,
-                      }}
-                    >
-                      Add Builder
-                    </button>
-                  </p>
-                )}
-                <p style={{ margin: '1.5rem 0' }} />
-                {selectedBidForSubmission.project_name?.trim() ? (
-                  <>
-                    <p style={{ margin: '0.25rem 0' }}>
-                      <strong>Project:</strong> {selectedBidForSubmission.project_name}
-                    </p>
-                    {selectedBidForSubmission.address?.trim() ? (
-                      <p style={{ margin: '0.25rem 0' }}>{selectedBidForSubmission.address}</p>
-                    ) : null}
-                  </>
-                ) : (
-                  <p style={{ margin: '0.25rem 0' }}>
-                    <button
-                      type="button"
-                      onClick={() => openEditBid(selectedBidForSubmission, { focus: 'projectName' })}
-                      aria-label="Add project name for this bid"
-                      style={{
-                        padding: '0.375rem 0.75rem',
-                        fontSize: '0.875rem',
-                        background: '#f3f4f6',
-                        border: '1px solid #d1d5db',
-                        borderRadius: 4,
-                        cursor: 'pointer',
-                        color: '#374151',
-                        fontWeight: 500,
-                      }}
-                    >
-                      Add Project
-                    </button>
-                  </p>
-                )}
-                <p style={{ margin: '1.5rem 0' }} />
-                {[selectedBidForSubmission.gc_contact_name, selectedBidForSubmission.gc_contact_phone, selectedBidForSubmission.gc_contact_email].some((v) => (v ?? '').trim() !== '') ? (
-                  <>
-                    <p style={{ margin: '0.25rem 0' }}>
-                      <strong>Project Contact:</strong> {selectedBidForSubmission.gc_contact_name ?? '—'}
-                    </p>
-                    <p style={{ margin: '0.25rem 0' }}>{selectedBidForSubmission.gc_contact_phone ?? '—'}</p>
-                    <p style={{ margin: '0.25rem 0' }}>{selectedBidForSubmission.gc_contact_email ?? '—'}</p>
-                  </>
-                ) : (
-                  <p style={{ margin: '0.25rem 0' }}>
-                    <button
-                      type="button"
-                      onClick={() => openEditBid(selectedBidForSubmission)}
-                      aria-label="Add project contact for this bid"
-                      style={{
-                        padding: '0.375rem 0.75rem',
-                        fontSize: '0.875rem',
-                        background: '#f3f4f6',
-                        border: '1px solid #d1d5db',
-                        borderRadius: 4,
-                        cursor: 'pointer',
-                        color: '#374151',
-                        fontWeight: 500,
-                      }}
-                    >
-                      Add project contact
-                    </button>
-                  </p>
-                )}
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: narrowViewport640 ? 'minmax(0, 1fr)' : 'minmax(0, 1fr) minmax(0, 1fr)',
+                    gap: '1rem',
+                    alignItems: 'start',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'auto minmax(0, 1fr)',
+                      columnGap: '0.75rem',
+                      rowGap: '0.25rem',
+                      alignItems: 'baseline',
+                    }}
+                  >
+                    <strong>Bid Size</strong>
+                    <span style={{ color: '#111827', wordBreak: 'break-word' }}>
+                      {formatCompactCurrency(selectedBidForSubmission.bid_value != null ? Number(selectedBidForSubmission.bid_value) : null)}
+                    </span>
+                    <strong>Account Man</strong>
+                    <span style={{ color: '#111827', wordBreak: 'break-word' }}>
+                      {formatBidStaffDisplayName(selectedBidForSubmission.account_manager)}
+                    </span>
+                    <strong>Estimator</strong>
+                    <span style={{ color: '#111827', wordBreak: 'break-word' }}>
+                      {formatBidStaffDisplayName(selectedBidForSubmission.estimator)}
+                    </span>
+                  </div>
+                  <div>
+                    {(selectedBidForSubmission.customers || selectedBidForSubmission.bids_gc_builders) ? (
+                      <>
+                        <p style={{ margin: '0.25rem 0' }}>
+                          <strong>Builder:</strong>{' '}
+                          <button
+                            type="button"
+                            onClick={() => openGcBuilderOrCustomerModal(selectedBidForSubmission)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#3b82f6',
+                              cursor: 'pointer',
+                              textDecoration: 'underline',
+                              padding: 0,
+                              textAlign: 'left',
+                            }}
+                          >
+                            {selectedBidForSubmission.customers?.name ?? selectedBidForSubmission.bids_gc_builders?.name}
+                          </button>
+                        </p>
+                        {(() => {
+                          const addr = selectedBidForSubmission.customers?.address ?? selectedBidForSubmission.bids_gc_builders?.address
+                          if (!addr?.trim()) return null
+                          return <p style={{ margin: '0.25rem 0' }}>{addr}</p>
+                        })()}
+                        {(() => {
+                          const phone = selectedBidForSubmission.customers
+                            ? extractContactInfo(selectedBidForSubmission.customers.contact_info ?? null).phone
+                            : selectedBidForSubmission.bids_gc_builders?.contact_number
+                          if (!phone?.trim()) return null
+                          return <p style={{ margin: '0.25rem 0' }}>{phone}</p>
+                        })()}
+                        {(() => {
+                          const email = selectedBidForSubmission.customers
+                            ? extractContactInfo(selectedBidForSubmission.customers.contact_info ?? null).email
+                            : selectedBidForSubmission.bids_gc_builders?.email
+                          if (!email?.trim()) return null
+                          return <p style={{ margin: '0.25rem 0' }}>{email}</p>
+                        })()}
+                      </>
+                    ) : (
+                      <p style={{ margin: '0.25rem 0' }}>
+                        <button
+                          type="button"
+                          onClick={() => openEditBid(selectedBidForSubmission, { focus: 'gcBuilder' })}
+                          aria-label="Add builder for this bid"
+                          style={{
+                            padding: '0.375rem 0.75rem',
+                            fontSize: '0.875rem',
+                            background: '#f3f4f6',
+                            border: '1px solid #d1d5db',
+                            borderRadius: 4,
+                            cursor: 'pointer',
+                            color: '#374151',
+                            fontWeight: 500,
+                          }}
+                        >
+                          Add Builder
+                        </button>
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    {selectedBidForSubmission.project_name?.trim() ? (
+                      <>
+                        <p style={{ margin: '0.25rem 0' }}>
+                          <strong>Project:</strong> {selectedBidForSubmission.project_name}
+                        </p>
+                        {selectedBidForSubmission.address?.trim() ? (
+                          <p style={{ margin: '0.25rem 0' }}>{selectedBidForSubmission.address}</p>
+                        ) : null}
+                      </>
+                    ) : (
+                      <p style={{ margin: '0.25rem 0' }}>
+                        <button
+                          type="button"
+                          onClick={() => openEditBid(selectedBidForSubmission, { focus: 'projectName' })}
+                          aria-label="Add project name for this bid"
+                          style={{
+                            padding: '0.375rem 0.75rem',
+                            fontSize: '0.875rem',
+                            background: '#f3f4f6',
+                            border: '1px solid #d1d5db',
+                            borderRadius: 4,
+                            cursor: 'pointer',
+                            color: '#374151',
+                            fontWeight: 500,
+                          }}
+                        >
+                          Add Project
+                        </button>
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    {[selectedBidForSubmission.gc_contact_name, selectedBidForSubmission.gc_contact_phone, selectedBidForSubmission.gc_contact_email].some((v) => (v ?? '').trim() !== '') ? (
+                      <>
+                        <p style={{ margin: '0.25rem 0' }}>
+                          <strong>Project Contact:</strong> {selectedBidForSubmission.gc_contact_name ?? '—'}
+                        </p>
+                        <p style={{ margin: '0.25rem 0' }}>{selectedBidForSubmission.gc_contact_phone ?? '—'}</p>
+                        {(selectedBidForSubmission.gc_contact_email ?? '').trim() ? (
+                          <p style={{ margin: '0.25rem 0' }}>{selectedBidForSubmission.gc_contact_email}</p>
+                        ) : null}
+                      </>
+                    ) : (
+                      <p style={{ margin: '0.25rem 0' }}>
+                        <button
+                          type="button"
+                          onClick={() => openEditBid(selectedBidForSubmission)}
+                          aria-label="Add project contact for this bid"
+                          style={{
+                            padding: '0.375rem 0.75rem',
+                            fontSize: '0.875rem',
+                            background: '#f3f4f6',
+                            border: '1px solid #d1d5db',
+                            borderRadius: 4,
+                            cursor: 'pointer',
+                            color: '#374151',
+                            fontWeight: 500,
+                          }}
+                        >
+                          Add project contact
+                        </button>
+                      </p>
+                    )}
+                  </div>
+                </div>
                 <p style={{ margin: '1.5rem 0' }} />
                 {submissionFollowupUrlRow('Project Folder', selectedBidForSubmission.drive_link)}
                 {submissionFollowupUrlRow('Job Plans', selectedBidForSubmission.plans_link)}
@@ -16776,7 +16805,7 @@ export default function Bids() {
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Account Man</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Estimator</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Last Contact</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Last Update</th>
                     <th style={{ padding: '0.75rem', width: 44, borderBottom: '1px solid #e5e7eb' }} />
                   </tr>
                 </thead>
@@ -16822,15 +16851,11 @@ export default function Bids() {
                             return estimatorNorm ? (estimatorNorm.name || estimatorNorm.email) : '—'
                           })()}
                         </td>
-                        <td style={{ padding: '0.75rem' }}>{formatTimeSinceLastContact(
-                          (() => {
-                            const a = bid.last_contact
-                            const b = lastContactFromEntries[bid.id]
-                            if (!a) return b ?? null
-                            if (!b) return a
-                            return new Date(b) > new Date(a) ? b : a
-                          })()
-                        )}</td>
+                        <td style={{ padding: '0.75rem' }}>
+                          {formatTimeSinceLastContact(
+                            effectiveSubmissionBidLastNoteIso(bid, lastContactFromEntries, customerContacts),
+                          )}
+                        </td>
                         <td style={{ padding: '0.75rem', width: 44 }}>
                           {selectedBidForSubmission?.id === bid.id && (
                             <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
@@ -16889,7 +16914,7 @@ export default function Bids() {
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>GC/Builder (customer)</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Account Man</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Estimator</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Last Contact</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Last Update</th>
                     <th style={{ padding: '0.75rem', width: 44, borderBottom: '1px solid #e5e7eb' }} />
                   </tr>
                 </thead>
@@ -16962,15 +16987,11 @@ export default function Bids() {
                             return estimatorNorm ? (estimatorNorm.name || estimatorNorm.email) : '—'
                           })()}
                         </td>
-                        <td style={{ padding: '0.75rem' }}>{formatTimeSinceLastContact(
-                          (() => {
-                            const a = bid.last_contact
-                            const b = lastContactFromEntries[bid.id]
-                            if (!a) return b ?? null
-                            if (!b) return a
-                            return new Date(b) > new Date(a) ? b : a
-                          })()
-                        )}</td>
+                        <td style={{ padding: '0.75rem' }}>
+                          {formatTimeSinceLastContact(
+                            effectiveSubmissionBidLastNoteIso(bid, lastContactFromEntries, customerContacts),
+                          )}
+                        </td>
                         <td style={{ padding: '0.75rem', width: 44 }}>
                           {selectedBidForSubmission?.id === bid.id && (
                             <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>

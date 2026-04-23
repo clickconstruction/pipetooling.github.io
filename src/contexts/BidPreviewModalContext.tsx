@@ -1,16 +1,27 @@
-import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BidPreviewModal, type BidPreviewTabUrl } from '../components/bids/BidPreviewModal'
 import { fetchBidForPreview } from '../lib/fetchBidForPreview'
+import { isSubmissionBidStaleForThreshold } from '../lib/submissionFollowupStale'
+import type { Database } from '../types/database'
 import type { BidWithBuilder } from '../types/bidWithBuilder'
 
 export const OPEN_BID_EDIT_QUERY = 'openBidEdit'
+
+type CustomerContactRow = Database['public']['Tables']['customer_contacts']['Row']
+
+export type SubmissionFollowupStaleOverlayPayload = {
+  thresholdDays: number
+  lastContactFromEntries: Record<string, string>
+  customerContacts: CustomerContactRow[]
+}
 
 export type BidPreviewModalContextValue = {
   openBidPreview: (bidId: string) => void
   openBidPreviewFromBid: (bid: BidWithBuilder) => void
   closeBidPreview: () => void
   isOpen: boolean
+  setSubmissionFollowupStaleOverlay: (payload: SubmissionFollowupStaleOverlayPayload | null) => void
 }
 
 type OpenState =
@@ -30,6 +41,8 @@ export function BidPreviewModalProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   const [openState, setOpenState] = useState<OpenState>({ kind: 'closed' })
   const [instanceKey, setInstanceKey] = useState(0)
+  const [submissionFollowupStaleOverlay, setSubmissionFollowupStaleOverlay] =
+    useState<SubmissionFollowupStaleOverlayPayload | null>(null)
 
   const closeBidPreview = useCallback(() => {
     setOpenState({ kind: 'closed' })
@@ -107,12 +120,33 @@ export function BidPreviewModalProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
-  const value: BidPreviewModalContextValue = {
-    openBidPreview,
-    openBidPreviewFromBid,
-    closeBidPreview,
-    isOpen: openState.kind === 'open',
-  }
+  const value = useMemo<BidPreviewModalContextValue>(
+    () => ({
+      openBidPreview,
+      openBidPreviewFromBid,
+      closeBidPreview,
+      isOpen: openState.kind === 'open',
+      setSubmissionFollowupStaleOverlay,
+    }),
+    [
+      openBidPreview,
+      openBidPreviewFromBid,
+      closeBidPreview,
+      openState.kind,
+      setSubmissionFollowupStaleOverlay,
+    ],
+  )
+
+  const staleNoUpdateHighlight =
+    openState.kind === 'open' &&
+    openState.bid != null &&
+    submissionFollowupStaleOverlay != null &&
+    isSubmissionBidStaleForThreshold(
+      openState.bid,
+      submissionFollowupStaleOverlay.lastContactFromEntries,
+      submissionFollowupStaleOverlay.customerContacts,
+      submissionFollowupStaleOverlay.thresholdDays,
+    )
 
   return (
     <BidPreviewModalContext.Provider value={value}>
@@ -128,6 +162,7 @@ export function BidPreviewModalProvider({ children }: { children: ReactNode }) {
           onRequestEditBid={onRequestEditBid}
           onNotesMutated={refreshPreviewBidFromNotes}
           onNotesMutatedCustomer={refreshPreviewBidFromNotes}
+          staleNoUpdateHighlight={staleNoUpdateHighlight}
         />
       ) : null}
     </BidPreviewModalContext.Provider>

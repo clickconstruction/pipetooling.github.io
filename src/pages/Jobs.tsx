@@ -7516,8 +7516,17 @@ ${totalsHtml}
                       ? '…'
                       : paidJobsMergedForKey === jobsListDataKey && jobsListDataKey != null
                         ? paid.length
-                        : '—'
+                        : 'Expand to load'
                     const suffix = paidJobsLoading ? ' — loading' : ''
+                    if (countPart === 'Expand to load') {
+                      return (
+                        <>
+                          Paid in Full (
+                          <span style={{ color: '#dc2626' }}>Expand to load</span>)
+                          {suffix}
+                        </>
+                      )
+                    }
                     return `Paid in Full (${countPart})${suffix}`
                   })()}
                 </button>
