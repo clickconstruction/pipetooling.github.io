@@ -10,7 +10,7 @@ import { loadJsPDF } from '../lib/loadJsPDF'
 import { fetchBidBoardNotesUnreadCounts } from '../lib/bidBoardNotesUnreadCounts'
 import { upsertBidNotesReadWatermark } from '../lib/userBidNotesReadState'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
-import { formatCompactNoteDateTime } from '../utils/dateUtils'
+import { denverCalendarDaysBetweenInstantAndNow, formatCompactNoteDateTime } from '../utils/dateUtils'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { addExpandedPartsToPO, expandTemplate, getTemplatePartsPreview } from '../lib/materialPOUtils'
 import {
@@ -1335,6 +1335,29 @@ function buildLienReleaseText(
   return lines.join('\n') + (lines.length > 0 ? '\n\n' : '') + body
 }
 
+function effectiveSubmissionBidLastContactIso(
+  bid: Pick<Bid, 'last_contact' | 'id'>,
+  lastContactFromEntries: Record<string, string>,
+): string | null {
+  const a = bid.last_contact
+  const entry = lastContactFromEntries[bid.id]
+  if (!a) return entry?.trim() ? entry : null
+  if (!entry?.trim()) return a
+  return new Date(entry) > new Date(a) ? entry : a
+}
+
+function isSubmissionBidStaleForThreshold(
+  bid: Pick<Bid, 'last_contact' | 'id'>,
+  lastContactFromEntries: Record<string, string>,
+  thresholdDays: number,
+): boolean {
+  const iso = effectiveSubmissionBidLastContactIso(bid, lastContactFromEntries)
+  if (!iso) return true
+  const ms = new Date(iso).getTime()
+  if (!Number.isFinite(ms)) return true
+  return denverCalendarDaysBetweenInstantAndNow(ms) > thresholdDays
+}
+
 export default function Bids() {
   const { user: authUser } = useAuth()
   const { showToast } = useToastContext()
@@ -1528,6 +1551,7 @@ export default function Bids() {
 
   // Submission & Followup tab
   const [submissionSearchQuery, setSubmissionSearchQuery] = useState('')
+  const [submissionFollowupStaleDaysInput, setSubmissionFollowupStaleDaysInput] = useState('')
   const [selectedBidForSubmission, setSelectedBidForSubmission] = useState<BidWithBuilder | null>(null)
   const [submissionFollowupNotesTab, setSubmissionFollowupNotesTab] = useState<'all' | 'bid' | 'customer'>('all')
   const [submissionFollowupUnifiedAddingKind, setSubmissionFollowupUnifiedAddingKind] =
@@ -9336,6 +9360,19 @@ export default function Bids() {
   const submissionStartedOrComplete = filteredBidsForSubmission.filter((b) => b.outcome === 'started_or_complete')
   const submissionLost = filteredBidsForSubmission.filter((b) => b.outcome === 'lost')
 
+  const submissionFollowupStaleDaysThresholdParsed = useMemo(() => {
+    const t = Number.parseInt(submissionFollowupStaleDaysInput.trim(), 10)
+    if (!Number.isFinite(t) || t < 1) return null
+    return t
+  }, [submissionFollowupStaleDaysInput])
+
+  function submissionFollowupListRowBackground(bid: BidWithBuilder, isSelected: boolean): string | undefined {
+    if (isSelected) return '#eff6ff'
+    const n = submissionFollowupStaleDaysThresholdParsed
+    if (n != null && isSubmissionBidStaleForThreshold(bid, lastContactFromEntries, n)) return '#fef2f2'
+    return undefined
+  }
+
   const teamLaborByBidId = useMemo(
     () => new Map(teamLaborDataForBids.map((r) => [r.bidId, r])),
     [teamLaborDataForBids]
@@ -16227,6 +16264,29 @@ export default function Bids() {
               )}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.875rem', color: '#374151' }}>No contact in last</span>
+                <input
+                  id="submission-followup-stale-days"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  step={1}
+                  value={submissionFollowupStaleDaysInput}
+                  onChange={(e) => setSubmissionFollowupStaleDaysInput(e.target.value)}
+                  placeholder="—"
+                  aria-label="Highlight bids with no last contact in this many calendar days (Chicago)"
+                  style={{
+                    width: '3.25rem',
+                    padding: '0.35rem 0.4rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: 4,
+                    fontSize: '0.875rem',
+                    boxSizing: 'border-box',
+                  }}
+                />
+                <span style={{ fontSize: '0.875rem', color: '#374151' }}>days</span>
+              </span>
               <label htmlFor="account-manager-print" style={{ fontWeight: 500 }}>
                 Followup sheet for:
               </label>
@@ -16732,7 +16792,7 @@ export default function Bids() {
                         style={{
                           borderBottom: '1px solid #e5e7eb',
                           cursor: 'pointer',
-                          background: selectedBidForSubmission?.id === bid.id ? '#eff6ff' : undefined,
+                          background: submissionFollowupListRowBackground(bid, selectedBidForSubmission?.id === bid.id),
                         }}
                       >
                         <td style={{ padding: 0, textAlign: 'center', width: 44 }} onClick={(e) => e.stopPropagation()}>
@@ -16845,7 +16905,7 @@ export default function Bids() {
                         style={{
                           borderBottom: '1px solid #e5e7eb',
                           cursor: 'pointer',
-                          background: selectedBidForSubmission?.id === bid.id ? '#eff6ff' : undefined,
+                          background: submissionFollowupListRowBackground(bid, selectedBidForSubmission?.id === bid.id),
                         }}
                       >
                         <td style={{ padding: 0, textAlign: 'center', width: 44 }} onClick={(e) => e.stopPropagation()}>

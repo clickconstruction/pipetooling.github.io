@@ -12,11 +12,17 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.383 → v2.4"
+version_range: "v2.385 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.385)"
+    line: ~1248
+    description: "Jobs: lazy Paid in Full fetch on expand + fetchPaidJobsIfNeeded; Edit/New guarded until list idle (tryOpenEditJob)"
+  - name: "Latest Version (v2.384)"
+    line: ~1260
+    description: "Bids Submission & Followup: No contact in last N days highlights stale rows (Chicago calendar); denverCalendarDaysBetweenInstantAndNow"
   - name: "Latest Version (v2.383)"
-    line: ~1243
+    line: ~1272
     description: "Schedule Dispatch mobile: transparent sticky Person/Team member column + white name pills; Bids Confirm bid sent optional Adds to bid note → bids_submission_entries on save"
   - name: "Latest Version (v2.382)"
     line: ~1262
@@ -976,6 +982,8 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.385 — **Jobs** **Stages**: **Paid in Full** loads **`status: paid`** jobs only on **expand** (or **Stages search**); **`fetchPaidJobsIfNeeded`** in **`JobsListCacheContext`**; **Edit** / **New Job** toast if list still **loading**/**refreshing** (**`tryOpenEditJob`**)](#latest-updates-v2385)
+**New:** [v2.384 — **Bids** **Submission & Followup**: **No contact in last** *N* **days** tints list rows (effective last contact vs **Chicago** calendar; **`denverCalendarDaysBetweenInstantAndNow`**)](#latest-updates-v2384)
 **New:** [v2.383 — **Schedule Dispatch** **mobile**: transparent sticky **Person** / **Team member** + white **name pills** (`scheduleDispatchMobileNamePill`); **Bids** **Confirm bid sent** optional **Adds to bid note:** → **`bids_submission_entries`** on save](#latest-updates-v2383)
 **New:** [v2.382 — **Quickfill** **Prospects**: **Team** **line** chart (last **30** days, **Y** = **Marked + Updated** per person, **`recharts`**) + **`prospectTeamActivityChartData.ts`** — **`ProspectTeamActivityLineChart`**](#latest-updates-v2382)
 **New:** [v2.381 — **Quickfill** **Prospects** section: **warmth** pipeline (**0–3** + **4+**), **Open Prospects**, shared **Team** activity (**`prospectTeamActivity`**, last **30** days; chart UI in **v2.382**) — **`QuickfillProspectsSection`**, **`canAccessProspects`**](#latest-updates-v2381)
@@ -1239,6 +1247,28 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.385)
+
+**Date**: 2026-04-23
+
+### **Jobs** — **Stages** — lazy **Paid in Full** + **Edit** guard during load
+
+- **[`JobsListCacheContext.tsx`](src/contexts/JobsListCacheContext.tsx)**: main **`runFetchJobs`** loads **non-paid** jobs only (no automatic second wave). **`fetchPaidJobsIfNeeded(customerFilter)`** merges **`statusScope: 'paid'`** once per cache key; **`paidJobsLoading`**, **`jobsListDataKey`**, **`paidJobsMergedForKey`**. Removed **`jobsListPaidPending`**.
+- **[`Jobs.tsx`](src/pages/Jobs.tsx)**: expanding **Paid in Full** calls **`fetchPaidJobsIfNeeded`**; header shows **(—)** until merged, then count; **Loading paid jobs…** in section when applicable. **Stages search** prefetches paid so matches still work.
+- **`tryOpenEditJob`** + **`openNew`** guard: toast *Please wait until jobs finish loading.* while **`jobsListLoading`** or **`jobsListRefreshing`**; **`?newJob=`** waits the same. URL **`edit=`**, **Bank Payments**, **Capable to bill**, **Back to Edit Job** use the guard.
+
+---
+
+## Latest Updates (v2.384)
+
+**Date**: 2026-04-23
+
+### **Bids** — **Submission & Followup** — stale **last contact** highlight
+
+- Toolbar (**same row** as **Followup sheet for:**): **No contact in last** [number] **days**. Empty = off. When set, **Unsent** and **Not yet won or lost** table rows use a light red background (`#fef2f2`) if **effective last contact** (later of **`bids.last_contact`** and **`lastContactFromEntries`**) is missing or more than **N** whole **company-calendar** days behind today (**[`denverCalendarDaysBetweenInstantAndNow`](src/utils/dateUtils.ts)**). Selected row stays **`#eff6ff`**. Implementation: [`Bids.tsx`](src/pages/Bids.tsx) **`submissionFollowupStaleDaysInput`**, **`isSubmissionBidStaleForThreshold`**.
+
 ---
 
 ## Latest Updates (v2.383)

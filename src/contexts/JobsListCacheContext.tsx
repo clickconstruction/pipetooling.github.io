@@ -31,11 +31,17 @@ type JobsListCacheContextValue = {
   setJobs: Dispatch<SetStateAction<JobWithDetails[]>>
   jobsListLoading: boolean
   jobsListRefreshing: boolean
-  /** True after non-paid jobs are shown until the paid-only wave finishes (or fails). */
-  jobsListPaidPending: boolean
+  /** True while lazy paid-status jobs fetch runs (after user expands Paid in Full). */
+  paidJobsLoading: boolean
+  /** Key for the latest successful non-paid snapshot; null before first success. */
+  jobsListDataKey: string | null
+  /** When equal to `jobsListDataKey`, paid jobs are merged into `jobs`. */
+  paidJobsMergedForKey: string | null
   jobsListError: string | null
   setJobsListError: (v: string | null) => void
   runFetchJobs: RunFetchJobsFn
+  /** Fetch `statusScope: 'paid'` once per non-paid snapshot key; no-op if already merged or main fetch in flight. */
+  fetchPaidJobsIfNeeded: (customerFilter: string | null) => Promise<void>
 }
 
 const JobsListCacheContext = createContext<JobsListCacheContextValue | null>(null)
@@ -46,7 +52,9 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
   const [jobsListLoading, setJobsListLoading] = useState(true)
   const [jobsListRefreshing, setJobsListRefreshing] = useState(false)
   const [jobsListError, setJobsListError] = useState<string | null>(null)
-  const [jobsListPaidPending, setJobsListPaidPending] = useState(false)
+  const [paidJobsLoading, setPaidJobsLoading] = useState(false)
+  const [jobsListDataKey, setJobsListDataKey] = useState<string | null>(null)
+  const [paidJobsMergedForKey, setPaidJobsMergedForKey] = useState<string | null>(null)
 
   const loadInFlightRef = useRef(false)
   const pendingRef = useRef<PendingRefetch | null>(null)
@@ -55,6 +63,38 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
   const lastUserIdRef = useRef<string | null>(null)
   const lastFetchCompletedAtRef = useRef(0)
   const runFetchJobsRef = useRef<RunFetchJobsFn | null>(null)
+  const lastNonPaidKeyRef = useRef<string | null>(null)
+  const paidMergedKeyRef = useRef<string | null>(null)
+  const paidFetchInFlightRef = useRef(false)
+
+  const fetchPaidJobsIfNeeded = useCallback(async (customerFilter: string | null) => {
+    if (!user?.id) return
+    if (loadInFlightRef.current) return
+    const key = buildJobsListCacheKey(user.id, customerFilter)
+    if (lastNonPaidKeyRef.current !== key) return
+    if (paidMergedKeyRef.current === key) return
+    if (paidFetchInFlightRef.current) return
+    paidFetchInFlightRef.current = true
+    setPaidJobsLoading(true)
+    try {
+      const second = await fetchJobsLedgerWithDetailsForStages({
+        customerFilter,
+        statusScope: 'paid',
+      })
+      if (second.ok) {
+        setJobs((prev) => [...prev, ...second.jobs])
+        paidMergedKeyRef.current = key
+        setPaidJobsMergedForKey(key)
+      } else {
+        console.warn('JobsListCache: paid jobs fetch failed (non-paid data kept):', second.error)
+      }
+    } catch (e) {
+      console.warn('JobsListCache: paid jobs fetch failed (non-paid data kept):', e)
+    } finally {
+      paidFetchInFlightRef.current = false
+      setPaidJobsLoading(false)
+    }
+  }, [user?.id])
 
   const runFetchJobs = useCallback<RunFetchJobsFn>(
     async (customerFilter: string | null, options?: { kind?: RefetchKind }): Promise<JobWithDetails[] | undefined> => {
@@ -62,8 +102,11 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
         setJobs([])
         setJobsListLoading(false)
         setJobsListRefreshing(false)
-        setJobsListPaidPending(false)
         setJobsListError(null)
+        setJobsListDataKey(null)
+        setPaidJobsMergedForKey(null)
+        lastNonPaidKeyRef.current = null
+        paidMergedKeyRef.current = null
         lastSuccessfulDataKeyRef.current = null
         completedKeysRef.current.clear()
         return undefined
@@ -88,6 +131,10 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
       if (hadDifferentKey) {
         setJobs([])
         setJobsListError(null)
+        setJobsListDataKey(null)
+        setPaidJobsMergedForKey(null)
+        lastNonPaidKeyRef.current = null
+        paidMergedKeyRef.current = null
       }
 
       const hasLoadedThisKey = completedKeysRef.current.has(key)
@@ -98,7 +145,6 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
         setJobsListLoading(true)
       }
       setJobsListError(null)
-      setJobsListPaidPending(false)
 
       try {
         const first = await fetchJobsLedgerWithDetailsForStages({
@@ -115,33 +161,18 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
           lastFetchCompletedAtRef.current = Date.now()
           return undefined
         }
+        paidMergedKeyRef.current = null
+        setPaidJobsMergedForKey(null)
         setJobs(first.jobs)
         lastSuccessfulDataKeyRef.current = key
         completedKeysRef.current.add(key)
+        lastNonPaidKeyRef.current = key
+        setJobsListDataKey(key)
         setJobsListLoading(false)
         setJobsListRefreshing(false)
         lastFetchCompletedAtRef.current = Date.now()
 
-        setJobsListPaidPending(true)
-        let paid: JobWithDetails[] = []
-        try {
-          const second = await fetchJobsLedgerWithDetailsForStages({
-            customerFilter,
-            statusScope: 'paid',
-          })
-          if (second.ok) {
-            paid = second.jobs
-            setJobs((prev) => [...prev, ...paid])
-          } else {
-            console.warn('JobsListCache: paid jobs wave failed (non-paid data kept):', second.error)
-          }
-        } catch (e) {
-          console.warn('JobsListCache: paid jobs wave failed (non-paid data kept):', e)
-        } finally {
-          setJobsListPaidPending(false)
-        }
-
-        return [...first.jobs, ...paid]
+        return first.jobs
       } finally {
         loadInFlightRef.current = false
         if (pendingRef.current) {
@@ -161,8 +192,11 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
       setJobs([])
       setJobsListLoading(true)
       setJobsListRefreshing(false)
-      setJobsListPaidPending(false)
       setJobsListError(null)
+      setJobsListDataKey(null)
+      setPaidJobsMergedForKey(null)
+      lastNonPaidKeyRef.current = null
+      paidMergedKeyRef.current = null
       lastSuccessfulDataKeyRef.current = null
       completedKeysRef.current.clear()
       lastUserIdRef.current = null
@@ -172,6 +206,10 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
       setJobs([])
       lastSuccessfulDataKeyRef.current = null
       completedKeysRef.current.clear()
+      setJobsListDataKey(null)
+      setPaidJobsMergedForKey(null)
+      lastNonPaidKeyRef.current = null
+      paidMergedKeyRef.current = null
     }
     lastUserIdRef.current = user.id
   }, [user?.id])
@@ -181,10 +219,13 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
     setJobs,
     jobsListLoading,
     jobsListRefreshing,
-    jobsListPaidPending,
+    paidJobsLoading,
+    jobsListDataKey,
+    paidJobsMergedForKey,
     jobsListError,
     setJobsListError,
     runFetchJobs,
+    fetchPaidJobsIfNeeded,
   }
 
   return <JobsListCacheContext.Provider value={value}>{children}</JobsListCacheContext.Provider>

@@ -207,6 +207,29 @@ export function denverCalendarDayKey(ms: number): string {
   }).format(new Date(ms))
 }
 
+function utcMsFromCalendarYmd(ymd: string): number {
+  const parts = ymd.split('-')
+  if (parts.length !== 3) return NaN
+  const y = Number(parts[0])
+  const mo = Number(parts[1])
+  const d = Number(parts[2])
+  if (!Number.isFinite(y) || !Number.isFinite(mo) || !Number.isFinite(d)) return NaN
+  return Date.UTC(y, mo - 1, d)
+}
+
+/**
+ * Whole calendar days from the instant's company-calendar date to `nowMs`'s company-calendar date (Chicago).
+ * 0 = same calendar day; non-negative (clamped).
+ */
+export function denverCalendarDaysBetweenInstantAndNow(contactMs: number, nowMs: number = Date.now()): number {
+  const keyContact = denverCalendarDayKey(contactMs)
+  const keyNow = denverCalendarDayKey(nowMs)
+  const t0 = utcMsFromCalendarYmd(keyContact)
+  const t1 = utcMsFromCalendarYmd(keyNow)
+  if (!Number.isFinite(t0) || !Number.isFinite(t1)) return 0
+  return Math.max(0, Math.floor((t1 - t0) / 86_400_000))
+}
+
 /** e.g. Mar 24 (no year). */
 export function formatDenverCalendarDayShort(ms: number): string {
   return new Intl.DateTimeFormat('en-US', {

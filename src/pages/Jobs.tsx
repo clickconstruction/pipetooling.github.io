@@ -41,7 +41,7 @@ import { useJobThreadNotes } from '../hooks/useJobThreadNotes'
 import { CrewJobsBlock } from '../components/CrewJobsBlock'
 import type { Database } from '../types/database'
 import type { JobWithDetails } from '../types/jobWithDetails'
-import { useJobFormModal } from '../contexts/JobFormModalContext'
+import { useJobFormModal, type OpenEditJobOptions } from '../contexts/JobFormModalContext'
 import { useJobsListCache } from '../contexts/JobsListCacheContext'
 import { CLOCK_SESSION_LIST_SELECT } from '../lib/clockSessionSelect'
 import { APP_CALENDAR_TZ, formatWorkDateYmdWeekdayLongFriendly, getDefaultWeekRange } from '../utils/dateUtils'
@@ -639,9 +639,12 @@ export default function Jobs() {
     setJobs,
     jobsListLoading,
     jobsListRefreshing,
-    jobsListPaidPending,
+    paidJobsLoading,
+    jobsListDataKey,
+    paidJobsMergedForKey,
     jobsListError,
     runFetchJobs,
+    fetchPaidJobsIfNeeded,
   } = useJobsListCache()
   const [activeTab, setActiveTab] = useState<JobsTab>('stages')
   const [users, setUsers] = useState<UserRow[]>([])
@@ -660,6 +663,20 @@ export default function Jobs() {
   const loadJobs = useCallback(() => {
     return runFetchJobs(customerFilterForFetch)
   }, [runFetchJobs, customerFilterForFetch])
+
+  const jobsListPipelineBusy = jobsListLoading || jobsListRefreshing
+
+  const tryOpenEditJob = useCallback(
+    (jobId: string, options?: OpenEditJobOptions) => {
+      if (jobsListPipelineBusy) {
+        showToast('Please wait until jobs finish loading.', 'info')
+        return
+      }
+      jobFormModal?.openEditJob(jobId, options ?? {})
+    },
+    [jobsListPipelineBusy, jobFormModal, showToast],
+  )
+
   function scheduleLoadJobsAfterMutation() {
     if (loadJobsAfterMutationTimerRef.current) {
       clearTimeout(loadJobsAfterMutationTimerRef.current)
@@ -1042,6 +1059,13 @@ export default function Jobs() {
       setStagesScheduleSessionSearchBusy(false)
     }
   }, [activeTab, stagesSearchQuery, stagesIncludeScheduleTimeInSearch, jobs, showToast])
+
+  // Stages search should match paid-status jobs too; lazy paid list loads on expand, so prefetch when searching.
+  useEffect(() => {
+    if (activeTab !== 'stages') return
+    if (!stagesSearchQuery.trim()) return
+    void fetchPaidJobsIfNeeded(customerFilterForFetch)
+  }, [activeTab, stagesSearchQuery, customerFilterForFetch, fetchPaidJobsIfNeeded])
 
   const bankPaymentsModalBilledRows = useMemo(
     () => buildJobsStagesBoardLists(jobs, '').billedRows,
@@ -3559,6 +3583,7 @@ ${totalsHtml}
         return next
       }, { replace: true })
     } else if (newJob && (tab === 'billing' || tab === 'stages' || !tab)) {
+      if (jobsListLoading || jobsListRefreshing) return
       const projectParam = searchParams.get('project')
       setActiveTab(tab === 'billing' ? 'billing' : 'stages')
       jobFormModal?.openNewJob({
@@ -3575,14 +3600,14 @@ ${totalsHtml}
         return next
       }, { replace: true })
     }
-  }, [searchParams])
+  }, [searchParams, jobsListLoading, jobsListRefreshing, jobFormModal, loadJobs])
 
   // When edit=jobId is in URL, open the global job form modal
   const editJobId = searchParams.get('edit')
   useEffect(() => {
-    if (!editJobId || jobsListLoading) return
+    if (!editJobId || jobsListLoading || jobsListRefreshing) return
     const job = jobs.find((j) => j.id === editJobId)
-    jobFormModal?.openEditJob(editJobId, {
+    tryOpenEditJob(editJobId, {
       initialJob: job,
       onSaved: () => {
         void loadJobs()
@@ -3593,7 +3618,7 @@ ${totalsHtml}
       next.delete('edit')
       return next
     }, { replace: true })
-  }, [editJobId, jobs, jobsListLoading])
+  }, [editJobId, jobs, jobsListLoading, jobsListRefreshing, tryOpenEditJob, loadJobs, setSearchParams])
 
   const openBankPaymentsParam = searchParams.get('openBankPayments')
   useEffect(() => {
@@ -4185,6 +4210,10 @@ ${totalsHtml}
   }
 
   function openNew() {
+    if (jobsListPipelineBusy) {
+      showToast('Please wait until jobs finish loading.', 'info')
+      return
+    }
     jobFormModal?.openNewJob({
       onSaved: () => {
         void loadJobs()
@@ -4194,7 +4223,7 @@ ${totalsHtml}
   }
 
   function openEdit(job: JobWithDetails, opts?: { billingCustomerHighlight?: boolean }) {
-    jobFormModal?.openEditJob(job.id, {
+    tryOpenEditJob(job.id, {
       initialJob: job,
       billingCustomerHighlight: opts?.billingCustomerHighlight,
       onSaved: () => {
@@ -4205,7 +4234,7 @@ ${totalsHtml}
   }
 
   function openEditJobAndCreateCustomerFlow(job: JobWithDetails) {
-    jobFormModal?.openEditJob(job.id, {
+    tryOpenEditJob(job.id, {
       initialJob: job,
       alsoOpenCreateCustomerModal: true,
       onSaved: () => {
@@ -7356,16 +7385,50 @@ ${totalsHtml}
 
                 <button
                   type="button"
-                  onClick={() => toggleStages('paid')}
+                  onClick={() => {
+                    setStagesSectionOpen((prev) => {
+                      const nextOpen = !prev.paid
+                      if (nextOpen) {
+                        queueMicrotask(() => void fetchPaidJobsIfNeeded(customerFilterForFetch))
+                      }
+                      return { ...prev, paid: nextOpen }
+                    })
+                  }}
                   aria-expanded={stagesSectionOpen.paid}
                   style={{ margin: '1.5rem 0 0.5rem', fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                 >
                   <span aria-hidden>{stagesSectionOpen.paid ? '\u25BC' : '\u25B6'}</span>
-                  {`Paid in Full (${jobsListPaidPending ? '…' : paid.length})${jobsListPaidPending ? ' — loading' : ''}`}
+                  {(() => {
+                    const countPart = paidJobsLoading
+                      ? '…'
+                      : paidJobsMergedForKey === jobsListDataKey && jobsListDataKey != null
+                        ? paid.length
+                        : '—'
+                    const suffix = paidJobsLoading ? ' — loading' : ''
+                    return `Paid in Full (${countPart})${suffix}`
+                  })()}
                 </button>
-                {stagesSectionOpen.paid && renderStagesTable(paid, null, () => {}, true, undefined, stagesHamMode
-                  ? (j) => updateJobStatus(j.id, 'billed')
-                  : (j) => setSendBackConfirmJob({ id: j.id, toStatus: 'billed' }), false, true)}
+                {stagesSectionOpen.paid ? (
+                  <>
+                    {paidJobsLoading ? (
+                      <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: '0 0 0.75rem' }} role="status">
+                        Loading paid jobs…
+                      </p>
+                    ) : null}
+                    {renderStagesTable(
+                      paid,
+                      null,
+                      () => {},
+                      true,
+                      undefined,
+                      stagesHamMode
+                        ? (j) => updateJobStatus(j.id, 'billed')
+                        : (j) => setSendBackConfirmJob({ id: j.id, toStatus: 'billed' }),
+                      false,
+                      true,
+                    )}
+                  </>
+                ) : null}
 
                 {billedTotalByNameModalOpen && (() => {
                   const byNameRows = new Map<string, StageRow[]>()
@@ -7596,7 +7659,7 @@ ${totalsHtml}
                                     <button
                                       type="button"
                                       onClick={() => {
-                                        jobFormModal?.openEditJob(job.id, {
+                                        tryOpenEditJob(job.id, {
                                           initialJob: job,
                                           onSaved: () => {
                                             void loadJobs()
@@ -11006,9 +11069,7 @@ ${totalsHtml}
         onApplied={async () => {
           await loadJobs()
         }}
-        onOpenEditJob={(jobId) =>
-          jobFormModal?.openEditJob(jobId, { onSaved: () => void loadJobs() })
-        }
+        onOpenEditJob={(jobId) => tryOpenEditJob(jobId, { onSaved: () => void loadJobs() })}
       />
       <JobBookModal
         open={jobBookModalOpen}
@@ -11460,7 +11521,7 @@ ${totalsHtml}
               clearReturnEditJobFromStages()
               setReturnEditBannerJobId(null)
               if (!jid) return
-              jobFormModal?.openEditJob(jid, {
+              tryOpenEditJob(jid, {
                 initialJob: jobs.find((j) => j.id === jid),
                 onSaved: () => {
                   void loadJobs()
