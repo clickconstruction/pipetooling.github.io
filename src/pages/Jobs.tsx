@@ -5157,7 +5157,7 @@ ${totalsHtml}
               textAlign: 'center',
             }}
           >
-            <span style={{ display: 'inline-flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 0 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '0.35em', rowGap: 0 }}>
               <button
                 type="button"
                 onClick={() => focusStagesSection('working')}
@@ -5175,13 +5175,12 @@ ${totalsHtml}
               >
                 Working
               </button>
-              {' '}
               <span>({stagesBoardLists.working.length})</span>
             </span>
             <span style={{ color: '#9ca3af', userSelect: 'none' }} aria-hidden>
               →
             </span>
-            <span style={{ display: 'inline-flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 0 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '0.35em', rowGap: 0 }}>
               <button
                 type="button"
                 onClick={() => focusStagesSection('readyToBill')}
@@ -5199,13 +5198,12 @@ ${totalsHtml}
               >
                 Ready to Bill
               </button>
-              {' '}
               <span>({stagesBoardLists.readyToBillRows.length})</span>
             </span>
             <span style={{ color: '#9ca3af', userSelect: 'none' }} aria-hidden>
               →
             </span>
-            <span style={{ display: 'inline-flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 0 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '0.35em', rowGap: 0 }}>
               <button
                 type="button"
                 onClick={() => focusStagesSection('billed')}
@@ -5223,7 +5221,6 @@ ${totalsHtml}
               >
                 Billed Awaiting Payment
               </button>
-              {' '}
               <span>({stagesBoardLists.billedRows.length})</span>
             </span>
           </div>
