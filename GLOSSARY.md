@@ -11,7 +11,7 @@ last_updated: 2026-04-23
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
-total_terms: ~126
+total_terms: ~127
 categories: 9
 
 key_sections:
@@ -900,6 +900,9 @@ Feature in Customers page for bulk-pasting customer data from spreadsheet.
 **Location**: Expandable section in New Customer form
 
 **Visibility**: Collapsed by default, hidden in Bids modal
+
+### Quickfill (page)
+The **`/quickfill`** route — day-to-day workflow hub (section marks, hours, **Prospects**, schedule, inboxes, etc.). Not the same as **Quick Fill** (customer bulk paste). **Prospects** block: warmth pipeline + (for **dev** / **master** / **assistant**) a **30-day Team activity line chart** — **`RECENT_FEATURES.md`** v2.381 / v2.382, **`PROJECT_DOCUMENTATION.md`** (Quickfill), **`ACCESS_CONTROL.md`**.
 
 ### Expandable Row
 Table row that expands to show additional details.

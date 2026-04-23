@@ -20,7 +20,7 @@ key_sections:
     description: "Quickfill Prospects: Team line chart (recharts), Y = Marked+Updated per day per person, prospectTeamActivityChartData; Prospects page Team tab still table"
   - name: "Latest Version (v2.381)"
     line: ~1254
-    description: "Quickfill Prospects section: warmth counts 0–3 and 4+; Team table (dev/master/assistant, last 30 days); link to /prospects; prospectTeamActivity + prospectWarmthCounts shared with Prospects Team tab"
+    description: "Quickfill Prospects section: warmth 0–3 and 4+; Open Prospects; Team data via prospectTeamActivity (v2.382 line chart in Quickfill; Prospects Team tab tables); prospectWarmthCounts"
   - name: "Latest Version (v2.380)"
     line: ~1248
     description: "Checklist Review: Outstanding by person above dispatch/estimator inboxes; ScheduleDispatch page split (HubPage / JobWeek); Map default view in Settings (dev); JobsListCache; Documents search + supply-invoices tabs; Layout gear Banking"
@@ -974,7 +974,7 @@ when_to_read:
 
 ## Table of Contents
 **New:** [v2.382 — **Quickfill** **Prospects**: **Team** **line** chart (last **30** days, **Y** = **Marked + Updated** per person, **`recharts`**) + **`prospectTeamActivityChartData.ts`** — **`ProspectTeamActivityLineChart`**](#latest-updates-v2382)
-**New:** [v2.381 — **Quickfill** **Prospects** section: **warmth** pipeline (**0–3** + **4+**), **Team** table (**`prospectTeamActivity`**, last **30** days; **dev** / **master_technician** / **assistant**), **Open Prospects** — **`QuickfillProspectsSection`**, **`canAccessProspects`**](#latest-updates-v2381)
+**New:** [v2.381 — **Quickfill** **Prospects** section: **warmth** pipeline (**0–3** + **4+**), **Open Prospects**, shared **Team** activity (**`prospectTeamActivity`**, last **30** days; chart UI in **v2.382**) — **`QuickfillProspectsSection`**, **`canAccessProspects`**](#latest-updates-v2381)
 **New:** [v2.380 — **Checklist** **Review**: **Outstanding by person** above inboxes; **`ScheduleDispatch`** **HubPage** / **JobWeek**; **Map** org **default view** (**Settings**); **`JobsListCache`**; **Documents** **`search`** + **`supply-invoices`**; **Layout** gear **Banking**](#latest-updates-v2380)
 **New:** [v2.379 — **Map**: **Filter** search ([`mapEntitySearch`](src/lib/map/mapEntitySearch.ts)) narrows **pins** + **table**; **Debug** (bottom-right `<details>`) + **Review geocodes**](#latest-updates-v2379)
 **New:** [v2.378 — **Schedule Dispatch**: **block note** quick-edit (500 char; **Cancel** / **Clear** / **Save**); transparent **block chrome** + **linked** circular chip (Hub + job-week **Grid**; **`scheduleBlockActionChromeStyle`**)](#latest-updates-v2378)
@@ -1254,7 +1254,7 @@ when_to_read:
 ### **Quickfill** — **Prospects** section
 
 - New **`SECTIONS`** block **`prospects`** in [`Quickfill.tsx`](src/pages/Quickfill.tsx): shown when **`canAccessProspects`** (same gating as **Prospects** follow-up: **dev** / **master_technician** / **assistant** / **estimator** with **`estimator_prospects_access`**). **`quickfill_section_marks.section_id` = `prospects`**.
-- **[`QuickfillProspectsSection.tsx`](src/components/quickfill/QuickfillProspectsSection.tsx)**: **Active** prospect counts by **warmth** (Warmth **3** / **2** / **1** / **0**, plus **Warmth 4+** when any), matching **Prospect List** bucketing ([`prospectWarmthCounts.ts`](src/lib/prospectWarmthCounts.ts)) — excludes **`not_a_fit`** and **`cant_reach`**. **Team (last 30 days)** reuses the same aggregation as **Prospects → Team** via shared **[`loadProspectTeamActivity`](src/lib/prospectTeamActivity.ts)** (unique prospect_ids per day from **`prospect_timer_events`** = **Marked**, **`prospect_comments`** = **Updated**); visible to **dev**, **master_technician**, and **assistant** in Quickfill (**estimators** with access see warmth + CTA only). Primary control: **Open Prospects** → **`/prospects?tab=prospect-list`**. **Outstanding** metric: total **active** prospects. **[`ACCESS_CONTROL.md`](ACCESS_CONTROL.md)** Quickfill table documents the section.
+- **[`QuickfillProspectsSection.tsx`](src/components/quickfill/QuickfillProspectsSection.tsx)**: **Active** prospect counts by **warmth** (Warmth **3** / **2** / **1** / **0**, plus **Warmth 4+** when any), matching **Prospect List** bucketing ([`prospectWarmthCounts.ts`](src/lib/prospectWarmthCounts.ts)) — excludes **`not_a_fit`** and **`cant_reach`**. **Open Prospects** (primary CTA) → **`/prospects?tab=prospect-list`**. **Team (last 30 days)** reuses the same aggregation as **Prospects → Team** via shared **[`loadProspectTeamActivity`](src/lib/prospectTeamActivity.ts)** (unique prospect_ids per day from **`prospect_timer_events`** = **Marked**, **`prospect_comments`** = **Updated**); visible to **dev**, **master_technician**, and **assistant** in Quickfill (**estimators** with access see warmth + CTA only). *Quickfill Team display is a **line chart** as of **v2.382**; **Prospects → Team** remains **per-day tables**.* **Outstanding** metric: total **active** prospects. **[`ACCESS_CONTROL.md`](ACCESS_CONTROL.md)** Quickfill table documents the section.
 - **Prospects** page ([`Prospects.tsx`](src/pages/Prospects.tsx)) **Team** tab now calls **`loadProspectTeamActivity`** (behavior unchanged; **Team** tab remains **dev** + **assistant** only in the app).
 
 ---

@@ -17,7 +17,7 @@ export type GeocodeOneFail = { ok: false; address_normalized: string; error: str
 export type GeocodeOneResponse = GeocodeOneOk | GeocodeOneFail
 
 /**
- * Rerun only Google (skip DB cache and Nominatim). Dev-only; same auth as `geocode-one` default.
+ * Rerun only Google (skip DB cache and Nominatim). Dev, master, or assistant; same auth as `geocode-one` default.
  * Edge may return 200 with `{ ok: false, ... }` in the body; that is still `data` from invoke (no throw).
  */
 export async function invokeGeocodeOneRefreshGoogleOnly(address: string): Promise<GeocodeOneResponse> {

@@ -43,6 +43,8 @@ import {
   scheduleDispatchDayColumnJobsSummaryCellBg,
   useScrollScheduleDispatchColumnIntoView,
 } from '../../lib/scheduleDispatchColumnFocus'
+import { scheduleDispatchMobileNamePill } from '../../lib/scheduleDispatchMobileNamePill'
+import { useIsMobile } from '../../hooks/useIsMobile'
 
 const hubExpectedManpowerSrOnly: CSSProperties = {
   position: 'absolute',
@@ -1004,6 +1006,7 @@ function HubPeoplePanel({
   showExpectedManpower = true,
   showHideWeekendToggle = true,
 }: HubPeoplePanelProps) {
+  const isMobile = useIsMobile()
   const peopleScrollRef = useRef<HTMLDivElement>(null)
   useScrollScheduleDispatchColumnIntoView({
     columnFocusDayYmd,
@@ -1235,7 +1238,7 @@ function HubPeoplePanel({
       {loading ? <p style={{ color: '#6b7280' }}>Loading…</p> : null}
 
       <div ref={peopleScrollRef} style={{ overflowX: 'auto' }}>
-        <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.8125rem' }}>
+        <table style={{ borderCollapse: 'collapse', width: 'max-content', minWidth: '100%', fontSize: '0.8125rem' }}>
           <thead>
             <tr>
               <th
@@ -1243,14 +1246,16 @@ function HubPeoplePanel({
                   textAlign: 'left',
                   padding: '0.5rem',
                   border: '1px solid #e5e7eb',
-                  background: '#f3f4f6',
+                  background: isMobile ? 'transparent' : '#f3f4f6',
                   position: 'sticky',
                   left: 0,
                   zIndex: 1,
-                  minWidth: 140,
+                  width: '1%',
+                  minWidth: 0,
+                  whiteSpace: 'nowrap',
                 }}
               >
-                Person
+                {isMobile ? <span style={scheduleDispatchMobileNamePill}>Person</span> : 'Person'}
               </th>
               {visibleDayKeys.map((dk) => (
                 <th
@@ -1290,23 +1295,43 @@ function HubPeoplePanel({
                       border: '1px solid #e5e7eb',
                       position: 'sticky',
                       left: 0,
-                      background: '#fff',
+                      background: isMobile ? 'transparent' : '#fff',
                       zIndex: 1,
                       fontWeight: 600,
                       color: '#111827',
                       verticalAlign: 'top',
+                      width: '1%',
+                      minWidth: 0,
+                      whiteSpace: isMobile ? undefined : 'nowrap',
                     }}
                   >
-                    {person.displayName}
-                    {salariedUserIds.has(person.userId) ? (
-                      <span
-                        title="Salaried (Pay settings)"
-                        aria-label="Salaried (Pay settings)"
-                        style={hubPeopleSalarySuffix}
-                      >
-                        {' '}(s)
+                    {isMobile ? (
+                      <span style={{ ...scheduleDispatchMobileNamePill, whiteSpace: 'nowrap' }}>
+                        {person.displayName}
+                        {salariedUserIds.has(person.userId) ? (
+                          <span
+                            title="Salaried (Pay settings)"
+                            aria-label="Salaried (Pay settings)"
+                            style={hubPeopleSalarySuffix}
+                          >
+                            {' '}(s)
+                          </span>
+                        ) : null}
                       </span>
-                    ) : null}
+                    ) : (
+                      <>
+                        {person.displayName}
+                        {salariedUserIds.has(person.userId) ? (
+                          <span
+                            title="Salaried (Pay settings)"
+                            aria-label="Salaried (Pay settings)"
+                            style={hubPeopleSalarySuffix}
+                          >
+                            {' '}(s)
+                          </span>
+                        ) : null}
+                      </>
+                    )}
                   </td>
                   {visibleDayKeys.map((dk) => {
                     const cellBlocks = personDayBlocks.get(hubPersonDayKey(person.userId, dk)) ?? []

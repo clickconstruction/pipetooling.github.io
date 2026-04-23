@@ -1,5 +1,7 @@
 import type { CSSProperties, KeyboardEvent, MouseEvent } from 'react'
 import { useRef } from 'react'
+import { useIsMobile } from '../../hooks/useIsMobile'
+import { scheduleDispatchMobileNamePill } from '../../lib/scheduleDispatchMobileNamePill'
 import {
   scheduleDispatchDayColumnCellIdleBg,
   scheduleDispatchDayColumnHeaderStyle,
@@ -505,6 +507,7 @@ export function ScheduleDispatchGrid({
   onAddUserToJobRoster,
   addToJobBusyUserId = null,
 }: ScheduleDispatchGridProps) {
+  const isMobile = useIsMobile()
   const scrollRootRef = useRef<HTMLDivElement>(null)
   useScrollScheduleDispatchColumnIntoView({
     columnFocusDayYmd,
@@ -532,7 +535,7 @@ export function ScheduleDispatchGrid({
 
       {loading ? <p style={{ color: '#6b7280' }}>Loading…</p> : null}
 
-      <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.8125rem' }}>
+      <table style={{ borderCollapse: 'collapse', width: 'max-content', minWidth: '100%', fontSize: '0.8125rem' }}>
         <thead>
           <tr>
             <th
@@ -540,14 +543,16 @@ export function ScheduleDispatchGrid({
                 position: 'sticky',
                 left: 0,
                 zIndex: 2,
-                background: '#f3f4f6',
+                background: isMobile ? 'transparent' : '#f3f4f6',
                 border: '1px solid #e5e7eb',
                 padding: '0.5rem',
                 textAlign: 'left',
-                minWidth: 120,
+                width: '1%',
+                minWidth: 0,
+                whiteSpace: 'nowrap',
               }}
             >
-              Team member
+              {isMobile ? <span style={scheduleDispatchMobileNamePill}>Team member</span> : 'Team member'}
             </th>
             {visibleDayKeys.map((dk) => {
               const { dow, md } = formatDayHeader(dk)
@@ -594,24 +599,43 @@ export function ScheduleDispatchGrid({
                     position: 'sticky',
                     left: 0,
                     zIndex: 1,
-                    background: '#fff',
+                    background: isMobile ? 'transparent' : '#fff',
                     border: '1px solid #e5e7eb',
                     padding: '0.5rem',
                     fontWeight: 500,
                     verticalAlign: 'top',
+                    width: '1%',
+                    minWidth: 0,
                   }}
                 >
                   <div style={{ lineHeight: 1.25 }}>
-                    <span>{(m.name ?? '').trim() || '—'}</span>
-                    {salariedUserIds.has(m.user_id) ? (
-                      <span
-                        title="Salaried (Pay settings)"
-                        aria-label="Salaried (Pay settings)"
-                        style={scheduleGridSalarySuffix}
-                      >
-                        {' '}(s)
+                    {isMobile ? (
+                      <span style={{ ...scheduleDispatchMobileNamePill, whiteSpace: 'nowrap' }}>
+                        {(m.name ?? '').trim() || '—'}
+                        {salariedUserIds.has(m.user_id) ? (
+                          <span
+                            title="Salaried (Pay settings)"
+                            aria-label="Salaried (Pay settings)"
+                            style={scheduleGridSalarySuffix}
+                          >
+                            {' '}(s)
+                          </span>
+                        ) : null}
                       </span>
-                    ) : null}
+                    ) : (
+                      <span style={{ whiteSpace: 'nowrap' }}>
+                        {(m.name ?? '').trim() || '—'}
+                        {salariedUserIds.has(m.user_id) ? (
+                          <span
+                            title="Salaried (Pay settings)"
+                            aria-label="Salaried (Pay settings)"
+                            style={scheduleGridSalarySuffix}
+                          >
+                            {' '}(s)
+                          </span>
+                        ) : null}
+                      </span>
+                    )}
                   </div>
                   {officialJobTeamUserIds != null && !officialJobTeamUserIds.has(m.user_id) ? (
                     <div style={{ marginTop: 4 }}>

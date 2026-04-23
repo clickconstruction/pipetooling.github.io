@@ -9,7 +9,7 @@ export default function Map() {
     return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>
   }
 
-  if (role !== 'dev') {
+  if (role !== 'dev' && role !== 'master_technician' && role !== 'assistant') {
     return <Navigate to="/dashboard" replace />
   }
 

@@ -94,8 +94,9 @@ serve(async (req) => {
   if (profileErr) {
     return jsonResponse(500, { error: 'Could not load user role' })
   }
-  if ((profile as { role: string } | null)?.role !== 'dev') {
-    return jsonResponse(403, { error: 'Map geocoding is dev-only' })
+  const mapGeocodeRole = (profile as { role: string } | null)?.role
+  if (mapGeocodeRole !== 'dev' && mapGeocodeRole !== 'master_technician' && mapGeocodeRole !== 'assistant') {
+    return jsonResponse(403, { error: 'Map geocoding is restricted to dev, master, and assistant roles' })
   }
 
   let body: { address?: unknown; refresh_google_only?: unknown }

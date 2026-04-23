@@ -130,6 +130,7 @@ A Master Plumber can:
 
 ### Key Dependencies
 - `@supabase/supabase-js` - Supabase client library
+- **`recharts`** - Charting for **Quickfill → Prospects** team activity (30-day **Marked + Updated** lines; see **`RECENT_FEATURES.md`** v2.382)
 
 ---
 

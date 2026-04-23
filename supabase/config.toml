@@ -450,11 +450,11 @@ verify_jwt = false
 [functions.street-view-preview]
 verify_jwt = false
 
-# Dev: batch geocode addresses (Nominatim) and upsert public.address_geocodes; JWT + users.role=dev in function.
+# Map: batch geocode addresses (Nominatim) and upsert public.address_geocodes; JWT + role in (dev, master_technician, assistant) in function.
 [functions.geocode-address-batch]
 verify_jwt = false
 
-# Same as geocode-address-batch: dev-only; validate JWT in handler.
+# Same as geocode-address-batch; validate JWT in handler.
 [functions.geocode-one]
 verify_jwt = false
 

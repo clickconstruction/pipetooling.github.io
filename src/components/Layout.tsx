@@ -208,6 +208,29 @@ export default function Layout() {
     [profileName, authUser?.email],
   )
 
+  const canShowMaterialsNav =
+    role !== 'subcontractor' &&
+    (role === null ||
+      role === 'estimator' ||
+      role === 'primary' ||
+      role === 'dev' ||
+      role === 'master_technician' ||
+      role === 'assistant' ||
+      role === 'superintendent')
+
+  const canShowChecklistNav =
+    role === null ||
+    role === 'dev' ||
+    role === 'master_technician' ||
+    role === 'assistant' ||
+    role === 'estimator' ||
+    role === 'primary' ||
+    role === 'superintendent' ||
+    role === 'subcontractor'
+
+  const canShowMapNav =
+    role === 'dev' || role === 'master_technician' || role === 'assistant'
+
   const dashboardIcon = (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1em" height="1em" fill="currentColor" aria-hidden="true" style={{ verticalAlign: 'middle' }}>
       <path d="M298.2 72.6C310.5 61.2 329.5 61.2 341.7 72.6L432 156.3L432 144C432 126.3 446.3 112 464 112L496 112C513.7 112 528 126.3 528 144L528 245.5L565.8 280.6C575.4 289.6 578.6 303.5 573.8 315.7C569 327.9 557.2 336 544 336L528 336L528 512C528 547.3 499.3 576 464 576L176 576C140.7 576 112 547.3 112 512L112 336L96 336C82.8 336 71 327.9 66.2 315.7C61.4 303.5 64.6 289.5 74.2 280.6L298.2 72.6zM304 384C277.5 384 256 405.5 256 432L256 528L384 528L384 432C384 405.5 362.5 384 336 384L304 384z" />
@@ -238,6 +261,16 @@ export default function Layout() {
       <path d="M288 64L288 128C288 136.8 295.2 144 304 144L336 144C344.8 144 352 136.8 352 128L352 64L384 64C419.3 64 448 92.7 448 128L448 256C448 261.5 447.3 266.9 446 272L194 272C192.7 266.9 192 261.5 192 256L192 128C192 92.7 220.7 64 256 64L288 64zM384 576C372.8 576 362.2 573.1 353 568C362.5 551.5 368 532.4 368 512L368 384C368 363.6 362.5 344.5 353 328C362.2 322.9 372.7 320 384 320L416 320L416 384C416 392.8 423.2 400 432 400L464 400C472.8 400 480 392.8 480 384L480 320L512 320C547.3 320 576 348.7 576 384L576 512C576 547.3 547.3 576 512 576L384 576zM64 384C64 348.7 92.7 320 128 320L160 320L160 384C160 392.8 167.2 400 176 400L208 400C216.8 400 224 392.8 224 384L224 320L256 320C291.3 320 320 348.7 320 384L320 512C320 547.3 291.3 576 256 576L128 576C92.7 576 64 547.3 64 512L64 384z" />
     </svg>
   )
+  const mapNavIcon = (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" fill="currentColor" aria-hidden="true">
+      <path d="M352 348.4C416.1 333.9 464 276.5 464 208C464 128.5 399.5 64 320 64C240.5 64 176 128.5 176 208C176 276.5 223.9 333.9 288 348.4L288 544C288 561.7 302.3 576 320 576C337.7 576 352 561.7 352 544L352 348.4zM328 160C297.1 160 272 185.1 272 216C272 229.3 261.3 240 248 240C234.7 240 224 229.3 224 216C224 158.6 270.6 112 328 112C341.3 112 352 122.7 352 136C352 149.3 341.3 160 328 160z" />
+    </svg>
+  )
+  const checklistNavIcon = (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" fill="currentColor" aria-hidden="true">
+      <path d="M584 352C597.3 352 608 362.7 608 376L608 480C608 515.3 579.3 544 544 544L96 544C60.7 544 32 515.3 32 480L32 376C32 362.7 42.7 352 56 352C69.3 352 80 362.7 80 376L80 480C80 488.8 87.2 496 96 496L544 496C552.8 496 560 488.8 560 480L560 376C560 362.7 570.7 352 584 352zM448 96C483.3 96 512 124.7 512 160L512 384C512 419.3 483.3 448 448 448L192 448C156.7 448 128 419.3 128 384L128 160C128 124.7 156.7 96 192 96L448 96zM410.9 180.6C400.2 172.8 385.2 175.2 377.4 185.9L291.8 303.6L265.3 276.2C256.1 266.7 240.9 266.4 231.4 275.6C221.9 284.8 221.6 300 230.8 309.5L277.2 357.5C282.1 362.6 289 365.3 296.1 364.8C303.2 364.3 309.7 360.7 313.9 355L416.2 214.1C424 203.4 421.6 188.4 410.9 180.6z" />
+    </svg>
+  )
 
   function renderMobileHeaderLinks() {
     const iconLinkStyle = ({ isActive }: { isActive: boolean }) => ({
@@ -265,7 +298,7 @@ export default function Layout() {
             {quickfillIcon}
           </NavLink>
         )}
-        {role === 'dev' && (
+        {role === 'dev' && !isMobile && (
           <NavLink to="/people?tab=review" style={iconLinkStyle} title="Review" aria-label="Review">
             {reviewIcon}
           </NavLink>
@@ -456,44 +489,44 @@ export default function Layout() {
                   }}
                 >
                   {role === 'master_technician' && (
-                    <>
-                      <NavLink
-                        to="/quickfill"
-                        onClick={() => setMenuOpen(false)}
-                        style={({ isActive }) => ({
-                          ...dropdownLinkStyle({ isActive }),
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.35rem',
-                          padding: '0.5rem 1rem',
-                          width: '100%',
-                          boxSizing: 'border-box',
-                        })}
-                        title="Quickfill"
-                        aria-label="Quickfill"
-                      >
-                        {quickfillIcon}
-                        Quickfill
-                      </NavLink>
-                      <NavLink
-                        to="/people?tab=review"
-                        onClick={() => setMenuOpen(false)}
-                        style={({ isActive }) => ({
-                          ...dropdownLinkStyle({ isActive }),
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.35rem',
-                          padding: '0.5rem 1rem',
-                          width: '100%',
-                          boxSizing: 'border-box',
-                        })}
-                        title="Review"
-                        aria-label="Review"
-                      >
-                        {reviewIcon}
-                        Review
-                      </NavLink>
-                    </>
+                    <NavLink
+                      to="/quickfill"
+                      onClick={() => setMenuOpen(false)}
+                      style={({ isActive }) => ({
+                        ...dropdownLinkStyle({ isActive }),
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        padding: '0.5rem 1rem',
+                        width: '100%',
+                        boxSizing: 'border-box',
+                      })}
+                      title="Quickfill"
+                      aria-label="Quickfill"
+                    >
+                      {quickfillIcon}
+                      Quickfill
+                    </NavLink>
+                  )}
+                  {(role === 'master_technician' || role === 'dev') && (
+                    <NavLink
+                      to="/people?tab=review"
+                      onClick={() => setMenuOpen(false)}
+                      style={({ isActive }) => ({
+                        ...dropdownLinkStyle({ isActive }),
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        padding: '0.5rem 1rem',
+                        width: '100%',
+                        boxSizing: 'border-box',
+                      })}
+                      title="Review"
+                      aria-label="Review"
+                    >
+                      {reviewIcon}
+                      Review
+                    </NavLink>
                   )}
                   {renderNavLinks(() => setMenuOpen(false), true)}
                   {role === 'dev' && (
@@ -598,7 +631,7 @@ export default function Layout() {
             </button>
           )}
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.125rem' }}>
-            {role === 'dev' && (
+            {canShowMapNav && !isMobile && (
               <NavLink
                 to="/map"
                 style={({ isActive }) => ({
@@ -612,9 +645,7 @@ export default function Layout() {
                 title="Map"
                 aria-label="Map"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" fill="currentColor" aria-hidden="true">
-                  <path d="M352 348.4C416.1 333.9 464 276.5 464 208C464 128.5 399.5 64 320 64C240.5 64 176 128.5 176 208C176 276.5 223.9 333.9 288 348.4L288 544C288 561.7 302.3 576 320 576C337.7 576 352 561.7 352 544L352 348.4zM328 160C297.1 160 272 185.1 272 216C272 229.3 261.3 240 248 240C234.7 240 224 229.3 224 216C224 158.6 270.6 112 328 112C341.3 112 352 122.7 352 136C352 149.3 341.3 160 328 160z" />
-                </svg>
+                {mapNavIcon}
               </NavLink>
             )}
             <NavLink
@@ -634,12 +665,7 @@ export default function Layout() {
                 <path d="M224 64C241.7 64 256 78.3 256 96L256 128L384 128L384 96C384 78.3 398.3 64 416 64C433.7 64 448 78.3 448 96L448 128L480 128C515.3 128 544 156.7 544 192L544 480C544 515.3 515.3 544 480 544L160 544C124.7 544 96 515.3 96 480L96 192C96 156.7 124.7 128 160 128L192 128L192 96C192 78.3 206.3 64 224 64zM160 304L160 336C160 344.8 167.2 352 176 352L208 352C216.8 352 224 344.8 224 336L224 304C224 295.2 216.8 288 208 288L176 288C167.2 288 160 295.2 160 304zM288 304L288 336C288 344.8 295.2 352 304 352L336 352C344.8 352 352 344.8 352 336L352 304C352 295.2 344.8 288 336 288L304 288C295.2 288 288 295.2 288 304zM432 288C423.2 288 416 295.2 416 304L416 336C416 344.8 423.2 352 432 352L464 352C472.8 352 480 344.8 480 336L480 304C480 295.2 472.8 288 464 288L432 288zM160 432L160 464C160 472.8 167.2 480 176 480L208 480C216.8 480 224 472.8 224 464L224 432C224 423.2 216.8 416 208 416L176 416C167.2 416 160 423.2 160 432zM304 416C295.2 416 288 423.2 288 432L288 464C288 472.8 295.2 480 304 480L336 480C344.8 480 352 472.8 352 464L352 432C352 423.2 344.8 416 336 416L304 416zM416 432L416 464C416 472.8 423.2 480 432 480L464 480C472.8 480 480 472.8 480 464L480 432C480 423.2 472.8 416 464 416L432 416C423.2 416 416 423.2 416 432z" />
               </svg>
             </NavLink>
-            {(role === 'estimator' ||
-              role === 'primary' ||
-              role === null ||
-              role === 'dev' ||
-              role === 'master_technician' ||
-              role === 'assistant') && (
+            {canShowMaterialsNav && !isMobile && (
               <NavLink
                 to="/materials"
                 style={({ isActive }) => ({
@@ -656,7 +682,7 @@ export default function Layout() {
                 {materialsIcon}
               </NavLink>
             )}
-          {!(role === 'estimator' && isMobile) && role !== 'master_technician' && (
+          {canShowChecklistNav && !isMobile && role !== 'master_technician' && (
           <NavLink
             to="/checklist"
             style={({ isActive }) => ({
@@ -670,9 +696,7 @@ export default function Layout() {
             title="Checklist"
             aria-label="Checklist"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" fill="currentColor" aria-hidden="true">
-              <path d="M584 352C597.3 352 608 362.7 608 376L608 480C608 515.3 579.3 544 544 544L96 544C60.7 544 32 515.3 32 480L32 376C32 362.7 42.7 352 56 352C69.3 352 80 362.7 80 376L80 480C80 488.8 87.2 496 96 496L544 496C552.8 496 560 488.8 560 480L560 376C560 362.7 570.7 352 584 352zM448 96C483.3 96 512 124.7 512 160L512 384C512 419.3 483.3 448 448 448L192 448C156.7 448 128 419.3 128 384L128 160C128 124.7 156.7 96 192 96L448 96zM410.9 180.6C400.2 172.8 385.2 175.2 377.4 185.9L291.8 303.6L265.3 276.2C256.1 266.7 240.9 266.4 231.4 275.6C221.9 284.8 221.6 300 230.8 309.5L277.2 357.5C282.1 362.6 289 365.3 296.1 364.8C303.2 364.3 309.7 360.7 313.9 355L416.2 214.1C424 203.4 421.6 188.4 410.9 180.6z" />
-            </svg>
+            {checklistNavIcon}
           </NavLink>
           )}
           {role != null && role !== 'subcontractor' && role !== 'primary' && (
@@ -777,6 +801,72 @@ export default function Layout() {
                   >
                     {documentsIcon}
                     Documents
+                  </NavLink>
+                )}
+                {isMobile && canShowMaterialsNav && (
+                  <NavLink
+                    to="/materials"
+                    onClick={() => setGearOpen(false)}
+                    style={({ isActive }) => ({
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      padding: '0.5rem 1rem',
+                      textDecoration: 'none',
+                      color: 'inherit',
+                      borderBottom: '1px solid #e5e7eb',
+                      boxSizing: 'border-box',
+                      ...(isActive && { fontWeight: 600 }),
+                    })}
+                    title="Materials"
+                    aria-label="Materials"
+                  >
+                    {materialsIcon}
+                    Materials
+                  </NavLink>
+                )}
+                {isMobile && canShowChecklistNav && (
+                  <NavLink
+                    to="/checklist"
+                    onClick={() => setGearOpen(false)}
+                    style={({ isActive }) => ({
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      padding: '0.5rem 1rem',
+                      textDecoration: 'none',
+                      color: 'inherit',
+                      borderBottom: '1px solid #e5e7eb',
+                      boxSizing: 'border-box',
+                      ...(isActive && { fontWeight: 600 }),
+                    })}
+                    title="Checklist"
+                    aria-label="Checklist"
+                  >
+                    {checklistNavIcon}
+                    Checklist
+                  </NavLink>
+                )}
+                {isMobile && canShowMapNav && (
+                  <NavLink
+                    to="/map"
+                    onClick={() => setGearOpen(false)}
+                    style={({ isActive }) => ({
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      padding: '0.5rem 1rem',
+                      textDecoration: 'none',
+                      color: 'inherit',
+                      borderBottom: '1px solid #e5e7eb',
+                      boxSizing: 'border-box',
+                      ...(isActive && { fontWeight: 600 }),
+                    })}
+                    title="Map"
+                    aria-label="Map"
+                  >
+                    {mapNavIcon}
+                    Map
                   </NavLink>
                 )}
                 {(role === 'dev' || role === 'assistant' || role === 'master_technician') && (
