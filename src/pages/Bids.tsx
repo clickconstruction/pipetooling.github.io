@@ -1488,6 +1488,8 @@ export default function Bids() {
   const [pendingBidDateSentAttestation, setPendingBidDateSentAttestation] =
     useState<BidDateSentAttestationPayload | null>(null)
   const [pendingAttestationForDate, setPendingAttestationForDate] = useState<string | null>(null)
+  const [bidSentAttestFollowupNoteDraft, setBidSentAttestFollowupNoteDraft] = useState('')
+  const [pendingBidSentFollowupSubmissionNote, setPendingBidSentFollowupSubmissionNote] = useState<string | null>(null)
   const [submittedTo, setSubmittedTo] = useState('')
   const [outcome, setOutcome] = useState<OutcomeOption>('')
   const bidFormMissingFields = useMemo(() => {
@@ -8540,6 +8542,8 @@ export default function Bids() {
     setBidSentAckHonestyAt(null)
     setPendingBidDateSentAttestation(null)
     setPendingAttestationForDate(null)
+    setBidSentAttestFollowupNoteDraft('')
+    setPendingBidSentFollowupSubmissionNote(null)
   }
 
   function closeBidForm() {
@@ -8690,6 +8694,7 @@ export default function Bids() {
     setBidSentAckEmailAt(null)
     setBidSentAckPhoneAt(null)
     setBidSentAckHonestyAt(null)
+    setBidSentAttestFollowupNoteDraft('')
     setBidSentAttestModalOpen(true)
     setBidDateSent(baseline || '')
     return true
@@ -8704,6 +8709,7 @@ export default function Bids() {
       setBidDateSent('')
       setPendingBidDateSentAttestation(null)
       setPendingAttestationForDate(null)
+      setPendingBidSentFollowupSubmissionNote(null)
       return
     }
 
@@ -8713,6 +8719,7 @@ export default function Bids() {
       if (pendingAttestationForDate) {
         setPendingBidDateSentAttestation(null)
         setPendingAttestationForDate(null)
+        setPendingBidSentFollowupSubmissionNote(null)
       }
       return
     }
@@ -8720,6 +8727,7 @@ export default function Bids() {
     if (pendingAttestationForDate && pendingAttestationForDate !== norm) {
       setPendingBidDateSentAttestation(null)
       setPendingAttestationForDate(null)
+      setPendingBidSentFollowupSubmissionNote(null)
     }
   }
 
@@ -8736,6 +8744,7 @@ export default function Bids() {
     setBidSentAckEmailAt(null)
     setBidSentAckPhoneAt(null)
     setBidSentAckHonestyAt(null)
+    setBidSentAttestFollowupNoteDraft('')
   }
 
   function confirmBidSentAttestationModal() {
@@ -8757,6 +8766,7 @@ export default function Bids() {
       bid_date_sent_ack_honesty_by: uid,
     }
     const pendingDate = pendingBidDateSentForModal
+    const trimmedFollowup = bidSentAttestFollowupNoteDraft.trim()
     setPendingBidDateSentAttestation(payload)
     setPendingAttestationForDate(pendingDate)
     setBidDateSent(pendingDate)
@@ -8768,6 +8778,33 @@ export default function Bids() {
     setBidSentAckEmailAt(null)
     setBidSentAckPhoneAt(null)
     setBidSentAckHonestyAt(null)
+    setBidSentAttestFollowupNoteDraft('')
+    setPendingBidSentFollowupSubmissionNote(trimmedFollowup || null)
+  }
+
+  async function insertPendingBidSentFollowupSubmissionNoteAfterSave(bidId: string, noteText: string | null) {
+    const trimmed = noteText?.trim() ?? ''
+    if (!trimmed || !authUser?.id) return
+    const occurredAt = new Date().toISOString()
+    try {
+      await withSupabaseRetry(
+        async () =>
+          supabase.from('bids_submission_entries').insert({
+            bid_id: bidId,
+            notes: trimmed,
+            contact_method: null,
+            occurred_at: occurredAt,
+            created_by: authUser.id,
+          }),
+        'insert bid submission entry from bid sent confirmation'
+      )
+      await withSupabaseRetry(
+        async () => supabase.from('bids').update({ last_contact: occurredAt }).eq('id', bidId),
+        'update bid last_contact from bid sent confirmation note'
+      )
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not add bid note from confirmation'), 'error')
+    }
   }
 
   function handleLastContactClick(bid: BidWithBuilder) {
@@ -8826,6 +8863,8 @@ export default function Bids() {
       service_type_id: formServiceTypeId,
     }
     const payloadWithAttest = { ...payload, ...getBidDateSentAttestationPayloadMerge() }
+    const followupNoteToSave = pendingBidSentFollowupSubmissionNote
+    let bidIdForFollowup: string | null = null
     if (editingBid) {
       const { error: err } = await supabase.from('bids').update(payloadWithAttest).eq('id', editingBid.id)
       if (err) {
@@ -8833,19 +8872,27 @@ export default function Bids() {
         setSavingBid(false)
         return
       }
+      bidIdForFollowup = editingBid.id
     } else {
-      const { error: err } = await supabase
+      const { data: inserted, error: err } = await supabase
         .from('bids')
         .insert({ ...payloadWithAttest, created_by: authUser.id, materials_model: 'rough' })
+        .select('id')
+        .single()
       if (err) {
         setError(err.message)
         setSavingBid(false)
         return
       }
+      bidIdForFollowup = (inserted as { id: string } | null)?.id ?? null
     }
     savedBidDateSentRef.current = normalizeBidDateInput(bidDateSent)
     setPendingBidDateSentAttestation(null)
     setPendingAttestationForDate(null)
+    setPendingBidSentFollowupSubmissionNote(null)
+    if (bidIdForFollowup && followupNoteToSave?.trim()) {
+      await insertPendingBidSentFollowupSubmissionNoteAfterSave(bidIdForFollowup, followupNoteToSave)
+    }
     const rows = await loadBids()
     if (editingBid) {
       const fresh = rows.find((b) => b.id === editingBid.id)
@@ -8910,6 +8957,7 @@ export default function Bids() {
       service_type_id: formServiceTypeId,
     }
     const payloadWithAttestCounts = { ...payload, ...getBidDateSentAttestationPayloadMerge() }
+    const followupNoteToSaveCounts = pendingBidSentFollowupSubmissionNote
     let bidId: string
     if (editingBid) {
       const { error: err } = await supabase.from('bids').update(payloadWithAttestCounts).eq('id', editingBid.id)
@@ -8935,6 +8983,10 @@ export default function Bids() {
     savedBidDateSentRef.current = normalizeBidDateInput(bidDateSent)
     setPendingBidDateSentAttestation(null)
     setPendingAttestationForDate(null)
+    setPendingBidSentFollowupSubmissionNote(null)
+    if (followupNoteToSaveCounts?.trim()) {
+      await insertPendingBidSentFollowupSubmissionNoteAfterSave(bidId, followupNoteToSaveCounts)
+    }
     if (!editingBid && formServiceTypeId && formServiceTypeId !== selectedServiceTypeId) {
       setSelectedServiceTypeId(formServiceTypeId)
     }
@@ -18237,6 +18289,27 @@ export default function Bids() {
                 ) : null}
               </div>
             ))}
+            <div style={{ marginTop: '1rem', marginBottom: '0.25rem' }}>
+              <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: '0.35rem' }}>
+                Adds to bid note:
+              </div>
+              <textarea
+                value={bidSentAttestFollowupNoteDraft}
+                onChange={(e) => setBidSentAttestFollowupNoteDraft(e.target.value)}
+                placeholder="What happened when you called them or left a voicemail?"
+                rows={3}
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  padding: '0.5rem',
+                  fontSize: '0.875rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  resize: 'vertical',
+                  fontFamily: 'inherit',
+                }}
+              />
+            </div>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1.25rem' }}>
               <button
                 type="button"
