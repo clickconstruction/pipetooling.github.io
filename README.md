@@ -149,7 +149,7 @@ The app uses strict TypeScript (`strict`, `noUncheckedIndexedAccess`). Supabase 
 - **Jobs Stages – Billed Awaiting Payment**: Stage shows jobs and invoices awaiting payment; **Edit** is inline immediately after **Open …** (relative age) on the primary actions row; Total by Name modal breaks down by job; Dashboard pin opens modal and navigates to Stages
 - **Quickfill – Billed Awaiting Payment**: Summary section with HCP, Job, Assigned, Remaining table; link to Jobs Stages
 - **Quickfill – Banking sorting**: Paginated Mercury snapshot (person/job gaps); summary **Without person**, **Not split to jobs**, **Total available**; parallel enrich load ([`BankingSortingSnapshotSection.tsx`](src/components/quickfill/BankingSortingSnapshotSection.tsx)); see `RECENT_FEATURES.md` v2.222
-- **Quickfill – Prospects**: Active lead warmth counts (0–3 and 4+), optional **Team** activity table (last 30 days) for dev / master / assistant, **Open Prospects** link — [`QuickfillProspectsSection.tsx`](src/components/quickfill/QuickfillProspectsSection.tsx); see `RECENT_FEATURES.md` v2.381
+- **Quickfill – Prospects**: Active lead warmth counts (0–3 and 4+), **Team** line chart (last 30 days, **Marked + Updated** per person per day, **recharts**) for dev / master / assistant, **Open Prospects** link — [`QuickfillProspectsSection.tsx`](src/components/quickfill/QuickfillProspectsSection.tsx), [`ProspectTeamActivityLineChart.tsx`](src/components/quickfill/ProspectTeamActivityLineChart.tsx); see `RECENT_FEATURES.md` v2.381 / v2.382
 
 ## Deployment
 

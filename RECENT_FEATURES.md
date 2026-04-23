@@ -12,11 +12,14 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.381 → v2.4"
+version_range: "v2.382 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.381)"
+  - name: "Latest Version (v2.382)"
     line: ~1236
+    description: "Quickfill Prospects: Team line chart (recharts), Y = Marked+Updated per day per person, prospectTeamActivityChartData; Prospects page Team tab still table"
+  - name: "Latest Version (v2.381)"
+    line: ~1254
     description: "Quickfill Prospects section: warmth counts 0–3 and 4+; Team table (dev/master/assistant, last 30 days); link to /prospects; prospectTeamActivity + prospectWarmthCounts shared with Prospects Team tab"
   - name: "Latest Version (v2.380)"
     line: ~1248
@@ -970,6 +973,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.382 — **Quickfill** **Prospects**: **Team** **line** chart (last **30** days, **Y** = **Marked + Updated** per person, **`recharts`**) + **`prospectTeamActivityChartData.ts`** — **`ProspectTeamActivityLineChart`**](#latest-updates-v2382)
 **New:** [v2.381 — **Quickfill** **Prospects** section: **warmth** pipeline (**0–3** + **4+**), **Team** table (**`prospectTeamActivity`**, last **30** days; **dev** / **master_technician** / **assistant**), **Open Prospects** — **`QuickfillProspectsSection`**, **`canAccessProspects`**](#latest-updates-v2381)
 **New:** [v2.380 — **Checklist** **Review**: **Outstanding by person** above inboxes; **`ScheduleDispatch`** **HubPage** / **JobWeek**; **Map** org **default view** (**Settings**); **`JobsListCache`**; **Documents** **`search`** + **`supply-invoices`**; **Layout** gear **Banking**](#latest-updates-v2380)
 **New:** [v2.379 — **Map**: **Filter** search ([`mapEntitySearch`](src/lib/map/mapEntitySearch.ts)) narrows **pins** + **table**; **Debug** (bottom-right `<details>`) + **Review geocodes**](#latest-updates-v2379)
@@ -1231,6 +1235,16 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.382)
+
+**Date**: 2026-04-23
+
+### **Quickfill** — **Prospects** — **Team** line chart
+
+- Replaces the per-day **Team** tables in Quickfill with a **multi-line chart** ([`ProspectTeamActivityLineChart.tsx`](src/components/quickfill/ProspectTeamActivityLineChart.tsx)): **X** = last **30** days (oldest → newest), **Y** = **Marked + Updated** per calendar day per staff user (same underlying data as **Prospects → Team** from **[`loadProspectTeamActivity`](src/lib/prospectTeamActivity.ts)**). One **`<Line>`** per user (**dev** / **master_technician** / **assistant** roster). **[`recharts`](https://recharts.org/)** added to [`package.json`](package.json). Chart rows built by **[`prospectTeamActivityChartData.ts`](src/lib/prospectTeamActivityChartData.ts)** (`buildProspectTeamActivityChartData`, `getOrderedDateKeysLast30Days`). **Prospects → Team** tab stays **date-grouped tables** ([`Prospects.tsx`](src/pages/Prospects.tsx)).
+
 ---
 
 ## Latest Updates (v2.381)
