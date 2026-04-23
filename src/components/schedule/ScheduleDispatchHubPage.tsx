@@ -4,6 +4,7 @@ import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type D
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
+import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import {
   deleteJobScheduleBlock,
   fetchJobScheduleBlocksForHubDateRange,
@@ -33,7 +34,6 @@ import { fetchSalariedUserIdSetFromUserIds } from '../../lib/salaryPayConfigGate
 import { ScheduleDispatchAddBlockModal } from './ScheduleDispatchAddBlockModal'
 import { ScheduleDispatchBlockNoteModal } from './ScheduleDispatchBlockNoteModal'
 import { ScheduleDispatchAssignJobPickerModal } from './ScheduleDispatchAssignJobPickerModal'
-import DetailJobModal, { type DetailJobScheduleContext } from '../jobs/DetailJobModal'
 import { LinkedScheduleGroupModal } from './LinkedScheduleGroupModal'
 import { ScheduleDispatchHub } from './ScheduleDispatchHub'
 import type { ScheduleDispatchCardPlacementMode } from './ScheduleDispatchGrid'
@@ -107,6 +107,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   const { user: authUser, role, loading: authLoading } = useAuth()
   const { showToast } = useToastContext()
   const jobFormModal = useJobFormModal()
+  const jobDetailModal = useJobDetailModal()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const isTomorrow = variant === 'tomorrow'
@@ -258,13 +259,6 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   const [hubHourlyWageByUserId, setHubHourlyWageByUserId] = useState<Map<string, number>>(() => new Map())
   const [hubPayApprovedMasterIds, setHubPayApprovedMasterIds] = useState<Set<string>>(() => new Set())
   const [hubSalariedUserIds, setHubSalariedUserIds] = useState<Set<string>>(() => new Set())
-  const [hubDetailJobModal, setHubDetailJobModal] = useState<{
-    jobId: string
-    scheduleContext: DetailJobScheduleContext
-    prefillRowLabel: string | null
-    prefillAddress: string | null
-  } | null>(null)
-
   const canEdit = role != null && CAN_USE_SCHEDULE_DISPATCH.has(role)
 
   useEffect(() => {
@@ -621,8 +615,8 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   }, [jobId])
 
   useEffect(() => {
-    setHubDetailJobModal(null)
-  }, [jobId, weekStart])
+    jobDetailModal?.closeJobDetail()
+  }, [jobId, weekStart, jobDetailModal])
 
   useEffect(() => {
     if (!jobId) return
@@ -1395,7 +1389,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
 
   const openHubJobDetail = useCallback(
     (block: JobScheduleBlockRow, workDateYmd: string) => {
-      setHubDetailJobModal({
+      jobDetailModal?.openJobDetail({
         jobId: block.job_id,
         scheduleContext: {
           workDate: workDateYmd,
@@ -1405,9 +1399,11 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
         },
         prefillRowLabel: getHubJobDisplayTitle(block.job_id),
         prefillAddress: null,
+        assignedJobsRows: [],
+        onEditJobSaved: () => void loadHub(),
       })
     },
-    [getHubJobDisplayTitle],
+    [getHubJobDisplayTitle, jobDetailModal, loadHub],
   )
 
   const saveHubBlockNote = useCallback(
@@ -1705,19 +1701,6 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
             weekStart={weekStart}
             weekEnd={weekEnd}
             getJobDisplayTitle={getHubJobDisplayTitle}
-          />
-        ) : null}
-        {hubDetailJobModal ? (
-          <DetailJobModal
-            open
-            onClose={() => setHubDetailJobModal(null)}
-            jobId={hubDetailJobModal.jobId}
-            scheduleContext={hubDetailJobModal.scheduleContext}
-            authRole={role}
-            assignedJobsRows={[]}
-            prefillRowLabel={hubDetailJobModal.prefillRowLabel}
-            prefillAddress={hubDetailJobModal.prefillAddress}
-            onEditJobSaved={() => void loadHub()}
           />
         ) : null}
         <ScheduleDispatchBlockNoteModal

@@ -35,7 +35,6 @@ import BilledPaymentConfirmationModal from '../components/jobs/BilledPaymentConf
 import BilledBillViewModal from '../components/jobs/BilledBillViewModal'
 import { StripeInvoiceSendFromStripeButton } from '../components/jobs/StripeInvoiceSendFromStripeButton'
 import { JobThreadNotesPanel } from '../components/JobThreadNotesPanel'
-import DetailJobModal, { type DetailJobModalAssignedJobRow } from '../components/jobs/DetailJobModal'
 import { ScheduleJobModal } from '../components/jobs/ScheduleJobModal'
 import { useJobThreadNotes } from '../hooks/useJobThreadNotes'
 import { CrewJobsBlock } from '../components/CrewJobsBlock'
@@ -43,6 +42,7 @@ import type { Database } from '../types/database'
 import type { JobWithDetails } from '../types/jobWithDetails'
 import { useJobFormModal, type OpenEditJobOptions } from '../contexts/JobFormModalContext'
 import { useJobsListCache } from '../contexts/JobsListCacheContext'
+import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { CLOCK_SESSION_LIST_SELECT } from '../lib/clockSessionSelect'
 import { APP_CALENDAR_TZ, formatWorkDateYmdWeekdayLongFriendly, getDefaultWeekRange } from '../utils/dateUtils'
 import { fetchAttributionsByMercuryTxIds } from '../lib/fetchMercuryRelationsByTxIds'
@@ -651,6 +651,7 @@ export default function Jobs() {
     runFetchJobs,
     fetchPaidJobsIfNeeded,
   } = useJobsListCache()
+  const jobDetailModal = useJobDetailModal()
   const [activeTab, setActiveTab] = useState<JobsTab>('stages')
   const [users, setUsers] = useState<UserRow[]>([])
   const [people, setPeople] = useState<Person[]>([])
@@ -960,34 +961,19 @@ export default function Jobs() {
   const [assignedEditSavingId, setAssignedEditSavingId] = useState<string | null>(null)
   const [pctCompleteSavingId, setPctCompleteSavingId] = useState<string | null>(null)
   const assignedEditDropdownRef = useRef<HTMLDivElement | null>(null)
-  const [stagesDetailJobModal, setStagesDetailJobModal] = useState<{
-    jobId: string
-    prefillRowLabel: string | null
-    prefillAddress: string | null
-  } | null>(null)
-
-  const detailModalAssignedJobsRows = useMemo((): DetailJobModalAssignedJobRow[] => {
-    return jobs.map((j) => ({
-      id: j.id,
-      hcp_number: j.hcp_number ?? '',
-      job_name: j.job_name ?? '',
-      job_address: j.job_address ?? '',
-      google_drive_link: j.google_drive_link,
-      job_plans_link: j.job_plans_link,
-      revenue: j.revenue != null ? Number(j.revenue) : null,
-      project_id: j.project_id,
-    }))
-  }, [jobs])
-
-  const openStagesDetailJobModal = useCallback((j: JobWithDetails) => {
-    const h = (j.hcp_number ?? '').trim() || '—'
-    const n = (j.job_name ?? '').trim() || 'Job'
-    setStagesDetailJobModal({
-      jobId: j.id,
-      prefillRowLabel: `${h} · ${n}`,
-      prefillAddress: (j.job_address ?? '').trim() || null,
-    })
-  }, [])
+  const openStagesDetailJobModal = useCallback(
+    (j: JobWithDetails) => {
+      const h = (j.hcp_number ?? '').trim() || '—'
+      const n = (j.job_name ?? '').trim() || 'Job'
+      jobDetailModal?.openJobDetail({
+        jobId: j.id,
+        prefillRowLabel: `${h} · ${n}`,
+        prefillAddress: (j.job_address ?? '').trim() || null,
+        onEditJobSaved: () => void loadJobs(),
+      })
+    },
+    [jobDetailModal, loadJobs],
+  )
 
   const renderStagesOpenDetailJobName = useCallback((j: JobWithDetails): ReactNode => {
     const fmt = formatJobNameTwoLines(j.job_name)
@@ -1025,6 +1011,17 @@ export default function Jobs() {
     () => buildJobsStagesBoardLists(jobs, stagesSearchQuery, stagesSearchExtraJobIds),
     [jobs, stagesSearchQuery, stagesSearchExtraJobIds],
   )
+
+  const focusStagesSection = useCallback((key: 'working' | 'readyToBill' | 'billed') => {
+    setStagesSectionOpen((prev) => ({ ...prev, [key]: true }))
+    const elId =
+      key === 'working' ? 'stages-working' : key === 'readyToBill' ? 'stages-ready-to-bill' : 'stages-billed'
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document.getElementById(elId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+    })
+  }, [])
 
   const stagesFilteredJobs = stagesBoardLists.filtered
 
@@ -3627,16 +3624,22 @@ ${totalsHtml}
 
   const jobDetailId = searchParams.get('jobDetail')
   useEffect(() => {
-    if (!jobDetailId || jobsListLoading || jobsListRefreshing) return
+    if (!jobDetailId || !jobDetailModal) return
     const job = jobs.find((j) => j.id === jobDetailId)
+    const prefill = (location.state as JobDetailPrefillLocationState | null)?.jobDetailPrefill
     if (job) {
-      openStagesDetailJobModal(job)
+      jobDetailModal.openJobDetail({
+        jobId: job.id,
+        prefillRowLabel: `${(job.hcp_number ?? '').trim() || '—'} · ${(job.job_name ?? '').trim() || 'Job'}`,
+        prefillAddress: (job.job_address ?? '').trim() || null,
+        onEditJobSaved: () => void loadJobs(),
+      })
     } else {
-      const prefill = (location.state as JobDetailPrefillLocationState | null)?.jobDetailPrefill
-      setStagesDetailJobModal({
+      jobDetailModal.openJobDetail({
         jobId: jobDetailId,
         prefillRowLabel: prefill?.prefillRowLabel ?? null,
         prefillAddress: prefill?.prefillAddress ?? null,
+        onEditJobSaved: () => void loadJobs(),
       })
     }
     setSearchParams((p) => {
@@ -3645,16 +3648,7 @@ ${totalsHtml}
       return next
     }, { replace: true })
     navigate('.', { replace: true, state: {} })
-  }, [
-    jobDetailId,
-    jobs,
-    jobsListLoading,
-    jobsListRefreshing,
-    openStagesDetailJobModal,
-    setSearchParams,
-    navigate,
-    location.state,
-  ])
+  }, [jobDetailId, jobs, jobDetailModal, loadJobs, setSearchParams, navigate, location.state])
 
   const openBankPaymentsParam = searchParams.get('openBankPayments')
   useEffect(() => {
@@ -5148,6 +5142,90 @@ ${totalsHtml}
               </svg>
             </button>
             </div>
+          </div>
+          <div
+            style={{
+              marginBottom: '0.75rem',
+              fontSize: '0.9375rem',
+              lineHeight: 1.5,
+              color: '#374151',
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.35rem',
+              textAlign: 'center',
+            }}
+          >
+            <span style={{ display: 'inline-flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 0 }}>
+              <button
+                type="button"
+                onClick={() => focusStagesSection('working')}
+                aria-label={`Jump to Working, ${stagesBoardLists.working.length} jobs`}
+                style={{
+                  padding: 0,
+                  border: 'none',
+                  background: 'none',
+                  cursor: 'pointer',
+                  font: 'inherit',
+                  color: '#1d4ed8',
+                  textDecoration: 'underline',
+                  textUnderlineOffset: '2px',
+                }}
+              >
+                Working
+              </button>
+              {' '}
+              <span>({stagesBoardLists.working.length})</span>
+            </span>
+            <span style={{ color: '#9ca3af', userSelect: 'none' }} aria-hidden>
+              →
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 0 }}>
+              <button
+                type="button"
+                onClick={() => focusStagesSection('readyToBill')}
+                aria-label={`Jump to Ready to Bill, ${stagesBoardLists.readyToBillRows.length} rows`}
+                style={{
+                  padding: 0,
+                  border: 'none',
+                  background: 'none',
+                  cursor: 'pointer',
+                  font: 'inherit',
+                  color: '#1d4ed8',
+                  textDecoration: 'underline',
+                  textUnderlineOffset: '2px',
+                }}
+              >
+                Ready to Bill
+              </button>
+              {' '}
+              <span>({stagesBoardLists.readyToBillRows.length})</span>
+            </span>
+            <span style={{ color: '#9ca3af', userSelect: 'none' }} aria-hidden>
+              →
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 0 }}>
+              <button
+                type="button"
+                onClick={() => focusStagesSection('billed')}
+                aria-label={`Jump to Billed Awaiting Payment, ${stagesBoardLists.billedRows.length} rows`}
+                style={{
+                  padding: 0,
+                  border: 'none',
+                  background: 'none',
+                  cursor: 'pointer',
+                  font: 'inherit',
+                  color: '#1d4ed8',
+                  textDecoration: 'underline',
+                  textUnderlineOffset: '2px',
+                }}
+              >
+                Billed Awaiting Payment
+              </button>
+              {' '}
+              <span>({stagesBoardLists.billedRows.length})</span>
+            </span>
           </div>
           {(jobsListLoading || (jobsListRefreshing && !jobsListLoading)) && (
             <div
@@ -7195,15 +7273,17 @@ ${totalsHtml}
                   true, undefined, undefined, true, undefined, true
                 )}
 
-                <button
-                  type="button"
-                  onClick={() => toggleStages('readyToBill')}
-                  aria-expanded={stagesSectionOpen.readyToBill}
-                  style={{ margin: '1.5rem 0 0.5rem', fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
-                >
-                  <span aria-hidden>{stagesSectionOpen.readyToBill ? '\u25BC' : '\u25B6'}</span>
-                  Ready to Bill ({readyToBillRows.length}) - ${formatCurrency(readyToBillTotal)}
-                </button>
+                <div id="stages-ready-to-bill" style={{ margin: '1.5rem 0 0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => toggleStages('readyToBill')}
+                    aria-expanded={stagesSectionOpen.readyToBill}
+                    style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
+                  >
+                    <span aria-hidden>{stagesSectionOpen.readyToBill ? '\u25BC' : '\u25B6'}</span>
+                    Ready to Bill ({readyToBillRows.length}) - ${formatCurrency(readyToBillTotal)}
+                  </button>
+                </div>
                 {stagesSectionOpen.readyToBill && renderUnifiedStagesTable(readyToBillRows, {
                   actionLabel: 'Bill Customer',
                   onJobAction: (j) => {
@@ -11502,19 +11582,6 @@ ${totalsHtml}
           </div>
         </div>
       )}
-      {stagesDetailJobModal ? (
-        <DetailJobModal
-          open
-          onClose={() => setStagesDetailJobModal(null)}
-          jobId={stagesDetailJobModal.jobId}
-          scheduleContext={null}
-          authRole={authRole}
-          assignedJobsRows={detailModalAssignedJobsRows}
-          prefillRowLabel={stagesDetailJobModal.prefillRowLabel ?? undefined}
-          prefillAddress={stagesDetailJobModal.prefillAddress ?? undefined}
-          onEditJobSaved={() => void loadJobs()}
-        />
-      ) : null}
       {scheduleModalJob ? (
         <ScheduleJobModal
           key={scheduleModalJob.id}

@@ -24,10 +24,7 @@ import NewReportModal from '../components/NewReportModal'
 import JobReportsModal from '../components/JobReportsModal'
 import AdditionalReportModal from '../components/AdditionalReportModal'
 import JobBillDetailsModal from '../components/JobBillDetailsModal'
-import DetailJobModal, {
-  type DetailJobModalAssignedJobRow,
-  type DetailJobScheduleContext,
-} from '../components/jobs/DetailJobModal'
+import type { DetailJobModalAssignedJobRow } from '../components/jobs/DetailJobModal'
 import CollectPaymentModal from '../components/jobs/CollectPaymentModal'
 import DashboardFieldCollectPaymentQueue from '../components/dashboard/DashboardFieldCollectPaymentQueue'
 import ReportEditModal, { type ReportForEdit } from '../components/ReportEditModal'
@@ -40,6 +37,7 @@ import {
 import { useToastContext } from '../contexts/ToastContext'
 import { useJobFormModal } from '../contexts/JobFormModalContext'
 import { useBidPreview } from '../contexts/BidPreviewModalContext'
+import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { useCostMatrixTotal } from '../hooks/useCostMatrixTotal'
 import { useBilledTotal } from '../hooks/useBilledTotal'
 import { useHoursAwaitingApprovalCount } from '../hooks/useHoursAwaitingApprovalCount'
@@ -604,6 +602,7 @@ function ReadyToBillJobIconToolbar({
 export default function Dashboard() {
   const navigate = useNavigate()
   const bidPreview = useBidPreview()
+  const jobDetailModal = useJobDetailModal()
   const { user: authUser, role, estimatorProspectsAccess } = useAuth()
   const { showToast } = useToastContext()
   const jobFormModal = useJobFormModal()
@@ -881,17 +880,6 @@ export default function Dashboard() {
     buttonVariant?: string | null
   } | null>(null)
   const [viewBillDetailsJob, setViewBillDetailsJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string; revenue: number | null } | null>(null)
-  const [scheduleJobDetail, setScheduleJobDetail] = useState<{
-    jobId: string
-    scheduleContext: DetailJobScheduleContext | null
-    prefillRowLabel: string
-    prefillAddress: string | null
-  } | null>(null)
-  const [readyToBillDetailJobModal, setReadyToBillDetailJobModal] = useState<{
-    jobId: string
-    prefillRowLabel: string | null
-    prefillAddress: string | null
-  } | null>(null)
   const [dashboardButtonVisibility, setDashboardButtonVisibility] = useState<Record<string, boolean> | null>(null)
   const [quickButtonsPlacement, setQuickButtonsPlacement] = useState<'top' | 'with_pins'>('top')
   const [readyForBillingJob, setReadyForBillingJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
@@ -993,19 +981,6 @@ export default function Dashboard() {
       clockTimesReadOnly: true,
     })
   }, [authUser?.id, clockDisplayName, hoursDaysCorrectSet, showToast, stripSalariedUserIds])
-  const openJobDetailFromDashboardJobRow = useCallback(
-    (j: { id: string; hcp_number: string | null; job_name: string | null; job_address: string | null }) => {
-      const hcp = (j.hcp_number ?? '').trim() || '—'
-      const name = (j.job_name ?? '').trim() || '—'
-      setScheduleJobDetail({
-        jobId: j.id,
-        scheduleContext: null,
-        prefillRowLabel: `${hcp} · ${name}`,
-        prefillAddress: (j.job_address ?? '').trim() || null,
-      })
-    },
-    [],
-  )
   const [teamFeedbackHomeEnabled, setTeamFeedbackHomeEnabled] = useState(false)
   const [teamFeedbackWizardOpen, setTeamFeedbackWizardOpen] = useState(false)
   const [contractSigningPromptOpen, setContractSigningPromptOpen] = useState(false)
@@ -2432,6 +2407,21 @@ export default function Dashboard() {
     [assignedJobs, assignedReadyToBillJobs],
   )
 
+  const openJobDetailFromDashboardJobRow = useCallback(
+    (j: { id: string; hcp_number: string | null; job_name: string | null; job_address: string | null }) => {
+      const hcp = (j.hcp_number ?? '').trim() || '—'
+      const name = (j.job_name ?? '').trim() || '—'
+      jobDetailModal?.openJobDetail({
+        jobId: j.id,
+        scheduleContext: null,
+        prefillRowLabel: `${hcp} · ${name}`,
+        prefillAddress: (j.job_address ?? '').trim() || null,
+        assignedJobsRows: detailModalAssignedJobsRows,
+      })
+    },
+    [jobDetailModal, detailModalAssignedJobsRows],
+  )
+
   const readyToBillDetailModalAssignedRows = useMemo((): DetailJobModalAssignedJobRow[] => {
     return readyToBillJobs.map((j) => ({
       id: j.id,
@@ -2674,13 +2664,16 @@ export default function Dashboard() {
     (args: { jobId: string; hcpNumber: string; jobName: string; jobAddress: string }) => {
       const h = args.hcpNumber.trim() || '—'
       const n = args.jobName.trim() || 'Job'
-      setReadyToBillDetailJobModal({
+      jobDetailModal?.openJobDetail({
         jobId: args.jobId,
+        scheduleContext: null,
         prefillRowLabel: `${h} · ${n}`,
         prefillAddress: args.jobAddress.trim() || null,
+        assignedJobsRows: readyToBillDetailModalAssignedRows,
+        onEditJobSaved: () => void refreshInvoicesRef.current(),
       })
     },
-    [],
+    [jobDetailModal, readyToBillDetailModalAssignedRows],
   )
 
   useEffect(() => {
@@ -5203,11 +5196,19 @@ export default function Dashboard() {
                               key={b.id}
                               role="button"
                               tabIndex={0}
-                              onClick={() => setScheduleJobDetail(scheduleDetailPayload)}
+                              onClick={() =>
+                                jobDetailModal?.openJobDetail({
+                                  ...scheduleDetailPayload,
+                                  assignedJobsRows: detailModalAssignedJobsRows,
+                                })
+                              }
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter' || e.key === ' ') {
                                   e.preventDefault()
-                                  setScheduleJobDetail(scheduleDetailPayload)
+                                  jobDetailModal?.openJobDetail({
+                                    ...scheduleDetailPayload,
+                                    assignedJobsRows: detailModalAssignedJobsRows,
+                                  })
                                 }
                               }}
                               aria-label={`Job details: ${rowLabel}`}
@@ -7789,31 +7790,6 @@ export default function Dashboard() {
           }}
         />
       )}
-      {readyToBillDetailJobModal ? (
-        <DetailJobModal
-          open
-          onClose={() => setReadyToBillDetailJobModal(null)}
-          jobId={readyToBillDetailJobModal.jobId}
-          scheduleContext={null}
-          authRole={role}
-          assignedJobsRows={readyToBillDetailModalAssignedRows}
-          prefillRowLabel={readyToBillDetailJobModal.prefillRowLabel ?? undefined}
-          prefillAddress={readyToBillDetailJobModal.prefillAddress ?? undefined}
-          onEditJobSaved={() => void refreshInvoicesRef.current()}
-        />
-      ) : null}
-      {scheduleJobDetail ? (
-        <DetailJobModal
-          open
-          onClose={() => setScheduleJobDetail(null)}
-          jobId={scheduleJobDetail.jobId}
-          scheduleContext={scheduleJobDetail.scheduleContext}
-          authRole={role}
-          assignedJobsRows={detailModalAssignedJobsRows}
-          prefillRowLabel={scheduleJobDetail.prefillRowLabel}
-          prefillAddress={scheduleJobDetail.prefillAddress}
-        />
-      ) : null}
     </div>
   )
 }

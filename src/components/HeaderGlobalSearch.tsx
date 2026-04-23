@@ -13,6 +13,7 @@ import {
 } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useBidPreview } from '../contexts/BidPreviewModalContext'
+import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { supabase } from '../lib/supabase'
 import { buildClockBidsSearchParams } from '../lib/clockBidsSearchParams'
 import {
@@ -76,6 +77,7 @@ export function HeaderGlobalSearchProvider({
 }) {
   const navigate = useNavigate()
   const bidPreview = useBidPreview()
+  const jobDetailModal = useJobDetailModal()
   const [open, setOpen] = useState(false)
   const [query, setQueryState] = useState('')
   const [results, setResults] = useState<UnifiedSearchResult[]>([])
@@ -158,21 +160,17 @@ export function HeaderGlobalSearchProvider({
       if (r.source === 'job') {
         const h = (r.hcp_number ?? '').trim() || '—'
         const n = (r.job_name ?? '').trim() || 'Job'
-        navigate(`/jobs?jobDetail=${r.id}`, {
-          state: {
-            jobDetailPrefill: {
-              prefillRowLabel: `${h} · ${n}`,
-              prefillAddress: (r.job_address ?? '').trim() || null,
-            },
-          },
+        jobDetailModal?.openJobDetail({
+          jobId: r.id,
+          prefillRowLabel: `${h} · ${n}`,
+          prefillAddress: (r.job_address ?? '').trim() || null,
         })
       } else if (r.source === 'bid') {
-        navigate(`/bids?bidId=${r.id}`)
         bidPreview?.openBidPreview(r.id)
       } else navigate(`/estimates/${r.estimate_number}`)
       closeSearch()
     },
-    [navigate, closeSearch, bidPreview],
+    [navigate, closeSearch, bidPreview, jobDetailModal],
   )
 
   useEffect(() => {

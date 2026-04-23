@@ -12,20 +12,29 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.388 → v2.4"
+version_range: "v2.391 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.391)"
+    line: ~1276
+    description: "Jobs Stages pipeline jump bar: Working → Ready to Bill → Billed Awaiting Payment counts + scroll"
+  - name: "Latest Version (v2.390)"
+    line: ~1286
+    description: "Header search job/bid pick opens modals in place; no navigate to Jobs or Bids"
+  - name: "Latest Version (v2.389)"
+    line: ~1296
+    description: "Global JobDetailModalProvider; header job pick opens detail immediately"
   - name: "Latest Version (v2.388)"
-    line: ~1260
+    line: ~1306
     description: "Header global search: minimum 2 characters before RPCs and results panel"
   - name: "Latest Version (v2.387)"
-    line: ~1272
+    line: ~1316
     description: "Header search: job → Job Detail modal (jobDetail); bid → Bid Preview + bidId URL"
   - name: "Latest Version (v2.386)"
-    line: ~1268
+    line: ~1326
     description: "Layout header global search (dev/master/assistant): jobs, bids, estimates; search_estimates_for_nav RPC"
   - name: "Latest Version (v2.385)"
-    line: ~1260
+    line: ~1337
     description: "Jobs: lazy Paid in Full fetch on expand + fetchPaidJobsIfNeeded; Edit/New guarded until list idle (tryOpenEditJob)"
   - name: "Latest Version (v2.384)"
     line: ~1260
@@ -991,6 +1000,9 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.391 — **Jobs** **Stages**: **Working** → **Ready to Bill** → **Billed Awaiting Payment** pipeline bar (**`focusStagesSection`**, **`stages-ready-to-bill`**)](#latest-updates-v2391)
+**New:** [v2.390 — **Header** **search**: **job** / **bid** result → **`openJobDetail`** / **`openBidPreview`** on **current** route (**no** **`/jobs`** or **`/bids?bidId=`**)](#latest-updates-v2390)
+**New:** [v2.389 — **`JobDetailModalProvider`** (**`useJobDetailModal`**, **`openJobDetail`**) — single **`DetailJobModal`** in app shell; **Jobs** / **Dashboard** / **Schedule Dispatch hub** / **Field Collect Payment** queue + **header** **job** search](#latest-updates-v2389)
 **New:** [v2.388 — **Header** **search**: **≥ 2** trimmed characters before **`search_*`** RPCs and **results** panel (**`MIN_HEADER_SEARCH_CHARS`**)](#latest-updates-v2388)
 **New:** [v2.387 — **Header** **search** result: **job** → **`/jobs?jobDetail=`** opens **`DetailJobModal`**; **bid** → **`openBidPreview`** + **`/bids?bidId=`**](#latest-updates-v2387)
 **New:** [v2.386 — **Layout** **header** **search** (**dev** / **master** / **assistant**): **jobs**, **bids**, **estimates** (`search_jobs_ledger`, `search_bids_for_clock`, **`search_estimates_for_nav`**); **`HeaderGlobalSearch`** overlay + **Back**](#latest-updates-v2386)
@@ -1261,6 +1273,36 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
+## Latest Updates (v2.391)
+
+**Date**: 2026-04-23
+
+### **Jobs** — **Stages** — pipeline **jump** bar
+
+- **[`Jobs.tsx`](src/pages/Jobs.tsx)**: below the Stages toolbar, **Working** (*n*) **→** **Ready to Bill** (*n*) **→** **Billed Awaiting Payment** (*n*) — counts from **`stagesBoardLists`** (same filter as the board). Each segment opens that section and **`scrollIntoView`** (**`focusStagesSection`**). Anchor **`id="stages-ready-to-bill"`** on the Ready to Bill header.
+
+---
+
+## Latest Updates (v2.390)
+
+**Date**: 2026-04-23
+
+### **Layout** — **header** **search** — **job** / **bid** **in place**
+
+- **[`HeaderGlobalSearch.tsx`](src/components/HeaderGlobalSearch.tsx)**: choosing a **job** or **bid** calls **`JobDetailModalContext`** **`openJobDetail`** or **`BidPreviewModalContext`** **`openBidPreview`** only — **no** **`navigate('/jobs')`** or **`/bids?bidId=`**; the user stays on the current page. **Estimates** still **`navigate`** to **`/estimates/{estimate_number}`**.
+
+---
+
+## Latest Updates (v2.389)
+
+**Date**: 2026-04-23
+
+### **Job Detail** — global **`JobDetailModalProvider`**
+
+- **[`JobDetailModalContext.tsx`](src/contexts/JobDetailModalContext.tsx)** (inside **[`JobsListCacheProvider`](src/contexts/JobsListCacheContext.tsx)** in **[`App.tsx`](src/App.tsx)**): **`openJobDetail`**, **`closeJobDetail`**; default **`assignedJobsRows`** from **`JobsListCache`** when omitted; optional per-open **`assignedJobsRows`**, **`scheduleContext`**, **`onEditJobSaved`**. **[`HeaderGlobalSearch.tsx`](src/components/HeaderGlobalSearch.tsx)** **job** pick: **`openJobDetail`** (**v2.390**: no route change). **[`Jobs.tsx`](src/pages/Jobs.tsx)** **`?jobDetail=`** deep link opens via context without waiting on list load. Replaced local **`DetailJobModal`** on **[`Dashboard.tsx`](src/pages/Dashboard.tsx)**, **[`ScheduleDispatchHubPage.tsx`](src/components/schedule/ScheduleDispatchHubPage.tsx)**, **[`DashboardFieldCollectPaymentQueue.tsx`](src/components/dashboard/DashboardFieldCollectPaymentQueue.tsx)**.
+
+---
+
 ## Latest Updates (v2.388)
 
 **Date**: 2026-04-23
@@ -1277,7 +1319,7 @@ when_to_read:
 
 ### **Layout** — **header** **search** — **Job Detail** / **Bid Preview** on result pick
 
-- **[`HeaderGlobalSearch.tsx`](src/components/HeaderGlobalSearch.tsx)**: choosing a **job** navigates to **`/jobs?jobDetail={id}`** with **`location.state.jobDetailPrefill`** (title/address) and **[`Jobs.tsx`](src/pages/Jobs.tsx)** opens **`DetailJobModal`** (then strips **`jobDetail`** from the URL and clears the one-shot state). Choosing a **bid** still goes to **`/bids?bidId=`** and also calls **`BidPreviewModalContext`** **`openBidPreview`**. **Estimates** unchanged (**`/estimates/{estimate_number}`**).
+- **[`HeaderGlobalSearch.tsx`](src/components/HeaderGlobalSearch.tsx)**: **(through v2.389)** **job** pick: **`openJobDetail`** + **`navigate('/jobs')`**; **bid** pick: **`navigate('/bids?bidId=`)** + **`openBidPreview`**. **v2.390**: **job** / **bid** picks use the modals only (**no** route change). **Estimates** unchanged (**`/estimates/{estimate_number}`**).
 
 ---
 

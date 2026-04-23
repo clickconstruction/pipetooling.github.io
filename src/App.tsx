@@ -51,6 +51,7 @@ import { BidPreviewModalProvider } from './contexts/BidPreviewModalContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { DailyGoalsGateProvider } from './contexts/DailyGoalsGateContext'
 import { JobsListCacheProvider } from './contexts/JobsListCacheContext'
+import { JobDetailModalProvider } from './contexts/JobDetailModalContext'
 
 // Easter egg:
 // Jodi if you can see this the secret code is Swordfish
@@ -172,7 +173,9 @@ function AppContent() {
                                 <BidPreviewModalProvider>
                                   <DailyGoalsGateProvider>
                                     <JobsListCacheProvider>
-                                      <Layout />
+                                      <JobDetailModalProvider>
+                                        <Layout />
+                                      </JobDetailModalProvider>
                                     </JobsListCacheProvider>
                                   </DailyGoalsGateProvider>
                                 </BidPreviewModalProvider>

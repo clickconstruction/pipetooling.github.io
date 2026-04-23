@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type MutableRefObject } from 'react'
-import DetailJobModal, { type DetailJobModalAssignedJobRow } from '../jobs/DetailJobModal'
+import type { DetailJobModalAssignedJobRow } from '../jobs/DetailJobModal'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
+import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { useIntervalNowMs } from '../../hooks/useIntervalNowMs'
@@ -396,11 +397,7 @@ export default function DashboardFieldCollectPaymentQueue({
   const { showToast } = useToastContext()
   const { role: authRole } = useAuth()
   const jobFormModal = useJobFormModal()
-  const [detailModal, setDetailModal] = useState<{
-    jobId: string
-    prefillRowLabel: string
-    prefillAddress: string | null
-  } | null>(null)
+  const jobDetailModal = useJobDetailModal()
   const [expanded, setExpanded] = useState(true)
   const [loading, setLoading] = useState(true)
   const [rows, setRows] = useState<FlowRow[]>([])
@@ -725,10 +722,12 @@ export default function DashboardFieldCollectPaymentQueue({
                         <button
                           type="button"
                           onClick={() =>
-                            setDetailModal({
+                            jobDetailModal?.openJobDetail({
                               jobId: r.job_id,
                               prefillRowLabel: `${hcp} · ${jl?.job_name?.trim() || 'Job'}`,
                               prefillAddress: (jl?.job_address ?? '').trim() || null,
+                              assignedJobsRows: EMPTY_ASSIGNED_JOBS_FOR_DETAIL_MODAL,
+                              onEditJobSaved: () => void load({ silent: true }),
                             })
                           }
                           title="Job detail"
@@ -938,19 +937,6 @@ export default function DashboardFieldCollectPaymentQueue({
           )}
         </>
       )}
-      {detailModal ? (
-        <DetailJobModal
-          open
-          onClose={() => setDetailModal(null)}
-          jobId={detailModal.jobId}
-          scheduleContext={null}
-          authRole={authRole}
-          assignedJobsRows={EMPTY_ASSIGNED_JOBS_FOR_DETAIL_MODAL}
-          prefillRowLabel={detailModal.prefillRowLabel}
-          prefillAddress={detailModal.prefillAddress ?? undefined}
-          onEditJobSaved={() => void load({ silent: true })}
-        />
-      ) : null}
     </div>
   )
 }
