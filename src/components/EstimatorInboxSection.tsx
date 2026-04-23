@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import { ChecklistTitleWithLinks } from './ChecklistTitleWithLinks'
 import { DispatchNoteCombobox } from './DispatchNoteCombobox'
 import { getDispatchNoteDisplayMeta } from '../utils/dispatchNoteDisplay'
@@ -118,7 +119,10 @@ export function EstimatorInboxSection({
             <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No estimator requests.</p>
           ) : (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {requests.map((req) => {
+              {requests.map((req, index) => {
+                const isFirstClosed =
+                  req.status === 'closed' &&
+                  (index === 0 || requests[index - 1]!.status === 'open')
                 const fromLabel = req.sender?.name?.trim() || req.sender?.email?.trim() || 'Unknown'
                 const isClosed = req.status === 'closed'
                 const closedByLabel = req.closed_by?.name?.trim() || 'Unknown'
@@ -134,15 +138,37 @@ export function EstimatorInboxSection({
                   noteCount === 0 ? 'No messages' : noteCount === 1 ? '1 message' : `${noteCount} messages`
                 const lastNoteMeta = req.last_note_at ? getDispatchNoteDisplayMeta(req.last_note_at) : null
                 return (
-                  <li
-                    key={req.id}
-                    style={{
-                      padding: '0.75rem 0',
-                      borderBottom: '1px solid #f3f4f6',
-                      opacity: isClosed ? 0.85 : 1,
-                      background: isClosed ? '#f9fafb' : undefined,
-                    }}
-                  >
+                  <Fragment key={req.id}>
+                    {isFirstClosed ? (
+                      <li
+                        style={{
+                          listStyle: 'none',
+                          padding: '0.75rem 0 0',
+                          margin: 0,
+                          borderBottom: 'none',
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            color: '#6b7280',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.04em',
+                          }}
+                        >
+                          Closed
+                        </div>
+                      </li>
+                    ) : null}
+                    <li
+                      style={{
+                        padding: '0.75rem 0',
+                        borderBottom: '1px solid #f3f4f6',
+                        opacity: isClosed ? 0.85 : 1,
+                        background: isClosed ? '#f9fafb' : undefined,
+                      }}
+                    >
                     <div
                       style={{
                         display: 'flex',
@@ -506,6 +532,7 @@ export function EstimatorInboxSection({
                       </div>
                     )}
                   </li>
+                  </Fragment>
                 )
               })}
             </ul>

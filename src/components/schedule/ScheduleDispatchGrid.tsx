@@ -7,8 +7,15 @@ import {
 } from '../../lib/scheduleDispatchColumnFocus'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { useToastContext } from '../../contexts/ToastContext'
+import { ScheduleDispatchBlockNoteIcon } from '../icons/ScheduleDispatchBlockNoteIcon'
 import { ScheduleDispatchLinkedChainsIcon } from '../icons/ScheduleDispatchLinkedChainsIcon'
 import type { JobScheduleBlockRow, ScheduleTeamMember } from '../../lib/jobScheduleBlocks'
+import {
+  scheduleBlockActionIconButtonStyle,
+  scheduleBlockActionLinkedIconButtonStyle,
+  scheduleBlockActionTextButtonStyle,
+  scheduleBlockLinkedControlPlateStyle,
+} from '../../lib/scheduleBlockActionChromeStyle'
 import { scheduleFormatWindow } from '../../lib/jobScheduleChicago'
 import { SCHEDULE_DISPATCH_DRAG_DISABLED_READONLY_MESSAGE } from '../../lib/scheduleDispatchDragHelp'
 import { scheduleDispatchCellDroppableId } from '../../lib/scheduleDispatchDnd'
@@ -47,6 +54,7 @@ function ScheduleDispatchBlockCard({
   onEditBlock,
   linkPeerCount,
   onDelete,
+  onRequestEditBlockNote,
 }: {
   block: JobScheduleBlockRow
   canEdit: boolean
@@ -57,6 +65,7 @@ function ScheduleDispatchBlockCard({
   onEditBlock: (b: JobScheduleBlockRow) => void
   linkPeerCount: number
   onDelete: (id: string) => void
+  onRequestEditBlockNote?: (b: JobScheduleBlockRow) => void
 }) {
   const { showToast } = useToastContext()
   const plusButtonRef = useRef<HTMLButtonElement>(null)
@@ -81,6 +90,9 @@ function ScheduleDispatchBlockCard({
 
   const disabledStripAriaLabel =
     'Cannot drag: you do not have permission to reassign schedule blocks. Click for an explanation.'
+
+  const showTopRightControls =
+    linkPeerCount > 1 || (canEdit && !placementPickingActive && onRequestEditBlockNote)
 
   return (
     <div
@@ -160,35 +172,64 @@ function ScheduleDispatchBlockCard({
           <div style={{ color: '#4b5563', marginTop: 2, wordBreak: 'break-word' }}>{block.note}</div>
         ) : null}
       </div>
-      {linkPeerCount > 1 ? (
+      {showTopRightControls ? (
         <div
           style={{
             position: 'absolute',
             top: 2,
             right: 2,
             zIndex: 3,
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 0,
           }}
         >
-          <span
-            role="img"
-            aria-label="Linked"
-            title="Linked: time and note stay in sync for this crew block"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 20,
-              height: 20,
-              boxSizing: 'border-box',
-              padding: 0,
-              color: '#1d4ed8',
-              background: '#dbeafe',
-              border: '1px solid #93c5fd',
-              borderRadius: 4,
-            }}
-          >
-            <ScheduleDispatchLinkedChainsIcon size={12} />
-          </span>
+          {linkPeerCount > 1 ? (
+            <span
+              role="img"
+              aria-label="Linked"
+              title="Linked: time and note stay in sync for this crew block"
+              style={{
+                ...scheduleBlockLinkedControlPlateStyle,
+                color: '#1d4ed8',
+                ...scheduleBlockActionLinkedIconButtonStyle,
+              }}
+            >
+              <ScheduleDispatchLinkedChainsIcon size={10} />
+            </span>
+          ) : null}
+          {canEdit && !placementPickingActive && onRequestEditBlockNote ? (
+            <button
+              type="button"
+              title="Edit block note"
+              aria-label="Edit block note"
+              onClick={(e) => {
+                e.stopPropagation()
+                onRequestEditBlockNote(block)
+              }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 20,
+                height: 20,
+                boxSizing: 'border-box',
+                padding: 0,
+                color: '#1d4ed8',
+                background: 'transparent',
+                border: 'none',
+                borderRadius: 4,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                margin: 0,
+                ...(linkPeerCount > 1 ? { marginLeft: -4 } : {}),
+                ...scheduleBlockActionIconButtonStyle,
+              }}
+            >
+              <ScheduleDispatchBlockNoteIcon size={12} />
+            </button>
+          ) : null}
         </div>
       ) : null}
       {canEdit && !placementPickingActive ? (
@@ -201,7 +242,7 @@ function ScheduleDispatchBlockCard({
             display: 'flex',
             flexDirection: 'row',
             alignItems: 'center',
-            gap: 4,
+            gap: 0,
           }}
         >
           <button
@@ -216,19 +257,21 @@ function ScheduleDispatchBlockCard({
               width: 20,
               height: 20,
               padding: 0,
+              margin: 0,
               lineHeight: '18px',
               fontSize: '0.85rem',
               fontWeight: 700,
               borderRadius: 4,
-              border: '1px solid #fecaca',
-              background: '#fef2f2',
+              border: 'none',
+              background: 'transparent',
               color: '#b91c1c',
               cursor: 'pointer',
+              ...scheduleBlockActionTextButtonStyle,
             }}
           >
             −
           </button>
-          <div style={{ position: 'relative' }}>
+          <div style={{ position: 'relative', margin: 0, marginLeft: -4 }}>
             <button
               ref={plusButtonRef}
               type="button"
@@ -242,14 +285,16 @@ function ScheduleDispatchBlockCard({
                 width: 20,
                 height: 20,
                 padding: 0,
+                margin: 0,
                 lineHeight: '18px',
                 fontSize: '0.85rem',
                 fontWeight: 700,
                 borderRadius: 4,
-                border: '1px solid #60a5fa',
-                background: '#fff',
+                border: 'none',
+                background: 'transparent',
                 color: '#1d4ed8',
                 cursor: 'pointer',
+                ...scheduleBlockActionTextButtonStyle,
               }}
             >
               +
@@ -291,6 +336,7 @@ function ScheduleDispatchCell({
   onAddClick,
   onEditBlock,
   onDeleteBlock,
+  onRequestEditBlockNote,
 }: {
   assigneeUserId: string
   workDate: string
@@ -308,6 +354,7 @@ function ScheduleDispatchCell({
   onAddClick: () => void
   onEditBlock: (b: JobScheduleBlockRow) => void
   onDeleteBlock: (id: string) => void
+  onRequestEditBlockNote?: (b: JobScheduleBlockRow) => void
 }) {
   const droppableId = scheduleDispatchCellDroppableId(workDate, assigneeUserId)
   const { isOver, setNodeRef } = useDroppable({ id: droppableId })
@@ -360,6 +407,7 @@ function ScheduleDispatchCell({
               onEditBlock={onEditBlock}
               linkPeerCount={linkPeerCount}
               onDelete={onDeleteBlock}
+              onRequestEditBlockNote={onRequestEditBlockNote}
             />
           )
         })}
@@ -416,6 +464,7 @@ export type ScheduleDispatchGridProps = {
   onAddClick: (assigneeUserId: string, workDate: string) => void
   onEditBlock: (b: JobScheduleBlockRow) => void
   onDeleteBlock: (id: string) => void
+  onRequestEditBlockNote?: (b: JobScheduleBlockRow) => void
   /** Company-calendar today YMD (`denverCalendarDayKey`); column highlight when in `visibleDayKeys`. */
   scheduleTodayYmd: string
   /** Job-week only: people in this set are on `jobs_ledger_team_members`. Omit while loading. */
@@ -449,6 +498,7 @@ export function ScheduleDispatchGrid({
   onAddClick,
   onEditBlock,
   onDeleteBlock,
+  onRequestEditBlockNote,
   scheduleTodayYmd,
   officialJobTeamUserIds,
   canAddUserToJobRoster = false,
@@ -609,6 +659,7 @@ export function ScheduleDispatchGrid({
                     onAddClick={() => onAddClick(m.user_id, dk)}
                     onEditBlock={onEditBlock}
                     onDeleteBlock={onDeleteBlock}
+                    onRequestEditBlockNote={onRequestEditBlockNote}
                   />
                 ))}
               </tr>

@@ -1678,159 +1678,161 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
 
   return (
     <div>
-      <ChecklistReviewInboxes />
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-        <h3 style={{ margin: 0 }}>Outstanding by person</h3>
-        <div style={{ display: 'flex', gap: '0.25rem' }}>
-          <button
-            type="button"
-            onClick={() => setDateRange('non_repeating')}
-            style={{
-              padding: '0.25rem 0.5rem',
-              fontSize: '0.875rem',
-              border: '1px solid #e5e7eb',
-              borderRadius: '0.25rem',
-              background: dateRange === 'non_repeating' ? '#e5e7eb' : 'transparent',
-              cursor: 'pointer',
-            }}
-          >
-            Non repeating
-          </button>
-          <button
-            type="button"
-            onClick={() => setDateRange('next_day')}
-            style={{
-              padding: '0.25rem 0.5rem',
-              fontSize: '0.875rem',
-              border: '1px solid #e5e7eb',
-              borderRadius: '0.25rem',
-              background: dateRange === 'next_day' ? '#e5e7eb' : 'transparent',
-              cursor: 'pointer',
-            }}
-          >
-            Next day
-          </button>
-          <button
-            type="button"
-            onClick={() => setDateRange('next_week')}
-            style={{
-              padding: '0.25rem 0.5rem',
-              fontSize: '0.875rem',
-              border: '1px solid #e5e7eb',
-              borderRadius: '0.25rem',
-              background: dateRange === 'next_week' ? '#e5e7eb' : 'transparent',
-              cursor: 'pointer',
-            }}
-          >
-            Next week
-          </button>
-          <button
-            type="button"
-            onClick={() => setDateRange('missed')}
-            style={{
-              padding: '0.25rem 0.5rem',
-              fontSize: '0.875rem',
-              border: '1px solid #e5e7eb',
-              borderRadius: '0.25rem',
-              background: dateRange === 'missed' ? '#e5e7eb' : 'transparent',
-              cursor: 'pointer',
-            }}
-          >
-            Missed
-          </button>
+      <div style={{ marginBottom: '1.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+          <h3 style={{ margin: 0 }}>Outstanding by person</h3>
+          <div style={{ display: 'flex', gap: '0.25rem' }}>
+            <button
+              type="button"
+              onClick={() => setDateRange('non_repeating')}
+              style={{
+                padding: '0.25rem 0.5rem',
+                fontSize: '0.875rem',
+                border: '1px solid #e5e7eb',
+                borderRadius: '0.25rem',
+                background: dateRange === 'non_repeating' ? '#e5e7eb' : 'transparent',
+                cursor: 'pointer',
+              }}
+            >
+              Non repeating
+            </button>
+            <button
+              type="button"
+              onClick={() => setDateRange('next_day')}
+              style={{
+                padding: '0.25rem 0.5rem',
+                fontSize: '0.875rem',
+                border: '1px solid #e5e7eb',
+                borderRadius: '0.25rem',
+                background: dateRange === 'next_day' ? '#e5e7eb' : 'transparent',
+                cursor: 'pointer',
+              }}
+            >
+              Next day
+            </button>
+            <button
+              type="button"
+              onClick={() => setDateRange('next_week')}
+              style={{
+                padding: '0.25rem 0.5rem',
+                fontSize: '0.875rem',
+                border: '1px solid #e5e7eb',
+                borderRadius: '0.25rem',
+                background: dateRange === 'next_week' ? '#e5e7eb' : 'transparent',
+                cursor: 'pointer',
+              }}
+            >
+              Next week
+            </button>
+            <button
+              type="button"
+              onClick={() => setDateRange('missed')}
+              style={{
+                padding: '0.25rem 0.5rem',
+                fontSize: '0.875rem',
+                border: '1px solid #e5e7eb',
+                borderRadius: '0.25rem',
+                background: dateRange === 'missed' ? '#e5e7eb' : 'transparent',
+                cursor: 'pointer',
+              }}
+            >
+              Missed
+            </button>
+          </div>
         </div>
-      </div>
-      {loading ? (
-        <p>Loading…</p>
-      ) : byUser.length === 0 ? (
-        <p style={{ color: '#6b7280' }}>No outstanding checklist items.</p>
-      ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-              <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem' }}>Name</th>
-              <th style={{ textAlign: 'right', padding: '0.5rem 0.75rem' }}>Outstanding</th>
-              <th style={{ padding: '0.5rem 0.75rem', width: 40 }}></th>
-              <th style={{ padding: '0.5rem 0.75rem' }}>Remind</th>
-            </tr>
-          </thead>
-          <tbody>
-            {byUser.map(({ userId, name, count, instances }) => (
-              <Fragment key={userId}>
-                <tr
-                  key={userId}
-                  style={{ borderBottom: '1px solid #f3f4f6', cursor: 'pointer' }}
-                  onClick={() => setExpandedUserId((prev) => (prev === userId ? null : userId))}
-                >
-                  <td style={{ padding: '0.5rem 0.75rem' }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                      {name}
-                      {expandedUserId === userId && isDev && (
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); checklistAddModal?.openAddModal(userId) }}
-                          style={{
-                            padding: '0.25rem 0.5rem',
-                            fontSize: '0.8125rem',
-                            border: '1px solid #3b82f6',
-                            borderRadius: 4,
-                            background: '#3b82f6',
-                            color: 'white',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          Add task
-                        </button>
-                      )}
-                    </span>
-                  </td>
-                  <td style={{ textAlign: 'right', padding: '0.5rem 0.75rem' }}>{count}</td>
-                  <td style={{ padding: '0.5rem 0.75rem' }}>
-                    {expandedUserId === userId ? '▼' : '▶'}
-                  </td>
-                  <td style={{ padding: '0.5rem 0.75rem' }} onClick={(e) => e.stopPropagation()}>
-                    <button
-                      type="button"
-                      disabled={remindingUserId === userId}
-                      onClick={() => sendReminder(userId, instances)}
-                      style={{
-                        padding: '0.25rem 0.5rem',
-                        fontSize: '0.875rem',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '0.25rem',
-                        background: 'transparent',
-                        cursor: remindingUserId === userId ? 'not-allowed' : 'pointer',
-                      }}
-                    >
-                      {remindingUserId === userId ? 'Sending…' : 'Remind'}
-                    </button>
-                  </td>
-                </tr>
-                {expandedUserId === userId && (
-                  <tr key={`${userId}-detail`}>
-                    <td colSpan={4} style={{ padding: '0 0.75rem 0.75rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
-                      <OutstandingByPersonSortableList
-                        userId={userId}
-                        instances={instances}
-                        reorderingUserId={reorderingUserId}
-                        canManageChecklists={canManageChecklists}
-                        isDev={isDev}
-                        onDragEnd={onOutstandingDragEnd(userId, instances)}
-                        completingInstanceId={completingInstanceId}
-                        deletingInstanceId={deletingInstanceId}
-                        onMarkComplete={markComplete}
-                        onDeleteInstance={openOutstandingDeleteModal}
-                        onOpenFwd={openFwd}
-                        setEditItemId={setEditItemId}
-                      />
+        {loading ? (
+          <p>Loading…</p>
+        ) : byUser.length === 0 ? (
+          <p style={{ color: '#6b7280' }}>No outstanding checklist items.</p>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem' }}>Name</th>
+                <th style={{ textAlign: 'right', padding: '0.5rem 0.75rem' }}>Outstanding</th>
+                <th style={{ padding: '0.5rem 0.75rem', width: 40 }}></th>
+                <th style={{ padding: '0.5rem 0.75rem' }}>Remind</th>
+              </tr>
+            </thead>
+            <tbody>
+              {byUser.map(({ userId, name, count, instances }) => (
+                <Fragment key={userId}>
+                  <tr
+                    key={userId}
+                    style={{ borderBottom: '1px solid #f3f4f6', cursor: 'pointer' }}
+                    onClick={() => setExpandedUserId((prev) => (prev === userId ? null : userId))}
+                  >
+                    <td style={{ padding: '0.5rem 0.75rem' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                        {name}
+                        {expandedUserId === userId && isDev && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); checklistAddModal?.openAddModal(userId) }}
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              fontSize: '0.8125rem',
+                              border: '1px solid #3b82f6',
+                              borderRadius: 4,
+                              background: '#3b82f6',
+                              color: 'white',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Add task
+                          </button>
+                        )}
+                      </span>
+                    </td>
+                    <td style={{ textAlign: 'right', padding: '0.5rem 0.75rem' }}>{count}</td>
+                    <td style={{ padding: '0.5rem 0.75rem' }}>
+                      {expandedUserId === userId ? '▼' : '▶'}
+                    </td>
+                    <td style={{ padding: '0.5rem 0.75rem' }} onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        disabled={remindingUserId === userId}
+                        onClick={() => sendReminder(userId, instances)}
+                        style={{
+                          padding: '0.25rem 0.5rem',
+                          fontSize: '0.875rem',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '0.25rem',
+                          background: 'transparent',
+                          cursor: remindingUserId === userId ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        {remindingUserId === userId ? 'Sending…' : 'Remind'}
+                      </button>
                     </td>
                   </tr>
-                )}
-              </Fragment>
-            ))}
-          </tbody>
-        </table>
-      )}
+                  {expandedUserId === userId && (
+                    <tr key={`${userId}-detail`}>
+                      <td colSpan={4} style={{ padding: '0 0.75rem 0.75rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                        <OutstandingByPersonSortableList
+                          userId={userId}
+                          instances={instances}
+                          reorderingUserId={reorderingUserId}
+                          canManageChecklists={canManageChecklists}
+                          isDev={isDev}
+                          onDragEnd={onOutstandingDragEnd(userId, instances)}
+                          completingInstanceId={completingInstanceId}
+                          deletingInstanceId={deletingInstanceId}
+                          onMarkComplete={markComplete}
+                          onDeleteInstance={openOutstandingDeleteModal}
+                          onOpenFwd={openFwd}
+                          setEditItemId={setEditItemId}
+                        />
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+      <ChecklistReviewInboxes />
       {outstandingDeletePending && (
         <div
           style={{

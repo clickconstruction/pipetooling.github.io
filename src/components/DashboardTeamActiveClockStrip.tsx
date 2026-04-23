@@ -19,6 +19,7 @@ import { approveClockSessions } from '../lib/approveClockSessions'
 import { supabase } from '../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { useIntervalNowMs } from '../hooks/useIntervalNowMs'
+import { useMatchMedia } from '../hooks/useMatchMedia'
 import {
   AssignSessionJobPopover,
   type AssignSessionJobSavedPatch,
@@ -381,8 +382,14 @@ const jobBidCellFlex: CSSProperties = {
   alignItems: 'center',
   gap: '0.35rem',
   minWidth: 0,
-  flexWrap: 'wrap' as const,
+  flexWrap: 'nowrap',
 }
+
+/** Currently In — last column: avoid collapse on narrow viewports; parent scrolls horizontally. */
+const STRIP_CURRENTLY_IN_JOB_BID_COL_MIN = '14rem'
+
+/** Align with Layout mobile breakpoint; shortens first-column header to "In (n)". */
+const STRIP_SHORT_CURRENTLY_IN_HEADER_MQ = '(max-width: 640px)'
 
 /** Job/bid link + focus memo (and unassigned Assign before memo when in strip). */
 const jobBidLinkMemoGroup: CSSProperties = {
@@ -567,6 +574,7 @@ export function DashboardTeamActiveClockStrip({
   const clockStripWorkDateResolved =
     clockStripWorkDateYmd ?? new Date().toLocaleDateString('en-CA')
   const stripRejectTitleId = useId()
+  const shortCurrentlyInHeader = useMatchMedia(STRIP_SHORT_CURRENTLY_IN_HEADER_MQ)
   const nowMs = useIntervalNowMs(45_000)
   const [salaryMaterializeBusyUserId, setSalaryMaterializeBusyUserId] = useState<string | null>(null)
   const [stripApproveBusy, setStripApproveBusy] = useState<ReadonlySet<string>>(() => new Set())
@@ -1142,9 +1150,13 @@ export function DashboardTeamActiveClockStrip({
                 <th
                   scope="col"
                   style={{ ...stripSectionTh, fontWeight: 700 }}
-                  aria-label={`Person name; ${sessions.length} currently in`}
+                  aria-label={`Currently in: ${sessions.length} ${
+                    sessions.length === 1 ? 'person' : 'people'
+                  }`}
                 >
-                  Currently In ({sessions.length})
+                  {shortCurrentlyInHeader
+                    ? `In (${sessions.length})`
+                    : `Currently In (${sessions.length})`}
                 </th>
                 <th scope="col" style={{ ...stripSectionTh, textAlign: 'right' as const }}>
                   Today
@@ -1153,7 +1165,15 @@ export function DashboardTeamActiveClockStrip({
                   Session | In
                 </th>
                 {showJobBidColumn ? (
-                  <th scope="col" style={{ ...stripSectionTh, maxWidth: 220, ...stripTopRightHeaderReserve }}>
+                  <th
+                    scope="col"
+                    style={{
+                      ...stripSectionTh,
+                      minWidth: STRIP_CURRENTLY_IN_JOB_BID_COL_MIN,
+                      whiteSpace: 'nowrap',
+                      ...stripTopRightHeaderReserve,
+                    }}
+                  >
                     Job or bid
                   </th>
                 ) : (
@@ -1239,7 +1259,7 @@ export function DashboardTeamActiveClockStrip({
                     {sessionInCell}
                   </td>
                   {showJobBidColumn && (
-                    <td style={{ ...td, maxWidth: 220 }}>
+                    <td style={{ ...td, minWidth: STRIP_CURRENTLY_IN_JOB_BID_COL_MIN }}>
                       <div style={jobBidCellFlex}>
                         <div style={jobBidLinkMemoGroup}>
                           {!hasJobOrBid && !synthetic ? (
@@ -1605,7 +1625,7 @@ export function DashboardTeamActiveClockStrip({
                                                 style={{
                                                   display: 'flex',
                                                   alignItems: 'center',
-                                                  flexWrap: 'wrap',
+                                                  flexWrap: 'nowrap',
                                                   gap: '0.35rem',
                                                   minWidth: 0,
                                                 }}
@@ -1662,7 +1682,7 @@ export function DashboardTeamActiveClockStrip({
                                                   style={{
                                                     display: 'flex',
                                                     alignItems: 'center',
-                                                    flexWrap: 'wrap',
+                                                    flexWrap: 'nowrap',
                                                     gap: '0.35rem',
                                                     minWidth: 0,
                                                     flex: '0 1 auto',
@@ -1734,10 +1754,6 @@ export function DashboardTeamActiveClockStrip({
                                                       style={{
                                                         ...jobBidStripMemo,
                                                         fontSize: '0.68rem',
-                                                        flex: '0 1 auto',
-                                                        whiteSpace: 'normal' as const,
-                                                        overflow: 'visible',
-                                                        textOverflow: 'clip',
                                                       }}
                                                       title={memo || undefined}
                                                     >

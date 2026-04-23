@@ -4,6 +4,11 @@ import { formatCurrency, formatDateWithRelativeLabel } from '../lib/format'
 import { useAuth } from '../hooks/useAuth'
 import { loadTeamLaborData, type TeamLaborRow } from '../utils/teamLabor'
 import {
+  fetchApprovedClosedClockSessionsForJobLedger,
+  type JobDetailClockSessionRow,
+} from '../lib/fetchClockSessionsForJobLedger'
+import { APP_CALENDAR_TZ } from '../utils/dateUtils'
+import {
   type UnifiedAssignment,
   mergeToUnified,
   splitFromUnified,
@@ -12,6 +17,44 @@ import {
   type BidDetails,
 } from '../utils/crewAssignments'
 import { getBidServiceTypeTag } from '../utils/unifiedJobBidSearch'
+
+const NOTES_PREVIEW_MAX = 80
+
+function formatTeamLaborClockTime(iso: string | null): string {
+  if (!iso) return '—'
+  try {
+    return new Date(iso).toLocaleTimeString('en-US', {
+      timeZone: APP_CALENDAR_TZ,
+      hour: 'numeric',
+      minute: '2-digit',
+    })
+  } catch {
+    return '—'
+  }
+}
+
+function formatTeamLaborSessionDuration(inIso: string | null, outIso: string | null): string {
+  if (!inIso || !outIso) return '—'
+  const a = new Date(inIso).getTime()
+  const b = new Date(outIso).getTime()
+  if (!Number.isFinite(a) || !Number.isFinite(b) || b < a) return '—'
+  const h = (b - a) / 3600000
+  return `${h.toLocaleString('en-US', { maximumFractionDigits: 1 })} h`
+}
+
+function formatTeamLaborWorkDate(ymd: string | null): string {
+  if (!ymd) return '—'
+  try {
+    return new Date(ymd + 'T12:00:00').toLocaleDateString('en-US', {
+      timeZone: APP_CALENDAR_TZ,
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    })
+  } catch {
+    return ymd
+  }
+}
 
 type PayConfigRow = {
   person_name: string
@@ -80,8 +123,14 @@ export function CrewJobsBlock({
   const [breakdownModal, setBreakdownModal] = useState<{
     jobId: string
     jobName: string
-    type: 'hours' | 'cost'
+    type: 'hours' | 'cost' | 'sessions'
   } | null>(null)
+  const [approvedSessionsState, setApprovedSessionsState] = useState<{
+    rows: JobDetailClockSessionRow[]
+    truncated: boolean
+  } | null>(null)
+  const [approvedSessionsLoading, setApprovedSessionsLoading] = useState(false)
+  const [approvedSessionsError, setApprovedSessionsError] = useState<string | null>(null)
   const [teamLaborOpen, setTeamLaborOpen] = useState(true)
   const [crewJobDetailsMap, setCrewJobDetailsMap] = useState<Record<string, JobDetails>>({})
   const [crewBidDetailsMap, setCrewBidDetailsMap] = useState<Record<string, BidDetails>>({})
@@ -512,6 +561,32 @@ export function CrewJobsBlock({
     return () => clearTimeout(t)
   }, [crewJobSearchModal, crewJobSearchText])
 
+  useEffect(() => {
+    if (!breakdownModal || breakdownModal.type !== 'sessions') {
+      setApprovedSessionsState(null)
+      setApprovedSessionsError(null)
+      setApprovedSessionsLoading(false)
+      return
+    }
+    const jobId = breakdownModal.jobId
+    let cancelled = false
+    setApprovedSessionsLoading(true)
+    setApprovedSessionsError(null)
+    setApprovedSessionsState(null)
+    void fetchApprovedClosedClockSessionsForJobLedger(jobId).then((res) => {
+      if (cancelled) return
+      setApprovedSessionsLoading(false)
+      if (res.error) {
+        setApprovedSessionsError(res.error)
+        return
+      }
+      setApprovedSessionsState({ rows: res.data, truncated: res.truncated })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [breakdownModal])
+
   if (!canAccess && canEditProp === undefined) return null
 
   function getEffectiveAssignments(personName: string): UnifiedAssignment[] {
@@ -769,6 +844,7 @@ export function CrewJobsBlock({
                 <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>People</th>
                 <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Man Hours</th>
                 {!hideJobCostColumn && <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Job Cost</th>}
+                <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Approved sessions</th>
               </tr>
             </thead>
             <tbody>
@@ -841,6 +917,28 @@ export function CrewJobsBlock({
                         </button>
                       </td>
                     )}
+                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setApprovedSessionsState(null)
+                          setApprovedSessionsError(null)
+                          setApprovedSessionsLoading(true)
+                          setBreakdownModal({ jobId: r.jobId, jobName: r.jobName, type: 'sessions' })
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          padding: 0,
+                          cursor: 'pointer',
+                          color: '#2563eb',
+                          textDecoration: 'underline',
+                          fontSize: 'inherit',
+                        }}
+                      >
+                        View
+                      </button>
+                    </td>
                   </tr>
                 ))}
             </tbody>
@@ -1025,38 +1123,111 @@ export function CrewJobsBlock({
             zIndex: 1001,
           }}
         >
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: '90%' }}>
+          <div
+            style={{
+              background: 'white',
+              padding: '1.5rem',
+              borderRadius: 8,
+              minWidth: breakdownModal.type === 'sessions' ? 480 : 360,
+              maxWidth: 'min(95vw, 920px)',
+              width: breakdownModal.type === 'sessions' ? '100%' : undefined,
+            }}
+          >
             <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem' }}>
-              Crew {breakdownModal.type === 'hours' ? 'Man Hours' : 'Job Cost'} Breakdown for Job {breakdownModal.jobName}
+              {breakdownModal.type === 'sessions'
+                ? `Approved clock sessions — ${breakdownModal.jobName}`
+                : `Crew ${breakdownModal.type === 'hours' ? 'Man Hours' : 'Job Cost'} Breakdown for Job ${breakdownModal.jobName}`}
             </h3>
-            {(() => {
-              const row = teamLaborData.find((r) => r.jobId === breakdownModal.jobId)
-              if (!row) return <p style={{ color: '#6b7280' }}>No data</p>
-              const items =
-                breakdownModal.type === 'hours'
-                  ? row.breakdown.map((b) => ({ ...b, value: b.hours }))
-                  : row.breakdown.map((b) => ({ ...b, value: b.cost }))
-              return (
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                      <th style={{ padding: '0.5rem', textAlign: 'left' }}>Person</th>
-                      <th style={{ padding: '0.5rem', textAlign: 'right' }}>{breakdownModal.type === 'hours' ? 'Hours' : 'Cost'}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {items.map((b) => (
-                      <tr key={b.personName} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                        <td style={{ padding: '0.5rem' }}>{b.personName}</td>
-                        <td style={{ padding: '0.5rem', textAlign: 'right' }}>
-                          {breakdownModal.type === 'hours' ? b.value.toFixed(2) : `$${formatCurrency(b.value)}`}
-                        </td>
+            {breakdownModal.type === 'sessions' ? (
+              <>
+                {approvedSessionsLoading && <p style={{ color: '#6b7280', margin: 0 }}>Loading…</p>}
+                {!approvedSessionsLoading && approvedSessionsError && (
+                  <p style={{ color: '#b91c1c', margin: 0 }}>{approvedSessionsError}</p>
+                )}
+                {!approvedSessionsLoading && !approvedSessionsError && approvedSessionsState && (
+                  <>
+                    {approvedSessionsState.rows.length === 0 ? (
+                      <p style={{ color: '#6b7280', margin: 0 }}>No approved closed sessions for this job.</p>
+                    ) : (
+                      <>
+                        <div style={{ maxHeight: '60vh', overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                            <thead style={{ background: '#f9fafb', position: 'sticky', top: 0 }}>
+                              <tr>
+                                <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Work date</th>
+                                <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Person</th>
+                                <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>In</th>
+                                <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Out</th>
+                                <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Duration</th>
+                                <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Notes</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {approvedSessionsState.rows.map((s) => {
+                                const notes = (s.notes ?? '').trim()
+                                const preview =
+                                  notes.length > NOTES_PREVIEW_MAX ? `${notes.slice(0, NOTES_PREVIEW_MAX)}…` : notes || '—'
+                                return (
+                                  <tr key={s.id} style={{ borderBottom: '1px solid #e5e7eb', verticalAlign: 'top' }}>
+                                    <td style={{ padding: '0.5rem', whiteSpace: 'nowrap' }}>{formatTeamLaborWorkDate(s.work_date)}</td>
+                                    <td style={{ padding: '0.5rem' }}>{s.users?.name ?? '—'}</td>
+                                    <td style={{ padding: '0.5rem', whiteSpace: 'nowrap' }}>{formatTeamLaborClockTime(s.clocked_in_at)}</td>
+                                    <td style={{ padding: '0.5rem', whiteSpace: 'nowrap' }}>{formatTeamLaborClockTime(s.clocked_out_at)}</td>
+                                    <td style={{ padding: '0.5rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                      {formatTeamLaborSessionDuration(s.clocked_in_at, s.clocked_out_at)}
+                                    </td>
+                                    <td
+                                      style={{ padding: '0.5rem', maxWidth: 200, wordBreak: 'break-word' }}
+                                      title={notes || undefined}
+                                    >
+                                      {preview}
+                                    </td>
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                        {approvedSessionsState.truncated && (
+                          <p style={{ color: '#6b7280', fontSize: '0.8125rem', margin: '0.75rem 0 0 0' }}>
+                            List shows the first 100 sessions; more exist for this job.
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </>
+                )}
+              </>
+            ) : (
+              (() => {
+                const row = teamLaborData.find((r) => r.jobId === breakdownModal.jobId)
+                if (!row) return <p style={{ color: '#6b7280' }}>No data</p>
+                const items =
+                  breakdownModal.type === 'hours'
+                    ? row.breakdown.map((b) => ({ ...b, value: b.hours }))
+                    : row.breakdown.map((b) => ({ ...b, value: b.cost }))
+                return (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                        <th style={{ padding: '0.5rem', textAlign: 'left' }}>Person</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'right' }}>{breakdownModal.type === 'hours' ? 'Hours' : 'Cost'}</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )
-            })()}
+                    </thead>
+                    <tbody>
+                      {items.map((b) => (
+                        <tr key={b.personName} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <td style={{ padding: '0.5rem' }}>{b.personName}</td>
+                          <td style={{ padding: '0.5rem', textAlign: 'right' }}>
+                            {breakdownModal.type === 'hours' ? b.value.toFixed(2) : `$${formatCurrency(b.value)}`}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )
+              })()
+            )}
             <button type="button" onClick={() => setBreakdownModal(null)} style={{ marginTop: '1rem', padding: '0.5rem 1rem' }}>
               Close
             </button>

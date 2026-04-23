@@ -30,6 +30,7 @@ import TeamFeedbackDevSettingsBlock from '../components/team-feedback/TeamFeedba
 import StripeInvoiceFooterDevSettingsBlock from '../components/settings/StripeInvoiceFooterDevSettingsBlock'
 import PhysicalInvoiceFooterDevSettingsBlock from '../components/settings/PhysicalInvoiceFooterDevSettingsBlock'
 import BillCustomerMemoDevSettingsBlock from '../components/settings/BillCustomerMemoDevSettingsBlock'
+import MapDefaultViewSettingsBlock from '../components/settings/MapDefaultViewSettingsBlock'
 import PhysicalInvoiceIssuerDevSettingsBlock from '../components/settings/PhysicalInvoiceIssuerDevSettingsBlock'
 import JobBookSettingsSection from '../components/settings/JobBookSettingsSection'
 import TeamFeedbackMasterAggregates from '../components/team-feedback/TeamFeedbackMasterAggregates'
@@ -11059,6 +11060,7 @@ export default function Settings() {
           <PhysicalInvoiceIssuerDevSettingsBlock />
           <PhysicalInvoiceFooterDevSettingsBlock />
           <BillCustomerMemoDevSettingsBlock />
+          <MapDefaultViewSettingsBlock />
           <div
             style={{
               marginBottom: '1.5rem',

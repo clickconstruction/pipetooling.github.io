@@ -13,6 +13,12 @@ export const APP_SETTINGS_KEY_BANK_PAYMENTS_SORTING_CONFIG = 'bank_payments_sort
 /** E.164 or free-form digits in `value_text` — dispatch phone for subcontractor Collect Payment step 2. Dev writes; all authenticated read. */
 export const APP_SETTINGS_KEY_FIELD_DISPATCH_PHONE = 'field_dispatch_phone_v1' as const
 
+/**
+ * JSON in `value_text`: `MapDefaultViewV1` (center lat/lng, zoom, address label) — org default for `/map` when no fit-bounds. Dev writes; all authenticated read.
+ * @see `src/lib/mapDefaultViewSettings.ts`
+ */
+export const APP_SETTINGS_KEY_MAP_DEFAULT_VIEW_V1 = 'map_default_view_v1' as const
+
 export function isValidYmd(s: string): boolean {
   return /^(\d{4})-(\d{2})-(\d{2})$/.test(s.trim())
 }

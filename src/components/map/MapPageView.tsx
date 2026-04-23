@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   CircleMarker,
   MapContainer,
@@ -14,10 +14,25 @@ import 'leaflet/dist/leaflet.css'
 import '@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css'
 import '@geoman-io/leaflet-geoman-free'
 import { useMapPageData, type GeocodeAddressRow, type MapPageEntity } from '../../hooks/useMapPageData'
+import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { MapGeocodeReviewModal } from './MapGeocodeReviewModal'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
+import {
+  DEFAULT_MAP_FALLBACK_CENTER,
+  DEFAULT_MAP_FALLBACK_ZOOM,
+  fetchMapDefaultViewFromAppSettings,
+} from '../../lib/mapDefaultViewSettings'
+import { mapEntityMatchesSearch } from '../../lib/map/mapEntitySearch'
 
-const CHICAGO_CENTER: L.LatLngExpression = [41.878, -87.63]
+const openLinkLikeStyle: CSSProperties = {
+  color: '#2563eb',
+  background: 'none',
+  border: 'none',
+  padding: 0,
+  cursor: 'pointer',
+  textDecoration: 'underline',
+  font: 'inherit',
+}
 
 const KIND_COLOR: Record<MapPageEntity['kind'], string> = {
   job: '#2563eb',
@@ -37,6 +52,29 @@ function FitBoundsToEntities({ points }: { points: [number, number][] }) {
       doneRef.current = true
     }
   }, [map, points])
+  return null
+}
+
+/** One-shot fly-to from geocode / table actions; does not remount MapContainer. */
+function MapFlyTo({
+  target,
+  onConsumed,
+}: {
+  target: { lat: number; lng: number } | null
+  onConsumed: () => void
+}) {
+  const map = useMap()
+  useEffect(() => {
+    if (!target) return
+    const z = map.getZoom()
+    map.flyTo([target.lat, target.lng], Math.max(z, 14), { duration: 0.45 })
+    const id = window.setTimeout(() => {
+      onConsumed()
+    }, 0)
+    return () => {
+      clearTimeout(id)
+    }
+  }, [map, target, onConsumed])
   return null
 }
 
@@ -105,7 +143,15 @@ function filterEntitiesByPolygon(entities: MapPageEntity[], poly: Feature<Polygo
 }
 
 /** Shown when geocoding runs; `open` follows progress until all rows are terminal. */
-function GeocodeProgressList({ rows }: { rows: GeocodeAddressRow[] }) {
+function GeocodeProgressList({
+  rows,
+  entities,
+  onAddressOpen,
+}: {
+  rows: GeocodeAddressRow[]
+  entities: MapPageEntity[]
+  onAddressOpen: (addressNormalized: string) => void
+}) {
   if (rows.length === 0) return null
   const done = rows.filter((r) => r.status === 'ok' || r.status === 'error').length
   const anyActive = rows.some((r) => r.status === 'pending' || r.status === 'in_progress')
@@ -118,6 +164,7 @@ function GeocodeProgressList({ rows }: { rows: GeocodeAddressRow[] }) {
       >
         {rows.map((r) => {
           const icon = r.status === 'ok' ? '✓' : r.status === 'error' ? '✗' : r.status === 'in_progress' ? '…' : '·'
+          const hasEntity = entities.some((e) => e.addressKey === r.address_normalized)
           return (
             <li
               key={r.address_normalized}
@@ -127,6 +174,16 @@ function GeocodeProgressList({ rows }: { rows: GeocodeAddressRow[] }) {
                 {icon}
               </span>
               <span style={{ minWidth: 0, wordBreak: 'break-word' }}>{r.addressLabel}</span>
+              {hasEntity ? (
+                <button
+                  type="button"
+                  onClick={() => onAddressOpen(r.address_normalized)}
+                  style={openLinkLikeStyle}
+                  aria-label={`Open job, bid, or estimate for this address: ${r.addressLabel}`}
+                >
+                  Open
+                </button>
+              ) : null}
               {r.errorMessage ? <span style={{ color: '#b91c1c' }}>{r.errorMessage}</span> : null}
             </li>
           )
@@ -140,10 +197,13 @@ function MapEntityTable({
   rows,
   title,
   emptyHint,
+  onOpenJob,
 }: {
   rows: MapPageEntity[]
   title: string
   emptyHint: string
+  /** When set, job rows open Edit Job in place instead of navigating to Jobs. */
+  onOpenJob?: (jobId: string) => void
 }) {
   return (
     <div style={{ marginTop: '0.5rem' }}>
@@ -187,9 +247,15 @@ function MapEntityTable({
                   <td style={{ padding: '0.35rem 0.5rem', color: '#374151' }}>{r.addressLabel}</td>
                   <td style={{ padding: '0.35rem 0.5rem' }}>{r.meta || '—'}</td>
                   <td style={{ padding: '0.35rem 0.5rem' }}>
-                    <Link to={r.linkTo} style={{ color: '#2563eb' }}>
-                      Open
-                    </Link>
+                    {r.kind === 'job' && onOpenJob ? (
+                      <button type="button" onClick={() => onOpenJob(r.id)} style={openLinkLikeStyle}>
+                        Open
+                      </button>
+                    ) : (
+                      <Link to={r.linkTo} style={{ color: '#2563eb' }}>
+                        Open
+                      </Link>
+                    )}
                   </td>
                 </tr>
               ))
@@ -202,14 +268,85 @@ function MapEntityTable({
 }
 
 export function MapPageView() {
+  const navigate = useNavigate()
   const { loading, error, entities, geocodeAddressRows, reload } = useMapPageData(true)
+  const jobFormModal = useJobFormModal()
+  const openJobOnMap = useCallback(
+    (jobId: string) => {
+      jobFormModal?.openEditJob(jobId, {
+        onSaved: () => void reload(),
+      })
+    },
+    [jobFormModal, reload]
+  )
+  const [mapFlyTo, setMapFlyTo] = useState<{ lat: number; lng: number } | null>(null)
+  const clearMapFlyTo = useCallback(() => setMapFlyTo(null), [])
+  const [geocodeChooserMatches, setGeocodeChooserMatches] = useState<MapPageEntity[] | null>(null)
+  const openEntity = useCallback(
+    (e: MapPageEntity) => {
+      if (e.kind === 'job' && jobFormModal) {
+        openJobOnMap(e.id)
+      } else {
+        navigate(e.linkTo)
+      }
+      if (e.lat != null && e.lng != null) {
+        setMapFlyTo({ lat: e.lat, lng: e.lng })
+      }
+    },
+    [jobFormModal, navigate, openJobOnMap]
+  )
+  const onGeocodeAddressOpen = useCallback(
+    (addressNormalized: string) => {
+      const matches = entities.filter((en) => en.addressKey === addressNormalized)
+      if (matches.length === 0) return
+      if (matches.length === 1) {
+        openEntity(matches[0]!)
+        return
+      }
+      setGeocodeChooserMatches(matches)
+    },
+    [entities, openEntity]
+  )
   const [reviewOpen, setReviewOpen] = useState(false)
   const narrow = useNarrowViewport640()
   const [showJobs, setShowJobs] = useState(true)
   const [showBids, setShowBids] = useState(true)
   const [showEst, setShowEst] = useState(true)
+  const [mapSearchQuery, setMapSearchQuery] = useState('')
   const [filterPoly, setFilterPoly] = useState<Feature<Polygon> | null>(null)
   const [clearDraw, setClearDraw] = useState(0)
+  const [mapView, setMapView] = useState<{
+    lat: number
+    lng: number
+    zoom: number
+  }>(() => ({
+    lat: DEFAULT_MAP_FALLBACK_CENTER.lat,
+    lng: DEFAULT_MAP_FALLBACK_CENTER.lng,
+    zoom: DEFAULT_MAP_FALLBACK_ZOOM,
+  }))
+
+  const loadMapDefaultView = useCallback(() => {
+    void (async () => {
+      try {
+        const v = await fetchMapDefaultViewFromAppSettings()
+        if (v) {
+          setMapView({ lat: v.centerLat, lng: v.centerLng, zoom: v.zoom })
+        } else {
+          setMapView({
+            lat: DEFAULT_MAP_FALLBACK_CENTER.lat,
+            lng: DEFAULT_MAP_FALLBACK_CENTER.lng,
+            zoom: DEFAULT_MAP_FALLBACK_ZOOM,
+          })
+        }
+      } catch {
+        // keep current mapView
+      }
+    })()
+  }, [])
+
+  useEffect(() => {
+    loadMapDefaultView()
+  }, [loadMapDefaultView])
 
   const onFilterPolygon = useCallback((poly: Feature<Polygon> | null) => {
     setFilterPoly(poly)
@@ -224,43 +361,109 @@ export function MapPageView() {
     )
   }, [entities, showJobs, showBids, showEst])
 
-  const withCoords = useMemo(() => visible.filter((e) => e.lat != null && e.lng != null), [visible])
+  const mapSearchTrim = useMemo(() => mapSearchQuery.trim(), [mapSearchQuery])
+
+  const searchFiltered = useMemo(() => {
+    if (mapSearchTrim.length === 0) return visible
+    return visible.filter((e) => mapEntityMatchesSearch(mapSearchTrim, e))
+  }, [visible, mapSearchTrim])
+
+  const withCoords = useMemo(
+    () => searchFiltered.filter((e) => e.lat != null && e.lng != null),
+    [searchFiltered]
+  )
   const points = useMemo((): [number, number][] => withCoords.map((e) => [e.lat!, e.lng!]), [withCoords])
-  const tableRows = useMemo(() => filterEntitiesByPolygon(visible, filterPoly), [visible, filterPoly])
+  const tableRows = useMemo(
+    () => filterEntitiesByPolygon(searchFiltered, filterPoly),
+    [searchFiltered, filterPoly]
+  )
+
+  const tableTitle = useMemo(() => {
+    if (mapSearchTrim.length > 0) return 'Search results'
+    if (filterPoly) return 'In drawn area'
+    return 'All visible layers'
+  }, [mapSearchTrim, filterPoly])
+
+  const tableEmptyHint = useMemo(() => {
+    if (mapSearchTrim.length > 0 && searchFiltered.length === 0) {
+      return visible.length > 0
+        ? 'No matches for this search.'
+        : 'No items in the selected layers.'
+    }
+    if (filterPoly) {
+      return 'No pins in this area. Clear the draw or pick another region.'
+    }
+    return 'No rows with a geocoded address. Use Reload after geocoding finishes, or add addresses to jobs/bids/estimates.'
+  }, [mapSearchTrim, searchFiltered.length, visible.length, filterPoly])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1rem' }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem' }}>
-        <h1 style={{ margin: 0, fontSize: '1.25rem' }}>Map</h1>
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.875rem' }}>
-          <input type="checkbox" checked={showJobs} onChange={() => setShowJobs((s) => !s)} />
-          Jobs
-        </label>
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.875rem' }}>
-          <input type="checkbox" checked={showBids} onChange={() => setShowBids((s) => !s)} />
-          Bids
-        </label>
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.875rem' }}>
-          <input type="checkbox" checked={showEst} onChange={() => setShowEst((s) => !s)} />
-          Estimates
-        </label>
-        <button
-          type="button"
-          onClick={() => setClearDraw((c) => c + 1)}
-          style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', cursor: 'pointer' }}
-        >
-          Clear draw
-        </button>
-        <button type="button" onClick={() => void reload()} style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', cursor: 'pointer' }}>
-          Reload data
-        </button>
-        <button
-          type="button"
-          onClick={() => setReviewOpen(true)}
-          style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', cursor: 'pointer' }}
-        >
-          Review geocodes
-        </button>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem' }}>
+          <h1 style={{ margin: 0, fontSize: '1.25rem' }}>Map</h1>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.875rem' }}>
+            <input type="checkbox" checked={showJobs} onChange={() => setShowJobs((s) => !s)} />
+            Jobs
+          </label>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.875rem' }}>
+            <input type="checkbox" checked={showBids} onChange={() => setShowBids((s) => !s)} />
+            Bids
+          </label>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.875rem' }}>
+            <input type="checkbox" checked={showEst} onChange={() => setShowEst((s) => !s)} />
+            Estimates
+          </label>
+          <button
+            type="button"
+            onClick={() => setClearDraw((c) => c + 1)}
+            style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', cursor: 'pointer' }}
+          >
+            Clear draw
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              void reload()
+              loadMapDefaultView()
+            }}
+            style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', cursor: 'pointer' }}
+          >
+            Reload data
+          </button>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
+          <label htmlFor="map-page-search" style={{ fontSize: '0.875rem', color: '#374151' }}>
+            Filter
+          </label>
+          <input
+            id="map-page-search"
+            type="search"
+            name="map-page-search"
+            value={mapSearchQuery}
+            onChange={(e) => setMapSearchQuery(e.target.value)}
+            autoComplete="off"
+            placeholder="Filter by name, address, number…"
+            aria-label="Filter map and list"
+            style={{
+              flex: '1 1 200px',
+              minWidth: 0,
+              maxWidth: '100%',
+              padding: '0.35rem 0.5rem',
+              fontSize: '0.875rem',
+              border: '1px solid #d1d5db',
+              borderRadius: 4,
+            }}
+          />
+          {mapSearchTrim ? (
+            <button
+              type="button"
+              onClick={() => setMapSearchQuery('')}
+              style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', cursor: 'pointer' }}
+            >
+              Clear
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <MapGeocodeReviewModal
@@ -270,7 +473,76 @@ export function MapPageView() {
         onAfterRefresh={() => void reload()}
       />
 
-      <GeocodeProgressList rows={geocodeAddressRows} />
+      {geocodeChooserMatches && geocodeChooserMatches.length > 0 ? (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2000,
+          }}
+          role="dialog"
+          aria-modal
+          aria-labelledby="geocode-chooser-title"
+        >
+          <div
+            style={{
+              background: 'white',
+              padding: '1.25rem',
+              borderRadius: 8,
+              minWidth: 280,
+              maxWidth: 'min(96vw, 420px)',
+              maxHeight: 'min(80vh, 400px)',
+              overflow: 'auto',
+              boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
+            }}
+          >
+            <h2 id="geocode-chooser-title" style={{ margin: '0 0 0.75rem 0', fontSize: '1.05rem' }}>
+              Multiple records at this address
+            </h2>
+            <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#4b5563' }}>Choose which to open.</p>
+            <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+              {geocodeChooserMatches.map((e) => (
+                <li key={`${e.kind}-${e.id}`} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setGeocodeChooserMatches(null)
+                      openEntity(e)
+                    }}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '0.65rem 0.25rem',
+                      border: 'none',
+                      background: 'none',
+                      cursor: 'pointer',
+                      fontSize: '0.875rem',
+                    }}
+                  >
+                    <span style={{ textTransform: 'capitalize', fontWeight: 600, marginRight: '0.35rem' }}>{e.kind}</span>
+                    <span>{e.tableLabel}</span>
+                    {e.sublabel ? <span style={{ color: '#6b7280' }}>{` ${e.sublabel}`}</span> : null}
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              onClick={() => setGeocodeChooserMatches(null)}
+              style={{ marginTop: '0.75rem', padding: '0.5rem 0.9rem', cursor: 'pointer' }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      <GeocodeProgressList rows={geocodeAddressRows} entities={entities} onAddressOpen={onGeocodeAddressOpen} />
 
       {error ? <p style={{ color: '#b91c1c', margin: 0 }}>{error}</p> : null}
       {loading ? <p style={{ margin: 0, color: '#6b7280' }}>Loading…</p> : null}
@@ -286,8 +558,9 @@ export function MapPageView() {
       >
         <div style={{ flex: '1 1 55%', minHeight: 360, minWidth: 0, border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
           <MapContainer
-            center={CHICAGO_CENTER}
-            zoom={10}
+            key={`${mapView.lat}-${mapView.lng}-${mapView.zoom}`}
+            center={[mapView.lat, mapView.lng] as L.LatLngExpression}
+            zoom={mapView.zoom}
             style={{ width: '100%', height: narrow ? 360 : 520 }}
             scrollWheelZoom
           >
@@ -295,6 +568,7 @@ export function MapPageView() {
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
+            <MapFlyTo target={mapFlyTo} onConsumed={clearMapFlyTo} />
             {points.length > 0 ? <FitBoundsToEntities points={points} /> : null}
             <GeomanDraw onFilterPolygon={onFilterPolygon} clearSignal={clearDraw} />
             {withCoords.map((e) => (
@@ -309,7 +583,13 @@ export function MapPageView() {
                     <div style={{ fontWeight: 600, textTransform: 'capitalize' }}>{e.kind}</div>
                     <div>{e.tableLabel}</div>
                     <div style={{ color: '#6b7280' }}>{e.addressLabel}</div>
-                    <Link to={e.linkTo}>Open</Link>
+                    {e.kind === 'job' && jobFormModal ? (
+                      <button type="button" onClick={() => openJobOnMap(e.id)} style={openLinkLikeStyle}>
+                        Open
+                      </button>
+                    ) : (
+                      <Link to={e.linkTo}>Open</Link>
+                    )}
                   </div>
                 </Popup>
               </CircleMarker>
@@ -319,15 +599,57 @@ export function MapPageView() {
         <div style={{ flex: '1 1 40%', minWidth: 0, maxWidth: narrow ? '100%' : 520 }}>
           <MapEntityTable
             rows={tableRows}
-            title={filterPoly ? 'In drawn area' : 'All visible layers'}
-            emptyHint={
-              filterPoly
-                ? 'No pins in this area. Clear the draw or pick another region.'
-                : 'No rows with a geocoded address. Use Reload after geocoding finishes, or add addresses to jobs/bids/estimates.'
-            }
+            title={tableTitle}
+            emptyHint={tableEmptyHint}
+            onOpenJob={jobFormModal ? openJobOnMap : undefined}
           />
         </div>
       </div>
+
+      <details
+        style={{
+          position: 'fixed',
+          zIndex: 300,
+          right: 'max(1rem, env(safe-area-inset-right, 0px))',
+          bottom: 'max(1rem, env(safe-area-inset-bottom, 0px))',
+          maxWidth: 'min(100vw - 2rem, 240px)',
+          margin: 0,
+        }}
+      >
+        <summary
+          style={{
+            cursor: 'pointer',
+            fontSize: '0.875rem',
+            padding: '0.35rem 0.6rem',
+            background: '#f3f4f6',
+            border: '1px solid #d1d5db',
+            borderRadius: 4,
+            listStyle: 'none',
+            userSelect: 'none',
+          }}
+          aria-label="Debug tools"
+        >
+          Debug
+        </summary>
+        <div
+          style={{
+            marginTop: 6,
+            padding: '0.5rem',
+            background: 'white',
+            border: '1px solid #d1d5db',
+            borderRadius: 4,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setReviewOpen(true)}
+            style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', cursor: 'pointer', width: '100%' }}
+          >
+            Review geocodes
+          </button>
+        </div>
+      </details>
     </div>
   )
 }

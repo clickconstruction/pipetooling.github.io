@@ -21,6 +21,8 @@ import { QuickfillTextsSection } from '../components/quickfill/QuickfillTextsSec
 import { QuickfillPhysicalInboxSection } from '../components/quickfill/QuickfillPhysicalInboxSection'
 import { QuickfillOfficeSection } from '../components/quickfill/QuickfillOfficeSection'
 import { QuickfillScheduleSection } from '../components/quickfill/QuickfillScheduleSection'
+import { QuickfillTomorrowsScheduleSection } from '../components/quickfill/QuickfillTomorrowsScheduleSection'
+import { QuickfillProspectsSection } from '../components/quickfill/QuickfillProspectsSection'
 import { DispatchInboxSection } from '../components/DispatchInboxSection'
 import { DispatchDismissedItemsModal } from '../components/DispatchDismissedItemsModal'
 import {
@@ -52,10 +54,16 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-billed-awaiting', sectionId: 'billed-awaiting', label: 'Billing Awaiting Payments' },
   { id: 'quickfill-unpriced-fixtures', sectionId: 'unpriced-fixtures', label: 'Unpriced Fixtures' },
   { id: 'quickfill-cant-reach', sectionId: 'cant-reach', label: 'Unreachable Prospects' },
+  { id: 'quickfill-prospects', sectionId: 'prospects', label: 'Prospects' },
   { id: 'quickfill-supply-houses', sectionId: 'supply-houses', label: 'Supply Houses' },
   { id: 'quickfill-jobs-billing', sectionId: 'jobs-billing', label: 'Jobs Billing' },
   { id: 'quickfill-dispatch-inbox', sectionId: 'dispatch-inbox', label: 'Dispatch inbox' },
   { id: 'quickfill-schedule', sectionId: 'schedule', label: 'Schedule' },
+  {
+    id: 'quickfill-tomorrow-schedule',
+    sectionId: 'tomorrow-schedule',
+    label: "Tomorrow's Schedule (Dispatch hub)",
+  },
   { id: 'quickfill-email-inbox', sectionId: 'email-inbox', label: 'Email' },
   { id: 'quickfill-email-next-actions', sectionId: 'email-next-actions', label: 'Email: Next Actions' },
   { id: 'quickfill-email-follow-up', sectionId: 'email-follow-up', label: 'Email: Follow Up' },
@@ -70,6 +78,7 @@ const APP_SETTINGS_KEY_QUICKFILL_SECTION_ORDER = 'quickfill_section_order'
 const APP_SETTINGS_KEY_QUICKFILL_SECTION_BANNERS = 'quickfill_section_banners'
 const QUICKFILL_SECTION_BANNER_MAX_CHARS = 800
 const SCHEDULE_SECTION_DEFAULT_BANNER = 'Are there any obvious schedule conflicts?'
+const TOMORROW_SCHEDULE_SECTION_DEFAULT_BANNER = 'Who is on what job tomorrow?'
 const DEFAULT_JOBS_BILLING_MIN_HCP = 406
 
 const DEFAULT_SECTION_ORDER_IDS = SECTIONS.map((s) => s.sectionId)
@@ -138,6 +147,7 @@ function effectiveQuickfillSectionBanner(sectionId: string, banners: Record<stri
   const custom = banners[sectionId]?.trim()
   if (custom) return custom.length > QUICKFILL_SECTION_BANNER_MAX_CHARS ? custom.slice(0, QUICKFILL_SECTION_BANNER_MAX_CHARS) : custom
   if (sectionId === 'schedule') return SCHEDULE_SECTION_DEFAULT_BANNER
+  if (sectionId === 'tomorrow-schedule') return TOMORROW_SCHEDULE_SECTION_DEFAULT_BANNER
   return null
 }
 
@@ -305,7 +315,9 @@ function QuickfillDevSectionSortableRow({
           placeholder={
             meta.sectionId === 'schedule'
               ? `Default: ${SCHEDULE_SECTION_DEFAULT_BANNER}`
-              : 'Shown at top of section when expanded'
+              : meta.sectionId === 'tomorrow-schedule'
+                ? `Default: ${TOMORROW_SCHEDULE_SECTION_DEFAULT_BANNER}`
+                : 'Shown at top of section when expanded'
           }
           maxLength={QUICKFILL_SECTION_BANNER_MAX_CHARS}
           aria-label={`Optional banner for ${meta.label}, shown at top of section when expanded`}
@@ -358,7 +370,7 @@ function QuickfillDevSectionSortableRow({
 
 function QuickfillPage() {
   const navigate = useNavigate()
-  const { user: authUser, role } = useAuth()
+  const { user: authUser, role, estimatorProspectsAccess } = useAuth()
   const { showToast } = useToastContext()
   const {
     dispatchInboxEligible,
@@ -571,6 +583,16 @@ function QuickfillPage() {
     return staleTallyStaffPeopleCount > 0 && staleTallyStaffTxCount > 0
   }, [role, hiddenSectionIds, staleTallyStaffPeopleCount, staleTallyStaffTxCount])
 
+  const canAccessProspects = useMemo(
+    () =>
+      Boolean(
+        authUser &&
+          role &&
+          (['dev', 'master_technician', 'assistant'].includes(role) || (role === 'estimator' && estimatorProspectsAccess)),
+      ),
+    [authUser, role, estimatorProspectsAccess],
+  )
+
   /** True if this section would render a Quickfill block (visibility + unpriced count rule). */
   const sectionWouldRenderOnPage = useCallback(
     (sectionId: string): boolean => {
@@ -578,12 +600,13 @@ function QuickfillPage() {
       if (sectionId === 'warnings') return warningsSectionOnPage
       if (sectionId === 'unpriced-fixtures') return unpricedFixturesCount > 0
       if (sectionId === 'dispatch-inbox') return dispatchInboxEligible
-      if (sectionId === 'schedule') {
+      if (sectionId === 'schedule' || sectionId === 'tomorrow-schedule') {
         return role != null && CAN_USE_SCHEDULE_DISPATCH_FOR_QUICKFILL_SCHEDULE.has(role)
       }
+      if (sectionId === 'prospects') return canAccessProspects
       return true
     },
-    [hiddenSectionIds, warningsSectionOnPage, unpricedFixturesCount, dispatchInboxEligible, role],
+    [hiddenSectionIds, warningsSectionOnPage, unpricedFixturesCount, dispatchInboxEligible, role, canAccessProspects],
   )
 
   const orderedSections = useMemo(() => {
@@ -927,6 +950,24 @@ function QuickfillPage() {
             <CantReachSection />
           </QuickfillSectionWrapper>
         )
+      case 'prospects':
+        return (
+          <QuickfillSectionWrapper
+            id={id}
+            sectionId={sectionId}
+            label={label}
+            bannerText={bannerText}
+            withTopDivider={withTopDivider}
+            color={getButtonColor(sectionMarks['prospects']?.marked_at ?? null)}
+            collapsed={isCollapsed('prospects') && !forceExpandedSections.has('prospects')}
+            mark={sectionMarks['prospects']}
+            onMarkUpToDate={() => void markSectionUpToDate('prospects')}
+            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'prospects']))}
+            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'prospects', label: 'Prospects' })}
+          >
+            <QuickfillProspectsSection />
+          </QuickfillSectionWrapper>
+        )
       case 'supply-houses':
         return (
           <QuickfillSectionWrapper
@@ -1027,6 +1068,28 @@ function QuickfillPage() {
             showMarkHistoryButton={false}
           >
             <QuickfillScheduleSection hideConflictPrompt />
+          </QuickfillSectionWrapper>
+        )
+      case 'tomorrow-schedule':
+        return (
+          <QuickfillSectionWrapper
+            id={id}
+            sectionId={sectionId}
+            label={label}
+            bannerText={bannerText}
+            withTopDivider={withTopDivider}
+            color={getButtonColor(sectionMarks['tomorrow-schedule']?.marked_at ?? null)}
+            collapsed={isCollapsed('tomorrow-schedule') && !forceExpandedSections.has('tomorrow-schedule')}
+            mark={sectionMarks['tomorrow-schedule']}
+            onMarkUpToDate={() => void markSectionUpToDate('tomorrow-schedule')}
+            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'tomorrow-schedule']))}
+            onOpenHistory={() =>
+              setMarkHistoryModal({ sectionId: 'tomorrow-schedule', label: "Tomorrow's Schedule" })
+            }
+            showOutstandingInHeader={false}
+            showMarkHistoryButton={false}
+          >
+            <QuickfillTomorrowsScheduleSection />
           </QuickfillSectionWrapper>
         )
       case 'email-inbox':

@@ -222,7 +222,12 @@ const documentsPageVisuallyHiddenH1Style: CSSProperties = {
   borderWidth: 0,
 }
 
-function DocumentsEstimatesLedger() {
+type DocumentsLedgerEmbedProps = { embedSearch?: string }
+
+const documentsLedgerEmbedHintStyle: CSSProperties = { color: '#6b7280', margin: 0 }
+
+function DocumentsEstimatesLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
+  const embedded = embedSearch !== undefined
   const { user } = useAuth()
   const { showToast } = useToastContext()
   const [rows, setRows] = useState<LedgerEstimateRow[]>([])
@@ -236,10 +241,14 @@ function DocumentsEstimatesLedger() {
     title: string
   } | null>(null)
 
+  const effectiveSearch = embedded ? embedSearch : search
   const filteredRows = useMemo(() => {
-    if (!search.trim()) return rows
-    return rows.filter((r) => documentsLedgerRowMatchesSearch(r, search))
-  }, [rows, search])
+    if (!effectiveSearch.trim()) {
+      if (embedded) return []
+      return rows
+    }
+    return rows.filter((r) => documentsLedgerRowMatchesSearch(r, effectiveSearch))
+  }, [rows, effectiveSearch, embedded])
 
   const load = useCallback(async () => {
     if (!user?.id) return
@@ -318,7 +327,7 @@ function DocumentsEstimatesLedger() {
         onClose={() => setSentPreviewEstimateId(null)}
         estimateId={sentPreviewEstimateId}
       />
-      {!loading && rows.length > 0 ? (
+      {!embedded && !loading && rows.length > 0 ? (
         <div style={{ marginBottom: '0.75rem' }}>
           <input
             id="documents-estimates-search"
@@ -336,6 +345,8 @@ function DocumentsEstimatesLedger() {
         <p style={{ color: '#6b7280' }}>Loading…</p>
       ) : rows.length === 0 ? (
         <p style={{ color: '#6b7280' }}>No estimates in this ledger.</p>
+      ) : embedded && !embedSearch.trim() ? (
+        <p style={documentsLedgerEmbedHintStyle}>Results appear when you type a search above.</p>
       ) : filteredRows.length === 0 ? (
         <p style={{ color: '#6b7280' }}>No estimates match your search.</p>
       ) : (
@@ -493,6 +504,60 @@ function formatJobRevenueUsd(n: number | null | undefined): string {
   return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(Number(n))
 }
 
+type SupplyHouseInvoiceLedgerAllocation = {
+  job_id: string
+  pct: number
+  jobs_ledger: { id: string; hcp_number: string | null; job_name: string | null; job_address: string | null } | null
+}
+
+type SupplyHouseInvoiceLedgerRow = Tables<'supply_house_invoices'> & {
+  supply_houses: { name: string } | { name: string }[] | null
+  supply_house_invoice_job_allocations?: SupplyHouseInvoiceLedgerAllocation[] | null
+}
+
+function supplyHouseInvoiceLedgerHouseName(r: SupplyHouseInvoiceLedgerRow): string {
+  const sh = r.supply_houses
+  if (Array.isArray(sh)) return (sh[0]?.name ?? '').trim() || '—'
+  return (sh?.name ?? '').trim() || '—'
+}
+
+function supplyHouseInvoiceLedgerAllocations(r: SupplyHouseInvoiceLedgerRow): SupplyHouseInvoiceLedgerAllocation[] {
+  const raw = r.supply_house_invoice_job_allocations
+  if (!raw || !Array.isArray(raw)) return []
+  return [...raw].sort((a, b) => Number(b.pct) - Number(a.pct))
+}
+
+function formatSupplyInvoiceDateYmd(ymd: string): string {
+  const t = ymd.trim()
+  if (!t) return '—'
+  const d = new Date(`${t}T12:00:00`)
+  return Number.isNaN(d.getTime()) ? t : d.toLocaleDateString(undefined, { dateStyle: 'medium' })
+}
+
+function documentsSupplyInvoiceRowMatchesSearch(r: SupplyHouseInvoiceLedgerRow, query: string): boolean {
+  const t = query.trim().toLowerCase()
+  if (!t) return true
+  if ((r.invoice_number ?? '').toLowerCase().includes(t)) return true
+  if ((r.purchase_order_number ?? '').toLowerCase().includes(t)) return true
+  if (supplyHouseInvoiceLedgerHouseName(r).toLowerCase().includes(t)) return true
+  if (formatSupplyInvoiceDateYmd(r.invoice_date).toLowerCase().includes(t)) return true
+  if (formatJobRevenueUsd(Number(r.amount)).toLowerCase().includes(t)) return true
+  if (String(r.amount ?? '').toLowerCase().includes(t)) return true
+  if (t.includes('paid') && r.is_paid) return true
+  if ((t.includes('unpaid') || t.includes('open')) && !r.is_paid) return true
+  for (const a of supplyHouseInvoiceLedgerAllocations(r)) {
+    const jl = a.jobs_ledger
+    const hcp = (jl?.hcp_number ?? '').trim()
+    const jn = (jl?.job_name ?? '').trim()
+    const ja = (jl?.job_address ?? '').trim()
+    if (hcp.toLowerCase().includes(t)) return true
+    if (jn.toLowerCase().includes(t)) return true
+    if (ja.toLowerCase().includes(t)) return true
+    if (a.job_id.toLowerCase().includes(t)) return true
+  }
+  return false
+}
+
 function documentsJobInvoiceMatchesSearch(inv: DocumentsJobLedgerInvoiceRow, query: string): boolean {
   const t = query.trim().toLowerCase()
   if (!t) return true
@@ -531,7 +596,8 @@ function documentsJobsRowMatchesSearch(
   return false
 }
 
-function DocumentsJobsLedger() {
+function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
+  const embedded = embedSearch !== undefined
   const { user } = useAuth()
   const { showToast } = useToastContext()
   const [rows, setRows] = useState<LedgerJobRow[]>([])
@@ -541,12 +607,16 @@ function DocumentsJobsLedger() {
   const [addDriveLinkJob, setAddDriveLinkJob] = useState<{ id: string; title: string } | null>(null)
   const [billedInvoiceModal, setBilledInvoiceModal] = useState<DocumentsJobLedgerInvoiceRow | null>(null)
 
+  const effectiveSearch = embedded ? embedSearch : search
   const filteredRows = useMemo(() => {
-    if (!search.trim()) return rows
+    if (!effectiveSearch.trim()) {
+      if (embedded) return []
+      return rows
+    }
     return rows.filter((r) =>
-      documentsJobsRowMatchesSearch(r, search, invoicesByJobId.get(r.id) ?? []),
+      documentsJobsRowMatchesSearch(r, effectiveSearch, invoicesByJobId.get(r.id) ?? []),
     )
-  }, [rows, search, invoicesByJobId])
+  }, [rows, effectiveSearch, embedded, invoicesByJobId])
 
   const load = useCallback(async () => {
     if (!user?.id) return
@@ -651,7 +721,7 @@ function DocumentsJobsLedger() {
           await load()
         }}
       />
-      {!loading && rows.length > 0 ? (
+      {!embedded && !loading && rows.length > 0 ? (
         <div style={{ marginBottom: '0.75rem' }}>
           <input
             id="documents-jobs-search"
@@ -669,6 +739,8 @@ function DocumentsJobsLedger() {
         <p style={{ color: '#6b7280' }}>Loading…</p>
       ) : rows.length === 0 ? (
         <p style={{ color: '#6b7280' }}>No jobs in this ledger.</p>
+      ) : embedded && !embedSearch.trim() ? (
+        <p style={documentsLedgerEmbedHintStyle}>Results appear when you type a search above.</p>
       ) : filteredRows.length === 0 ? (
         <p style={{ color: '#6b7280' }}>No jobs match your search.</p>
       ) : (
@@ -787,7 +859,8 @@ function DocumentsJobsLedger() {
 
 const COVER_LETTER_TAB = 'cover-letter' as const
 
-function DocumentsBidProposalsLedger() {
+function DocumentsBidProposalsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
+  const embedded = embedSearch !== undefined
   const { user } = useAuth()
   const { showToast } = useToastContext()
   const [rows, setRows] = useState<LedgerBidRow[]>([])
@@ -856,18 +929,22 @@ function DocumentsBidProposalsLedger() {
     void load()
   }, [load])
 
+  const effectiveSearch = embedded ? embedSearch : search
   const filteredRows = useMemo(() => {
-    if (!search.trim()) return rows
+    if (!effectiveSearch.trim()) {
+      if (embedded) return []
+      return rows
+    }
     return rows.filter((r) => {
       const lines = countRowsByBidId.get(r.id) ?? []
-      return documentsBidProposalsRowMatchesSearch(r, lines, search)
+      return documentsBidProposalsRowMatchesSearch(r, lines, effectiveSearch)
     })
-  }, [rows, search, countRowsByBidId])
+  }, [rows, effectiveSearch, embedded, countRowsByBidId])
 
   const tableRows = useMemo(() => {
-    if (search.trim()) return filteredRows
+    if (effectiveSearch.trim()) return filteredRows
     return filteredRows.filter((r) => r.outcome !== 'lost')
-  }, [filteredRows, search])
+  }, [filteredRows, effectiveSearch])
 
   if (!user?.id) {
     return <p style={{ color: '#6b7280' }}>Sign in to view the ledger.</p>
@@ -903,7 +980,7 @@ function DocumentsBidProposalsLedger() {
           await load()
         }}
       />
-      {!loading && rows.length > 0 ? (
+      {!embedded && !loading && rows.length > 0 ? (
         <div style={{ marginBottom: '0.75rem' }}>
           <input
             id="documents-bid-proposals-search"
@@ -921,6 +998,8 @@ function DocumentsBidProposalsLedger() {
         <p style={{ color: '#6b7280' }}>Loading…</p>
       ) : rows.length === 0 ? (
         <p style={{ color: '#6b7280' }}>No bid proposals in this ledger.</p>
+      ) : embedded && !embedSearch.trim() ? (
+        <p style={documentsLedgerEmbedHintStyle}>Results appear when you type a search above.</p>
       ) : filteredRows.length === 0 ? (
         <p style={{ color: '#6b7280' }}>No bids match your search.</p>
       ) : tableRows.length === 0 ? (
@@ -1067,6 +1146,327 @@ function DocumentsBidProposalsLedger() {
   )
 }
 
+function DocumentsSupplyHouseInvoicesLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
+  const embedded = embedSearch !== undefined
+  const { user } = useAuth()
+  const { showToast } = useToastContext()
+  const [rows, setRows] = useState<SupplyHouseInvoiceLedgerRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [addDriveLinkInvoice, setAddDriveLinkInvoice] = useState<{
+    id: string
+    invoiceNumber: string
+    supplyHouseName: string
+  } | null>(null)
+
+  const effectiveSearch = embedded ? embedSearch : search
+  const filteredRows = useMemo(() => {
+    if (!effectiveSearch.trim()) {
+      if (embedded) return []
+      return rows
+    }
+    return rows.filter((r) => documentsSupplyInvoiceRowMatchesSearch(r, effectiveSearch))
+  }, [rows, effectiveSearch, embedded])
+
+  const load = useCallback(async () => {
+    if (!user?.id) return
+    setLoading(true)
+    try {
+      const data = await withSupabaseRetry(
+        async () =>
+          await supabase
+            .from('supply_house_invoices')
+            .select(
+              `*,
+              supply_houses(name),
+              supply_house_invoice_job_allocations(
+                job_id,
+                pct,
+                jobs_ledger(id, hcp_number, job_name, job_address)
+              )`,
+            )
+            .order('invoice_date', { ascending: false })
+            .limit(200),
+        'load documents supply house invoices',
+      )
+      setRows((data ?? []) as SupplyHouseInvoiceLedgerRow[])
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not load supply house invoices'), 'error')
+      setRows([])
+    } finally {
+      setLoading(false)
+    }
+  }, [user?.id, showToast])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  if (!user?.id) {
+    return <p style={{ color: '#6b7280' }}>Sign in to view the ledger.</p>
+  }
+
+  return (
+    <div>
+      <DocumentsAddDriveLinkModal
+        open={addDriveLinkInvoice != null}
+        onClose={() => setAddDriveLinkInvoice(null)}
+        title="Add supply house invoice document link"
+        description={
+          addDriveLinkInvoice
+            ? `${addDriveLinkInvoice.supplyHouseName} · Invoice #${addDriveLinkInvoice.invoiceNumber}`
+            : null
+        }
+        bidSaveColumn={null}
+        bidNeedsTargetChoice={false}
+        onSave={async (normalizedUrl, _bidTarget: DocumentsBidLinkColumn | null) => {
+          if (!addDriveLinkInvoice) return
+          await withSupabaseRetry(
+            async () =>
+              await supabase
+                .from('supply_house_invoices')
+                .update({ link: normalizedUrl })
+                .eq('id', addDriveLinkInvoice.id),
+            'documents save supply house invoice link',
+          )
+          showToast('Link saved', 'success')
+          await load()
+        }}
+      />
+      {!embedded && !loading && rows.length > 0 ? (
+        <div style={{ marginBottom: '0.75rem' }}>
+          <input
+            id="documents-supply-invoices-search"
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Invoice #, PO, supply house, job, amount…"
+            autoComplete="off"
+            aria-label="Search supply house invoices"
+            style={documentsLedgerSearchInputStyle}
+          />
+        </div>
+      ) : null}
+      {loading ? (
+        <p style={{ color: '#6b7280' }}>Loading…</p>
+      ) : rows.length === 0 ? (
+        <p style={{ color: '#6b7280' }}>No supply house invoices in this ledger.</p>
+      ) : embedded && !embedSearch.trim() ? (
+        <p style={documentsLedgerEmbedHintStyle}>Results appear when you type a search above.</p>
+      ) : filteredRows.length === 0 ? (
+        <p style={{ color: '#6b7280' }}>No invoices match your search.</p>
+      ) : (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={tableStyle}>
+            <thead>
+              <tr>
+                <th style={thStyle}>Docs</th>
+                <th style={thStyle}>Job</th>
+                <th style={thStyle}>
+                  <span style={{ display: 'block' }}>Supply house</span>
+                  <span
+                    style={{
+                      display: 'block',
+                      marginTop: '0.15rem',
+                      fontSize: '0.8rem',
+                      fontWeight: 400,
+                      color: '#6b7280',
+                    }}
+                  >
+                    Invoice #
+                  </span>
+                </th>
+                <th style={thStyle}>Purchase order</th>
+                <th style={thStyle}>Date</th>
+                <th style={{ ...thStyle, textAlign: 'right' }}>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredRows.map((r) => {
+                const docLink = (r.link ?? '').trim()
+                const hasDocLink = !!docLink
+                const house = supplyHouseInvoiceLedgerHouseName(r)
+                const allocs = supplyHouseInvoiceLedgerAllocations(r)
+                const allocTitle = allocs
+                  .map((a) => {
+                    const jl = a.jobs_ledger
+                    const hcp = (jl?.hcp_number ?? '').trim()
+                    const jn = (jl?.job_name ?? '').trim()
+                    const ja = (jl?.job_address ?? '').trim()
+                    const pct = Number(a.pct)
+                    const pctStr = Number.isFinite(pct) && pct > 0 ? ` · ${pct}%` : ''
+                    const line1 = `${hcp ? `Job #${hcp}` : '—'} | ${jn || '—'}${pctStr}`
+                    return ja ? `${line1} — ${ja}` : line1
+                  })
+                  .join('; ')
+                return (
+                  <tr key={r.id}>
+                    <td style={{ ...tdStyle, verticalAlign: 'middle', width: '2.5rem' }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                        {hasDocLink ? (
+                          <button
+                            type="button"
+                            aria-label="Open invoice document"
+                            style={docsIconButtonStyle}
+                            onClick={() => openInExternalBrowser(docLink)}
+                          >
+                            <LedgerDocIconFilled />
+                          </button>
+                        ) : null}
+                        {!hasDocLink ? (
+                          <button
+                            type="button"
+                            aria-label="Add invoice document link"
+                            title="Add document link"
+                            style={docsAddLinkButtonStyle}
+                            onClick={() =>
+                              setAddDriveLinkInvoice({
+                                id: r.id,
+                                invoiceNumber: (r.invoice_number ?? '').trim() || '—',
+                                supplyHouseName: house,
+                              })
+                            }
+                          >
+                            +
+                          </button>
+                        ) : null}
+                      </div>
+                    </td>
+                    <td style={tdStyle} title={allocTitle || undefined}>
+                      {allocs.length === 0 ? (
+                        <span style={{ color: '#6b7280' }}>—</span>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                          {allocs.map((a) => {
+                            const jl = a.jobs_ledger
+                            const jid = jl?.id ?? a.job_id
+                            const hcp = (jl?.hcp_number ?? '').trim()
+                            const jn = (jl?.job_name ?? '').trim()
+                            const ja = (jl?.job_address ?? '').trim()
+                            const pct = Number(a.pct)
+                            const pctStr = Number.isFinite(pct) && pct > 0 ? ` · ${pct}%` : ''
+                            const line1 = `${hcp ? `Job #${hcp}` : '—'} | ${jn || '—'}${pctStr}`
+                            return (
+                              <Link
+                                key={`${r.id}-${a.job_id}-${a.pct}`}
+                                to={`/jobs?edit=${encodeURIComponent(jid)}`}
+                                style={{
+                                  display: 'block',
+                                  fontWeight: 500,
+                                  color: '#15803d',
+                                  textDecoration: 'none',
+                                  maxWidth: '14rem',
+                                }}
+                              >
+                                <span style={{ display: 'block' }}>{line1}</span>
+                                <span
+                                  title={ja || undefined}
+                                  style={{
+                                    display: 'block',
+                                    marginTop: '0.1rem',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 400,
+                                    color: '#6b7280',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                >
+                                  {ja || '—'}
+                                </span>
+                              </Link>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </td>
+                    <td style={tdStyle}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                        <span>{house}</span>
+                        <span>
+                          <span style={{ fontWeight: 500 }}>{(r.invoice_number ?? '').trim() || '—'}</span>
+                          {r.is_paid ? (
+                            <span style={{ marginLeft: '0.35rem', fontSize: '0.75rem', color: '#15803d' }}>(Paid)</span>
+                          ) : null}
+                        </span>
+                      </div>
+                    </td>
+                    <td style={tdStyle}>
+                      {(r.purchase_order_number ?? '').trim() ? (
+                        <span>{(r.purchase_order_number ?? '').trim()}</span>
+                      ) : (
+                        <span style={{ color: '#6b7280' }}>—</span>
+                      )}
+                    </td>
+                    <td style={tdStyle}>{formatSupplyInvoiceDateYmd(r.invoice_date)}</td>
+                    <td style={{ ...tdStyle, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      {formatJobRevenueUsd(Number(r.amount))}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
+const documentsUnifiedSectionHeadingStyle: CSSProperties = {
+  fontSize: '1rem',
+  fontWeight: 600,
+  margin: '1.25rem 0 0.35rem',
+}
+
+function DocumentsUnifiedSearchTab() {
+  const { user } = useAuth()
+  const [query, setQuery] = useState('')
+  const q = query.trim()
+  const filterQuery = q.length >= 2 ? query : ''
+
+  if (!user?.id) {
+    return <p style={{ color: '#6b7280', margin: 0 }}>Sign in to search documents.</p>
+  }
+  return (
+    <div>
+      <div style={{ marginBottom: '0.75rem' }}>
+        <input
+          id="documents-unified-search"
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Type at least 2 characters — estimates, bids, jobs, supply invoices…"
+          autoComplete="off"
+          aria-label="Search across document ledgers"
+          style={documentsLedgerSearchInputStyle}
+        />
+        {q.length === 1 ? (
+          <p style={{ color: '#6b7280', margin: '0.35rem 0 0', fontSize: '0.875rem' }}>
+            Enter at least 2 characters to search.
+          </p>
+        ) : null}
+      </div>
+      <div>
+        <h2 style={{ ...documentsUnifiedSectionHeadingStyle, marginTop: '0.35rem' }}>Estimates</h2>
+        <DocumentsEstimatesLedger embedSearch={filterQuery} />
+      </div>
+      <div>
+        <h2 style={documentsUnifiedSectionHeadingStyle}>Bid proposals</h2>
+        <DocumentsBidProposalsLedger embedSearch={filterQuery} />
+      </div>
+      <div>
+        <h2 style={documentsUnifiedSectionHeadingStyle}>Jobs</h2>
+        <DocumentsJobsLedger embedSearch={filterQuery} />
+      </div>
+      <div>
+        <h2 style={documentsUnifiedSectionHeadingStyle}>Supply invoices</h2>
+        <DocumentsSupplyHouseInvoicesLedger embedSearch={filterQuery} />
+      </div>
+    </div>
+  )
+}
+
 export default function Documents() {
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -1084,6 +1484,13 @@ export default function Documents() {
       <h1 style={documentsPageVisuallyHiddenH1Style}>Documents</h1>
 
       <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          style={pageUnderlineTabStyle(documentsTab === 'search')}
+          onClick={() => setDocumentsTab('search')}
+        >
+          Search
+        </button>
         <button
           type="button"
           style={pageUnderlineTabStyle(documentsTab === 'estimates')}
@@ -1105,6 +1512,13 @@ export default function Documents() {
         >
           Jobs
         </button>
+        <button
+          type="button"
+          style={pageUnderlineTabStyle(documentsTab === 'supply-invoices')}
+          onClick={() => setDocumentsTab('supply-invoices')}
+        >
+          Supply invoices
+        </button>
         <button type="button" style={pageUnderlineTabStyle(documentsTab === 'upload')} onClick={() => setDocumentsTab('upload')}>
           Upload
         </button>
@@ -1113,9 +1527,11 @@ export default function Documents() {
       {documentsTab === 'upload' ? (
         <p style={{ color: '#6b7280', margin: 0 }}>Upload coming soon.</p>
       ) : null}
+      {documentsTab === 'search' ? <DocumentsUnifiedSearchTab /> : null}
       {documentsTab === 'estimates' ? <DocumentsEstimatesLedger /> : null}
       {documentsTab === 'bid-proposals' ? <DocumentsBidProposalsLedger /> : null}
       {documentsTab === 'jobs' ? <DocumentsJobsLedger /> : null}
+      {documentsTab === 'supply-invoices' ? <DocumentsSupplyHouseInvoicesLedger /> : null}
     </div>
   )
 }

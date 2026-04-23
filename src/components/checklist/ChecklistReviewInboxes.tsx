@@ -7,15 +7,13 @@ import { DispatchDismissedItemsModal } from '../DispatchDismissedItemsModal'
 import { EstimatorInboxSection } from '../EstimatorInboxSection'
 
 /**
- * Checklist Review tab: dispatch open / dispatch closed, estimator open / estimator closed — same behavior as Dashboard inboxes.
+ * Checklist Review tab: one dispatch card and one estimator card (open rows first, then closed).
  * Hidden for assistant role (matches Dashboard).
  */
 export function ChecklistReviewInboxes() {
   const { role } = useAuth()
-  const [dispatchOpenSectionOpen, setDispatchOpenSectionOpen] = useState(true)
-  const [dispatchClosedSectionOpen, setDispatchClosedSectionOpen] = useState(false)
-  const [estimatorOpenSectionOpen, setEstimatorOpenSectionOpen] = useState(true)
-  const [estimatorClosedSectionOpen, setEstimatorClosedSectionOpen] = useState(false)
+  const [dispatchSectionOpen, setDispatchSectionOpen] = useState(true)
+  const [estimatorSectionOpen, setEstimatorSectionOpen] = useState(true)
   const [dispatchDismissedModalOpen, setDispatchDismissedModalOpen] = useState(false)
 
   const {
@@ -58,100 +56,58 @@ export function ChecklistReviewInboxes() {
 
   const dispatchOpenRows = dispatchRequests.filter((r) => r.status === 'open')
   const dispatchClosedRows = dispatchRequests.filter((r) => r.status === 'closed')
+  const dispatchRowsOrdered = [...dispatchOpenRows, ...dispatchClosedRows]
+
   const estimatorOpenRows = estimatorRequests.filter((r) => r.status === 'open')
   const estimatorClosedRows = estimatorRequests.filter((r) => r.status === 'closed')
+  const estimatorRowsOrdered = [...estimatorOpenRows, ...estimatorClosedRows]
 
   return (
     <div style={{ marginBottom: '1.5rem' }}>
       {dispatchInboxEligible ? (
-        <>
-          <DispatchInboxSection
-            variant="card"
-            headerBadge="open"
-            sectionOpen={dispatchOpenSectionOpen}
-            onToggleSection={() => setDispatchOpenSectionOpen((o) => !o)}
-            requests={dispatchOpenRows}
-            loading={dispatchRequestsLoading}
-            expandedRequestId={expandedDispatchRequestId}
-            onToggleExpandRequest={toggleExpandDispatchRequest}
-            notesByRequestId={dispatchThreadNotesByRequestId}
-            notesLoadingRequestId={dispatchNotesLoadingRequestId}
-            noteSubmitRequestId={dispatchNoteSubmitRequestId}
-            canAddNotes={dispatchInboxEligible}
-            dispatchRequestDismissingId={dispatchRequestDismissingId}
-            noteDraft={dispatchNoteDraft}
-            onNoteDraftChange={setDispatchNoteDraft}
-            onSubmitNote={submitDispatchNote}
-            onSubmitNoteAndClose={submitDispatchNoteAndClose}
-            onDismiss={dismissDispatchRequest}
-            onOpenDismissedArchive={() => setDispatchDismissedModalOpen(true)}
-          />
-          <DispatchInboxSection
-            variant="card"
-            sectionTitle="Dispatch closed items"
-            headerBadge="closed"
-            sectionOpen={dispatchClosedSectionOpen}
-            onToggleSection={() => setDispatchClosedSectionOpen((o) => !o)}
-            requests={dispatchClosedRows}
-            loading={dispatchRequestsLoading}
-            expandedRequestId={expandedDispatchRequestId}
-            onToggleExpandRequest={toggleExpandDispatchRequest}
-            notesByRequestId={dispatchThreadNotesByRequestId}
-            notesLoadingRequestId={dispatchNotesLoadingRequestId}
-            noteSubmitRequestId={dispatchNoteSubmitRequestId}
-            canAddNotes={dispatchInboxEligible}
-            dispatchRequestDismissingId={dispatchRequestDismissingId}
-            noteDraft={dispatchNoteDraft}
-            onNoteDraftChange={setDispatchNoteDraft}
-            onSubmitNote={submitDispatchNote}
-            onSubmitNoteAndClose={submitDispatchNoteAndClose}
-            onDismiss={dismissDispatchRequest}
-          />
-        </>
+        <DispatchInboxSection
+          variant="card"
+          headerBadge="open"
+          sectionOpen={dispatchSectionOpen}
+          onToggleSection={() => setDispatchSectionOpen((o) => !o)}
+          requests={dispatchRowsOrdered}
+          loading={dispatchRequestsLoading}
+          expandedRequestId={expandedDispatchRequestId}
+          onToggleExpandRequest={toggleExpandDispatchRequest}
+          notesByRequestId={dispatchThreadNotesByRequestId}
+          notesLoadingRequestId={dispatchNotesLoadingRequestId}
+          noteSubmitRequestId={dispatchNoteSubmitRequestId}
+          canAddNotes={dispatchInboxEligible}
+          dispatchRequestDismissingId={dispatchRequestDismissingId}
+          noteDraft={dispatchNoteDraft}
+          onNoteDraftChange={setDispatchNoteDraft}
+          onSubmitNote={submitDispatchNote}
+          onSubmitNoteAndClose={submitDispatchNoteAndClose}
+          onDismiss={dismissDispatchRequest}
+          onOpenDismissedArchive={() => setDispatchDismissedModalOpen(true)}
+        />
       ) : null}
 
       {estimatorInboxEligible ? (
-        <>
-          <EstimatorInboxSection
-            headerBadge="open"
-            sectionOpen={estimatorOpenSectionOpen}
-            onToggleSection={() => setEstimatorOpenSectionOpen((o) => !o)}
-            requests={estimatorOpenRows}
-            loading={estimatorRequestsLoading}
-            expandedRequestId={expandedEstimatorRequestId}
-            onToggleExpandRequest={toggleExpandEstimatorRequest}
-            notesByRequestId={estimatorThreadNotesByRequestId}
-            notesLoadingRequestId={estimatorNotesLoadingRequestId}
-            noteSubmitRequestId={estimatorNoteSubmitRequestId}
-            canAddNotes={estimatorInboxEligible}
-            estimatorRequestDismissingId={estimatorRequestDismissingId}
-            noteDraft={estimatorNoteDraft}
-            onNoteDraftChange={setEstimatorNoteDraft}
-            onSubmitNote={submitEstimatorNote}
-            onSubmitNoteAndClose={submitEstimatorNoteAndClose}
-            onDismiss={dismissEstimatorRequest}
-          />
-          <EstimatorInboxSection
-            sectionTitle="Estimator closed items"
-            headerBadge="closed"
-            sectionOpen={estimatorClosedSectionOpen}
-            onToggleSection={() => setEstimatorClosedSectionOpen((o) => !o)}
-            requests={estimatorClosedRows}
-            loading={estimatorRequestsLoading}
-            expandedRequestId={expandedEstimatorRequestId}
-            onToggleExpandRequest={toggleExpandEstimatorRequest}
-            notesByRequestId={estimatorThreadNotesByRequestId}
-            notesLoadingRequestId={estimatorNotesLoadingRequestId}
-            noteSubmitRequestId={estimatorNoteSubmitRequestId}
-            canAddNotes={estimatorInboxEligible}
-            estimatorRequestDismissingId={estimatorRequestDismissingId}
-            noteDraft={estimatorNoteDraft}
-            onNoteDraftChange={setEstimatorNoteDraft}
-            onSubmitNote={submitEstimatorNote}
-            onSubmitNoteAndClose={submitEstimatorNoteAndClose}
-            onDismiss={dismissEstimatorRequest}
-          />
-        </>
+        <EstimatorInboxSection
+          headerBadge="open"
+          sectionOpen={estimatorSectionOpen}
+          onToggleSection={() => setEstimatorSectionOpen((o) => !o)}
+          requests={estimatorRowsOrdered}
+          loading={estimatorRequestsLoading}
+          expandedRequestId={expandedEstimatorRequestId}
+          onToggleExpandRequest={toggleExpandEstimatorRequest}
+          notesByRequestId={estimatorThreadNotesByRequestId}
+          notesLoadingRequestId={estimatorNotesLoadingRequestId}
+          noteSubmitRequestId={estimatorNoteSubmitRequestId}
+          canAddNotes={estimatorInboxEligible}
+          estimatorRequestDismissingId={estimatorRequestDismissingId}
+          noteDraft={estimatorNoteDraft}
+          onNoteDraftChange={setEstimatorNoteDraft}
+          onSubmitNote={submitEstimatorNote}
+          onSubmitNoteAndClose={submitEstimatorNoteAndClose}
+          onDismiss={dismissEstimatorRequest}
+        />
       ) : null}
 
       {dispatchInboxEligible ? (

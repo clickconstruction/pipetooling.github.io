@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-04-18
+last_updated: 2026-04-23
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -293,7 +293,7 @@ Org-wide Mercury transaction filter for applying customer bank deposits to bille
 ## Checklist
 
 ### Checklist Items / Checklist Instances
-Recurring tasks with Today, History, and Manage tabs. **Assignees** are stored in junction tables `checklist_item_assignees` (item, user) and `checklist_instance_assignees` (instance, user)—items and instances can have multiple assignees. Add/Edit modal uses checkboxes for multi-assignee selection; at least one assignee required. Today/History filter by `checklist_instance_assignees.user_id`. **Link placeholders**: `[1]`, `[2]`, etc. in item titles map to URLs in `checklist_items.links` array; Add/Edit modal provides URL inputs; displayed as clickable links via `ChecklistTitleWithLinks`.
+Recurring tasks with Today, History, **Review**, and Manage tabs (Review/Manage require manage-capable roles). **Assignees** are stored in junction tables `checklist_item_assignees` (item, user) and `checklist_instance_assignees` (instance, user)—items and instances can have multiple assignees. Add/Edit modal uses checkboxes for multi-assignee selection; at least one assignee required. Today/History filter by `checklist_instance_assignees.user_id`. **Review** tab: **Outstanding by person** (filters and table) first, then **Task Dispatch** and **Estimator Inbox** cards via `ChecklistReviewInboxes` (inbox cards hidden for assistants). **Link placeholders**: `[1]`, `[2]`, etc. in item titles map to URLs in `checklist_items.links` array; Add/Edit modal provides URL inputs; displayed as clickable links via `ChecklistTitleWithLinks`.
 
 **Database**: `checklist_items`, `checklist_instances`, `checklist_item_assignees`, `checklist_instance_assignees`
 
@@ -654,6 +654,9 @@ SQL file defining schema changes (CREATE TABLE, ALTER TABLE, etc.). Migrations a
 
 **Rule**: Never edit existing migrations; create new ones
 
+### address_geocodes
+Cache of **normalized address key** → **latitude** / **longitude** (and source metadata) for the [Map page](#map-page-map) and related geocoding. Written by Edge Functions **`geocode-one`** and **`geocode-address-batch`** (see [EDGE_FUNCTIONS.md](EDGE_FUNCTIONS.md)). Client: [`useMapPageData.ts`](src/hooks/useMapPageData.ts). See [PROJECT_DOCUMENTATION.md](PROJECT_DOCUMENTATION.md) **Key Features** §16.
+
 ### Last work date (`jobs_ledger.last_work_date`)
 Cached calendar **`work_date`**: the latest among **approved**, non-rejected, non-revoked **`clock_sessions`** with **`job_ledger_id`** pointing at the job. Maintained by database triggers on **`clock_sessions`** (not edited in Job form). Used for read-only display (e.g. **Job Detail** modal).
 
@@ -856,6 +859,9 @@ Route component that requires authentication. Redirects to sign-in if user not a
 **Implementation**: `ProtectedRoute` wrapper in `App.tsx`
 
 **Redirects**: Unauthenticated users → `/sign-in`
+
+### Map page (`/map`)
+**Leaflet** + OpenStreetMap **tiles**; circle markers for **jobs**, **bids**, and **estimates**; top **Filter** (token-and search over name, address, #, and meta) narrows **pins** and the **table**; **Geoman** polygon draw refines the list further; **Review geocodes** (batch re-run, optional **Google** refresh) is under the bottom-right **Debug** disclosure. **Dev** can set an org **default map center/zoom** in **Settings** (`map_default_view_v1` in `app_settings`; see `MapDefaultViewSettingsBlock`, `mapDefaultViewSettings.ts`). The **header** **Map** (pin) link is **dev**-only; route access and **Edge** geocoding rules are summarized in [ACCESS_CONTROL.md](ACCESS_CONTROL.md) (Page Access Matrix) and [PROJECT_DOCUMENTATION.md](PROJECT_DOCUMENTATION.md) §16.
 
 ### Layout
 Component wrapping page content with navigation header.

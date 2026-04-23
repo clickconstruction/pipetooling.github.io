@@ -858,7 +858,7 @@ This proposal excludes all impact fees.
 This proposal excludes any work not specifically described within.
 This proposal excludes any electrical, fire protection, fire alarm, drywall, framing, or architectural finishes of any type.`
 
-const DEFAULT_INCLUSIONS = 'Permits'
+const COVER_LETTER_INCLUSIONS_PLACEHOLDER = 'Permits'
 
 const LIEN_RELEASE_DEFAULT_COMPANY_ADDRESS = '5501 Balcones Dr Ste A141, Austin, Texas 78731'
 const LIEN_RELEASE_DEFAULT_LIEN_PHONE = '+1 512 360 0599'
@@ -1929,7 +1929,6 @@ export default function Bids() {
   const [coverLetterIncludeFixturesPerPlanByBid, setCoverLetterIncludeFixturesPerPlanByBid] = useState<Record<string, boolean>>({})
   const [coverLetterTermsCollapsed, setCoverLetterTermsCollapsed] = useState(true)
   const [coverLetterSearchQuery, setCoverLetterSearchQuery] = useState('')
-  const [coverLetterCopySuccess, setCoverLetterCopySuccess] = useState(false)
   const [coverLetterBidSubmissionQuickAddBidId, setCoverLetterBidSubmissionQuickAddBidId] = useState<string | null>(null)
   const [coverLetterBidSubmissionQuickAddValue, setCoverLetterBidSubmissionQuickAddValue] = useState('')
   const [applyingBidValue, setApplyingBidValue] = useState(false)
@@ -6139,14 +6138,14 @@ export default function Bids() {
     const effectiveRevenue = useCustomAmount && !isNaN(customAmountNum) && customAmountNum >= 0 ? customAmountNum : coverLetterRevenue
     const revenueWords = numberToWords(effectiveRevenue).toUpperCase()
     const revenueNumber = `$${formatCurrency(effectiveRevenue)}`
-    const inclusions = coverLetterInclusionsByBid[b.id] ?? DEFAULT_INCLUSIONS
+    const inclusions = coverLetterInclusionsByBid[b.id] ?? ''
     const exclusions = coverLetterExclusionsByBid[b.id] ?? DEFAULT_EXCLUSIONS
     const terms = coverLetterTermsByBid[b.id] ?? DEFAULT_TERMS_AND_WARRANTY
     const designDrawingPlanDateFormatted = (coverLetterIncludeDesignDrawingPlanDateByBid[b.id] !== false && b.design_drawing_plan_date) ? formatDesignDrawingPlanDate(b.design_drawing_plan_date) : null
     const effectiveIncludeFixtures = !designDrawingPlanDateFormatted || (coverLetterIncludeFixturesPerPlanByBid[b.id] !== false)
     const bidServiceType = serviceTypes.find((st) => st.id === b.service_type_id)
     const serviceTypeName = bidServiceType?.name ?? 'Plumbing'
-    const coverLetterText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, coverLetterIncludeSignatureByBid[b.id] !== false, effectiveIncludeFixtures)
+    const coverLetterText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, coverLetterIncludeSignatureByBid[b.id] === true, effectiveIncludeFixtures)
     const coverLines = coverLetterText.split('\n')
     for (const line of coverLines) {
       if (y > pageH - margin) { doc.addPage(); y = margin }
@@ -15786,8 +15785,8 @@ export default function Bids() {
             const revenueWords = numberToWords(effectiveRevenue).toUpperCase()
             const revenueNumber = `$${formatCurrency(effectiveRevenue)}`
             const fixtureRows = pricingCountRows.map((r) => ({ fixture: r.fixture ?? '', count: Number(r.count) }))
-            const inclusions = coverLetterInclusionsByBid[bid.id] ?? DEFAULT_INCLUSIONS
-            const inclusionsDisplay = coverLetterInclusionsByBid[bid.id] ?? DEFAULT_INCLUSIONS
+            const inclusions = coverLetterInclusionsByBid[bid.id] ?? ''
+            const inclusionsDisplay = coverLetterInclusionsByBid[bid.id] ?? ''
             const exclusions = coverLetterExclusionsByBid[bid.id] ?? ''
             const exclusionsDisplay = coverLetterExclusionsByBid[bid.id] ?? DEFAULT_EXCLUSIONS
             const terms = coverLetterTermsByBid[bid.id] ?? ''
@@ -15796,8 +15795,8 @@ export default function Bids() {
             const effectiveIncludeFixtures = !designDrawingPlanDateFormatted || (coverLetterIncludeFixturesPerPlanByBid[bid.id] !== false)
             const bidServiceType = serviceTypes.find((st) => st.id === bid.service_type_id)
             const serviceTypeName = bidServiceType?.name ?? 'Plumbing'
-            const combinedText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, coverLetterIncludeSignatureByBid[bid.id] !== false, effectiveIncludeFixtures)
-            const combinedHtml = buildCoverLetterHtml(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, coverLetterIncludeSignatureByBid[bid.id] !== false, effectiveIncludeFixtures)
+            const combinedText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, coverLetterIncludeSignatureByBid[bid.id] === true, effectiveIncludeFixtures)
+            const combinedHtml = buildCoverLetterHtml(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, coverLetterIncludeSignatureByBid[bid.id] === true, effectiveIncludeFixtures)
             const now = new Date()
             const yy = now.getFullYear() % 100
             const mm = String(now.getMonth() + 1).padStart(2, '0')
@@ -15824,23 +15823,14 @@ export default function Bids() {
                   '<!--EndFragment--></body></html>'
                 const htmlBlob = new Blob([clipboardHtml], { type: 'text/html' })
                 const item = new ClipboardItem({ 'text/html': htmlBlob })
-                navigator.clipboard.write([item]).then(
+                void navigator.clipboard.write([item]).then(
+                  () => {},
                   () => {
-                    setCoverLetterCopySuccess(true)
-                    setTimeout(() => setCoverLetterCopySuccess(false), 2000)
-                  },
-                  () => {
-                    navigator.clipboard.writeText(combinedText).then(() => {
-                      setCoverLetterCopySuccess(true)
-                      setTimeout(() => setCoverLetterCopySuccess(false), 2000)
-                    })
+                    void navigator.clipboard.writeText(combinedText)
                   }
                 )
               } else {
-                navigator.clipboard.writeText(combinedText).then(() => {
-                  setCoverLetterCopySuccess(true)
-                  setTimeout(() => setCoverLetterCopySuccess(false), 2000)
-                })
+                void navigator.clipboard.writeText(combinedText)
               }
             }
             return (
@@ -16017,7 +16007,7 @@ export default function Bids() {
                     value={inclusionsDisplay}
                     onChange={(e) => setCoverLetterInclusionsByBid((prev) => ({ ...prev, [bid.id]: e.target.value }))}
                     rows={4}
-                    placeholder="e.g. Labor and materials for rough-in, top-out, trim"
+                    placeholder={COVER_LETTER_INCLUSIONS_PLACEHOLDER}
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
                   />
                 </div>
@@ -16053,11 +16043,13 @@ export default function Bids() {
                   <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginBottom: '0.5rem' }}>
                     <input
                       type="checkbox"
-                      checked={coverLetterIncludeSignatureByBid[bid.id] !== false}
-                      onChange={() => setCoverLetterIncludeSignatureByBid((prev) => ({
-                        ...prev,
-                        [bid.id]: prev[bid.id] === false
-                      }))}
+                      checked={coverLetterIncludeSignatureByBid[bid.id] === true}
+                      onChange={() =>
+                        setCoverLetterIncludeSignatureByBid((prev) => ({
+                          ...prev,
+                          [bid.id]: !prev[bid.id],
+                        }))
+                      }
                     />
                     Include Signature block in Cover Letter and Approval PDF
                   </label>
@@ -16065,18 +16057,11 @@ export default function Bids() {
                 <div style={{ marginBottom: '1rem' }}>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Combined document (copy to send)</label>
                   <div
-                    key={`combined-preview-${bid.id}-${coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false}-${coverLetterIncludeSignatureByBid[bid.id] !== false}-${coverLetterIncludeFixturesPerPlanByBid[bid.id] !== false}-${coverLetterUseCustomAmountByBid[bid.id] === true ? coverLetterCustomAmountByBid[bid.id] ?? '' : ''}`}
+                    key={`combined-preview-${bid.id}-${coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false}-${coverLetterIncludeSignatureByBid[bid.id] === true}-${coverLetterIncludeFixturesPerPlanByBid[bid.id] !== false}-${coverLetterUseCustomAmountByBid[bid.id] === true ? coverLetterCustomAmountByBid[bid.id] ?? '' : ''}`}
                     style={{ width: '100%', minHeight: 360, padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontFamily: 'inherit', fontSize: '0.875rem', boxSizing: 'border-box', whiteSpace: 'pre-wrap' }}
                     dangerouslySetInnerHTML={{ __html: combinedHtml }}
                   />
-                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                    <button
-                      type="button"
-                      onClick={copyToClipboard}
-                      style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                    >
-                      {coverLetterCopySuccess ? 'Copied!' : 'Copy to clipboard'}
-                    </button>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
                     <button
                       type="button"
                       onClick={() => {
@@ -16085,9 +16070,9 @@ export default function Bids() {
                         setCoverLetterBidSubmissionQuickAddBidId(bid.id)
                         setCoverLetterBidSubmissionQuickAddValue(bid.bid_submission_link ?? '')
                       }}
-                      style={{ padding: '0.5rem 1rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: 'inherit' }}
+                      style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                     >
-                      Open in Google Docs
+                      Copy to clipboard and open in Google Docs
                     </button>
                     {coverLetterBidSubmissionQuickAddBidId === bid.id && (
                       <>

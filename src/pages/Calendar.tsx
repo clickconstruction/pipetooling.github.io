@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import './Calendar.css'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { useMatchMedia } from '../hooks/useMatchMedia'
 import type { Database } from '../types/database'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
@@ -27,6 +28,9 @@ import { scheduleFormatWindow } from '../lib/jobScheduleChicago'
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator'
 
 const CALENDAR_PLAN_CHIP_CAP = 3
+
+/** Move “Show recorded time” below the month grid on narrow viewports. */
+const CALENDAR_MOBILE_CHROME_MQ = '(max-width: 640px)'
 
 type PlannedBlockRow = {
   id: string
@@ -233,6 +237,7 @@ function calendarRecordedHasVisibleSummary(rec: { hours: number; openCount: numb
 
 export default function Calendar() {
   const { user: authUser, role: authRole } = useAuth()
+  const mobileCalendarLayout = useMatchMedia(CALENDAR_MOBILE_CHROME_MQ)
   const [userName, setUserName] = useState<string | null>(null)
   const [steps, setSteps] = useState<CalendarStep[]>([])
   const [bids, setBids] = useState<CalendarBid[]>([])
@@ -715,6 +720,39 @@ export default function Calendar() {
     setCurrentMonth(getCentralDate(now))
   }
 
+  function renderShowRecordedTimeToggle() {
+    return (
+      <label
+        title="Daily total plus per-session chips for your clock time (not rejected or revoked), with job/bid label and focus notes. Times in Central."
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.35rem',
+          fontSize: '0.875rem',
+          cursor: 'pointer',
+          userSelect: 'none',
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={showRecordedTime}
+          onChange={(e) => {
+            const on = e.target.checked
+            setShowRecordedTime(on)
+            if (authUser?.id) {
+              try {
+                localStorage.setItem(`calendar_show_recorded_time_${authUser.id}`, String(on))
+              } catch {
+                /* ignore */
+              }
+            }
+          }}
+        />
+        Show recorded time
+      </label>
+    )
+  }
+
   if (loading) return <p>Loading...</p>
   if (error) return <p style={{ color: '#b91c1c' }}>{error}</p>
 
@@ -769,29 +807,7 @@ export default function Calendar() {
                   Show my workday
                 </label>
               ) : null}
-              {authUser?.id ? (
-                <label
-                  title="Daily total plus per-session chips for your clock time (not rejected or revoked), with job/bid label and focus notes. Times in Central."
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', cursor: 'pointer', userSelect: 'none' }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={showRecordedTime}
-                    onChange={(e) => {
-                      const on = e.target.checked
-                      setShowRecordedTime(on)
-                      if (authUser?.id) {
-                        try {
-                          localStorage.setItem(`calendar_show_recorded_time_${authUser.id}`, String(on))
-                        } catch {
-                          /* ignore */
-                        }
-                      }
-                    }}
-                  />
-                  Show recorded time
-                </label>
-              ) : null}
+              {authUser?.id && !mobileCalendarLayout ? renderShowRecordedTimeToggle() : null}
               <button type="button" onClick={today} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}>
                 Today
               </button>
@@ -1221,6 +1237,19 @@ export default function Calendar() {
               )
             })}
           </div>
+
+          {authUser?.id && mobileCalendarLayout ? (
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'center',
+                marginTop: '0.75rem',
+                marginBottom: '0.5rem',
+              }}
+            >
+              {renderShowRecordedTimeToggle()}
+            </div>
+          ) : null}
 
           {selectedDayForModal && (() => {
             const modalSteps = getStepsForDate(selectedDayForModal)

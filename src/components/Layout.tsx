@@ -228,6 +228,16 @@ export default function Layout() {
       <path d="M335.9 84.2C326.1 78.6 314 78.6 304.1 84.2L80.1 212.2C67.5 219.4 61.3 234.2 65 248.2C68.7 262.2 81.5 272 96 272L128 272L128 480L128 480L76.8 518.4C68.7 524.4 64 533.9 64 544C64 561.7 78.3 576 96 576L544 576C561.7 576 576 561.7 576 544C576 533.9 571.3 524.4 563.2 518.4L512 480L512 272L544 272C558.5 272 571.2 262.2 574.9 248.2C578.6 234.2 572.4 219.4 559.8 212.2L335.8 84.2zM464 272L464 480L400 480L400 272L464 272zM352 272L352 480L288 480L288 272L352 272zM240 272L240 480L176 480L176 272L240 272zM320 160C337.7 160 352 174.3 352 192C352 209.7 337.7 224 320 224C302.3 224 288 209.7 288 192C288 174.3 302.3 160 320 160z" />
     </svg>
   )
+  const documentsIcon = (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" fill="currentColor" aria-hidden="true">
+      <path d="M264 112L376 112C380.4 112 384 115.6 384 120L384 160L256 160L256 120C256 115.6 259.6 112 264 112zM208 120L208 160L128 160C92.7 160 64 188.7 64 224L64 320L576 320L576 224C576 188.7 547.3 160 512 160L432 160L432 120C432 89.1 406.9 64 376 64L264 64C233.1 64 208 89.1 208 120zM576 368L384 368L384 384C384 401.7 369.7 416 352 416L288 416C270.3 416 256 401.7 256 384L256 368L64 368L64 480C64 515.3 92.7 544 128 544L512 544C547.3 544 576 515.3 576 480L576 368z" />
+    </svg>
+  )
+  const materialsIcon = (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" fill="currentColor" aria-hidden="true">
+      <path d="M288 64L288 128C288 136.8 295.2 144 304 144L336 144C344.8 144 352 136.8 352 128L352 64L384 64C419.3 64 448 92.7 448 128L448 256C448 261.5 447.3 266.9 446 272L194 272C192.7 266.9 192 261.5 192 256L192 128C192 92.7 220.7 64 256 64L288 64zM384 576C372.8 576 362.2 573.1 353 568C362.5 551.5 368 532.4 368 512L368 384C368 363.6 362.5 344.5 353 328C362.2 322.9 372.7 320 384 320L416 320L416 384C416 392.8 423.2 400 432 400L464 400C472.8 400 480 392.8 480 384L480 320L512 320C547.3 320 576 348.7 576 384L576 512C576 547.3 547.3 576 512 576L384 576zM64 384C64 348.7 92.7 320 128 320L160 320L160 384C160 392.8 167.2 400 176 400L208 400C216.8 400 224 392.8 224 384L224 320L256 320C291.3 320 320 348.7 320 384L320 512C320 547.3 291.3 576 256 576L128 576C92.7 576 64 547.3 64 512L64 384z" />
+    </svg>
+  )
 
   function renderMobileHeaderLinks() {
     const iconLinkStyle = ({ isActive }: { isActive: boolean }) => ({
@@ -283,9 +293,7 @@ export default function Layout() {
               {dashboardContent}
             </NavLink>
           )}
-          <NavLink to="/materials" style={linkStyle} onClick={onNavClick}>Materials</NavLink>
           <NavLink to="/estimates" style={linkStyle} onClick={onNavClick}>Estimates</NavLink>
-          <NavLink to="/documents" style={linkStyle} onClick={onNavClick}>Documents</NavLink>
           <NavLink to="/bids" style={linkStyle} onClick={onNavClick}>Bids</NavLink>
           <NavLink to="/customers" style={linkStyle} onClick={onNavClick}>Customers</NavLink>
           {estimatorProspectsAccess && (
@@ -312,9 +320,7 @@ export default function Layout() {
               {dashboardContent}
             </NavLink>
           )}
-          <NavLink to="/materials" style={linkStyle} onClick={onNavClick}>Materials</NavLink>
           <NavLink to="/estimates" style={linkStyle} onClick={onNavClick}>Estimates</NavLink>
-          <NavLink to="/documents" style={linkStyle} onClick={onNavClick}>Documents</NavLink>
           <NavLink to="/jobs" style={linkStyle} onClick={onNavClick}>Jobs</NavLink>
           <NavLink to="/bids" style={linkStyle} onClick={onNavClick}>Bids</NavLink>
         </>
@@ -368,11 +374,7 @@ export default function Layout() {
               </NavLink>
             )}
             {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
-              <NavLink to="/documents" style={linkStyle} onClick={onNavClick}>Documents</NavLink>
-            )}
-            {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
               <>
-                <NavLink to="/materials" style={linkStyle} onClick={onNavClick}>Materials</NavLink>
                 <NavLink to="/projects" style={linkStyle} onClick={onNavClick}>Projects</NavLink>
                 <NavLink to="/bids" style={linkStyle} onClick={onNavClick}>Bids</NavLink>
                 <NavLink to="/prospects" style={linkStyle} onClick={onNavClick}>Prospects</NavLink>
@@ -495,41 +497,21 @@ export default function Layout() {
                   )}
                   {renderNavLinks(() => setMenuOpen(false), true)}
                   {role === 'dev' && (
-                    <>
-                      <NavLink
-                        to="/customers"
-                        onClick={() => setMenuOpen(false)}
-                        style={({ isActive }) => ({
-                          ...dropdownLinkStyle({ isActive }),
-                          display: 'block',
-                          padding: '0.5rem 1rem',
-                          width: '100%',
-                          boxSizing: 'border-box',
-                        })}
-                        title="Customers"
-                        aria-label="Customers"
-                      >
-                        Customers
-                      </NavLink>
-                      <NavLink
-                        to="/banking"
-                        onClick={() => setMenuOpen(false)}
-                        style={({ isActive }) => ({
-                          ...dropdownLinkStyle({ isActive }),
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.35rem',
-                          padding: '0.5rem 1rem',
-                          width: '100%',
-                          boxSizing: 'border-box',
-                        })}
-                        title="Banking"
-                        aria-label="Banking"
-                      >
-                        {bankingIcon}
-                        Banking
-                      </NavLink>
-                    </>
+                    <NavLink
+                      to="/customers"
+                      onClick={() => setMenuOpen(false)}
+                      style={({ isActive }) => ({
+                        ...dropdownLinkStyle({ isActive }),
+                        display: 'block',
+                        padding: '0.5rem 1rem',
+                        width: '100%',
+                        boxSizing: 'border-box',
+                      })}
+                      title="Customers"
+                      aria-label="Customers"
+                    >
+                      Customers
+                    </NavLink>
                   )}
                 </div>
               )}
@@ -652,6 +634,28 @@ export default function Layout() {
                 <path d="M224 64C241.7 64 256 78.3 256 96L256 128L384 128L384 96C384 78.3 398.3 64 416 64C433.7 64 448 78.3 448 96L448 128L480 128C515.3 128 544 156.7 544 192L544 480C544 515.3 515.3 544 480 544L160 544C124.7 544 96 515.3 96 480L96 192C96 156.7 124.7 128 160 128L192 128L192 96C192 78.3 206.3 64 224 64zM160 304L160 336C160 344.8 167.2 352 176 352L208 352C216.8 352 224 344.8 224 336L224 304C224 295.2 216.8 288 208 288L176 288C167.2 288 160 295.2 160 304zM288 304L288 336C288 344.8 295.2 352 304 352L336 352C344.8 352 352 344.8 352 336L352 304C352 295.2 344.8 288 336 288L304 288C295.2 288 288 295.2 288 304zM432 288C423.2 288 416 295.2 416 304L416 336C416 344.8 423.2 352 432 352L464 352C472.8 352 480 344.8 480 336L480 304C480 295.2 472.8 288 464 288L432 288zM160 432L160 464C160 472.8 167.2 480 176 480L208 480C216.8 480 224 472.8 224 464L224 432C224 423.2 216.8 416 208 416L176 416C167.2 416 160 423.2 160 432zM304 416C295.2 416 288 423.2 288 432L288 464C288 472.8 295.2 480 304 480L336 480C344.8 480 352 472.8 352 464L352 432C352 423.2 344.8 416 336 416L304 416zM416 432L416 464C416 472.8 423.2 480 432 480L464 480C472.8 480 480 472.8 480 464L480 432C480 423.2 472.8 416 464 416L432 416C423.2 416 416 423.2 416 432z" />
               </svg>
             </NavLink>
+            {(role === 'estimator' ||
+              role === 'primary' ||
+              role === null ||
+              role === 'dev' ||
+              role === 'master_technician' ||
+              role === 'assistant') && (
+              <NavLink
+                to="/materials"
+                style={({ isActive }) => ({
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  padding: '0.5rem',
+                  color: 'inherit',
+                  textDecoration: 'none',
+                  ...(isActive && { borderBottom: '1px solid currentColor' }),
+                })}
+                title="Materials"
+                aria-label="Materials"
+              >
+                {materialsIcon}
+              </NavLink>
+            )}
           {!(role === 'estimator' && isMobile) && role !== 'master_technician' && (
           <NavLink
             to="/checklist"
@@ -711,24 +715,6 @@ export default function Layout() {
               </svg>
             </NavLink>
               )}
-              {(role === 'dev' || role === 'assistant' || role === 'master_technician') &&
-                !(isMobile && role === 'dev') && (
-                <NavLink
-                  to="/banking"
-                  style={({ isActive }) => ({
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    padding: '0.5rem',
-                    color: 'inherit',
-                    textDecoration: 'none',
-                    ...(isActive && { borderBottom: '1px solid currentColor' }),
-                  })}
-                  title="Banking"
-                  aria-label="Banking"
-                >
-                  {bankingIcon}
-                </NavLink>
-              )}
             </>
           )}
             <div ref={gearRef} style={{ position: 'relative' }}>
@@ -762,10 +748,59 @@ export default function Layout() {
                   border: '1px solid #e5e7eb',
                   borderRadius: 8,
                   boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)',
-                  minWidth: 140,
+                  minWidth: 168,
                   zIndex: 50,
                 }}
               >
+                {(role === 'estimator' ||
+                  role === 'primary' ||
+                  role === null ||
+                  role === 'dev' ||
+                  role === 'master_technician' ||
+                  role === 'assistant') && (
+                  <NavLink
+                    to="/documents"
+                    onClick={() => setGearOpen(false)}
+                    style={({ isActive }) => ({
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      padding: '0.5rem 1rem',
+                      textDecoration: 'none',
+                      color: 'inherit',
+                      borderBottom: '1px solid #e5e7eb',
+                      boxSizing: 'border-box',
+                      ...(isActive && { fontWeight: 600 }),
+                    })}
+                    title="Documents"
+                    aria-label="Documents"
+                  >
+                    {documentsIcon}
+                    Documents
+                  </NavLink>
+                )}
+                {(role === 'dev' || role === 'assistant' || role === 'master_technician') && (
+                  <NavLink
+                    to="/banking"
+                    onClick={() => setGearOpen(false)}
+                    style={({ isActive }) => ({
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      padding: '0.5rem 1rem',
+                      textDecoration: 'none',
+                      color: 'inherit',
+                      borderBottom: '1px solid #e5e7eb',
+                      boxSizing: 'border-box',
+                      ...(isActive && { fontWeight: 600 }),
+                    })}
+                    title="Banking"
+                    aria-label="Banking"
+                  >
+                    {bankingIcon}
+                    Banking
+                  </NavLink>
+                )}
                 <NavLink
                   to="/settings"
                   onClick={() => setGearOpen(false)}

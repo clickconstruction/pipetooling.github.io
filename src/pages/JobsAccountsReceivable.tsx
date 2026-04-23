@@ -1,41 +1,27 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { canRoleUseArBankCount } from '../hooks/useArBankUnallocatedCount'
+import { useJobsListCache } from '../contexts/JobsListCacheContext'
 import BankPaymentsModal from '../components/jobs/BankPaymentsModal'
 import { useJobFormModal } from '../contexts/JobFormModalContext'
-import { fetchJobsLedgerWithDetailsForStages } from '../lib/fetchJobsLedgerWithDetailsForStages'
 import { buildJobsStagesBoardLists } from '../lib/jobsStagesBoard'
-import type { JobWithDetails } from '../types/jobWithDetails'
 
 export default function JobsAccountsReceivable() {
   const { user, role: authRole, loading: authLoading } = useAuth()
   const navigate = useNavigate()
   const jobFormModal = useJobFormModal()
-  const [jobs, setJobs] = useState<JobWithDetails[]>([])
-  const [loading, setLoading] = useState(true)
-  const [fetchError, setFetchError] = useState<string | null>(null)
+  const { jobs, jobsListLoading, jobsListError, runFetchJobs } = useJobsListCache()
 
-  const loadJobs = useCallback(async () => {
-    if (!user?.id) return
-    setLoading(true)
-    setFetchError(null)
-    const result = await fetchJobsLedgerWithDetailsForStages({ customerFilter: null })
-    if (!result.ok) {
-      setFetchError(result.error)
-      setJobs([])
-      setLoading(false)
-      return
-    }
-    setJobs(result.jobs)
-    setLoading(false)
-  }, [user?.id])
+  const onApplied = useCallback(() => {
+    void runFetchJobs(null)
+  }, [runFetchJobs])
 
   useEffect(() => {
     if (authLoading) return
     if (!user?.id) return
-    void loadJobs()
-  }, [authLoading, user?.id, loadJobs])
+    void runFetchJobs(null)
+  }, [authLoading, user?.id, runFetchJobs])
 
   const bankPaymentsModalBilledRows = useMemo(
     () => buildJobsStagesBoardLists(jobs, '').billedRows,
@@ -90,17 +76,17 @@ export default function JobsAccountsReceivable() {
           Dashboard
         </Link>
       </div>
-      {fetchError ? <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{fetchError}</p> : null}
+      {jobsListError ? <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{jobsListError}</p> : null}
       <BankPaymentsModal
         open
         onClose={() => navigate('/jobs?tab=stages')}
         authUserId={user.id}
         authRole={authRole}
         billedRows={bankPaymentsModalBilledRows}
-        billedTargetsLoading={loading && bankPaymentsModalBilledRows.length === 0}
-        onApplied={loadJobs}
+        billedTargetsLoading={jobsListLoading && bankPaymentsModalBilledRows.length === 0}
+        onApplied={onApplied}
         onOpenEditJob={(jobId) =>
-          jobFormModal?.openEditJob(jobId, { onSaved: () => void loadJobs() })
+          jobFormModal?.openEditJob(jobId, { onSaved: () => void runFetchJobs(null) })
         }
       />
     </div>

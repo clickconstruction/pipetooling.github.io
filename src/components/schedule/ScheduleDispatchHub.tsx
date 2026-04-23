@@ -3,6 +3,12 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { JobScheduleBlockRow } from '../../lib/jobScheduleBlocks'
+import {
+  scheduleBlockActionIconButtonStyle,
+  scheduleBlockActionLinkedIconButtonStyle,
+  scheduleBlockActionTextButtonStyle,
+  scheduleBlockLinkedControlPlateStyle,
+} from '../../lib/scheduleBlockActionChromeStyle'
 import { scheduleFormatWindow } from '../../lib/jobScheduleChicago'
 import {
   expectedManpowerJobGroupPayrollEstimate,
@@ -16,6 +22,7 @@ import {
 import { formatCurrency } from '../../lib/format'
 import { SCHEDULE_DISPATCH_DRAG_DISABLED_READONLY_MESSAGE } from '../../lib/scheduleDispatchDragHelp'
 import { scheduleDispatchCellDroppableId } from '../../lib/scheduleDispatchDnd'
+import { ScheduleDispatchBlockNoteIcon } from '../icons/ScheduleDispatchBlockNoteIcon'
 import { ScheduleDispatchLinkedChainsIcon } from '../icons/ScheduleDispatchLinkedChainsIcon'
 import type { LinkedGroupCardAccent } from '../../lib/scheduleDispatchLinkedGroupPalette'
 import { hubPersonDayKey, type ScheduleDispatchHubJobRow } from '../../lib/scheduleDispatchHub'
@@ -343,6 +350,7 @@ function HubPeopleBlockCard({
   onOpenJob,
   onOpenHubJobDetail,
   onDeleteBlock,
+  onRequestEditBlockNote,
 }: {
   block: JobScheduleBlockRow
   workDate: string
@@ -360,6 +368,7 @@ function HubPeopleBlockCard({
   onOpenJob: (jobId: string) => void
   onOpenHubJobDetail: (block: JobScheduleBlockRow, workDateYmd: string) => void
   onDeleteBlock: (id: string) => void
+  onRequestEditBlockNote?: (b: JobScheduleBlockRow) => void
 }) {
   const { showToast } = useToastContext()
   const plusButtonRef = useRef<HTMLButtonElement>(null)
@@ -379,6 +388,8 @@ function HubPeopleBlockCard({
 
   const groupId = block.shared_block_group_id
   const showLinkedFloat = Boolean(groupId && linkPeerCount > 1)
+  const showTopRightControls =
+    showLinkedFloat || (canEdit && !placementPickingActive && onRequestEditBlockNote)
   const linkedAccent =
     highlightLinkedGroups && groupId && linkPeerCount > 1
       ? linkedGroupAccentByGroupId.get(groupId)
@@ -517,47 +528,76 @@ function HubPeopleBlockCard({
           ) : null}
         </button>
       </div>
-      {showLinkedFloat ? (
+      {showTopRightControls ? (
         <div
           style={{
             position: 'absolute',
             top: 2,
             right: 2,
             zIndex: 3,
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 0,
           }}
         >
-          <button
-            type="button"
-            disabled={placementPickingActive}
-            title={
-              placementPickingActive
-                ? undefined
-                : 'Linked: time and note stay in sync. Click to see every block in this group.'
-            }
-            aria-label="View linked schedule group details"
-            onClick={(e) => {
-              e.stopPropagation()
-              if (placementPickingActive || !groupId) return
-              onOpenLinkedGroup(groupId)
-            }}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 20,
-              height: 20,
-              boxSizing: 'border-box',
-              padding: 0,
-              color: '#1d4ed8',
-              background: '#dbeafe',
-              border: '1px solid #93c5fd',
-              borderRadius: 4,
-              cursor: placementPickingActive ? 'default' : 'pointer',
-              fontFamily: 'inherit',
-            }}
-          >
-            <ScheduleDispatchLinkedChainsIcon size={12} />
-          </button>
+          {showLinkedFloat ? (
+            <button
+              type="button"
+              disabled={placementPickingActive}
+              title={
+                placementPickingActive
+                  ? undefined
+                  : 'Linked: time and note stay in sync. Click to see every block in this group.'
+              }
+              aria-label="View linked schedule group details"
+              onClick={(e) => {
+                e.stopPropagation()
+                if (placementPickingActive || !groupId) return
+                onOpenLinkedGroup(groupId)
+              }}
+              style={{
+                ...scheduleBlockLinkedControlPlateStyle,
+                color: '#1d4ed8',
+                cursor: placementPickingActive ? 'default' : 'pointer',
+                fontFamily: 'inherit',
+                ...scheduleBlockActionLinkedIconButtonStyle,
+              }}
+            >
+              <ScheduleDispatchLinkedChainsIcon size={10} />
+            </button>
+          ) : null}
+          {canEdit && !placementPickingActive && onRequestEditBlockNote ? (
+            <button
+              type="button"
+              title="Edit block note"
+              aria-label="Edit block note"
+              onClick={(e) => {
+                e.stopPropagation()
+                onRequestEditBlockNote(block)
+              }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 20,
+                height: 20,
+                boxSizing: 'border-box',
+                padding: 0,
+                color: '#1d4ed8',
+                background: 'transparent',
+                border: 'none',
+                borderRadius: 4,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                margin: 0,
+                ...(showLinkedFloat ? { marginLeft: -4 } : {}),
+                ...scheduleBlockActionIconButtonStyle,
+              }}
+            >
+              <ScheduleDispatchBlockNoteIcon size={12} />
+            </button>
+          ) : null}
         </div>
       ) : null}
       {canEdit && !placementPickingActive ? (
@@ -570,7 +610,7 @@ function HubPeopleBlockCard({
             display: 'flex',
             flexDirection: 'row',
             alignItems: 'center',
-            gap: 4,
+            gap: 0,
           }}
         >
           <button
@@ -585,19 +625,21 @@ function HubPeopleBlockCard({
               width: 20,
               height: 20,
               padding: 0,
+              margin: 0,
               lineHeight: '18px',
               fontSize: '0.85rem',
               fontWeight: 700,
               borderRadius: 4,
-              border: '1px solid #fecaca',
-              background: '#fef2f2',
+              border: 'none',
+              background: 'transparent',
               color: '#b91c1c',
               cursor: 'pointer',
+              ...scheduleBlockActionTextButtonStyle,
             }}
           >
             −
           </button>
-          <div style={{ position: 'relative' }}>
+          <div style={{ position: 'relative', margin: 0, marginLeft: -4 }}>
             <button
               ref={plusButtonRef}
               type="button"
@@ -611,14 +653,16 @@ function HubPeopleBlockCard({
                 width: 20,
                 height: 20,
                 padding: 0,
+                margin: 0,
                 lineHeight: '18px',
                 fontSize: '0.85rem',
                 fontWeight: 700,
                 borderRadius: 4,
-                border: '1px solid #60a5fa',
-                background: '#fff',
+                border: 'none',
+                background: 'transparent',
                 color: '#1d4ed8',
                 cursor: 'pointer',
+                ...scheduleBlockActionTextButtonStyle,
               }}
             >
               +
@@ -671,6 +715,7 @@ function HubPeopleDayCell({
   hubMultiCellAddActive,
   hubMultiCellAddSelectedKeys,
   onHubMultiCellAddToggle,
+  onRequestEditBlockNote,
 }: {
   personUserId: string
   workDate: string
@@ -699,6 +744,7 @@ function HubPeopleDayCell({
   hubMultiCellAddActive: boolean
   hubMultiCellAddSelectedKeys: ReadonlySet<string>
   onHubMultiCellAddToggle?: (personUserId: string, workDate: string) => void
+  onRequestEditBlockNote?: (b: JobScheduleBlockRow) => void
 }) {
   const droppableId = scheduleDispatchCellDroppableId(workDate, personUserId)
   const { isOver, setNodeRef } = useDroppable({ id: droppableId })
@@ -801,6 +847,7 @@ function HubPeopleDayCell({
               onOpenJob={onOpenJob}
               onOpenHubJobDetail={onOpenHubJobDetail}
               onDeleteBlock={onDeleteBlock}
+              onRequestEditBlockNote={onRequestEditBlockNote}
             />
           )
         })
@@ -901,6 +948,11 @@ type HubPeoplePanelProps = {
   onRequestHubMultiCellAddMode?: () => void
   columnFocusDayYmd: string
   columnScrollKey: string
+  onRequestEditBlockNote?: (b: JobScheduleBlockRow) => void
+  /** When false, hide the Expected Manpower block below the People grid (e.g. Quickfill tomorrow snapshot). */
+  showExpectedManpower?: boolean
+  /** When false, hide the Hide weekend checkbox in the People toolbar (e.g. Quickfill tomorrow). */
+  showHideWeekendToggle?: boolean
 }
 
 function HubPeoplePanel({
@@ -948,6 +1000,9 @@ function HubPeoplePanel({
   onHubMultiCellAddToggle,
   onRequestHubAddJob,
   onRequestHubMultiCellAddMode,
+  onRequestEditBlockNote,
+  showExpectedManpower = true,
+  showHideWeekendToggle = true,
 }: HubPeoplePanelProps) {
   const peopleScrollRef = useRef<HTMLDivElement>(null)
   useScrollScheduleDispatchColumnIntoView({
@@ -1155,15 +1210,17 @@ function HubPeoplePanel({
           />
           Hide Inactive
         </label>
-        <label style={{ fontSize: '0.8125rem', color: '#374151', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-          <input
-            type="checkbox"
-            checked={hideWeekend}
-            onChange={(e) => onHideWeekendChange(e.target.checked)}
-            aria-label="Hide Saturday and Sunday columns"
-          />
-          Hide weekend
-        </label>
+        {showHideWeekendToggle ? (
+          <label style={{ fontSize: '0.8125rem', color: '#374151', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={hideWeekend}
+              onChange={(e) => onHideWeekendChange(e.target.checked)}
+              aria-label="Hide Saturday and Sunday columns"
+            />
+            Hide weekend
+          </label>
+        ) : null}
         <label style={{ fontSize: '0.8125rem', color: '#374151', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
           <input
             type="checkbox"
@@ -1283,6 +1340,7 @@ function HubPeoplePanel({
                         hubMultiCellAddActive={hubMultiCellAddActive}
                         hubMultiCellAddSelectedKeys={hubMultiCellAddSelectedKeys}
                         onHubMultiCellAddToggle={onHubMultiCellAddToggle}
+                        onRequestEditBlockNote={onRequestEditBlockNote}
                       />
                     )
                   })}
@@ -1293,7 +1351,7 @@ function HubPeoplePanel({
         </table>
       </div>
 
-      {visibleDayKeys.length > 0 ? (
+      {visibleDayKeys.length > 0 && showExpectedManpower ? (
         <section
           style={{ marginTop: '1.25rem' }}
           aria-label="Expected manpower for the selected day or week"
@@ -1803,6 +1861,17 @@ type Props = {
   hubMultiCellAddSelectedKeys: ReadonlySet<string>
   onHubMultiCellAddToggle?: (personUserId: string, workDate: string) => void
   onRequestHubMultiCellAddMode?: () => void
+  onRequestEditBlockNote?: (b: JobScheduleBlockRow) => void
+  /** When false, hide Expected Manpower on the People tab. */
+  showExpectedManpower?: boolean
+  /** When set, the Day tab uses this as Quickfill schedule work date (e.g. tomorrow in Quickfill). */
+  dayTabWorkDateYmd?: string
+  /** When false, hide the week nav row (e.g. Quickfill tomorrow embed). */
+  showWeekNavigation?: boolean
+  /** When false, hide the hub tab bar and show only the People grid (e.g. Quickfill tomorrow). */
+  showHubViewTabs?: boolean
+  /** When false, hide the Hide weekend checkbox on the People tab (e.g. Quickfill tomorrow). */
+  showHideWeekendToggle?: boolean
 }
 
 const HUB_PEOPLE_TOOLBAR_BTN_H = 32
@@ -1882,85 +1951,146 @@ export function ScheduleDispatchHub({
   hubMultiCellAddSelectedKeys,
   onHubMultiCellAddToggle,
   onRequestHubMultiCellAddMode,
+  onRequestEditBlockNote,
+  showExpectedManpower = true,
+  dayTabWorkDateYmd,
+  showWeekNavigation = true,
+  showHubViewTabs = true,
+  showHideWeekendToggle = true,
 }: Props) {
-  const hubJobsColumnScrollKey = `${weekStart}-${columnFocusDayYmd}-jobs-${hubTab}`
-  const hubPeopleColumnScrollKey = `${weekStart}-${columnFocusDayYmd}-people-${hubTab}`
+  const tabForKey = showHubViewTabs ? hubTab : 'people'
+  const hubJobsColumnScrollKey = `${weekStart}-${columnFocusDayYmd}-jobs-${tabForKey}`
+  const hubPeopleColumnScrollKey = `${weekStart}-${columnFocusDayYmd}-people-${tabForKey}`
 
   return (
     <div style={{ padding: '1rem 1.25rem', maxWidth: '100%' }}>
-      <ScheduleDispatchWeekNav
-        weekStart={weekStart}
-        onWeekShift={onWeekShift}
-        onThisWeek={onThisWeek}
-        dateRangeOverride={weekNavDateRangeOverride}
-      />
+      {showWeekNavigation ? (
+        <ScheduleDispatchWeekNav
+          weekStart={weekStart}
+          onWeekShift={onWeekShift}
+          onThisWeek={onThisWeek}
+          dateRangeOverride={weekNavDateRangeOverride}
+        />
+      ) : null}
 
-      <div
-        role="tablist"
-        aria-label="Hub view"
-        style={{ display: 'flex', gap: 4, marginBottom: '1rem', borderBottom: '1px solid #e5e7eb', paddingBottom: 2 }}
-      >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={hubTab === 'people'}
-          onClick={() => onHubTabChange('people')}
-          style={{
-            padding: '0.5rem 0.9rem',
-            fontSize: '0.875rem',
-            border: 'none',
-            borderBottom: hubTab === 'people' ? '2px solid #2563eb' : '2px solid transparent',
-            marginBottom: -3,
-            background: 'none',
-            cursor: 'pointer',
-            color: hubTab === 'people' ? '#1d4ed8' : '#6b7280',
-            fontWeight: hubTab === 'people' ? 600 : 400,
-          }}
+      {showHubViewTabs ? (
+        <div
+          role="tablist"
+          aria-label="Hub view"
+          style={{ display: 'flex', gap: 4, marginBottom: '1rem', borderBottom: '1px solid #e5e7eb', paddingBottom: 2 }}
         >
-          People
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={hubTab === 'jobs'}
-          onClick={() => onHubTabChange('jobs')}
-          style={{
-            padding: '0.5rem 0.9rem',
-            fontSize: '0.875rem',
-            border: 'none',
-            borderBottom: hubTab === 'jobs' ? '2px solid #2563eb' : '2px solid transparent',
-            marginBottom: -3,
-            background: 'none',
-            cursor: 'pointer',
-            color: hubTab === 'jobs' ? '#1d4ed8' : '#6b7280',
-            fontWeight: hubTab === 'jobs' ? 600 : 400,
-          }}
-        >
-          Jobs
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={hubTab === 'day'}
-          onClick={() => onHubTabChange('day')}
-          style={{
-            padding: '0.5rem 0.9rem',
-            fontSize: '0.875rem',
-            border: 'none',
-            borderBottom: hubTab === 'day' ? '2px solid #2563eb' : '2px solid transparent',
-            marginBottom: -3,
-            background: 'none',
-            cursor: 'pointer',
-            color: hubTab === 'day' ? '#1d4ed8' : '#6b7280',
-            fontWeight: hubTab === 'day' ? 600 : 400,
-          }}
-        >
-          Day
-        </button>
-      </div>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={hubTab === 'people'}
+            onClick={() => onHubTabChange('people')}
+            style={{
+              padding: '0.5rem 0.9rem',
+              fontSize: '0.875rem',
+              border: 'none',
+              borderBottom: hubTab === 'people' ? '2px solid #2563eb' : '2px solid transparent',
+              marginBottom: -3,
+              background: 'none',
+              cursor: 'pointer',
+              color: hubTab === 'people' ? '#1d4ed8' : '#6b7280',
+              fontWeight: hubTab === 'people' ? 600 : 400,
+            }}
+          >
+            People
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={hubTab === 'jobs'}
+            onClick={() => onHubTabChange('jobs')}
+            style={{
+              padding: '0.5rem 0.9rem',
+              fontSize: '0.875rem',
+              border: 'none',
+              borderBottom: hubTab === 'jobs' ? '2px solid #2563eb' : '2px solid transparent',
+              marginBottom: -3,
+              background: 'none',
+              cursor: 'pointer',
+              color: hubTab === 'jobs' ? '#1d4ed8' : '#6b7280',
+              fontWeight: hubTab === 'jobs' ? 600 : 400,
+            }}
+          >
+            Jobs
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={hubTab === 'day'}
+            onClick={() => onHubTabChange('day')}
+            style={{
+              padding: '0.5rem 0.9rem',
+              fontSize: '0.875rem',
+              border: 'none',
+              borderBottom: hubTab === 'day' ? '2px solid #2563eb' : '2px solid transparent',
+              marginBottom: -3,
+              background: 'none',
+              cursor: 'pointer',
+              color: hubTab === 'day' ? '#1d4ed8' : '#6b7280',
+              fontWeight: hubTab === 'day' ? 600 : 400,
+            }}
+          >
+            Day
+          </button>
+        </div>
+      ) : null}
 
-      {hubTab === 'day' ? (
-        <QuickfillScheduleSection />
+      {!showHubViewTabs ? (
+        <HubPeoplePanel
+          visibleDayKeys={visibleDayKeys}
+          hideWeekend={hideWeekend}
+          onHideWeekendChange={onHideWeekendChange}
+          allPeopleRows={allPeopleRows}
+          userIdsWithBlocksThisWeek={userIdsWithBlocksThisWeek}
+          salariedUserIds={salariedUserIds}
+          personDayBlocks={personDayBlocks}
+          getJobDisplayTitle={getJobDisplayTitle}
+          groupMemberCountByGroupId={groupMemberCountByGroupId}
+          scheduleTodayYmd={scheduleTodayYmd}
+          columnFocusDayYmd={columnFocusDayYmd}
+          columnScrollKey={hubPeopleColumnScrollKey}
+          canEdit={canEdit}
+          loading={loading}
+          jobsError={jobsError}
+          summariesError={summariesError}
+          onOpenJob={onOpenJob}
+          onOpenHubJobDetail={onOpenHubJobDetail}
+          cardPlacementMode={cardPlacementMode}
+          placementSourceWorkDate={placementSourceWorkDate}
+          plusMenuBlockId={plusMenuBlockId}
+          onPlusMenuBlockIdChange={onPlusMenuBlockIdChange}
+          onStartCardPlacement={onStartCardPlacement}
+          onCardPlacementCellPick={onCardPlacementCellPick}
+          highlightLinkedGroups={highlightLinkedGroups}
+          onHighlightLinkedGroupsChange={onHighlightLinkedGroupsChange}
+          linkedGroupAccentByGroupId={linkedGroupAccentByGroupId}
+          onOpenLinkedGroup={onOpenLinkedGroup}
+          hubWeekBlocks={hubWeekBlocks}
+          hubExpectedManpowerDayKey={hubExpectedManpowerDayKey}
+          onHubExpectedManpowerDayChange={onHubExpectedManpowerDayChange}
+          hubPeopleNameById={hubPeopleNameById}
+          canShowExpectedManpowerPayroll={canShowExpectedManpowerPayroll}
+          hubHourlyWageByUserId={hubHourlyWageByUserId}
+          hubAssignJobPlacement={hubAssignJobPlacement}
+          onHubAssignJobCellPick={onHubAssignJobCellPick}
+          onDeleteBlock={onDeleteBlock}
+          onEmptyCellClick={onHubEmptyCellClick}
+          onAddJobToScheduleForCell={onHubAddJobToScheduleForCell}
+          hubMultiCellAddActive={hubMultiCellAddActive}
+          hubMultiCellAddSelectedKeys={hubMultiCellAddSelectedKeys}
+          onHubMultiCellAddToggle={onHubMultiCellAddToggle}
+          onRequestHubAddJob={onRequestHubAddJob}
+          onRequestHubMultiCellAddMode={onRequestHubMultiCellAddMode}
+          onRequestEditBlockNote={onRequestEditBlockNote}
+          showExpectedManpower={showExpectedManpower}
+          showHideWeekendToggle={showHideWeekendToggle}
+        />
+      ) : hubTab === 'day' ? (
+        <QuickfillScheduleSection initialWorkDateYmd={dayTabWorkDateYmd} />
       ) : hubTab === 'jobs' ? (
         <HubJobsPanel
           rows={rows}
@@ -2021,6 +2151,9 @@ export function ScheduleDispatchHub({
           onHubMultiCellAddToggle={onHubMultiCellAddToggle}
           onRequestHubAddJob={onRequestHubAddJob}
           onRequestHubMultiCellAddMode={onRequestHubMultiCellAddMode}
+          onRequestEditBlockNote={onRequestEditBlockNote}
+          showExpectedManpower={showExpectedManpower}
+          showHideWeekendToggle={showHideWeekendToggle}
         />
       )}
     </div>

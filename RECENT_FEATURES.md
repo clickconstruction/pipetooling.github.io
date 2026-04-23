@@ -7,16 +7,28 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-22
+last_updated: 2026-04-23
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.377 → v2.4"
+version_range: "v2.381 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.381)"
+    line: ~1236
+    description: "Quickfill Prospects section: warmth counts 0–3 and 4+; Team table (dev/master/assistant, last 30 days); link to /prospects; prospectTeamActivity + prospectWarmthCounts shared with Prospects Team tab"
+  - name: "Latest Version (v2.380)"
+    line: ~1248
+    description: "Checklist Review: Outstanding by person above dispatch/estimator inboxes; ScheduleDispatch page split (HubPage / JobWeek); Map default view in Settings (dev); JobsListCache; Documents search + supply-invoices tabs; Layout gear Banking"
+  - name: "Latest Version (v2.379)"
+    line: ~1278
+    description: "Map: Filter search (mapEntitySearch) narrows markers + table; Debug (bottom-right) details holds Review geocodes"
+  - name: "Latest Version (v2.378)"
+    line: ~1289
+    description: "Schedule Dispatch: block note quick-edit (modal, 500 char; Cancel | Clear | Save); transparent block chrome + linked circular chip (`scheduleBlockActionChromeStyle`, Hub + Grid)"
   - name: "Latest Version (v2.377)"
-    line: ~1212
+    line: ~1250
     description: "Dev Map: Review geocodes modal; `geocode-one` `refresh_google_only` Google-only re-geocode; invoke helper + 200ms pacing"
   - name: "Latest Version (v2.376)"
     line: ~1224
@@ -958,6 +970,10 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.381 — **Quickfill** **Prospects** section: **warmth** pipeline (**0–3** + **4+**), **Team** table (**`prospectTeamActivity`**, last **30** days; **dev** / **master_technician** / **assistant**), **Open Prospects** — **`QuickfillProspectsSection`**, **`canAccessProspects`**](#latest-updates-v2381)
+**New:** [v2.380 — **Checklist** **Review**: **Outstanding by person** above inboxes; **`ScheduleDispatch`** **HubPage** / **JobWeek**; **Map** org **default view** (**Settings**); **`JobsListCache`**; **Documents** **`search`** + **`supply-invoices`**; **Layout** gear **Banking**](#latest-updates-v2380)
+**New:** [v2.379 — **Map**: **Filter** search ([`mapEntitySearch`](src/lib/map/mapEntitySearch.ts)) narrows **pins** + **table**; **Debug** (bottom-right `<details>`) + **Review geocodes**](#latest-updates-v2379)
+**New:** [v2.378 — **Schedule Dispatch**: **block note** quick-edit (500 char; **Cancel** / **Clear** / **Save**); transparent **block chrome** + **linked** circular chip (Hub + job-week **Grid**; **`scheduleBlockActionChromeStyle`**)](#latest-updates-v2378)
 **New:** [v2.368 — **Public** **`/contract/accept`**: no **For:** signer line; **title-only** thank-you + **`public/pup.jpg`** + **`list_my_contract_dashboard_prompts`** CTA (**Go to dashboard** / **Return to PipeTooling** / **Sign in**) — **`ContractAccept.tsx`**, **`EstimateCustomerThankYou`** **`footerImageSrc`**](#latest-updates-v2368)
 **New:** [v2.367 — **Dashboard** **Jobs worked today**: **No job or bid** aggregate row (**split-day** / unassigned segments); **`JOBS_WORKED_TODAY_UNASSIGNED_ID`**; muted label (**no** job **`Link`**) — **`useDashboardMyTeamSectionState`**, **`DashboardTeamActiveClockStrip`**](#latest-updates-v2367)
 **New:** [v2.366 — **Bill Customer**: **`jobs_ledger.status`** → **billed** when the job is **fully invoiced out** (**Stripe**, **HouseCall Pro**, **Physical**) — **`maybePromoteJobToBilledAfterCustomerInvoice`** (**`promoteJobToBilledIfFullyInvoiced.ts`**); Edge **`send-physical-invoice-email`** persists invoice only](#latest-updates-v2366)
@@ -1215,6 +1231,70 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.381)
+
+**Date**: 2026-04-23
+
+### **Quickfill** — **Prospects** section
+
+- New **`SECTIONS`** block **`prospects`** in [`Quickfill.tsx`](src/pages/Quickfill.tsx): shown when **`canAccessProspects`** (same gating as **Prospects** follow-up: **dev** / **master_technician** / **assistant** / **estimator** with **`estimator_prospects_access`**). **`quickfill_section_marks.section_id` = `prospects`**.
+- **[`QuickfillProspectsSection.tsx`](src/components/quickfill/QuickfillProspectsSection.tsx)**: **Active** prospect counts by **warmth** (Warmth **3** / **2** / **1** / **0**, plus **Warmth 4+** when any), matching **Prospect List** bucketing ([`prospectWarmthCounts.ts`](src/lib/prospectWarmthCounts.ts)) — excludes **`not_a_fit`** and **`cant_reach`**. **Team (last 30 days)** reuses the same aggregation as **Prospects → Team** via shared **[`loadProspectTeamActivity`](src/lib/prospectTeamActivity.ts)** (unique prospect_ids per day from **`prospect_timer_events`** = **Marked**, **`prospect_comments`** = **Updated**); visible to **dev**, **master_technician**, and **assistant** in Quickfill (**estimators** with access see warmth + CTA only). Primary control: **Open Prospects** → **`/prospects?tab=prospect-list`**. **Outstanding** metric: total **active** prospects. **[`ACCESS_CONTROL.md`](ACCESS_CONTROL.md)** Quickfill table documents the section.
+- **Prospects** page ([`Prospects.tsx`](src/pages/Prospects.tsx)) **Team** tab now calls **`loadProspectTeamActivity`** (behavior unchanged; **Team** tab remains **dev** + **assistant** only in the app).
+
+---
+
+## Latest Updates (v2.380)
+
+**Date**: 2026-04-23
+
+### **Checklist** — **Review** tab layout
+
+- **Outstanding by person** (date-range filters, per-person counts, expand rows, **Remind**) now appears **above** **[`ChecklistReviewInboxes`](src/components/checklist/ChecklistReviewInboxes.tsx)** — the paired **Task Dispatch** and **Estimator Inbox** cards (open rows first, then closed). **[`ChecklistOutstandingTab`](src/pages/Checklist.tsx)** wraps the outstanding block in bottom margin so spacing matches the prior order. **Review** / **Manage** remain gated on **`canManageChecklists`**; inbox cards stay hidden for **assistant** (unchanged).
+
+### **Schedule Dispatch** — page split + shared **Add block** modal
+
+- **[`ScheduleDispatch.tsx`](src/pages/ScheduleDispatch.tsx)** is a thin **router**: role gate via **`CAN_USE_SCHEDULE_DISPATCH`**; no **`jobId`** query → **[`ScheduleDispatchHubPage`](src/components/schedule/ScheduleDispatchHubPage.tsx)** (`variant="url"`); with **`jobId`** → **[`ScheduleDispatchJobWeek`](src/components/schedule/ScheduleDispatchJobWeek.tsx)** (people×day grid). **Add schedule block** UI lives in **[`ScheduleDispatchAddBlockModal`](src/components/schedule/ScheduleDispatchAddBlockModal.tsx)** (imported from hub, job-week, and Quickfill schedule).
+
+### **Map** — org **default view** (**Settings**, **dev**)
+
+- **[`MapDefaultViewSettingsBlock`](src/components/settings/MapDefaultViewSettingsBlock.tsx)** (Settings): save **center** + **zoom** + address label from a typed address (Edge **`geocode-one`**); persist **`app_settings`** **`map_default_view_v1`** ([`mapDefaultViewSettings.ts`](src/lib/mapDefaultViewSettings.ts), [`appSettingsKeys.ts`](src/lib/appSettingsKeys.ts)). **[`MapPageView`](src/components/map/MapPageView.tsx)** loads that default when the map is not driven by fit-bounds from visible entities; **Clear saved view** removes the row.
+
+### **Jobs** — shared list cache
+
+- **[`JobsListCacheProvider`](src/contexts/JobsListCacheContext.tsx)** wraps the app in **[`App.tsx`](src/App.tsx)**. **[`Jobs.tsx`](src/pages/Jobs.tsx)** and **[`JobsAccountsReceivable.tsx`](src/pages/JobsAccountsReceivable.tsx)** use **`useJobsListCache`** so one jobs fetch (keyed by user + optional customer filter) can serve Stages and AR without duplicate loads.
+
+### **Documents** (`/documents`) — **Search** + **Supply house invoices** tabs
+
+- Primary **`?tab=`** values include **`search`** (cross-ledger search) and **`supply-invoices`** plus existing **`estimates`**, **`bid-proposals`**, **`jobs`**, **`upload`** ([`documentsPageTab.ts`](src/lib/documentsPageTab.ts)). Legacy **`ledger=`** parsing unchanged.
+
+### **Layout** — **Banking** in gear menu
+
+- **[`Layout.tsx`](src/components/Layout.tsx)** header **gear** dropdown includes **Banking** (alongside other shortcuts), for quick access without a dedicated nav item where applicable.
+
+---
+
+## Latest Updates (v2.379)
+
+**Date**: 2026-04-23
+
+### **Map** (`/map`) — **Filter** search + **Debug** **Review geocodes**
+
+- **Filter** — Top-of-page **Filter** field ([`MapPageView`](src/components/map/MapPageView.tsx)) applies [`mapEntityMatchesSearch`](src/lib/map/mapEntitySearch.ts) after **Jobs** / **Bids** / **Estimates** layer toggles: case-insensitive **whitespace token AND** over **`kind`**, **`tableLabel`**, **`addressLabel`**, **`sublabel`**, **`meta`**. **Markers**, **fit-bounds** points, **Geocode review** list, and the **table** (before **Geoman** polygon) use the narrowed set; **Clear** clears the field; empty query shows all visible layers. Table heading **Search results** when a filter is active.
+- **Debug** — **Review geocodes** (opens [`MapGeocodeReviewModal`](src/components/map/MapGeocodeReviewModal.tsx) unchanged) moved from the header row to a **viewport-fixed** bottom-right **Debug** **`<details>`** / **`<summary>`** (`z-index` below full-screen map dialogs).
+
+---
+
+## Latest Updates (v2.378)
+
+**Date**: 2026-04-23
+
+### **Schedule Dispatch** — block **note** quick-edit + block **chrome** (Hub + **Grid**)
+
+- **Block note** — From the hub (**[`ScheduleDispatchHub`](src/components/schedule/ScheduleDispatchHub.tsx)**) and job-week grid (**[`ScheduleDispatchGrid`](src/components/schedule/ScheduleDispatchGrid.tsx)**), the note control opens **[`ScheduleDispatchBlockNoteModal`](src/components/schedule/ScheduleDispatchBlockNoteModal.tsx)** (up to **500** characters on **`job_schedule_blocks`**.**`note`**; updates single blocks or **linked** groups via **`updateJobScheduleBlock`** / **`updateJobScheduleBlockGroup`**). Modal footer: **Cancel** (left) | **Clear** (center) | **Save** (right).
+- **Chrome** — Shared styles in **[`scheduleBlockActionChromeStyle.ts`](src/lib/scheduleBlockActionChromeStyle.ts)**: borderless, tight-spaced **Linked** / **note** / **−** / **+** row; light halation on generic **±**; **Linked** control uses a small **circular plate** + **9px** chains icon (**[`scheduleBlockLinkedControlPlateStyle`](src/lib/scheduleBlockActionChromeStyle.ts)**, **[`scheduleBlockActionLinkedIconButtonStyle`](src/lib/scheduleBlockActionChromeStyle.ts)**), soft **shadow** + subtle **filter** on the plate only. [`ScheduleDispatchHubPage`](src/components/schedule/ScheduleDispatchHubPage.tsx) / [`ScheduleDispatchJobWeek`](src/components/schedule/ScheduleDispatchJobWeek.tsx) wire the modal; hub vs grid use the same pattern (note nudges when **Linked** is present).
+
 ---
 
 ## Latest Updates (v2.377)

@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-04-21
+last_updated: 2026-04-23
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -499,6 +499,9 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 | **Materials** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited |
 | **Templates** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Settings** | ✅ | ✅ limited | ✅ limited | ❌ | ✅ limited | ✅ limited | ✅ limited |
+| **Map** (`/map`) | ✅ (header **Map** + geocode) | ❌* | ❌* | ❌* | ❌* | ❌* | ❌* |
+
+*\* **Map**: The **header** **Map** (pin) link is **dev**-only. **Edge** geocoding (**`geocode-one`**, **`geocode-address-batch`**) requires **dev**. **Master** and **assistant** are not redirected from `/map` if opened by **URL** ([`layoutRouteAccess.ts`](src/lib/layoutRouteAccess.ts)); **estimator**, **primary**, **superintendent**, and **subcontractor** are redirected away from `/map` by **Layout** when it is not an allowed path.*
 
 ### Redirection Rules
 
@@ -544,6 +547,7 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 | Feature | dev | master | assistant | sub | estimator | primary | superintendent |
 |---------|-----|--------|-----------|-----|-----------|---------|----------------|
 | **Schedule** section — read-only per-user day row (**`DispatchAddBlockTimeRange`**, same window as Add schedule block); roster + **`job_schedule_blocks`** for selected **`work_date`**; link to **`/schedule-dispatch`** with **`week`**, optional **`day`** / **`jobId`**; **`quickfill_section_marks.section_id` = `schedule`** (shown only for **dev**, **master_technician**, **assistant**, **superintendent** — same gate as **`sectionWouldRenderOnPage`** in **`Quickfill.tsx`**) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ |
+| **Prospects** — active prospect warmth counts (0–3 and 4+); Team table (**dev** / **master_technician** / **assistant**, last 30 days, same aggregation as **Prospects → Team**), link to **`/prospects`**. Shown when **`canAccessProspects`** in **`Quickfill.tsx`**. **Estimator** only when **Settings** grants **`estimator_prospects_access`** (no Team sub-block) | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
 | **Email**, **Texts**, **Physical inbox** — textarea + mark with note history; **mark** / **`quickfill_section_marks`** **UPSERT**: dev / master / assistant only (**RLS**). **Physical inbox** inline Task / Task Dispatch / Estimator buttons (same role gates as [`Layout.tsx`](src/components/Layout.tsx) header) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 ### Settings (selected)

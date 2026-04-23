@@ -68,7 +68,7 @@ export const PATH_TABS: Record<string, readonly string[]> = {
   ],
   '/checklist': ['today', 'history', 'review', 'manage'],
   '/materials': ['price-book', 'assembly-book', 'templates-po', 'purchase-orders', 'supply-houses'],
-  '/documents': ['estimates', 'bid-proposals', 'jobs', 'upload'],
+  '/documents': ['search', 'estimates', 'bid-proposals', 'jobs', 'supply-invoices', 'upload'],
 }
 
 export function getStorageKey(userId: string): string {

@@ -14,6 +14,7 @@ import { supabase } from '../lib/supabase'
 import { pageUnderlineTabStyle } from '../lib/pageUnderlineTabStyle'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { useAuth } from '../hooks/useAuth'
+import { useMatchMedia } from '../hooks/useMatchMedia'
 import { useSendBackCollectPaymentFlowNotice } from '../hooks/useSendBackCollectPaymentFlowNotice'
 import { useMercuryLedgerNicknames } from '../hooks/useMercuryLedgerNicknames'
 import { useToastContext } from '../contexts/ToastContext'
@@ -41,6 +42,7 @@ import { CrewJobsBlock } from '../components/CrewJobsBlock'
 import type { Database } from '../types/database'
 import type { JobWithDetails } from '../types/jobWithDetails'
 import { useJobFormModal } from '../contexts/JobFormModalContext'
+import { useJobsListCache } from '../contexts/JobsListCacheContext'
 import { CLOCK_SESSION_LIST_SELECT } from '../lib/clockSessionSelect'
 import { APP_CALENDAR_TZ, formatWorkDateYmdWeekdayLongFriendly, getDefaultWeekRange } from '../utils/dateUtils'
 import { fetchAttributionsByMercuryTxIds } from '../lib/fetchMercuryRelationsByTxIds'
@@ -70,7 +72,6 @@ import {
   shouldResyncJobsAfterUpdateJobStatusFailure,
   toastForUpdateJobStatusFailure,
 } from '../lib/updateJobStatusClientFeedback'
-import { fetchJobsLedgerWithDetailsForStages } from '../lib/fetchJobsLedgerWithDetailsForStages'
 import {
   buildBilledStageRows,
   buildJobsStagesBoardLists,
@@ -120,6 +121,9 @@ type TallyPartRow = {
 }
 
 type JobsTab = 'reports' | 'stages' | 'billing' | 'sub_sheet_ledger' | 'combined-labor' | 'teams-summary' | 'parts' | 'job-summary' | 'inspections' | 'billed'
+
+/** Align with Layout mobile breakpoint; shortens primary create button to "New". */
+const JOBS_SHORT_NEW_JOB_BUTTON_MQ = '(max-width: 640px)'
 
 // Roster (for Labor / Sub Sheet Ledger)
 type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
@@ -601,6 +605,12 @@ export default function Jobs() {
   const [searchParams, setSearchParams] = useSearchParams()
   /** `loadJobs()` only filters by this URL param; avoid refetching all jobs when unrelated search params change. */
   const customerParamForJobsReload = searchParams.get('customer')
+  const customerFilterForFetch = useMemo(
+    () => searchParams.get('customer')?.trim() || null,
+    [searchParams],
+  )
+  const customerFilterForFetchRef = useRef<string | null>(null)
+  customerFilterForFetchRef.current = customerFilterForFetch
   const teamLaborJobParam = searchParams.get('teamLaborJob')?.trim() || null
   const onFocusTeamLaborConsumed = useCallback(() => {
     setSearchParams((p) => {
@@ -619,27 +629,45 @@ export default function Jobs() {
       authRole === 'superintendent',
     [authRole],
   )
+  const shortNewJobButtonLabel = useMatchMedia(JOBS_SHORT_NEW_JOB_BUTTON_MQ)
   const { nicknameByDebitCard } = useMercuryLedgerNicknames()
   const { showToast } = useToastContext()
   const jobFormModal = useJobFormModal()
   const billCustomer = useBillCustomerModal()
+  const {
+    jobs,
+    setJobs,
+    jobsListLoading,
+    jobsListRefreshing,
+    jobsListError,
+    runFetchJobs,
+  } = useJobsListCache()
   const [activeTab, setActiveTab] = useState<JobsTab>('stages')
-  const [jobs, setJobs] = useState<JobWithDetails[]>([])
   const [users, setUsers] = useState<UserRow[]>([])
   const [people, setPeople] = useState<Person[]>([])
-  const [loading, setLoading] = useState(true)
   /** Set after Ready to Bill → View in Stages; cleared on timeout, dismiss, tab change, or reopening Edit Job. */
   const [returnEditBannerJobId, setReturnEditBannerJobId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [billingSortAsc, setBillingSortAsc] = useState(false) // false = highest HCP first (desc, largest to smallest)
-  const loadJobsInFlightRef = useRef(false)
-  /** When true, run `loadJobs` again after the in-flight fetch completes (coalesced skip). */
-  const loadJobsPendingRef = useRef(false)
   /** Debounce timer for post-Stages-mutation refresh (coalesce rapid moves into one fetch). */
   const loadJobsAfterMutationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   /** Coalesce rapid `useEffect` dependency churn (tab/customer) into one `loadJobs`. */
   const loadJobsFromEffectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const LOAD_JOBS_AFTER_MUTATION_MS = 300
+  const LOAD_JOBS_FROM_EFFECT_DEBOUNCE_MS = 50
+  const loadJobs = useCallback(() => {
+    return runFetchJobs(customerFilterForFetch)
+  }, [runFetchJobs, customerFilterForFetch])
+  function scheduleLoadJobsAfterMutation() {
+    if (loadJobsAfterMutationTimerRef.current) {
+      clearTimeout(loadJobsAfterMutationTimerRef.current)
+    }
+    loadJobsAfterMutationTimerRef.current = setTimeout(() => {
+      loadJobsAfterMutationTimerRef.current = null
+      void runFetchJobs(customerFilterForFetchRef.current ?? null)
+    }, LOAD_JOBS_AFTER_MUTATION_MS)
+  }
   /** Loaded for Stages/Billing implied-customer hints and refreshed when job form saves. */
   const [customers, setCustomers] = useState<CustomerRow[]>([])
   const [createPartialInvoiceJob, setCreatePartialInvoiceJob] = useState<JobWithDetails | null>(null)
@@ -1100,51 +1128,6 @@ export default function Jobs() {
     if (byMaster.length === 1) return true
     if (byMaster.length === 0 && byName.length === 1) return true
     return false
-  }
-
-  const LOAD_JOBS_AFTER_MUTATION_MS = 300
-  const LOAD_JOBS_FROM_EFFECT_DEBOUNCE_MS = 50
-
-  async function loadJobs() {
-    if (!authUser?.id) {
-      setLoading(false)
-      return
-    }
-    if (loadJobsInFlightRef.current) {
-      loadJobsPendingRef.current = true
-      return
-    }
-    loadJobsInFlightRef.current = true
-    setLoading(true)
-    setError(null)
-    try {
-      const customerFilter = searchParams.get('customer')
-      const result = await fetchJobsLedgerWithDetailsForStages({ customerFilter })
-      if (!result.ok) {
-        setError(result.error)
-        setLoading(false)
-        return []
-      }
-      setJobs(result.jobs)
-      setLoading(false)
-      return result.jobs
-    } finally {
-      loadJobsInFlightRef.current = false
-      if (loadJobsPendingRef.current) {
-        loadJobsPendingRef.current = false
-        void loadJobs()
-      }
-    }
-  }
-
-  function scheduleLoadJobsAfterMutation() {
-    if (loadJobsAfterMutationTimerRef.current) {
-      clearTimeout(loadJobsAfterMutationTimerRef.current)
-    }
-    loadJobsAfterMutationTimerRef.current = setTimeout(() => {
-      loadJobsAfterMutationTimerRef.current = null
-      void loadJobs()
-    }, LOAD_JOBS_AFTER_MUTATION_MS)
   }
 
   useEffect(() => {
@@ -3371,7 +3354,18 @@ ${totalsHtml}
         loadJobsFromEffectTimerRef.current = null
       }
     }
-  }, [authUser?.id, authLoading, customerParamForJobsReload, activeTab])
+  }, [authUser?.id, authLoading, customerParamForJobsReload, activeTab, loadJobs])
+
+  useEffect(() => {
+    if (authLoading || !authUser?.id) return
+    if (activeTab !== 'stages' && activeTab !== 'billing') return
+    const onVis = () => {
+      if (document.visibilityState !== 'visible') return
+      void runFetchJobs(customerFilterForFetch, { kind: 'visibility' })
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [authUser?.id, authLoading, activeTab, customerFilterForFetch, runFetchJobs])
 
   useEffect(() => {
     if (authLoading || !authUser?.id) return
@@ -3585,7 +3579,7 @@ ${totalsHtml}
   // When edit=jobId is in URL, open the global job form modal
   const editJobId = searchParams.get('edit')
   useEffect(() => {
-    if (!editJobId || loading) return
+    if (!editJobId || jobsListLoading) return
     const job = jobs.find((j) => j.id === editJobId)
     jobFormModal?.openEditJob(editJobId, {
       initialJob: job,
@@ -3598,7 +3592,7 @@ ${totalsHtml}
       next.delete('edit')
       return next
     }, { replace: true })
-  }, [editJobId, jobs, loading])
+  }, [editJobId, jobs, jobsListLoading])
 
   const openBankPaymentsParam = searchParams.get('openBankPayments')
   useEffect(() => {
@@ -3712,7 +3706,7 @@ ${totalsHtml}
   const stagesInvoiceParam = searchParams.get('stagesInvoice')
   useEffect(() => {
     const raw = stagesInvoiceParam?.trim()
-    if (!raw || loading || activeTab !== 'stages') return
+    if (!raw || jobsListLoading || activeTab !== 'stages') return
 
     applyStagesInvoiceFocus(raw)
     setSearchParams((p) => {
@@ -3721,7 +3715,7 @@ ${totalsHtml}
       if (!next.get('tab')) next.set('tab', 'stages')
       return next
     }, { replace: true })
-  }, [stagesInvoiceParam, loading, activeTab, applyStagesInvoiceFocus, setSearchParams])
+  }, [stagesInvoiceParam, jobsListLoading, activeTab, applyStagesInvoiceFocus, setSearchParams])
 
   useEffect(() => {
     if (activeTab !== 'stages') {
@@ -3731,13 +3725,13 @@ ${totalsHtml}
   }, [activeTab])
 
   useEffect(() => {
-    if (activeTab !== 'stages' || loading) return
+    if (activeTab !== 'stages' || jobsListLoading) return
     const tabParam = searchParams.get('tab')
     const urlWantsStages = tabParam == null || tabParam === 'stages' || tabParam === 'billed'
     if (!urlWantsStages) return
     const id = peekReturnEditJobFromStages()
     if (id) setReturnEditBannerJobId(id)
-  }, [activeTab, loading, searchParams])
+  }, [activeTab, jobsListLoading, searchParams])
 
   useEffect(() => {
     if (!returnEditBannerJobId) return
@@ -4908,8 +4902,10 @@ ${totalsHtml}
 
       {activeTab === 'stages' && (
         <div>
-          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
-          {loading && (
+          {(error || jobsListError) && (
+            <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error || jobsListError}</p>
+          )}
+          {jobsListLoading && (
             <p style={{ color: '#6b7280', marginBottom: '1rem' }}>
               Loading jobs…
               {(searchParams.get('openBankPayments') === 'true' || searchParams.get('openBankPayments') === '1') && (
@@ -4919,6 +4915,9 @@ ${totalsHtml}
                 </>
               )}
             </p>
+          )}
+          {jobsListRefreshing && !jobsListLoading && (
+            <p style={{ color: '#9ca3af', fontSize: '0.8125rem', marginBottom: '0.75rem' }}>Updating jobs…</p>
           )}
           <div style={{ marginBottom: '1rem' }}>
             <span
@@ -4942,6 +4941,7 @@ ${totalsHtml}
             <button
               type="button"
               onClick={openNew}
+              aria-label="New job"
               style={{
                 padding: '0.5rem 1rem',
                 background: '#3b82f6',
@@ -4950,9 +4950,10 @@ ${totalsHtml}
                 borderRadius: 4,
                 cursor: 'pointer',
                 fontWeight: 500,
+                whiteSpace: 'nowrap',
               }}
             >
-              New Job
+              {shortNewJobButtonLabel ? 'New' : 'New Job'}
             </button>
             <input
               type="text"
@@ -8021,6 +8022,7 @@ ${totalsHtml}
             <button
               type="button"
               onClick={openNew}
+              aria-label="New job"
               style={{
                 padding: '0.5rem 1rem',
                 background: '#3b82f6',
@@ -8029,9 +8031,10 @@ ${totalsHtml}
                 borderRadius: 4,
                 cursor: 'pointer',
                 fontWeight: 500,
+                whiteSpace: 'nowrap',
               }}
             >
-              New Job
+              {shortNewJobButtonLabel ? 'New' : 'New Job'}
             </button>
             <input
               type="search"
@@ -8092,10 +8095,16 @@ ${totalsHtml}
           <p style={{ color: '#6b7280', fontSize: '0.8125rem', marginBottom: '1rem' }}>
             Assistants see jobs from their master and from other assistants adopted by the same master. If you don&apos;t see a colleague&apos;s jobs, the master must adopt both of you in Settings → Adopt Assistants.
           </p>
-          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
-          {loading ? (
+          {(error || jobsListError) && (
+            <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error || jobsListError}</p>
+          )}
+          {jobsListLoading ? (
             <p style={{ color: '#6b7280' }}>Loading…</p>
-          ) : sortedBillingJobs.length === 0 ? (
+          ) : null}
+          {jobsListRefreshing && !jobsListLoading && (
+            <p style={{ color: '#9ca3af', fontSize: '0.8125rem', marginBottom: '0.75rem' }}>Updating…</p>
+          )}
+          {!jobsListLoading && (sortedBillingJobs.length === 0 ? (
             <p style={{ color: '#6b7280' }}>No HCP jobs yet. Click New Job to add one.</p>
           ) : (
             <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'auto' }}>
@@ -8240,7 +8249,7 @@ ${totalsHtml}
                 </tbody>
               </table>
             </div>
-          )}
+          ))}
         </div>
       )}
 
@@ -8619,7 +8628,7 @@ ${totalsHtml}
               style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
             />
           </div>
-          {(loading || tallyPartsLoading || laborJobsLoading) ? (
+          {(jobsListLoading || tallyPartsLoading || laborJobsLoading) ? (
             <p style={{ color: '#6b7280' }}>Loading…</p>
           ) : jobSummaryData.length === 0 ? (
             <p style={{ color: '#6b7280' }}>No billing jobs yet. Add jobs in Billing to see the summary.</p>
@@ -10984,7 +10993,7 @@ ${totalsHtml}
         authUserId={authUser?.id}
         authRole={authRole}
         billedRows={bankPaymentsModalBilledRows}
-        billedTargetsLoading={loading && bankPaymentsModalBilledRows.length === 0}
+        billedTargetsLoading={jobsListLoading && bankPaymentsModalBilledRows.length === 0}
         onApplied={async () => {
           await loadJobs()
         }}

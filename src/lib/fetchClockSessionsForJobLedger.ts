@@ -37,3 +37,36 @@ export async function fetchClockSessionsForJobLedger(
     return { data: [], error: formatErrorMessage(e) }
   }
 }
+
+const APPROVED_SESSIONS_CAP = 100
+
+/** Approved, closed, non-rejected, non-revoked sessions for a job (payroll-style ledger). */
+export async function fetchApprovedClosedClockSessionsForJobLedger(
+  jobId: string,
+): Promise<{ data: JobDetailClockSessionRow[]; error: string | null; truncated: boolean }> {
+  try {
+    const raw = await withSupabaseRetry(
+      async () =>
+        await supabase
+          .from('clock_sessions')
+          .select(JOB_DETAIL_CLOCK_SESSION_SELECT)
+          .eq('job_ledger_id', jobId)
+          .not('approved_at', 'is', null)
+          .not('clocked_out_at', 'is', null)
+          .is('rejected_at', null)
+          .is('revoked_at', null)
+          .order('clocked_in_at', { ascending: true })
+          .limit(101),
+      'fetchApprovedClosedClockSessionsForJobLedger',
+    )
+    const rows = (raw ?? []) as JobDetailClockSessionRow[]
+    const truncated = rows.length > APPROVED_SESSIONS_CAP
+    return {
+      data: truncated ? rows.slice(0, APPROVED_SESSIONS_CAP) : rows,
+      error: null,
+      truncated,
+    }
+  } catch (e) {
+    return { data: [], error: formatErrorMessage(e), truncated: false }
+  }
+}

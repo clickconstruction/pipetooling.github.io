@@ -270,7 +270,14 @@ const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
  */
 type QuickfillBlockModalState = { kind: 'add'; assigneeUserId: string; workDate: string; jobId: string }
 
-export function QuickfillScheduleSection({ hideConflictPrompt = false }: { hideConflictPrompt?: boolean } = {}) {
+export function QuickfillScheduleSection({
+  hideConflictPrompt = false,
+  initialWorkDateYmd,
+}: {
+  hideConflictPrompt?: boolean
+  /** When set (e.g. Dispatch hub / Quickfill tomorrow), use this as the initial schedule day. */
+  initialWorkDateYmd?: string
+} = {}) {
   const navigate = useNavigate()
   const { role, user: authUser } = useAuth()
   const { showToast } = useToastContext()
@@ -282,7 +289,12 @@ export function QuickfillScheduleSection({ hideConflictPrompt = false }: { hideC
     subjectUserId: string
     subjectDisplayName: string
   } | null>(null)
-  const [workDate, setWorkDate] = useState(() => denverCalendarDayKey(Date.now()))
+  const [workDate, setWorkDate] = useState(
+    () => (initialWorkDateYmd != null && initialWorkDateYmd !== '' ? initialWorkDateYmd : denverCalendarDayKey(Date.now())),
+  )
+  useEffect(() => {
+    if (initialWorkDateYmd != null && initialWorkDateYmd !== '') setWorkDate(initialWorkDateYmd)
+  }, [initialWorkDateYmd])
   const [loading, setLoading] = useState(true)
   const [userIds, setUserIds] = useState<string[]>([])
   const [nameById, setNameById] = useState<Map<string, string>>(() => new Map())
