@@ -31,6 +31,8 @@ type JobsListCacheContextValue = {
   setJobs: Dispatch<SetStateAction<JobWithDetails[]>>
   jobsListLoading: boolean
   jobsListRefreshing: boolean
+  /** True after non-paid jobs are shown until the paid-only wave finishes (or fails). */
+  jobsListPaidPending: boolean
   jobsListError: string | null
   setJobsListError: (v: string | null) => void
   runFetchJobs: RunFetchJobsFn
@@ -44,6 +46,7 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
   const [jobsListLoading, setJobsListLoading] = useState(true)
   const [jobsListRefreshing, setJobsListRefreshing] = useState(false)
   const [jobsListError, setJobsListError] = useState<string | null>(null)
+  const [jobsListPaidPending, setJobsListPaidPending] = useState(false)
 
   const loadInFlightRef = useRef(false)
   const pendingRef = useRef<PendingRefetch | null>(null)
@@ -59,6 +62,7 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
         setJobs([])
         setJobsListLoading(false)
         setJobsListRefreshing(false)
+        setJobsListPaidPending(false)
         setJobsListError(null)
         lastSuccessfulDataKeyRef.current = null
         completedKeysRef.current.clear()
@@ -94,11 +98,15 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
         setJobsListLoading(true)
       }
       setJobsListError(null)
+      setJobsListPaidPending(false)
 
       try {
-        const result = await fetchJobsLedgerWithDetailsForStages({ customerFilter })
-        if (!result.ok) {
-          setJobsListError(result.error)
+        const first = await fetchJobsLedgerWithDetailsForStages({
+          customerFilter,
+          statusScope: 'non_paid',
+        })
+        if (!first.ok) {
+          setJobsListError(first.error)
           if (useBackground) {
             setJobsListRefreshing(false)
           } else {
@@ -107,13 +115,33 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
           lastFetchCompletedAtRef.current = Date.now()
           return undefined
         }
-        setJobs(result.jobs)
+        setJobs(first.jobs)
         lastSuccessfulDataKeyRef.current = key
         completedKeysRef.current.add(key)
         setJobsListLoading(false)
         setJobsListRefreshing(false)
         lastFetchCompletedAtRef.current = Date.now()
-        return result.jobs
+
+        setJobsListPaidPending(true)
+        let paid: JobWithDetails[] = []
+        try {
+          const second = await fetchJobsLedgerWithDetailsForStages({
+            customerFilter,
+            statusScope: 'paid',
+          })
+          if (second.ok) {
+            paid = second.jobs
+            setJobs((prev) => [...prev, ...paid])
+          } else {
+            console.warn('JobsListCache: paid jobs wave failed (non-paid data kept):', second.error)
+          }
+        } catch (e) {
+          console.warn('JobsListCache: paid jobs wave failed (non-paid data kept):', e)
+        } finally {
+          setJobsListPaidPending(false)
+        }
+
+        return [...first.jobs, ...paid]
       } finally {
         loadInFlightRef.current = false
         if (pendingRef.current) {
@@ -133,6 +161,7 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
       setJobs([])
       setJobsListLoading(true)
       setJobsListRefreshing(false)
+      setJobsListPaidPending(false)
       setJobsListError(null)
       lastSuccessfulDataKeyRef.current = null
       completedKeysRef.current.clear()
@@ -152,6 +181,7 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
     setJobs,
     jobsListLoading,
     jobsListRefreshing,
+    jobsListPaidPending,
     jobsListError,
     setJobsListError,
     runFetchJobs,

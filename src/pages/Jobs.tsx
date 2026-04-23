@@ -639,6 +639,7 @@ export default function Jobs() {
     setJobs,
     jobsListLoading,
     jobsListRefreshing,
+    jobsListPaidPending,
     jobsListError,
     runFetchJobs,
   } = useJobsListCache()
@@ -7352,7 +7353,7 @@ ${totalsHtml}
                   style={{ margin: '1.5rem 0 0.5rem', fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                 >
                   <span aria-hidden>{stagesSectionOpen.paid ? '\u25BC' : '\u25B6'}</span>
-                  Paid in Full ({paid.length})
+                  {`Paid in Full (${jobsListPaidPending ? '…' : paid.length})${jobsListPaidPending ? ' — loading' : ''}`}
                 </button>
                 {stagesSectionOpen.paid && renderStagesTable(paid, null, () => {}, true, undefined, stagesHamMode
                   ? (j) => updateJobStatus(j.id, 'billed')

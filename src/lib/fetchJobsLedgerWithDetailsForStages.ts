@@ -17,43 +17,45 @@ type JobsLedgerPayment = Database['public']['Tables']['jobs_ledger_payments']['R
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 type JobsLedgerTeamMember = Database['public']['Tables']['jobs_ledger_team_members']['Row']
 
+export type JobsLedgerStatusScope = 'all' | 'non_paid' | 'paid'
+
+/** List primary query omits materials/fixtures; those load in a second round (see batch in enrich). */
+export type JobsLedgerStagesPrimaryRow = JobsLedgerRow & {
+  jobs_ledger_payments?: JobsLedgerPayment[]
+  jobs_ledger_invoices?: JobsLedgerInvoice[]
+  jobs_ledger_team_members?: (JobsLedgerTeamMember & { users: { name: string } | null })[]
+  reports?: Array<{ job_ledger_id: string | null }>
+  projects?: { id: string; name: string } | null
+  bids?: { id: string; project_name: string | null; bid_number: string | null } | null
+}
+
 export type FetchJobsLedgerWithDetailsResult =
   | { ok: true; jobs: JobWithDetails[] }
   | { ok: false; error: string }
 
-export async function fetchJobsLedgerWithDetailsForStages(options: {
-  customerFilter?: string | null
-}): Promise<FetchJobsLedgerWithDetailsResult> {
-  const customerFilter = options.customerFilter?.trim() || null
-  /** List primary query omits materials/fixtures; those load in a second round (see batch below). */
-  type Row = JobsLedgerRow & {
-    jobs_ledger_payments?: JobsLedgerPayment[]
-    jobs_ledger_invoices?: JobsLedgerInvoice[]
-    jobs_ledger_team_members?: (JobsLedgerTeamMember & { users: { name: string } | null })[]
-    reports?: Array<{ job_ledger_id: string | null }>
-    projects?: { id: string; name: string } | null
-    bids?: { id: string; project_name: string | null; bid_number: string | null } | null
+function buildJobsListStagesQuery(customerFilter: string | null, statusScope: JobsLedgerStatusScope) {
+  let q = supabase
+    .from('jobs_ledger')
+    .select(buildJobsListStagesPrimarySelect())
+    .order('hcp_number', { ascending: false })
+  if (customerFilter) {
+    q = q.eq('customer_id', customerFilter)
   }
-  let rows: Row[]
-  try {
-    const data = (await withSupabaseRetry(
-      async () => {
-        // No `.limit` here: full list is required for Stages/AR; add keyset pagination later if needed.
-        let q = supabase.from('jobs_ledger').select(buildJobsListStagesPrimarySelect())
-          .order('hcp_number', { ascending: false })
-        if (customerFilter) {
-          q = q.eq('customer_id', customerFilter)
-        }
-        return q
-      },
-      'fetch jobs_ledger for stages',
-    )) as unknown
-    rows = (data as Row[] | null) ?? []
-  } catch (e: unknown) {
-    return { ok: false, error: formatErrorMessage(e, 'Failed to load jobs') }
+  if (statusScope === 'non_paid') {
+    // Include null status (treated as working in UI). Plain `neq` would drop SQL NULLs.
+    q = q.or('status.is.null,status.neq.paid')
+  } else if (statusScope === 'paid') {
+    q = q.eq('status', 'paid')
   }
+  return q
+}
+
+/**
+ * Batched materials, fixtures, schedule, and estimate enrichment for already-fetched `jobs_ledger` primary rows.
+ */
+export async function enrichJobsLedgerPrimaryRows(rows: JobsLedgerStagesPrimaryRow[]): Promise<JobWithDetails[]> {
   if (rows.length === 0) {
-    return { ok: true, jobs: [] }
+    return []
   }
   let jobsWithDetails: JobWithDetails[] = rows.map((row) => {
     const {
@@ -117,7 +119,7 @@ export async function fetchJobsLedgerWithDetailsForStages(options: {
       fixtures: (fixturesByJobId.get(j.id) ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
     }))
   } catch (e) {
-    console.warn('fetchJobsLedgerWithDetailsForStages: materials/fixtures batch failed', e)
+    console.warn('enrichJobsLedgerPrimaryRows: materials/fixtures batch failed', e)
   }
 
   const SCHEDULE_BLOCKS_IN_CHUNK = 150
@@ -140,7 +142,7 @@ export async function fetchJobsLedgerWithDetailsForStages(options: {
       }
     }
   } catch (e) {
-    console.warn('fetchJobsLedgerWithDetailsForStages: job_schedule_blocks batch failed', e)
+    console.warn('enrichJobsLedgerPrimaryRows: job_schedule_blocks batch failed', e)
     scheduleMaxByJobId = new Map()
   }
 
@@ -187,14 +189,38 @@ export async function fetchJobsLedgerWithDetailsForStages(options: {
       }
     }
   } catch (e) {
-    console.warn('fetchJobsLedgerWithDetailsForStages: estimates stages banner batch failed', e)
+    console.warn('enrichJobsLedgerPrimaryRows: estimates stages banner batch failed', e)
     estimateCandidatesByJobId.clear()
   }
 
-  const jobsWithSchedule: JobWithDetails[] = jobsWithDetails.map((j) => ({
+  return jobsWithDetails.map((j) => ({
     ...j,
     last_schedule_work_date: scheduleMaxByJobId.get(j.id) ?? null,
     linkedEstimateForStages: pickLinkedEstimateForStagesBanner(estimateCandidatesByJobId.get(j.id) ?? []),
   }))
-  return { ok: true, jobs: jobsWithSchedule }
+}
+
+export async function fetchJobsLedgerWithDetailsForStages(options: {
+  customerFilter?: string | null
+  /** Default `all`: one query. Use `non_paid` and `paid` in sequence for a two-phase load. */
+  statusScope?: JobsLedgerStatusScope
+}): Promise<FetchJobsLedgerWithDetailsResult> {
+  const customerFilter = options.customerFilter?.trim() || null
+  const statusScope = options.statusScope ?? 'all'
+
+  let rows: JobsLedgerStagesPrimaryRow[]
+  try {
+    const data = (await withSupabaseRetry(
+      async () => buildJobsListStagesQuery(customerFilter, statusScope),
+      'fetch jobs_ledger for stages',
+    )) as unknown
+    rows = (data as JobsLedgerStagesPrimaryRow[] | null) ?? []
+  } catch (e: unknown) {
+    return { ok: false, error: formatErrorMessage(e, 'Failed to load jobs') }
+  }
+  if (rows.length === 0) {
+    return { ok: true, jobs: [] }
+  }
+  const jobs = await enrichJobsLedgerPrimaryRows(rows)
+  return { ok: true, jobs }
 }
