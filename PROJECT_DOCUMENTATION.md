@@ -2643,9 +2643,9 @@ pipetooling.github.io/
 │   │   ├── Map.tsx            # Map (dev nav): jobs/bids/estimates on Leaflet + address_geocodes
 │   │   ├── ProjectForm.tsx    # Create/edit project
 │   │   ├── Materials.tsx       # Materials management (price book, templates, purchase orders)
-│   │   ├── Bids.tsx            # Bids management (bid board, counts, takeoffs, cover letter, submission & followup)
+│   │   ├── Bids.tsx            # Bids management (bid board, counts, takeoffs, cover letter, submission & followup); Confirm bid sent optional Adds to bid note → bids_submission_entries (v2.383)
 │   │   ├── Projects.tsx       # List projects
-│   │   ├── ScheduleDispatch.tsx # Hub vs job-week router → ScheduleDispatchHubPage / ScheduleDispatchJobWeek
+│   │   ├── ScheduleDispatch.tsx # Hub vs job-week router → ScheduleDispatchHubPage / ScheduleDispatchJobWeek; mobile (≤640px): transparent sticky first column + name pills — scheduleDispatchMobileNamePill.ts, HubPeoplePanel, ScheduleDispatchGrid
 │   │   ├── ResetPassword.tsx   # Password reset request page
 │   │   ├── ResetPasswordConfirm.tsx # Password reset confirmation page
 │   │   ├── Settings.tsx        # User management (dev) and password change (all users)

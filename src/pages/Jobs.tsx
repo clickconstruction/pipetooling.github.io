@@ -4906,20 +4906,6 @@ ${totalsHtml}
           {(error || jobsListError) && (
             <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error || jobsListError}</p>
           )}
-          {jobsListLoading && (
-            <p style={{ color: '#6b7280', marginBottom: '1rem' }}>
-              Loading jobs…
-              {(searchParams.get('openBankPayments') === 'true' || searchParams.get('openBankPayments') === '1') && (
-                <>
-                  <br />
-                  <span style={{ fontSize: '0.8125rem' }}>Opening Accounts Receivable when ready.</span>
-                </>
-              )}
-            </p>
-          )}
-          {jobsListRefreshing && !jobsListLoading && (
-            <p style={{ color: '#9ca3af', fontSize: '0.8125rem', marginBottom: '0.75rem' }}>Updating jobs…</p>
-          )}
           <div style={{ marginBottom: '1rem' }}>
             <span
               id="stages-search-supplemental-desc"
@@ -5098,6 +5084,28 @@ ${totalsHtml}
             </button>
             </div>
           </div>
+          {(jobsListLoading || (jobsListRefreshing && !jobsListLoading)) && (
+            <div
+              role="status"
+              aria-live="polite"
+              style={{ textAlign: 'center', marginTop: '0.35rem', marginBottom: '0.75rem' }}
+            >
+              {jobsListLoading && (
+                <p style={{ color: '#6b7280', margin: 0 }}>
+                  Loading jobs…
+                  {(searchParams.get('openBankPayments') === 'true' || searchParams.get('openBankPayments') === '1') && (
+                    <>
+                      <br />
+                      <span style={{ fontSize: '0.8125rem' }}>Opening Accounts Receivable when ready.</span>
+                    </>
+                  )}
+                </p>
+              )}
+              {jobsListRefreshing && !jobsListLoading && (
+                <p style={{ color: '#9ca3af', fontSize: '0.8125rem', margin: 0 }}>Updating jobs…</p>
+              )}
+            </div>
+          )}
           {(() => {
             const { working, paid, readyToBillRows, billedRows } = stagesBoardLists
 

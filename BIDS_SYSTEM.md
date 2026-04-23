@@ -204,6 +204,11 @@ Column order (left to right; leading **expand** chevron opens inline **Notes** �
   4. Project Address (full width), then **Distance to Office (miles)** | **Plan Pages** (two-column row; map link by distance)
   5. Project Folder, Job Plans / Design Drawing Plan Date, Count Tooling / Bid Submission, GC/Builder (customer), Project Contact fields, Submitted to, financial fields, Last Contact, Notes, actions
 
+**Confirm bid sent (Bid Date Sent attestation)**:
+- When **Bid Date Sent** is changed to a **new** calendar date (different from the value last saved on the bid), a **Confirm bid sent** modal opens before the change can be saved: three required acknowledgments (email, phone follow-up, honesty) and **Confirm sent date**.
+- Optional **Adds to bid note:** field — free text (placeholder describes call/voicemail follow-up). If provided, after the user confirms the modal and **Save**s the bid (or **Save and start Counts**), the text is appended as a **Bid Note**: insert into **`bids_submission_entries`** with **`created_by`** = current user, and **`bids.last_contact`** is updated to match the note’s **`occurred_at`** (same behavior as adding a note in **Submission & Followup** or **Bid Board**). Empty field adds no row.
+- Code: [`Bids.tsx`](src/pages/Bids.tsx) (`bidSentAttestModalOpen`, `insertPendingBidSentFollowupSubmissionNoteAfterSave`).
+
 **Delete Bid Confirmation**:
 - **"Delete bid" button** in Edit Bid modal opens separate confirmation modal
 - **Confirmation requirement**: User must type project name to enable Delete button

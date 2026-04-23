@@ -12,11 +12,14 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.382 → v2.4"
+version_range: "v2.383 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.383)"
+    line: ~1243
+    description: "Schedule Dispatch mobile: transparent sticky Person/Team member column + white name pills; Bids Confirm bid sent optional Adds to bid note → bids_submission_entries on save"
   - name: "Latest Version (v2.382)"
-    line: ~1236
+    line: ~1262
     description: "Quickfill Prospects: Team line chart (recharts), Y = Marked+Updated per day per person, prospectTeamActivityChartData; Prospects page Team tab still table"
   - name: "Latest Version (v2.381)"
     line: ~1254
@@ -973,6 +976,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.383 — **Schedule Dispatch** **mobile**: transparent sticky **Person** / **Team member** + white **name pills** (`scheduleDispatchMobileNamePill`); **Bids** **Confirm bid sent** optional **Adds to bid note:** → **`bids_submission_entries`** on save](#latest-updates-v2383)
 **New:** [v2.382 — **Quickfill** **Prospects**: **Team** **line** chart (last **30** days, **Y** = **Marked + Updated** per person, **`recharts`**) + **`prospectTeamActivityChartData.ts`** — **`ProspectTeamActivityLineChart`**](#latest-updates-v2382)
 **New:** [v2.381 — **Quickfill** **Prospects** section: **warmth** pipeline (**0–3** + **4+**), **Open Prospects**, shared **Team** activity (**`prospectTeamActivity`**, last **30** days; chart UI in **v2.382**) — **`QuickfillProspectsSection`**, **`canAccessProspects`**](#latest-updates-v2381)
 **New:** [v2.380 — **Checklist** **Review**: **Outstanding by person** above inboxes; **`ScheduleDispatch`** **HubPage** / **JobWeek**; **Map** org **default view** (**Settings**); **`JobsListCache`**; **Documents** **`search`** + **`supply-invoices`**; **Layout** gear **Banking**](#latest-updates-v2380)
@@ -1235,6 +1239,20 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.383)
+
+**Date**: 2026-04-23
+
+### **Schedule Dispatch** — mobile sticky column + name **pills**
+
+- On **narrow viewports** (`useIsMobile`, `max-width: 640px`), the hub **People** grid ([`ScheduleDispatchHub.tsx`](src/components/schedule/ScheduleDispatchHub.tsx) **`HubPeoplePanel`**) and job-week **Team member** column ([`ScheduleDispatchGrid.tsx`](src/components/schedule/ScheduleDispatchGrid.tsx)) use a **transparent** background on the sticky first `th`/`td` so horizontally scrolling day columns show through except on the label. **Person** / **Team member** header text and each **name** line (plus optional salaried `(s)` suffix) sit on a compact white badge (**[`scheduleDispatchMobileNamePill.ts`](src/lib/scheduleDispatchMobileNamePill.ts)** — padding, radius, light shadow). **Job-week** rows keep **Not on job** / **Add to job** outside the pill. Tables use `width: max-content` + `minWidth: 100%` so the first column shrink-wraps to content (existing desktop behavior unchanged when not mobile).
+
+### **Bids** — **Confirm bid sent** — optional **Adds to bid note:**
+
+- The attestation modal (three checkboxes + **Confirm sent date**) includes an optional textarea labeled **Adds to bid note:** with placeholder *What happened when you called them or left a voicemail?* Non-empty text is stored only after **Save** / **Save and start Counts**: a row is inserted into **`bids_submission_entries`** (same pipeline as **Bid Notes** / [`BidNotesTable`](src/components/bidNotes/BidNotesTable.tsx)) and **`bids.last_contact`** is set to that entry’s **`occurred_at`**. Implementation: [`Bids.tsx`](src/pages/Bids.tsx) **`insertPendingBidSentFollowupSubmissionNoteAfterSave`**, draft + pending state **`bidSentAttestFollowupNoteDraft`** / **`pendingBidSentFollowupSubmissionNote`**.
+
 ---
 
 ## Latest Updates (v2.382)
