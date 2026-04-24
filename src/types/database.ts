@@ -9095,6 +9095,10 @@ export type Database = {
         Args: { p_field_choices: Json; p_survivor: string; p_victim: string }
         Returns: Json
       }
+      migrate_job_ledger_costs_and_delete: {
+        Args: { p_from: string; p_to: string }
+        Returns: Json
+      }
       move_job_schedule_block_group: {
         Args: {
           p_job_id: string
@@ -9245,7 +9249,7 @@ export type Database = {
           customer_name: string
           estimate_number: number
           id: string
-          subtitle: string | null
+          subtitle: string
           title: string
         }[]
       }

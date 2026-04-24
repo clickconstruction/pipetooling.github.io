@@ -9,6 +9,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from 'react'
+import { FileSpreadsheet } from 'lucide-react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { pageUnderlineTabStyle } from '../lib/pageUnderlineTabStyle'
@@ -19,6 +20,7 @@ import { useSendBackCollectPaymentFlowNotice } from '../hooks/useSendBackCollect
 import { useMercuryLedgerNicknames } from '../hooks/useMercuryLedgerNicknames'
 import { useToastContext } from '../contexts/ToastContext'
 import { withSupabaseRetry } from '../utils/errorHandling'
+import { findEarliestTxLocalityIndex } from '../lib/txLocalityAddressSplit'
 import { laborItemsSubtotal, lineLaborCost } from '../lib/peopleLaborJobItemLineCost'
 import { getDispatchNoteDisplayMeta } from '../utils/dispatchNoteDisplay'
 import NewReportModal from '../components/NewReportModal'
@@ -33,6 +35,8 @@ import JobBookModal from '../components/jobs/JobBookModal'
 import JobBookIcon from '../components/icons/JobBookIcon'
 import BilledPaymentConfirmationModal from '../components/jobs/BilledPaymentConfirmationModal'
 import BilledBillViewModal from '../components/jobs/BilledBillViewModal'
+import LienToolingPrefillModal from '../components/jobs/LienToolingPrefillModal'
+import AiaG702G703Modal from '../components/jobs/AiaG702G703Modal'
 import { StripeInvoiceSendFromStripeButton } from '../components/jobs/StripeInvoiceSendFromStripeButton'
 import { JobThreadNotesPanel } from '../components/JobThreadNotesPanel'
 import { ScheduleJobModal } from '../components/jobs/ScheduleJobModal'
@@ -42,6 +46,12 @@ import type { Database } from '../types/database'
 import type { JobWithDetails } from '../types/jobWithDetails'
 import { useJobFormModal, type OpenEditJobOptions } from '../contexts/JobFormModalContext'
 import { useJobsListCache } from '../contexts/JobsListCacheContext'
+import { fetchJobsLedgerWithDetailsForStages } from '../lib/fetchJobsLedgerWithDetailsForStages'
+import {
+  applyMinHcpFilter,
+  readJobSummaryMinHcpExclusiveFromStorage,
+  writeJobSummaryMinHcpExclusiveToStorage,
+} from '../lib/jobSummaryHcpFilter'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { CLOCK_SESSION_LIST_SELECT } from '../lib/clockSessionSelect'
 import { APP_CALENDAR_TZ, formatWorkDateYmdWeekdayLongFriendly, getDefaultWeekRange } from '../utils/dateUtils'
@@ -88,11 +98,12 @@ import {
   shouldFetchStagesScheduleSessionSearch,
   STAGES_SCHEDULE_SESSION_SEARCH_MIN_CHARS,
 } from '../lib/jobsStagesScheduleSessionSearch'
+import { showAiaG702G703 } from '../lib/aiaG702G703Eligibility'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 type InspectionRow = Database['public']['Tables']['inspections']['Row']
-type UserRow = { id: string; name: string; email: string | null; role: string }
+type UserRow = { id: string; name: string; email: string | null; role: string; notes: string | null }
 
 /** Jobs ledger row must be linked to a customers row before Invoice/Update or instant billed. */
 function jobLedgerHasCustomerForBilling(customerId: string | null | undefined): boolean {
@@ -507,28 +518,12 @@ const JOBS_TABS: JobsTab[] = ['reports', 'stages', 'billing', 'sub_sheet_ledger'
 
 const LABOR_ASSIGNED_DELIMITER = ' | '
 
-const ADDRESS_LINE2_KEYWORDS = [
-  'San Antonio', 'Seguin', 'Wimberley', 'Marion', 'Helotes', 'Taylor', 'Austin',
-  'New Braunfels', 'Schertz', 'Kingsbury', 'Bastrop', 'Canyon Lake', 'Hondo',
-  'Castroville', 'Shavano Park', 'Blanco',
-]
-
 const ADDRESS_STREET_SUFFIX_RE = /\b(Way|Circle|Dr\.?|Drive|Ln\.?|Lane|St\.?|Street|Rd\.?|Road|Ave\.?|Avenue|Blvd\.?|Boulevard|Ct\.?|Court|Pl\.?|Place|Ter\.?|Terrace|Trl\.?|Trail|Pkwy\.?|Parkway|Hwy\.?|Highway)\b/gi
 
 function formatAddressTwoLines(addr: string | null): { line1: string; line2?: string } | null {
   const a = (addr ?? '').trim()
   if (!a) return null
-  const lower = a.toLowerCase()
-  let bestIdx = -1
-  for (const kw of ADDRESS_LINE2_KEYWORDS) {
-    const idx = lower.indexOf(kw.toLowerCase())
-    if (idx === -1) continue
-    if (kw === 'Blanco') {
-      const after = a.slice(idx + 6)
-      if (/^\s+Rd(\s|\.|$)/i.test(after) || /^\s+Road(\s|\.|$)/i.test(after)) continue
-    }
-    if (bestIdx === -1 || idx < bestIdx) bestIdx = idx
-  }
+  const bestIdx = findEarliestTxLocalityIndex(a)
   if (bestIdx !== -1 && bestIdx > 0) {
     const line1 = a.slice(0, bestIdx).trim()
     const line2 = a.slice(bestIdx).trim()
@@ -653,11 +648,26 @@ export default function Jobs() {
   } = useJobsListCache()
   const jobDetailModal = useJobDetailModal()
   const [activeTab, setActiveTab] = useState<JobsTab>('stages')
+  const activeTabRef = useRef<JobsTab>('stages')
+  activeTabRef.current = activeTab
   const [users, setUsers] = useState<UserRow[]>([])
   const [people, setPeople] = useState<Person[]>([])
   /** Set after Ready to Bill → View in Stages; cleared on timeout, dismiss, tab change, or reopening Edit Job. */
   const [returnEditBannerJobId, setReturnEditBannerJobId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  /** Full org job list for Job Summary tab (all statuses, ignores `?customer=`). */
+  const [jobSummaryLedgerAllJobs, setJobSummaryLedgerAllJobs] = useState<JobWithDetails[] | null>(null)
+  const [jobSummaryMinHcpExclusive, setJobSummaryMinHcpExclusive] = useState(() =>
+    readJobSummaryMinHcpExclusiveFromStorage(),
+  )
+  const jobSummaryLedgerJobs = useMemo(() => {
+    if (jobSummaryLedgerAllJobs == null) return null
+    return applyMinHcpFilter(jobSummaryLedgerAllJobs, jobSummaryMinHcpExclusive)
+  }, [jobSummaryLedgerAllJobs, jobSummaryMinHcpExclusive])
+  const [jobSummaryLedgerLoading, setJobSummaryLedgerLoading] = useState(false)
+  const [jobSummaryLedgerError, setJobSummaryLedgerError] = useState<string | null>(null)
+  const loadJobSummaryLedgerRef = useRef<() => void>(() => {})
+  const jobSummaryLedgerSnapshotLoadedRef = useRef(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [billingSortAsc, setBillingSortAsc] = useState(false) // false = highest HCP first (desc, largest to smallest)
   /** Debounce timer for post-Stages-mutation refresh (coalesce rapid moves into one fetch). */
@@ -669,6 +679,28 @@ export default function Jobs() {
   const loadJobs = useCallback(() => {
     return runFetchJobs(customerFilterForFetch)
   }, [runFetchJobs, customerFilterForFetch])
+
+  const loadJobSummaryLedger = useCallback(async () => {
+    if (!authUser?.id) return
+    setJobSummaryLedgerLoading(true)
+    setJobSummaryLedgerError(null)
+    try {
+      const result = await fetchJobsLedgerWithDetailsForStages({ customerFilter: null, statusScope: 'all' })
+      if (!result.ok) {
+        setJobSummaryLedgerError(result.error)
+        return
+      }
+      setJobSummaryLedgerAllJobs(result.jobs)
+      jobSummaryLedgerSnapshotLoadedRef.current = true
+    } catch (e: unknown) {
+      setJobSummaryLedgerError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setJobSummaryLedgerLoading(false)
+    }
+  }, [authUser?.id])
+  loadJobSummaryLedgerRef.current = () => {
+    void loadJobSummaryLedger()
+  }
 
   const jobsListPipelineBusy = jobsListLoading || jobsListRefreshing
 
@@ -690,6 +722,9 @@ export default function Jobs() {
     loadJobsAfterMutationTimerRef.current = setTimeout(() => {
       loadJobsAfterMutationTimerRef.current = null
       void runFetchJobs(customerFilterForFetchRef.current ?? null)
+      if (activeTabRef.current === 'job-summary' || jobSummaryLedgerSnapshotLoadedRef.current) {
+        void loadJobSummaryLedgerRef.current()
+      }
     }, LOAD_JOBS_AFTER_MUTATION_MS)
   }
   /** Loaded for Stages/Billing implied-customer hints and refreshed when job form saves. */
@@ -926,6 +961,18 @@ export default function Jobs() {
     bankPaymentsModalOpen,
   })
   const [viewBillInvoice, setViewBillInvoice] = useState<InvoiceWithJob | null>(null)
+  const [lienToolingPrefillModal, setLienToolingPrefillModal] = useState<{
+    job: JobWithDetails
+    invoice: JobsLedgerInvoice | null
+  } | null>(null)
+  const [aiaG702StagesJob, setAiaG702StagesJob] = useState<JobWithDetails | null>(null)
+  const lienToolingSenderFallback = useMemo(() => {
+    const job = lienToolingPrefillModal?.job
+    const sessionName = authProfileName?.trim() ?? ''
+    if (!job?.master_user_id) return sessionName
+    const masterRow = users.find((u) => u.id === job.master_user_id)
+    return masterRow?.notes?.trim() || masterRow?.name?.trim() || sessionName
+  }, [users, lienToolingPrefillModal?.job?.id, lienToolingPrefillModal?.job?.master_user_id, authProfileName])
   const [sendBackJob, setSendBackJob] = useState<{
     id: string
     hcpNumber: string
@@ -1396,14 +1443,14 @@ export default function Jobs() {
   async function loadUsers() {
     if (!authUser?.id) return
     const [usersRes, meRes] = await Promise.all([
-      supabase.from('users').select('id, name, email, role').in('role', ['assistant', 'master_technician', 'subcontractor', 'estimator', 'primary', 'superintendent']).order('name'),
+      supabase.from('users').select('id, name, email, role, notes').in('role', ['assistant', 'master_technician', 'subcontractor', 'estimator', 'primary', 'superintendent']).order('name'),
       supabase.from('users').select('role').eq('id', authUser.id).single(),
     ])
     let usersList = (usersRes.data as UserRow[]) ?? []
     const role = (meRes.data as { role?: string } | null)?.role
     setMyRole(role ?? null)
     if (role === 'dev') {
-      const { data: devUsers } = await supabase.from('users').select('id, name, email, role').eq('role', 'dev')
+      const { data: devUsers } = await supabase.from('users').select('id, name, email, role, notes').eq('role', 'dev')
       if (devUsers?.length) {
         const existingIds = new Set(usersList.map((u) => u.id))
         const newDevs = (devUsers as UserRow[]).filter((u) => !existingIds.has(u.id))
@@ -3917,14 +3964,36 @@ ${totalsHtml}
     }
   }, [activeTab, authUser?.id])
 
-  const jobIdsKeyForCardCharges = useMemo(() => jobs.map((j) => j.id).sort().join(','), [jobs])
+  useEffect(() => {
+    if (activeTab !== 'job-summary' || !authUser?.id) return
+    const t = setTimeout(() => {
+      void loadJobSummaryLedger()
+    }, 80)
+    return () => clearTimeout(t)
+  }, [activeTab, authUser?.id, loadJobSummaryLedger])
 
   useEffect(() => {
-    if (jobs.length === 0) {
+    if (authUser?.id) return
+    setJobSummaryLedgerAllJobs(null)
+    setJobSummaryLedgerError(null)
+    jobSummaryLedgerSnapshotLoadedRef.current = false
+  }, [authUser?.id])
+
+  const jobListForCardCharges = useMemo(
+    () => (activeTab === 'job-summary' && jobSummaryLedgerJobs !== null ? jobSummaryLedgerJobs : jobs),
+    [activeTab, jobSummaryLedgerJobs, jobs],
+  )
+  const jobIdsKeyForCardCharges = useMemo(
+    () => jobListForCardCharges.map((j) => j.id).sort().join(','),
+    [jobListForCardCharges],
+  )
+
+  useEffect(() => {
+    if (jobListForCardCharges.length === 0) {
       setMercuryCardChargesByJobId(new Map())
       return
     }
-    const ids = jobs.map((j) => j.id)
+    const ids = jobListForCardCharges.map((j) => j.id)
     void withSupabaseRetry(
       async () =>
         supabase.from('mercury_transaction_job_allocations').select('job_id, amount').in('job_id', ids),
@@ -4151,6 +4220,8 @@ ${totalsHtml}
   }, [jobs, laborJobs, teamLaborData, driveMileageCost, driveTimePerMile])
 
   const jobSummaryData = useMemo(() => {
+    const sourceJobs =
+      activeTab === 'job-summary' ? (jobSummaryLedgerJobs !== null ? jobSummaryLedgerJobs : []) : jobs
     const partsCostByJobId = new Map<string, number>()
     for (const r of tallyParts) {
       const cost = r.part_id == null
@@ -4171,38 +4242,58 @@ ${totalsHtml}
     for (const r of teamLaborData) {
       teamLaborCostByJobId.set(r.jobId, r.jobCost)
     }
-    return jobs.map((job) => {
-      const hcp = (job.hcp_number ?? '').trim().toLowerCase()
-      const subLaborCost = hcp ? (laborCostByHcp.get(hcp) ?? 0) : 0
-      const teamLaborCost = teamLaborCostByJobId.get(job.id) ?? 0
-      const laborCost = subLaborCost + teamLaborCost
-      const partsFromTally = partsCostByJobId.get(job.id) ?? 0
-      const invoicesFromSupplyHouses = invoiceAmountByJob[job.id] ?? 0
-      const billedMaterialsSum = (job.materials ?? []).reduce((s, m) => s + Number(m.amount ?? 0), 0)
-      const cardCharges = mercuryCardChargesByJobId.get(job.id) ?? 0
-      const partsCost = partsFromTally + invoicesFromSupplyHouses + billedMaterialsSum + cardCharges
-      const totalBill = job.revenue != null ? Number(job.revenue) : 0
-      const profit = totalBill - partsCost - laborCost
-      const teamLaborRow = teamLaborData.find((r) => r.jobId === job.id)
-      const subLaborJobs = hcp ? laborJobs.filter((lj) => (lj.job_number ?? '').trim().toLowerCase() === hcp) : []
-      const tallyPartsForJob = tallyParts.filter((r) => r.job_id === job.id)
-      return {
-        job,
-        subLaborCost,
-        teamLaborCost,
-        partsCost,
-        totalBill,
-        profit,
-        partsFromTally,
-        invoicesFromSupplyHouses,
-        billedMaterialsSum,
-        cardCharges,
-        teamLaborRow,
-        subLaborJobs,
-        tallyPartsForJob,
-      }
-    })
-  }, [jobs, laborJobs, tallyParts, teamLaborData, driveMileageCost, driveTimePerMile, invoiceAmountByJob, mercuryCardChargesByJobId])
+    return sourceJobs
+      .map((job) => {
+        const hcp = (job.hcp_number ?? '').trim().toLowerCase()
+        const subLaborCost = hcp ? (laborCostByHcp.get(hcp) ?? 0) : 0
+        const teamLaborCost = teamLaborCostByJobId.get(job.id) ?? 0
+        const laborCost = subLaborCost + teamLaborCost
+        const partsFromTally = partsCostByJobId.get(job.id) ?? 0
+        const invoicesFromSupplyHouses = invoiceAmountByJob[job.id] ?? 0
+        const billedMaterialsSum = (job.materials ?? []).reduce((s, m) => s + Number(m.amount ?? 0), 0)
+        const cardCharges = mercuryCardChargesByJobId.get(job.id) ?? 0
+        const partsCost = partsFromTally + invoicesFromSupplyHouses + billedMaterialsSum + cardCharges
+        const totalBill = job.revenue != null ? Number(job.revenue) : 0
+        const profit = totalBill - partsCost - laborCost
+        const teamLaborRow = teamLaborData.find((r) => r.jobId === job.id)
+        const subLaborJobs = hcp ? laborJobs.filter((lj) => (lj.job_number ?? '').trim().toLowerCase() === hcp) : []
+        const tallyPartsForJob = tallyParts.filter((r) => r.job_id === job.id)
+        return {
+          job,
+          subLaborCost,
+          teamLaborCost,
+          partsCost,
+          totalBill,
+          profit,
+          partsFromTally,
+          invoicesFromSupplyHouses,
+          billedMaterialsSum,
+          cardCharges,
+          teamLaborRow,
+          subLaborJobs,
+          tallyPartsForJob,
+        }
+      })
+      .sort((a, b) => {
+        const ha = (a.job.hcp_number ?? '').trim()
+        const hb = (b.job.hcp_number ?? '').trim()
+        const aEmpty = !ha
+        const bEmpty = !hb
+        if (aEmpty !== bEmpty) return aEmpty ? -1 : 1
+        return -ha.localeCompare(hb, undefined, { numeric: true })
+      })
+  }, [
+    activeTab,
+    jobSummaryLedgerJobs,
+    jobs,
+    laborJobs,
+    tallyParts,
+    teamLaborData,
+    driveMileageCost,
+    driveTimePerMile,
+    invoiceAmountByJob,
+    mercuryCardChargesByJobId,
+  ])
 
   const subLaborDueTotal = useMemo(() => {
     const q = subLaborSearch.trim().toLowerCase()
@@ -6171,6 +6262,26 @@ ${totalsHtml}
                                         </button>
                                       )
                                     })()}
+                                    {showAiaG702G703(authRole, j) ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => setAiaG702StagesJob(j)}
+                                        title="AIA G702-G703"
+                                        aria-label="Open AIA G702-G703 workbook generator"
+                                        style={{
+                                          padding: '0.25rem',
+                                          background: 'none',
+                                          border: 'none',
+                                          cursor: 'pointer',
+                                          color: '#16a34a',
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                        }}
+                                      >
+                                        <FileSpreadsheet size={16} aria-hidden />
+                                      </button>
+                                    ) : null}
                                     <button
                                       type="button"
                                       onClick={() => openEdit(j)}
@@ -6290,6 +6401,8 @@ ${totalsHtml}
                 flashInvoiceId?: string | null
                 /** When false, hide the Click Tooling (wrench) shortcut (e.g. Billed Awaiting Payment). Default true. */
                 showClickTooling?: boolean
+                /** Billed Awaiting Payment: open Lien Tooling prefill modal. */
+                onOpenLienTooling?: (ctx: { job: JobWithDetails; invoice: JobsLedgerInvoice | null }) => void
               }
             ) {
               const {
@@ -6308,6 +6421,7 @@ ${totalsHtml}
                 invoiceStandaloneActionLabel = 'Send back',
                 flashInvoiceId = null,
                 showClickTooling = true,
+                onOpenLienTooling,
               } = options
               const unifiedStagesColCount = 6
               const flashRowStyle = (invoiceId: string): CSSProperties =>
@@ -6776,6 +6890,36 @@ ${totalsHtml}
                                           </svg>
                                         </button>
                                       )}
+                                      {onOpenLienTooling &&
+                                        (() => {
+                                          let invForLien: JobsLedgerInvoice | null = bundleInv ?? null
+                                          if (!invForLien) {
+                                            const billedOnly = (j.invoices ?? []).filter((i) => i.status === 'billed')
+                                            invForLien = billedOnly.length === 1 ? billedOnly[0]! : null
+                                          }
+                                          return (
+                                            <button
+                                              type="button"
+                                              onClick={() => onOpenLienTooling({ job: j, invoice: invForLien })}
+                                              title="Lien Tooling — review and open demand / lien forms"
+                                              aria-label="Lien Tooling prefill"
+                                              style={{
+                                                padding: '0.25rem',
+                                                background: 'none',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                color: '#FF6600',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                              }}
+                                            >
+                                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                                                <path d="M201.6 217.4L182.9 198.7C170.4 186.2 170.4 165.9 182.9 153.4L297.6 38.6C310.1 26.1 330.4 26.1 342.9 38.6L361.6 57.4C374.1 69.9 374.1 90.2 361.6 102.7L246.9 217.4C234.4 229.9 214.1 229.9 201.6 217.4zM308 275.7L276.6 244.3L388.6 132.3L508 251.7L396 363.7L364.6 332.3L132.6 564.3C117 579.9 91.7 579.9 76 564.3C60.3 548.7 60.4 523.4 76 507.7L308 275.7zM422.9 438.6C410.4 426.1 410.4 405.8 422.9 393.3L537.6 278.6C550.1 266.1 570.4 266.1 582.9 278.6L601.6 297.3C614.1 309.8 614.1 330.1 601.6 342.6L486.9 457.4C474.4 469.9 454.1 469.9 441.6 457.4L422.9 438.7z" />
+                                              </svg>
+                                            </button>
+                                          )
+                                        })()}
                                       {showCreatePartialInvoice && (() => {
                                         const rem = Math.max(0, (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)))
                                         return (
@@ -6793,6 +6937,26 @@ ${totalsHtml}
                                           </button>
                                         )
                                       })()}
+                                      {showAiaG702G703(authRole, j) ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => setAiaG702StagesJob(j)}
+                                          title="AIA G702-G703"
+                                          aria-label="Open AIA G702-G703 workbook generator"
+                                          style={{
+                                            padding: '0.25rem',
+                                            background: 'none',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            color: '#16a34a',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                          }}
+                                        >
+                                          <FileSpreadsheet size={16} aria-hidden />
+                                        </button>
+                                      ) : null}
                                       <button
                                         type="button"
                                         onClick={() => openEdit(j)}
@@ -7130,6 +7294,48 @@ ${totalsHtml}
                                           </svg>
                                         </button>
                                       )}
+                                      {onOpenLienTooling ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => onOpenLienTooling({ job, invoice: inv })}
+                                          title="Lien Tooling — review and open demand / lien forms"
+                                          aria-label="Lien Tooling prefill"
+                                          style={{
+                                            padding: '0.25rem',
+                                            background: 'none',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            color: '#FF6600',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                          }}
+                                        >
+                                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                                            <path d="M201.6 217.4L182.9 198.7C170.4 186.2 170.4 165.9 182.9 153.4L297.6 38.6C310.1 26.1 330.4 26.1 342.9 38.6L361.6 57.4C374.1 69.9 374.1 90.2 361.6 102.7L246.9 217.4C234.4 229.9 214.1 229.9 201.6 217.4zM308 275.7L276.6 244.3L388.6 132.3L508 251.7L396 363.7L364.6 332.3L132.6 564.3C117 579.9 91.7 579.9 76 564.3C60.3 548.7 60.4 523.4 76 507.7L308 275.7zM422.9 438.6C410.4 426.1 410.4 405.8 422.9 393.3L537.6 278.6C550.1 266.1 570.4 266.1 582.9 278.6L601.6 297.3C614.1 309.8 614.1 330.1 601.6 342.6L486.9 457.4C474.4 469.9 454.1 469.9 441.6 457.4L422.9 438.7z" />
+                                          </svg>
+                                        </button>
+                                      ) : null}
+                                      {showAiaG702G703(authRole, job, inv) ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => setAiaG702StagesJob(job)}
+                                          title="AIA G702-G703"
+                                          aria-label="Open AIA G702-G703 workbook generator"
+                                          style={{
+                                            padding: '0.25rem',
+                                            background: 'none',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            color: '#16a34a',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                          }}
+                                        >
+                                          <FileSpreadsheet size={16} aria-hidden />
+                                        </button>
+                                      ) : null}
                                       <button
                                         type="button"
                                         onClick={() => openEdit(job)}
@@ -7473,6 +7679,8 @@ ${totalsHtml}
                   onInvoiceAction: (inv) => setMarkPaidInvoice(inv),
                   onViewBill: (inv) => setViewBillInvoice(inv),
                   showClickTooling: false,
+                  onOpenLienTooling: (ctx) =>
+                    setLienToolingPrefillModal({ job: ctx.job, invoice: ctx.invoice }),
                   onJobSendBack: (j) =>
                     stagesHamMode
                       ? void moveJobToReadyToBillWithStripePrep(j.id)
@@ -8813,6 +9021,9 @@ ${totalsHtml}
       {activeTab === 'job-summary' && (
         <div>
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+          {jobSummaryLedgerError && (
+            <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{jobSummaryLedgerError}</p>
+          )}
           <div style={{ marginBottom: '1rem' }}>
             <input
               type="search"
@@ -8822,7 +9033,7 @@ ${totalsHtml}
               style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
             />
           </div>
-          {(jobsListLoading || tallyPartsLoading || laborJobsLoading) ? (
+          {jobsListLoading || tallyPartsLoading || laborJobsLoading || (jobSummaryLedgerJobs === null && jobSummaryLedgerLoading) ? (
             <p style={{ color: '#6b7280' }}>Loading…</p>
           ) : jobSummaryData.length === 0 ? (
             <p style={{ color: '#6b7280' }}>No billing jobs yet. Add jobs in Billing to see the summary.</p>
@@ -9712,6 +9923,61 @@ ${totalsHtml}
               </table>
             </div>
           )}
+          <div
+            style={{
+              marginTop: '1rem',
+              padding: '0.75rem 1rem',
+              border: '1px solid #e5e7eb',
+              borderRadius: 4,
+              background: '#f9fafb',
+              fontSize: '0.875rem',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              textAlign: 'center',
+            }}
+          >
+            <label
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.35rem',
+                color: '#374151',
+              }}
+            >
+              <span>Only include jobs with HCP # greater than</span>
+              <input
+                type="number"
+                min={-1}
+                step={1}
+                value={jobSummaryMinHcpExclusive}
+                onChange={(e) => {
+                  const v = e.target.valueAsNumber
+                  if (e.target.value === '' || Number.isNaN(v) || v < -1) return
+                  setJobSummaryMinHcpExclusive(v)
+                  writeJobSummaryMinHcpExclusiveToStorage(v)
+                }}
+                style={{ width: '5.5rem', padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+              />
+            </label>
+            {jobSummaryLedgerAllJobs != null && jobSummaryLedgerJobs != null && (
+              <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+                Showing {jobSummaryLedgerJobs.length} of {jobSummaryLedgerAllJobs.length} jobs after filter.
+              </p>
+            )}
+            <p
+              style={{
+                margin: jobSummaryLedgerAllJobs != null && jobSummaryLedgerJobs != null ? '0.35rem 0 0 0' : '0.5rem 0 0 0',
+                maxWidth: '42rem',
+                fontSize: '0.8125rem',
+                color: '#6b7280',
+              }}
+            >
+              Jobs with no HCP # (or a non-numeric HCP) are always included. Set to −1 to include every HCP #.
+            </p>
+          </div>
         </div>
       )}
 
@@ -11204,6 +11470,20 @@ ${totalsHtml}
           setViewBillInvoice(null)
           void loadJobs()
         }}
+      />
+      <LienToolingPrefillModal
+        open={lienToolingPrefillModal != null}
+        onClose={() => setLienToolingPrefillModal(null)}
+        job={lienToolingPrefillModal?.job ?? null}
+        invoice={lienToolingPrefillModal?.invoice ?? null}
+        senderNameFallback={lienToolingSenderFallback}
+        authEmail={authUser?.email?.trim() ?? ''}
+      />
+      <AiaG702G703Modal
+        open={aiaG702StagesJob != null}
+        onClose={() => setAiaG702StagesJob(null)}
+        job={aiaG702StagesJob}
+        hcpForFilename={aiaG702StagesJob?.hcp_number ?? ''}
       />
       <BilledPaymentConfirmationModal
         mode="job"

@@ -40,7 +40,13 @@ import { formatMercuryCardChargesPostedDate } from '../../lib/formatMercuryCardC
 import { fetchJobMaterialsCostSnapshot } from '../../lib/fetchJobMaterialsCostSnapshot'
 import { abbreviatePaymentReferenceLabel } from '../../lib/abbreviatePaymentReference'
 import { formatMercuryDebitCardIdCompact } from '../../lib/mercuryRawDebitCard'
-import type { JobMercuryAllocLine, JobSupplyInvoiceLine, JobTallyPartLine } from '../../lib/fetchJobMaterialsCostSnapshot'
+import {
+  mercuryCardTotalFromLines,
+  tallyPartsTotalFromLines,
+  type JobMercuryAllocLine,
+  type JobSupplyInvoiceLine,
+  type JobTallyPartLine,
+} from '../../lib/fetchJobMaterialsCostSnapshot'
 import { MaterialsCostAccordionRow } from './JobFormMaterialsCostAccordion'
 import JobProjectLinkChoiceModal from './JobProjectLinkChoiceModal'
 import JobBidLinkChoiceModal, { type JobBidLinkOption } from './JobBidLinkChoiceModal'
@@ -340,6 +346,7 @@ type ProjectOption = {
 /** Above Job Detail modal (`1004`) so Edit Job can stack on top without closing detail. */
 const JOB_FORM_OVERLAY_Z_INDEX = 1010
 const JOB_FORM_NESTED_OVERLAY_Z_INDEX = JOB_FORM_OVERLAY_Z_INDEX + 1
+const JOB_FORM_MIGRATE_OVERLAY_Z_INDEX = JOB_FORM_NESTED_OVERLAY_Z_INDEX + 1
 
 function formatJobFormBidLinkTitle(summary: { project_name: string | null; bid_number: string | null } | null): string {
   if (!summary) return ''
@@ -589,6 +596,23 @@ export default function JobFormModal({
   const [paymentRemoveConfirmRowId, setPaymentRemoveConfirmRowId] = useState<string | null>(null)
   const [unlinkMercuryConfirmRowId, setUnlinkMercuryConfirmRowId] = useState<string | null>(null)
   const [deleteJobConfirmOpen, setDeleteJobConfirmOpen] = useState(false)
+  const [migrateJobModalOpen, setMigrateJobModalOpen] = useState(false)
+  const [migrateTargetSearch, setMigrateTargetSearch] = useState('')
+  const [migrateTargetCandidates, setMigrateTargetCandidates] = useState<
+    Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>
+  >([])
+  const [migrateTargetSearchLoading, setMigrateTargetSearchLoading] = useState(false)
+  const [migrateTargetJobId, setMigrateTargetJobId] = useState<string | null>(null)
+  const [migrateTargetPreviewLoading, setMigrateTargetPreviewLoading] = useState(false)
+  const [migrateTargetPreview, setMigrateTargetPreview] = useState<{
+    supply: number
+    tally: number
+    mercury: number
+    teamCost: number
+    teamHours: number
+  } | null>(null)
+  const [migratingJob, setMigratingJob] = useState(false)
+  const [collectPaymentFlowBlocksMigrate, setCollectPaymentFlowBlocksMigrate] = useState(false)
   const [unlinkingMercuryPaymentId, setUnlinkingMercuryPaymentId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [materialsAccordionOpen, setMaterialsAccordionOpen] = useState<MaterialsAccordionKey | null>('billed')
@@ -644,6 +668,57 @@ export default function JobFormModal({
       editJobSubLaborData,
     ],
   )
+
+  const billingBlockedForMigrate = useMemo(() => {
+    if (!editing) return true
+    const st = normalizeJobsLedgerStatus(editing.status)
+    if (st !== 'working' && st !== 'ready_to_bill') return true
+    if ((editing.invoices ?? []).length > 0) return true
+    if ((editing.payments ?? []).length > 0) return true
+    if (Number(editing.payments_made ?? 0) > 0) return true
+    if (collectPaymentFlowBlocksMigrate) return true
+    return false
+  }, [editing, collectPaymentFlowBlocksMigrate])
+
+  const materialsBilledTotalForMigrate = useMemo(
+    () => materials.reduce((s, m) => s + (Number(m.amount) || 0), 0),
+    [materials],
+  )
+
+  const partsCostStyleTotal = useMemo(
+    () =>
+      supplyInvoiceTotal +
+      tallyPartsTotalFromLines(tallyPartLines) +
+      mercuryCardTotalFromLines(mercuryAllocLines),
+    [supplyInvoiceTotal, tallyPartLines, mercuryAllocLines],
+  )
+
+  const costSnapshotStillLoading =
+    jobMaterialsSnapshotLoading || editJobTeamLaborLoading || editJobSubLaborLoading
+
+  const hasMigrateableCosts = useMemo(() => {
+    if (partsCostStyleTotal > 0) return true
+    if (materialsBilledTotalForMigrate > 0) return true
+    if (materials.some(materialRowHasUserContent)) return true
+    const team = editJobTeamLaborRow
+    if (team && (team.jobCost > 0 || team.manHours > 0)) return true
+    if (editJobSubLaborData && editJobSubLaborData.count > 0) return true
+    return false
+  }, [
+    partsCostStyleTotal,
+    materialsBilledTotalForMigrate,
+    materials,
+    editJobTeamLaborRow,
+    editJobSubLaborData,
+  ])
+
+  const showMigrateAndDeleteButton =
+    !!editing &&
+    !billingBlockedForMigrate &&
+    hasMigrateableCosts &&
+    !costSnapshotStillLoading &&
+    !editJobTeamLaborError &&
+    !editJobSubLaborError
 
   const jobNameInputRef = useRef<HTMLInputElement | null>(null)
   const jobAddressInputRef = useRef<HTMLInputElement | null>(null)
@@ -703,6 +778,14 @@ export default function JobFormModal({
     setPaymentRemoveConfirmRowId(null)
     setUnlinkMercuryConfirmRowId(null)
     setDeleteJobConfirmOpen(false)
+    setMigrateJobModalOpen(false)
+    setMigrateTargetSearch('')
+    setMigrateTargetCandidates([])
+    setMigrateTargetJobId(null)
+    setMigrateTargetPreview(null)
+    setMigrateTargetPreviewLoading(false)
+    setMigrateTargetSearchLoading(false)
+    setMigratingJob(false)
     onClose()
   }
 
@@ -710,6 +793,14 @@ export default function JobFormModal({
     setPaymentRemoveConfirmRowId(null)
     setUnlinkMercuryConfirmRowId(null)
     setDeleteJobConfirmOpen(false)
+    setMigrateJobModalOpen(false)
+    setMigrateTargetSearch('')
+    setMigrateTargetCandidates([])
+    setMigrateTargetJobId(null)
+    setMigrateTargetPreview(null)
+    setMigrateTargetPreviewLoading(false)
+    setMigrateTargetSearchLoading(false)
+    setMigratingJob(false)
     setBillViewInvoice(null)
     setBillingCustomerHighlight(billingGate)
     setFixturesSectionHighlight(fixturesGate)
@@ -1092,6 +1183,103 @@ export default function JobFormModal({
       cancelled = true
     }
   }, [editing?.id, editing?.hcp_number, hcpNumber])
+
+  useEffect(() => {
+    const jobId = editing?.id ?? null
+    if (!jobId) {
+      setCollectPaymentFlowBlocksMigrate(false)
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const row = await withSupabaseRetry(
+          async () =>
+            supabase.from('job_collect_payment_flows').select('id').eq('job_id', jobId).maybeSingle(),
+          'job form collect payment flow migrate guard',
+        )
+        const flowRow = row as { id: string } | null
+        if (!cancelled) setCollectPaymentFlowBlocksMigrate(!!flowRow?.id)
+      } catch {
+        if (!cancelled) setCollectPaymentFlowBlocksMigrate(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [editing?.id])
+
+  useEffect(() => {
+    if (!migrateJobModalOpen || !editing?.id) {
+      setMigrateTargetCandidates([])
+      setMigrateTargetSearchLoading(false)
+      return
+    }
+    const sourceJobId = editing.id
+    const q = migrateTargetSearch.trim()
+    if (q.length < 2) {
+      setMigrateTargetCandidates([])
+      setMigrateTargetSearchLoading(false)
+      return
+    }
+    setMigrateTargetSearchLoading(true)
+    let cancelledOuter = false
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const raw = await withSupabaseRetry(
+            async () => supabase.rpc('search_jobs_ledger', { search_text: q }),
+            'migrate job target search',
+          )
+          const rows = (raw ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>
+          if (cancelledOuter) return
+          setMigrateTargetCandidates(rows.filter((r) => r.id !== sourceJobId).slice(0, 30))
+        } catch {
+          if (!cancelledOuter) setMigrateTargetCandidates([])
+        } finally {
+          if (!cancelledOuter) setMigrateTargetSearchLoading(false)
+        }
+      })()
+    }, 280)
+    return () => {
+      cancelledOuter = true
+      window.clearTimeout(timer)
+    }
+  }, [migrateJobModalOpen, migrateTargetSearch, editing?.id])
+
+  useEffect(() => {
+    const tid = migrateTargetJobId
+    if (!tid) {
+      setMigrateTargetPreview(null)
+      setMigrateTargetPreviewLoading(false)
+      return
+    }
+    let cancelled = false
+    setMigrateTargetPreviewLoading(true)
+    setMigrateTargetPreview(null)
+    void (async () => {
+      try {
+        const snap = await fetchJobMaterialsCostSnapshot(tid)
+        const teamRows = await loadTeamLaborData(supabase)
+        const teamRow = teamRows.find((r) => r.jobId === tid) ?? null
+        if (cancelled) return
+        setMigrateTargetPreview({
+          supply: snap.supplyInvoiceTotal,
+          tally: tallyPartsTotalFromLines(snap.tallyPartLines),
+          mercury: mercuryCardTotalFromLines(snap.mercuryAllocLines),
+          teamCost: teamRow?.jobCost ?? 0,
+          teamHours: teamRow?.manHours ?? 0,
+        })
+      } catch {
+        if (!cancelled) setMigrateTargetPreview(null)
+      } finally {
+        if (!cancelled) setMigrateTargetPreviewLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [migrateTargetJobId])
 
   useEffect(() => {
     if (customerId && billingCustomerHighlight) {
@@ -2154,6 +2342,45 @@ export default function JobFormModal({
     closeForm()
     setDeletingId(null)
     return true
+  }
+
+  async function migrateJobLedgerCostsAndDelete(fromId: string, toId: string): Promise<boolean> {
+    setMigratingJob(true)
+    try {
+      const { data, error: rpcErr } = await supabase.rpc('migrate_job_ledger_costs_and_delete', {
+        p_from: fromId,
+        p_to: toId,
+      })
+      if (rpcErr) {
+        console.error('migrate_job_ledger_costs_and_delete', rpcErr)
+        const msg = formatPostgrestOrUnknownError(rpcErr, rpcErr.message || 'Failed to migrate job')
+        setError(msg)
+        showToast(msg, 'error')
+        return false
+      }
+      const payload = data as { ok?: boolean; error?: string; code?: string } | null
+      if (!payload?.ok) {
+        const msg =
+          typeof payload?.error === 'string' && payload.error.trim()
+            ? payload.error
+            : 'Could not migrate and delete this job.'
+        setError(msg)
+        showToast(msg, 'error')
+        return false
+      }
+      onSavedRef.current?.()
+      closeForm()
+      showToast('Costs moved to the target job; this job was removed.', 'success')
+      return true
+    } catch (err: unknown) {
+      console.error('migrateJobLedgerCostsAndDelete', err)
+      const msg = formatPostgrestOrUnknownError(err, 'Failed to migrate job')
+      setError(msg)
+      showToast(msg, 'error')
+      return false
+    } finally {
+      setMigratingJob(false)
+    }
   }
 
   async function confirmDeleteJob() {
@@ -4921,23 +5148,49 @@ export default function JobFormModal({
             gap: '0.75rem',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
             {editing && authRole !== 'primary' && (
-              <button
-                type="button"
-                onClick={() => setDeleteJobConfirmOpen(true)}
-                disabled={deletingId === editing?.id}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: deletingId === editing?.id ? '#f3f4f6' : '#fee2e2',
-                  color: deletingId === editing?.id ? '#9ca3af' : '#b91c1c',
-                  border: 'none',
-                  borderRadius: 4,
-                  cursor: deletingId === editing?.id ? 'not-allowed' : 'pointer',
-                }}
-              >
-                {deletingId === editing?.id ? 'Deleting…' : 'Delete'}
-              </button>
+              <>
+                {showMigrateAndDeleteButton ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMigrateTargetSearch('')
+                      setMigrateTargetJobId(null)
+                      setMigrateTargetCandidates([])
+                      setMigrateJobModalOpen(true)
+                    }}
+                    disabled={deletingId === editing.id || migratingJob}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      background:
+                        deletingId === editing.id || migratingJob ? '#f3f4f6' : '#fee2e2',
+                      color: deletingId === editing.id || migratingJob ? '#9ca3af' : '#b91c1c',
+                      border: 'none',
+                      borderRadius: 4,
+                      cursor: deletingId === editing.id || migratingJob ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    Migrate and Delete
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => setDeleteJobConfirmOpen(true)}
+                  disabled={deletingId === editing?.id || migratingJob}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    background:
+                      deletingId === editing?.id || migratingJob ? '#f3f4f6' : '#fee2e2',
+                    color: deletingId === editing?.id || migratingJob ? '#9ca3af' : '#b91c1c',
+                    border: 'none',
+                    borderRadius: 4,
+                    cursor: deletingId === editing?.id || migratingJob ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {deletingId === editing?.id ? 'Deleting…' : 'Delete'}
+                </button>
+              </>
             )}
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -5250,6 +5503,207 @@ export default function JobFormModal({
                 }}
               >
                 {deletingId === editing.id ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {migrateJobModalOpen && editing && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: JOB_FORM_MIGRATE_OVERLAY_Z_INDEX,
+            padding: '1rem',
+          }}
+          onClick={() => {
+            if (migratingJob) return
+            setMigrateJobModalOpen(false)
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="job-form-migrate-delete-title"
+            style={{
+              background: 'white',
+              padding: '1.5rem',
+              borderRadius: 8,
+              minWidth: 360,
+              maxWidth: 520,
+              maxHeight: '90vh',
+              overflow: 'auto',
+              width: '100%',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2
+              id="job-form-migrate-delete-title"
+              style={{ margin: '0 0 0.75rem', fontSize: '1.125rem', fontWeight: 600, color: '#111827' }}
+            >
+              Migrate costs and delete this job
+            </h2>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}>
+              Move labor, parts, materials, and related rows to another job, then remove{' '}
+              <strong>HCP {(editing.hcp_number ?? '').trim() || '—'}</strong> —{' '}
+              <strong>{(editing.job_name ?? '').trim() || '—'}</strong>. This cannot be undone.
+            </p>
+            {editJobSubLaborData != null && editJobSubLaborData.count > 0 ? (
+              <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#92400e', lineHeight: 1.45 }}>
+                Subcontractor labor on this HCP is tracked separately from this billing job; it is not changed by
+                migrate-delete. Update People Labor if the HCP should follow the target job.
+              </p>
+            ) : null}
+            <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 6 }}>
+              Target job
+            </label>
+            <input
+              type="search"
+              value={migrateTargetSearch}
+              onChange={(e) => {
+                setMigrateTargetSearch(e.target.value)
+                setMigrateTargetJobId(null)
+              }}
+              placeholder="Search HCP, name, or address (2+ characters)"
+              disabled={migratingJob}
+              style={{
+                width: '100%',
+                padding: '0.5rem 0.65rem',
+                borderRadius: 6,
+                border: '1px solid #d1d5db',
+                fontSize: '0.875rem',
+                marginBottom: 8,
+              }}
+            />
+            {migrateTargetSearchLoading ? (
+              <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#6b7280' }}>Searching…</p>
+            ) : null}
+            {migrateTargetSearch.trim().length >= 2 && migrateTargetCandidates.length === 0 && !migrateTargetSearchLoading ? (
+              <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#6b7280' }}>No jobs match.</p>
+            ) : null}
+            <ul
+              style={{
+                listStyle: 'none',
+                margin: '0 0 1rem',
+                padding: 0,
+                maxHeight: 200,
+                overflow: 'auto',
+                border: '1px solid #e5e7eb',
+                borderRadius: 6,
+              }}
+            >
+              {migrateTargetCandidates.map((j) => (
+                <li key={j.id}>
+                  <button
+                    type="button"
+                    disabled={migratingJob}
+                    onClick={() => setMigrateTargetJobId(j.id)}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '0.5rem 0.65rem',
+                      border: 'none',
+                      borderBottom: '1px solid #f3f4f6',
+                      background: migrateTargetJobId === j.id ? '#eff6ff' : 'white',
+                      cursor: migratingJob ? 'not-allowed' : 'pointer',
+                      fontSize: '0.8125rem',
+                    }}
+                  >
+                    <strong>{(j.hcp_number ?? '').trim() || '—'}</strong> — {(j.job_name ?? '').trim() || '—'}
+                    <div style={{ color: '#6b7280', fontWeight: 400 }}>{(j.job_address ?? '').trim() || '—'}</div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <div style={{ marginBottom: '1rem' }}>
+              <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#111827', marginBottom: 8 }}>Summary</div>
+              <table style={{ width: '100%', fontSize: '0.8125rem', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: 'left', padding: '4px 8px 4px 0', color: '#6b7280', fontWeight: 600 }} />
+                    <th style={{ textAlign: 'right', padding: '4px 4px', color: '#6b7280', fontWeight: 600 }}>Source</th>
+                    <th style={{ textAlign: 'right', padding: '4px 0 4px 4px', color: '#6b7280', fontWeight: 600 }}>Target</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style={{ padding: '4px 8px 4px 0', color: '#374151' }}>Parts-style costs</td>
+                    <td style={{ textAlign: 'right', padding: '4px 4px' }}>${formatCurrency(partsCostStyleTotal)}</td>
+                    <td style={{ textAlign: 'right', padding: '4px 0 4px 4px' }}>
+                      {migrateTargetPreviewLoading
+                        ? '…'
+                        : migrateTargetPreview
+                          ? `$${formatCurrency(migrateTargetPreview.supply + migrateTargetPreview.tally + migrateTargetPreview.mercury)}`
+                          : '—'}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '4px 8px 4px 0', color: '#374151' }}>Billed materials</td>
+                    <td style={{ textAlign: 'right', padding: '4px 4px' }}>
+                      ${formatCurrency(materialsBilledTotalForMigrate)}
+                    </td>
+                    <td style={{ textAlign: 'right', padding: '4px 0 4px 4px' }}>—</td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '4px 8px 4px 0', color: '#374151' }}>Team labor (est.)</td>
+                    <td style={{ textAlign: 'right', padding: '4px 4px' }}>
+                      {editJobTeamLaborRow
+                        ? `$${formatCurrency(editJobTeamLaborRow.jobCost)}`
+                        : '—'}
+                    </td>
+                    <td style={{ textAlign: 'right', padding: '4px 0 4px 4px' }}>
+                      {migrateTargetPreviewLoading
+                        ? '…'
+                        : migrateTargetPreview
+                          ? `$${formatCurrency(migrateTargetPreview.teamCost)}`
+                          : '—'}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (migratingJob) return
+                  setMigrateJobModalOpen(false)
+                }}
+                disabled={migratingJob}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: '#f3f4f6',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 6,
+                  cursor: migratingJob ? 'not-allowed' : 'pointer',
+                  fontSize: '0.875rem',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={migratingJob || !migrateTargetJobId}
+                onClick={() => {
+                  if (!editing?.id || !migrateTargetJobId) return
+                  void migrateJobLedgerCostsAndDelete(editing.id, migrateTargetJobId)
+                }}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: migratingJob || !migrateTargetJobId ? '#9ca3af' : '#b91c1c',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: migratingJob || !migrateTargetJobId ? 'not-allowed' : 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                }}
+              >
+                {migratingJob ? 'Working…' : 'Confirm migrate and delete'}
               </button>
             </div>
           </div>

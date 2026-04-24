@@ -1,4 +1,8 @@
+import { useState } from 'react'
+import { FileSpreadsheet } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
+import { showAiaG702G703 } from '../../lib/aiaG702G703Eligibility'
+import AiaG702G703Modal from './AiaG702G703Modal'
 import { HostedStripeBillPanel, type InvoiceWithJobForBillView } from './HostedStripeBillPanel'
 
 export type { InvoiceWithJobForBillView }
@@ -18,6 +22,7 @@ export default function BilledBillViewModal({
   overlayZIndex?: number
 }) {
   const { role } = useAuth()
+  const [aiaOpen, setAiaOpen] = useState(false)
   const inv = invoice
   const job = inv?.job
   const subtitle = job ? `${job.hcp_number ?? '—'} · ${job.job_name ?? '—'}` : '—'
@@ -60,32 +65,55 @@ export default function BilledBillViewModal({
           }}
         >
           <h2 style={{ margin: 0, fontSize: '1.25rem', lineHeight: 1.3 }}>View bill</h2>
-          {isStripeHosted && stripeId && role === 'dev' ? (
-            <button
-              type="button"
-              title="Open this invoice in Stripe Dashboard"
-              onClick={() =>
-                window.open(
-                  `https://dashboard.stripe.com/invoices/${encodeURIComponent(stripeId)}`,
-                  '_blank',
-                  'noopener,noreferrer',
-                )
-              }
-              style={{
-                flexShrink: 0,
-                padding: '0.35rem 0.65rem',
-                fontSize: '0.75rem',
-                borderRadius: 4,
-                border: '1px solid #d1d5db',
-                background: 'white',
-                cursor: 'pointer',
-                color: '#374151',
-                fontWeight: 500,
-              }}
-            >
-              Open in Stripe
-            </button>
-          ) : null}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            {showAiaG702G703(role, job, inv) ? (
+              <button
+                type="button"
+                onClick={() => setAiaOpen(true)}
+                title="AIA G702-G703"
+                aria-label="Open AIA G702-G703 workbook generator"
+                style={{
+                  flexShrink: 0,
+                  padding: '0.25rem',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#16a34a',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <FileSpreadsheet size={16} aria-hidden />
+              </button>
+            ) : null}
+            {isStripeHosted && stripeId && role === 'dev' ? (
+              <button
+                type="button"
+                title="Open this invoice in Stripe Dashboard"
+                onClick={() =>
+                  window.open(
+                    `https://dashboard.stripe.com/invoices/${encodeURIComponent(stripeId)}`,
+                    '_blank',
+                    'noopener,noreferrer',
+                  )
+                }
+                style={{
+                  flexShrink: 0,
+                  padding: '0.35rem 0.65rem',
+                  fontSize: '0.75rem',
+                  borderRadius: 4,
+                  border: '1px solid #d1d5db',
+                  background: 'white',
+                  cursor: 'pointer',
+                  color: '#374151',
+                  fontWeight: 500,
+                }}
+              >
+                Open in Stripe
+              </button>
+            ) : null}
+          </div>
         </div>
         <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>{subtitle}</p>
 
@@ -111,6 +139,13 @@ export default function BilledBillViewModal({
             Close
           </button>
         </div>
+
+        <AiaG702G703Modal
+          open={aiaOpen}
+          onClose={() => setAiaOpen(false)}
+          job={job}
+          hcpForFilename={job.hcp_number ?? ''}
+        />
       </div>
     </div>
   )

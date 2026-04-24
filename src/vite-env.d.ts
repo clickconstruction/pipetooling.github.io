@@ -4,6 +4,8 @@
 interface ImportMetaEnv {
   readonly VITE_SUPABASE_URL: string
   readonly VITE_SUPABASE_ANON_KEY: string
+  /** Optional override for Lien Tooling (default https://lientooling.com). */
+  readonly VITE_LIEN_TOOLING_ORIGIN?: string
 }
 
 interface ImportMeta {

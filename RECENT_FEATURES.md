@@ -7,16 +7,31 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-23
+last_updated: 2026-04-24
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.392 → v2.4"
+version_range: "v2.397 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.397)"
+    line: ~1293
+    description: "Jobs Stages Billed Awaiting Payment: Lien Tooling prefill modal (wrenches, field labels, job address split for city/state/ZIP), VITE_LIEN_TOOLING_ORIGIN"
+  - name: "Latest Version (v2.396)"
+    line: ~1305
+    description: "Jobs Job Summary: HCP # floor filter (default 500, localStorage), unnumbered HCP first in table, centered footer + copy order"
+  - name: "Latest Version (v2.395)"
+    line: ~1298
+    description: "Jobs Job Summary: all accessible jobs, all pipeline statuses, ignores ?customer=; dedicated fetch + Mercury scope"
+  - name: "Latest Version (v2.394)"
+    line: ~1296
+    description: "Migrate and Delete: allow source job Ready to bill (RPC + JobFormModal); same other billing guards"
+  - name: "Latest Version (v2.393)"
+    line: ~1294
+    description: "Migrate and Delete (jobs_ledger): RPC migrate_job_ledger_costs_and_delete + billing guard + JobFormModal"
   - name: "Latest Version (v2.392)"
-    line: ~1280
+    line: ~1290
     description: "Jobs Stages Paid in Full collapsed header: (Expand to load) instead of (—) before lazy merge"
   - name: "Latest Version (v2.391)"
     line: ~1290
@@ -1003,6 +1018,8 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.397 — **Jobs** **Stages** **Billed Awaiting Payment**: **Lien Tooling** safety orange **wrenches** → **[`LienToolingPrefillModal`](src/components/jobs/LienToolingPrefillModal.tsx)** (**Demand letter** / **Mechanic's lien** / **Release**; guided labels; **`job_address`** → city/state/ZIP via **[`txLocalityAddressSplit.ts`](src/lib/txLocalityAddressSplit.ts)**); **`#d=`** link; optional **`VITE_LIEN_TOOLING_ORIGIN`**](#latest-updates-v2397)
+**New:** [v2.396 — **Jobs** **Job Summary**: **HCP #** min filter ([`applyMinHcpFilter`](src/lib/jobSummaryHcpFilter.ts), default **500**, **`localStorage`** **`jobs_jobSummary_minHcpExclusive`**); unnumbered HCP rows **first**; **Mercury** uses filtered IDs; centered footer—**Showing N of M** then help (**`Jobs.tsx`**)](#latest-updates-v2396)
 **New:** [v2.392 — **Jobs** **Stages** **Paid in Full**: collapsed header **(Expand to load)** when paid list not merged yet (**`Jobs.tsx`**)](#latest-updates-v2392)
 **New:** [v2.391 — **Jobs** **Stages**: **Working** → **Ready to Bill** → **Billed Awaiting Payment** pipeline bar (**`focusStagesSection`**, **`stages-ready-to-bill`**)](#latest-updates-v2391)
 **New:** [v2.390 — **Header** **search**: **job** / **bid** result → **`openJobDetail`** / **`openBidPreview`** on **current** route (**no** **`/jobs`** or **`/bids?bidId=`**)](#latest-updates-v2390)
@@ -1275,6 +1292,61 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.397)
+
+**Date**: 2026-04-24
+
+### **Jobs** — **Stages** — **Billed Awaiting Payment** — **Lien Tooling** prefill
+
+- **[`LienToolingPrefillModal.tsx`](src/components/jobs/LienToolingPrefillModal.tsx)**: Safety orange **wrenches** icon (Font Awesome Free, same **`#FF6600`** as **Click Tooling**) in the same control column as **Edit** / **Job detail** (and **View Bill** when shown) on **Billed Awaiting Payment** rows only — opens a modal to review or edit mapped fields, choose **Demand letter**, **Mechanic's lien**, or **Release of lien**, then **Copy link** or **Open Lien Tooling** (external). Payload uses the same **`#d=`** base64url(JSON) contract as Lien Tooling’s shareable links ([**Developers** / prefill](https://lientooling.com/prefill-urls.html)). **UI labels** (Lien Tooling field keys unchanged): **Mechanic's lien** — **Legal description (Pull from county records)** (`legal-description`); **Release of lien** — **Legal description (should match filed lien)** (`property-description`).
+- **[`lienToolingPrefillUrl.ts`](src/lib/lienToolingPrefillUrl.ts)**, **[`buildLienToolingPrefillFromJob.ts`](src/lib/buildLienToolingPrefillFromJob.ts)**: Encoding + field mapping from **`JobWithDetails`** and the row’s **billed** **`jobs_ledger_invoices`** line when present (else first billed line, or job-level totals). Sender block is seeded from **Settings → Physical invoice issuer** (`getPhysicalInvoiceIssuerDraft`). **Your full name / title** prefers **People → Users** **Full name and title** (`users.notes`) for the job’s **`master_user_id`**, then that user’s **`name`**, then the signed-in profile name; email remains the signed-in user’s. **Client / property address lines**: **[`splitJobAddressForPrefill`](src/lib/txLocalityAddressSplit.ts)** (re-exported from **`buildLienToolingPrefillFromJob`**) splits **`job_address`** into **street**, **city**, **state**, and **ZIP** when possible — strict **`Street, City, ST ZIP`** commas first, else trailing **`ST ZIP`** (incl. ZIP+4), shared **TX locality** keywords (same list as Jobs two-line address display), optional last-comma **city** segment; best-effort only.
+- **`VITE_LIEN_TOOLING_ORIGIN`**: Optional env override (default **`https://lientooling.com`**); documented in [`src/vite-env.d.ts`](src/vite-env.d.ts).
+
+---
+
+## Latest Updates (v2.396)
+
+**Date**: 2026-04-23
+
+### **Jobs** — **Job Summary** — HCP # floor, sort, footer
+
+- **[`jobSummaryHcpFilter.ts`](src/lib/jobSummaryHcpFilter.ts)**: **`applyMinHcpFilter`** — only **all-digit** HCP values are compared: include row if **HCP &gt; min** (exclusive; default min **500** from **`readJobSummaryMinHcpExclusiveFromStorage`**, key **`jobs_jobSummary_minHcpExclusive`**) or if HCP is **empty**, or **not** a plain digit string (non-numeric / alphanumeric codes stay visible). **−1** includes every numeric HCP.
+- **[`Jobs.tsx`](src/pages/Jobs.tsx)**: **`jobSummaryLedgerAllJobs`** holds the unfiltered **[`fetchJobsLedgerWithDetailsForStages`](src/lib/fetchJobsLedgerWithDetailsForStages.ts)** snapshot; the displayed list is derived with **`useMemo`**, so changing the min **does not** refetch. **`jobSummaryData`** table sort: jobs **without** an HCP # **first**, then by numeric HCP (same **`localeCompare` … `numeric: true`** pattern as elsewhere). **Mercury** **`jobListForCardCharges`** uses the **filtered** job list. Bottom control: **centered**; **“Showing N of M jobs after filter.”** above the unnumbered/−1 help line.
+
+---
+
+## Latest Updates (v2.395)
+
+**Date**: 2026-04-23
+
+### **Jobs** — **Job Summary** — full ledger snapshot
+
+- **[`Jobs.tsx`](src/pages/Jobs.tsx)**: the **Job Summary** tab loads its own list via [`fetchJobsLedgerWithDetailsForStages`](src/lib/fetchJobsLedgerWithDetailsForStages.ts) with **`statusScope: 'all'`** and **`customerFilter: null`**, so rows include every pipeline status (e.g. **Paid in Full**) and are **not** limited by the `?customer=` URL filter. Refetches when the tab opens and when job mutations run [`scheduleLoadJobsAfterMutation`](src/pages/Jobs.tsx) (if the tab is active or a prior snapshot was loaded). **Mercury** card-charge bucketing uses the same job ID set when the full snapshot is loaded (see **v2.396** for HCP min filter: totals follow **filtered** rows).
+
+---
+
+## Latest Updates (v2.394)
+
+**Date**: 2026-04-23
+
+### **Jobs** — **Billing** — **Migrate and Delete** — **Ready to bill** source jobs
+
+- **[`20270425120000_allow_ready_to_bill_migrate_job_ledger_delete.sql`](supabase/migrations/20270425120000_allow_ready_to_bill_migrate_job_ledger_delete.sql)**: **`CREATE OR REPLACE`** **`migrate_job_ledger_costs_and_delete`** — source job **`jobs_ledger.status`** may be **Working** or **Ready to bill** (all other billing guards unchanged: any invoice or payment row, `payments_made` nonzero, collect payment flow, etc.).
+- **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)**: **`billingBlockedForMigrate`** allows the same two statuses for the **Migrate and Delete** button.
+
+---
+
+## Latest Updates (v2.393)
+
+**Date**: 2026-04-23
+
+### **Jobs** — **Billing** — **Migrate and Delete** (duplicate / wrong job cleanup)
+
+- **`migrate_job_ledger_costs_and_delete`**: `SECURITY DEFINER` RPC ([`20270424120000_migrate_job_ledger_costs_and_delete.sql`](supabase/migrations/20270424120000_migrate_job_ledger_costs_and_delete.sql)) moves tally parts, billed materials, supply and Mercury allocations (with merge), clock sessions, crew `people_crew_jobs` JSON (replace job id, merge pcts, renormalize), team members, fixtures, schedule blocks, reports, inspections, thread notes, status events, estimates / estimator / dispatch links, salary template overrides, Stripe OOB audit rows, then deletes the source `jobs_ledger` row. **Billing guard** on the source: status must be **Working** (v2.394 adds **Ready to bill**), no invoices, no payments, `payments_made` zero, no **Collect payment** flow row.
+- **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)**: red **Migrate and Delete** next to **Delete** when the job has migrateable cost signals and passes the guard; helper modal with **`search_jobs_ledger`** target picker and source vs target summaries; success path matches delete (refresh + close).
+
 ---
 
 ## Latest Updates (v2.392)

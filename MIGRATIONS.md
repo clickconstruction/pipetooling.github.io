@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-04-21
+last_updated: 2026-04-24
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -580,6 +580,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Changes**: **`CREATE OR REPLACE`** both RPCs; **`LEFT JOIN`** **`mercury_transaction_ar_returned`**
 - **Impact**: [`BankPaymentsModal.tsx`](src/components/jobs/BankPaymentsModal.tsx); types **`returned`** on list returns
 - **Category**: Jobs / Banking / AR
+
+#### April 25, 2027
+
+**`20270425120000_allow_ready_to_bill_migrate_job_ledger_delete.sql`**
+- **Purpose**: **`migrate_job_ledger_costs_and_delete`** — allow source **`jobs_ledger.status`** **`working`** or **`ready_to_bill`** (invoices, payments, `payments_made`, collect-payment flow guards unchanged; supersedes **Working**-only check from **`20270424120000_migrate_job_ledger_costs_and_delete.sql`**)
+- **Changes**: **`CREATE OR REPLACE FUNCTION`**; updated first billing-guard branch and function **`COMMENT`**
+- **Impact**: [`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx) **`billingBlockedForMigrate`**; [`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.394
+- **Category**: Jobs / Billing / RPC
 
 ### March 2027
 
@@ -1945,9 +1953,9 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Category**: Prospects / Callbacks
 
 **`20260229000004_add_users_notes.sql`**
-- **Purpose**: Allow Masters, Assistants, and Devs to add/edit general notes on each user in People → Users
+- **Purpose**: Allow Masters, Assistants, and Devs to add/edit per-account text on each user in People → Users (column still `notes`; in-product UI since v2.398 labels it **Full name and title** alongside **phone** in the **Full name, title, and phone** modal)
 - **Changes**: Add `notes text` column to `public.users`; RLS policy "Masters assistants devs can update user notes" for UPDATE
-- **Impact**: People page Users tab shows notes after email; Edit (card icon) button opens modal to edit note
+- **Impact**: People page Users tab shows `users.notes` after contact info when set; pencil (card icon) opens modal to edit `users.notes` and `users.phone`
 - **Category**: People / Users / RLS
 
 **`20260228190000_create_user_dashboard_buttons.sql`**
