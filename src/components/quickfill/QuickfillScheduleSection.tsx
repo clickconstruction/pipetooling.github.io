@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
@@ -25,15 +25,10 @@ import { ScheduleDispatchAssignJobPickerModal } from '../schedule/ScheduleDispat
 import {
   DISPATCH_ADD_BLOCK_SLOT_COUNT,
   dispatchMinutesToHHmm,
-  dispatchMinutesToSlotIndex,
-  dispatchSlotIndexToMinutes,
-  formatDispatchQuickTimeLabel,
-  timeInputToMinutesSafe,
   timeInputToPg,
 } from '../../lib/dispatchAddBlockTime'
 import {
   DISPATCH_ADD_BLOCK_ORIENTATION_MARKS,
-  DispatchAddBlockTimeRange,
   dispatchAddBlockTrackThumbLeftPct,
   type DispatchOccupiedBand,
   type DispatchSecondaryBand,
@@ -55,15 +50,17 @@ import {
 } from '../../utils/dateUtils'
 import { QUICKFILL_SECTION_BANNER_BOX_STYLE } from '../../lib/quickfillSectionBannerStyle'
 import { groupRosterUsersByAuthRoleSection } from '../../lib/usersTabRosterRoleSections'
+import { blocksToSegments } from '../../lib/quickfillScheduleSegments'
+import {
+  QuickfillScheduleUserRow,
+  QUICKFILL_SCHEDULE_ADD_COL_WIDTH,
+  QUICKFILL_SCHEDULE_NAME_COL_WIDTH,
+  QUICKFILL_SCHEDULE_ROW_GAP,
+} from '../schedule/QuickfillScheduleUserRow'
 
 const SCHEDULE_CONFLICTS_DEFAULT_PROMPT = 'Are there any obvious schedule conflicts?'
 
 const QUICKFILL_SCHEDULE_HIDE_ASSISTANT_ESTIMATOR_KEY = 'quickfill_schedule_hide_assistant_estimator'
-
-/** Matches per-row name column so shared 8 AM / 12 PM / 4 PM labels align with each timeline. */
-const QUICKFILL_SCHEDULE_NAME_COL_WIDTH = 'clamp(5.5rem, 24vw, 8.5rem)'
-const QUICKFILL_SCHEDULE_ADD_COL_WIDTH = '2rem'
-const QUICKFILL_SCHEDULE_ROW_GAP = '0.5rem'
 
 function readHideAssistantsEstimatorsFromStorage(): boolean {
   try {
@@ -73,194 +70,6 @@ function readHideAssistantsEstimatorsFromStorage(): boolean {
     return false
   }
 }
-
-function blocksToSegments(rows: JobScheduleBlockRow[], jobTitleById: Map<string, string>): AddBlockTimelineSegment[] {
-  return [...rows]
-    .map((b) => ({
-      blockId: b.id,
-      jobId: b.job_id,
-      label: jobTitleById.get(b.job_id) ?? formatScheduleDispatchHubJobTitle(null, null),
-      time_start: b.time_start,
-      time_end: b.time_end,
-      shared_block_group_id: b.shared_block_group_id,
-    }))
-    .sort(
-      (a, b) =>
-        scheduleTimeToMinutesFromMidnight(timeInputToPg(a.time_start.slice(0, 5))) -
-        scheduleTimeToMinutesFromMidnight(timeInputToPg(b.time_start.slice(0, 5))),
-    )
-}
-
-function segmentsToOccupiedBands(segments: AddBlockTimelineSegment[]): DispatchOccupiedBand[] {
-  return segments.map((s) => {
-    const ts = s.time_start.slice(0, 5)
-    const te = s.time_end.slice(0, 5)
-    const sm = timeInputToMinutesSafe(ts)
-    const em = timeInputToMinutesSafe(te)
-    return {
-      blockId: s.blockId,
-      jobId: s.jobId,
-      label: s.label,
-      startSlotIndex: dispatchMinutesToSlotIndex(sm),
-      endSlotIndex: dispatchMinutesToSlotIndex(em),
-    }
-  })
-}
-
-const noopSlot = () => {}
-
-const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
-  userId,
-  displayName,
-  scheduleDayYmd,
-  segments,
-  secondaryBands,
-  onScheduleAddClick,
-  onOpenMyTimeForSessionStrip,
-  onOpenPersonMyTime,
-  onOccupiedBandClick,
-}: {
-  userId: string
-  displayName: string
-  /** Calendar day for this row (YYYY-MM-DD); used for name-button accessibility when opening My Time. */
-  scheduleDayYmd: string
-  segments: AddBlockTimelineSegment[]
-  secondaryBands?: DispatchSecondaryBand[]
-  onScheduleAddClick?: () => void
-  onOpenMyTimeForSessionStrip?: (uid: string, name: string) => void
-  /** Opens My Time day editor (NCNS / Not coming in) from the person name — same handler as strip when provided. */
-  onOpenPersonMyTime?: (uid: string, name: string) => void
-  onOccupiedBandClick?: (band: DispatchOccupiedBand) => void
-}) {
-  const occupiedBands = useMemo(() => segmentsToOccupiedBands(segments), [segments])
-
-  const { startSlotIndex, endSlotIndex } = useMemo(() => {
-    const def = defaultNewBlockRangeInFirstGap({ segments, draftByBlockId: {} })
-    if (def) {
-      return {
-        startSlotIndex: dispatchMinutesToSlotIndex(def.startMin),
-        endSlotIndex: dispatchMinutesToSlotIndex(def.endMin),
-      }
-    }
-    return {
-      startSlotIndex: dispatchMinutesToSlotIndex(timeInputToMinutesSafe('08:00')),
-      endSlotIndex: dispatchMinutesToSlotIndex(timeInputToMinutesSafe('16:00')),
-    }
-  }, [segments])
-
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: QUICKFILL_SCHEDULE_ROW_GAP,
-        padding: '0.45rem 0',
-        borderBottom: '1px solid #f3f4f6',
-      }}
-    >
-      <div
-        style={{
-          width: QUICKFILL_SCHEDULE_NAME_COL_WIDTH,
-          flexShrink: 0,
-          fontSize: '0.8125rem',
-          fontWeight: 600,
-          color: '#111827',
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          lineHeight: 1.2,
-          padding: '0.15rem 0.25rem',
-        }}
-      >
-        {onOpenPersonMyTime ? (
-          <button
-            type="button"
-            onClick={() => onOpenPersonMyTime(userId, displayName)}
-            title={`Time and attendance for ${displayName} (${scheduleDayYmd})`}
-            aria-label={`Time and attendance for ${displayName} on ${scheduleDayYmd}`}
-            style={{
-              display: 'block',
-              width: '100%',
-              margin: 0,
-              padding: 0,
-              border: 'none',
-              background: 'none',
-              font: 'inherit',
-              fontWeight: 600,
-              color: 'inherit',
-              textAlign: 'left',
-              cursor: 'pointer',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {displayName}
-          </button>
-        ) : (
-          displayName
-        )}
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <DispatchAddBlockTimeRange
-          compact
-          showOrientationLabels={false}
-          showProposedRange={false}
-          slotCount={DISPATCH_ADD_BLOCK_SLOT_COUNT}
-          startSlotIndex={startSlotIndex}
-          endSlotIndex={endSlotIndex}
-          onStartChange={noopSlot}
-          onEndChange={noopSlot}
-          formatAriaValue={(i) =>
-            formatDispatchQuickTimeLabel(dispatchMinutesToHHmm(dispatchSlotIndexToMinutes(i)))
-          }
-          disabled
-          groupAriaLabel={`${displayName}: scheduled blocks preview (read-only), 30-minute steps from 4:00 AM to 8:00 PM Central${
-            secondaryBands?.length
-              ? ` Includes ${secondaryBands.length} clock session${secondaryBands.length === 1 ? '' : 's'}.`
-              : ''
-          }`}
-          occupiedBands={occupiedBands.length > 0 ? occupiedBands : undefined}
-          secondaryBands={secondaryBands}
-          onSecondaryBandClick={
-            onOpenMyTimeForSessionStrip && (secondaryBands?.length ?? 0) > 0
-              ? () => onOpenMyTimeForSessionStrip(userId, displayName)
-              : undefined
-          }
-          onOccupiedBandClick={onOccupiedBandClick}
-        />
-      </div>
-      {onScheduleAddClick ? (
-        <button
-          type="button"
-          onClick={onScheduleAddClick}
-          title={`Add job to schedule for ${displayName}`}
-          aria-label={`Add schedule block for ${displayName} on this day`}
-          style={{
-            width: QUICKFILL_SCHEDULE_ADD_COL_WIDTH,
-            flexShrink: 0,
-            height: QUICKFILL_SCHEDULE_ADD_COL_WIDTH,
-            padding: 0,
-            margin: 0,
-            border: 'none',
-            borderRadius: 6,
-            background: '#f3f4f6',
-            color: '#9ca3af',
-            fontSize: '1.125rem',
-            fontWeight: 600,
-            lineHeight: 1,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          +
-        </button>
-      ) : null}
-    </div>
-  )
-})
 
 /**
  * Quickfill overview: one read-only Add-block-style timeline per user (Schedule Dispatch roster) for a chosen day.

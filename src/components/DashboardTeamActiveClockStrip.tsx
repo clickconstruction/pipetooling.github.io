@@ -18,6 +18,8 @@ import {
 import { approveClockSessions } from '../lib/approveClockSessions'
 import { supabase } from '../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import { denverCalendarDayKey } from '../utils/dateUtils'
+import { useUserDayScheduleModal } from '../contexts/UserDayScheduleModalContext'
 import { useIntervalNowMs } from '../hooks/useIntervalNowMs'
 import { useMatchMedia } from '../hooks/useMatchMedia'
 import {
@@ -274,10 +276,24 @@ const td = {
 }
 
 const stripSalaryNameSuffix: CSSProperties = {
-  marginLeft: '0.15rem',
   fontSize: '0.68rem',
   color: '#9ca3af',
   fontWeight: 400,
+  flexShrink: 0,
+}
+
+/** “Currently in” name + optional (s): keep the salary suffix on the same line (mobile: avoid a lone (s) below a full-width name button). */
+const stripCurrentlyInNameWithSuffix: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  flexWrap: 'nowrap',
+  columnGap: '0.15rem',
+  minWidth: 'max-content',
+}
+
+/** First column of the “Currently in” table: intrinsic width includes full name + optional (s). */
+const stripCurrentlyInFirstCol: CSSProperties = {
+  minWidth: 'max-content',
 }
 
 /** Match ClockInOutButton enabled fill (`#ff6600`). */
@@ -573,6 +589,29 @@ export function DashboardTeamActiveClockStrip({
 }) {
   const clockStripWorkDateResolved =
     clockStripWorkDateYmd ?? new Date().toLocaleDateString('en-CA')
+  const userDayScheduleModal = useUserDayScheduleModal()
+  const openUserDaySchedule = useCallback(
+    (userId: string, displayName: string) => {
+      userDayScheduleModal?.open({
+        userId,
+        displayName,
+        workDateYmd: clockStripWorkDateYmd ?? denverCalendarDayKey(Date.now()),
+      })
+    },
+    [userDayScheduleModal, clockStripWorkDateYmd],
+  )
+  const stripNameAsScheduleButtonStyle: CSSProperties = {
+    margin: 0,
+    padding: 0,
+    border: 'none',
+    background: 'none',
+    font: 'inherit',
+    color: 'inherit',
+    cursor: 'pointer',
+    textAlign: 'left' as const,
+    textDecoration: 'underline',
+    textDecorationColor: 'rgba(37, 99, 235, 0.35)',
+  }
   const stripRejectTitleId = useId()
   const shortCurrentlyInHeader = useMatchMedia(STRIP_SHORT_CURRENTLY_IN_HEADER_MQ)
   const nowMs = useIntervalNowMs(45_000)
@@ -1145,11 +1184,17 @@ export function DashboardTeamActiveClockStrip({
         {showCurrentlyInTable ? (
         <div style={{ overflowX: 'auto' }} aria-live="polite">
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <colgroup>
+              <col style={stripCurrentlyInFirstCol} />
+              <col />
+              <col />
+              <col />
+            </colgroup>
             <thead>
               <tr style={{ background: STRIP_SECTION_HEAD_BG }}>
                 <th
                   scope="col"
-                  style={{ ...stripSectionTh, fontWeight: 700 }}
+                  style={{ ...stripSectionTh, fontWeight: 700, ...stripCurrentlyInFirstCol }}
                   aria-label={`Currently in: ${sessions.length} ${
                     sessions.length === 1 ? 'person' : 'people'
                   }`}
@@ -1219,13 +1264,27 @@ export function DashboardTeamActiveClockStrip({
 
               return (
                 <tr key={s.id}>
-                  <td style={td}>
-                    {personName(s)}
+                  <td style={{ ...td, ...stripCurrentlyInFirstCol }}>
+                    <span style={stripCurrentlyInNameWithSuffix}>
+                    {userDayScheduleModal ? (
+                      <button
+                        type="button"
+                        onClick={() => openUserDaySchedule(s.user_id, personName(s))}
+                        title="View day schedule and add blocks"
+                        aria-label={`Day schedule for ${personName(s)}`}
+                        style={{ ...stripNameAsScheduleButtonStyle, whiteSpace: 'nowrap' }}
+                      >
+                        {personName(s)}
+                      </button>
+                    ) : (
+                      <span style={{ whiteSpace: 'nowrap' as const }}>{personName(s)}</span>
+                    )}
                     {shouldShowSalaryStripNameSuffix(s) ? (
                       <span style={stripSalaryNameSuffix} title="Salary schedule">
                         (s)
                       </span>
                     ) : null}
+                    </span>
                   </td>
                   <td style={{ ...td, textAlign: 'right' }}>
                     {onOpenStripMyTimeEditor ? (
@@ -1485,7 +1544,19 @@ export function DashboardTeamActiveClockStrip({
                               flexWrap: 'wrap',
                             }}
                           >
-                            {rowLabel}
+                            {userDayScheduleModal ? (
+                              <button
+                                type="button"
+                                onClick={() => openUserDaySchedule(row.userId, row.displayName)}
+                                title="View day schedule and add blocks"
+                                aria-label={`Day schedule for ${rowLabel}`}
+                                style={stripNameAsScheduleButtonStyle}
+                              >
+                                {rowLabel}
+                              </button>
+                            ) : (
+                              rowLabel
+                            )}
                             {row.hasIntervalOverlapToday ? <StripClockOverlapBadge /> : null}
                             {copyDayJobMixMode && copyJobMixChrome ? (
                               <button

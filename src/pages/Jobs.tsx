@@ -56,6 +56,26 @@ import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { CLOCK_SESSION_LIST_SELECT } from '../lib/clockSessionSelect'
 import { APP_CALENDAR_TZ, formatWorkDateYmdWeekdayLongFriendly, getDefaultWeekRange } from '../utils/dateUtils'
 import { fetchAttributionsByMercuryTxIds } from '../lib/fetchMercuryRelationsByTxIds'
+import { fetchMercuryJobAllocationsWithAttributionForJob } from '../lib/fetchMercuryJobAllocationsWithAttributionForJob'
+import { buildPartsPerPersonCostRows, type TallyLineForPersonRollup } from '../lib/partsPerPersonCostSummary'
+import { loadMercuryAllocModalDataForTransaction, type MercuryAllocModalData } from '../lib/mercuryAllocModalData'
+import {
+  PartsUnattributedMercuryListModal,
+  loadUsersOptionsForBankingAttribution,
+} from '../components/jobs/PartsUnattributedMercuryListModal'
+import { PartsUnattributedAllJobsModal } from '../components/jobs/PartsUnattributedAllJobsModal'
+import {
+  fetchUnattributedMercuryLinesForManyJobs,
+  type UnattributedMercuryLineForJob,
+} from '../lib/fetchUnattributedMercuryForManyJobs'
+import {
+  MercuryTransactionAllocationsModal,
+  type MercuryAllocSavedDetail,
+} from '../components/MercuryTransactionAllocationsModal'
+import type { SearchableSelectOption } from '../components/SearchableSelect'
+import { isSelectableOption } from '../components/SearchableSelect'
+import { mercuryQuickAssignUserAttribution } from '../lib/mercuryQuickAssignUserAttribution'
+import type { BankingAttributionUser } from '../lib/mercuryCardNicknameUserMatch'
 import { formatMercuryDebitCardIdCompact, mercuryDebitCardIdFromRaw } from '../lib/mercuryRawDebitCard'
 import {
   deriveStagesBillingActivityDetail,
@@ -246,6 +266,13 @@ type JobSummaryMercuryAllocationRow = {
 
 function normalizePersonNameKey(name: string): string {
   return name.trim().toLowerCase()
+}
+
+/** Job Summary cost breakdown: substring match on person name; empty query shows all. */
+function personMatchesJobSummaryBreakdownFilter(name: string | null | undefined, queryRaw: string): boolean {
+  const q = queryRaw.trim().toLowerCase()
+  if (!q) return true
+  return (name ?? '').toLowerCase().includes(q)
 }
 
 function formatJobSummaryInvoiceDate(iso: string): string {
@@ -630,7 +657,7 @@ export default function Jobs() {
     [authRole],
   )
   const shortNewJobButtonLabel = useMatchMedia(JOBS_SHORT_NEW_JOB_BUTTON_MQ)
-  const { nicknameByDebitCard } = useMercuryLedgerNicknames()
+  const { nicknameByDebitCard, nicknameByAccount } = useMercuryLedgerNicknames()
   const { showToast } = useToastContext()
   const jobFormModal = useJobFormModal()
   const billCustomer = useBillCustomerModal()
@@ -809,6 +836,17 @@ export default function Jobs() {
   const [savingAddSubcontractor, setSavingAddSubcontractor] = useState(false)
   const [myRole, setMyRole] = useState<string | null>(null)
 
+  const canAccessBankingForParts = useMemo(
+    () =>
+      authRole === 'dev' ||
+      authRole === 'master_technician' ||
+      authRole === 'assistant' ||
+      myRole === 'dev' ||
+      myRole === 'master_technician' ||
+      myRole === 'assistant',
+    [authRole, myRole],
+  )
+
   const laborMissingFields: string[] = []
   if (laborAssignedTo.length === 0) laborMissingFields.push('Assigned')
   if (!laborAddress.trim()) laborMissingFields.push('Address')
@@ -897,8 +935,13 @@ export default function Jobs() {
   const [updatingFixtureCostId, setUpdatingFixtureCostId] = useState<string | null>(null)
   const [expandedPartsJobIds, setExpandedPartsJobIds] = useState<Set<string>>(new Set())
   const [expandedJobSummaryJobIds, setExpandedJobSummaryJobIds] = useState<Set<string>>(new Set())
-  /** Job Summary Team Labor: user opened "Allocation by work date and clock punches" (drives deferred clock_sessions fetch). */
-  const [teamLaborDetailExpandedJobIds, setTeamLaborDetailExpandedJobIds] = useState<Set<string>>(() => new Set())
+  /** Job Summary Team Labor: `${jobId}::${breakdownIndex}` expanded (drives deferred clock_sessions fetch). */
+  const [jobSummaryTeamLaborPersonExpandedKeys, setJobSummaryTeamLaborPersonExpandedKeys] = useState<Set<string>>(
+    () => new Set(),
+  )
+  const [jobSummaryBreakdownPersonSearchByJobId, setJobSummaryBreakdownPersonSearchByJobId] = useState<
+    Record<string, string>
+  >({})
   const jobSummaryClockSessionsLoadedRef = useRef<Set<string>>(new Set())
   const [jobSummaryClockSessionsByJobId, setJobSummaryClockSessionsByJobId] = useState<Map<string, JobSummaryClockSessionRow[]>>(() => new Map())
   const jobSummaryInvoiceLinesLoadedRef = useRef<Set<string>>(new Set())
@@ -909,7 +952,57 @@ export default function Jobs() {
   const [jobSummaryMercuryAllocationsByJobId, setJobSummaryMercuryAllocationsByJobId] = useState<
     Map<string, JobSummaryMercuryAllocationRow[]>
   >(() => new Map())
+
+  const loadJobSummaryMercuryAllocationsForJob = useCallback(async (jobId: string) => {
+    if (jobSummaryMercuryAllocationsLoadedRef.current.has(jobId)) return
+    try {
+      const rows = await fetchMercuryJobAllocationsWithAttributionForJob(jobId, 'job summary mercury')
+      const mapped: JobSummaryMercuryAllocationRow[] = rows.map((r) => ({
+        id: r.id,
+        amount: r.amount,
+        note: r.note,
+        attributionDisplayName: r.attributionDisplayName,
+        mercury_transactions: r.mercury_transactions
+          ? {
+              posted_at: r.mercury_transactions.posted_at,
+              counterparty_name: r.mercury_transactions.counterparty_name,
+              amount: r.mercury_transactions.amount,
+              note: r.mercury_transactions.note,
+              external_memo: r.mercury_transactions.external_memo,
+              raw: r.mercury_transactions.raw,
+            }
+          : null,
+      }))
+      setJobSummaryMercuryAllocationsByJobId((prev) => {
+        const next = new Map(prev)
+        next.set(jobId, mapped)
+        return next
+      })
+    } catch {
+      setJobSummaryMercuryAllocationsByJobId((prev) => {
+        const next = new Map(prev)
+        next.set(jobId, [])
+        return next
+      })
+    } finally {
+      jobSummaryMercuryAllocationsLoadedRef.current.add(jobId)
+    }
+  }, [])
+
   const [mercuryCardChargesByJobId, setMercuryCardChargesByJobId] = useState<Map<string, number>>(() => new Map())
+  const partsTabMercuryLoadedRef = useRef<Set<string>>(new Set())
+  const partsTabMercuryInFlightRef = useRef<Set<string>>(new Set())
+  const [partsTabMercuryAllocationsByJobId, setPartsTabMercuryAllocationsByJobId] = useState<
+    Map<string, Awaited<ReturnType<typeof fetchMercuryJobAllocationsWithAttributionForJob>>>
+  >(() => new Map())
+  const partsUnattribFlowJobIdRef = useRef<string | null>(null)
+  const [partsUnattribListJobId, setPartsUnattribListJobId] = useState<string | null>(null)
+  const [partsAllocModalData, setPartsAllocModalData] = useState<MercuryAllocModalData | null>(null)
+  const [partsAllocModalOpen, setPartsAllocModalOpen] = useState(false)
+  const [bankingAttributionUsersOptions, setBankingAttributionUsersOptions] = useState<SearchableSelectOption[]>([])
+  const [allJobsUnattributedOpen, setAllJobsUnattributedOpen] = useState(false)
+  const [allJobsUnattributedLoading, setAllJobsUnattributedLoading] = useState(false)
+  const [allJobsUnattributedLines, setAllJobsUnattributedLines] = useState<UnattributedMercuryLineForJob[] | null>(null)
   const [pendingScrollToPartsJobId, setPendingScrollToPartsJobId] = useState<string | null>(null)
   const [pendingStagesInvoiceFocusId, setPendingStagesInvoiceFocusId] = useState<string | null>(null)
   const [stagesInvoiceFlashId, setStagesInvoiceFlashId] = useState<string | null>(null)
@@ -3274,6 +3367,51 @@ export default function Jobs() {
       }
     }
 
+    if (!jobSummaryPartsCostIsZero(partsFromTally) || !jobSummaryPartsCostIsZero(cardCharges)) {
+      const tallyRollupPrint: TallyLineForPersonRollup[] = tallyPartsForJob.map((r) => ({
+        part_id: r.part_id,
+        quantity: r.quantity,
+        price_at_time: r.price_at_time,
+        fixture_cost: r.fixture_cost,
+        created_by_user_id: r.created_by_user_id,
+        created_by_name: r.created_by_name,
+      }))
+      const { rows: ppRowsPrint, footer: ppFooterPrint, sumsOk: ppSumsOkPrint } = buildPartsPerPersonCostRows({
+        parts: tallyRollupPrint,
+        billedMaterialsSum,
+        invoiceJobTotal: invoicesFromSupplyHouses,
+        mercuryRows: mRows,
+        parentCardTotal: cardCharges,
+      })
+      if (
+        ppRowsPrint.length > 0 ||
+        !jobSummaryPartsCostIsZero(ppFooterPrint.partsFromTally) ||
+        !jobSummaryPartsCostIsZero(ppFooterPrint.cardCharges)
+      ) {
+        partsHtml += `<h3 style="font-size:1rem">Cost by person (tally &amp; card)</h3>`
+        partsHtml +=
+          '<p class="muted" style="font-size:0.85rem">Other job charges and supply house invoices are job-level only (not split by person).</p>'
+        const ppBody = ppRowsPrint
+          .map((row) => {
+            const rt = row.partsFromTally + row.cardCharges
+            const tCell = jobSummaryPartsCostIsZero(row.partsFromTally) ? '—' : `$${formatCurrency(row.partsFromTally)}`
+            const cCell = jobSummaryPartsCostIsZero(row.cardCharges) ? '—' : `$${formatCurrency(row.cardCharges)}`
+            const rtCell = jobSummaryPartsCostIsZero(rt) ? '—' : `$${formatCurrency(rt)}`
+            return `<tr><td>${escapeHtml(row.displayName)}</td><td style="text-align:right">${tCell}</td><td style="text-align:right">${cCell}</td><td style="text-align:right">${rtCell}</td></tr>`
+          })
+          .join('')
+        const footRt = ppFooterPrint.partsFromTally + ppFooterPrint.cardCharges
+        partsHtml += `<table><thead><tr><th>Person</th><th style="text-align:right">Parts from Tally</th><th style="text-align:right">Card charges</th><th style="text-align:right">Row total</th></tr></thead><tbody>${ppBody}<tr style="font-weight:600"><td>${escapeHtml(ppFooterPrint.displayName)}</td><td style="text-align:right">$${formatCurrency(ppFooterPrint.partsFromTally)}</td><td style="text-align:right">$${formatCurrency(ppFooterPrint.cardCharges)}</td><td style="text-align:right">$${formatCurrency(footRt)}</td></tr></tbody></table>`
+        if (billedMaterialsSum > 0 || invoicesFromSupplyHouses > 0) {
+          partsHtml += `<p class="muted" style="font-size:0.85rem">Job-level (not in table above): other job charges $${formatCurrency(billedMaterialsSum)} · supply invoices $${formatCurrency(invoicesFromSupplyHouses)}</p>`
+        }
+        if (!ppSumsOkPrint) {
+          partsHtml +=
+            '<p class="muted" style="color:#b45309;font-size:0.85rem">Row totals may not match job-level parts totals; check attributions and line items.</p>'
+        }
+      }
+    }
+
     const totalsHtml = `<h2>Total Bill &amp; Revenue before Overhead</h2><p><strong>Revenue (billing):</strong> ${totalBill === 0 ? '—' : `$${formatCurrency(totalBill)}`}</p><p><strong>Revenue before overhead:</strong> $${formatCurrency(profit)}</p>`
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(headerTitle)} — Cost breakdown</title><style>
@@ -3411,10 +3549,13 @@ ${totalsHtml}
     win.onafterprint = () => win.close()
   }
 
+  const shouldLoadJobsListForActiveTab =
+    activeTab === 'stages' || activeTab === 'billing' || activeTab === 'parts'
+
   useEffect(() => {
     if (authLoading || !authUser?.id) return
     loadUsers()
-    if (activeTab !== 'stages' && activeTab !== 'billing') return
+    if (!shouldLoadJobsListForActiveTab) return
     if (loadJobsFromEffectTimerRef.current) {
       clearTimeout(loadJobsFromEffectTimerRef.current)
     }
@@ -3428,18 +3569,18 @@ ${totalsHtml}
         loadJobsFromEffectTimerRef.current = null
       }
     }
-  }, [authUser?.id, authLoading, customerParamForJobsReload, activeTab, loadJobs])
+  }, [authUser?.id, authLoading, customerParamForJobsReload, activeTab, loadJobs, shouldLoadJobsListForActiveTab])
 
   useEffect(() => {
     if (authLoading || !authUser?.id) return
-    if (activeTab !== 'stages' && activeTab !== 'billing') return
+    if (!shouldLoadJobsListForActiveTab) return
     const onVis = () => {
       if (document.visibilityState !== 'visible') return
       void runFetchJobs(customerFilterForFetch, { kind: 'visibility' })
     }
     document.addEventListener('visibilitychange', onVis)
     return () => document.removeEventListener('visibilitychange', onVis)
-  }, [authUser?.id, authLoading, activeTab, customerFilterForFetch, runFetchJobs])
+  }, [authUser?.id, authLoading, activeTab, customerFilterForFetch, runFetchJobs, shouldLoadJobsListForActiveTab])
 
   useEffect(() => {
     if (authLoading || !authUser?.id) return
@@ -3923,8 +4064,10 @@ ${totalsHtml}
 
   useEffect(() => {
     if (activeTab !== 'job-summary' || !authUser?.id) return
+    const expandedKeys = [...jobSummaryTeamLaborPersonExpandedKeys]
     for (const jobId of expandedJobSummaryJobIds) {
-      if (!teamLaborDetailExpandedJobIds.has(jobId)) continue
+      const prefix = `${jobId}::`
+      if (!expandedKeys.some((k) => k.startsWith(prefix))) continue
       if (jobSummaryClockSessionsLoadedRef.current.has(jobId)) continue
       void (async () => {
         try {
@@ -3955,7 +4098,7 @@ ${totalsHtml}
         }
       })()
     }
-  }, [activeTab, authUser?.id, expandedJobSummaryJobIds, teamLaborDetailExpandedJobIds])
+  }, [activeTab, authUser?.id, expandedJobSummaryJobIds, jobSummaryTeamLaborPersonExpandedKeys])
 
   useEffect(() => {
     if ((activeTab === 'parts' || activeTab === 'job-summary') && authUser?.id) {
@@ -4009,6 +4152,216 @@ ${totalsHtml}
       })
       .catch(() => setMercuryCardChargesByJobId(new Map()))
   }, [jobIdsKeyForCardCharges])
+
+  const loadPartsTabMercuryForJob = useCallback(async (jobId: string) => {
+    if (partsTabMercuryLoadedRef.current.has(jobId) || partsTabMercuryInFlightRef.current.has(jobId)) {
+      return
+    }
+    partsTabMercuryInFlightRef.current.add(jobId)
+    try {
+      const rows = await fetchMercuryJobAllocationsWithAttributionForJob(jobId, 'parts tab')
+      setPartsTabMercuryAllocationsByJobId((m) => {
+        const n = new Map(m)
+        n.set(jobId, rows)
+        return n
+      })
+    } catch {
+      setPartsTabMercuryAllocationsByJobId((m) => {
+        const n = new Map(m)
+        n.set(jobId, [])
+        return n
+      })
+    } finally {
+      partsTabMercuryInFlightRef.current.delete(jobId)
+      partsTabMercuryLoadedRef.current.add(jobId)
+    }
+  }, [])
+
+  const refreshPartsTabMercuryForJob = useCallback(
+    (jobId: string) => {
+      partsTabMercuryLoadedRef.current.delete(jobId)
+      partsTabMercuryInFlightRef.current.delete(jobId)
+      setPartsTabMercuryAllocationsByJobId((m) => {
+        const n = new Map(m)
+        n.delete(jobId)
+        return n
+      })
+      void loadPartsTabMercuryForJob(jobId)
+    },
+    [loadPartsTabMercuryForJob],
+  )
+
+  const updateMercuryCardTotalForOneJob = useCallback((jobId: string) => {
+    void withSupabaseRetry(
+      async () =>
+        supabase.from('mercury_transaction_job_allocations').select('amount').eq('job_id', jobId),
+      'mercury card charges for one job (parts refresh)',
+    )
+      .then((rows) => {
+        const sum = (rows ?? []).reduce((a, r) => a + Math.abs(Number(r.amount)), 0)
+        setMercuryCardChargesByJobId((m) => {
+          const n = new Map(m)
+          n.set(jobId, sum)
+          return n
+        })
+      })
+      .catch(() => {})
+  }, [])
+
+  const dismissPartsUnattributedList = useCallback(() => {
+    setPartsUnattribListJobId(null)
+    partsUnattribFlowJobIdRef.current = null
+  }, [])
+
+  const closeListOnlyForAssign = useCallback(() => {
+    setPartsUnattribListJobId(null)
+  }, [])
+
+  const closeAllJobsListForAssign = useCallback(() => {
+    setAllJobsUnattributedOpen(false)
+  }, [])
+
+  const handleAssignToTransactionFromParts = useCallback(
+    async (mercuryTransactionId: string, jobIdForFlow?: string | null) => {
+      if (jobIdForFlow) partsUnattribFlowJobIdRef.current = jobIdForFlow
+      const data = await loadMercuryAllocModalDataForTransaction(
+        mercuryTransactionId,
+        'Parts tab: open Mercury allocation',
+      )
+      setPartsAllocModalData(data)
+      setPartsAllocModalOpen(true)
+    },
+    [],
+  )
+
+  const closePartsAllocModal = useCallback(() => {
+    setPartsAllocModalOpen(false)
+    setPartsAllocModalData(null)
+    partsUnattribFlowJobIdRef.current = null
+  }, [])
+
+  const partsUnattributedJobLabelById = useMemo(() => {
+    const m: Record<string, string> = {}
+    for (const j of jobs) {
+      const h = (j.hcp_number ?? '').trim() || '—'
+      const n = (j.job_name ?? '').trim() || '—'
+      m[j.id] = `${h} · ${n}`
+    }
+    return m
+  }, [jobs])
+
+  const partsUnattributedScopeJobIds = useMemo(() => {
+    const ids: string[] = []
+    for (const j of jobs) {
+      if ((mercuryCardChargesByJobId.get(j.id) ?? 0) <= 0) continue
+      if (showMyJobsOnly && myJobIds && !myJobIds.has(j.id)) continue
+      ids.push(j.id)
+    }
+    return ids
+  }, [jobs, mercuryCardChargesByJobId, showMyJobsOnly, myJobIds])
+
+  const refetchAllJobsUnattributedData = useCallback(async () => {
+    setAllJobsUnattributedLines(null)
+    setAllJobsUnattributedLoading(true)
+    if (partsUnattributedScopeJobIds.length === 0) {
+      setAllJobsUnattributedLines([])
+      setAllJobsUnattributedLoading(false)
+      return
+    }
+    try {
+      const lines = await fetchUnattributedMercuryLinesForManyJobs({
+        jobIds: partsUnattributedScopeJobIds,
+        jobLabelById: partsUnattributedJobLabelById,
+        cacheByJobId: partsTabMercuryAllocationsByJobId,
+        operationLabel: 'Parts tab: all jobs unattributed',
+        concurrency: 5,
+      })
+      setAllJobsUnattributedLines(lines)
+    } catch {
+      setAllJobsUnattributedLines([])
+    } finally {
+      setAllJobsUnattributedLoading(false)
+    }
+  }, [partsUnattributedScopeJobIds, partsUnattributedJobLabelById, partsTabMercuryAllocationsByJobId])
+
+  const onPartsAllocSaved = useCallback(
+    (_detail: MercuryAllocSavedDetail) => {
+      const jobId = partsUnattribFlowJobIdRef.current
+      if (jobId) {
+        refreshPartsTabMercuryForJob(jobId)
+        updateMercuryCardTotalForOneJob(jobId)
+      }
+      setPartsAllocModalOpen(false)
+      setPartsAllocModalData(null)
+      partsUnattribFlowJobIdRef.current = null
+      setPartsUnattribListJobId(null)
+      if (allJobsUnattributedOpen) {
+        void refetchAllJobsUnattributedData()
+      }
+    },
+    [refreshPartsTabMercuryForJob, updateMercuryCardTotalForOneJob, allJobsUnattributedOpen, refetchAllJobsUnattributedData],
+  )
+
+  const partsUnattribBankingUsersForMatch = useMemo((): BankingAttributionUser[] => {
+    return bankingAttributionUsersOptions
+      .filter(isSelectableOption)
+      .filter((o) => o.value.trim() !== '')
+      .map((o) => ({ id: o.value, name: o.label }))
+  }, [bankingAttributionUsersOptions])
+
+  const handleQuickAddUserFromParts = useCallback(
+    async (mercuryTransactionId: string, user: BankingAttributionUser, jobIdForFlow?: string | null) => {
+      const jobId = jobIdForFlow ?? partsUnattribFlowJobIdRef.current
+      if (jobIdForFlow) partsUnattribFlowJobIdRef.current = jobIdForFlow
+      if (!jobId) return
+      await mercuryQuickAssignUserAttribution({
+        mercuryTransactionId,
+        userId: user.id,
+        operationLabel: 'Parts tab: quick assign from card nickname',
+        recentPersonPicksStorageKey: authUser?.id ?? null,
+      })
+      showToast('Saved allocations.', 'success')
+      refreshPartsTabMercuryForJob(jobId)
+      updateMercuryCardTotalForOneJob(jobId)
+      if (allJobsUnattributedOpen) {
+        void refetchAllJobsUnattributedData()
+      }
+    },
+    [
+      authUser?.id,
+      showToast,
+      refreshPartsTabMercuryForJob,
+      updateMercuryCardTotalForOneJob,
+      allJobsUnattributedOpen,
+      refetchAllJobsUnattributedData,
+    ],
+  )
+
+  useEffect(() => {
+    if (activeTab !== 'parts') setAllJobsUnattributedOpen(false)
+  }, [activeTab])
+
+  useEffect(() => {
+    if (!allJobsUnattributedOpen || activeTab !== 'parts') return
+    void refetchAllJobsUnattributedData()
+  }, [allJobsUnattributedOpen, activeTab, refetchAllJobsUnattributedData])
+
+  useEffect(() => {
+    if (!canAccessBankingForParts) {
+      setBankingAttributionUsersOptions([])
+      return
+    }
+    void loadUsersOptionsForBankingAttribution().then(setBankingAttributionUsersOptions)
+  }, [canAccessBankingForParts])
+
+  useEffect(() => {
+    if (activeTab !== 'parts') return
+    for (const jobId of expandedPartsJobIds) {
+      if ((mercuryCardChargesByJobId.get(jobId) ?? 0) === 0) continue
+      if (partsTabMercuryLoadedRef.current.has(jobId)) continue
+      void loadPartsTabMercuryForJob(jobId)
+    }
+  }, [activeTab, expandedPartsJobIds, mercuryCardChargesByJobId, loadPartsTabMercuryForJob])
 
   useEffect(() => {
     if (activeTab === 'inspections' && authUser?.id) {
@@ -8692,24 +9045,65 @@ ${totalsHtml}
       {activeTab === 'parts' && (
         <div>
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
-          <div style={{ marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-            <input
-              type="search"
-              placeholder="Search HCP, job name, fixture, part name…"
-              value={tallyPartsSearch}
-              onChange={(e) => setTallyPartsSearch(e.target.value)}
-              style={{ flex: '1 1 200px', minWidth: 200, maxWidth: 400, padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
-            />
-            {authRole !== 'subcontractor' && myRole !== 'subcontractor' && (
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 400, fontSize: '0.875rem', cursor: 'pointer', flexShrink: 0 }}>
-                <input
-                  type="checkbox"
-                  checked={showMyJobsOnly}
-                  onChange={(e) => setShowMyJobsOnly(e.target.checked)}
-                />
-                Show my jobs only
-              </label>
-            )}
+          <div
+            style={{
+              marginBottom: '0.75rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '1rem',
+              flexWrap: 'wrap',
+              width: '100%',
+              minWidth: 0,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', flex: '1 1 0', minWidth: 0 }}>
+              <input
+                type="search"
+                placeholder="Search HCP, job name, fixture, part name…"
+                value={tallyPartsSearch}
+                onChange={(e) => setTallyPartsSearch(e.target.value)}
+                style={{
+                  flex: '1 1 200px',
+                  minWidth: 200,
+                  maxWidth: '100%',
+                  padding: '0.5rem 0.75rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  fontSize: '0.875rem',
+                }}
+              />
+              {authRole !== 'subcontractor' && myRole !== 'subcontractor' && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 400, fontSize: '0.875rem', cursor: 'pointer', flexShrink: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={showMyJobsOnly}
+                    onChange={(e) => setShowMyJobsOnly(e.target.checked)}
+                  />
+                  Show my jobs only
+                </label>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (allJobsUnattributedOpen) setAllJobsUnattributedOpen(false)
+                else setAllJobsUnattributedOpen(true)
+              }}
+              style={{
+                fontSize: '0.875rem',
+                fontWeight: 500,
+                padding: '0.4rem 0.75rem',
+                borderRadius: 4,
+                border: `1px solid ${allJobsUnattributedOpen ? '#2563eb' : '#d1d5db'}`,
+                background: allJobsUnattributedOpen ? '#eff6ff' : 'white',
+                color: allJobsUnattributedOpen ? '#1d4ed8' : '#374151',
+                cursor: 'pointer',
+                flexShrink: 0,
+                marginLeft: 'auto',
+              }}
+            >
+              Unattributed
+            </button>
           </div>
           {tallyPartsLoading ? (
             <p style={{ color: '#6b7280' }}>Loading…</p>
@@ -8873,6 +9267,184 @@ ${totalsHtml}
                           ? [
                               <tr key={`${jobId}-parts`}>
                                 <td colSpan={9} style={{ padding: 0, borderBottom: '1px solid #e5e7eb', background: '#fff', verticalAlign: 'top' }}>
+                                  {(() => {
+                                    const invAmt = invoiceAmountByJob[jobId] ?? 0
+                                    const needMercury = cardCharges > 0
+                                    const cardBreakdownNotReady = needMercury && !partsTabMercuryAllocationsByJobId.has(jobId)
+                                    if (cardBreakdownNotReady) {
+                                      return (
+                                        <div
+                                          style={{ padding: '0.75rem', borderBottom: '1px solid #e5e7eb' }}
+                                        >
+                                          <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>
+                                            Loading card breakdown…
+                                          </p>
+                                        </div>
+                                      )
+                                    }
+                                    const mRows = needMercury
+                                      ? (partsTabMercuryAllocationsByJobId.get(jobId) ?? [])
+                                      : []
+                                    const { rows: pRows, footer: pFooter, sumsOk: pSumsOk } = buildPartsPerPersonCostRows({
+                                      parts,
+                                      billedMaterialsSum,
+                                      invoiceJobTotal: invAmt,
+                                      mercuryRows: mRows,
+                                      parentCardTotal: cardCharges,
+                                    })
+                                    if (partsTotal + billedMaterialsSum + invAmt + cardCharges <= 0) return null
+                                    return (
+                                      <div
+                                        style={{ padding: '0.75rem', borderBottom: '1px solid #e5e7eb' }}
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <div
+                                          style={{
+                                            fontWeight: 600,
+                                            fontSize: '0.8125rem',
+                                            marginBottom: '0.5rem',
+                                            color: '#111827',
+                                          }}
+                                        >
+                                          Cost by person
+                                        </div>
+                                        <div style={{ overflowX: 'auto' }}>
+                                          <table
+                                            style={{
+                                              width: '100%',
+                                              maxWidth: 880,
+                                              borderCollapse: 'collapse',
+                                              fontSize: '0.75rem',
+                                            }}
+                                          >
+                                            <thead>
+                                              <tr style={{ background: '#f3f4f6' }}>
+                                                <th style={{ padding: '0.35rem 0.5rem', textAlign: 'left' }}>Person</th>
+                                                <th style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>Parts from Tally</th>
+                                                <th style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>Other job charges</th>
+                                                <th style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>Invoices from Supply Houses</th>
+                                                <th style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>Card charges</th>
+                                                <th style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>Row total</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {pRows.map((row) => {
+                                                const rt =
+                                                  row.partsFromTally +
+                                                  row.otherJobCharges +
+                                                  row.invoicesFromSupply +
+                                                  row.cardCharges
+                                                return (
+                                                  <tr
+                                                    key={row.key}
+                                                    style={{ borderTop: '1px solid #e5e7eb' }}
+                                                  >
+                                                    <td style={{ padding: '0.35rem 0.5rem' }}>
+                                                      {row.displayName === 'Unattributed' &&
+                                                      row.cardCharges > 0 &&
+                                                      canAccessBankingForParts ? (
+                                                        <button
+                                                          type="button"
+                                                          onClick={(e) => {
+                                                            e.stopPropagation()
+                                                            partsUnattribFlowJobIdRef.current = jobId
+                                                            setPartsUnattribListJobId(jobId)
+                                                          }}
+                                                          style={{
+                                                            background: 'none',
+                                                            border: 'none',
+                                                            padding: 0,
+                                                            margin: 0,
+                                                            font: 'inherit',
+                                                            color: '#2563eb',
+                                                            cursor: 'pointer',
+                                                            textDecoration: 'underline',
+                                                            textUnderlineOffset: '2px',
+                                                          }}
+                                                        >
+                                                          Unattributed — assign
+                                                        </button>
+                                                      ) : row.displayName === 'Unattributed' && row.cardCharges > 0 ? (
+                                                        <span>
+                                                          Unattributed{' '}
+                                                          <span style={{ color: '#9ca3af', fontSize: '0.7rem' }}>
+                                                            (set on Banking)
+                                                          </span>
+                                                        </span>
+                                                      ) : (
+                                                        row.displayName
+                                                      )}
+                                                    </td>
+                                                    <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
+                                                      ${formatCurrency(row.partsFromTally)}
+                                                    </td>
+                                                    <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
+                                                      ${formatCurrency(row.otherJobCharges)}
+                                                    </td>
+                                                    <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
+                                                      ${formatCurrency(row.invoicesFromSupply)}
+                                                    </td>
+                                                    <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
+                                                      ${formatCurrency(row.cardCharges)}
+                                                    </td>
+                                                    <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', fontWeight: 500 }}>
+                                                      ${formatCurrency(rt)}
+                                                    </td>
+                                                  </tr>
+                                                )
+                                              })}
+                                              <tr
+                                                style={{
+                                                  borderTop: '1px solid #e5e7eb',
+                                                  fontWeight: 600,
+                                                  background: '#f9fafb',
+                                                }}
+                                              >
+                                                <td style={{ padding: '0.35rem 0.5rem' }}>Total</td>
+                                                <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
+                                                  ${formatCurrency(pFooter.partsFromTally)}
+                                                </td>
+                                                <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
+                                                  ${formatCurrency(pFooter.otherJobCharges)}
+                                                </td>
+                                                <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
+                                                  ${formatCurrency(pFooter.invoicesFromSupply)}
+                                                </td>
+                                                <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
+                                                  ${formatCurrency(pFooter.cardCharges)}
+                                                </td>
+                                                <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
+                                                  $
+                                                  {formatCurrency(
+                                                    pFooter.partsFromTally +
+                                                      pFooter.otherJobCharges +
+                                                      pFooter.invoicesFromSupply +
+                                                      pFooter.cardCharges,
+                                                  )}
+                                                </td>
+                                              </tr>
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                        <p
+                                          style={{
+                                            margin: '0.5rem 0 0 0',
+                                            fontSize: '0.7rem',
+                                            color: '#6b7280',
+                                            lineHeight: 1.4,
+                                            maxWidth: 880,
+                                          }}
+                                        >
+                                          {`"Other job charges" and "Invoices from Supply Houses" are job-level in the data model (not split by who entered them). Card lines use the same Banking attribution you set on the Mercury transaction. Unattributed card amounts show under Unattributed.`}
+                                        </p>
+                                        {!pSumsOk && (
+                                          <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.7rem', color: '#b45309' }}>
+                                            These totals do not match the main row. Try refreshing, or check Mercury access.
+                                          </p>
+                                        )}
+                                      </div>
+                                    )
+                                  })()}
                                   {parts.length > 0 && (
                                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                                     <thead>
@@ -8976,11 +9548,6 @@ ${totalsHtml}
                                     </tbody>
                                   </table>
                                   )}
-                                  {parts.length === 0 && cardCharges !== 0 && (
-                                    <div style={{ padding: '0.75rem', color: '#4b5563', fontSize: '0.8125rem' }}>
-                                      Card charges are split from Mercury transactions on the Banking page.
-                                    </div>
-                                  )}
                                   {job && job.materials.length > 0 && (
                                     <div style={{ padding: '0.75rem', borderTop: '1px solid #e5e7eb', background: '#f9fafb' }}>
                                       <div style={{ fontWeight: 500, fontSize: '0.8125rem', marginBottom: '0.5rem' }}>Other job charges</div>
@@ -9081,15 +9648,36 @@ ${totalsHtml}
                         const expanded = expandedJobSummaryJobIds.has(job.id)
                         const mileageCost = driveMileageCost ?? 0.7
                         const timePerMile = driveTimePerMile ?? 0.02
+                        const jobSummaryDetailClockSessions = jobSummaryClockSessionsByJobId.get(job.id)
+                        const jobSummaryDetailClockLoaded = jobSummaryClockSessionsByJobId.has(job.id)
+                        const breakdownPersonQ = jobSummaryBreakdownPersonSearchByJobId[job.id] ?? ''
+                        const teamBreakdownFiltered =
+                          teamLaborRow && teamLaborRow.breakdown.length > 0
+                            ? teamLaborRow.breakdown
+                                .map((b, i) => ({ b, i }))
+                                .filter(({ b }) =>
+                                  personMatchesJobSummaryBreakdownFilter(b.personName, breakdownPersonQ),
+                                )
+                            : []
+                        const subLaborJobsFiltered = subLaborJobs.filter((lj) =>
+                          personMatchesJobSummaryBreakdownFilter(lj.assigned_to_name, breakdownPersonQ),
+                        )
                         const toggle = () => {
                           setExpandedJobSummaryJobIds((prev) => {
                             const next = new Set(prev)
                             if (next.has(job.id)) {
                               next.delete(job.id)
-                              setTeamLaborDetailExpandedJobIds((s) => {
-                                const n = new Set(s)
-                                n.delete(job.id)
+                              const prefix = `${job.id}::`
+                              setJobSummaryTeamLaborPersonExpandedKeys((s) => {
+                                const n = new Set<string>()
+                                for (const k of s) {
+                                  if (!k.startsWith(prefix)) n.add(k)
+                                }
                                 return n
+                              })
+                              setJobSummaryBreakdownPersonSearchByJobId((prev) => {
+                                const { [job.id]: _removed, ...rest } = prev
+                                return rest
                               })
                             } else next.add(job.id)
                             return next
@@ -9193,12 +9781,47 @@ ${totalsHtml}
                                     Print
                                   </button>
                                 </div>
+                                <input
+                                  type="search"
+                                  placeholder="Search people…"
+                                  aria-label="Search people in this cost breakdown"
+                                  value={breakdownPersonQ}
+                                  onChange={(e) => {
+                                    e.stopPropagation()
+                                    const v = e.target.value
+                                    setJobSummaryBreakdownPersonSearchByJobId((prev) => {
+                                      const next = { ...prev }
+                                      if (v.trim() === '') delete next[job.id]
+                                      else next[job.id] = v
+                                      return next
+                                    })
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  onKeyDown={(e) => e.stopPropagation()}
+                                  style={{
+                                    width: '100%',
+                                    maxWidth: 420,
+                                    marginBottom: '0.75rem',
+                                    padding: '0.4rem 0.6rem',
+                                    border: '1px solid #d1d5db',
+                                    borderRadius: 4,
+                                    fontSize: '0.8125rem',
+                                  }}
+                                />
                                 <div style={{ display: 'grid', gap: '1rem' }}>
                                   <section>
                                     <div style={{ fontWeight: 600, marginBottom: '0.35rem', color: '#111827' }}>Team Labor</div>
                                     <div style={jobSummaryCostSectionBodyStyle}>
                                     {teamLaborRow && teamLaborRow.breakdown.length > 0 ? (
                                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', width: '100%', maxWidth: 560 }}>
+                                        {teamBreakdownFiltered.some(({ i }) =>
+                                          jobSummaryTeamLaborPersonExpandedKeys.has(`${job.id}::${i}`),
+                                        ) ? (
+                                          <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280', lineHeight: 1.45 }}>
+                                            Allocated hours use crew job splits by work day. Clock punch durations below may differ when
+                                            multiple jobs share a day.
+                                          </p>
+                                        ) : null}
                                         <table
                                           style={{
                                             width: '100%',
@@ -9212,250 +9835,277 @@ ${totalsHtml}
                                               <th style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>Hours</th>
                                             </tr>
                                           </thead>
-                                          <tbody>
-                                            {teamLaborRow.breakdown.map((b, i) => (
-                                              <tr key={`${b.personName}-${i}`} style={{ borderTop: '1px solid #e5e7eb' }}>
-                                                <td style={{ padding: '0.35rem 0.5rem' }}>{b.personName}</td>
-                                                <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>{formatCurrency(b.hours)}</td>
+                                          {teamBreakdownFiltered.length === 0 && breakdownPersonQ.trim() !== '' ? (
+                                            <tbody>
+                                              <tr>
+                                                <td colSpan={2} style={{ padding: '0.35rem 0.5rem', color: '#6b7280' }}>
+                                                  No people match your search.
+                                                </td>
                                               </tr>
-                                            ))}
+                                            </tbody>
+                                          ) : (
+                                            teamBreakdownFiltered.map(({ b, i }) => {
+                                            const personKey = `${job.id}::${i}`
+                                            const personExpanded = jobSummaryTeamLaborPersonExpandedKeys.has(personKey)
+                                            const togglePerson = () => {
+                                              setJobSummaryTeamLaborPersonExpandedKeys((prev) => {
+                                                const next = new Set(prev)
+                                                if (next.has(personKey)) next.delete(personKey)
+                                                else next.add(personKey)
+                                                return next
+                                              })
+                                            }
+                                            const sessionsForPerson =
+                                              jobSummaryDetailClockLoaded && jobSummaryDetailClockSessions
+                                                ? jobSummaryDetailClockSessions.filter(
+                                                    (s) =>
+                                                      normalizePersonNameKey(s.users?.name ?? '') ===
+                                                      normalizePersonNameKey(b.personName),
+                                                  )
+                                                : []
+                                            return (
+                                              <Fragment key={personKey}>
+                                                <tbody>
+                                                  <tr
+                                                    role="button"
+                                                    tabIndex={0}
+                                                    aria-expanded={personExpanded}
+                                                    onClick={(e) => {
+                                                      e.stopPropagation()
+                                                      togglePerson()
+                                                    }}
+                                                    onKeyDown={(e) => {
+                                                      e.stopPropagation()
+                                                      if (e.key === 'Enter' || e.key === ' ') {
+                                                        e.preventDefault()
+                                                        togglePerson()
+                                                      }
+                                                    }}
+                                                    style={{
+                                                      borderTop: '1px solid #e5e7eb',
+                                                      cursor: 'pointer',
+                                                      background: personExpanded ? '#f3f4f6' : undefined,
+                                                    }}
+                                                  >
+                                                    <td style={{ padding: '0.35rem 0.5rem' }}>
+                                                      <span
+                                                        style={{ marginRight: '0.35rem', color: '#6b7280', userSelect: 'none' }}
+                                                        aria-hidden
+                                                      >
+                                                        {personExpanded ? '▼' : '▶'}
+                                                      </span>
+                                                      {b.personName}
+                                                    </td>
+                                                    <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
+                                                      {formatCurrency(b.hours)}
+                                                    </td>
+                                                  </tr>
+                                                </tbody>
+                                                {personExpanded ? (
+                                                  <tbody>
+                                                    <tr>
+                                                      <td
+                                                        colSpan={2}
+                                                        style={{
+                                                          padding: 0,
+                                                          borderTop: '1px solid #e5e7eb',
+                                                          background: '#fafafa',
+                                                          verticalAlign: 'top',
+                                                        }}
+                                                      >
+                                                        <div style={{ padding: '0.5rem 0.75rem' }}>
+                                                          <div style={{ fontWeight: 600, marginBottom: '0.35rem', fontSize: '0.8125rem' }}>
+                                                            {b.personName}{' '}
+                                                            <span style={{ fontWeight: 400, color: '#374151' }}>
+                                                              {formatCurrency(b.hours)} h · ${formatCurrency(b.cost)}
+                                                            </span>
+                                                          </div>
+                                                          {b.byWorkDate.length > 0 ? (
+                                                            <div style={{ marginBottom: '0.5rem' }}>
+                                                              <div
+                                                                style={{
+                                                                  fontSize: '0.75rem',
+                                                                  fontWeight: 600,
+                                                                  color: '#6b7280',
+                                                                  marginBottom: '0.25rem',
+                                                                }}
+                                                              >
+                                                                Allocated by work date
+                                                              </div>
+                                                              <table
+                                                                style={{
+                                                                  width: '100%',
+                                                                  maxWidth: 420,
+                                                                  borderCollapse: 'collapse',
+                                                                  fontSize: '0.75rem',
+                                                                }}
+                                                              >
+                                                                <thead>
+                                                                  <tr style={{ background: '#f3f4f6' }}>
+                                                                    <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Work date</th>
+                                                                    <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Hours</th>
+                                                                    <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Cost</th>
+                                                                  </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                  {b.byWorkDate.map((d) => (
+                                                                    <tr key={d.workDate} style={{ borderTop: '1px solid #e5e7eb' }}>
+                                                                      <td style={{ padding: '0.25rem 0.4rem' }}>
+                                                                        {formatWorkDateYmdWeekdayLongFriendly(d.workDate)}
+                                                                      </td>
+                                                                      <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
+                                                                        {formatCurrency(d.hours)}
+                                                                      </td>
+                                                                      <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
+                                                                        ${formatCurrency(d.cost)}
+                                                                      </td>
+                                                                    </tr>
+                                                                  ))}
+                                                                </tbody>
+                                                              </table>
+                                                            </div>
+                                                          ) : null}
+                                                          <div
+                                                            style={{
+                                                              fontSize: '0.75rem',
+                                                              fontWeight: 600,
+                                                              color: '#6b7280',
+                                                              marginBottom: '0.25rem',
+                                                            }}
+                                                          >
+                                                            Clock sessions (punch times)
+                                                          </div>
+                                                          {!jobSummaryDetailClockLoaded ? (
+                                                            <p style={{ margin: 0, color: '#6b7280', fontSize: '0.75rem' }}>Loading…</p>
+                                                          ) : sessionsForPerson.length > 0 ? (
+                                                            <table
+                                                              style={{
+                                                                width: '100%',
+                                                                maxWidth: 560,
+                                                                borderCollapse: 'collapse',
+                                                                fontSize: '0.75rem',
+                                                              }}
+                                                            >
+                                                              <thead>
+                                                                <tr style={{ background: '#f3f4f6' }}>
+                                                                  <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Work date</th>
+                                                                  <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>In</th>
+                                                                  <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Out</th>
+                                                                  <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Duration</th>
+                                                                </tr>
+                                                              </thead>
+                                                              <tbody>
+                                                                {sessionsForPerson.map((s) => {
+                                                                  const dur =
+                                                                    s.clocked_in_at && s.clocked_out_at
+                                                                      ? formatJobSummaryDurationMinutes(
+                                                                          new Date(s.clocked_out_at).getTime() -
+                                                                            new Date(s.clocked_in_at).getTime(),
+                                                                        )
+                                                                      : '—'
+                                                                  return (
+                                                                    <tr key={s.id} style={{ borderTop: '1px solid #e5e7eb' }}>
+                                                                      <td style={{ padding: '0.25rem 0.4rem' }}>
+                                                                        {s.work_date
+                                                                          ? formatWorkDateYmdWeekdayLongFriendly(s.work_date)
+                                                                          : '—'}
+                                                                      </td>
+                                                                      <td style={{ padding: '0.25rem 0.4rem' }}>
+                                                                        {formatJobSummarySessionDateTime(s.clocked_in_at)}
+                                                                      </td>
+                                                                      <td style={{ padding: '0.25rem 0.4rem' }}>
+                                                                        {formatJobSummarySessionDateTime(s.clocked_out_at)}
+                                                                      </td>
+                                                                      <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>{dur}</td>
+                                                                    </tr>
+                                                                  )
+                                                                })}
+                                                              </tbody>
+                                                            </table>
+                                                          ) : (
+                                                            <p style={{ margin: 0, color: '#6b7280', fontSize: '0.75rem' }}>
+                                                              No matching clock sessions.
+                                                            </p>
+                                                          )}
+                                                        </div>
+                                                      </td>
+                                                    </tr>
+                                                  </tbody>
+                                                ) : null}
+                                              </Fragment>
+                                            )
+                                          })
+                                          )}
+                                          <tbody>
                                             <tr style={{ borderTop: '1px solid #d1d5db', fontWeight: 600 }}>
                                               <td style={{ padding: '0.35rem 0.5rem' }}>Total</td>
-                                              <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>{formatCurrency(teamLaborRow.manHours)}</td>
+                                              <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
+                                                {formatCurrency(teamLaborRow.manHours)}
+                                              </td>
                                             </tr>
                                           </tbody>
                                         </table>
-                                        <details
-                                          style={{
-                                            border: '1px solid #e5e7eb',
-                                            borderRadius: 6,
-                                            padding: '0.35rem 0.5rem',
-                                            background: 'white',
-                                          }}
-                                          onToggle={(e) => {
-                                            const open = e.currentTarget.open
-                                            setTeamLaborDetailExpandedJobIds((prev) => {
-                                              const next = new Set(prev)
-                                              if (open) next.add(job.id)
-                                              else next.delete(job.id)
-                                              return next
-                                            })
-                                          }}
-                                        >
-                                          <summary
-                                            style={{
-                                              cursor: 'pointer',
-                                              fontWeight: 600,
-                                              fontSize: '0.8125rem',
-                                              color: '#374151',
-                                              userSelect: 'none',
-                                            }}
-                                            onClick={(e) => {
-                                              e.stopPropagation()
-                                            }}
-                                          >
-                                            Allocation by work date and clock punches
-                                          </summary>
-                                          <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                            <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280', lineHeight: 1.45 }}>
-                                              Allocated hours use crew job splits by work day. Clock punch durations below may differ when
-                                              multiple jobs share a day.
-                                            </p>
-                                            {(() => {
-                                              const clockSessions = jobSummaryClockSessionsByJobId.get(job.id)
-                                              const clockLoaded = jobSummaryClockSessionsByJobId.has(job.id)
-                                              return teamLaborRow.breakdown.map((b, i) => {
-                                                const sessionsForPerson =
-                                                  clockLoaded && clockSessions
-                                                    ? clockSessions.filter(
-                                                        (s) =>
-                                                          normalizePersonNameKey(s.users?.name ?? '') ===
-                                                          normalizePersonNameKey(b.personName),
-                                                      )
-                                                    : []
-                                                return (
-                                                  <div
-                                                    key={`${b.personName}-${i}`}
-                                                    style={{
-                                                      border: '1px solid #e5e7eb',
-                                                      borderRadius: 6,
-                                                      padding: '0.5rem 0.75rem',
-                                                      background: 'white',
-                                                    }}
-                                                  >
-                                                    <div style={{ fontWeight: 600, marginBottom: '0.35rem' }}>
-                                                      {b.personName}{' '}
-                                                      <span style={{ fontWeight: 400, color: '#374151' }}>
-                                                        {formatCurrency(b.hours)} h · ${formatCurrency(b.cost)}
-                                                      </span>
-                                                    </div>
-                                                    {b.byWorkDate.length > 0 ? (
-                                                      <div style={{ marginBottom: '0.5rem' }}>
-                                                        <div
-                                                          style={{
-                                                            fontSize: '0.75rem',
-                                                            fontWeight: 600,
-                                                            color: '#6b7280',
-                                                            marginBottom: '0.25rem',
-                                                          }}
-                                                        >
-                                                          Allocated by work date
-                                                        </div>
-                                                        <table
-                                                          style={{
-                                                            width: '100%',
-                                                            maxWidth: 420,
-                                                            borderCollapse: 'collapse',
-                                                            fontSize: '0.75rem',
-                                                          }}
-                                                        >
-                                                          <thead>
-                                                            <tr style={{ background: '#f3f4f6' }}>
-                                                              <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Work date</th>
-                                                              <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Hours</th>
-                                                              <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Cost</th>
-                                                            </tr>
-                                                          </thead>
-                                                          <tbody>
-                                                            {b.byWorkDate.map((d) => (
-                                                              <tr key={d.workDate} style={{ borderTop: '1px solid #e5e7eb' }}>
-                                                                <td style={{ padding: '0.25rem 0.4rem' }}>
-                                                                  {formatWorkDateYmdWeekdayLongFriendly(d.workDate)}
-                                                                </td>
-                                                                <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
-                                                                  {formatCurrency(d.hours)}
-                                                                </td>
-                                                                <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
-                                                                  ${formatCurrency(d.cost)}
-                                                                </td>
-                                                              </tr>
-                                                            ))}
-                                                          </tbody>
-                                                        </table>
-                                                      </div>
-                                                    ) : null}
-                                                    <div
-                                                      style={{
-                                                        fontSize: '0.75rem',
-                                                        fontWeight: 600,
-                                                        color: '#6b7280',
-                                                        marginBottom: '0.25rem',
-                                                      }}
-                                                    >
-                                                      Clock sessions (punch times)
-                                                    </div>
-                                                    {!clockLoaded ? (
-                                                      <p style={{ margin: 0, color: '#6b7280', fontSize: '0.75rem' }}>Loading…</p>
-                                                    ) : sessionsForPerson.length > 0 ? (
-                                                      <table
-                                                        style={{
-                                                          width: '100%',
-                                                          maxWidth: 560,
-                                                          borderCollapse: 'collapse',
-                                                          fontSize: '0.75rem',
-                                                        }}
-                                                      >
-                                                        <thead>
-                                                          <tr style={{ background: '#f3f4f6' }}>
-                                                            <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Work date</th>
-                                                            <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>In</th>
-                                                            <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Out</th>
-                                                            <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Duration</th>
-                                                          </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                          {sessionsForPerson.map((s) => {
-                                                            const dur =
-                                                              s.clocked_in_at && s.clocked_out_at
-                                                                ? formatJobSummaryDurationMinutes(
-                                                                    new Date(s.clocked_out_at).getTime() -
-                                                                      new Date(s.clocked_in_at).getTime(),
-                                                                  )
-                                                                : '—'
-                                                            return (
-                                                              <tr key={s.id} style={{ borderTop: '1px solid #e5e7eb' }}>
-                                                                <td style={{ padding: '0.25rem 0.4rem' }}>
-                                                                  {s.work_date
-                                                                    ? formatWorkDateYmdWeekdayLongFriendly(s.work_date)
-                                                                    : '—'}
-                                                                </td>
-                                                                <td style={{ padding: '0.25rem 0.4rem' }}>
-                                                                  {formatJobSummarySessionDateTime(s.clocked_in_at)}
-                                                                </td>
-                                                                <td style={{ padding: '0.25rem 0.4rem' }}>
-                                                                  {formatJobSummarySessionDateTime(s.clocked_out_at)}
-                                                                </td>
-                                                                <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>{dur}</td>
-                                                              </tr>
-                                                            )
-                                                          })}
-                                                        </tbody>
-                                                      </table>
-                                                    ) : (
-                                                      <p style={{ margin: 0, color: '#6b7280', fontSize: '0.75rem' }}>
-                                                        No matching clock sessions.
-                                                      </p>
-                                                    )}
-                                                  </div>
-                                                )
-                                              })
-                                            })()}
-                                            {(() => {
-                                              const clockSessions = jobSummaryClockSessionsByJobId.get(job.id) ?? []
-                                              const clockLoaded = jobSummaryClockSessionsByJobId.has(job.id)
-                                              if (!clockLoaded || teamLaborRow.breakdown.length === 0) return null
-                                              const nameKeys = new Set(teamLaborRow.breakdown.map((x) => normalizePersonNameKey(x.personName)))
-                                              const orphan = clockSessions.filter((s) => {
-                                                const kn = normalizePersonNameKey(s.users?.name ?? '')
-                                                if (!kn) return true
-                                                return !nameKeys.has(kn)
-                                              })
-                                              if (orphan.length === 0) return null
-                                              return (
-                                                <div
-                                                  style={{
-                                                    border: '1px solid #fde68a',
-                                                    borderRadius: 6,
-                                                    padding: '0.5rem 0.75rem',
-                                                    background: '#fffbeb',
-                                                  }}
-                                                >
-                                                  <div style={{ fontWeight: 600, marginBottom: '0.35rem', fontSize: '0.8125rem' }}>
-                                                    Sessions not matched to a name above
-                                                  </div>
-                                                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
-                                                    <thead>
-                                                      <tr style={{ background: '#fef3c7' }}>
-                                                        <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>User</th>
-                                                        <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Work date</th>
-                                                        <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>In</th>
-                                                        <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Out</th>
-                                                      </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                      {orphan.map((s) => (
-                                                        <tr key={s.id} style={{ borderTop: '1px solid #fde68a' }}>
-                                                          <td style={{ padding: '0.25rem 0.4rem' }}>{s.users?.name ?? '—'}</td>
-                                                          <td style={{ padding: '0.25rem 0.4rem' }}>
-                                                            {s.work_date
-                                                              ? formatWorkDateYmdWeekdayLongFriendly(s.work_date)
-                                                              : '—'}
-                                                          </td>
-                                                          <td style={{ padding: '0.25rem 0.4rem' }}>
-                                                            {formatJobSummarySessionDateTime(s.clocked_in_at)}
-                                                          </td>
-                                                          <td style={{ padding: '0.25rem 0.4rem' }}>
-                                                            {formatJobSummarySessionDateTime(s.clocked_out_at)}
-                                                          </td>
-                                                        </tr>
-                                                      ))}
-                                                    </tbody>
-                                                  </table>
-                                                </div>
-                                              )
-                                            })()}
-                                          </div>
-                                        </details>
+                                        {(() => {
+                                          const clockSessions = jobSummaryDetailClockSessions ?? []
+                                          const clockLoaded = jobSummaryDetailClockLoaded
+                                          if (!clockLoaded || teamLaborRow.breakdown.length === 0) return null
+                                          const nameKeys = new Set(
+                                            teamLaborRow.breakdown.map((x) => normalizePersonNameKey(x.personName)),
+                                          )
+                                          let orphan = clockSessions.filter((s) => {
+                                            const kn = normalizePersonNameKey(s.users?.name ?? '')
+                                            if (!kn) return true
+                                            return !nameKeys.has(kn)
+                                          })
+                                          if (breakdownPersonQ.trim() !== '') {
+                                            orphan = orphan.filter((s) =>
+                                              personMatchesJobSummaryBreakdownFilter(s.users?.name, breakdownPersonQ),
+                                            )
+                                          }
+                                          if (orphan.length === 0) return null
+                                          return (
+                                            <div
+                                              style={{
+                                                border: '1px solid #fde68a',
+                                                borderRadius: 6,
+                                                padding: '0.5rem 0.75rem',
+                                                background: '#fffbeb',
+                                              }}
+                                            >
+                                              <div style={{ fontWeight: 600, marginBottom: '0.35rem', fontSize: '0.8125rem' }}>
+                                                Sessions not matched to a name above
+                                              </div>
+                                              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
+                                                <thead>
+                                                  <tr style={{ background: '#fef3c7' }}>
+                                                    <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>User</th>
+                                                    <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Work date</th>
+                                                    <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>In</th>
+                                                    <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Out</th>
+                                                  </tr>
+                                                </thead>
+                                                <tbody>
+                                                  {orphan.map((s) => (
+                                                    <tr key={s.id} style={{ borderTop: '1px solid #fde68a' }}>
+                                                      <td style={{ padding: '0.25rem 0.4rem' }}>{s.users?.name ?? '—'}</td>
+                                                      <td style={{ padding: '0.25rem 0.4rem' }}>
+                                                        {s.work_date
+                                                          ? formatWorkDateYmdWeekdayLongFriendly(s.work_date)
+                                                          : '—'}
+                                                      </td>
+                                                      <td style={{ padding: '0.25rem 0.4rem' }}>
+                                                        {formatJobSummarySessionDateTime(s.clocked_in_at)}
+                                                      </td>
+                                                      <td style={{ padding: '0.25rem 0.4rem' }}>
+                                                        {formatJobSummarySessionDateTime(s.clocked_out_at)}
+                                                      </td>
+                                                    </tr>
+                                                  ))}
+                                                </tbody>
+                                              </table>
+                                            </div>
+                                          )
+                                        })()}
                                       </div>
                                     ) : teamLaborCost === 0 ? (
                                       <p style={{ margin: 0, color: '#6b7280' }}>No team labor for this job.</p>
@@ -9468,18 +10118,24 @@ ${totalsHtml}
                                     <div style={{ fontWeight: 600, marginBottom: '0.35rem', color: '#111827' }}>Sub Labor</div>
                                     <div style={jobSummaryCostSectionBodyStyle}>
                                     {subLaborJobs.length > 0 ? (
-                                      <ul style={{ margin: 0, paddingLeft: '1.1rem', color: '#374151' }}>
-                                        {subLaborJobs.map((lj) => {
-                                          const c = laborJobSubCost(lj, mileageCost, timePerMile)
-                                          return (
-                                            <li key={lj.id} style={{ marginBottom: '0.25rem' }}>
-                                              {lj.assigned_to_name ?? 'Contractor'}
-                                              {lj.job_date ? ` · ${lj.job_date}` : ''}
-                                              : ${formatCurrency(c)}
-                                            </li>
-                                          )
-                                        })}
-                                      </ul>
+                                      subLaborJobsFiltered.length === 0 && breakdownPersonQ.trim() !== '' ? (
+                                        <p style={{ margin: 0, color: '#6b7280', fontSize: '0.8125rem' }}>
+                                          No people match your search.
+                                        </p>
+                                      ) : (
+                                        <ul style={{ margin: 0, paddingLeft: '1.1rem', color: '#374151' }}>
+                                          {subLaborJobsFiltered.map((lj) => {
+                                            const c = laborJobSubCost(lj, mileageCost, timePerMile)
+                                            return (
+                                              <li key={lj.id} style={{ marginBottom: '0.25rem' }}>
+                                                {lj.assigned_to_name ?? 'Contractor'}
+                                                {lj.job_date ? ` · ${lj.job_date}` : ''}
+                                                : ${formatCurrency(c)}
+                                              </li>
+                                            )
+                                          })}
+                                        </ul>
+                                      )
                                     ) : (
                                       <p style={{ margin: 0, color: '#6b7280' }}>No sub labor for this HCP.</p>
                                     )}
@@ -9714,111 +10370,7 @@ ${totalsHtml}
                                         style={jobSummaryPartsCostDetailsBoxStyle}
                                         onToggle={(e) => {
                                           if (!e.currentTarget.open) return
-                                          const jobId = job.id
-                                          if (jobSummaryMercuryAllocationsLoadedRef.current.has(jobId)) return
-                                          void (async () => {
-                                            try {
-                                              const data = await withSupabaseRetry(
-                                                async () =>
-                                                  await supabase
-                                                    .from('mercury_transaction_job_allocations')
-                                                    .select(
-                                                      'id, amount, note, mercury_transaction_id, mercury_transactions(posted_at, counterparty_name, amount, note, external_memo, raw)',
-                                                    )
-                                                    .eq('job_id', jobId)
-                                                    .order('created_at', { ascending: true }),
-                                                'job summary mercury allocations',
-                                              )
-                                              const rawRows =
-                                                (data ?? []) as Array<
-                                                  Omit<JobSummaryMercuryAllocationRow, 'attributionDisplayName'> & {
-                                                    mercury_transaction_id: string
-                                                  }
-                                                >
-                                              const attrByTxId = new Map<
-                                                string,
-                                                { person_id: string | null; user_id: string | null }
-                                              >()
-                                              const personNameById = new Map<string, string>()
-                                              const userNameById = new Map<string, string>()
-                                              try {
-                                                const txIds = [...new Set(rawRows.map((r) => r.mercury_transaction_id))]
-                                                if (txIds.length > 0) {
-                                                  const attrRows = await fetchAttributionsByMercuryTxIds(
-                                                    txIds,
-                                                    'job summary mercury',
-                                                  )
-                                                  for (const a of attrRows) {
-                                                    attrByTxId.set(a.mercury_transaction_id, {
-                                                      person_id: a.person_id,
-                                                      user_id: a.user_id,
-                                                    })
-                                                  }
-                                                  const personIds = new Set<string>()
-                                                  const userIds = new Set<string>()
-                                                  for (const a of attrRows) {
-                                                    if (a.person_id) personIds.add(a.person_id)
-                                                    if (a.user_id) userIds.add(a.user_id)
-                                                  }
-                                                  if (personIds.size > 0) {
-                                                    const peopleData = await withSupabaseRetry(
-                                                      async () =>
-                                                        supabase.from('people').select('id, name').in('id', [...personIds]),
-                                                      'job summary mercury attribution people',
-                                                    )
-                                                    for (const p of peopleData ?? []) {
-                                                      const row = p as { id: string; name: string }
-                                                      personNameById.set(row.id, row.name)
-                                                    }
-                                                  }
-                                                  if (userIds.size > 0) {
-                                                    const usersData = await withSupabaseRetry(
-                                                      async () =>
-                                                        supabase.from('users').select('id, name').in('id', [...userIds]),
-                                                      'job summary mercury attribution users',
-                                                    )
-                                                    for (const u of usersData ?? []) {
-                                                      const row = u as { id: string; name: string }
-                                                      userNameById.set(row.id, row.name)
-                                                    }
-                                                  }
-                                                }
-                                              } catch {
-                                                /* attribution / names unavailable; show allocations with — User */
-                                              }
-                                              const rows: JobSummaryMercuryAllocationRow[] = rawRows.map((r) => {
-                                                const attr = attrByTxId.get(r.mercury_transaction_id)
-                                                let attributionDisplayName: string | null = null
-                                                if (attr) {
-                                                  if (attr.person_id) {
-                                                    attributionDisplayName = personNameById.get(attr.person_id) ?? null
-                                                  } else if (attr.user_id) {
-                                                    attributionDisplayName = userNameById.get(attr.user_id) ?? null
-                                                  }
-                                                }
-                                                return {
-                                                  id: r.id,
-                                                  amount: r.amount,
-                                                  note: r.note,
-                                                  mercury_transactions: r.mercury_transactions,
-                                                  attributionDisplayName,
-                                                }
-                                              })
-                                              setJobSummaryMercuryAllocationsByJobId((prev) => {
-                                                const next = new Map(prev)
-                                                next.set(jobId, rows)
-                                                return next
-                                              })
-                                            } catch {
-                                              setJobSummaryMercuryAllocationsByJobId((prev) => {
-                                                const next = new Map(prev)
-                                                next.set(jobId, [])
-                                                return next
-                                              })
-                                            } finally {
-                                              jobSummaryMercuryAllocationsLoadedRef.current.add(jobId)
-                                            }
-                                          })()
+                                          void loadJobSummaryMercuryAllocationsForJob(job.id)
                                         }}
                                       >
                                         <summary
@@ -9899,6 +10451,176 @@ ${totalsHtml}
                                           })()}
                                         </div>
                                       </details>
+                                      )}
+                                      {(!jobSummaryPartsCostIsZero(partsFromTally) || !jobSummaryPartsCostIsZero(cardCharges)) && (
+                                        <details
+                                          style={jobSummaryPartsCostDetailsBoxStyle}
+                                          onToggle={(e) => {
+                                            if (!e.currentTarget.open) return
+                                            if (!jobSummaryPartsCostIsZero(cardCharges)) {
+                                              void loadJobSummaryMercuryAllocationsForJob(job.id)
+                                            }
+                                          }}
+                                        >
+                                          <summary
+                                            style={{
+                                              cursor: 'pointer',
+                                              fontWeight: 600,
+                                              fontSize: '0.8125rem',
+                                              color: '#374151',
+                                              userSelect: 'none',
+                                            }}
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            Cost by person (tally & card)
+                                          </summary>
+                                          <div style={{ marginTop: '0.5rem' }}>
+                                            <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: '#6b7280', lineHeight: 1.45 }}>
+                                              Other job charges and supply house invoices are job-level only (not split by person), same as
+                                              the Parts tab.
+                                            </p>
+                                            {(() => {
+                                              const tallyRollup: TallyLineForPersonRollup[] = tallyPartsForJob.map((r) => ({
+                                                part_id: r.part_id,
+                                                quantity: r.quantity,
+                                                price_at_time: r.price_at_time,
+                                                fixture_cost: r.fixture_cost,
+                                                created_by_user_id: r.created_by_user_id,
+                                                created_by_name: r.created_by_name,
+                                              }))
+                                              const needMercury = !jobSummaryPartsCostIsZero(cardCharges)
+                                              const mLoaded = jobSummaryMercuryAllocationsByJobId.has(job.id)
+                                              if (needMercury && !mLoaded) {
+                                                return (
+                                                  <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>Loading…</p>
+                                                )
+                                              }
+                                              const mRows = needMercury
+                                                ? (jobSummaryMercuryAllocationsByJobId.get(job.id) ?? [])
+                                                : []
+                                              const { rows: ppRows, footer: ppFooter, sumsOk: ppSumsOk } =
+                                                buildPartsPerPersonCostRows({
+                                                  parts: tallyRollup,
+                                                  billedMaterialsSum,
+                                                  invoiceJobTotal: invoicesFromSupplyHouses,
+                                                  mercuryRows: mRows,
+                                                  parentCardTotal: cardCharges,
+                                                })
+                                              const ppRowsFiltered = ppRows.filter((row) =>
+                                                personMatchesJobSummaryBreakdownFilter(row.displayName, breakdownPersonQ),
+                                              )
+                                              if (
+                                                ppRows.length === 0 &&
+                                                jobSummaryPartsCostIsZero(ppFooter.partsFromTally) &&
+                                                jobSummaryPartsCostIsZero(ppFooter.cardCharges)
+                                              ) {
+                                                return (
+                                                  <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>
+                                                    No per-person tally or card amounts for this job.
+                                                  </p>
+                                                )
+                                              }
+                                              return (
+                                                <div style={{ overflowX: 'auto' }}>
+                                                  {breakdownPersonQ.trim() !== '' ? (
+                                                    <p
+                                                      style={{
+                                                        margin: '0 0 0.5rem',
+                                                        fontSize: '0.72rem',
+                                                        color: '#6b7280',
+                                                        lineHeight: 1.45,
+                                                      }}
+                                                    >
+                                                      Totals include everyone; table rows are filtered.
+                                                    </p>
+                                                  ) : null}
+                                                  <table
+                                                    style={{
+                                                      width: '100%',
+                                                      maxWidth: 560,
+                                                      borderCollapse: 'collapse',
+                                                      fontSize: '0.75rem',
+                                                    }}
+                                                  >
+                                                    <thead>
+                                                      <tr style={{ background: '#f3f4f6' }}>
+                                                        <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Person</th>
+                                                        <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
+                                                          Parts from Tally
+                                                        </th>
+                                                        <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Card charges</th>
+                                                        <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Row total</th>
+                                                      </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                      {ppRowsFiltered.length === 0 && breakdownPersonQ.trim() !== '' ? (
+                                                        <tr>
+                                                          <td
+                                                            colSpan={4}
+                                                            style={{
+                                                              padding: '0.25rem 0.4rem',
+                                                              color: '#6b7280',
+                                                              borderTop: '1px solid #e5e7eb',
+                                                            }}
+                                                          >
+                                                            No people match your search.
+                                                          </td>
+                                                        </tr>
+                                                      ) : (
+                                                        ppRowsFiltered.map((row) => {
+                                                          const rt = row.partsFromTally + row.cardCharges
+                                                          return (
+                                                            <tr key={row.key} style={{ borderTop: '1px solid #e5e7eb' }}>
+                                                              <td style={{ padding: '0.25rem 0.4rem' }}>{row.displayName}</td>
+                                                              <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
+                                                                {jobSummaryPartsCostIsZero(row.partsFromTally)
+                                                                  ? '—'
+                                                                  : `$${formatCurrency(row.partsFromTally)}`}
+                                                              </td>
+                                                              <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
+                                                                {jobSummaryPartsCostIsZero(row.cardCharges)
+                                                                  ? '—'
+                                                                  : `$${formatCurrency(row.cardCharges)}`}
+                                                              </td>
+                                                              <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
+                                                                {jobSummaryPartsCostIsZero(rt) ? '—' : `$${formatCurrency(rt)}`}
+                                                              </td>
+                                                            </tr>
+                                                          )
+                                                        })
+                                                      )}
+                                                      <tr style={{ borderTop: '1px solid #d1d5db', fontWeight: 600 }}>
+                                                        <td style={{ padding: '0.25rem 0.4rem' }}>{ppFooter.displayName}</td>
+                                                        <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
+                                                          ${formatCurrency(ppFooter.partsFromTally)}
+                                                        </td>
+                                                        <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
+                                                          ${formatCurrency(ppFooter.cardCharges)}
+                                                        </td>
+                                                        <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
+                                                          $
+                                                          {formatCurrency(ppFooter.partsFromTally + ppFooter.cardCharges)}
+                                                        </td>
+                                                      </tr>
+                                                    </tbody>
+                                                  </table>
+                                                  {(billedMaterialsSum > 0 || invoicesFromSupplyHouses > 0) && (
+                                                    <p style={{ margin: '0.5rem 0 0', fontSize: '0.72rem', color: '#6b7280' }}>
+                                                      Job-level (not in table above): other job charges $
+                                                      {formatCurrency(billedMaterialsSum)} · supply invoices $
+                                                      {formatCurrency(invoicesFromSupplyHouses)}
+                                                    </p>
+                                                  )}
+                                                  {!ppSumsOk && (
+                                                    <p style={{ margin: '0.35rem 0 0', fontSize: '0.72rem', color: '#b45309' }}>
+                                                      Row totals may not match job-level parts totals; check attributions and line items.
+                                                    </p>
+                                                  )}
+                                                </div>
+                                              )
+                                            })()}
+                                          </div>
+                                        </details>
                                       )}
                                     </div>
                                     </div>
@@ -11880,6 +12602,51 @@ ${totalsHtml}
             name: tm.users?.name ?? null,
           }))}
           assigneeCandidates={users.map((u) => ({ user_id: u.id, name: u.name }))}
+        />
+      ) : null}
+      {partsUnattribListJobId ? (
+        <PartsUnattributedMercuryListModal
+          open
+          onRequestClose={dismissPartsUnattributedList}
+          onListCloseForAssign={closeListOnlyForAssign}
+          jobId={partsUnattribListJobId}
+          rows={partsTabMercuryAllocationsByJobId.get(partsUnattribListJobId) ?? null}
+          onAssignToTransaction={handleAssignToTransactionFromParts}
+          nicknameByDebitCard={nicknameByDebitCard}
+          nicknameByAccount={nicknameByAccount}
+          usersForMatch={partsUnattribBankingUsersForMatch}
+          onQuickAddUser={canAccessBankingForParts ? handleQuickAddUserFromParts : undefined}
+        />
+      ) : null}
+      {allJobsUnattributedOpen ? (
+        <PartsUnattributedAllJobsModal
+          open
+          onRequestClose={() => setAllJobsUnattributedOpen(false)}
+          onListCloseForAssign={closeAllJobsListForAssign}
+          loading={allJobsUnattributedLoading}
+          lines={allJobsUnattributedLines}
+          onAssignToTransaction={canAccessBankingForParts ? handleAssignToTransactionFromParts : undefined}
+          nicknameByDebitCard={nicknameByDebitCard}
+          nicknameByAccount={nicknameByAccount}
+          usersForMatch={partsUnattribBankingUsersForMatch}
+          onQuickAddUser={canAccessBankingForParts ? handleQuickAddUserFromParts : undefined}
+        />
+      ) : null}
+      {partsAllocModalOpen && partsAllocModalData ? (
+        <MercuryTransactionAllocationsModal
+          open
+          onClose={closePartsAllocModal}
+          transaction={partsAllocModalData.fullTx}
+          initialAllocations={partsAllocModalData.initialAllocations}
+          initialPersonId={partsAllocModalData.initialPersonId}
+          initialUserId={partsAllocModalData.initialUserId}
+          legacyPersonDisplayName={partsAllocModalData.legacyPersonDisplayName}
+          jobLabelById={partsAllocModalData.jobLabelById}
+          usersOptions={bankingAttributionUsersOptions}
+          nicknameByDebitCard={partsAllocModalData.nicknameByDebitCard}
+          nicknameByAccount={partsAllocModalData.nicknameByAccount}
+          recentPersonPicksStorageKey={authUser?.id ?? null}
+          onSaved={onPartsAllocSaved}
         />
       ) : null}
       {returnEditBannerJobId && activeTab === 'stages' ? (

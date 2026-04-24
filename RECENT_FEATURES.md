@@ -12,32 +12,47 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.397 → v2.4"
+version_range: "v2.402 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.402)"
+    line: ~1313
+    description: "Jobs Parts: toolbar Unattributed (all jobs modal) + per-job list/assign; Card/Account columns; quick Add user from card nickname; mercuryAllocModalData + refresh"
+  - name: "Latest Version (v2.401)"
+    line: ~1335
+    description: "Banking Sorting: floating top-right (Config, User Card Link, Nicknames) + toolbar; auto_assign_user_id on card links; Jobs Parts: Unattributed right; Cost by person omits job-level row"
+  - name: "Latest Version (v2.400)"
+    line: ~1330
+    description: "Dashboard Currently In: first column min-width for full name + (s); colgroup + stripCurrentlyInFirstCol"
+  - name: "Latest Version (v2.399)"
+    line: ~1341
+    description: "Dashboard User day schedule modal: header/footer layout, chevrons on 8-12-4 row, Dispatch link label"
+  - name: "Latest Version (v2.398)"
+    line: ~1356
+    description: "AIA G702-G703: showAiaG702G703 (job/invoice ready_to_bill|billed), Stages + View bill; modal Change Orders <details> group + centered summary"
   - name: "Latest Version (v2.397)"
-    line: ~1293
+    line: ~1369
     description: "Jobs Stages Billed Awaiting Payment: Lien Tooling prefill modal (wrenches, field labels, job address split for city/state/ZIP), VITE_LIEN_TOOLING_ORIGIN"
   - name: "Latest Version (v2.396)"
-    line: ~1305
+    line: ~1381
     description: "Jobs Job Summary: HCP # floor filter (default 500, localStorage), unnumbered HCP first in table, centered footer + copy order"
   - name: "Latest Version (v2.395)"
-    line: ~1298
+    line: ~1392
     description: "Jobs Job Summary: all accessible jobs, all pipeline statuses, ignores ?customer=; dedicated fetch + Mercury scope"
   - name: "Latest Version (v2.394)"
-    line: ~1296
+    line: ~1402
     description: "Migrate and Delete: allow source job Ready to bill (RPC + JobFormModal); same other billing guards"
   - name: "Latest Version (v2.393)"
-    line: ~1294
+    line: ~1413
     description: "Migrate and Delete (jobs_ledger): RPC migrate_job_ledger_costs_and_delete + billing guard + JobFormModal"
   - name: "Latest Version (v2.392)"
-    line: ~1290
+    line: ~1424
     description: "Jobs Stages Paid in Full collapsed header: (Expand to load) instead of (—) before lazy merge"
   - name: "Latest Version (v2.391)"
-    line: ~1290
+    line: ~1434
     description: "Jobs Stages pipeline jump bar: Working → Ready to Bill → Billed Awaiting Payment counts + scroll"
   - name: "Latest Version (v2.390)"
-    line: ~1300
+    line: ~1444
     description: "Header search job/bid pick opens modals in place; no navigate to Jobs or Bids"
   - name: "Latest Version (v2.389)"
     line: ~1310
@@ -1018,6 +1033,10 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.401 — **Banking** **Mercury** **Sorting**: fixed **top-right** cluster (**Configuration**, **User Card Link**, **Nicknames**); **sorting** toolbar — **search** flexes between **Show unsplit** / **Show unlinked** and **Refresh from Mercury** / **Reload table**; no visible **Search transactions** label (**`aria-label`** on input); **`mercury_debit_card_user_links.auto_assign_user_id`** (same roster as Tally) + trigger/backfill — **`BankingUserCardLinkModal`**; **Jobs** → **Parts**: **Unattributed** right of search row; **Cost by person** omits redundant **Job (no per-person split)** line (**`partsPerPersonCostSummary`**, **`buildPartsPerPersonCostRows`**)](#latest-updates-v2401)
+**New:** [v2.400 — **Dashboard** **Currently In** (clock strip): first column **min-width** from full **name + (s)**; **`<colgroup>`** + **`stripCurrentlyInFirstCol`**; **`stripCurrentlyInNameWithSuffix`** + nowrap (**[`DashboardTeamActiveClockStrip`](src/components/DashboardTeamActiveClockStrip.tsx)**)](#latest-updates-v2400)
+**New:** [v2.399 — **Dashboard** **User day schedule** modal (**clock strip** **name**); **`UserDayScheduleModal`**, responsive **date** header, day **chevrons** on **8 / 12 / 4** row, footer **Dispatch** + **+** + **Close**](#latest-updates-v2399)
+**New:** [v2.398 — **AIA G702-G703**: **`showAiaG702G703`** ([`aiaG702G703Eligibility.ts`](src/lib/aiaG702G703Eligibility.ts)) — **Stages** job + standalone invoice rows + **View bill** **`BilledBillViewModal`**; **[`AiaG702G703Modal`](src/components/jobs/AiaG702G703Modal.tsx)** **Change Orders** **`<details>`** (collapsed; centered summary + chevron) — **`detailsGroupId`** on **[`aiaG702G703Template.ts`](src/lib/aiaG702G703Template.ts)**](#latest-updates-v2398)
 **New:** [v2.397 — **Jobs** **Stages** **Billed Awaiting Payment**: **Lien Tooling** safety orange **wrenches** → **[`LienToolingPrefillModal`](src/components/jobs/LienToolingPrefillModal.tsx)** (**Demand letter** / **Mechanic's lien** / **Release**; guided labels; **`job_address`** → city/state/ZIP via **[`txLocalityAddressSplit.ts`](src/lib/txLocalityAddressSplit.ts)**); **`#d=`** link; optional **`VITE_LIEN_TOOLING_ORIGIN`**](#latest-updates-v2397)
 **New:** [v2.396 — **Jobs** **Job Summary**: **HCP #** min filter ([`applyMinHcpFilter`](src/lib/jobSummaryHcpFilter.ts), default **500**, **`localStorage`** **`jobs_jobSummary_minHcpExclusive`**); unnumbered HCP rows **first**; **Mercury** uses filtered IDs; centered footer—**Showing N of M** then help (**`Jobs.tsx`**)](#latest-updates-v2396)
 **New:** [v2.392 — **Jobs** **Stages** **Paid in Full**: collapsed header **(Expand to load)** when paid list not merged yet (**`Jobs.tsx`**)](#latest-updates-v2392)
@@ -1292,6 +1311,70 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.402)
+
+**Date**: 2026-04-24
+
+### **Jobs** — **Parts** tab — **Unattributed** Mercury (single job, all jobs, Banking parity)
+
+- **Toolbar**: **Unattributed** button (same row as search + **Show my jobs only**) toggles an **all jobs** modal — unattributed Mercury card lines across **scoped jobs** (current `jobs` list, `mercuryCardChargesByJobId` &gt; 0, optional **Show my jobs only** via `myJobIds`). Loads with **bounded concurrency** ([`fetchUnattributedMercuryLinesForManyJobs`](src/lib/fetchUnattributedMercuryForManyJobs.ts)); reuses [`partsTabMercuryAllocationsByJobId`](src/pages/Jobs.tsx) cache when present. Table: **Job** (HCP · name), **Posted**, **Card**, **Account**, **Counterparty**, **Allocated to this job**, **Assign** / **Add {user}** (composite row key `jobId::mercury_transaction_id`). Component: [`PartsUnattributedAllJobsModal.tsx`](src/components/jobs/PartsUnattributedAllJobsModal.tsx).
+- **Expanded job** — **Cost by person** row **Unattributed** (when card &gt; 0 and Banking-style access): opens the per-job list ([`PartsUnattributedMercuryListModal.tsx`](src/components/jobs/PartsUnattributedMercuryListModal.tsx)). **Assign** opens [`MercuryTransactionAllocationsModal`](src/components/MercuryTransactionAllocationsModal.tsx) via [`loadMercuryAllocModalDataForTransaction`](src/lib/mercuryAllocModalData.ts); **Add {name}** uses first word of **debit card nickname** vs `list_users_for_banking_attribution` ([`mercuryCardNicknameUserMatch.ts`](src/lib/mercuryCardNicknameUserMatch.ts), **one** unambiguous match only) and [`mercuryQuickAssignUserAttribution`](src/lib/mercuryQuickAssignUserAttribution.ts) (`replace_mercury_transaction_splits`).
+- **Data**: [`fetchMercuryJobAllocationsWithAttributionForJob`](src/lib/fetchMercuryJobAllocationsWithAttributionForJob.ts) embeds `mercury_account_id` on `mercury_transactions` for Account column; card id from [`mercuryDebitCardIdFromRaw`](src/lib/mercuryRawDebitCard.ts). **Dedupe** helper: [`dedupeUnattributedMercuryRows.ts`](src/lib/dedupeUnattributedMercuryRows.ts).
+- **Access**: edit actions for `dev` / `master_technician` / `assistant` ([`canAccessBankingForParts`](src/pages/Jobs.tsx)); read-only table when not.
+- **Refresh**: [`refreshPartsTabMercuryForJob`](src/pages/Jobs.tsx) + `updateMercuryCardTotalForOneJob` after save or quick-add; all-jobs modal refetches when open.
+
+### **Banking** — **Mercury** — **Sorting** layout and **User Card Link** (auto-assign by **user**)
+
+- **Fixed top-right cluster** (only on **Mercury** → **Sorting**): **Configuration**, **User Card Link**, and **Ledger** nicknames (**Nicknames**) sit in a floating top-right block (`BANKING_SORTING_FLOAT_TOP` / `BANKING_SORTING_FLOAT_Z` in [`Banking.tsx`](src/pages/Banking.tsx)) so they stay accessible while scrolling the transaction list.
+- **Toolbar row**: **Show unsplit only** and **Show unlinked only** stay on the left; the **search** field grows to fill space between the left group and **Refresh from Mercury** and **Reload table** on the right. There is no visible **Search transactions** label — the input uses **`aria-label="Search transactions"`** (same a11y pattern as Tally **Transactions**).
+- **User Card Link** modal: links a Mercury card to a Tally user and optional **Auto-assign to user** — stored as **`mercury_debit_card_user_links.auto_assign_user_id`** (FK to **`public.users`**, same roster as Tally). New and backfilled card transactions fill **`mercury_transaction_attributions.user_id`** when still unattributed. Migration: [`20260424161028_mercury_debit_card_auto_assign_user.sql`](supabase/migrations/20260424161028_mercury_debit_card_auto_assign_user.sql) (replaces removed **`auto_assign_person_id`**). UI: [`BankingUserCardLinkModal.tsx`](src/components/BankingUserCardLinkModal.tsx).
+
+### **Jobs** — **Parts** tab — toolbar **Unattributed** placement and **Cost by person** expanded table (see **v2.402** for full Unattributed flows)
+
+- **Toolbar**: the **Unattributed** control (see **v2.402** for all-jobs + per-job modals) sits after **Show my jobs only** on the **Search** + checkbox row ([`Jobs.tsx`](src/pages/Jobs.tsx)).
+- **Expanded** job row **Cost by person** table: the internal **Job (no per-person split)** line is **not** shown as its own table row (it duplicated the **Total** footer). **Total** and **`sumsOk`** still include job-level *other* / *invoice* amounts from [`buildPartsPerPersonCostRows`](src/lib/partsPerPersonCostSummary.ts) (filter **`g:job`** from displayed rows; footer uses full aggregation).
+
+---
+
+## Latest Updates (v2.400)
+
+**Date**: 2026-04-24
+
+### **Dashboard** — **Currently In** table — name column width (name + **(s)**)
+
+- The **Currently In** inner table (open sessions) sizes its **first column** so table layout includes the full **name + optional salary suffix `(s)`** (not the longest *name* alone), reducing awkward wrapping on narrow viewports. Styles: **`stripCurrentlyInFirstCol`** (`minWidth: max-content` on first **`<th>`** / **`<td>`**), **`<colgroup>`** with a first **`<col />`** using the same token, and **`stripCurrentlyInNameWithSuffix`** (`inline-flex`, `nowrap` on the name **button** / **span** + suffix). Wrapper **`overflowX: auto`** scrolls the table when it exceeds the strip width.
+- **Files**: [`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx) (only the **Currently In** `table`, not the merged **Clocked in today** + Jobs table).
+
+---
+
+## Latest Updates (v2.399)
+
+**Date**: 2026-04-24
+
+### **Dashboard** — **User day schedule** modal (clock strip name)
+
+- **Entry**: From **[`DashboardTeamActiveClockStrip`](src/components/DashboardTeamActiveClockStrip.tsx)**, click a person **name** to open the global dialog (**[`useUserDayScheduleModal`](src/contexts/UserDayScheduleModalContext.tsx)**, provider in [`App.tsx`](src/App.tsx); component in [`Layout.tsx`](src/components/Layout.tsx)).
+- **Data**: **[`usePersonDayScheduleData`](src/hooks/usePersonDayScheduleData.ts)** for **`job_schedule_blocks`**, clock sessions, and job labels; **[`QuickfillScheduleUserRow`](src/components/schedule/QuickfillScheduleUserRow.tsx)** with **`showNameColumn={false}`** (person in the header, not beside the track).
+- **Header**: **`displayName`** as the dialog title (not “Schedule”); optional **Today**; **weekday** + **MM/DD/YYYY** date control — **layout**: **`useNarrowViewport640`** (≤640px: date in body only); when wider, **`useMatchMedia('(min-width: 900px)')`** for a single **3-column** row (name | date | Today), else a **two-line** header before squeezing to mobile. **My Time** on the name when the role has strip **My Time** (same as prior name-column behavior).
+- **Day nav — chevrons**: **Previous / next day** are **not** on the date line. They sit on the same row as the small **8 AM / 12 PM / 4 PM** orientation labels, **absolutely positioned** at the **left and right** of that strip so the **percentage**-based marks stay aligned with the **grey** [`DispatchAddBlockTimeRange`](src/components/schedule/DispatchAddBlockTimeRange.tsx) track. Row is shown **while loading** as well as when the schedule is ready.
+- **Footer**: 3-column grid — **Dispatch** (link to Schedule Dispatch for that week/day; label shortened from “Open Dispatch”), centered **+** to add a schedule block (roles with edit), **Close**. Backdrop click closes the modal.
+- **Files**: [`UserDayScheduleModal.tsx`](src/components/UserDayScheduleModal.tsx) (`UserDayScheduleDateNav` fragment for weekday+date only; `scheduleDayChevronButtonStyle` for the marks-row chevrons).
+
+---
+
+## Latest Updates (v2.398)
+
+**Date**: 2026-04-24
+
+### **AIA G702-G703** — invoice surfaces + **Change Orders** group in modal
+
+- **[`aiaG702G703Eligibility.ts`](src/lib/aiaG702G703Eligibility.ts)** — **`showAiaG702G703(authRole, job, invoice?)`**: same staff roles as full Job Detail (**`isStaffFullJobLedgerDetailRole`**). Visible when **`jobs_ledger.status`** is **ready_to_bill** or **billed**, or (when an invoice row / bill view passes **`jobs_ledger_invoices`**) when **`invoice.status`** is **ready_to_bill** or **billed** — fixes standalone invoice rows whose job is still **working** but the billing line is ready/billed. Unit tests in **[`aiaG702G703Eligibility.test.ts`](src/lib/aiaG702G703Eligibility.test.ts)**.
+- **[`Jobs.tsx`](src/pages/Jobs.tsx)** — green **FileSpreadsheet** control on **Stages** uses **`showAiaG702G703`** (job-only rows: two args; unified **invoice** rows: pass **`inv`**). Existing **`AiaG702G703Modal`** + **`setAiaG702StagesJob`** unchanged.
+- **[`BilledBillViewModal.tsx`](src/components/jobs/BilledBillViewModal.tsx)** — same icon + **`title`** / **`aria-label`** as Stages when eligible; opens **`AiaG702G703Modal`** with **`job`** from the invoice (**z-index** 1006 stacks above bill overlay).
+- **[`aiaG702G703Template.ts`](src/lib/aiaG702G703Template.ts)** / **[`AiaG702G703Modal.tsx`](src/components/jobs/AiaG702G703Modal.tsx)** — four change-order amount fields share **`detailsGroupId: 'change_orders'`**; modal renders them inside a native **`<details>`** (collapsed by default) labeled from **`AIA_MODAL_DETAILS_GROUP_SUMMARY`**. Summary row is **centered** (flex + hidden native marker + small **▼** chevron) so the disclosure control does not clip past the dialog edge.
+
 ---
 
 ## Latest Updates (v2.397)

@@ -4027,6 +4027,7 @@ export type Database = {
       }
       mercury_debit_card_user_links: {
         Row: {
+          auto_assign_user_id: string | null
           created_at: string
           created_by: string | null
           mercury_debit_card_id: string
@@ -4034,6 +4035,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          auto_assign_user_id?: string | null
           created_at?: string
           created_by?: string | null
           mercury_debit_card_id: string
@@ -4041,6 +4043,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          auto_assign_user_id?: string | null
           created_at?: string
           created_by?: string | null
           mercury_debit_card_id?: string
@@ -4048,6 +4051,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "mercury_debit_card_user_links_auto_assign_user_id_fkey"
+            columns: ["auto_assign_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "mercury_debit_card_user_links_user_id_fkey"
             columns: ["user_id"]
@@ -8306,6 +8316,10 @@ export type Database = {
       auth_user_can_merge_customers: { Args: never; Returns: boolean }
       auto_clock_out_eod_if_due: { Args: never; Returns: undefined }
       auto_clock_out_open_sessions_eod: { Args: never; Returns: undefined }
+      backfill_mercury_auto_attributions_for_debit_card: {
+        Args: { p_mercury_debit_card_id: string }
+        Returns: number
+      }
       bump_user_app_activity: {
         Args: { p_seconds?: number }
         Returns: undefined

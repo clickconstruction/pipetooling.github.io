@@ -47,6 +47,9 @@ import {
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 const DEBIT_CARD_RECENT_TX_CAP = 50
+/** Fixed cluster below global nav; tune if it overlaps the header strip. */
+const BANKING_SORTING_FLOAT_TOP = '3.75rem'
+const BANKING_SORTING_FLOAT_Z = 50
 type SortKey = 'posted_at' | 'mercury_account_id' | 'mercury_id'
 
 type BankingProduct = 'mercury' | 'stripe'
@@ -1458,6 +1461,78 @@ export default function Banking() {
 
       {bankingView.product === 'mercury' && bankingView.mercuryTab === 'sorting' && (
         <div role="tabpanel" id="banking-panel-mercury-sorting" aria-labelledby="banking-tab-sorting">
+          {(isDevBanking || canAccessBanking) && (
+            <div
+              role="region"
+              aria-label="Banking Sorting tools"
+              style={{
+                position: 'fixed',
+                top: `max(${BANKING_SORTING_FLOAT_TOP}, env(safe-area-inset-top, 0px))`,
+                right: 'max(1rem, env(safe-area-inset-right, 0px))',
+                zIndex: BANKING_SORTING_FLOAT_Z,
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                gap: '0.65rem',
+                maxWidth: 'min(calc(100vw - 2rem), 28rem)',
+                padding: '0.5rem 0.65rem',
+                background: '#fff',
+                border: '1px solid #e5e7eb',
+                borderRadius: 8,
+                boxShadow: '0 4px 6px -1px rgba(0,0,0,0.08), 0 2px 4px -2px rgba(0,0,0,0.06)',
+              }}
+            >
+              {isDevBanking ? (
+                <button
+                  type="button"
+                  onClick={() => setSortingConfigModalOpen(true)}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    borderRadius: 4,
+                    border: '1px solid #1d4ed8',
+                    background: '#eff6ff',
+                    color: '#1d4ed8',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    fontSize: '0.875rem',
+                    flexShrink: 0,
+                  }}
+                >
+                  Configuration
+                </button>
+              ) : null}
+              {canAccessBanking ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setUserCardLinkModalOpen(true)}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      borderRadius: 4,
+                      border: '1px solid #059669',
+                      background: '#ecfdf5',
+                      color: '#047857',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    User Card Link
+                  </button>
+                  <BankingNicknamesMenu
+                    menuOpen={nicknamesMenuOpen}
+                    onMenuOpenChange={setNicknamesMenuOpen}
+                    showAccount={isDevBanking}
+                    showDebit
+                    onOpenAccount={() => setNicknamesModalOpen(true)}
+                    onOpenDebit={() => setDebitCardNicknamesModalOpen(true)}
+                  />
+                </>
+              ) : null}
+            </div>
+          )}
           {!isDevBanking ? (
             <p
               style={{
@@ -1471,33 +1546,43 @@ export default function Banking() {
               should use different kinds, accounts, or dates.
             </p>
           ) : null}
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'row',
-              flexWrap: 'nowrap',
-              alignItems: 'center',
-              gap: '1rem',
-              marginBottom: '1rem',
-              minWidth: 0,
-            }}
-          >
+          <div style={{ marginBottom: '1rem', minWidth: 0 }}>
             <div
               style={{
-                flex: 1,
+                display: 'flex',
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                alignItems: 'flex-end',
+                gap: '1rem',
+                width: '100%',
                 minWidth: 0,
-                overflowX: 'auto',
-                WebkitOverflowScrolling: 'touch',
               }}
             >
+              <label
+                style={{
+                  display: 'block',
+                  flex: '1 1 8rem',
+                  minWidth: 0,
+                }}
+              >
+                <input
+                  type="search"
+                  value={bankingSearchText}
+                  onChange={(e) => setBankingSearchText(e.target.value)}
+                  autoComplete="off"
+                  placeholder="Counterparty, id, memo…"
+                  aria-label="Search transactions"
+                  style={{ width: '100%', minWidth: 0, padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+                />
+              </label>
               <div
                 style={{
                   display: 'flex',
                   flexDirection: 'row',
-                  flexWrap: 'nowrap',
+                  flexWrap: 'wrap',
                   alignItems: 'center',
                   gap: '1rem',
-                  width: 'max-content',
+                  flexShrink: 0,
                 }}
               >
                 {isDevBanking ? (
@@ -1533,69 +1618,7 @@ export default function Banking() {
                 >
                   Reload table
                 </button>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
-                  <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Search transactions</span>
-                  <input
-                    type="search"
-                    value={bankingSearchText}
-                    onChange={(e) => setBankingSearchText(e.target.value)}
-                    autoComplete="off"
-                    placeholder="Counterparty, id, memo…"
-                    aria-label="Search transactions"
-                    style={{ minWidth: 280, padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 4 }}
-                  />
-                </label>
               </div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexShrink: 0 }}>
-              {isDevBanking ? (
-                <button
-                  type="button"
-                  onClick={() => setSortingConfigModalOpen(true)}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    borderRadius: 4,
-                    border: '1px solid #1d4ed8',
-                    background: '#eff6ff',
-                    color: '#1d4ed8',
-                    cursor: 'pointer',
-                    fontWeight: 600,
-                    fontSize: '0.875rem',
-                    flexShrink: 0,
-                  }}
-                >
-                  Configuration
-                </button>
-              ) : null}
-              {canAccessBanking ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexShrink: 0 }}>
-                  <button
-                    type="button"
-                    onClick={() => setUserCardLinkModalOpen(true)}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      borderRadius: 4,
-                      border: '1px solid #059669',
-                      background: '#ecfdf5',
-                      color: '#047857',
-                      cursor: 'pointer',
-                      fontWeight: 600,
-                      fontSize: '0.875rem',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    User Card Link
-                  </button>
-                  <BankingNicknamesMenu
-                    menuOpen={nicknamesMenuOpen}
-                    onMenuOpenChange={setNicknamesMenuOpen}
-                    showAccount={isDevBanking}
-                    showDebit
-                    onOpenAccount={() => setNicknamesModalOpen(true)}
-                    onOpenDebit={() => setDebitCardNicknamesModalOpen(true)}
-                  />
-                </div>
-              ) : null}
             </div>
           </div>
 
@@ -1917,6 +1940,9 @@ export default function Banking() {
           nicknameByDebitCard={nicknameByDebitCard}
           usersOptions={usersSelectOptions}
           authUserId={user?.id ?? null}
+          onSaved={() => {
+            void loadMercuryAllocations()
+          }}
           onOpenRecentTransactions={(id) => setRecentTxDebitCardId(id)}
           recentPreviewOpen={recentTxDebitCardId !== null}
         />

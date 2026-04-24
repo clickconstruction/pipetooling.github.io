@@ -9,6 +9,7 @@ import { useEstimatorTaskModal } from '../contexts/EstimatorTaskModalContext'
 import ChecklistAddModal from './ChecklistAddModal'
 import DispatchTaskModal from './DispatchTaskModal'
 import EstimatorTaskModal from './EstimatorTaskModal'
+import UserDayScheduleModal from './UserDayScheduleModal'
 import NewCustomerModal from './NewCustomerModal'
 import NewProjectModal from './NewProjectModal'
 import EditCustomerModal from './EditCustomerModal'
@@ -1192,6 +1193,7 @@ export default function Layout() {
       <ChecklistAddModal />
       <DispatchTaskModal />
       <EstimatorTaskModal />
+      <UserDayScheduleModal />
       <NewCustomerModal />
       <NewProjectModal />
       <EditCustomerModal />

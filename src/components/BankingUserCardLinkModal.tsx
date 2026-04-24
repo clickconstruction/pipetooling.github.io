@@ -31,12 +31,14 @@ export function BankingUserCardLinkModal({
 }: BankingUserCardLinkModalProps) {
   const { showToast } = useToastContext()
   const [userIdByCard, setUserIdByCard] = useState<Record<string, string>>({})
+  const [autoAssignUserIdByCard, setAutoAssignUserIdByCard] = useState<Record<string, string>>({})
   const [loaded, setLoaded] = useState(false)
   const [savingCardId, setSavingCardId] = useState<string | null>(null)
 
   const loadLinks = useCallback(async () => {
     if (debitCardIds.length === 0) {
       setUserIdByCard({})
+      setAutoAssignUserIdByCard({})
       setLoaded(true)
       return
     }
@@ -45,19 +47,28 @@ export function BankingUserCardLinkModal({
         async () =>
           supabase
             .from('mercury_debit_card_user_links')
-            .select('mercury_debit_card_id, user_id')
+            .select('mercury_debit_card_id, user_id, auto_assign_user_id')
             .in('mercury_debit_card_id', debitCardIds),
         'load mercury debit card user links',
       )
-      const next: Record<string, string> = {}
-      for (const id of debitCardIds) next[id] = ''
-      for (const r of rows ?? []) {
-        if (r.mercury_debit_card_id && r.user_id) next[r.mercury_debit_card_id] = r.user_id
+      const nextUser: Record<string, string> = {}
+      const nextAuto: Record<string, string> = {}
+      for (const id of debitCardIds) {
+        nextUser[id] = ''
+        nextAuto[id] = ''
       }
-      setUserIdByCard(next)
+      for (const r of rows ?? []) {
+        if (r.mercury_debit_card_id && r.user_id) nextUser[r.mercury_debit_card_id] = r.user_id
+        if (r.mercury_debit_card_id && r.auto_assign_user_id) {
+          nextAuto[r.mercury_debit_card_id] = r.auto_assign_user_id
+        }
+      }
+      setUserIdByCard(nextUser)
+      setAutoAssignUserIdByCard(nextAuto)
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not load card links.', 'error')
       setUserIdByCard(Object.fromEntries(debitCardIds.map((id) => [id, ''])))
+      setAutoAssignUserIdByCard(Object.fromEntries(debitCardIds.map((id) => [id, ''])))
     } finally {
       setLoaded(true)
     }
@@ -87,6 +98,8 @@ export function BankingUserCardLinkModal({
 
   async function saveCard(mercuryDebitCardId: string) {
     const userId = userIdByCard[mercuryDebitCardId] ?? ''
+    const autoRaw = (autoAssignUserIdByCard[mercuryDebitCardId] ?? '').trim()
+    const autoAssignUserId = autoRaw === '' ? null : autoRaw
     setSavingCardId(mercuryDebitCardId)
     try {
       if (userId === '') {
@@ -112,7 +125,11 @@ export function BankingUserCardLinkModal({
             async () =>
               supabase
                 .from('mercury_debit_card_user_links')
-                .update({ user_id: userId, updated_at: now })
+                .update({
+                  user_id: userId,
+                  updated_at: now,
+                  auto_assign_user_id: autoAssignUserId,
+                })
                 .eq('mercury_debit_card_id', mercuryDebitCardId),
             'update debit card user link',
           )
@@ -125,11 +142,29 @@ export function BankingUserCardLinkModal({
                 user_id: userId,
                 created_by: authUserId,
                 updated_at: now,
+                auto_assign_user_id: autoAssignUserId,
               }),
             'insert debit card user link',
           )
         }
         showToast('Card link saved.', 'success')
+
+        if (autoAssignUserId !== null) {
+          try {
+            const backfillCount = await withSupabaseRetry(
+              async () =>
+                supabase.rpc('backfill_mercury_auto_attributions_for_debit_card', {
+                  p_mercury_debit_card_id: mercuryDebitCardId,
+                }),
+              'backfill mercury auto attributions',
+            )
+            if (typeof backfillCount === 'number' && backfillCount > 0) {
+              showToast(`Auto-assigned user on ${backfillCount} existing transaction(s).`, 'success')
+            }
+          } catch (be) {
+            showToast(be instanceof Error ? be.message : 'Backfill failed.', 'error')
+          }
+        }
       }
       onSaved?.()
     } catch (e) {
@@ -142,6 +177,7 @@ export function BankingUserCardLinkModal({
   if (!open) return null
 
   const emptyUser: SearchableSelectOption = { value: '', label: '— Unassigned —' }
+  const emptyAuto: SearchableSelectOption = { value: '', label: '— None —' }
 
   return (
     <div
@@ -167,7 +203,7 @@ export function BankingUserCardLinkModal({
         style={{
           background: 'white',
           borderRadius: 8,
-          width: 'min(720px, calc(100vw - 2rem))',
+          width: 'min(960px, calc(100vw - 2rem))',
           maxHeight: '90vh',
           display: 'flex',
           flexDirection: 'column',
@@ -204,8 +240,10 @@ export function BankingUserCardLinkModal({
           </button>
         </div>
         <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: '0 0 0.75rem', flexShrink: 0 }}>
-          Map each company debit card (from Mercury transaction payloads) to a user so they can see matching transactions on Job Tally. One
-          card maps to one user.
+          Map each company debit card (from Mercury transaction payloads) to a user so they can see matching transactions on Job
+          Tally. One card maps to one user. Auto-assign user uses the same list as Tally user and sets Banking user attribution
+          (user_id) on matching transactions (existing unattributed rows when you save; new syncs apply automatically). Clearing
+          auto-assign does not remove attributions already saved.
         </p>
         <div style={{ overflow: 'auto', flex: '1 1 auto', minHeight: 0 }}>
           {!loaded ? (
@@ -223,7 +261,7 @@ export function BankingUserCardLinkModal({
                   style={{
                     display: 'flex',
                     flexWrap: 'wrap',
-                    alignItems: 'center',
+                    alignItems: 'flex-end',
                     gap: '0.5rem',
                     marginBottom: '0.65rem',
                     paddingBottom: '0.65rem',
@@ -257,7 +295,8 @@ export function BankingUserCardLinkModal({
                       <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 2 }}>{nick}</div>
                     ) : null}
                   </div>
-                  <div style={{ flex: '2 1 14rem', minWidth: 160 }}>
+                  <div style={{ flex: '1.5 1 11rem', minWidth: 140 }}>
+                    <label style={{ display: 'block', fontSize: '0.7rem', color: '#64748b', marginBottom: 2 }}>Tally user</label>
                     <SearchableSelect
                       value={userIdByCard[cardId] ?? ''}
                       onChange={(v) => setUserIdByCard((d) => ({ ...d, [cardId]: v }))}
@@ -265,6 +304,18 @@ export function BankingUserCardLinkModal({
                       emptyOption={emptyUser}
                       placeholder="Select user…"
                       listAriaLabel="User for card"
+                      portalZIndex={1200}
+                    />
+                  </div>
+                  <div style={{ flex: '1.5 1 11rem', minWidth: 140 }}>
+                    <label style={{ display: 'block', fontSize: '0.7rem', color: '#64748b', marginBottom: 2 }}>Auto-assign user</label>
+                    <SearchableSelect
+                      value={autoAssignUserIdByCard[cardId] ?? ''}
+                      onChange={(v) => setAutoAssignUserIdByCard((d) => ({ ...d, [cardId]: v }))}
+                      options={usersOptions}
+                      emptyOption={emptyAuto}
+                      placeholder="Optional…"
+                      listAriaLabel="Auto-assign user for card"
                       portalZIndex={1200}
                     />
                   </div>
@@ -282,6 +333,7 @@ export function BankingUserCardLinkModal({
                       fontWeight: 600,
                       fontSize: '0.8125rem',
                       flexShrink: 0,
+                      marginBottom: 1,
                     }}
                   >
                     {savingCardId === cardId ? 'Saving…' : 'Save'}
