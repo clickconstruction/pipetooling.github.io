@@ -355,6 +355,7 @@ function mergeLimitedFromAssignedAndLedger(
     last_bill_date: null,
     last_work_date: null,
     status: 'working',
+    service_type_name: null,
   }
 }
 
@@ -365,14 +366,32 @@ async function fetchLimitedLedgerRow(jobId: string): Promise<LimitedJobDetailSna
         await supabase
           .from('jobs_ledger')
           .select(
-            'id, hcp_number, job_name, job_address, google_drive_link, job_plans_link, revenue, project_id, customer_name, customer_email, customer_phone, last_bill_date, last_work_date, status',
+            'id, hcp_number, job_name, job_address, google_drive_link, job_plans_link, revenue, project_id, customer_name, customer_email, customer_phone, last_bill_date, last_work_date, status, service_types:service_type_id(name)',
           )
           .eq('id', jobId)
           .maybeSingle(),
       'DetailJobModal limited jobs_ledger',
     )
     if (!data || typeof data !== 'object' || !('id' in data)) return null
-    return data as unknown as LimitedJobDetailSnapshot
+    const r = data as {
+      id: string
+      hcp_number: string
+      job_name: string
+      job_address: string
+      google_drive_link: string | null
+      job_plans_link: string | null
+      revenue: number | null
+      project_id: string | null
+      customer_name: string | null
+      customer_email: string | null
+      customer_phone: string | null
+      last_bill_date: string | null
+      last_work_date: string | null
+      status: string
+      service_types?: { name: string } | null
+    }
+    const { service_types: st, ...rest } = r
+    return { ...rest, service_type_name: st?.name ?? null } as LimitedJobDetailSnapshot
   } catch {
     return null
   }
@@ -988,6 +1007,11 @@ export default function DetailJobModal({
                 <JobLedgerStatusPipeline status={fullJob.status} />
               </DetailRow>
             </div>
+            <div style={{ marginTop: '0.5rem' }}>
+              <DetailRow label="Service type" noBottomMargin>
+                {fullJob.serviceType?.name?.trim() || '—'}
+              </DetailRow>
+            </div>
 
             <DetailJobModalFilesPlansRow googleDriveLink={fullJob.google_drive_link} jobPlansLink={fullJob.job_plans_link} />
 
@@ -1237,6 +1261,11 @@ export default function DetailJobModal({
             <div style={jobDetailStatusRowStyle}>
               <DetailRow label="Status" noBottomMargin centered>
                 <JobLedgerStatusPipeline status={limitedJob.status} />
+              </DetailRow>
+            </div>
+            <div style={{ marginTop: '0.5rem' }}>
+              <DetailRow label="Service type" noBottomMargin>
+                {limitedJob.service_type_name?.trim() || '—'}
               </DetailRow>
             </div>
 

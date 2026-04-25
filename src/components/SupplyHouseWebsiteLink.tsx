@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
-import { supplyHouseWebsiteHref } from '../lib/supplyHouseWebsite'
+import { supplyHouseWebsitePortalHref } from '../lib/supplyHouseWebsite'
 
 /** Renders nothing when URL is empty; otherwise a compact "Open website" control for supply house portal links. */
 export function SupplyHouseWebsiteLink({
@@ -10,7 +10,7 @@ export function SupplyHouseWebsiteLink({
   websiteUrl: string | null | undefined
   style?: CSSProperties
 }) {
-  const href = supplyHouseWebsiteHref(websiteUrl)
+  const href = supplyHouseWebsitePortalHref(websiteUrl)
   if (!href) return null
   return (
     <button

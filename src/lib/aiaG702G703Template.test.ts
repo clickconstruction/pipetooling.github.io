@@ -18,6 +18,7 @@ const minimalLimitedJob = (): LimitedJobDetailSnapshot => ({
   last_bill_date: null,
   last_work_date: null,
   status: 'ready_to_bill',
+  service_type_name: null,
 })
 
 describe('buildAiaPrefillFromJob', () => {

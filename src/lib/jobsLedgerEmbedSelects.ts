@@ -74,7 +74,8 @@ export function buildJobsListStagesPrimarySelect(): string {
     jobs_ledger_team_members(${JOBS_LEDGER_TEAM_MEMBERS_EMBED}),
     reports(job_ledger_id),
     projects:project_id(id, name),
-    bids:bid_id(id, project_name, bid_number)
+    bids:bid_id(id, project_name, bid_number),
+    service_types:service_type_id(name)
   `
 }
 
@@ -91,6 +92,7 @@ export function buildJobsLedgerFullDetailSelect(): string {
     jobs_ledger_team_members(${JOBS_LEDGER_TEAM_MEMBERS_EMBED}),
     reports(job_ledger_id),
     projects:project_id(id, name),
-    bids:bid_id(id, project_name, bid_number)
+    bids:bid_id(id, project_name, bid_number),
+    service_types:service_type_id(name)
   `
 }

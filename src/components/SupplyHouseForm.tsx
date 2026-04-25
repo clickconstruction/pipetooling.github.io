@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import type { Database } from '../types/database'
-import { normalizeSupplyHouseWebsiteUrlForStorage } from '../lib/supplyHouseWebsite'
+import { isUrlLikelyMapsOrDirectionsPortal, normalizeSupplyHouseWebsiteUrlForStorage } from '../lib/supplyHouseWebsite'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator' | 'primary' | 'superintendent'
@@ -56,6 +57,8 @@ export function SupplyHouseForm({
   myRole,
   variant = 'modal',
 }: SupplyHouseFormProps) {
+  const [websiteUrlError, setWebsiteUrlError] = useState<string | null>(null)
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const dayStr = monthlyPaymentDay.trim()
@@ -65,13 +68,19 @@ export function SupplyHouseForm({
       if (isNaN(n) || n < 1 || n > 31) return
       day = n
     }
+    const normalizedWebsite = normalizeSupplyHouseWebsiteUrlForStorage(websiteUrl)
+    if (normalizedWebsite && isUrlLikelyMapsOrDirectionsPortal(normalizedWebsite)) {
+      setWebsiteUrlError("Use the supplier's order or account website, not a Google Maps link. Put the counter address in Address above.")
+      return
+    }
+    setWebsiteUrlError(null)
     await onSubmit({
       name: name.trim(),
       contact_name: contactName.trim() || '',
       phone: phone.trim() || '',
       email: email.trim() || '',
       address: address.trim() || '',
-      website_url: normalizeSupplyHouseWebsiteUrlForStorage(websiteUrl),
+      website_url: normalizedWebsite,
       notes: notes.trim() || '',
       monthly_payment_day: day,
     })
@@ -111,10 +120,16 @@ export function SupplyHouseForm({
         <input
           type="url"
           value={websiteUrl}
-          onChange={(e) => onChange('website_url', e.target.value)}
+          onChange={(e) => {
+            setWebsiteUrlError(null)
+            onChange('website_url', e.target.value)
+          }}
           placeholder="https://…"
           style={fieldStyles}
         />
+        {websiteUrlError ? (
+          <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: '#b91c1c' }}>{websiteUrlError}</p>
+        ) : null}
       </div>
       <div style={rowStyles}>
         <label style={labelStyles}>Monthly payment date</label>

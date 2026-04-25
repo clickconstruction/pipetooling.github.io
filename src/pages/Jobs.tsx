@@ -14,6 +14,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import { supabase } from '../lib/supabase'
 import { pageUnderlineTabStyle } from '../lib/pageUnderlineTabStyle'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
+import { supplyHouseWebsitePortalHref } from '../lib/supplyHouseWebsite'
 import { useAuth } from '../hooks/useAuth'
 import { useMatchMedia } from '../hooks/useMatchMedia'
 import { useSendBackCollectPaymentFlowNotice } from '../hooks/useSendBackCollectPaymentFlowNotice'
@@ -47,6 +48,7 @@ import type { JobWithDetails } from '../types/jobWithDetails'
 import { useJobFormModal, type OpenEditJobOptions } from '../contexts/JobFormModalContext'
 import { useJobsListCache } from '../contexts/JobsListCacheContext'
 import { fetchJobsLedgerWithDetailsForStages } from '../lib/fetchJobsLedgerWithDetailsForStages'
+import { getBidServiceTypeTag } from '../utils/unifiedJobBidSearch'
 import {
   applyMinHcpFilter,
   readJobSummaryMinHcpExclusiveFromStorage,
@@ -57,7 +59,18 @@ import { CLOCK_SESSION_LIST_SELECT } from '../lib/clockSessionSelect'
 import { APP_CALENDAR_TZ, formatWorkDateYmdWeekdayLongFriendly, getDefaultWeekRange } from '../utils/dateUtils'
 import { fetchAttributionsByMercuryTxIds } from '../lib/fetchMercuryRelationsByTxIds'
 import { fetchMercuryJobAllocationsWithAttributionForJob } from '../lib/fetchMercuryJobAllocationsWithAttributionForJob'
-import { buildPartsPerPersonCostRows, type TallyLineForPersonRollup } from '../lib/partsPerPersonCostSummary'
+import { formatDecimalWorkHoursToHhMm } from '../lib/formatDecimalWorkHoursHhMm'
+import { buildJobSummaryPersonSummaryRows } from '../lib/jobSummaryPersonSummaryTable'
+import {
+  buildJobSummaryTeamLaborWorkDateTableRows,
+  isJobSummaryNoWorkDateKey,
+} from '../lib/jobSummaryTeamLaborWorkDateTable'
+import {
+  buildPartsPerPersonCostRows,
+  type PartsPerPersonCostRow,
+  type TallyLineForPersonRollup,
+} from '../lib/partsPerPersonCostSummary'
+import { normalizePersonNameKey } from '../lib/personNameKey'
 import { loadMercuryAllocModalDataForTransaction, type MercuryAllocModalData } from '../lib/mercuryAllocModalData'
 import {
   PartsUnattributedMercuryListModal,
@@ -238,6 +251,7 @@ type JobSummaryClockSessionRow = {
   users: { name: string } | null
 }
 
+/** Per RPC get_invoice_allocation_lines_for_jobs; invoice_link mirrors supply_house_invoices.link (Materials "View"). */
 type JobSummaryInvoiceAllocationLine = {
   job_id: string
   invoice_id: string
@@ -246,6 +260,9 @@ type JobSummaryInvoiceAllocationLine = {
   invoice_date: string
   invoice_total_amount: number
   supply_house_name: string
+  website_url: string | null
+  /** Document URL; preferred over website_url for the invoice # link. */
+  invoice_link: string | null
   pct: number
 }
 
@@ -262,10 +279,6 @@ type JobSummaryMercuryAllocationRow = {
     external_memo: string | null
     raw: Database['public']['Tables']['mercury_transactions']['Row']['raw']
   } | null
-}
-
-function normalizePersonNameKey(name: string): string {
-  return name.trim().toLowerCase()
 }
 
 /** Job Summary cost breakdown: substring match on person name; empty query shows all. */
@@ -312,6 +325,16 @@ function formatJobSummarySessionDateTime(iso: string | null): string {
   }
 }
 
+/** Job Summary Team Labor "By work date" table: In/Out column (work date is in the first column). */
+function formatJobSummarySessionTimeOnly(iso: string | null): string {
+  if (!iso) return '—'
+  try {
+    return new Date(iso).toLocaleString('en-US', { timeStyle: 'short' })
+  } catch {
+    return '—'
+  }
+}
+
 function formatJobSummaryDurationMinutes(ms: number): string {
   if (!Number.isFinite(ms) || ms <= 0) return '—'
   const m = Math.round(ms / 60000)
@@ -328,6 +351,78 @@ function formatCurrency(n: number): string {
 function jobSummaryPartsCostIsZero(n: number): boolean {
   const x = Number(n)
   return Number.isFinite(x) && Math.abs(x) < 1e-6
+}
+
+/** Job Summary: supply-house invoice line table or loading / empty (shared by Parts details and top section). */
+function renderJobSummarySupplyHouseInvoiceTableContent(
+  invoiceLoaded: boolean,
+  invoiceRows: JobSummaryInvoiceAllocationLine[],
+  invoicesFromSupplyHouses: number,
+): ReactNode {
+  if (!invoiceLoaded) {
+    return <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>Loading…</p>
+  }
+  if (invoiceRows.length === 0) {
+    return (
+      <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>
+        {invoicesFromSupplyHouses > 0
+          ? 'No invoice allocation lines returned for this job.'
+          : 'No allocated supply house invoices.'}
+      </p>
+    )
+  }
+  return (
+    <table style={{ width: '100%', maxWidth: 560, borderCollapse: 'collapse', fontSize: '0.75rem' }}>
+      <thead>
+        <tr style={{ background: '#f3f4f6' }}>
+          <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Supply house</th>
+          <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Invoice</th>
+          <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Date</th>
+          <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Allocated</th>
+        </tr>
+      </thead>
+      <tbody>
+        {invoiceRows.map((row) => {
+          const portalHref =
+            supplyHouseWebsitePortalHref(row.invoice_link) ?? supplyHouseWebsitePortalHref(row.website_url)
+          return (
+            <tr key={`${row.invoice_id}-${row.job_id}`} style={{ borderTop: '1px solid #e5e7eb' }}>
+              <td style={{ padding: '0.25rem 0.4rem' }}>{row.supply_house_name || '—'}</td>
+              <td style={{ padding: '0.25rem 0.4rem' }}>
+                {portalHref ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      openInExternalBrowser(portalHref)
+                    }}
+                    style={{
+                      margin: 0,
+                      padding: 0,
+                      border: 'none',
+                      background: 'none',
+                      font: 'inherit',
+                      fontSize: '0.75rem',
+                      color: '#2563eb',
+                      textDecoration: 'underline',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                    }}
+                  >
+                    {row.invoice_number}
+                  </button>
+                ) : (
+                  row.invoice_number
+                )}
+              </td>
+              <td style={{ padding: '0.25rem 0.4rem' }}>{formatJobSummaryInvoiceDate(row.invoice_date)}</td>
+              <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>${formatCurrency(row.allocated_amount)}</td>
+            </tr>
+          )
+        })}
+      </tbody>
+    </table>
+  )
 }
 
 const jobSummaryPartsCostDetailsBoxStyle: CSSProperties = {
@@ -712,7 +807,12 @@ export default function Jobs() {
     setJobSummaryLedgerLoading(true)
     setJobSummaryLedgerError(null)
     try {
-      const result = await fetchJobsLedgerWithDetailsForStages({ customerFilter: null, statusScope: 'all' })
+      const result = await fetchJobsLedgerWithDetailsForStages({
+        customerFilter: null,
+        statusScope: 'all',
+        jobSummaryEnrich: true,
+        minHcpExclusive: jobSummaryMinHcpExclusive,
+      })
       if (!result.ok) {
         setJobSummaryLedgerError(result.error)
         return
@@ -724,7 +824,7 @@ export default function Jobs() {
     } finally {
       setJobSummaryLedgerLoading(false)
     }
-  }, [authUser?.id])
+  }, [authUser?.id, jobSummaryMinHcpExclusive])
   loadJobSummaryLedgerRef.current = () => {
     void loadJobSummaryLedger()
   }
@@ -930,6 +1030,7 @@ export default function Jobs() {
   const [showMyJobsOnly, setShowMyJobsOnly] = useState(false)
   const [subLaborSearch, setSubLaborSearch] = useState('')
   const [jobSummarySearch, setJobSummarySearch] = useState('')
+  const [printCostBreakdownJobId, setPrintCostBreakdownJobId] = useState<string | null>(null)
   const [myJobIds, setMyJobIds] = useState<Set<string> | null>(null)
   const [deletingTallyPartId, setDeletingTallyPartId] = useState<string | null>(null)
   const [updatingFixtureCostId, setUpdatingFixtureCostId] = useState<string | null>(null)
@@ -986,6 +1087,31 @@ export default function Jobs() {
       })
     } finally {
       jobSummaryMercuryAllocationsLoadedRef.current.add(jobId)
+    }
+  }, [])
+
+  const loadJobSummaryInvoiceLinesForJob = useCallback(async (jobId: string) => {
+    if (jobSummaryInvoiceLinesLoadedRef.current.has(jobId)) return
+    try {
+      const data = await withSupabaseRetry(
+        async () =>
+          await supabase.rpc('get_invoice_allocation_lines_for_jobs', { p_job_ids: [jobId] }),
+        'job summary invoice lines',
+      )
+      const rows = (data ?? []) as JobSummaryInvoiceAllocationLine[]
+      setJobSummaryInvoiceLinesByJobId((prev) => {
+        const next = new Map(prev)
+        next.set(jobId, rows)
+        return next
+      })
+    } catch {
+      setJobSummaryInvoiceLinesByJobId((prev) => {
+        const next = new Map(prev)
+        next.set(jobId, [])
+        return next
+      })
+    } finally {
+      jobSummaryInvoiceLinesLoadedRef.current.add(jobId)
     }
   }, [])
 
@@ -3206,6 +3332,130 @@ export default function Jobs() {
       }
     }
 
+    const tallyRollupForPrint: TallyLineForPersonRollup[] = tallyPartsForJob.map((r) => ({
+      part_id: r.part_id,
+      quantity: r.quantity,
+      price_at_time: r.price_at_time,
+      fixture_cost: r.fixture_cost,
+      created_by_user_id: r.created_by_user_id,
+      created_by_name: r.created_by_name,
+    }))
+    const {
+      rows: ppRowsPrint,
+      footer: ppFooterPrint,
+      sumsOk: ppSumsOkPrint,
+    } = buildPartsPerPersonCostRows({
+      parts: tallyRollupForPrint,
+      billedMaterialsSum,
+      invoiceJobTotal: invoicesFromSupplyHouses,
+      mercuryRows: mRows,
+      parentCardTotal: cardCharges,
+    })
+    const teamBreakdownLite = (teamLaborRow?.breakdown ?? []).map((b) => ({
+      personName: b.personName,
+      cost: b.cost,
+      hours: b.hours,
+    }))
+    const personRowsPrint = buildJobSummaryPersonSummaryRows({
+      teamBreakdown: teamBreakdownLite,
+      ppRows: ppRowsPrint,
+    })
+    const partsCostPrint = partsFromTally + invoicesFromSupplyHouses + billedMaterialsSum + cardCharges
+    const subLaborTotalPrint = subLaborJobs.reduce(
+      (s, lj) => s + laborJobSubCost(lj, mileageCost, timePerMile),
+      0,
+    )
+    const teamLaborCell = teamLaborCost === 0 ? '—' : `$${formatCurrency(teamLaborCost)}`
+    const subLaborCell = jobSummaryPartsCostIsZero(subLaborTotalPrint) ? '—' : `$${formatCurrency(subLaborTotalPrint)}`
+    const partsCostCell = jobSummaryPartsCostIsZero(partsCostPrint) ? '—' : `$${formatCurrency(partsCostPrint)}`
+    const totalBillCell = totalBill === 0 ? '—' : `$${formatCurrency(totalBill)}`
+    const profitCell = `$${formatCurrency(profit)}`
+    const summaryTableHtml = `<h2 class="print-section">Summary</h2>
+<table class="print-key-table"><thead><tr>
+<th>Team labor</th><th>Sub labor</th><th>Parts cost</th><th>Total bill</th><th>Revenue before overhead</th>
+</tr></thead><tbody><tr>
+<td style="text-align:right">${teamLaborCell}</td>
+<td style="text-align:right">${subLaborCell}</td>
+<td style="text-align:right">${partsCostCell}</td>
+<td style="text-align:right">${totalBillCell}</td>
+<td style="text-align:right">${profitCell}</td>
+</tr></tbody></table>`
+
+    const personFilterNote =
+      '<p class="muted print-note">All people. The cost breakdown person search in the app does not apply to this print.</p>'
+
+    let personSummaryHtml = `<h2 class="print-section">Person summary</h2>${personFilterNote}`
+    if (personRowsPrint.length === 0) {
+      personSummaryHtml += '<p class="muted">No per-person team labor or card data.</p>'
+    } else {
+      const prTr = personRowsPrint
+        .map((r) => {
+          const rowSum = r.teamLabor + r.card
+          return `<tr>
+<td>${escapeHtml(r.displayName)}</td>
+<td style="text-align:right">${formatDecimalWorkHoursToHhMm(r.hours)}</td>
+<td style="text-align:right">${jobSummaryPartsCostIsZero(r.teamLabor) ? '—' : `$${formatCurrency(r.teamLabor)}`}</td>
+<td style="text-align:right">${jobSummaryPartsCostIsZero(r.card) ? '—' : `$${formatCurrency(r.card)}`}</td>
+<td style="text-align:right;color:#6b7280">n/a</td>
+<td style="text-align:right">${jobSummaryPartsCostIsZero(rowSum) ? '—' : `$${formatCurrency(rowSum)}`}</td>
+</tr>`
+        })
+        .join('')
+      const sumCardFromRows = personRowsPrint.reduce((s, r) => s + r.card, 0)
+      const footHours = teamLaborRow ? formatDecimalWorkHoursToHhMm(teamLaborRow.manHours) : '—'
+      const footTeam = jobSummaryPartsCostIsZero(teamLaborCost) ? '—' : `$${formatCurrency(teamLaborCost)}`
+      const footCard = jobSummaryPartsCostIsZero(cardCharges) ? '—' : `$${formatCurrency(cardCharges)}`
+      const footTotal =
+        teamLaborCost + cardCharges === 0
+          ? '—'
+          : `$${formatCurrency(teamLaborCost + cardCharges)}`
+      personSummaryHtml += `<table>
+<thead><tr>
+<th style="text-align:left">Name</th>
+<th style="text-align:right">Hours</th>
+<th style="text-align:right">Team labor cost</th>
+<th style="text-align:right">Card charges</th>
+<th style="text-align:right">Supply houses</th>
+<th style="text-align:right">Total</th>
+</tr></thead>
+<tbody>${prTr}
+<tr style="font-weight:600">
+<td>Total</td>
+<td style="text-align:right">${footHours}</td>
+<td style="text-align:right">${footTeam}</td>
+<td style="text-align:right">${footCard}</td>
+<td style="text-align:right">n/a</td>
+<td style="text-align:right">${footTotal}</td>
+</tr>
+</tbody></table>`
+      if (
+        !jobSummaryPartsCostIsZero(cardCharges) &&
+        Math.abs(sumCardFromRows - cardCharges) > 0.02
+      ) {
+        personSummaryHtml +=
+          '<p class="muted" style="color:#b45309;font-size:0.85rem">Per-person card totals may not match job card total; check attributions.</p>'
+      }
+    }
+
+    let invoicesFromSupplyPrintHtml = '<h2 class="print-section">Invoices from supply houses</h2>'
+    if (jobSummaryPartsCostIsZero(invoicesFromSupplyHouses)) {
+      invoicesFromSupplyPrintHtml += `<p><strong>Allocated</strong> $${formatCurrency(invoicesFromSupplyHouses)}</p>
+<p class="muted">No allocated supply house invoices.</p>`
+    } else {
+      invoicesFromSupplyPrintHtml += `<h3 style="font-size:1rem">Allocated $${formatCurrency(invoicesFromSupplyHouses)}</h3>${invoiceNote}`
+      if (invoiceRows.length > 0) {
+        const ir = invoiceRows
+          .map(
+            (row) =>
+              `<tr><td>${escapeHtml(row.supply_house_name || '—')}</td><td>${escapeHtml(row.invoice_number)}</td><td>${escapeHtml(formatJobSummaryInvoiceDate(row.invoice_date))}</td><td style="text-align:right">$${formatCurrency(row.allocated_amount)}</td></tr>`,
+          )
+          .join('')
+        invoicesFromSupplyPrintHtml += `<table><thead><tr><th>Supply house</th><th>Invoice</th><th>Date</th><th style="text-align:right">Allocated</th></tr></thead><tbody>${ir}</tbody></table>`
+      } else {
+        invoicesFromSupplyPrintHtml += `<p class="muted">${invoicesFromSupplyHouses > 0 ? 'No invoice allocation lines returned.' : 'No allocated supply house invoices.'}</p>`
+      }
+    }
+
     const clockSessions = jobSummaryClockSessionsByJobId.get(jobId) ?? []
     const clockLoaded = jobSummaryClockSessionsByJobId.has(jobId)
 
@@ -3223,32 +3473,43 @@ export default function Jobs() {
           const sessionsForPerson = clockSessions.filter(
             (s) => normalizePersonNameKey(s.users?.name ?? '') === normalizePersonNameKey(b.personName),
           )
-          teamLaborHtml += `<h3 style="font-size:1rem;margin:0.75rem 0 0.35rem">${escapeHtml(b.personName)} · ${formatCurrency(b.hours)} h · $${formatCurrency(b.cost)}</h3>`
-          if (b.byWorkDate.length > 0) {
-            const wd = b.byWorkDate
-              .map(
-                ( d ) =>
-                  `<tr><td>${escapeHtml(formatWorkDateYmdWeekdayLongFriendly(d.workDate))}</td><td style="text-align:right">${formatCurrency(d.hours)}</td><td style="text-align:right">$${formatCurrency(d.cost)}</td></tr>`,
-              )
-              .join('')
-            teamLaborHtml += `<p style="margin:0.25rem 0;font-size:0.85rem;font-weight:600;color:#555">Allocated by work date</p><table><thead><tr><th>Work date</th><th style="text-align:right">Hours</th><th style="text-align:right">Cost</th></tr></thead><tbody>${wd}</tbody></table>`
-          }
-          teamLaborHtml += `<p style="margin:0.35rem 0 0;font-size:0.85rem;font-weight:600;color:#555">Clock sessions (punch times)</p>`
-          if (sessionsForPerson.length > 0) {
-            const sr = sessionsForPerson
-              .map((s) => {
+          const printCombinedRows = buildJobSummaryTeamLaborWorkDateTableRows(b.byWorkDate, sessionsForPerson)
+          if (printCombinedRows.length === 0) {
+            teamLaborHtml += `<p class="muted">No crew allocation or clock sessions for this person.</p>`
+          } else {
+            const trs = printCombinedRows
+              .map((row) => {
+                if (row.kind === 'alloc') {
+                  const w = isJobSummaryNoWorkDateKey(row.workDate)
+                    ? '—'
+                    : formatWorkDateYmdWeekdayLongFriendly(row.workDate)
+                  return `<tr><td>${escapeHtml(w)}</td><td>—</td><td>—</td><td>—</td><td style="text-align:right">${formatCurrency(row.hours)}</td><td style="text-align:right">$${formatCurrency(row.cost)}</td></tr>`
+                }
+                const s = row.session
                 const dur =
                   s.clocked_in_at && s.clocked_out_at
                     ? formatJobSummaryDurationMinutes(
                         new Date(s.clocked_out_at).getTime() - new Date(s.clocked_in_at).getTime(),
                       )
                     : '—'
-                return `<tr><td>${escapeHtml(s.work_date ? formatWorkDateYmdWeekdayLongFriendly(s.work_date) : '—')}</td><td>${escapeHtml(formatJobSummarySessionDateTime(s.clocked_in_at))}</td><td>${escapeHtml(formatJobSummarySessionDateTime(s.clocked_out_at))}</td><td style="text-align:right">${escapeHtml(dur)}</td></tr>`
+                const w = isJobSummaryNoWorkDateKey(row.workDate)
+                  ? '—'
+                  : formatWorkDateYmdWeekdayLongFriendly(row.workDate)
+                return `<tr><td>${escapeHtml(w)}</td><td>${escapeHtml(formatJobSummarySessionTimeOnly(s.clocked_in_at))}</td><td>${escapeHtml(formatJobSummarySessionTimeOnly(s.clocked_out_at))}</td><td style="text-align:right">${escapeHtml(dur)}</td><td style="text-align:right">—</td><td style="text-align:right">—</td></tr>`
               })
               .join('')
-            teamLaborHtml += `<table><thead><tr><th>Work date</th><th>In</th><th>Out</th><th style="text-align:right">Duration</th></tr></thead><tbody>${sr}</tbody></table>`
-          } else {
-            teamLaborHtml += `<p class="muted">No matching clock sessions.</p>`
+            const printAllocTotals = printCombinedRows.reduce(
+              (acc, r) => {
+                if (r.kind === 'alloc') {
+                  acc.hours += r.hours
+                  acc.cost += r.cost
+                }
+                return acc
+              },
+              { hours: 0, cost: 0 },
+            )
+            const printTfoot = `<tfoot><tr style="font-weight:600;border-top:1px solid #ccc"><td colspan="4">Total</td><td style="text-align:right">${formatCurrency(printAllocTotals.hours)}</td><td style="text-align:right">$${formatCurrency(printAllocTotals.cost)}</td></tr></tfoot>`
+            teamLaborHtml += `<table><thead><tr><th>Work date</th><th>In</th><th>Out</th><th style="text-align:right">Duration</th><th style="text-align:right">Hrs</th><th style="text-align:right">$</th></tr></thead><tbody>${trs}</tbody>${printTfoot}</table>`
           }
         }
         const nameKeys = new Set(teamLaborRow.breakdown.map((x) => normalizePersonNameKey(x.personName)))
@@ -3326,22 +3587,6 @@ export default function Jobs() {
         partsHtml += `<p class="muted">${billedMaterialsSum > 0 ? 'No line items on file.' : 'No other job charges.'}</p>`
       }
     }
-    if (jobSummaryPartsCostIsZero(invoicesFromSupplyHouses)) {
-      partsHtml += `<p><strong>Invoices from Supply Houses</strong> $${formatCurrency(invoicesFromSupplyHouses)}</p>`
-    } else {
-      partsHtml += `<h3 style="font-size:1rem">Invoices from Supply Houses — $${formatCurrency(invoicesFromSupplyHouses)}</h3>${invoiceNote}`
-      if (invoiceRows.length > 0) {
-        const ir = invoiceRows
-          .map(
-            (row) =>
-              `<tr><td>${escapeHtml(row.supply_house_name || '—')}</td><td>${escapeHtml(row.invoice_number)}</td><td>${escapeHtml(formatJobSummaryInvoiceDate(row.invoice_date))}</td><td style="text-align:right">$${formatCurrency(row.allocated_amount)}</td></tr>`,
-          )
-          .join('')
-        partsHtml += `<table><thead><tr><th>Supply house</th><th>Invoice</th><th>Date</th><th style="text-align:right">Allocated</th></tr></thead><tbody>${ir}</tbody></table>`
-      } else {
-        partsHtml += `<p class="muted">${invoicesFromSupplyHouses > 0 ? 'No invoice allocation lines returned.' : 'No allocated supply house invoices.'}</p>`
-      }
-    }
     if (jobSummaryPartsCostIsZero(cardCharges)) {
       partsHtml += `<p><strong>Card charges</strong> $${formatCurrency(cardCharges)}</p>`
     } else {
@@ -3368,21 +3613,6 @@ export default function Jobs() {
     }
 
     if (!jobSummaryPartsCostIsZero(partsFromTally) || !jobSummaryPartsCostIsZero(cardCharges)) {
-      const tallyRollupPrint: TallyLineForPersonRollup[] = tallyPartsForJob.map((r) => ({
-        part_id: r.part_id,
-        quantity: r.quantity,
-        price_at_time: r.price_at_time,
-        fixture_cost: r.fixture_cost,
-        created_by_user_id: r.created_by_user_id,
-        created_by_name: r.created_by_name,
-      }))
-      const { rows: ppRowsPrint, footer: ppFooterPrint, sumsOk: ppSumsOkPrint } = buildPartsPerPersonCostRows({
-        parts: tallyRollupPrint,
-        billedMaterialsSum,
-        invoiceJobTotal: invoicesFromSupplyHouses,
-        mercuryRows: mRows,
-        parentCardTotal: cardCharges,
-      })
       if (
         ppRowsPrint.length > 0 ||
         !jobSummaryPartsCostIsZero(ppFooterPrint.partsFromTally) ||
@@ -3412,20 +3642,29 @@ export default function Jobs() {
       }
     }
 
-    const totalsHtml = `<h2>Total Bill &amp; Revenue before Overhead</h2><p><strong>Revenue (billing):</strong> ${totalBill === 0 ? '—' : `$${formatCurrency(totalBill)}`}</p><p><strong>Revenue before overhead:</strong> $${formatCurrency(profit)}</p>`
+    const totalsHtml = `<h2 class="print-section">Total bill</h2>
+<p><strong>Revenue (billing):</strong> ${totalBill === 0 ? '—' : `$${formatCurrency(totalBill)}`}</p>
+<p><strong>Revenue before overhead:</strong> $${formatCurrency(profit)}</p>`
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(headerTitle)} — Cost breakdown</title><style>
 body { font-family: sans-serif; margin: 1in; font-size: 0.875rem; }
 h1 { font-size: 1.2rem; margin-bottom: 0.25rem; }
 h2 { font-size: 1.05rem; margin: 1rem 0 0.35rem; }
+.print-section { margin-top: 1.1rem; }
+.print-key-table { max-width: 100%; }
+.print-note { font-size: 0.85rem; margin: 0.25rem 0 0.5rem; }
 .muted { color: #6b7280; margin: 0.35rem 0; }
 table { width: 100%; border-collapse: collapse; margin: 0.35rem 0 0.75rem; font-size: 0.8125rem; }
 th, td { border: 1px solid #ccc; padding: 0.35rem 0.5rem; text-align: left; vertical-align: top; }
 th { background: #f5f5f5; }
+table.print-key-table th, table.print-key-table td { text-align: right; }
 @media print { body { margin: 0.5in; } }
 </style></head><body>
 <h1>${escapeHtml(headerTitle)}</h1>
 <p class="muted" style="margin-top:0">Cost breakdown · ${escapeHtml(generated)}</p>
+${summaryTableHtml}
+${personSummaryHtml}
+${invoicesFromSupplyPrintHtml}
 ${teamLaborHtml}
 ${subLaborHtml}
 ${partsHtml}
@@ -4101,6 +4340,24 @@ ${totalsHtml}
   }, [activeTab, authUser?.id, expandedJobSummaryJobIds, jobSummaryTeamLaborPersonExpandedKeys])
 
   useEffect(() => {
+    if (activeTab !== 'job-summary') return
+    for (const jobId of expandedJobSummaryJobIds) {
+      if ((mercuryCardChargesByJobId.get(jobId) ?? 0) > 0) {
+        void loadJobSummaryMercuryAllocationsForJob(jobId)
+      }
+    }
+  }, [activeTab, expandedJobSummaryJobIds, mercuryCardChargesByJobId, loadJobSummaryMercuryAllocationsForJob])
+
+  useEffect(() => {
+    if (activeTab !== 'job-summary') return
+    for (const jobId of expandedJobSummaryJobIds) {
+      if ((invoiceAmountByJob[jobId] ?? 0) > 0) {
+        void loadJobSummaryInvoiceLinesForJob(jobId)
+      }
+    }
+  }, [activeTab, expandedJobSummaryJobIds, invoiceAmountByJob, loadJobSummaryInvoiceLinesForJob])
+
+  useEffect(() => {
     if ((activeTab === 'parts' || activeTab === 'job-summary') && authUser?.id) {
       const t = setTimeout(() => loadTallyParts(), 80)
       return () => clearTimeout(t)
@@ -4114,6 +4371,12 @@ ${totalsHtml}
     }, 80)
     return () => clearTimeout(t)
   }, [activeTab, authUser?.id, loadJobSummaryLedger])
+
+  useEffect(() => {
+    if (activeTab !== 'job-summary') return
+    const q = searchParams.get('jobSummaryHcp')?.trim()
+    if (q) setJobSummarySearch(q)
+  }, [activeTab, searchParams])
 
   useEffect(() => {
     if (authUser?.id) return
@@ -5693,25 +5956,47 @@ ${totalsHtml}
           {(() => {
             const { working, paid, readyToBillRows, billedRows } = stagesBoardLists
 
-            const stagesJobHcpBadgeStyle: CSSProperties = {
+            /** Shared metrics so Job HCP badge and service-type pill match box height. */
+            const stagesJobSublinePillBoxBase: CSSProperties = {
               display: 'inline-block',
+              boxSizing: 'border-box',
               padding: '0.15rem 0.4rem',
               fontSize: '0.6875rem',
               fontWeight: 600,
-              border: '1px solid rgba(255,255,255,0.5)',
+              lineHeight: 1.2,
               borderRadius: 4,
+              fontFamily: 'inherit',
+            }
+            const stagesJobHcpBadgeStyle: CSSProperties = {
+              ...stagesJobSublinePillBoxBase,
+              border: '1px solid rgba(255,255,255,0.5)',
               background: '#2563eb',
               color: 'white',
-              lineHeight: 1.2,
-              fontFamily: 'inherit',
             }
 
             function renderStagesJobHcpSubline(job: JobWithDetails, extraWrap?: CSSProperties) {
               const t = (job.hcp_number ?? '').trim()
               if (t) {
+                const stName = job.serviceType?.name?.trim()
+                const tagInfo = stName ? getBidServiceTypeTag(stName) : null
+                const serviceLabel = stName
+                  ? (tagInfo?.tag ?? stName.slice(0, 4)).toUpperCase()
+                  : ''
+                const borderColor = tagInfo?.color ?? '#d1d5db'
+                const servicePillStyle: CSSProperties | null = stName
+                  ? {
+                      ...stagesJobSublinePillBoxBase,
+                      marginTop: '0.15rem',
+                      letterSpacing: '0.02em',
+                      border: `1px solid ${borderColor}`,
+                      background: tagInfo ? borderColor : '#f3f4f6',
+                      color: tagInfo ? '#fff' : '#374151',
+                    }
+                  : null
                 return (
                   <div style={extraWrap}>
                     <span style={stagesJobHcpBadgeStyle}>Job: {t}</span>
+                    {servicePillStyle ? <span style={servicePillStyle}>{serviceLabel}</span> : null}
                   </div>
                 )
               }
@@ -9600,7 +9885,8 @@ ${totalsHtml}
               style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
             />
           </div>
-          {jobsListLoading || tallyPartsLoading || laborJobsLoading || (jobSummaryLedgerJobs === null && jobSummaryLedgerLoading) ? (
+          {/* Job Summary uses jobSummaryLedgerJobs, not the Stages/Billing/Parts jobs list — do not gate on jobsListLoading or it stays true when users open this tab first. */}
+          {tallyPartsLoading || laborJobsLoading || (jobSummaryLedgerJobs === null && jobSummaryLedgerLoading) ? (
             <p style={{ color: '#6b7280' }}>Loading…</p>
           ) : jobSummaryData.length === 0 ? (
             <p style={{ color: '#6b7280' }}>No billing jobs yet. Add jobs in Billing to see the summary.</p>
@@ -9750,24 +10036,31 @@ ${totalsHtml}
                                   <div style={{ fontWeight: 600, color: '#374151' }}>Cost breakdown</div>
                                   <button
                                     type="button"
-                                    aria-label="Print cost breakdown (Save as PDF from the print dialog)"
-                                    onClick={(e) => {
+                                    aria-label="Print or save as PDF: cost breakdown (opens the browser print dialog)"
+                                    aria-busy={printCostBreakdownJobId === job.id}
+                                    disabled={printCostBreakdownJobId === job.id}
+                                    onClick={async (e) => {
                                       e.stopPropagation()
-                                      void printJobSummaryCostBreakdown({
-                                        job,
-                                        teamLaborRow: teamLaborRow ?? null,
-                                        teamLaborCost,
-                                        subLaborJobs,
-                                        partsFromTally,
-                                        billedMaterialsSum,
-                                        invoicesFromSupplyHouses,
-                                        cardCharges,
-                                        totalBill,
-                                        profit,
-                                        tallyPartsForJob,
-                                        mileageCost,
-                                        timePerMile,
-                                      })
+                                      setPrintCostBreakdownJobId(job.id)
+                                      try {
+                                        await printJobSummaryCostBreakdown({
+                                          job,
+                                          teamLaborRow: teamLaborRow ?? null,
+                                          teamLaborCost,
+                                          subLaborJobs,
+                                          partsFromTally,
+                                          billedMaterialsSum,
+                                          invoicesFromSupplyHouses,
+                                          cardCharges,
+                                          totalBill,
+                                          profit,
+                                          tallyPartsForJob,
+                                          mileageCost,
+                                          timePerMile,
+                                        })
+                                      } finally {
+                                        setPrintCostBreakdownJobId(null)
+                                      }
                                     }}
                                     style={{
                                       fontSize: '0.8125rem',
@@ -9775,53 +10068,288 @@ ${totalsHtml}
                                       border: '1px solid #d1d5db',
                                       borderRadius: 4,
                                       background: '#fff',
-                                      cursor: 'pointer',
+                                      cursor: printCostBreakdownJobId === job.id ? 'not-allowed' : 'pointer',
+                                      opacity: printCostBreakdownJobId === job.id ? 0.75 : 1,
                                     }}
                                   >
-                                    Print
+                                    {printCostBreakdownJobId === job.id ? 'Preparing…' : 'Print / Save as PDF'}
                                   </button>
                                 </div>
-                                <input
-                                  type="search"
-                                  placeholder="Search people…"
-                                  aria-label="Search people in this cost breakdown"
-                                  value={breakdownPersonQ}
-                                  onChange={(e) => {
-                                    e.stopPropagation()
-                                    const v = e.target.value
-                                    setJobSummaryBreakdownPersonSearchByJobId((prev) => {
-                                      const next = { ...prev }
-                                      if (v.trim() === '') delete next[job.id]
-                                      else next[job.id] = v
-                                      return next
+                                {(() => {
+                                  const teamBreakdownLite = (teamLaborRow?.breakdown ?? []).map((b) => ({
+                                    personName: b.personName,
+                                    cost: b.cost,
+                                    hours: b.hours,
+                                  }))
+                                  const needMercury = !jobSummaryPartsCostIsZero(cardCharges)
+                                  const mLoaded = jobSummaryMercuryAllocationsByJobId.has(job.id)
+                                  const cardColLoading = needMercury && !mLoaded
+                                  const tallyRollup: TallyLineForPersonRollup[] = tallyPartsForJob.map((r) => ({
+                                    part_id: r.part_id,
+                                    quantity: r.quantity,
+                                    price_at_time: r.price_at_time,
+                                    fixture_cost: r.fixture_cost,
+                                    created_by_user_id: r.created_by_user_id,
+                                    created_by_name: r.created_by_name,
+                                  }))
+                                  const mRows = needMercury
+                                    ? (jobSummaryMercuryAllocationsByJobId.get(job.id) ?? [])
+                                    : []
+                                  let ppRows: PartsPerPersonCostRow[] = []
+                                  let ppPersonFooter: PartsPerPersonCostRow | null = null
+                                  if (!cardColLoading) {
+                                    const built = buildPartsPerPersonCostRows({
+                                      parts: tallyRollup,
+                                      billedMaterialsSum,
+                                      invoiceJobTotal: invoicesFromSupplyHouses,
+                                      mercuryRows: mRows,
+                                      parentCardTotal: cardCharges,
                                     })
-                                  }}
+                                    ppRows = built.rows
+                                    ppPersonFooter = built.footer
+                                  }
+                                  const personRows = buildJobSummaryPersonSummaryRows({
+                                    teamBreakdown: teamBreakdownLite,
+                                    ppRows,
+                                  })
+                                  const filtered = personRows.filter((r) =>
+                                    personMatchesJobSummaryBreakdownFilter(r.displayName, breakdownPersonQ),
+                                  )
+                                  const sumTeamF = filtered.reduce((s, r) => s + r.teamLabor, 0)
+                                  const sumCardF = cardColLoading
+                                    ? null
+                                    : filtered.reduce((s, r) => s + r.card, 0)
+                                  const personSummaryFooterTeam =
+                                    breakdownPersonQ.trim() !== '' ? sumTeamF : teamLaborCost
+                                  const personSummaryFooterCard = cardColLoading
+                                    ? null
+                                    : breakdownPersonQ.trim() !== ''
+                                      ? (sumCardF ?? 0)
+                                      : cardCharges
+                                  const personSummaryFooterRowTotal =
+                                    personSummaryFooterCard == null
+                                      ? null
+                                      : personSummaryFooterTeam + personSummaryFooterCard
+                                  const hasAnyPerson = personRows.length > 0
+                                  const noRowsAfterFilter = filtered.length === 0
+                                  return (
+                                    <section style={{ marginBottom: '0.75rem' }}>
+                                      {!hasAnyPerson && !cardColLoading ? (
+                                        <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>
+                                          No per-person team labor or card data.
+                                        </p>
+                                      ) : cardColLoading && !hasAnyPerson ? (
+                                        <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>Loading…</p>
+                                      ) : noRowsAfterFilter && breakdownPersonQ.trim() !== '' ? (
+                                        <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>
+                                          No people match your search.
+                                        </p>
+                                      ) : (
+                                        <div style={{ overflowX: 'auto' }}>
+                                          {breakdownPersonQ.trim() !== '' ? (
+                                            <p
+                                              style={{
+                                                margin: '0 0 0.35rem',
+                                                fontSize: '0.72rem',
+                                                color: '#6b7280',
+                                                lineHeight: 1.45,
+                                              }}
+                                            >
+                                              Totals include everyone; table rows are filtered.
+                                            </p>
+                                          ) : null}
+                                          <table
+                                            style={{
+                                              width: '100%',
+                                              maxWidth: 780,
+                                              borderCollapse: 'collapse',
+                                              fontSize: '0.75rem',
+                                            }}
+                                          >
+                                            <thead>
+                                              <tr style={{ background: '#f3f4f6' }}>
+                                                <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Name</th>
+                                                <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Hours</th>
+                                                <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Team Labor Cost</th>
+                                                <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Card charges</th>
+                                                <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Supply houses</th>
+                                                <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Total</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {filtered.map((r) => {
+                                                const rowSum = r.teamLabor + r.card
+                                                return (
+                                                <tr key={r.normKey} style={{ borderTop: '1px solid #e5e7eb' }}>
+                                                  <td style={{ padding: '0.25rem 0.4rem' }}>{r.displayName}</td>
+                                                  <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
+                                                    {formatDecimalWorkHoursToHhMm(r.hours)}
+                                                  </td>
+                                                  <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
+                                                    {jobSummaryPartsCostIsZero(r.teamLabor)
+                                                      ? '—'
+                                                      : `$${formatCurrency(r.teamLabor)}`}
+                                                  </td>
+                                                  <td
+                                                    style={{
+                                                      padding: '0.25rem 0.4rem',
+                                                      textAlign: 'right',
+                                                      color: cardColLoading ? '#6b7280' : undefined,
+                                                    }}
+                                                  >
+                                                    {cardColLoading
+                                                      ? 'Loading…'
+                                                      : jobSummaryPartsCostIsZero(r.card)
+                                                        ? '—'
+                                                        : `$${formatCurrency(r.card)}`}
+                                                  </td>
+                                                  <td
+                                                    style={{
+                                                      padding: '0.25rem 0.4rem',
+                                                      textAlign: 'right',
+                                                      color: '#6b7280',
+                                                    }}
+                                                  >
+                                                    n/a
+                                                  </td>
+                                                  <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
+                                                    {cardColLoading
+                                                      ? '—'
+                                                      : jobSummaryPartsCostIsZero(rowSum)
+                                                        ? '—'
+                                                        : `$${formatCurrency(rowSum)}`}
+                                                  </td>
+                                                </tr>
+                                                )
+                                              })}
+                                              <tr style={{ borderTop: '1px solid #d1d5db', fontWeight: 600 }}>
+                                                <td style={{ padding: '0.25rem 0.4rem' }}>Total</td>
+                                                <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
+                                                  {teamLaborRow
+                                                    ? formatDecimalWorkHoursToHhMm(teamLaborRow.manHours)
+                                                    : '—'}
+                                                </td>
+                                                <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
+                                                  {jobSummaryPartsCostIsZero(
+                                                    breakdownPersonQ.trim() !== '' ? sumTeamF : teamLaborCost,
+                                                  )
+                                                    ? '—'
+                                                    : `$${formatCurrency(
+                                                        breakdownPersonQ.trim() !== '' ? sumTeamF : teamLaborCost,
+                                                      )}`}
+                                                </td>
+                                                <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
+                                                  {cardColLoading
+                                                    ? '—'
+                                                    : jobSummaryPartsCostIsZero(
+                                                        breakdownPersonQ.trim() !== '' ? (sumCardF ?? 0) : cardCharges,
+                                                      )
+                                                      ? '—'
+                                                      : `$${formatCurrency(
+                                                          breakdownPersonQ.trim() !== '' ? (sumCardF ?? 0) : cardCharges,
+                                                        )}`}
+                                                </td>
+                                                <td
+                                                  style={{
+                                                    padding: '0.25rem 0.4rem',
+                                                    textAlign: 'right',
+                                                    color: '#6b7280',
+                                                    fontWeight: 600,
+                                                  }}
+                                                >
+                                                  n/a
+                                                </td>
+                                                <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
+                                                  {personSummaryFooterRowTotal == null
+                                                    ? '—'
+                                                    : jobSummaryPartsCostIsZero(personSummaryFooterRowTotal)
+                                                      ? '—'
+                                                      : `$${formatCurrency(personSummaryFooterRowTotal)}`}
+                                                </td>
+                                              </tr>
+                                            </tbody>
+                                          </table>
+                                          {ppPersonFooter != null &&
+                                          !cardColLoading &&
+                                          !jobSummaryPartsCostIsZero(cardCharges) &&
+                                          Math.abs((sumCardF ?? 0) - cardCharges) > 0.02 &&
+                                          breakdownPersonQ.trim() === '' ? (
+                                            <p style={{ margin: '0.35rem 0 0', fontSize: '0.72rem', color: '#b45309' }}>
+                                              Per-person card totals may not match job card total; check attributions.
+                                            </p>
+                                          ) : null}
+                                        </div>
+                                      )}
+                                    </section>
+                                  )
+                                })()}
+                                <section
+                                  style={{ marginBottom: '0.75rem' }}
                                   onClick={(e) => e.stopPropagation()}
                                   onKeyDown={(e) => e.stopPropagation()}
-                                  style={{
-                                    width: '100%',
-                                    maxWidth: 420,
-                                    marginBottom: '0.75rem',
-                                    padding: '0.4rem 0.6rem',
-                                    border: '1px solid #d1d5db',
-                                    borderRadius: 4,
-                                    fontSize: '0.8125rem',
-                                  }}
-                                />
+                                  role="presentation"
+                                >
+                                  {jobSummaryPartsCostIsZero(invoicesFromSupplyHouses) ? (
+                                    <div style={jobSummaryCostSectionBodyStyle}>
+                                      <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>
+                                        No allocated supply house invoices.
+                                      </p>
+                                    </div>
+                                  ) : (
+                                    <details
+                                      style={jobSummaryPartsCostDetailsBoxStyle}
+                                      onToggle={(e) => {
+                                        if (!e.currentTarget.open) return
+                                        void loadJobSummaryInvoiceLinesForJob(job.id)
+                                      }}
+                                    >
+                                      <summary
+                                        style={{
+                                          cursor: 'pointer',
+                                          fontWeight: 600,
+                                          fontSize: '0.8125rem',
+                                          color: '#374151',
+                                          userSelect: 'none',
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        Invoices from supply houses{' '}
+                                        <span style={{ fontWeight: 400 }}>${formatCurrency(invoicesFromSupplyHouses)}</span>
+                                      </summary>
+                                      <div style={{ marginTop: '0.5rem' }}>
+                                        <div style={jobSummaryCostSectionBodyStyle}>
+                                          {renderJobSummarySupplyHouseInvoiceTableContent(
+                                            jobSummaryInvoiceLinesByJobId.has(job.id),
+                                            jobSummaryInvoiceLinesByJobId.get(job.id) ?? [],
+                                            invoicesFromSupplyHouses,
+                                          )}
+                                        </div>
+                                      </div>
+                                    </details>
+                                  )}
+                                </section>
                                 <div style={{ display: 'grid', gap: '1rem' }}>
                                   <section>
-                                    <div style={{ fontWeight: 600, marginBottom: '0.35rem', color: '#111827' }}>Team Labor</div>
+                                    <details style={jobSummaryPartsCostDetailsBoxStyle}>
+                                      <summary
+                                        style={{
+                                          cursor: 'pointer',
+                                          fontWeight: 600,
+                                          fontSize: '0.8125rem',
+                                          color: '#374151',
+                                          userSelect: 'none',
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        Team Labor{' '}
+                                        <span style={{ fontWeight: 400 }}>
+                                          {teamLaborCost === 0 ? '—' : `$${formatCurrency(teamLaborCost)}`}
+                                        </span>
+                                      </summary>
+                                      <div style={{ marginTop: '0.5rem' }}>
                                     <div style={jobSummaryCostSectionBodyStyle}>
                                     {teamLaborRow && teamLaborRow.breakdown.length > 0 ? (
                                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', width: '100%', maxWidth: 560 }}>
-                                        {teamBreakdownFiltered.some(({ i }) =>
-                                          jobSummaryTeamLaborPersonExpandedKeys.has(`${job.id}::${i}`),
-                                        ) ? (
-                                          <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280', lineHeight: 1.45 }}>
-                                            Allocated hours use crew job splits by work day. Clock punch durations below may differ when
-                                            multiple jobs share a day.
-                                          </p>
-                                        ) : null}
                                         <table
                                           style={{
                                             width: '100%',
@@ -9914,119 +10442,211 @@ ${totalsHtml}
                                                         }}
                                                       >
                                                         <div style={{ padding: '0.5rem 0.75rem' }}>
-                                                          <div style={{ fontWeight: 600, marginBottom: '0.35rem', fontSize: '0.8125rem' }}>
-                                                            {b.personName}{' '}
-                                                            <span style={{ fontWeight: 400, color: '#374151' }}>
-                                                              {formatCurrency(b.hours)} h · ${formatCurrency(b.cost)}
-                                                            </span>
-                                                          </div>
-                                                          {b.byWorkDate.length > 0 ? (
-                                                            <div style={{ marginBottom: '0.5rem' }}>
-                                                              <div
-                                                                style={{
-                                                                  fontSize: '0.75rem',
-                                                                  fontWeight: 600,
-                                                                  color: '#6b7280',
-                                                                  marginBottom: '0.25rem',
-                                                                }}
-                                                              >
-                                                                Allocated by work date
-                                                              </div>
-                                                              <table
-                                                                style={{
-                                                                  width: '100%',
-                                                                  maxWidth: 420,
-                                                                  borderCollapse: 'collapse',
-                                                                  fontSize: '0.75rem',
-                                                                }}
-                                                              >
-                                                                <thead>
-                                                                  <tr style={{ background: '#f3f4f6' }}>
-                                                                    <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Work date</th>
-                                                                    <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Hours</th>
-                                                                    <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Cost</th>
-                                                                  </tr>
-                                                                </thead>
-                                                                <tbody>
-                                                                  {b.byWorkDate.map((d) => (
-                                                                    <tr key={d.workDate} style={{ borderTop: '1px solid #e5e7eb' }}>
-                                                                      <td style={{ padding: '0.25rem 0.4rem' }}>
-                                                                        {formatWorkDateYmdWeekdayLongFriendly(d.workDate)}
-                                                                      </td>
-                                                                      <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
-                                                                        {formatCurrency(d.hours)}
-                                                                      </td>
-                                                                      <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
-                                                                        ${formatCurrency(d.cost)}
-                                                                      </td>
+                                                          {(() => {
+                                                            const combinedRows = buildJobSummaryTeamLaborWorkDateTableRows(
+                                                              b.byWorkDate,
+                                                              sessionsForPerson,
+                                                            )
+                                                            const clockLoaded = jobSummaryDetailClockLoaded
+                                                            const showClockLoadingFooter =
+                                                              !clockLoaded && combinedRows.length > 0
+                                                            if (combinedRows.length === 0) {
+                                                              return clockLoaded ? (
+                                                                <p style={{ margin: 0, color: '#6b7280', fontSize: '0.75rem' }}>
+                                                                  No crew allocation or clock sessions for this person.
+                                                                </p>
+                                                              ) : (
+                                                                <p style={{ margin: 0, color: '#6b7280', fontSize: '0.75rem' }}>
+                                                                  Loading clock sessions…
+                                                                </p>
+                                                              )
+                                                            }
+                                                            const allocTableTotals = combinedRows.reduce(
+                                                              (acc, r) => {
+                                                                if (r.kind === 'alloc') {
+                                                                  acc.hours += r.hours
+                                                                  acc.cost += r.cost
+                                                                }
+                                                                return acc
+                                                              },
+                                                              { hours: 0, cost: 0 },
+                                                            )
+                                                            return (
+                                                              <>
+                                                                <table
+                                                                  style={{
+                                                                    width: '100%',
+                                                                    maxWidth: 560,
+                                                                    borderCollapse: 'collapse',
+                                                                    fontSize: '0.75rem',
+                                                                  }}
+                                                                >
+                                                                  <thead>
+                                                                    <tr style={{ background: '#f3f4f6' }}>
+                                                                      <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>
+                                                                        Work date
+                                                                      </th>
+                                                                      <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>
+                                                                        In
+                                                                      </th>
+                                                                      <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>
+                                                                        Out
+                                                                      </th>
+                                                                      <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
+                                                                        Duration
+                                                                      </th>
+                                                                      <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
+                                                                        Hrs
+                                                                      </th>
+                                                                      <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
+                                                                        $
+                                                                      </th>
                                                                     </tr>
-                                                                  ))}
-                                                                </tbody>
-                                                              </table>
-                                                            </div>
-                                                          ) : null}
-                                                          <div
-                                                            style={{
-                                                              fontSize: '0.75rem',
-                                                              fontWeight: 600,
-                                                              color: '#6b7280',
-                                                              marginBottom: '0.25rem',
-                                                            }}
-                                                          >
-                                                            Clock sessions (punch times)
-                                                          </div>
-                                                          {!jobSummaryDetailClockLoaded ? (
-                                                            <p style={{ margin: 0, color: '#6b7280', fontSize: '0.75rem' }}>Loading…</p>
-                                                          ) : sessionsForPerson.length > 0 ? (
-                                                            <table
-                                                              style={{
-                                                                width: '100%',
-                                                                maxWidth: 560,
-                                                                borderCollapse: 'collapse',
-                                                                fontSize: '0.75rem',
-                                                              }}
-                                                            >
-                                                              <thead>
-                                                                <tr style={{ background: '#f3f4f6' }}>
-                                                                  <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Work date</th>
-                                                                  <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>In</th>
-                                                                  <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Out</th>
-                                                                  <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Duration</th>
-                                                                </tr>
-                                                              </thead>
-                                                              <tbody>
-                                                                {sessionsForPerson.map((s) => {
-                                                                  const dur =
-                                                                    s.clocked_in_at && s.clocked_out_at
-                                                                      ? formatJobSummaryDurationMinutes(
-                                                                          new Date(s.clocked_out_at).getTime() -
-                                                                            new Date(s.clocked_in_at).getTime(),
+                                                                  </thead>
+                                                                  <tbody>
+                                                                    {combinedRows.map((row, idx) => {
+                                                                      if (row.kind === 'alloc') {
+                                                                        return (
+                                                                          <tr
+                                                                            key={`alloc-${row.workDate}-${idx}`}
+                                                                            style={{ borderTop: '1px solid #e5e7eb' }}
+                                                                          >
+                                                                            <td style={{ padding: '0.25rem 0.4rem' }}>
+                                                                              {isJobSummaryNoWorkDateKey(row.workDate)
+                                                                                ? '—'
+                                                                                : formatWorkDateYmdWeekdayLongFriendly(
+                                                                                    row.workDate,
+                                                                                  )}
+                                                                            </td>
+                                                                            <td style={{ padding: '0.25rem 0.4rem', color: '#9ca3af' }}>
+                                                                              —
+                                                                            </td>
+                                                                            <td style={{ padding: '0.25rem 0.4rem', color: '#9ca3af' }}>
+                                                                              —
+                                                                            </td>
+                                                                            <td style={{ padding: '0.25rem 0.4rem', color: '#9ca3af' }}>
+                                                                              —
+                                                                            </td>
+                                                                            <td
+                                                                              style={{
+                                                                                padding: '0.25rem 0.4rem',
+                                                                                textAlign: 'right',
+                                                                              }}
+                                                                            >
+                                                                              {formatCurrency(row.hours)}
+                                                                            </td>
+                                                                            <td
+                                                                              style={{
+                                                                                padding: '0.25rem 0.4rem',
+                                                                                textAlign: 'right',
+                                                                              }}
+                                                                            >
+                                                                              ${formatCurrency(row.cost)}
+                                                                            </td>
+                                                                          </tr>
                                                                         )
-                                                                      : '—'
-                                                                  return (
-                                                                    <tr key={s.id} style={{ borderTop: '1px solid #e5e7eb' }}>
-                                                                      <td style={{ padding: '0.25rem 0.4rem' }}>
-                                                                        {s.work_date
-                                                                          ? formatWorkDateYmdWeekdayLongFriendly(s.work_date)
-                                                                          : '—'}
+                                                                      }
+                                                                      const s = row.session
+                                                                      const dur =
+                                                                        s.clocked_in_at && s.clocked_out_at
+                                                                          ? formatJobSummaryDurationMinutes(
+                                                                              new Date(s.clocked_out_at).getTime() -
+                                                                                new Date(s.clocked_in_at).getTime(),
+                                                                            )
+                                                                          : '—'
+                                                                      return (
+                                                                        <tr
+                                                                          key={`punch-${s.id}-${idx}`}
+                                                                          style={{ borderTop: '1px solid #e5e7eb' }}
+                                                                        >
+                                                                          <td style={{ padding: '0.25rem 0.4rem' }}>
+                                                                            {isJobSummaryNoWorkDateKey(row.workDate)
+                                                                              ? '—'
+                                                                              : formatWorkDateYmdWeekdayLongFriendly(row.workDate)}
+                                                                          </td>
+                                                                          <td style={{ padding: '0.25rem 0.4rem' }}>
+                                                                            {formatJobSummarySessionTimeOnly(s.clocked_in_at)}
+                                                                          </td>
+                                                                          <td style={{ padding: '0.25rem 0.4rem' }}>
+                                                                            {formatJobSummarySessionTimeOnly(s.clocked_out_at)}
+                                                                          </td>
+                                                                          <td
+                                                                            style={{
+                                                                              padding: '0.25rem 0.4rem',
+                                                                              textAlign: 'right',
+                                                                            }}
+                                                                          >
+                                                                            {dur}
+                                                                          </td>
+                                                                          <td
+                                                                            style={{
+                                                                              padding: '0.25rem 0.4rem',
+                                                                              textAlign: 'right',
+                                                                              color: '#9ca3af',
+                                                                            }}
+                                                                          >
+                                                                            —
+                                                                          </td>
+                                                                          <td
+                                                                            style={{
+                                                                              padding: '0.25rem 0.4rem',
+                                                                              textAlign: 'right',
+                                                                              color: '#9ca3af',
+                                                                            }}
+                                                                          >
+                                                                            —
+                                                                          </td>
+                                                                        </tr>
+                                                                      )
+                                                                    })}
+                                                                  </tbody>
+                                                                  <tfoot>
+                                                                    <tr
+                                                                      style={{
+                                                                        borderTop: '1px solid #d1d5db',
+                                                                        fontWeight: 600,
+                                                                        background: '#f9fafb',
+                                                                      }}
+                                                                    >
+                                                                      <td
+                                                                        colSpan={4}
+                                                                        style={{ padding: '0.25rem 0.4rem' }}
+                                                                      >
+                                                                        Total
                                                                       </td>
-                                                                      <td style={{ padding: '0.25rem 0.4rem' }}>
-                                                                        {formatJobSummarySessionDateTime(s.clocked_in_at)}
+                                                                      <td
+                                                                        style={{
+                                                                          padding: '0.25rem 0.4rem',
+                                                                          textAlign: 'right',
+                                                                        }}
+                                                                      >
+                                                                        {formatCurrency(allocTableTotals.hours)}
                                                                       </td>
-                                                                      <td style={{ padding: '0.25rem 0.4rem' }}>
-                                                                        {formatJobSummarySessionDateTime(s.clocked_out_at)}
+                                                                      <td
+                                                                        style={{
+                                                                          padding: '0.25rem 0.4rem',
+                                                                          textAlign: 'right',
+                                                                        }}
+                                                                      >
+                                                                        ${formatCurrency(allocTableTotals.cost)}
                                                                       </td>
-                                                                      <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>{dur}</td>
                                                                     </tr>
-                                                                  )
-                                                                })}
-                                                              </tbody>
-                                                            </table>
-                                                          ) : (
-                                                            <p style={{ margin: 0, color: '#6b7280', fontSize: '0.75rem' }}>
-                                                              No matching clock sessions.
-                                                            </p>
-                                                          )}
+                                                                  </tfoot>
+                                                                </table>
+                                                                {showClockLoadingFooter ? (
+                                                                  <p
+                                                                    style={{
+                                                                      margin: '0.35rem 0 0',
+                                                                      color: '#6b7280',
+                                                                      fontSize: '0.72rem',
+                                                                    }}
+                                                                  >
+                                                                    Loading clock sessions…
+                                                                  </p>
+                                                                ) : null}
+                                                              </>
+                                                            )
+                                                          })()}
                                                         </div>
                                                       </td>
                                                     </tr>
@@ -10113,9 +10733,27 @@ ${totalsHtml}
                                       <p style={{ margin: 0, color: '#6b7280' }}>Team labor total ${formatCurrency(teamLaborCost)} (no per-person breakdown).</p>
                                     )}
                                     </div>
+                                      </div>
+                                    </details>
                                   </section>
                                   <section>
-                                    <div style={{ fontWeight: 600, marginBottom: '0.35rem', color: '#111827' }}>Sub Labor</div>
+                                    <details style={jobSummaryPartsCostDetailsBoxStyle}>
+                                      <summary
+                                        style={{
+                                          cursor: 'pointer',
+                                          fontWeight: 600,
+                                          fontSize: '0.8125rem',
+                                          color: '#374151',
+                                          userSelect: 'none',
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        Sub Labor{' '}
+                                        <span style={{ fontWeight: 400 }}>
+                                          {subLaborCost === 0 ? '—' : `$${formatCurrency(subLaborCost)}`}
+                                        </span>
+                                      </summary>
+                                      <div style={{ marginTop: '0.5rem' }}>
                                     <div style={jobSummaryCostSectionBodyStyle}>
                                     {subLaborJobs.length > 0 ? (
                                       subLaborJobsFiltered.length === 0 && breakdownPersonQ.trim() !== '' ? (
@@ -10140,9 +10778,27 @@ ${totalsHtml}
                                       <p style={{ margin: 0, color: '#6b7280' }}>No sub labor for this HCP.</p>
                                     )}
                                     </div>
+                                      </div>
+                                    </details>
                                   </section>
                                   <section>
-                                    <div style={{ fontWeight: 600, marginBottom: '0.35rem', color: '#111827' }}>Parts Cost</div>
+                                    <details style={jobSummaryPartsCostDetailsBoxStyle}>
+                                      <summary
+                                        style={{
+                                          cursor: 'pointer',
+                                          fontWeight: 600,
+                                          fontSize: '0.8125rem',
+                                          color: '#374151',
+                                          userSelect: 'none',
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        Parts Cost{' '}
+                                        <span style={{ fontWeight: 400 }}>
+                                          {partsCost === 0 ? '—' : `$${formatCurrency(partsCost)}`}
+                                        </span>
+                                      </summary>
+                                      <div style={{ marginTop: '0.5rem' }}>
                                     <div style={jobSummaryCostSectionBodyStyle}>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                                       {jobSummaryPartsCostIsZero(partsFromTally) ? (
@@ -10272,33 +10928,7 @@ ${totalsHtml}
                                         style={jobSummaryPartsCostDetailsBoxStyle}
                                         onToggle={(e) => {
                                           if (!e.currentTarget.open) return
-                                          const jobId = job.id
-                                          if (jobSummaryInvoiceLinesLoadedRef.current.has(jobId)) return
-                                          void (async () => {
-                                            try {
-                                              const data = await withSupabaseRetry(
-                                                async () =>
-                                                  await supabase.rpc('get_invoice_allocation_lines_for_jobs', {
-                                                    p_job_ids: [jobId],
-                                                  }),
-                                                'job summary invoice lines',
-                                              )
-                                              const rows = (data ?? []) as JobSummaryInvoiceAllocationLine[]
-                                              setJobSummaryInvoiceLinesByJobId((prev) => {
-                                                const next = new Map(prev)
-                                                next.set(jobId, rows)
-                                                return next
-                                              })
-                                            } catch {
-                                              setJobSummaryInvoiceLinesByJobId((prev) => {
-                                                const next = new Map(prev)
-                                                next.set(jobId, [])
-                                                return next
-                                              })
-                                            } finally {
-                                              jobSummaryInvoiceLinesLoadedRef.current.add(jobId)
-                                            }
-                                          })()
+                                          void loadJobSummaryInvoiceLinesForJob(job.id)
                                         }}
                                       >
                                         <summary
@@ -10315,48 +10945,11 @@ ${totalsHtml}
                                           <span style={{ fontWeight: 400 }}>${formatCurrency(invoicesFromSupplyHouses)}</span>
                                         </summary>
                                         <div style={{ marginTop: '0.5rem' }}>
-                                          {(() => {
-                                            const invoiceLoaded = jobSummaryInvoiceLinesByJobId.has(job.id)
-                                            const invoiceRows = jobSummaryInvoiceLinesByJobId.get(job.id) ?? []
-                                            if (!invoiceLoaded) {
-                                              return (
-                                                <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>Loading…</p>
-                                              )
-                                            }
-                                            if (invoiceRows.length === 0) {
-                                              return (
-                                                <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>
-                                                  {invoicesFromSupplyHouses > 0
-                                                    ? 'No invoice allocation lines returned for this job.'
-                                                    : 'No allocated supply house invoices.'}
-                                                </p>
-                                              )
-                                            }
-                                            return (
-                                              <table style={{ width: '100%', maxWidth: 560, borderCollapse: 'collapse', fontSize: '0.75rem' }}>
-                                                <thead>
-                                                  <tr style={{ background: '#f3f4f6' }}>
-                                                    <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Supply house</th>
-                                                    <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Invoice</th>
-                                                    <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Date</th>
-                                                    <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Allocated</th>
-                                                  </tr>
-                                                </thead>
-                                                <tbody>
-                                                  {invoiceRows.map((row) => (
-                                                    <tr key={`${row.invoice_id}-${row.job_id}`} style={{ borderTop: '1px solid #e5e7eb' }}>
-                                                      <td style={{ padding: '0.25rem 0.4rem' }}>{row.supply_house_name || '—'}</td>
-                                                      <td style={{ padding: '0.25rem 0.4rem' }}>{row.invoice_number}</td>
-                                                      <td style={{ padding: '0.25rem 0.4rem' }}>{formatJobSummaryInvoiceDate(row.invoice_date)}</td>
-                                                      <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
-                                                        ${formatCurrency(row.allocated_amount)}
-                                                      </td>
-                                                    </tr>
-                                                  ))}
-                                                </tbody>
-                                              </table>
-                                            )
-                                          })()}
+                                          {renderJobSummarySupplyHouseInvoiceTableContent(
+                                            jobSummaryInvoiceLinesByJobId.has(job.id),
+                                            jobSummaryInvoiceLinesByJobId.get(job.id) ?? [],
+                                            invoicesFromSupplyHouses,
+                                          )}
                                         </div>
                                       </details>
                                       )}
@@ -10624,15 +11217,35 @@ ${totalsHtml}
                                       )}
                                     </div>
                                     </div>
+                                      </div>
+                                    </details>
                                   </section>
                                   <section>
-                                    <div style={{ fontWeight: 600, marginBottom: '0.35rem', color: '#111827' }}>Total Bill</div>
-                                    <div style={jobSummaryCostSectionBodyStyle}>
-                                    <p style={{ margin: 0, color: '#374151' }}>
-                                      Revenue (billing):{' '}
-                                      {totalBill === 0 ? '—' : `$${formatCurrency(totalBill)}`}
-                                    </p>
-                                    </div>
+                                    <details style={jobSummaryPartsCostDetailsBoxStyle}>
+                                      <summary
+                                        style={{
+                                          cursor: 'pointer',
+                                          fontWeight: 600,
+                                          fontSize: '0.8125rem',
+                                          color: '#374151',
+                                          userSelect: 'none',
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        Total Bill{' '}
+                                        <span style={{ fontWeight: 400 }}>
+                                          {totalBill === 0 ? '—' : `$${formatCurrency(totalBill)}`}
+                                        </span>
+                                      </summary>
+                                      <div style={{ marginTop: '0.5rem' }}>
+                                        <div style={jobSummaryCostSectionBodyStyle}>
+                                          <p style={{ margin: 0, color: '#374151' }}>
+                                            Revenue (billing):{' '}
+                                            {totalBill === 0 ? '—' : `$${formatCurrency(totalBill)}`}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    </details>
                                   </section>
                                 </div>
                               </div>

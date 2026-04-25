@@ -1165,6 +1165,18 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### April 25, 2026
 
+**`20260425064129_get_invoice_allocation_lines_website_url.sql`**
+- **Purpose**: **Job Summary** — **`get_invoice_allocation_lines_for_jobs`** return shape adds **`website_url`** from **`supply_houses`** so the invoice column can open the same Materials / **Open website** URL as the supply house form.
+- **Changes**: **`CREATE OR REPLACE FUNCTION`** — **`RETURNS TABLE`** + **`sh.website_url`**
+- **Impact**: [`Jobs.tsx`](src/pages/Jobs.tsx) Job Summary **Invoices from supply houses** (and Parts detail table)
+- **Category**: Jobs / Materials / Invoices
+
+**`20260425065352_get_invoice_allocation_lines_invoice_link.sql`**
+- **Purpose**: **Job Summary** — RPC adds **`invoice_link`** from **`supply_house_invoices.link`** (per-invoice **View** URL in [SupplyHousesTab](src/components/SupplyHousesTab.tsx)), preferred over the supply house **website** in the client.
+- **Changes**: **`DROP` / `CREATE FUNCTION`** — **`i.link`**
+- **Impact**: [`Jobs.tsx`](src/pages/Jobs.tsx) job summary invoice table click target
+- **Category**: Jobs / Materials / Invoices
+
 **`20260425120000_add_job_owner_override_robert.sql`**
 - **Purpose**: Job owner override so devs (e.g., Robert) can create jobs assigned to another user (e.g., Malachi)
 - **Changes**: Insert `app_settings` row `job_owner_override_<robert_id>` = Malachi's user ID (by name matching)

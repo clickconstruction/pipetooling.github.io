@@ -2978,6 +2978,7 @@ export type Database = {
           pct_complete: number | null
           project_id: string | null
           revenue: number | null
+          service_type_id: string
           status: string
           updated_at: string | null
         }
@@ -3001,6 +3002,7 @@ export type Database = {
           pct_complete?: number | null
           project_id?: string | null
           revenue?: number | null
+          service_type_id: string
           status?: string
           updated_at?: string | null
         }
@@ -3024,6 +3026,7 @@ export type Database = {
           pct_complete?: number | null
           project_id?: string | null
           revenue?: number | null
+          service_type_id?: string
           status?: string
           updated_at?: string | null
         }
@@ -3054,6 +3057,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
             referencedColumns: ["id"]
           },
         ]
@@ -8393,18 +8403,30 @@ export type Database = {
         Args: { min_age_days?: number }
         Returns: number
       }
-      create_job_from_estimate: {
-        Args: {
-          p_customer_id?: string
-          p_estimate_id: string
-          p_fixtures?: Json
-          p_hcp_number: string
-          p_job_address?: string
-          p_job_name?: string
-          p_revenue?: number
-        }
-        Returns: string
-      }
+      create_job_from_estimate:
+        | {
+            Args: {
+              p_customer_id?: string
+              p_estimate_id: string
+              p_hcp_number: string
+              p_job_address?: string
+              p_job_name?: string
+              p_revenue?: number
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_customer_id?: string
+              p_estimate_id: string
+              p_fixtures?: Json
+              p_hcp_number: string
+              p_job_address?: string
+              p_job_name?: string
+              p_revenue?: number
+            }
+            Returns: string
+          }
       create_pending_contract_versions_after_book_save: {
         Args: { p_contract_template_document_id: string }
         Returns: undefined
@@ -8563,11 +8585,13 @@ export type Database = {
           allocated_amount: number
           invoice_date: string
           invoice_id: string
+          invoice_link: string | null
           invoice_number: string
           invoice_total_amount: number
           job_id: string
           pct: number
           supply_house_name: string
+          website_url: string | null
         }[]
       }
       get_invoice_amounts_for_jobs: {

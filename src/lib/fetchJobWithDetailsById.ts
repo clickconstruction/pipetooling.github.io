@@ -23,6 +23,7 @@ function mapRowToJobWithDetails(
     reports?: Array<{ job_ledger_id: string | null }>
     projects?: { id: string; name: string } | null
     bids?: { id: string; project_name: string | null; bid_number: string | null } | null
+    service_types?: { name: string } | null
   },
 ): JobWithDetails {
   const {
@@ -34,10 +35,12 @@ function mapRowToJobWithDetails(
     reports: rep,
     projects: proj,
     bids: bidEmbed,
+    service_types: serviceTypeEmbed,
     ...job
   } = row
   return {
     ...job,
+    serviceType: serviceTypeEmbed && typeof (serviceTypeEmbed as { name?: string }).name === 'string' ? (serviceTypeEmbed as { name: string }) : null,
     materials: (mat ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
     fixtures: (fix ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
     payments: (pay ?? []).sort((a, b) => a.sequence_order - b.sequence_order),

@@ -61,8 +61,50 @@ import {
   STRIPE_INVOICE_LINE_DESCRIPTION_MAX,
   stripeInvoiceFixtureLineLength,
 } from '../../lib/stripeInvoiceLineDescription'
+import { SearchableSelect } from '../SearchableSelect'
 
 type EstimatesRow = Database['public']['Tables']['estimates']['Row']
+type JobFormServiceType = { id: string; name: string; color: string | null }
+
+type MeServiceTypeColumns = {
+  role?: string
+  estimator_service_type_ids?: string[] | null
+  primary_service_type_ids?: string[] | null
+  superintendent_service_type_ids?: string[] | null
+  subcontractor_service_type_ids?: string[] | null
+}
+
+function visibleServiceTypesForJobForm(types: JobFormServiceType[], me: MeServiceTypeColumns | null): JobFormServiceType[] {
+  if (types.length === 0) return []
+  const role = me?.role
+  if (role === 'estimator' && me?.estimator_service_type_ids && me.estimator_service_type_ids.length > 0) {
+    const f = types.filter((st) => me.estimator_service_type_ids!.includes(st.id))
+    return f.length > 0 ? f : types
+  }
+  if (role === 'primary' && me?.primary_service_type_ids && me.primary_service_type_ids.length > 0) {
+    const f = types.filter((st) => me.primary_service_type_ids!.includes(st.id))
+    return f.length > 0 ? f : types
+  }
+  if (role === 'superintendent' && me?.superintendent_service_type_ids && me.superintendent_service_type_ids.length > 0) {
+    const f = types.filter((st) => me.superintendent_service_type_ids!.includes(st.id))
+    return f.length > 0 ? f : types
+  }
+  if (role === 'subcontractor' && me?.subcontractor_service_type_ids && me.subcontractor_service_type_ids.length > 0) {
+    const f = types.filter((st) => me.subcontractor_service_type_ids!.includes(st.id))
+    return f.length > 0 ? f : types
+  }
+  return types
+}
+
+function pickDefaultServiceTypeId(types: { id: string; name: string }[]): string | undefined {
+  if (types.length === 0) return undefined
+  if (types.length === 1) return types[0]!.id
+  const plumb = types.find((st) => st.name === 'Plumbing')
+  if (plumb) return plumb.id
+  const elec = types.find((st) => st.name === 'Electrical')
+  if (elec) return elec.id
+  return types[0]!.id
+}
 type JobsLedgerInvoiceRow = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 type CustomerRow = Database['public']['Tables']['customers']['Row']
 type UserRow = { id: string; name: string; email: string | null; role: string }
@@ -532,6 +574,9 @@ export default function JobFormModal({
     bid_number: string | null
   } | null>(null)
   const [bids, setBids] = useState<JobBidLinkOption[]>([])
+  const [serviceTypes, setServiceTypes] = useState<JobFormServiceType[]>([])
+  const [meServiceTypeColumns, setMeServiceTypeColumns] = useState<MeServiceTypeColumns | null>(null)
+  const [formServiceTypeId, setFormServiceTypeId] = useState('')
   const [jobBidLinkChoiceOpen, setJobBidLinkChoiceOpen] = useState(false)
   const [customers, setCustomers] = useState<CustomerRow[]>([])
   const [users, setUsers] = useState<UserRow[]>([])
@@ -550,10 +595,6 @@ export default function JobFormModal({
   const [fixturesSectionHighlight, setFixturesSectionHighlight] = useState(false)
   const [dateMet, setDateMet] = useState('')
   const [lastBillDate, setLastBillDate] = useState('')
-  const jobFormMissingFields: string[] = []
-  if (!jobName.trim()) jobFormMissingFields.push('Job Name')
-  if (!jobAddress.trim()) jobFormMissingFields.push('Job Address')
-  const jobFormCanSubmit = jobFormMissingFields.length === 0
   const [googleDriveLink, setGoogleDriveLink] = useState('')
   const [jobPlansLink, setJobPlansLink] = useState('')
   const [payments, setPayments] = useState<PaymentRow[]>(() => [newEmptyPaymentRow()])
@@ -630,6 +671,32 @@ export default function JobFormModal({
   const [editJobSubLaborLoading, setEditJobSubLaborLoading] = useState(false)
   const [editJobSubLaborData, setEditJobSubLaborData] = useState<{ count: number; total: number } | null>(null)
   const [editJobSubLaborError, setEditJobSubLaborError] = useState(false)
+
+  const visibleJobFormServiceTypes = useMemo(
+    () => visibleServiceTypesForJobForm(serviceTypes, meServiceTypeColumns),
+    [serviceTypes, meServiceTypeColumns],
+  )
+
+  /** Include current job's type when it is not in the role-filtered list (same idea as Bids). */
+  const jobFormServiceTypeSelectOptions = useMemo(() => {
+    const vis = visibleJobFormServiceTypes
+    if (mode === 'edit' && formServiceTypeId && !vis.some((s) => s.id === formServiceTypeId)) {
+      const fromAll = serviceTypes.find((s) => s.id === formServiceTypeId)
+      if (fromAll) {
+        return [fromAll, ...vis.filter((s) => s.id !== formServiceTypeId)]
+      }
+    }
+    return vis
+  }, [mode, formServiceTypeId, visibleJobFormServiceTypes, serviceTypes])
+
+  const jobFormMissingFields = useMemo(() => {
+    const m: string[] = []
+    if (!jobName.trim()) m.push('Job Name')
+    if (!jobAddress.trim()) m.push('Job Address')
+    if (!formServiceTypeId.trim()) m.push('Service type')
+    return m
+  }, [jobName, jobAddress, formServiceTypeId])
+  const jobFormCanSubmit = jobFormMissingFields.length === 0
 
   const editJobEffectiveHcp = useMemo(
     () => (hcpNumber ?? '').trim() || (editing?.hcp_number ?? '').trim(),
@@ -821,6 +888,7 @@ export default function JobFormModal({
           ? { project_name: null, bid_number: null }
           : null,
     )
+    setFormServiceTypeId(job.service_type_id ?? '')
     setCustomerSearch('')
     setCustomerExpanded(billingGate && !jobLedgerHasCustomerForBilling(job.customer_id))
     setLastBillDate(job.last_bill_date ? job.last_bill_date.slice(0, 10) : '')
@@ -888,6 +956,7 @@ export default function JobFormModal({
     setPaymentRemoveConfirmRowId(null)
     setUnlinkMercuryConfirmRowId(null)
     setDeleteJobConfirmOpen(false)
+    setFormServiceTypeId('')
   }
 
   useLayoutEffect(() => {
@@ -896,15 +965,15 @@ export default function JobFormModal({
     void (async () => {
       setCustomersLoading(true)
       try {
-        async function loadFormUsers() {
+        async function loadFormUsers(meRole: string | undefined) {
           if (!authUser?.id) return
-          const [usersRes, meRes] = await Promise.all([
-            supabase.from('users').select('id, name, email, role').in('role', ['assistant', 'master_technician', 'subcontractor', 'estimator', 'primary', 'superintendent']).order('name'),
-            supabase.from('users').select('role').eq('id', authUser.id).single(),
-          ])
-          let usersList = (usersRes.data as UserRow[]) ?? []
-          const role = (meRes.data as { role?: string } | null)?.role
-          if (role === 'dev') {
+          const { data: usersRes } = await supabase
+            .from('users')
+            .select('id, name, email, role')
+            .in('role', ['assistant', 'master_technician', 'subcontractor', 'estimator', 'primary', 'superintendent'])
+            .order('name')
+          let usersList = (usersRes as UserRow[]) ?? []
+          if (meRole === 'dev') {
             const { data: devUsers } = await supabase.from('users').select('id, name, email, role').eq('role', 'dev')
             if (devUsers?.length) {
               const existingIds = new Set(usersList.map((u) => u.id))
@@ -915,7 +984,13 @@ export default function JobFormModal({
           if (!cancelled) setUsers(usersList)
         }
 
-        const [{ data: custData }, { data: projData }, { data: bidData }] = await Promise.all([
+        const [
+          { data: custData },
+          { data: projData },
+          { data: bidData },
+          { data: stData },
+          { data: meRow },
+        ] = await Promise.all([
           supabase.from('customers').select('id, name, address, contact_info, date_met, master_user_id, customer_type').order('name'),
           supabase.from('projects').select('id, name, customer_id, master_user_id, customers(name)').order('name'),
           supabase
@@ -923,16 +998,31 @@ export default function JobFormModal({
             .select('id, project_name, bid_number, customer_id, customers(name)')
             .order('updated_at', { ascending: false })
             .limit(800),
+          supabase.from('service_types').select('id, name, color, description, sequence_order').order('sequence_order', { ascending: true }),
+          supabase
+            .from('users')
+            .select(
+              'role, estimator_service_type_ids, primary_service_type_ids, superintendent_service_type_ids, subcontractor_service_type_ids',
+            )
+            .eq('id', authUser.id)
+            .single(),
         ])
         if (cancelled) return
+        const allServiceTypes = (stData as JobFormServiceType[] | null) ?? []
         setCustomers((custData as CustomerRow[]) ?? [])
         setProjects((projData as ProjectOption[]) ?? [])
         setBids((bidData as JobBidLinkOption[]) ?? [])
-        await loadFormUsers()
+        setServiceTypes(allServiceTypes)
+        setMeServiceTypeColumns((meRow as MeServiceTypeColumns | null) ?? null)
+        await loadFormUsers((meRow as MeServiceTypeColumns | null)?.role)
         if (cancelled) return
 
         if (mode === 'new') {
           resetNewForm(newJobProjectId)
+          const meSt = (meRow as MeServiceTypeColumns | null) ?? null
+          const vis = visibleServiceTypesForJobForm(allServiceTypes, meSt)
+          const defId = pickDefaultServiceTypeId(vis) ?? ''
+          setFormServiceTypeId(defId)
           if (newJobProjectId) {
             const { data: pdata } = await supabase.from('projects').select('customer_id, customers(name, address, contact_info, date_met)').eq('id', newJobProjectId).single()
             if (cancelled || !pdata) {
@@ -2128,6 +2218,10 @@ export default function JobFormModal({
 
   async function saveJob() {
     if (!authUser?.id) return
+    if (!formServiceTypeId.trim()) {
+      showToast('Service type is required', 'error')
+      return
+    }
     setSaving(true)
     setError(null)
     const revNum = jobTotalBidDollars
@@ -2163,6 +2257,7 @@ export default function JobFormModal({
           payments_made: paymentsMadeNum,
           project_id: projectId || null,
           bid_id: bidId || null,
+          service_type_id: formServiceTypeId.trim(),
           master_user_id: masterUserIdForUpdate,
         }
         const { error: updateErr } = await supabase
@@ -2268,6 +2363,7 @@ export default function JobFormModal({
             payments_made: paymentsMadeNum,
             project_id: projectId || null,
             bid_id: bidId || null,
+            service_type_id: formServiceTypeId.trim(),
           })
           .select('id')
           .single()
@@ -2626,6 +2722,27 @@ export default function JobFormModal({
                   <ClipboardPasteGlyph />
                 </button>
               </div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <label
+                htmlFor="job-form-service-type"
+                style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}
+              >
+                Service type <span style={{ color: '#b91c1c' }}>*</span>
+              </label>
+              <SearchableSelect
+                id="job-form-service-type"
+                value={formServiceTypeId}
+                onChange={setFormServiceTypeId}
+                options={jobFormServiceTypeSelectOptions.map((st) => ({ value: st.id, label: st.name }))}
+                emptyOption={{ value: '', label: 'Select service type…' }}
+                placeholder="Select service type…"
+                required
+                listAriaLabel="Service type"
+                disabled={jobFormServiceTypeSelectOptions.length === 0}
+              />
             </div>
           </div>
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>

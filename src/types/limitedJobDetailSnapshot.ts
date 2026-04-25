@@ -14,4 +14,6 @@ export type LimitedJobDetailSnapshot = {
   last_bill_date: string | null
   last_work_date: string | null
   status: string
+  /** When present from `jobs_ledger` + `service_types` join. */
+  service_type_name: string | null
 }
