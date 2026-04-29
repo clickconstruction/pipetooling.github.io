@@ -7,67 +7,94 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-24
+last_updated: 2026-04-28
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.402 → v2.4"
+version_range: "v2.411 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.411)"
+    line: ~1348
+    description: "Dashboard — Leave Report schedule nag (12h silence via my_last_report_at); helpers omit Send to Billing + update_job_status; migrations 20270506 / 20270507"
+  - name: "Latest Version (v2.410)"
+    line: ~1362
+    description: "Product copy — Helper role display (singular); enum stays helpers — userRoleDisplay.ts, Users/Roster, Settings matrix + dropdowns, ACCESS_CONTROL"
+  - name: "Latest Version (v2.409)"
+    line: ~1372
+    description: "Dashboard Assigned Jobs / Superintendent Jobs — Send to Billing white outline (#2563eb) vs Leave Report solid blue; disabled opacity — Dashboard.tsx"
+  - name: "Latest Version (v2.408)"
+    line: ~1356
+    description: "Checklist Roadmap: multiple roadmaps (picker, ?roadmap=), Members modal (viewer/editor), Default backfill; checklist_tech_tree_roadmaps + roadmap_members + RLS"
+  - name: "Latest Version (v2.407)"
+    line: ~1352
+    description: "Checklist Roadmap (tech tree): canvas icon row (enter full screen, Organize, Add group, Edit tasks, Show/Collapse); toolbar text for empty graph; header row in graph full screen + plain icon exit; ChecklistTechTreeMapActionIconButtons"
+  - name: "Latest Version (v2.406)"
+    line: ~1345
+    description: "Jobs Job Summary Mercury drilldown: Reassign → MercuryTransactionAllocationsModal (canAccessBankingForParts); refresh splits + card totals; modal hint for move-to-job"
+  - name: "Latest Version (v2.405)"
+    line: ~1340
+    description: "Jobs Job Summary: hide duplicate Invoices from supply houses block before Team Labor; print supply lines under Parts Cost only"
+  - name: "Latest Version (v2.404)"
+    line: ~1351
+    description: "Jobs Job Summary Person summary: cell drilldown modals (Mercury, team labor, supply, footer); Print/CSV in modal; link affordance CSS; inert empty cells; zero hours not clickable"
+  - name: "Latest Version (v2.403)"
+    line: ~1364
+    description: "Jobs Job Summary: printJobSummaryCostBreakdown, Print/Save as PDF, Preparing, printCostBreakdownJobId (order refined v2.405)"
   - name: "Latest Version (v2.402)"
-    line: ~1313
+    line: ~1376
     description: "Jobs Parts: toolbar Unattributed (all jobs modal) + per-job list/assign; Card/Account columns; quick Add user from card nickname; mercuryAllocModalData + refresh"
   - name: "Latest Version (v2.401)"
-    line: ~1335
+    line: ~1388
     description: "Banking Sorting: floating top-right (Config, User Card Link, Nicknames) + toolbar; auto_assign_user_id on card links; Jobs Parts: Unattributed right; Cost by person omits job-level row"
   - name: "Latest Version (v2.400)"
-    line: ~1330
+    line: ~1401
     description: "Dashboard Currently In: first column min-width for full name + (s); colgroup + stripCurrentlyInFirstCol"
   - name: "Latest Version (v2.399)"
-    line: ~1341
+    line: ~1412
     description: "Dashboard User day schedule modal: header/footer layout, chevrons on 8-12-4 row, Dispatch link label"
   - name: "Latest Version (v2.398)"
-    line: ~1356
+    line: ~1427
     description: "AIA G702-G703: showAiaG702G703 (job/invoice ready_to_bill|billed), Stages + View bill; modal Change Orders <details> group + centered summary"
   - name: "Latest Version (v2.397)"
-    line: ~1369
+    line: ~1440
     description: "Jobs Stages Billed Awaiting Payment: Lien Tooling prefill modal (wrenches, field labels, job address split for city/state/ZIP), VITE_LIEN_TOOLING_ORIGIN"
   - name: "Latest Version (v2.396)"
-    line: ~1381
+    line: ~1452
     description: "Jobs Job Summary: HCP # floor filter (default 500, localStorage), unnumbered HCP first in table, centered footer + copy order"
   - name: "Latest Version (v2.395)"
-    line: ~1392
+    line: ~1463
     description: "Jobs Job Summary: all accessible jobs, all pipeline statuses, ignores ?customer=; dedicated fetch + Mercury scope"
   - name: "Latest Version (v2.394)"
-    line: ~1402
+    line: ~1473
     description: "Migrate and Delete: allow source job Ready to bill (RPC + JobFormModal); same other billing guards"
   - name: "Latest Version (v2.393)"
-    line: ~1413
+    line: ~1439
     description: "Migrate and Delete (jobs_ledger): RPC migrate_job_ledger_costs_and_delete + billing guard + JobFormModal"
   - name: "Latest Version (v2.392)"
-    line: ~1424
+    line: ~1450
     description: "Jobs Stages Paid in Full collapsed header: (Expand to load) instead of (—) before lazy merge"
   - name: "Latest Version (v2.391)"
-    line: ~1434
+    line: ~1460
     description: "Jobs Stages pipeline jump bar: Working → Ready to Bill → Billed Awaiting Payment counts + scroll"
   - name: "Latest Version (v2.390)"
-    line: ~1444
+    line: ~1470
     description: "Header search job/bid pick opens modals in place; no navigate to Jobs or Bids"
   - name: "Latest Version (v2.389)"
-    line: ~1310
+    line: ~1480
     description: "Global JobDetailModalProvider; header job pick opens detail immediately"
   - name: "Latest Version (v2.388)"
-    line: ~1320
+    line: ~1490
     description: "Header global search: minimum 2 characters before RPCs and results panel"
   - name: "Latest Version (v2.387)"
-    line: ~1330
+    line: ~1500
     description: "Header search: job → Job Detail modal (jobDetail); bid → Bid Preview + bidId URL"
   - name: "Latest Version (v2.386)"
-    line: ~1340
+    line: ~1510
     description: "Layout header global search (dev/master/assistant): jobs, bids, estimates; search_estimates_for_nav RPC"
   - name: "Latest Version (v2.385)"
-    line: ~1351
+    line: ~1521
     description: "Jobs: lazy Paid in Full fetch on expand + fetchPaidJobsIfNeeded; Edit/New guarded until list idle (tryOpenEditJob)"
   - name: "Latest Version (v2.384)"
     line: ~1260
@@ -1033,6 +1060,15 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.411 — **Dashboard** — **Leave Report** schedule nag (**[`leaveReportScheduleReminder.ts`](src/lib/leaveReportScheduleReminder.ts)**; **12-hour** silence via **`my_last_report_at`**); **yellow** bell on **Leave Report**; **`helpers`** — no **Assigned Jobs** **Send to Billing** (**`update_job_status`**; migrations **`20270506120000`**, **`20270507120000`**)](#latest-updates-v2411)
+**New:** [v2.410 — **Product copy** — **`user_role`** enum value stays **`helpers`**; UI shows **Helper** (singular) — [**`displayLabelForUserRole`](src/lib/userRoleDisplay.ts)**, **[`ACCESS_CONTROL.md`](ACCESS_CONTROL.md)** **`helpers (Helper)`**, People (**Helper (with account)**), Settings matrix + dropdowns + report copy (**Helper users**)](#latest-updates-v2410)
+**New:** [v2.409 — **Dashboard** **Assigned Jobs** / **Superintendent Jobs** — **Send to Billing** outlined (**white** background, **`#2563eb`** border + text); **Leave Report** stays solid primary blue — matches **View Reports** chrome; **`opacity`** when **`jobStatusUpdatingId`** — **[`Dashboard.tsx`](src/pages/Dashboard.tsx)**](#latest-updates-v2409)
+**New:** [v2.408 — **Checklist** **Roadmap** — **multiple roadmaps** + **members**: **`checklist_tech_tree_roadmaps`**, **`roadmap_id`** on groups, **`checklist_tech_tree_roadmap_members`** (viewer / editor); **staff/primary** see all roadmaps; others by membership; migration backfills **Default** + viewer rows for non-archived users; UI — **[`ChecklistTechTreeRoadmapBar`](src/components/checklist/ChecklistTechTreeRoadmapBar.tsx)** (select, **New roadmap**, **Members**), **[`ChecklistTechTreeRoadmapMembersModal`](src/components/checklist/ChecklistTechTreeRoadmapMembersModal.tsx)**; URL **`?tab=roadmap&roadmap=<uuid>`**; graph load scoped by roadmap (**[`ChecklistTechTreeTab`](src/components/checklist/ChecklistTechTreeTab.tsx)**); **`MIGRATIONS.md`** → **`20270427120000_checklist_tech_tree_multi_roadmap.sql`**](#latest-updates-v2408)
+**New:** [v2.407 — **Checklist** **Roadmap** (`?tab=roadmap`): **canvas** icon controls (enter full screen, **Organize**, **Add group**, **Edit tasks**, **Show all** / **Collapse all**); empty graph keeps **Add group** / **Edit tasks** in **TechTreeRoadmapToolbarActions**; **full screen** — same icons in top strip left of **exit** (no corner duplicate); **exit** = circle-**X** icon (**`checklistTechTreeExitFs`**, no chip border); shared **[`ChecklistTechTreeMapActionIconButtons`](src/components/checklist/ChecklistTechTreeMapActionIconButtons.tsx)**](#latest-updates-v2407)
+**New:** [v2.406 — **Jobs** **Job Summary** — **Mercury** drilldown **Reassign** (**`JobSummaryDrilldownMercuryTable`**) → shared **`MercuryTransactionAllocationsModal`**; **`mercury_transaction_id`** on summary rows; **`loadJobSummaryMercuryAllocationsForJob(..., force)`**](#latest-updates-v2406)
+**New:** [v2.405 — **Jobs** **Job Summary** — **Cost breakdown** — single **Invoices from supply** UI (**Parts Cost** only) + print supply lines under **Parts Cost** (not before **Team Labor**); **`printJobSummaryCostBreakdown`** order](#latest-updates-v2405)
+**New:** [v2.404 — **Jobs** **Job Summary** — **Person summary** **Cost breakdown** — per-cell **drilldown** modals (**`JobSummaryCostCellDrilldownModal`**, **Print** / **Export CSV** in header, **`domTableToCsv`**, **Unassigned** + **Total** row; link affordance **`.jobSummaryBreakdownInteractive`**; **not clickable** for empty/`—` cells, person **Supply** column, **zero hours**)](#latest-updates-v2404)
+**New:** [v2.403 — **Jobs** **Job Summary** — **Cost breakdown** **print** — **`printJobSummaryCostBreakdown`**, **Print / Save as PDF**, **Preparing…**, **`aria-busy`**, **`printCostBreakdownJobId`** (section order updated in v2.405)](#latest-updates-v2403)
 **New:** [v2.401 — **Banking** **Mercury** **Sorting**: fixed **top-right** cluster (**Configuration**, **User Card Link**, **Nicknames**); **sorting** toolbar — **search** flexes between **Show unsplit** / **Show unlinked** and **Refresh from Mercury** / **Reload table**; no visible **Search transactions** label (**`aria-label`** on input); **`mercury_debit_card_user_links.auto_assign_user_id`** (same roster as Tally) + trigger/backfill — **`BankingUserCardLinkModal`**; **Jobs** → **Parts**: **Unattributed** right of search row; **Cost by person** omits redundant **Job (no per-person split)** line (**`partsPerPersonCostSummary`**, **`buildPartsPerPersonCostRows`**)](#latest-updates-v2401)
 **New:** [v2.400 — **Dashboard** **Currently In** (clock strip): first column **min-width** from full **name + (s)**; **`<colgroup>`** + **`stripCurrentlyInFirstCol`**; **`stripCurrentlyInNameWithSuffix`** + nowrap (**[`DashboardTeamActiveClockStrip`](src/components/DashboardTeamActiveClockStrip.tsx)**)](#latest-updates-v2400)
 **New:** [v2.399 — **Dashboard** **User day schedule** modal (**clock strip** **name**); **`UserDayScheduleModal`**, responsive **date** header, day **chevrons** on **8 / 12 / 4** row, footer **Dispatch** + **+** + **Close**](#latest-updates-v2399)
@@ -1311,6 +1347,110 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.411)
+
+**Date**: 2026-04-28
+
+### **Dashboard** — **Leave Report** schedule reminder — **`my_last_report_at`**; **`helpers`** and **Send to Billing**
+
+- **Schedule nag** ([`leaveReportScheduleReminder.ts`](src/lib/leaveReportScheduleReminder.ts), **`shouldShowLeaveReportScheduleReminder`**) — After at least one **`job_schedule_block`** on **today** (company calendar TZ) for the job has **`time_end`** in the past, the **Leave Report** button (**[`DashboardLeaveReportButton`](src/pages/Dashboard.tsx)**) may show a **yellow** **`faBell`** overlay (**centered** on the blue button, **`pointer-events: none`**). Nag is **suppressed** when the viewer has a **reports** row for that job with **`created_by_user_id = auth.uid()`** and **`created_at`** within the last **`LEAVE_REPORT_REMINDER_MY_REPORT_SILENCE_MS`** (**12** elapsed hours). Dashboard job rows carry **`my_last_report_at`** = max such timestamp from [**`20270507120000_dashboard_my_last_report_at.sql`**](supabase/migrations/20270507120000_dashboard_my_last_report_at.sql) on **`list_assigned_jobs_for_dashboard`**, **`list_ready_to_bill_assigned_jobs_for_dashboard`**, and **`list_superintendent_jobs_for_dashboard`**.
+- **Helpers** (**`user_role` = `helpers`**): **Assigned Jobs** omits **Send to Billing**. Server: **`update_job_status`** denies **Working → ready_to_bill** for helpers on the plain team-member path — [**`20270506120000_update_job_status_disallow_helpers_send_to_billing.sql`**](supabase/migrations/20270506120000_update_job_status_disallow_helpers_send_to_billing.sql). See **`[ACCESS_CONTROL.md](./ACCESS_CONTROL.md)`** **`### helpers (Helper)`**.
+
+---
+
+## Latest Updates (v2.410)
+
+**Date**: 2026-04-28
+
+### Product copy — **`helpers`** role labeled **Helper** (display)
+
+The PostgreSQL **`user_role`** value stays **`helpers`** (RLS, APIs, **`users.helpers_service_type_ids`**). **User-visible** naming uses singular **Helper** (People → Users **`AUTH_USER_ROLE_SECTION_LABEL`**, Settings page access matrix column + invite / manual-add / roster role dropdowns via **[`displayLabelForUserRole`](src/lib/userRoleDisplay.ts)**, Dashboard report-review helper text: **Helper users**). Labor-pool labeling **External Helpers** (People) stays plural — many off‑roster people. Docs: **`[ACCESS_CONTROL.md](./ACCESS_CONTROL.md)`** **`### helpers (Helper)`**; glossary **Helper (`helpers`)** role.
+
+---
+
+## Latest Updates (v2.409)
+
+**Date**: 2026-04-28
+
+### **Dashboard** — **Assigned Jobs** / **Superintendent Jobs** — **Send to Billing** button (secondary outline)
+
+On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintendent supplemental list), the **Send to Billing** control uses a **white** fill with **`#2563eb`** border and label text so it sits visually with **View Reports** as a secondary action; **Leave Report** remains the filled primary blue button (see **`DashboardLeaveReportButton`** in **[`Dashboard.tsx`](src/pages/Dashboard.tsx)**). While a row’s status mutation is in flight (`jobStatusUpdatingId` set to that job), the billing button dims (**`opacity: 0.6`**) with **`cursor: not-allowed`**.
+
+---
+
+## Latest Updates (v2.408)
+
+**Date**: 2026-04-27
+
+### **Checklist** — **Roadmap** — **multiple roadmaps** and **members** (viewer / editor)
+
+- **Schema** ([`20270427120000_checklist_tech_tree_multi_roadmap.sql`](supabase/migrations/20270427120000_checklist_tech_tree_multi_roadmap.sql)): **`checklist_tech_tree_roadmaps`**; **`checklist_tech_tree_groups.roadmap_id`**; **`checklist_tech_tree_roadmap_members`** (`viewer` | `editor`). Existing data → one **Default** roadmap; all non-archived users get **viewer** on Default. RLS helpers: **`is_checklist_tech_tree_staff_or_primary`**, **`can_select_checklist_tech_tree_roadmap`**, **`can_edit_checklist_tech_tree_structure_for_roadmap`**, **`can_manage_checklist_tech_tree_roadmap_members`** — access is per roadmap (staff/primary bypass; others need a member row).
+- **UI** ([`ChecklistTechTreeTab.tsx`](src/components/checklist/ChecklistTechTreeTab.tsx), [`Checklist.tsx`](src/pages/Checklist.tsx)): Bar **[`ChecklistTechTreeRoadmapBar`](src/components/checklist/ChecklistTechTreeRoadmapBar.tsx)** — roadmap **select**, **New roadmap** (dev/master/assistant/primary), **Members**; deep link **`?tab=roadmap&roadmap=<uuid>`**. **[`ChecklistTechTreeRoadmapMembersModal`](src/components/checklist/ChecklistTechTreeRoadmapMembersModal.tsx)** — list members, roles, add/remove (editors and staff manage). **Structural editing** (graph edits) for **staff/primary** or roadmap **editor** members (`canEditStructure`).
+- **Related**: v2.407 canvas icons and full-screen behavior unchanged aside from roadmap scoping.
+
+---
+
+## Latest Updates (v2.407)
+
+**Date**: 2026-04-26
+
+### **Checklist** — **Roadmap** tab — graph **canvas** icons, **full screen** header, plain **exit**
+
+- **Roadmap** ([`ChecklistTechTreeTab.tsx`](src/components/checklist/ChecklistTechTreeTab.tsx), URL **`?tab=roadmap`**): When the graph has groups, primary actions use a **top-right** floating icon row on the map (not the old text **Organize** / collapse / show cluster only in the page bar): **Enter full screen** (when not already full screen), **Organize**, **Add group**, **Edit tasks** (reorder mode; editors), **Show all**, **Collapse all** (viewers get the last three + Organize). **Empty** graph: **Add group** and **Edit tasks** stay as text in [`TechTreeRoadmapToolbarActions`](src/components/checklist/ChecklistTechTreeRoadmapToolbar.tsx); with groups, those move to the canvas (same pattern as earlier Add group work).
+- **Shared UI** ([`ChecklistTechTreeMapActionIconButtons.tsx`](src/components/checklist/ChecklistTechTreeMapActionIconButtons.tsx)): **`layout="corner"`** vs **`layout="header"`** (left-to-right order for the strip). **Full screen**: the icon set is in the **overlay** strip (search + **Link Groups** / **Edit tasks** toolbar + icons + exit); the **corner** float is **hidden** while full screen so controls are not duplicated.
+- **Exit full screen**: **Circle X** icon only — [`roadmapExitFullscreenIconButtonStyle`](src/components/checklist/ChecklistTechTreeTab.tsx) (no chip border/shadow); hover / **:focus-visible** via **`.checklistTechTreeExitFs`** in [`index.css`](src/index.css). Still exits on click and **Esc** ([`exitCanvasFullscreen`](src/components/checklist/ChecklistTechTreeTab.tsx)).
+
+---
+
+## Latest Updates (v2.406)
+
+**Date**: 2026-04-25
+
+### **Jobs** — **Job Summary** — **Person summary** drilldown — **Reassign** on Mercury lines
+
+- **`JobSummaryMercuryAllocationRow`** carries **`mercury_transaction_id`**; print-path mercury rows match ([`Jobs.tsx`](src/pages/Jobs.tsx)).
+- **[`JobSummaryDrilldownMercuryTable`](src/components/jobs/JobSummaryCostCellDrilldownModal.tsx)**: optional **Actions** column — **Reassign** (roles with **`canAccessBankingForParts`**) calls **`handleJobSummaryMercuryReassignFromDrilldown`** → **`loadMercuryAllocModalDataForTransaction`** → shared **`MercuryTransactionAllocationsModal`** (same as Parts **Assign**). Drilldown closes so the alloc modal stacks above.
+- **Save** (**`onPartsAllocSaved`**): clears drilldown; **`loadJobSummaryMercuryAllocationsForJob(jid, true)`** for source job and any **`job_id`** in saved splits; **`updateMercuryCardTotalForOneJob`** per touched job.
+- **[`MercuryTransactionAllocationsModal`](src/components/MercuryTransactionAllocationsModal.tsx)**: muted hint under **Job splits** — remove line + add new job from search to move allocation.
+
+---
+
+## Latest Updates (v2.405)
+
+**Date**: 2026-04-25
+
+### **Jobs** — **Job Summary** — **Cost breakdown** — one **Invoices from supply** surface (UI + print)
+
+- **On-screen** ([`Jobs.tsx`](src/pages/Jobs.tsx)): Removed the freestanding **Invoices from supply houses** **`<details>`** block between **Person summary** and **Team Labor**; the same line-level content remains under **Parts Cost** → **Invoices from Supply Houses** (`loadJobSummaryInvoiceLinesForJob` on open).
+- **Print** ([`printJobSummaryCostBreakdown`](src/pages/Jobs.tsx)): Supply subtotal and allocation line table are printed **under** the **Parts Cost** heading, after **Other job charges** and before **Card charges** (not a separate section before **Team Labor**). Order: **Summary**, **Person summary**, **Team Labor**, **Sub Labor**, **Parts Cost** (including supply rows), **Total bill**.
+
+---
+
+## Latest Updates (v2.404)
+
+**Date**: 2026-04-25
+
+### **Jobs** — **Job Summary** — **Person summary** (expanded **Cost breakdown**) — cell drilldowns, Print/CSV, affordance, inert empty cells
+
+- **Per-cell modals** ([`JobSummaryCostCellDrilldownModal`](src/components/jobs/JobSummaryCostCellDrilldownModal.tsx) in [`Jobs.tsx`](src/pages/Jobs.tsx)): click money/name cells in the **Person summary** table, **Unassigned** row, and **Total** row to open line-level or explanatory detail (Mercury: [`filterJobSummaryMercuryRowsForPersonName`](src/lib/jobSummaryDrilldownMercuryFilter.ts) / **Unattributed** / [`filterJobSummaryMercuryRowsForPersonNames`](src/lib/jobSummaryDrilldownMercuryFilter.ts) for filtered footer card; team labor: [`JobSummaryDrilldownTeamLaborByWorkDate`](src/components/jobs/JobSummaryCostCellDrilldownModal.tsx); supply: [`renderJobSummarySupplyHouseInvoiceTableContent`](src/pages/Jobs.tsx) when needed). Clicks use **`e.stopPropagation()`** so the parent job row does not toggle. **Escape** / backdrop close; keyboard **Enter** on focused cells. State: **`jobSummaryCostDrilldown`** (`title` + `body`).
+- **Modal header**: **Print** (new window + `print()`, same style family as other Jobs print helpers) and **Export CSV** (UTF-8 BOM; table walk + fallback text in [`elementToLikelyCsv`](src/lib/domTableToCsv.ts)); filename `job-summary-drilldown_<title>_<date>.csv`. Toasts on blocked pop-up or success.
+- **Click affordance**: helper line *Click a name or value…*; **`th` `title`** tooltips; **`.jobSummaryBreakdownInteractive`** / **`.jobSummaryBreakdownInteractiveMuted`** in [`index.css`](src/index.css) (dotted underline, hover, `:focus-visible`).
+- **Inert when empty (no link / no button)**: person-row **Supply** is always `—` (per-person supply not split) — **not** interactive; person **Hours** at **0** show `—` and are **not** interactive; **Card** / line **Total** attach **`onClick` / `onKeyDown`** only when the drilldown applies; Unassigned/Total `—` cells unchanged. **`openHours`** guards **`jobSummaryPartsCostIsZero(r.hours)`**.
+
+---
+
+## Latest Updates (v2.403)
+
+**Date**: 2026-04-25
+
+### **Jobs** — **Job Summary** — cost breakdown **print** matches expanded UI
+
+- **Print / Save as PDF** (replaces a plain **Print** label) in the expanded row **Cost breakdown** header; shows **Preparing…** and is **disabled** with **`aria-busy`** while **`printJobSummaryCostBreakdown`** loads invoice RPC lines and Mercury allocations (state: **`printCostBreakdownJobId`** in [`Jobs.tsx`](src/pages/Jobs.tsx)); loading clears in **`finally`** (including when the browser blocks the print pop-up and the existing error toast shows).
+- **Print document order** (see also **v2.405** for the current order): **Summary**; **Person summary** (full job; in-app person search not applied) — same logic as the screen via **`buildJobSummaryPersonSummaryRows`** + **`buildPartsPerPersonCostRows`**; **Team Labor**; **Sub Labor**; **Parts Cost** — Parts from Tally, Other job charges, **Invoices from supply houses** (allocated + line table), Card charges, **Cost by person** (tally and card) when shown; **Total bill** + revenue before overhead. As of **v2.405**, supply invoice lines are **not** a separate section before **Team Labor**. Implementation: [`printJobSummaryCostBreakdown`](src/pages/Jobs.tsx); print **CSS** uses **`.print-section`**, **`.print-key-table`**, **`.print-note`**.
+
+
 ---
 
 ## Latest Updates (v2.402)

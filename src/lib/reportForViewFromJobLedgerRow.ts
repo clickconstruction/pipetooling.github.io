@@ -1,5 +1,10 @@
 import type { ReportForView } from '../components/ReportViewModal'
 import type { Database, Json } from '../types/database'
+import {
+  formatReportFieldValueForThreadSummary,
+  REPORT_FIELD_LABEL_JOB_COMPLETION,
+  REPORT_FIELD_LABEL_LEGACY_WHO,
+} from './reportTemplateFieldDisplay'
 
 export type ReportForJobLedgerRow = Database['public']['Functions']['list_reports_for_job_ledger']['Returns'][number]
 export type ReportForBidListRow = Database['public']['Functions']['list_reports_for_bid']['Returns'][number]
@@ -42,10 +47,18 @@ export function reportForViewFromListReportsForBidRow(r: ReportForBidListRow): R
 }
 
 export function firstNonEmptyFieldValueSummary(report: ReportForView, maxLen = 120): string {
-  if (!report.field_values) return ''
-  for (const v of Object.values(report.field_values)) {
+  const raw = report.field_values
+  if (raw == null) return ''
+  const hasNewCompletionKey = Object.prototype.hasOwnProperty.call(raw, REPORT_FIELD_LABEL_JOB_COMPLETION)
+  const entries = Object.entries(raw).filter(([label]) => {
+    if (label === REPORT_FIELD_LABEL_LEGACY_WHO && hasNewCompletionKey) return false
+    return true
+  })
+  for (const [label, v] of entries) {
     const t = (v ?? '').trim()
-    if (t) return t.length > maxLen ? `${t.slice(0, maxLen - 1)}…` : t
+    if (!t) continue
+    const line = formatReportFieldValueForThreadSummary(label, t)
+    return line.length > maxLen ? `${line.slice(0, maxLen - 1)}…` : line
   }
   return ''
 }

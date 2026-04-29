@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth'
 import type { Database } from '../types/database'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
-type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator'
+type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'helpers' | 'estimator'
 
 function contactInfoToJson(phone: string, email: string): { phone: string | null; email: string | null } | null {
   const phoneTrimmed = phone.trim()

@@ -92,6 +92,7 @@ import {
 import { resolveManagerUserIdForFeedback } from '../lib/teamFeedback'
 import { loginAsUser } from '../lib/loginAsUser'
 import { useAuth } from '../hooks/useAuth'
+import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
 import { useHoursGridFirstColWidthPx } from '../hooks/useHoursGridFirstColWidthPx'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useToastContext } from '../contexts/ToastContext'
@@ -132,6 +133,7 @@ type PersonKind =
   | 'assistant'
   | 'master_technician'
   | 'sub'
+  | 'helper'
   | 'estimator'
   | 'primary'
   | 'superintendent'
@@ -143,11 +145,13 @@ const KINDS: PersonKind[] = [
   'estimator',
   'superintendent',
   'sub',
+  'helper',
 ]
 const KIND_LABELS: Record<PersonKind, string> = {
   assistant: 'Assistants',
   master_technician: 'Master Technicians',
   sub: 'Subcontractors',
+  helper: 'Helper',
   estimator: 'Estimators',
   primary: 'Primaries',
   superintendent: 'Superintendents',
@@ -157,6 +161,7 @@ const KIND_TO_USER_ROLE: Record<PersonKind, string> = {
   assistant: 'assistant',
   master_technician: 'master_technician',
   sub: 'subcontractor',
+  helper: 'helpers',
   estimator: 'estimator',
   primary: 'primary',
   superintendent: 'superintendent',
@@ -222,6 +227,7 @@ const USERS_TAB_SECTIONS: UsersTabSection[] = [
   { type: 'personKind', kind: 'estimator' },
   { type: 'personKind', kind: 'superintendent' },
   { type: 'personKind', kind: 'sub' },
+  { type: 'personKind', kind: 'helper' },
   { type: 'dev' },
 ]
 
@@ -289,7 +295,7 @@ function costLinesTotal(lines: PersonLicenseCostLine[] | undefined): number {
 
 export default function People() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const { user: authUser } = useAuth()
+  const { user: authUser, role: authRole } = useAuth()
   const { showToast } = useToastContext()
   const narrowViewport = useNarrowViewport640()
   const { widthPx: hoursGridFirstColWidthPx, measurer: hoursGridFirstColMeasurer } = useHoursGridFirstColWidthPx()
@@ -1156,7 +1162,7 @@ export default function People() {
     setError(null)
     const [peopleRes, usersRes, meRes] = await Promise.all([
       supabase.from('people').select('id, master_user_id, kind, name, email, phone, notes').is('archived_at', null).order('kind').order('name'),
-      supabase.from('users').select('id, email, name, role, notes, phone').is('archived_at', null).in('role', ['assistant', 'master_technician', 'subcontractor', 'estimator', 'primary', 'superintendent']),
+      supabase.from('users').select('id, email, name, role, notes, phone').is('archived_at', null).in('role', ['assistant', 'master_technician', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent']),
       supabase.from('users').select('role').eq('id', authUser.id).single(),
     ])
     if (peopleRes.error) setError(peopleRes.error.message)
@@ -1867,7 +1873,7 @@ export default function People() {
       .from('users')
       .select('id, email, name')
       .is('archived_at', null)
-      .in('role', ['assistant', 'master_technician', 'subcontractor', 'estimator', 'primary', 'superintendent'])
+      .in('role', ['assistant', 'master_technician', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent'])
     const usersAfterInvite = (usersData ?? []) as Array<{ id: string; email: string | null; name: string }>
     const dups = findPersonUserDuplicates(people, usersAfterInvite, payConfig)
     const invitedDup = dups.find((d) => d.email.toLowerCase() === p.email?.trim().toLowerCase())
@@ -1938,6 +1944,26 @@ export default function People() {
           { label: 'External Subcontractors', slice: items.filter((i) => i.source === 'people') },
         ]
         for (const { label, slice } of subSlices) {
+          const raw = slice.map((item) => item.name?.trim()).filter((n): n is string => Boolean(n))
+          const uniqueInSection = Array.from(new Set(raw)).sort((a, b) => a.localeCompare(b))
+          const names = uniqueInSection.filter((n) => {
+            if (assigned.has(n)) return false
+            assigned.add(n)
+            return true
+          })
+          if (names.length > 0) {
+            sections.push({ label, names })
+          }
+        }
+        continue
+      }
+      if (k === 'helper') {
+        const items = byKind('helper')
+        const helperSlices: Array<{ label: string; slice: typeof items }> = [
+          { label: 'Helper (with account)', slice: items.filter((i) => i.source === 'user') },
+          { label: 'External Helpers', slice: items.filter((i) => i.source === 'people') },
+        ]
+        for (const { label, slice } of helperSlices) {
           const raw = slice.map((item) => item.name?.trim()).filter((n): n is string => Boolean(n))
           const uniqueInSection = Array.from(new Set(raw)).sort((a, b) => a.localeCompare(b))
           const names = uniqueInSection.filter((n) => {
@@ -2470,7 +2496,8 @@ export default function People() {
   function renderUsersTabRosterListItem(sectionKind: PersonKind, item: UsersTabRosterListRow) {
     const activeProjectRows = personProjects[item.name.trim()]
     const activeProjectCount = activeProjectRows?.length ?? 0
-    const isExternalSubRoster = sectionKind === 'sub' && item.source === 'people'
+    const isExternalSubRoster =
+      (sectionKind === 'sub' || sectionKind === 'helper') && item.source === 'people'
 
     return (
       <li
@@ -7807,6 +7834,39 @@ export default function People() {
                                       </h3>
                                       <ul style={usersTabRosterUlStyle}>
                                         {external.map((item) => renderUsersTabRosterListItem('sub', item))}
+                                      </ul>
+                                    </>
+                                  ) : null}
+                                </>
+                              )
+                            }
+                            if (k === 'helper') {
+                              const helperItems = byKind('helper')
+                              const withAccount = helperItems.filter((i) => i.source === 'user')
+                              const external = helperItems.filter((i) => i.source === 'people')
+                              if (helperItems.length === 0) {
+                                return <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>None yet.</p>
+                              }
+                              return (
+                                <>
+                                  {withAccount.length > 0 ? (
+                                    <ul style={usersTabRosterUlStyle}>
+                                      {withAccount.map((item) => renderUsersTabRosterListItem('helper', item))}
+                                    </ul>
+                                  ) : null}
+                                  {external.length > 0 ? (
+                                    <>
+                                      <h3
+                                        style={{
+                                          margin: withAccount.length > 0 ? '1rem 0 0.5rem 0' : '0 0 0.5rem 0',
+                                          fontSize: '1.125rem',
+                                          fontWeight: 700,
+                                        }}
+                                      >
+                                        External Helpers
+                                      </h3>
+                                      <ul style={usersTabRosterUlStyle}>
+                                        {external.map((item) => renderUsersTabRosterListItem('helper', item))}
                                       </ul>
                                     </>
                                   ) : null}
@@ -13528,7 +13588,7 @@ export default function People() {
                       <tbody>
                         {reviewReports.map((r) => (
                           <tr key={r.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>{r.template_name}</td>
+                            <td style={{ padding: '0.5rem 0.75rem' }}>{displayReportTemplateName(r.template_name, authRole)}</td>
                             <td style={{ padding: '0.5rem 0.75rem' }}>{r.job_display_name}</td>
                             <td style={{ padding: '0.5rem 0.75rem' }}>{new Date(r.created_at).toLocaleString()}</td>
                             <td style={{ padding: '0.5rem 0.75rem' }}>

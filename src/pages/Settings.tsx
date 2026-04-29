@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
 import { cascadePersonNameInPayTables, getPersonNamesForUser } from '../lib/cascadePersonName'
 import { findPersonUserDuplicates, findNameSimilarDuplicates, mergePersonIntoUser } from '../lib/mergePersonUserDuplicates'
 import type { PayConfigRowForMerge } from '../lib/mergePersonUserDuplicates'
@@ -52,8 +53,18 @@ import type { EstimateCatalogLineItem } from '../lib/estimateLineItemCatalog'
 import { catalogDbRowsToLineItems, fetchEstimateCatalogLive, replaceEstimateCatalogFromPayload } from '../lib/estimateCatalogApi'
 import { computeEstimateLineExtendedCents } from '../lib/estimateLineItemNormalize'
 import { formatNotificationDatetime } from '../utils/formatNotificationDatetime'
+import { isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
+import { displayLabelForUserRole } from '../lib/userRoleDisplay'
 
-type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator' | 'primary' | 'superintendent'
+type UserRole =
+  | 'dev'
+  | 'master_technician'
+  | 'assistant'
+  | 'subcontractor'
+  | 'helpers'
+  | 'estimator'
+  | 'primary'
+  | 'superintendent'
 type NotificationHistoryRow = Database['public']['Tables']['notification_history']['Row']
 type JobCountByMasterRow =
   Database['public']['Functions']['list_job_counts_by_master_for_dev_settings']['Returns'][number]
@@ -69,6 +80,7 @@ type UserRow = {
   primary_service_type_ids?: string[] | null
   superintendent_service_type_ids?: string[] | null
   subcontractor_service_type_ids?: string[] | null
+  helpers_service_type_ids?: string[] | null
   archived_at?: string | null
 }
 
@@ -149,7 +161,42 @@ interface AssemblyType {
   updated_at: string
 }
 
-const ROLES: UserRole[] = ['dev', 'master_technician', 'assistant', 'subcontractor', 'estimator', 'primary', 'superintendent']
+const ROLES: UserRole[] = [
+  'dev',
+  'master_technician',
+  'assistant',
+  'subcontractor',
+  'helpers',
+  'estimator',
+  'primary',
+  'superintendent',
+]
+
+type PageAccessRow = {
+  page: string
+  dev: string
+  master: string
+  assistant: string
+  sub: string
+  helpers: string
+  estimator: string
+  primary: string
+  superintendent: string
+}
+
+const PAGE_ACCESS: PageAccessRow[] = [
+  { page: 'Dashboard', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'yes', helpers: 'yes', estimator: 'yes', primary: 'yes', superintendent: 'yes' },
+  { page: 'Customers', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', helpers: 'no', estimator: 'yes limited', primary: 'no', superintendent: 'no' },
+  { page: 'Projects', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', helpers: 'no', estimator: 'no', primary: 'no', superintendent: 'yes' },
+  { page: 'Workflow', dev: 'yes', master: 'yes', assistant: 'yes limited', sub: 'no', helpers: 'no', estimator: 'no', primary: 'no', superintendent: 'yes limited' },
+  { page: 'People', dev: 'yes', master: 'yes', assistant: 'yes limited', sub: 'no', helpers: 'no', estimator: 'no', primary: 'no', superintendent: 'no' },
+  { page: 'Jobs', dev: 'yes', master: 'yes', assistant: 'yes limited', sub: 'no', helpers: 'no', estimator: 'no', primary: 'yes Reports only', superintendent: 'yes Stages Reports Billing Sub Ledger' },
+  { page: 'Calendar', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'yes', helpers: 'yes', estimator: 'no', primary: 'yes', superintendent: 'yes' },
+  { page: 'Bids', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', helpers: 'no', estimator: 'yes', primary: 'yes Bid Board, RFI, Change Order, Lien Release', superintendent: 'yes draft only' },
+  { page: 'Materials', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', helpers: 'no', estimator: 'yes', primary: 'yes', superintendent: 'yes' },
+  { page: 'Templates', dev: 'yes', master: 'no', assistant: 'no', sub: 'no', helpers: 'no', estimator: 'no', primary: 'no', superintendent: 'no' },
+  { page: 'Settings', dev: 'yes', master: 'yes limited', assistant: 'no', sub: 'no', helpers: 'no', estimator: 'yes limited', primary: 'yes limited', superintendent: 'yes limited' },
+]
 
 type GoalPickerUserRow = { id: string; name: string | null; email: string | null }
 
@@ -158,20 +205,6 @@ function displayLabelForGoalPickerUser(userId: string, users: GoalPickerUserRow[
   const u = users.find((x) => x.id === userId)
   return u?.name?.trim() || u?.email || userId
 }
-
-const PAGE_ACCESS: Array<{ page: string; dev: string; master: string; assistant: string; sub: string; estimator: string; primary: string; superintendent: string }> = [
-  { page: 'Dashboard', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'yes', estimator: 'yes', primary: 'yes', superintendent: 'yes' },
-  { page: 'Customers', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', estimator: 'yes limited', primary: 'no', superintendent: 'no' },
-  { page: 'Projects', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', estimator: 'no', primary: 'no', superintendent: 'yes' },
-  { page: 'Workflow', dev: 'yes', master: 'yes', assistant: 'yes limited', sub: 'no', estimator: 'no', primary: 'no', superintendent: 'yes limited' },
-  { page: 'People', dev: 'yes', master: 'yes', assistant: 'yes limited', sub: 'no', estimator: 'no', primary: 'no', superintendent: 'no' },
-  { page: 'Jobs', dev: 'yes', master: 'yes', assistant: 'yes limited', sub: 'no', estimator: 'no', primary: 'yes Reports only', superintendent: 'yes Stages Reports Billing Sub Ledger' },
-  { page: 'Calendar', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'yes', estimator: 'no', primary: 'yes', superintendent: 'yes' },
-  { page: 'Bids', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', estimator: 'yes', primary: 'yes Bid Board, RFI, Change Order, Lien Release', superintendent: 'yes draft only' },
-  { page: 'Materials', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', estimator: 'yes', primary: 'yes', superintendent: 'yes' },
-  { page: 'Templates', dev: 'yes', master: 'no', assistant: 'no', sub: 'no', estimator: 'no', primary: 'no', superintendent: 'no' },
-  { page: 'Settings', dev: 'yes', master: 'yes limited', assistant: 'no', sub: 'no', estimator: 'yes limited', primary: 'yes limited', superintendent: 'yes limited' },
-]
 
 const VARIABLE_HINT = '{{name}}, {{email}}, {{role}}, {{link}}'
 const NOTIFICATION_VARIABLE_HINT = '{{assignee_name}}, {{item_title}}, {{name}}, {{stage_name}}, {{project_name}}, {{assigned_to_name}}, {{next_stage_name}}, {{rejection_reason}}'
@@ -333,7 +366,7 @@ function getSettingsJumpGroups(myRole: UserRole | null): { id: string; label: st
   }
   if (r === 'dev' || r === 'estimator') groups.push({ id: 'settings-catalogs', label: 'Catalogs & trades' })
   if (r === 'dev') groups.push({ id: 'settings-templates', label: 'Templates & testing' })
-  if (r !== 'subcontractor') groups.push({ id: 'settings-advanced-tools', label: 'Advanced' })
+  if (!isSubcontractorLikeRole(r)) groups.push({ id: 'settings-advanced-tools', label: 'Advanced' })
   return groups
 }
 
@@ -1680,7 +1713,7 @@ export default function Settings() {
     if (role === 'dev') {
     const { data: list, error: eList } = await supabase
       .from('users')
-      .select('id, email, name, role, last_sign_in_at, estimator_prospects_access, estimator_service_type_ids, primary_service_type_ids, superintendent_service_type_ids, subcontractor_service_type_ids')
+      .select('id, email, name, role, last_sign_in_at, estimator_prospects_access, estimator_service_type_ids, primary_service_type_ids, superintendent_service_type_ids, subcontractor_service_type_ids, helpers_service_type_ids')
       .is('archived_at', null)
       .order('name')
     if (eList) setError(eList.message)
@@ -2077,7 +2110,7 @@ export default function Settings() {
       setMyProfileError('Email is required.')
       return
     }
-    const canEditName = myRole !== 'subcontractor'
+    const canEditName = !isSubcontractorLikeRole(myRole)
     if (canEditName && trimmedName) {
       const isDuplicate = await checkDuplicateName(trimmedName, authUser.id)
       if (isDuplicate) {
@@ -4209,7 +4242,12 @@ export default function Settings() {
     loadIgnoredTaskTypes().finally(() => setIgnoredTaskTypesLoading(false))
   }, [ignoredTaskTypesOpen, authUser?.id, myRole])
 
-  const showMyReports = myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'primary' || myRole === 'subcontractor'
+  const showMyReports =
+    myRole === 'dev' ||
+    myRole === 'master_technician' ||
+    myRole === 'assistant' ||
+    myRole === 'primary' ||
+    isSubcontractorLikeRole(myRole)
 
   useEffect(() => {
     if (!authUser?.id || !showMyReports) return
@@ -4553,7 +4591,13 @@ export default function Settings() {
     setEditEstimatorServiceTypeIds(u.role === 'estimator' ? (u.estimator_service_type_ids ?? []) : [])
     setEditPrimaryServiceTypeIds(u.role === 'primary' ? (u.primary_service_type_ids ?? []) : [])
     setEditSuperintendentServiceTypeIds(u.role === 'superintendent' ? (u.superintendent_service_type_ids ?? []) : [])
-    setEditSubcontractorServiceTypeIds(u.role === 'subcontractor' ? (u.subcontractor_service_type_ids ?? []) : [])
+    setEditSubcontractorServiceTypeIds(
+      u.role === 'subcontractor'
+        ? (u.subcontractor_service_type_ids ?? [])
+        : u.role === 'helpers'
+          ? (u.helpers_service_type_ids ?? [])
+          : [],
+    )
     setEditError(null)
   }
 
@@ -4579,6 +4623,7 @@ export default function Settings() {
       primary_service_type_ids?: string[] | null
       superintendent_service_type_ids?: string[] | null
       subcontractor_service_type_ids?: string[] | null
+      helpers_service_type_ids?: string[] | null
     },
     oldName?: string,
     userEmail?: string | null
@@ -4601,6 +4646,9 @@ export default function Settings() {
     }
     if (updates.subcontractor_service_type_ids !== undefined) {
       updatePayload.subcontractor_service_type_ids = updates.subcontractor_service_type_ids?.length ? updates.subcontractor_service_type_ids : null
+    }
+    if (updates.helpers_service_type_ids !== undefined) {
+      updatePayload.helpers_service_type_ids = updates.helpers_service_type_ids?.length ? updates.helpers_service_type_ids : null
     }
     try {
       await withSupabaseRetry(
@@ -4634,6 +4682,7 @@ export default function Settings() {
               ...(updates.primary_service_type_ids !== undefined ? { primary_service_type_ids: updates.primary_service_type_ids } : {}),
               ...(updates.superintendent_service_type_ids !== undefined ? { superintendent_service_type_ids: updates.superintendent_service_type_ids } : {}),
               ...(updates.subcontractor_service_type_ids !== undefined ? { subcontractor_service_type_ids: updates.subcontractor_service_type_ids } : {}),
+              ...(updates.helpers_service_type_ids !== undefined ? { helpers_service_type_ids: updates.helpers_service_type_ids } : {}),
             }
           : u
       ),
@@ -4670,6 +4719,7 @@ export default function Settings() {
       primary_service_type_ids?: string[] | null
       superintendent_service_type_ids?: string[] | null
       subcontractor_service_type_ids?: string[] | null
+      helpers_service_type_ids?: string[] | null
     } = {
       name: trimmedName,
       email: trimmedEmail,
@@ -4686,6 +4736,9 @@ export default function Settings() {
     }
     if (editingUser?.role === 'subcontractor') {
       updates.subcontractor_service_type_ids = editSubcontractorServiceTypeIds.length > 0 ? editSubcontractorServiceTypeIds : null
+    }
+    if (editingUser?.role === 'helpers') {
+      updates.helpers_service_type_ids = editSubcontractorServiceTypeIds.length > 0 ? editSubcontractorServiceTypeIds : null
     }
     await updateUserProfile(editingUserId, updates, editingUser?.name, editingUser?.email)
     setEditingUserId(null)
@@ -5163,7 +5216,7 @@ export default function Settings() {
         role: manualAddRole,
         name: trimmedName || undefined,
     }
-    if ((manualAddRole === 'estimator' || manualAddRole === 'subcontractor') && manualAddServiceTypeIds.length > 0) {
+    if ((manualAddRole === 'estimator' || manualAddRole === 'subcontractor' || manualAddRole === 'helpers') && manualAddServiceTypeIds.length > 0) {
       body.service_type_ids = manualAddServiceTypeIds
     }
     const { data, error: eFn } = await supabase.functions.invoke('create-user', {
@@ -5451,8 +5504,8 @@ export default function Settings() {
               type="text"
               value={myProfileName}
               onChange={(e) => setMyProfileName(e.target.value)}
-              readOnly={myRole === 'subcontractor'}
-              disabled={myRole === 'subcontractor'}
+              readOnly={isSubcontractorLikeRole(myRole)}
+              disabled={isSubcontractorLikeRole(myRole)}
               style={{
                 width: '100%',
                 maxWidth: 320,
@@ -5460,10 +5513,10 @@ export default function Settings() {
                 border: '1px solid #d1d5db',
                 borderRadius: 4,
                 boxSizing: 'border-box',
-                ...(myRole === 'subcontractor' && { background: '#f3f4f6', cursor: 'not-allowed' }),
+                ...(isSubcontractorLikeRole(myRole) && { background: '#f3f4f6', cursor: 'not-allowed' }),
               }}
             />
-            {myRole === 'subcontractor' && (
+            {isSubcontractorLikeRole(myRole) && (
               <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
                 Name is managed by admins. Contact a master or dev to change it.
               </p>
@@ -7205,7 +7258,7 @@ export default function Settings() {
                         }}
                       >
                         <span style={{ fontWeight: 500 }}>{r.job_display_name || 'Unknown job'}</span>
-                        <span style={{ color: '#6b7280', fontSize: '0.875rem', marginLeft: '0.5rem' }}>· {r.template_name}</span>
+                        <span style={{ color: '#6b7280', fontSize: '0.875rem', marginLeft: '0.5rem' }}>· {displayReportTemplateName(r.template_name, myRole)}</span>
                         <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.25rem' }}>
                           {new Date(r.created_at).toLocaleString()}
                         </div>
@@ -7633,7 +7686,7 @@ export default function Settings() {
                       >
                         {ROLES.map((r) => (
                           <option key={r} value={r}>
-                            {r.charAt(0).toUpperCase() + r.slice(1)}
+                            {displayLabelForUserRole(r)}
                           </option>
                         ))}
                       </select>
@@ -7667,6 +7720,13 @@ export default function Settings() {
                                   .filter(Boolean)
                                   .join(', ') || '—')
                               : 'All')
+                              : u.role === 'helpers'
+                                ? (u.helpers_service_type_ids?.length
+                                  ? (u.helpers_service_type_ids
+                                      .map((id) => serviceTypes.find((st) => st.id === id)?.name)
+                                      .filter(Boolean)
+                                      .join(', ') || '—')
+                                  : 'All')
                             : '—'}
                     </td>
                     <td style={{ padding: '0.5rem 0.75rem' }}>{timeSinceAgo(u.last_sign_in_at)}</td>
@@ -7820,7 +7880,7 @@ export default function Settings() {
                       </td>
                     </tr>
                   )}
-                  {editingUserId === u.id && u.role === 'subcontractor' && (
+                  {editingUserId === u.id && isSubcontractorLikeRole(u.role) && (
                     <tr key={`${u.id}-subcontractor-service-types`} style={{ borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
                       <td colSpan={6} style={{ padding: '0.5rem 0.75rem' }}>
                         <div style={{ fontSize: '0.875rem' }}>
@@ -8112,15 +8172,17 @@ export default function Settings() {
                         <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Master</th>
                         <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Assistant</th>
                         <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Sub</th>
+                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Helper</th>
                         <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Estimator</th>
                         <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Primary</th>
+                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Supt.</th>
                         </tr>
                       </thead>
                       <tbody>
                       {PAGE_ACCESS.map((row) => (
                         <tr key={row.page}>
                           <td style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', fontWeight: 500 }}>{row.page}</td>
-                          {(['dev', 'master', 'assistant', 'sub', 'estimator', 'primary', 'superintendent'] as const).map((role) => {
+                          {(['dev', 'master', 'assistant', 'sub', 'helpers', 'estimator', 'primary', 'superintendent'] as const).map((role) => {
                             const val = row[role]
                             return (
                               <td key={role} style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center' }}>
@@ -9781,7 +9843,7 @@ export default function Settings() {
                   style={{ width: '100%', padding: '0.5rem' }}
                 >
                   {ROLES.map((r) => (
-                    <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
+                    <option key={r} value={r}>{displayLabelForUserRole(r)}</option>
                   ))}
                 </select>
               </div>
@@ -9847,11 +9909,11 @@ export default function Settings() {
                   style={{ width: '100%', padding: '0.5rem' }}
                 >
                   {ROLES.map((r) => (
-                    <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
+                    <option key={r} value={r}>{displayLabelForUserRole(r)}</option>
                   ))}
                 </select>
               </div>
-              {(manualAddRole === 'estimator' || manualAddRole === 'subcontractor') && (
+              {(manualAddRole === 'estimator' || manualAddRole === 'subcontractor' || manualAddRole === 'helpers') && (
                 <div style={{ marginBottom: '1rem' }}>
                   <label style={{ display: 'block', marginBottom: 4 }}>Service types (optional)</label>
                   <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>{manualAddRole === 'estimator' ? 'Leave unchecked for access to all service types. Select specific types to restrict.' : 'Leave unchecked for access to all. Select specific types to restrict job/bid association in Clock In and Dispatch.'}</p>
@@ -12016,27 +12078,27 @@ export default function Settings() {
                 <form onSubmit={saveReportSettings}>
                   <div style={{ marginBottom: '1rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Report edit window (days)</label>
-                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8125rem', color: '#6b7280' }}>Days subcontractors can edit their own reports after creation.</p>
+                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8125rem', color: '#6b7280' }}>Days subcontractors and Helper users can edit their own reports after creation.</p>
                     <input type="number" min={0} step={1} value={reportEditWindowDays} onChange={(e) => setReportEditWindowDays(e.target.value)} style={{ width: '6rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
                   </div>
                   <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Subcontractor report visibility (months)</label>
-                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8125rem', color: '#6b7280' }}>Months subcontractors can see their own reports.</p>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Field report visibility (months)</label>
+                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8125rem', color: '#6b7280' }}>Months subcontractors and Helper users can see their own reports.</p>
                     <input type="number" min={0} step={1} value={reportSubVisibilityMonths} onChange={(e) => setReportSubVisibilityMonths(e.target.value)} style={{ width: '6rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
                   </div>
                   <div style={{ marginBottom: '1rem' }}>
                     <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', fontWeight: 600 }}>Report-enabled users</h3>
-                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8125rem', color: '#6b7280' }}>Subcontractors and primaries selected here can see the Recent Reports section on their Dashboard. Unselected users do not see Recent Reports. All users can create reports via the Job Report button.</p>
+                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8125rem', color: '#6b7280' }}>Subcontractors, Helper users, and primaries selected here can see the Recent Reports section on their Dashboard. Unselected users do not see Recent Reports. All users can create reports via the Job Report button.</p>
                     <div style={{ maxHeight: 200, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4, padding: '0.5rem' }}>
-                      {users.filter((u) => u.role === 'subcontractor' || u.role === 'primary').map((u) => (
+                      {users.filter((u) => u.role === 'subcontractor' || u.role === 'helpers' || u.role === 'primary').map((u) => (
                         <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0', cursor: 'pointer' }}>
                           <input type="checkbox" checked={reportEnabledUserIds.has(u.id)} onChange={() => toggleReportEnabledUser(u.id)} />
                           <span>{u.name || u.email}</span>
                           <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>({u.role})</span>
                         </label>
                       ))}
-                      {users.filter((u) => u.role === 'subcontractor' || u.role === 'primary').length === 0 && (
-                        <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>No subcontractors or primaries.</p>
+                      {users.filter((u) => u.role === 'subcontractor' || u.role === 'helpers' || u.role === 'primary').length === 0 && (
+                        <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>No subcontractors, Helper users, or primaries.</p>
                       )}
                     </div>
                   </div>
@@ -12051,7 +12113,7 @@ export default function Settings() {
       )}
       </SettingsGroup>
 
-      {myRole !== 'subcontractor' && (
+      {!isSubcontractorLikeRole(myRole) && (
       <div id="settings-advanced-tools" style={{ marginTop: '2rem', marginBottom: '1.5rem' }}>
         <button
           type="button"
@@ -12117,6 +12179,7 @@ export default function Settings() {
             open={viewReportModalOpen}
             report={selectedReport}
             onClose={() => { setViewReportModalOpen(false); setSelectedReport(null) }}
+            viewerRole={myRole}
           />
           <ReportEditModal
             open={editReportModalOpen}
@@ -12127,6 +12190,7 @@ export default function Settings() {
               setReportForEdit(null)
               loadMyReportsRef.current?.()
             }}
+            viewerRole={myRole}
           />
           <MyReportsModal
             open={myReportsModalOpen}

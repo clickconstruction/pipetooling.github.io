@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import type { Database } from '../types/database'
+import type { UserRole } from '../hooks/useAuth'
+import { isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import { MercuryTransactionNoteIcon } from '../components/icons/MercuryTransactionNoteIcon'
 import { MercuryTransactionAllocationsModal } from '../components/MercuryTransactionAllocationsModal'
 import { TallyJobTransactionsModal } from '../components/tally/TallyJobTransactionsModal'
@@ -526,7 +528,7 @@ export default function JobTally() {
   useEffect(() => {
     if (role == null) return
     setJobsLoading(true)
-    if (role === 'subcontractor') {
+    if (isSubcontractorLikeRole(role as UserRole)) {
       supabase.rpc('list_jobs_for_tally').then(({ data, error: err }) => {
         setJobsLoading(false)
         if (err) {
@@ -1734,7 +1736,7 @@ export default function JobTally() {
                 </div>
               </div>
             )}
-            {role !== 'subcontractor' && (
+            {!isSubcontractorLikeRole(role as UserRole) && (
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', fontWeight: 400, fontSize: '0.875rem', cursor: 'pointer' }}>
                 <input
                   type="checkbox"

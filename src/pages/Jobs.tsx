@@ -13,9 +13,10 @@ import { FileSpreadsheet } from 'lucide-react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { pageUnderlineTabStyle } from '../lib/pageUnderlineTabStyle'
+import { isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { supplyHouseWebsitePortalHref } from '../lib/supplyHouseWebsite'
-import { useAuth } from '../hooks/useAuth'
+import { useAuth, type UserRole } from '../hooks/useAuth'
 import { useMatchMedia } from '../hooks/useMatchMedia'
 import { useSendBackCollectPaymentFlowNotice } from '../hooks/useSendBackCollectPaymentFlowNotice'
 import { useMercuryLedgerNicknames } from '../hooks/useMercuryLedgerNicknames'
@@ -38,6 +39,11 @@ import BilledPaymentConfirmationModal from '../components/jobs/BilledPaymentConf
 import BilledBillViewModal from '../components/jobs/BilledBillViewModal'
 import LienToolingPrefillModal from '../components/jobs/LienToolingPrefillModal'
 import AiaG702G703Modal from '../components/jobs/AiaG702G703Modal'
+import {
+  JobSummaryCostCellDrilldownModal,
+  JobSummaryDrilldownMercuryTable,
+  JobSummaryDrilldownTeamLaborByWorkDate,
+} from '../components/jobs/JobSummaryCostCellDrilldownModal'
 import { StripeInvoiceSendFromStripeButton } from '../components/jobs/StripeInvoiceSendFromStripeButton'
 import { JobThreadNotesPanel } from '../components/JobThreadNotesPanel'
 import { ScheduleJobModal } from '../components/jobs/ScheduleJobModal'
@@ -60,7 +66,10 @@ import { APP_CALENDAR_TZ, formatWorkDateYmdWeekdayLongFriendly, getDefaultWeekRa
 import { fetchAttributionsByMercuryTxIds } from '../lib/fetchMercuryRelationsByTxIds'
 import { fetchMercuryJobAllocationsWithAttributionForJob } from '../lib/fetchMercuryJobAllocationsWithAttributionForJob'
 import { formatDecimalWorkHoursToHhMm } from '../lib/formatDecimalWorkHoursHhMm'
-import { buildJobSummaryPersonSummaryRows } from '../lib/jobSummaryPersonSummaryTable'
+import {
+  buildJobSummaryPersonSummaryRows,
+  partitionUnattributedFromJobSummaryPersonRows,
+} from '../lib/jobSummaryPersonSummaryTable'
 import {
   buildJobSummaryTeamLaborWorkDateTableRows,
   isJobSummaryNoWorkDateKey,
@@ -71,6 +80,13 @@ import {
   type TallyLineForPersonRollup,
 } from '../lib/partsPerPersonCostSummary'
 import { normalizePersonNameKey } from '../lib/personNameKey'
+import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
+import { formatReportFieldValueInlineList } from '../lib/reportSignatureField'
+import {
+  filterJobSummaryMercuryRowsForPersonName,
+  filterJobSummaryMercuryRowsForPersonNames,
+  filterJobSummaryMercuryRowsUnattributed,
+} from '../lib/jobSummaryDrilldownMercuryFilter'
 import { loadMercuryAllocModalDataForTransaction, type MercuryAllocModalData } from '../lib/mercuryAllocModalData'
 import {
   PartsUnattributedMercuryListModal,
@@ -175,6 +191,7 @@ type PersonKind =
   | 'assistant'
   | 'master_technician'
   | 'sub'
+  | 'helper'
   | 'estimator'
   | 'primary'
   | 'superintendent'
@@ -182,6 +199,7 @@ const KIND_TO_USER_ROLE: Record<PersonKind, string> = {
   assistant: 'assistant',
   master_technician: 'master_technician',
   sub: 'subcontractor',
+  helper: 'helpers',
   estimator: 'estimator',
   primary: 'primary',
   superintendent: 'superintendent',
@@ -268,6 +286,7 @@ type JobSummaryInvoiceAllocationLine = {
 
 type JobSummaryMercuryAllocationRow = {
   id: string
+  mercury_transaction_id: string
   amount: number
   note: string | null
   attributionDisplayName: string | null
@@ -286,6 +305,25 @@ function personMatchesJobSummaryBreakdownFilter(name: string | null | undefined,
   const q = queryRaw.trim().toLowerCase()
   if (!q) return true
   return (name ?? '').toLowerCase().includes(q)
+}
+
+function jobSummaryDrilldownCellKeyboard(
+  e: KeyboardEvent<HTMLTableCellElement>,
+  onOpen: () => void,
+) {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault()
+    e.stopPropagation()
+    onOpen()
+  }
+}
+
+function jobSummaryBreakdownInteractiveClass(
+  interactive: boolean,
+  variant: 'primary' | 'muted' = 'primary',
+): string | undefined {
+  if (!interactive) return undefined
+  return variant === 'muted' ? 'jobSummaryBreakdownInteractiveMuted' : 'jobSummaryBreakdownInteractive'
 }
 
 function formatJobSummaryInvoiceDate(iso: string): string {
@@ -1054,12 +1092,14 @@ export default function Jobs() {
     Map<string, JobSummaryMercuryAllocationRow[]>
   >(() => new Map())
 
-  const loadJobSummaryMercuryAllocationsForJob = useCallback(async (jobId: string) => {
-    if (jobSummaryMercuryAllocationsLoadedRef.current.has(jobId)) return
+  const loadJobSummaryMercuryAllocationsForJob = useCallback(async (jobId: string, force = false) => {
+    if (!force && jobSummaryMercuryAllocationsLoadedRef.current.has(jobId)) return
+    if (force) jobSummaryMercuryAllocationsLoadedRef.current.delete(jobId)
     try {
       const rows = await fetchMercuryJobAllocationsWithAttributionForJob(jobId, 'job summary mercury')
       const mapped: JobSummaryMercuryAllocationRow[] = rows.map((r) => ({
         id: r.id,
+        mercury_transaction_id: r.mercury_transaction_id,
         amount: r.amount,
         note: r.note,
         attributionDisplayName: r.attributionDisplayName,
@@ -1122,8 +1162,11 @@ export default function Jobs() {
     Map<string, Awaited<ReturnType<typeof fetchMercuryJobAllocationsWithAttributionForJob>>>
   >(() => new Map())
   const partsUnattribFlowJobIdRef = useRef<string | null>(null)
+  /** When opening Mercury alloc modal from Job Summary drilldown, refresh this job (+ targets) on save. */
+  const jobSummaryMercuryEditFlowJobIdRef = useRef<string | null>(null)
   const [partsUnattribListJobId, setPartsUnattribListJobId] = useState<string | null>(null)
   const [partsAllocModalData, setPartsAllocModalData] = useState<MercuryAllocModalData | null>(null)
+  const [jobSummaryCostDrilldown, setJobSummaryCostDrilldown] = useState<{ title: string; body: ReactNode } | null>(null)
   const [partsAllocModalOpen, setPartsAllocModalOpen] = useState(false)
   const [bankingAttributionUsersOptions, setBankingAttributionUsersOptions] = useState<SearchableSelectOption[]>([])
   const [allJobsUnattributedOpen, setAllJobsUnattributedOpen] = useState(false)
@@ -1133,7 +1176,9 @@ export default function Jobs() {
   const [pendingStagesInvoiceFocusId, setPendingStagesInvoiceFocusId] = useState<string | null>(null)
   const [stagesInvoiceFlashId, setStagesInvoiceFlashId] = useState<string | null>(null)
   const [reportTemplatesModalOpen, setReportTemplatesModalOpen] = useState(false)
-  const [reportTemplatesList, setReportTemplatesList] = useState<Array<{ id: string; name: string; sequence_order: number }>>([])
+  const [reportTemplatesList, setReportTemplatesList] = useState<
+    Array<{ id: string; name: string; sequence_order: number; app_managed: boolean }>
+  >([])
   const [reportTemplatesLoading, setReportTemplatesLoading] = useState(false)
   const [templateFormOpen, setTemplateFormOpen] = useState(false)
   const [editingReportTemplateId, setEditingReportTemplateId] = useState<string | null>(null)
@@ -1662,7 +1707,7 @@ export default function Jobs() {
   async function loadUsers() {
     if (!authUser?.id) return
     const [usersRes, meRes] = await Promise.all([
-      supabase.from('users').select('id, name, email, role, notes').in('role', ['assistant', 'master_technician', 'subcontractor', 'estimator', 'primary', 'superintendent']).order('name'),
+      supabase.from('users').select('id, name, email, role, notes').in('role', ['assistant', 'master_technician', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent']).order('name'),
       supabase.from('users').select('role').eq('id', authUser.id).single(),
     ])
     let usersList = (usersRes.data as UserRow[]) ?? []
@@ -1932,11 +1977,15 @@ export default function Jobs() {
 
   async function loadReportTemplates() {
     setReportTemplatesLoading(true)
-    const { data, error: err } = await supabase.from('report_templates').select('id, name, sequence_order').order('sequence_order')
+    const { data, error: err } = await supabase.from('report_templates').select('id, name, sequence_order, app_managed').order('sequence_order')
     if (err) {
       setError(`Failed to load templates: ${err.message}`)
     } else {
-      setReportTemplatesList((data as Array<{ id: string; name: string; sequence_order: number }>) ?? [])
+      setReportTemplatesList(
+        ((data ?? []) as Array<{ id: string; name: string; sequence_order: number; app_managed: boolean | null }>).map(
+          (row) => ({ ...row, app_managed: !!row.app_managed }),
+        ),
+      )
     }
     setReportTemplatesLoading(false)
   }
@@ -1966,7 +2015,11 @@ export default function Jobs() {
     setTemplateFormOpen(true)
   }
 
-  async function openEditReportTemplate(template: { id: string; name: string; sequence_order: number }) {
+  async function openEditReportTemplate(template: { id: string; name: string; sequence_order: number; app_managed: boolean }) {
+    if (template.app_managed) {
+      setError('Built-in templates cannot be edited.')
+      return
+    }
     setEditingReportTemplateId(template.id)
     setNewTemplateName(template.name)
     const { data: fields } = await supabase
@@ -1987,6 +2040,11 @@ export default function Jobs() {
   async function saveTemplate(e: React.FormEvent) {
     e.preventDefault()
     if (!newTemplateName.trim()) return
+    const editingMeta = editingReportTemplateId ? reportTemplatesList.find((x) => x.id === editingReportTemplateId) : undefined
+    if (editingMeta?.app_managed) {
+      setError('Built-in templates cannot be edited.')
+      return
+    }
     setTemplateSaving(true)
     setError(null)
     const fields = newTemplateFields.map((l) => l.trim()).filter(Boolean)
@@ -2048,6 +2106,11 @@ export default function Jobs() {
   }
 
   async function deleteReportTemplate(id: string) {
+    const tmpl = reportTemplatesList.find((t) => t.id === id)
+    if (tmpl?.app_managed) {
+      setError('Built-in templates cannot be deleted.')
+      return
+    }
     const { count } = await supabase.from('reports').select('*', { count: 'exact', head: true }).eq('template_id', id)
     if ((count ?? 0) > 0) {
       setError('Cannot delete: this template has reports.')
@@ -3320,6 +3383,7 @@ export default function Jobs() {
           }
           return {
             id: r.id,
+            mercury_transaction_id: r.mercury_transaction_id,
             amount: r.amount,
             note: r.note,
             mercury_transactions: r.mercury_transactions,
@@ -3360,6 +3424,8 @@ export default function Jobs() {
       teamBreakdown: teamBreakdownLite,
       ppRows: ppRowsPrint,
     })
+    const { rows: personRowsForTablePrint, unattributedCard: unattributedCardPrint } =
+      partitionUnattributedFromJobSummaryPersonRows(personRowsPrint)
     const partsCostPrint = partsFromTally + invoicesFromSupplyHouses + billedMaterialsSum + cardCharges
     const subLaborTotalPrint = subLaborJobs.reduce(
       (s, lj) => s + laborJobSubCost(lj, mileageCost, timePerMile),
@@ -3384,11 +3450,31 @@ export default function Jobs() {
     const personFilterNote =
       '<p class="muted print-note">All people. The cost breakdown person search in the app does not apply to this print.</p>'
 
+    const hasUnassignedRowContentPrint =
+      !jobSummaryPartsCostIsZero(invoicesFromSupplyHouses) || !jobSummaryPartsCostIsZero(unattributedCardPrint)
+    const unassignedRowTotalPrint = unattributedCardPrint + Number(invoicesFromSupplyHouses ?? 0)
+    const unassignedSupplyRowPrint = hasUnassignedRowContentPrint
+      ? `<tr>
+<td>Unassigned</td>
+<td style="text-align:right">—</td>
+<td style="text-align:right">—</td>
+<td style="text-align:right">${
+        jobSummaryPartsCostIsZero(unattributedCardPrint) ? '—' : `$${formatCurrency(unattributedCardPrint)}`
+      }</td>
+<td style="text-align:right">${
+        jobSummaryPartsCostIsZero(invoicesFromSupplyHouses) ? '—' : `$${formatCurrency(invoicesFromSupplyHouses)}`
+      }</td>
+<td style="text-align:right">${
+        jobSummaryPartsCostIsZero(unassignedRowTotalPrint) ? '—' : `$${formatCurrency(unassignedRowTotalPrint)}`
+      }</td>
+</tr>`
+      : ''
+
     let personSummaryHtml = `<h2 class="print-section">Person summary</h2>${personFilterNote}`
-    if (personRowsPrint.length === 0) {
+    if (personRowsForTablePrint.length === 0 && !hasUnassignedRowContentPrint) {
       personSummaryHtml += '<p class="muted">No per-person team labor or card data.</p>'
     } else {
-      const prTr = personRowsPrint
+      const prTr = personRowsForTablePrint
         .map((r) => {
           const rowSum = r.teamLabor + r.card
           return `<tr>
@@ -3396,19 +3482,18 @@ export default function Jobs() {
 <td style="text-align:right">${formatDecimalWorkHoursToHhMm(r.hours)}</td>
 <td style="text-align:right">${jobSummaryPartsCostIsZero(r.teamLabor) ? '—' : `$${formatCurrency(r.teamLabor)}`}</td>
 <td style="text-align:right">${jobSummaryPartsCostIsZero(r.card) ? '—' : `$${formatCurrency(r.card)}`}</td>
-<td style="text-align:right;color:#6b7280">n/a</td>
+<td style="text-align:right;color:#6b7280">—</td>
 <td style="text-align:right">${jobSummaryPartsCostIsZero(rowSum) ? '—' : `$${formatCurrency(rowSum)}`}</td>
 </tr>`
         })
         .join('')
-      const sumCardFromRows = personRowsPrint.reduce((s, r) => s + r.card, 0)
+      const sumCardFromRows = personRowsForTablePrint.reduce((s, r) => s + r.card, 0)
       const footHours = teamLaborRow ? formatDecimalWorkHoursToHhMm(teamLaborRow.manHours) : '—'
       const footTeam = jobSummaryPartsCostIsZero(teamLaborCost) ? '—' : `$${formatCurrency(teamLaborCost)}`
       const footCard = jobSummaryPartsCostIsZero(cardCharges) ? '—' : `$${formatCurrency(cardCharges)}`
+      const footTotalNumeric = teamLaborCost + cardCharges + Number(invoicesFromSupplyHouses ?? 0)
       const footTotal =
-        teamLaborCost + cardCharges === 0
-          ? '—'
-          : `$${formatCurrency(teamLaborCost + cardCharges)}`
+        jobSummaryPartsCostIsZero(footTotalNumeric) ? '—' : `$${formatCurrency(footTotalNumeric)}`
       personSummaryHtml += `<table>
 <thead><tr>
 <th style="text-align:left">Name</th>
@@ -3418,41 +3503,24 @@ export default function Jobs() {
 <th style="text-align:right">Supply houses</th>
 <th style="text-align:right">Total</th>
 </tr></thead>
-<tbody>${prTr}
+<tbody>${prTr}${unassignedSupplyRowPrint}
 <tr style="font-weight:600">
 <td>Total</td>
 <td style="text-align:right">${footHours}</td>
 <td style="text-align:right">${footTeam}</td>
 <td style="text-align:right">${footCard}</td>
-<td style="text-align:right">n/a</td>
+<td style="text-align:right">${
+        jobSummaryPartsCostIsZero(invoicesFromSupplyHouses) ? '—' : `$${formatCurrency(invoicesFromSupplyHouses)}`
+      }</td>
 <td style="text-align:right">${footTotal}</td>
 </tr>
 </tbody></table>`
       if (
         !jobSummaryPartsCostIsZero(cardCharges) &&
-        Math.abs(sumCardFromRows - cardCharges) > 0.02
+        Math.abs(sumCardFromRows + unattributedCardPrint - cardCharges) > 0.02
       ) {
         personSummaryHtml +=
           '<p class="muted" style="color:#b45309;font-size:0.85rem">Per-person card totals may not match job card total; check attributions.</p>'
-      }
-    }
-
-    let invoicesFromSupplyPrintHtml = '<h2 class="print-section">Invoices from supply houses</h2>'
-    if (jobSummaryPartsCostIsZero(invoicesFromSupplyHouses)) {
-      invoicesFromSupplyPrintHtml += `<p><strong>Allocated</strong> $${formatCurrency(invoicesFromSupplyHouses)}</p>
-<p class="muted">No allocated supply house invoices.</p>`
-    } else {
-      invoicesFromSupplyPrintHtml += `<h3 style="font-size:1rem">Allocated $${formatCurrency(invoicesFromSupplyHouses)}</h3>${invoiceNote}`
-      if (invoiceRows.length > 0) {
-        const ir = invoiceRows
-          .map(
-            (row) =>
-              `<tr><td>${escapeHtml(row.supply_house_name || '—')}</td><td>${escapeHtml(row.invoice_number)}</td><td>${escapeHtml(formatJobSummaryInvoiceDate(row.invoice_date))}</td><td style="text-align:right">$${formatCurrency(row.allocated_amount)}</td></tr>`,
-          )
-          .join('')
-        invoicesFromSupplyPrintHtml += `<table><thead><tr><th>Supply house</th><th>Invoice</th><th>Date</th><th style="text-align:right">Allocated</th></tr></thead><tbody>${ir}</tbody></table>`
-      } else {
-        invoicesFromSupplyPrintHtml += `<p class="muted">${invoicesFromSupplyHouses > 0 ? 'No invoice allocation lines returned.' : 'No allocated supply house invoices.'}</p>`
       }
     }
 
@@ -3587,6 +3655,23 @@ export default function Jobs() {
         partsHtml += `<p class="muted">${billedMaterialsSum > 0 ? 'No line items on file.' : 'No other job charges.'}</p>`
       }
     }
+    if (jobSummaryPartsCostIsZero(invoicesFromSupplyHouses)) {
+      partsHtml += `<p><strong>Invoices from supply houses</strong> $${formatCurrency(invoicesFromSupplyHouses)}</p>
+<p class="muted">No allocated supply house invoices.</p>`
+    } else {
+      partsHtml += `<h3 style="font-size:1rem">Invoices from supply houses — $${formatCurrency(invoicesFromSupplyHouses)}</h3>${invoiceNote}`
+      if (invoiceRows.length > 0) {
+        const ir = invoiceRows
+          .map(
+            (row) =>
+              `<tr><td>${escapeHtml(row.supply_house_name || '—')}</td><td>${escapeHtml(row.invoice_number)}</td><td>${escapeHtml(formatJobSummaryInvoiceDate(row.invoice_date))}</td><td style="text-align:right">$${formatCurrency(row.allocated_amount)}</td></tr>`,
+          )
+          .join('')
+        partsHtml += `<table><thead><tr><th>Supply house</th><th>Invoice</th><th>Date</th><th style="text-align:right">Allocated</th></tr></thead><tbody>${ir}</tbody></table>`
+      } else {
+        partsHtml += `<p class="muted">${invoicesFromSupplyHouses > 0 ? 'No invoice allocation lines returned.' : 'No allocated supply house invoices.'}</p>`
+      }
+    }
     if (jobSummaryPartsCostIsZero(cardCharges)) {
       partsHtml += `<p><strong>Card charges</strong> $${formatCurrency(cardCharges)}</p>`
     } else {
@@ -3664,7 +3749,6 @@ table.print-key-table th, table.print-key-table td { text-align: right; }
 <p class="muted" style="margin-top:0">Cost breakdown · ${escapeHtml(generated)}</p>
 ${summaryTableHtml}
 ${personSummaryHtml}
-${invoicesFromSupplyPrintHtml}
 ${teamLaborHtml}
 ${subLaborHtml}
 ${partsHtml}
@@ -4486,6 +4570,7 @@ ${totalsHtml}
 
   const handleAssignToTransactionFromParts = useCallback(
     async (mercuryTransactionId: string, jobIdForFlow?: string | null) => {
+      jobSummaryMercuryEditFlowJobIdRef.current = null
       if (jobIdForFlow) partsUnattribFlowJobIdRef.current = jobIdForFlow
       const data = await loadMercuryAllocModalDataForTransaction(
         mercuryTransactionId,
@@ -4497,10 +4582,31 @@ ${totalsHtml}
     [],
   )
 
+  const handleJobSummaryMercuryReassignFromDrilldown = useCallback(
+    async (mercuryTransactionId: string, sourceJobId: string) => {
+      partsUnattribFlowJobIdRef.current = null
+      jobSummaryMercuryEditFlowJobIdRef.current = sourceJobId
+      setJobSummaryCostDrilldown(null)
+      try {
+        const data = await loadMercuryAllocModalDataForTransaction(
+          mercuryTransactionId,
+          'Job Summary: edit Mercury allocation',
+        )
+        setPartsAllocModalData(data)
+        setPartsAllocModalOpen(true)
+      } catch (e) {
+        jobSummaryMercuryEditFlowJobIdRef.current = null
+        showToast(e instanceof Error ? e.message : 'Could not load allocation', 'error')
+      }
+    },
+    [showToast],
+  )
+
   const closePartsAllocModal = useCallback(() => {
     setPartsAllocModalOpen(false)
     setPartsAllocModalData(null)
     partsUnattribFlowJobIdRef.current = null
+    jobSummaryMercuryEditFlowJobIdRef.current = null
   }, [])
 
   const partsUnattributedJobLabelById = useMemo(() => {
@@ -4548,21 +4654,48 @@ ${totalsHtml}
   }, [partsUnattributedScopeJobIds, partsUnattributedJobLabelById, partsTabMercuryAllocationsByJobId])
 
   const onPartsAllocSaved = useCallback(
-    (_detail: MercuryAllocSavedDetail) => {
-      const jobId = partsUnattribFlowJobIdRef.current
-      if (jobId) {
-        refreshPartsTabMercuryForJob(jobId)
-        updateMercuryCardTotalForOneJob(jobId)
-      }
+    (detail: MercuryAllocSavedDetail) => {
+      const jobSummarySourceJobId = jobSummaryMercuryEditFlowJobIdRef.current
+      const partsJobId = partsUnattribFlowJobIdRef.current
+      jobSummaryMercuryEditFlowJobIdRef.current = null
+      partsUnattribFlowJobIdRef.current = null
+
       setPartsAllocModalOpen(false)
       setPartsAllocModalData(null)
-      partsUnattribFlowJobIdRef.current = null
       setPartsUnattribListJobId(null)
+
+      if (jobSummarySourceJobId) {
+        setJobSummaryCostDrilldown(null)
+        const touchJobSummaryMercury = (jid: string) => {
+          jobSummaryMercuryAllocationsLoadedRef.current.delete(jid)
+          void loadJobSummaryMercuryAllocationsForJob(jid, true)
+          updateMercuryCardTotalForOneJob(jid)
+        }
+        touchJobSummaryMercury(jobSummarySourceJobId)
+        const seen = new Set<string>([jobSummarySourceJobId])
+        for (const a of detail.allocations) {
+          if (!seen.has(a.job_id)) {
+            seen.add(a.job_id)
+            touchJobSummaryMercury(a.job_id)
+          }
+        }
+      }
+
+      if (partsJobId) {
+        refreshPartsTabMercuryForJob(partsJobId)
+        updateMercuryCardTotalForOneJob(partsJobId)
+      }
       if (allJobsUnattributedOpen) {
         void refetchAllJobsUnattributedData()
       }
     },
-    [refreshPartsTabMercuryForJob, updateMercuryCardTotalForOneJob, allJobsUnattributedOpen, refetchAllJobsUnattributedData],
+    [
+      refreshPartsTabMercuryForJob,
+      updateMercuryCardTotalForOneJob,
+      allJobsUnattributedOpen,
+      refetchAllJobsUnattributedData,
+      loadJobSummaryMercuryAllocationsForJob,
+    ],
   )
 
   const partsUnattribBankingUsersForMatch = useMemo((): BankingAttributionUser[] => {
@@ -5470,7 +5603,15 @@ ${totalsHtml}
                         {reportTemplatesList.map((t) => (
                           <li key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid #e5e7eb' }}>
                             <span>{t.name}</span>
-                            <button type="button" onClick={() => openEditReportTemplate(t)} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Edit</button>
+                            {t.app_managed ? (
+                              <span style={{ fontSize: '0.8125rem', color: '#6b7280' }} title="Built-in template">
+                                Built-in
+                              </span>
+                            ) : (
+                              <button type="button" onClick={() => openEditReportTemplate(t)} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>
+                                Edit
+                              </button>
+                            )}
                           </li>
                         ))}
                       </ul>
@@ -5538,7 +5679,7 @@ ${totalsHtml}
                                 <div key={r.id} style={{ padding: '0.75rem 0', borderBottom: '1px solid #f3f4f6' }}>
                                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                                     <div>
-                                      <span style={{ fontWeight: 600 }}>{r.template_name}</span>
+                                      <span style={{ fontWeight: 600 }}>{displayReportTemplateName(r.template_name, authRole)}</span>
                                       <span style={{ fontSize: '0.8125rem', color: '#6b7280', marginLeft: '0.5rem' }}>
                                         {new Date(r.created_at).toLocaleString()} · {r.job_display_name || 'Unknown job'}
                                         {r.job_hcp_number ? ` (HCP: ${r.job_hcp_number})` : ''}
@@ -5562,7 +5703,7 @@ ${totalsHtml}
                                       {Object.entries(r.field_values).map(([label, val]) =>
                                         val ? (
                                           <div key={label} style={{ marginBottom: '0.25rem' }}>
-                                            <span style={{ color: '#6b7280' }}>{label}:</span> {String(val)}
+                                            <span style={{ color: '#6b7280' }}>{label}:</span> {formatReportFieldValueInlineList(val)}
                                           </div>
                                         ) : null
                                       )}
@@ -5623,7 +5764,7 @@ ${totalsHtml}
                               <div key={r.id} style={{ padding: '0.75rem 0', borderBottom: '1px solid #f3f4f6' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                                   <div>
-                                    <span style={{ fontWeight: 600 }}>{r.template_name}</span>
+                                    <span style={{ fontWeight: 600 }}>{displayReportTemplateName(r.template_name, authRole)}</span>
                                     <span style={{ fontSize: '0.8125rem', color: '#6b7280', marginLeft: '0.5rem' }}>
                                       {new Date(r.created_at).toLocaleString()} · {r.created_by_name}
                                     </span>
@@ -5646,7 +5787,7 @@ ${totalsHtml}
                                     {Object.entries(r.field_values).map(([label, val]) =>
                                       val ? (
                                         <div key={label} style={{ marginBottom: '0.25rem' }}>
-                                          <span style={{ color: '#6b7280' }}>{label}:</span> {String(val)}
+                                          <span style={{ color: '#6b7280' }}>{label}:</span> {formatReportFieldValueInlineList(val)}
                                         </div>
                                       ) : null
                                     )}
@@ -7004,6 +7145,7 @@ ${totalsHtml}
                                         }
                                       : undefined
                                   }
+                                  viewerRole={authRole}
                                 />
                               </td>
                             </tr>
@@ -7679,6 +7821,7 @@ ${totalsHtml}
                                             }
                                           : undefined
                                       }
+                                      viewerRole={authRole}
                                     />
                                   </td>
                                 </tr>
@@ -8058,6 +8201,7 @@ ${totalsHtml}
                                             }
                                           : undefined
                                       }
+                                      viewerRole={authRole}
                                     />
                                   </td>
                                 </tr>
@@ -9357,7 +9501,7 @@ ${totalsHtml}
                   fontSize: '0.875rem',
                 }}
               />
-              {authRole !== 'subcontractor' && myRole !== 'subcontractor' && (
+              {!isSubcontractorLikeRole(authRole as UserRole) && !isSubcontractorLikeRole(myRole as UserRole) && (
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 400, fontSize: '0.875rem', cursor: 'pointer', flexShrink: 0 }}>
                   <input
                     type="checkbox"
@@ -10112,7 +10256,9 @@ ${totalsHtml}
                                     teamBreakdown: teamBreakdownLite,
                                     ppRows,
                                   })
-                                  const filtered = personRows.filter((r) =>
+                                  const { rows: personRowsForTable, unattributedCard } =
+                                    partitionUnattributedFromJobSummaryPersonRows(personRows)
+                                  const filtered = personRowsForTable.filter((r) =>
                                     personMatchesJobSummaryBreakdownFilter(r.displayName, breakdownPersonQ),
                                   )
                                   const sumTeamF = filtered.reduce((s, r) => s + r.teamLabor, 0)
@@ -10129,18 +10275,23 @@ ${totalsHtml}
                                   const personSummaryFooterRowTotal =
                                     personSummaryFooterCard == null
                                       ? null
-                                      : personSummaryFooterTeam + personSummaryFooterCard
-                                  const hasAnyPerson = personRows.length > 0
+                                      : personSummaryFooterTeam +
+                                        personSummaryFooterCard +
+                                        Number(invoicesFromSupplyHouses ?? 0)
+                                  const hasAnyPerson = personRowsForTable.length > 0
                                   const noRowsAfterFilter = filtered.length === 0
+                                  const hasUnassignedRowContent =
+                                    !jobSummaryPartsCostIsZero(invoicesFromSupplyHouses) ||
+                                    !jobSummaryPartsCostIsZero(unattributedCard)
                                   return (
                                     <section style={{ marginBottom: '0.75rem' }}>
-                                      {!hasAnyPerson && !cardColLoading ? (
+                                      {!hasAnyPerson && !cardColLoading && !hasUnassignedRowContent ? (
                                         <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>
                                           No per-person team labor or card data.
                                         </p>
-                                      ) : cardColLoading && !hasAnyPerson ? (
+                                      ) : cardColLoading && !hasAnyPerson && !hasUnassignedRowContent ? (
                                         <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>Loading…</p>
-                                      ) : noRowsAfterFilter && breakdownPersonQ.trim() !== '' ? (
+                                      ) : noRowsAfterFilter && breakdownPersonQ.trim() !== '' && !hasUnassignedRowContent ? (
                                         <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>
                                           No people match your search.
                                         </p>
@@ -10168,34 +10319,316 @@ ${totalsHtml}
                                           >
                                             <thead>
                                               <tr style={{ background: '#f3f4f6' }}>
-                                                <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Name</th>
-                                                <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Hours</th>
-                                                <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Team Labor Cost</th>
-                                                <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Card charges</th>
-                                                <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Supply houses</th>
-                                                <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Total</th>
+                                                <th
+                                                  style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}
+                                                  title="Click a cell in this column for a breakdown"
+                                                >
+                                                  Name
+                                                </th>
+                                                <th
+                                                  style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}
+                                                  title="Click a cell in this column for a breakdown"
+                                                >
+                                                  Hours
+                                                </th>
+                                                <th
+                                                  style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}
+                                                  title="Click a cell in this column for a breakdown"
+                                                >
+                                                  Team Labor Cost
+                                                </th>
+                                                <th
+                                                  style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}
+                                                  title="Click a cell in this column for a breakdown"
+                                                >
+                                                  Card charges
+                                                </th>
+                                                <th
+                                                  style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}
+                                                  title="Click a cell in this column for a breakdown"
+                                                >
+                                                  Supply houses
+                                                </th>
+                                                <th
+                                                  style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}
+                                                  title="Click a cell in this column for a breakdown"
+                                                >
+                                                  Total
+                                                </th>
                                               </tr>
                                             </thead>
                                             <tbody>
                                               {filtered.map((r) => {
                                                 const rowSum = r.teamLabor + r.card
+                                                const laborEntry = teamLaborRow?.breakdown.find(
+                                                  (b) =>
+                                                    normalizePersonNameKey(b.personName) ===
+                                                    normalizePersonNameKey(r.displayName),
+                                                )
+                                                const subMercury = filterJobSummaryMercuryRowsForPersonName(
+                                                  mRows,
+                                                  r.displayName,
+                                                )
+                                                const openName = () => {
+                                                  setJobSummaryCostDrilldown({
+                                                    title: `${r.displayName} — row summary`,
+                                                    body: (
+                                                      <div
+                                                        style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', color: '#374151' }}
+                                                      >
+                                                        <p style={{ margin: 0 }}>
+                                                          Hours: {formatDecimalWorkHoursToHhMm(r.hours)}
+                                                        </p>
+                                                        <p style={{ margin: 0 }}>
+                                                          Team labor:{' '}
+                                                          {jobSummaryPartsCostIsZero(r.teamLabor)
+                                                            ? '—'
+                                                            : `$${formatCurrency(r.teamLabor)}`}
+                                                        </p>
+                                                        <p style={{ margin: 0 }}>
+                                                          Card:{' '}
+                                                          {cardColLoading
+                                                            ? 'Loading…'
+                                                            : jobSummaryPartsCostIsZero(r.card)
+                                                              ? '—'
+                                                              : `$${formatCurrency(r.card)}`}
+                                                        </p>
+                                                        <p style={{ margin: 0, color: '#6b7280' }}>
+                                                          Supply: job-level only (not per person).
+                                                        </p>
+                                                        <p style={{ margin: 0, fontWeight: 600 }}>
+                                                          Line total:{' '}
+                                                          {cardColLoading
+                                                            ? '—'
+                                                            : jobSummaryPartsCostIsZero(rowSum)
+                                                              ? '—'
+                                                              : `$${formatCurrency(rowSum)}`}
+                                                        </p>
+                                                      </div>
+                                                    ),
+                                                  })
+                                                }
+                                                const openHours = () => {
+                                                  if (jobSummaryPartsCostIsZero(r.hours)) return
+                                                  setJobSummaryCostDrilldown({
+                                                    title: `Hours — ${r.displayName}`,
+                                                    body: laborEntry ? (
+                                                      <JobSummaryDrilldownTeamLaborByWorkDate
+                                                        personName={r.displayName}
+                                                        byWorkDate={laborEntry.byWorkDate}
+                                                        formatWorkDate={formatWorkDateYmdWeekdayLongFriendly}
+                                                        formatCurrency={formatCurrency}
+                                                        formatHhMm={formatDecimalWorkHoursToHhMm}
+                                                        totalCost={laborEntry.cost}
+                                                        totalHours={laborEntry.hours}
+                                                      />
+                                                    ) : (
+                                                      <p style={{ margin: 0, color: '#6b7280' }}>No work-date hours breakdown for this name.</p>
+                                                    ),
+                                                  })
+                                                }
+                                                const openTeam = () => {
+                                                  if (jobSummaryPartsCostIsZero(r.teamLabor)) return
+                                                  setJobSummaryCostDrilldown({
+                                                    title: `Team labor — ${r.displayName}`,
+                                                    body: laborEntry ? (
+                                                      <JobSummaryDrilldownTeamLaborByWorkDate
+                                                        personName={r.displayName}
+                                                        byWorkDate={laborEntry.byWorkDate}
+                                                        formatWorkDate={formatWorkDateYmdWeekdayLongFriendly}
+                                                        formatCurrency={formatCurrency}
+                                                        formatHhMm={formatDecimalWorkHoursToHhMm}
+                                                        totalCost={laborEntry.cost}
+                                                        totalHours={laborEntry.hours}
+                                                      />
+                                                    ) : (
+                                                      <p style={{ margin: 0, color: '#6b7280' }}>
+                                                        Team labor total ${formatCurrency(r.teamLabor)} (no per-date split in the model).
+                                                      </p>
+                                                    ),
+                                                  })
+                                                }
+                                                const openCard = () => {
+                                                  if (cardColLoading || jobSummaryPartsCostIsZero(r.card)) return
+                                                  void loadJobSummaryMercuryAllocationsForJob(job.id)
+                                                  setJobSummaryCostDrilldown({
+                                                    title: `Card — ${r.displayName}`,
+                                                    body: (
+                                                      <JobSummaryDrilldownMercuryTable
+                                                        rows={subMercury}
+                                                        formatPosted={formatJobSummaryMercuryPostedAt}
+                                                        formatCurrency={formatCurrency}
+                                                        nicknameByDebitCard={nicknameByDebitCard}
+                                                        canEditAllocations={canAccessBankingForParts}
+                                                        onReassignJob={
+                                                          canAccessBankingForParts
+                                                            ? (txId) => {
+                                                                void handleJobSummaryMercuryReassignFromDrilldown(txId, job.id)
+                                                              }
+                                                            : undefined
+                                                        }
+                                                      />
+                                                    ),
+                                                  })
+                                                }
+                                                const openLineTotal = () => {
+                                                  if (cardColLoading || jobSummaryPartsCostIsZero(rowSum)) return
+                                                  void loadJobSummaryMercuryAllocationsForJob(job.id)
+                                                  setJobSummaryCostDrilldown({
+                                                    title: `Team + card — ${r.displayName}`,
+                                                    body: (
+                                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                                        {laborEntry ? (
+                                                          <div>
+                                                            <p style={{ margin: '0 0 0.35rem', fontWeight: 600 }}>Team labor (by work date)</p>
+                                                            <JobSummaryDrilldownTeamLaborByWorkDate
+                                                              personName={r.displayName}
+                                                              byWorkDate={laborEntry.byWorkDate}
+                                                              formatWorkDate={formatWorkDateYmdWeekdayLongFriendly}
+                                                              formatCurrency={formatCurrency}
+                                                              formatHhMm={formatDecimalWorkHoursToHhMm}
+                                                              totalCost={laborEntry.cost}
+                                                              totalHours={laborEntry.hours}
+                                                            />
+                                                          </div>
+                                                        ) : (
+                                                          <p style={{ margin: 0, color: '#6b7280' }}>
+                                                            Team: ${formatCurrency(r.teamLabor)}
+                                                          </p>
+                                                        )}
+                                                        <div>
+                                                          <p style={{ margin: '0 0 0.35rem', fontWeight: 600 }}>Card (attributed to this name)</p>
+                                                          <JobSummaryDrilldownMercuryTable
+                                                            rows={subMercury}
+                                                            formatPosted={formatJobSummaryMercuryPostedAt}
+                                                            formatCurrency={formatCurrency}
+                                                            nicknameByDebitCard={nicknameByDebitCard}
+                                                            canEditAllocations={canAccessBankingForParts}
+                                                            onReassignJob={
+                                                              canAccessBankingForParts
+                                                                ? (txId) => {
+                                                                    void handleJobSummaryMercuryReassignFromDrilldown(txId, job.id)
+                                                                  }
+                                                                : undefined
+                                                            }
+                                                          />
+                                                        </div>
+                                                        <p style={{ margin: 0, fontWeight: 600 }}>Sum: ${formatCurrency(rowSum)}</p>
+                                                      </div>
+                                                    ),
+                                                  })
+                                                }
+                                                const hoursPersonInteractive = !jobSummaryPartsCostIsZero(r.hours)
+                                                const cardPersonInteractive = !cardColLoading && !jobSummaryPartsCostIsZero(r.card)
+                                                const lineTotalPersonInteractive =
+                                                  !cardColLoading && !jobSummaryPartsCostIsZero(rowSum)
                                                 return (
                                                 <tr key={r.normKey} style={{ borderTop: '1px solid #e5e7eb' }}>
-                                                  <td style={{ padding: '0.25rem 0.4rem' }}>{r.displayName}</td>
-                                                  <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
-                                                    {formatDecimalWorkHoursToHhMm(r.hours)}
+                                                  <td
+                                                    className="jobSummaryBreakdownInteractive"
+                                                    style={{ padding: '0.25rem 0.4rem' }}
+                                                    role="button"
+                                                    tabIndex={0}
+                                                    aria-label={`View summary for ${r.displayName}`}
+                                                    onClick={(e) => {
+                                                      e.stopPropagation()
+                                                      openName()
+                                                    }}
+                                                    onKeyDown={(e) => jobSummaryDrilldownCellKeyboard(e, openName)}
+                                                  >
+                                                    {r.displayName}
                                                   </td>
-                                                  <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
+                                                  <td
+                                                    className={jobSummaryBreakdownInteractiveClass(hoursPersonInteractive)}
+                                                    style={{
+                                                      padding: '0.25rem 0.4rem',
+                                                      textAlign: 'right',
+                                                    }}
+                                                    role={hoursPersonInteractive ? 'button' : undefined}
+                                                    tabIndex={hoursPersonInteractive ? 0 : -1}
+                                                    aria-label={
+                                                      hoursPersonInteractive
+                                                        ? `View hours for ${r.displayName}`
+                                                        : undefined
+                                                    }
+                                                    onClick={
+                                                      hoursPersonInteractive
+                                                        ? (e) => {
+                                                            e.stopPropagation()
+                                                            openHours()
+                                                          }
+                                                        : undefined
+                                                    }
+                                                    onKeyDown={
+                                                      hoursPersonInteractive
+                                                        ? (e) => jobSummaryDrilldownCellKeyboard(e, openHours)
+                                                        : undefined
+                                                    }
+                                                  >
+                                                    {jobSummaryPartsCostIsZero(r.hours)
+                                                      ? '—'
+                                                      : formatDecimalWorkHoursToHhMm(r.hours)}
+                                                  </td>
+                                                  <td
+                                                    className={jobSummaryBreakdownInteractiveClass(
+                                                      !jobSummaryPartsCostIsZero(r.teamLabor),
+                                                    )}
+                                                    style={{
+                                                      padding: '0.25rem 0.4rem',
+                                                      textAlign: 'right',
+                                                    }}
+                                                    role={jobSummaryPartsCostIsZero(r.teamLabor) ? undefined : 'button'}
+                                                    tabIndex={jobSummaryPartsCostIsZero(r.teamLabor) ? -1 : 0}
+                                                    aria-label={
+                                                      jobSummaryPartsCostIsZero(r.teamLabor)
+                                                        ? undefined
+                                                        : `View team labor for ${r.displayName}`
+                                                    }
+                                                    onClick={
+                                                      jobSummaryPartsCostIsZero(r.teamLabor)
+                                                        ? undefined
+                                                        : (e) => {
+                                                            e.stopPropagation()
+                                                            openTeam()
+                                                          }
+                                                    }
+                                                    onKeyDown={
+                                                      jobSummaryPartsCostIsZero(r.teamLabor)
+                                                        ? undefined
+                                                        : (e) => jobSummaryDrilldownCellKeyboard(e, openTeam)
+                                                    }
+                                                  >
                                                     {jobSummaryPartsCostIsZero(r.teamLabor)
                                                       ? '—'
                                                       : `$${formatCurrency(r.teamLabor)}`}
                                                   </td>
                                                   <td
+                                                    className={jobSummaryBreakdownInteractiveClass(cardPersonInteractive)}
                                                     style={{
                                                       padding: '0.25rem 0.4rem',
                                                       textAlign: 'right',
                                                       color: cardColLoading ? '#6b7280' : undefined,
                                                     }}
+                                                    role={cardPersonInteractive ? 'button' : undefined}
+                                                    tabIndex={cardPersonInteractive ? 0 : -1}
+                                                    aria-label={
+                                                      cardPersonInteractive
+                                                        ? `View card charges for ${r.displayName}`
+                                                        : undefined
+                                                    }
+                                                    onClick={
+                                                      cardPersonInteractive
+                                                        ? (e) => {
+                                                            e.stopPropagation()
+                                                            openCard()
+                                                          }
+                                                        : undefined
+                                                    }
+                                                    onKeyDown={
+                                                      cardPersonInteractive
+                                                        ? (e) => jobSummaryDrilldownCellKeyboard(e, openCard)
+                                                        : undefined
+                                                    }
                                                   >
                                                     {cardColLoading
                                                       ? 'Loading…'
@@ -10210,9 +10643,35 @@ ${totalsHtml}
                                                       color: '#6b7280',
                                                     }}
                                                   >
-                                                    n/a
+                                                    —
                                                   </td>
-                                                  <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
+                                                  <td
+                                                    className={jobSummaryBreakdownInteractiveClass(lineTotalPersonInteractive)}
+                                                    style={{
+                                                      padding: '0.25rem 0.4rem',
+                                                      textAlign: 'right',
+                                                    }}
+                                                    role={lineTotalPersonInteractive ? 'button' : undefined}
+                                                    tabIndex={lineTotalPersonInteractive ? 0 : -1}
+                                                    aria-label={
+                                                      lineTotalPersonInteractive
+                                                        ? `View team and card for ${r.displayName}`
+                                                        : undefined
+                                                    }
+                                                    onClick={
+                                                      lineTotalPersonInteractive
+                                                        ? (e) => {
+                                                            e.stopPropagation()
+                                                            openLineTotal()
+                                                          }
+                                                        : undefined
+                                                    }
+                                                    onKeyDown={
+                                                      lineTotalPersonInteractive
+                                                        ? (e) => jobSummaryDrilldownCellKeyboard(e, openLineTotal)
+                                                        : undefined
+                                                    }
+                                                  >
                                                     {cardColLoading
                                                       ? '—'
                                                       : jobSummaryPartsCostIsZero(rowSum)
@@ -10222,44 +10681,693 @@ ${totalsHtml}
                                                 </tr>
                                                 )
                                               })}
+                                              {hasUnassignedRowContent ? (
+                                                (() => {
+                                                  const unatRows = filterJobSummaryMercuryRowsUnattributed(mRows)
+                                                  const openUnassignedCard = () => {
+                                                    if (cardColLoading || jobSummaryPartsCostIsZero(unattributedCard)) return
+                                                    void loadJobSummaryMercuryAllocationsForJob(job.id)
+                                                    setJobSummaryCostDrilldown({
+                                                      title: 'Unassigned — card (no Mercury attribution)',
+                                                      body: (
+                                                        <JobSummaryDrilldownMercuryTable
+                                                          rows={unatRows}
+                                                          formatPosted={formatJobSummaryMercuryPostedAt}
+                                                          formatCurrency={formatCurrency}
+                                                          nicknameByDebitCard={nicknameByDebitCard}
+                                                          canEditAllocations={canAccessBankingForParts}
+                                                          onReassignJob={
+                                                            canAccessBankingForParts
+                                                              ? (txId) => {
+                                                                  void handleJobSummaryMercuryReassignFromDrilldown(txId, job.id)
+                                                                }
+                                                              : undefined
+                                                          }
+                                                        />
+                                                      ),
+                                                    })
+                                                  }
+                                                  const openUnassignedSupply = () => {
+                                                    if (jobSummaryPartsCostIsZero(invoicesFromSupplyHouses)) return
+                                                    void loadJobSummaryInvoiceLinesForJob(job.id)
+                                                    setJobSummaryCostDrilldown({
+                                                      title: 'Unassigned — supply house invoices',
+                                                      body: renderJobSummarySupplyHouseInvoiceTableContent(
+                                                        jobSummaryInvoiceLinesByJobId.has(job.id),
+                                                        jobSummaryInvoiceLinesByJobId.get(job.id) ?? [],
+                                                        invoicesFromSupplyHouses,
+                                                      ),
+                                                    })
+                                                  }
+                                                  const openUnassignedTotal = () => {
+                                                    if (cardColLoading) return
+                                                    void loadJobSummaryMercuryAllocationsForJob(job.id)
+                                                    void loadJobSummaryInvoiceLinesForJob(job.id)
+                                                    setJobSummaryCostDrilldown({
+                                                      title: 'Unassigned — card + supply',
+                                                      body: (
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                                          <div>
+                                                            <p style={{ margin: '0 0 0.35rem', fontWeight: 600 }}>Card (unattributed)</p>
+                                                            <JobSummaryDrilldownMercuryTable
+                                                              rows={unatRows}
+                                                              formatPosted={formatJobSummaryMercuryPostedAt}
+                                                              formatCurrency={formatCurrency}
+                                                              nicknameByDebitCard={nicknameByDebitCard}
+                                                              canEditAllocations={canAccessBankingForParts}
+                                                              onReassignJob={
+                                                                canAccessBankingForParts
+                                                                  ? (txId) => {
+                                                                      void handleJobSummaryMercuryReassignFromDrilldown(txId, job.id)
+                                                                    }
+                                                                  : undefined
+                                                              }
+                                                            />
+                                                          </div>
+                                                          <div>
+                                                            <p style={{ margin: '0 0 0.35rem', fontWeight: 600 }}>Supply houses</p>
+                                                            {renderJobSummarySupplyHouseInvoiceTableContent(
+                                                              jobSummaryInvoiceLinesByJobId.has(job.id),
+                                                              jobSummaryInvoiceLinesByJobId.get(job.id) ?? [],
+                                                              invoicesFromSupplyHouses,
+                                                            )}
+                                                          </div>
+                                                        </div>
+                                                      ),
+                                                    })
+                                                  }
+                                                  return (
+                                                <tr
+                                                  key={`${job.id}::summary-unassigned`}
+                                                  style={{ borderTop: '1px solid #e5e7eb' }}
+                                                >
+                                                  <td style={{ padding: '0.25rem 0.4rem' }}>Unassigned</td>
+                                                  <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>—</td>
+                                                  <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>—</td>
+                                                  <td
+                                                    className={jobSummaryBreakdownInteractiveClass(
+                                                      !cardColLoading && !jobSummaryPartsCostIsZero(unattributedCard),
+                                                    )}
+                                                    style={{
+                                                      padding: '0.25rem 0.4rem',
+                                                      textAlign: 'right',
+                                                      color: cardColLoading ? '#6b7280' : undefined,
+                                                    }}
+                                                    role={
+                                                      cardColLoading || jobSummaryPartsCostIsZero(unattributedCard)
+                                                        ? undefined
+                                                        : 'button'
+                                                    }
+                                                    tabIndex={
+                                                      cardColLoading || jobSummaryPartsCostIsZero(unattributedCard) ? -1 : 0
+                                                    }
+                                                    aria-label={
+                                                      cardColLoading || jobSummaryPartsCostIsZero(unattributedCard)
+                                                        ? undefined
+                                                        : 'View unattributed card lines'
+                                                    }
+                                                    onClick={(e) => {
+                                                      e.stopPropagation()
+                                                      openUnassignedCard()
+                                                    }}
+                                                    onKeyDown={(e) => {
+                                                      if (!cardColLoading && !jobSummaryPartsCostIsZero(unattributedCard)) {
+                                                        jobSummaryDrilldownCellKeyboard(e, openUnassignedCard)
+                                                      }
+                                                    }}
+                                                  >
+                                                    {cardColLoading
+                                                      ? '—'
+                                                      : jobSummaryPartsCostIsZero(unattributedCard)
+                                                        ? '—'
+                                                        : `$${formatCurrency(unattributedCard)}`}
+                                                  </td>
+                                                  <td
+                                                    className={jobSummaryBreakdownInteractiveClass(
+                                                      !jobSummaryPartsCostIsZero(invoicesFromSupplyHouses),
+                                                      'muted',
+                                                    )}
+                                                    style={{
+                                                      padding: '0.25rem 0.4rem',
+                                                      textAlign: 'right',
+                                                    }}
+                                                    role={jobSummaryPartsCostIsZero(invoicesFromSupplyHouses) ? undefined : 'button'}
+                                                    tabIndex={jobSummaryPartsCostIsZero(invoicesFromSupplyHouses) ? -1 : 0}
+                                                    aria-label={
+                                                      jobSummaryPartsCostIsZero(invoicesFromSupplyHouses)
+                                                        ? undefined
+                                                        : 'View supply invoice lines'
+                                                    }
+                                                    onClick={(e) => {
+                                                      e.stopPropagation()
+                                                      openUnassignedSupply()
+                                                    }}
+                                                    onKeyDown={(e) => {
+                                                      if (!jobSummaryPartsCostIsZero(invoicesFromSupplyHouses)) {
+                                                        jobSummaryDrilldownCellKeyboard(e, openUnassignedSupply)
+                                                      }
+                                                    }}
+                                                  >
+                                                    {jobSummaryPartsCostIsZero(invoicesFromSupplyHouses)
+                                                      ? '—'
+                                                      : `$${formatCurrency(invoicesFromSupplyHouses)}`}
+                                                  </td>
+                                                  <td
+                                                    className={jobSummaryBreakdownInteractiveClass(
+                                                      !cardColLoading &&
+                                                        !jobSummaryPartsCostIsZero(
+                                                          unattributedCard + Number(invoicesFromSupplyHouses ?? 0),
+                                                        ),
+                                                    )}
+                                                    style={{
+                                                      padding: '0.25rem 0.4rem',
+                                                      textAlign: 'right',
+                                                    }}
+                                                    role={
+                                                      cardColLoading ||
+                                                      jobSummaryPartsCostIsZero(
+                                                        unattributedCard + Number(invoicesFromSupplyHouses ?? 0),
+                                                      )
+                                                        ? undefined
+                                                        : 'button'
+                                                    }
+                                                    tabIndex={
+                                                      cardColLoading ||
+                                                      jobSummaryPartsCostIsZero(
+                                                        unattributedCard + Number(invoicesFromSupplyHouses ?? 0),
+                                                      )
+                                                        ? -1
+                                                        : 0
+                                                    }
+                                                    aria-label={
+                                                      cardColLoading ||
+                                                      jobSummaryPartsCostIsZero(
+                                                        unattributedCard + Number(invoicesFromSupplyHouses ?? 0),
+                                                      )
+                                                        ? undefined
+                                                        : 'View unassigned card and supply'
+                                                    }
+                                                    onClick={(e) => {
+                                                      e.stopPropagation()
+                                                      openUnassignedTotal()
+                                                    }}
+                                                    onKeyDown={(e) => {
+                                                      if (
+                                                        !cardColLoading &&
+                                                        !jobSummaryPartsCostIsZero(
+                                                          unattributedCard + Number(invoicesFromSupplyHouses ?? 0),
+                                                        )
+                                                      ) {
+                                                        jobSummaryDrilldownCellKeyboard(e, openUnassignedTotal)
+                                                      }
+                                                    }}
+                                                  >
+                                                    {cardColLoading
+                                                      ? '—'
+                                                      : jobSummaryPartsCostIsZero(
+                                                            unattributedCard + Number(invoicesFromSupplyHouses ?? 0),
+                                                          )
+                                                        ? '—'
+                                                        : `$${formatCurrency(
+                                                            unattributedCard + Number(invoicesFromSupplyHouses ?? 0),
+                                                          )}`}
+                                                  </td>
+                                                </tr>
+                                                  )
+                                                })()
+                                              ) : null}
+                                              {(() => {
+                                                const isBreakdownFiltered = breakdownPersonQ.trim() !== ''
+                                                const teamFooterAmt = isBreakdownFiltered ? sumTeamF : teamLaborCost
+                                                const cardFooterAmt = isBreakdownFiltered ? (sumCardF ?? 0) : cardCharges
+                                                const mRowsForFooterCard = isBreakdownFiltered
+                                                  ? filterJobSummaryMercuryRowsForPersonNames(
+                                                      mRows,
+                                                      filtered.map((x) => x.displayName),
+                                                    )
+                                                  : mRows
+                                                const openTotalRowLabel = () => {
+                                                  setJobSummaryCostDrilldown({
+                                                    title: 'Person summary — total row',
+                                                    body: (
+                                                      <div style={{ lineHeight: 1.5, color: '#374151' }}>
+                                                        <p style={{ margin: '0 0 0.5rem' }}>
+                                                          This row sums the job columns used in the person summary. Row labels match the
+                                                          amounts above: team labor and (when a person search is active) card roll up
+                                                          to the visible people; supply is always the full job allocation.
+                                                        </p>
+                                                        {isBreakdownFiltered ? (
+                                                          <p style={{ margin: 0, fontSize: '0.8rem', color: '#6b7280' }}>
+                                                            A person name filter is active: the table only lists matches, but hours in
+                                                            the first column and supply stay full-job figures.
+                                                          </p>
+                                                        ) : null}
+                                                      </div>
+                                                    ),
+                                                  })
+                                                }
+                                                const openFooterHours = () => {
+                                                  if (!teamLaborRow) return
+                                                  setJobSummaryCostDrilldown({
+                                                    title: 'Total — hours (full job)',
+                                                    body: (
+                                                      <div style={{ lineHeight: 1.5, color: '#374151' }}>
+                                                        <p style={{ margin: '0 0 0.75rem' }}>
+                                                          These hours are the full team labor model total for the job. They are not
+                                                          reduced when you filter the person name list.
+                                                        </p>
+                                                        {isBreakdownFiltered ? (
+                                                          <p style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', color: '#6b7280' }}>
+                                                            Filtered table rows:{' '}
+                                                            {formatDecimalWorkHoursToHhMm(
+                                                              filtered.reduce((s, r) => s + r.hours, 0),
+                                                            )}{' '}
+                                                            hours; footer: {formatDecimalWorkHoursToHhMm(teamLaborRow.manHours)}.
+                                                          </p>
+                                                        ) : null}
+                                                        <table
+                                                          style={{
+                                                            width: '100%',
+                                                            maxWidth: 520,
+                                                            borderCollapse: 'collapse',
+                                                            fontSize: '0.75rem',
+                                                          }}
+                                                        >
+                                                          <thead>
+                                                            <tr style={{ background: '#f3f4f6' }}>
+                                                              <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Name</th>
+                                                              <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Hours</th>
+                                                              <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Team cost</th>
+                                                            </tr>
+                                                          </thead>
+                                                          <tbody>
+                                                            {teamLaborRow.breakdown.map((b) => (
+                                                              <tr
+                                                                key={normalizePersonNameKey(b.personName)}
+                                                                style={{ borderTop: '1px solid #e5e7eb' }}
+                                                              >
+                                                                <td style={{ padding: '0.25rem 0.4rem' }}>{b.personName}</td>
+                                                                <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
+                                                                  {formatDecimalWorkHoursToHhMm(b.hours)}
+                                                                </td>
+                                                                <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
+                                                                  ${formatCurrency(b.cost)}
+                                                                </td>
+                                                              </tr>
+                                                            ))}
+                                                          </tbody>
+                                                        </table>
+                                                        <p style={{ margin: '0.5rem 0 0', fontWeight: 600 }}>
+                                                          Sum: {formatDecimalWorkHoursToHhMm(teamLaborRow.manHours)} hours
+                                                        </p>
+                                                      </div>
+                                                    ),
+                                                  })
+                                                }
+                                                const openFooterTeam = () => {
+                                                  if (jobSummaryPartsCostIsZero(teamFooterAmt)) return
+                                                  setJobSummaryCostDrilldown({
+                                                    title: isBreakdownFiltered
+                                                      ? 'Total — team labor (filter)'
+                                                      : 'Total — team labor (full job)',
+                                                    body: isBreakdownFiltered ? (
+                                                      <div style={{ lineHeight: 1.5, color: '#374151' }}>
+                                                        <p style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', color: '#6b7280' }}>
+                                                          Sum of team labor for names matching the current filter. Footer total: $
+                                                          {formatCurrency(teamFooterAmt)}.
+                                                        </p>
+                                                        <table
+                                                          style={{
+                                                            width: '100%',
+                                                            maxWidth: 520,
+                                                            borderCollapse: 'collapse',
+                                                            fontSize: '0.75rem',
+                                                          }}
+                                                        >
+                                                          <thead>
+                                                            <tr style={{ background: '#f3f4f6' }}>
+                                                              <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Name</th>
+                                                              <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Hours</th>
+                                                              <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Team labor</th>
+                                                            </tr>
+                                                          </thead>
+                                                          <tbody>
+                                                            {filtered.map((x) => (
+                                                              <tr key={x.normKey} style={{ borderTop: '1px solid #e5e7eb' }}>
+                                                                <td style={{ padding: '0.25rem 0.4rem' }}>{x.displayName}</td>
+                                                                <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
+                                                                  {formatDecimalWorkHoursToHhMm(x.hours)}
+                                                                </td>
+                                                                <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
+                                                                  {jobSummaryPartsCostIsZero(x.teamLabor)
+                                                                    ? '—'
+                                                                    : `$${formatCurrency(x.teamLabor)}`}
+                                                                </td>
+                                                              </tr>
+                                                            ))}
+                                                          </tbody>
+                                                        </table>
+                                                      </div>
+                                                    ) : teamLaborRow ? (
+                                                      <div style={{ lineHeight: 1.5, color: '#374151' }}>
+                                                        <p style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', color: '#6b7280' }}>
+                                                          Full job team labor. Total: ${formatCurrency(teamLaborCost)}.
+                                                        </p>
+                                                        <table
+                                                          style={{
+                                                            width: '100%',
+                                                            maxWidth: 520,
+                                                            borderCollapse: 'collapse',
+                                                            fontSize: '0.75rem',
+                                                          }}
+                                                        >
+                                                          <thead>
+                                                            <tr style={{ background: '#f3f4f6' }}>
+                                                              <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Name</th>
+                                                              <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Hours</th>
+                                                              <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Team labor</th>
+                                                            </tr>
+                                                          </thead>
+                                                          <tbody>
+                                                            {teamLaborRow.breakdown.map((b) => (
+                                                              <tr
+                                                                key={normalizePersonNameKey(b.personName)}
+                                                                style={{ borderTop: '1px solid #e5e7eb' }}
+                                                              >
+                                                                <td style={{ padding: '0.25rem 0.4rem' }}>{b.personName}</td>
+                                                                <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
+                                                                  {formatDecimalWorkHoursToHhMm(b.hours)}
+                                                                </td>
+                                                                <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
+                                                                  ${formatCurrency(b.cost)}
+                                                                </td>
+                                                              </tr>
+                                                            ))}
+                                                          </tbody>
+                                                        </table>
+                                                      </div>
+                                                    ) : (
+                                                      <p style={{ margin: 0, color: '#6b7280' }}>No team labor data.</p>
+                                                    ),
+                                                  })
+                                                }
+                                                const openFooterCard = () => {
+                                                  if (cardColLoading || jobSummaryPartsCostIsZero(cardFooterAmt)) return
+                                                  void loadJobSummaryMercuryAllocationsForJob(job.id)
+                                                  setJobSummaryCostDrilldown({
+                                                    title: isBreakdownFiltered
+                                                      ? 'Total — card (filter)'
+                                                      : 'Total — card (full job)',
+                                                    body: (
+                                                      <div style={{ lineHeight: 1.5, color: '#374151' }}>
+                                                        {isBreakdownFiltered ? (
+                                                          <p style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', color: '#6b7280' }}>
+                                                            Mercury lines attributed to names in the current filter. Unattributed
+                                                            card is in the Unassigned row, not this footer.
+                                                          </p>
+                                                        ) : (
+                                                          <p style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', color: '#6b7280' }}>
+                                                            All job Mercury lines with job allocation. Total card charges: $
+                                                            {formatCurrency(cardCharges)}.
+                                                          </p>
+                                                        )}
+                                                        <JobSummaryDrilldownMercuryTable
+                                                          rows={mRowsForFooterCard}
+                                                          formatPosted={formatJobSummaryMercuryPostedAt}
+                                                          formatCurrency={formatCurrency}
+                                                          nicknameByDebitCard={nicknameByDebitCard}
+                                                          canEditAllocations={canAccessBankingForParts}
+                                                          onReassignJob={
+                                                            canAccessBankingForParts
+                                                              ? (txId) => {
+                                                                  void handleJobSummaryMercuryReassignFromDrilldown(txId, job.id)
+                                                                }
+                                                              : undefined
+                                                          }
+                                                        />
+                                                      </div>
+                                                    ),
+                                                  })
+                                                }
+                                                const openFooterSupply = () => {
+                                                  if (jobSummaryPartsCostIsZero(invoicesFromSupplyHouses)) return
+                                                  void loadJobSummaryInvoiceLinesForJob(job.id)
+                                                  setJobSummaryCostDrilldown({
+                                                    title: 'Total — supply houses (full job)',
+                                                    body: (
+                                                      <div style={{ lineHeight: 1.5, color: '#374151' }}>
+                                                        <p style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', color: '#6b7280' }}>
+                                                          Supply is allocated to the job, not to individual people. The Total row uses
+                                                          the same figure whether or not a person name filter is active.
+                                                        </p>
+                                                        {renderJobSummarySupplyHouseInvoiceTableContent(
+                                                          jobSummaryInvoiceLinesByJobId.has(job.id),
+                                                          jobSummaryInvoiceLinesByJobId.get(job.id) ?? [],
+                                                          invoicesFromSupplyHouses,
+                                                        )}
+                                                      </div>
+                                                    ),
+                                                  })
+                                                }
+                                                const openFooterGrand = () => {
+                                                  if (personSummaryFooterRowTotal == null) return
+                                                  if (jobSummaryPartsCostIsZero(personSummaryFooterRowTotal)) return
+                                                  void loadJobSummaryMercuryAllocationsForJob(job.id)
+                                                  void loadJobSummaryInvoiceLinesForJob(job.id)
+                                                  setJobSummaryCostDrilldown({
+                                                    title: 'Total — grand (footer)',
+                                                    body: (
+                                                      <div
+                                                        style={{
+                                                          display: 'flex',
+                                                          flexDirection: 'column',
+                                                          gap: '0.75rem',
+                                                          lineHeight: 1.5,
+                                                          color: '#374151',
+                                                        }}
+                                                      >
+                                                        {isBreakdownFiltered ? (
+                                                          <p style={{ margin: 0, fontSize: '0.8rem', color: '#6b7280' }}>
+                                                            With a name filter, team and card in this total follow the table rows; supply
+                                                            is the full job allocation. Hours and supply amounts are still full job.
+                                                          </p>
+                                                        ) : null}
+                                                        <p style={{ margin: 0 }}>
+                                                          <strong>Team labor:</strong> ${formatCurrency(personSummaryFooterTeam)} (
+                                                          {isBreakdownFiltered ? 'filtered' : 'full job'}
+                                                          ).
+                                                        </p>
+                                                        <p style={{ margin: 0 }}>
+                                                          <strong>Card:</strong> ${formatCurrency(personSummaryFooterCard ?? 0)} (
+                                                          {isBreakdownFiltered ? 'filtered' : 'full job'}
+                                                          ).
+                                                        </p>
+                                                        <p style={{ margin: 0, color: '#6b7280' }}>
+                                                          <strong>Supply houses:</strong> ${formatCurrency(
+                                                            Number(invoicesFromSupplyHouses ?? 0),
+                                                          )}{' '}
+                                                          (full job; not per person)
+                                                        </p>
+                                                        <p style={{ margin: 0, fontWeight: 600, paddingTop: '0.25rem' }}>
+                                                          Sum: ${formatCurrency(personSummaryFooterRowTotal)}
+                                                        </p>
+                                                        <div
+                                                          style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid #e5e7eb' }}
+                                                        >
+                                                          <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', fontWeight: 600 }}>Line lists</p>
+                                                          <p style={{ margin: '0 0 0.35rem', fontSize: '0.8rem' }}>Card (for this total)</p>
+                                                          <JobSummaryDrilldownMercuryTable
+                                                            rows={mRowsForFooterCard}
+                                                            formatPosted={formatJobSummaryMercuryPostedAt}
+                                                            formatCurrency={formatCurrency}
+                                                            nicknameByDebitCard={nicknameByDebitCard}
+                                                            canEditAllocations={canAccessBankingForParts}
+                                                            onReassignJob={
+                                                              canAccessBankingForParts
+                                                                ? (txId) => {
+                                                                    void handleJobSummaryMercuryReassignFromDrilldown(txId, job.id)
+                                                                  }
+                                                                : undefined
+                                                            }
+                                                          />
+                                                        </div>
+                                                        <div>
+                                                          <p style={{ margin: '0 0 0.35rem', fontSize: '0.8rem', fontWeight: 600 }}>Supply</p>
+                                                          {renderJobSummarySupplyHouseInvoiceTableContent(
+                                                            jobSummaryInvoiceLinesByJobId.has(job.id),
+                                                            jobSummaryInvoiceLinesByJobId.get(job.id) ?? [],
+                                                            invoicesFromSupplyHouses,
+                                                          )}
+                                                        </div>
+                                                      </div>
+                                                    ),
+                                                  })
+                                                }
+                                                return (
                                               <tr style={{ borderTop: '1px solid #d1d5db', fontWeight: 600 }}>
-                                                <td style={{ padding: '0.25rem 0.4rem' }}>Total</td>
-                                                <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
+                                                <td
+                                                  className="jobSummaryBreakdownInteractive"
+                                                  style={{ padding: '0.25rem 0.4rem' }}
+                                                  role="button"
+                                                  tabIndex={0}
+                                                  aria-label="What the total row means"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    openTotalRowLabel()
+                                                  }}
+                                                  onKeyDown={(e) => jobSummaryDrilldownCellKeyboard(e, openTotalRowLabel)}
+                                                >
+                                                  Total
+                                                </td>
+                                                <td
+                                                  className={jobSummaryBreakdownInteractiveClass(!!teamLaborRow)}
+                                                  style={{
+                                                    padding: '0.25rem 0.4rem',
+                                                    textAlign: 'right',
+                                                  }}
+                                                  role={teamLaborRow ? 'button' : undefined}
+                                                  tabIndex={teamLaborRow ? 0 : -1}
+                                                  aria-label={teamLaborRow ? 'View full job team labor hours' : undefined}
+                                                  onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    if (teamLaborRow) openFooterHours()
+                                                  }}
+                                                  onKeyDown={(e) => {
+                                                    if (teamLaborRow) {
+                                                      jobSummaryDrilldownCellKeyboard(e, openFooterHours)
+                                                    }
+                                                  }}
+                                                >
                                                   {teamLaborRow
                                                     ? formatDecimalWorkHoursToHhMm(teamLaborRow.manHours)
                                                     : '—'}
                                                 </td>
-                                                <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
-                                                  {jobSummaryPartsCostIsZero(
-                                                    breakdownPersonQ.trim() !== '' ? sumTeamF : teamLaborCost,
-                                                  )
-                                                    ? '—'
-                                                    : `$${formatCurrency(
-                                                        breakdownPersonQ.trim() !== '' ? sumTeamF : teamLaborCost,
-                                                      )}`}
-                                                </td>
-                                                <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
-                                                  {cardColLoading
-                                                    ? '—'
-                                                    : jobSummaryPartsCostIsZero(
-                                                        breakdownPersonQ.trim() !== '' ? (sumCardF ?? 0) : cardCharges,
-                                                      )
-                                                      ? '—'
-                                                      : `$${formatCurrency(
-                                                          breakdownPersonQ.trim() !== '' ? (sumCardF ?? 0) : cardCharges,
-                                                        )}`}
-                                                </td>
                                                 <td
+                                                  className={jobSummaryBreakdownInteractiveClass(
+                                                    !jobSummaryPartsCostIsZero(teamFooterAmt),
+                                                  )}
                                                   style={{
                                                     padding: '0.25rem 0.4rem',
                                                     textAlign: 'right',
-                                                    color: '#6b7280',
-                                                    fontWeight: 600,
+                                                  }}
+                                                  role={jobSummaryPartsCostIsZero(teamFooterAmt) ? undefined : 'button'}
+                                                  tabIndex={jobSummaryPartsCostIsZero(teamFooterAmt) ? -1 : 0}
+                                                  aria-label={
+                                                    jobSummaryPartsCostIsZero(teamFooterAmt) ? undefined : 'View team labor total'
+                                                  }
+                                                  onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    openFooterTeam()
+                                                  }}
+                                                  onKeyDown={(e) => {
+                                                    if (!jobSummaryPartsCostIsZero(teamFooterAmt)) {
+                                                      jobSummaryDrilldownCellKeyboard(e, openFooterTeam)
+                                                    }
                                                   }}
                                                 >
-                                                  n/a
+                                                  {jobSummaryPartsCostIsZero(teamFooterAmt)
+                                                    ? '—'
+                                                    : `$${formatCurrency(teamFooterAmt)}`}
                                                 </td>
-                                                <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
+                                                <td
+                                                  className={jobSummaryBreakdownInteractiveClass(
+                                                    !cardColLoading && !jobSummaryPartsCostIsZero(cardFooterAmt),
+                                                  )}
+                                                  style={{
+                                                    padding: '0.25rem 0.4rem',
+                                                    textAlign: 'right',
+                                                    color: cardColLoading ? '#6b7280' : undefined,
+                                                  }}
+                                                  role={cardColLoading || jobSummaryPartsCostIsZero(cardFooterAmt) ? undefined : 'button'}
+                                                  tabIndex={cardColLoading || jobSummaryPartsCostIsZero(cardFooterAmt) ? -1 : 0}
+                                                  aria-label={
+                                                    cardColLoading || jobSummaryPartsCostIsZero(cardFooterAmt) ? undefined : 'View card total'
+                                                  }
+                                                  onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    openFooterCard()
+                                                  }}
+                                                  onKeyDown={(e) => {
+                                                    if (!cardColLoading && !jobSummaryPartsCostIsZero(cardFooterAmt)) {
+                                                      jobSummaryDrilldownCellKeyboard(e, openFooterCard)
+                                                    }
+                                                  }}
+                                                >
+                                                  {cardColLoading
+                                                    ? '—'
+                                                    : jobSummaryPartsCostIsZero(cardFooterAmt)
+                                                      ? '—'
+                                                      : `$${formatCurrency(cardFooterAmt)}`}
+                                                </td>
+                                                <td
+                                                  className={jobSummaryBreakdownInteractiveClass(
+                                                    !jobSummaryPartsCostIsZero(invoicesFromSupplyHouses),
+                                                    'muted',
+                                                  )}
+                                                  style={{
+                                                    padding: '0.25rem 0.4rem',
+                                                    textAlign: 'right',
+                                                    fontWeight: 600,
+                                                  }}
+                                                  role={jobSummaryPartsCostIsZero(invoicesFromSupplyHouses) ? undefined : 'button'}
+                                                  tabIndex={jobSummaryPartsCostIsZero(invoicesFromSupplyHouses) ? -1 : 0}
+                                                  aria-label={
+                                                    jobSummaryPartsCostIsZero(invoicesFromSupplyHouses) ? undefined : 'View supply total'
+                                                  }
+                                                  onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    openFooterSupply()
+                                                  }}
+                                                  onKeyDown={(e) => {
+                                                    if (!jobSummaryPartsCostIsZero(invoicesFromSupplyHouses)) {
+                                                      jobSummaryDrilldownCellKeyboard(e, openFooterSupply)
+                                                    }
+                                                  }}
+                                                >
+                                                  {jobSummaryPartsCostIsZero(invoicesFromSupplyHouses)
+                                                    ? '—'
+                                                    : `$${formatCurrency(invoicesFromSupplyHouses)}`}
+                                                </td>
+                                                <td
+                                                  className={jobSummaryBreakdownInteractiveClass(
+                                                    personSummaryFooterRowTotal != null &&
+                                                      !jobSummaryPartsCostIsZero(personSummaryFooterRowTotal),
+                                                  )}
+                                                  style={{
+                                                    padding: '0.25rem 0.4rem',
+                                                    textAlign: 'right',
+                                                  }}
+                                                  role={
+                                                    personSummaryFooterRowTotal == null ||
+                                                    jobSummaryPartsCostIsZero(personSummaryFooterRowTotal)
+                                                      ? undefined
+                                                      : 'button'
+                                                  }
+                                                  tabIndex={
+                                                    personSummaryFooterRowTotal == null ||
+                                                    jobSummaryPartsCostIsZero(personSummaryFooterRowTotal)
+                                                      ? -1
+                                                      : 0
+                                                  }
+                                                  aria-label={
+                                                    personSummaryFooterRowTotal == null ||
+                                                    jobSummaryPartsCostIsZero(personSummaryFooterRowTotal)
+                                                      ? undefined
+                                                      : 'View grand total'
+                                                  }
+                                                  onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    openFooterGrand()
+                                                  }}
+                                                  onKeyDown={(e) => {
+                                                    if (
+                                                      personSummaryFooterRowTotal != null &&
+                                                      !jobSummaryPartsCostIsZero(personSummaryFooterRowTotal)
+                                                    ) {
+                                                      jobSummaryDrilldownCellKeyboard(e, openFooterGrand)
+                                                    }
+                                                  }}
+                                                >
                                                   {personSummaryFooterRowTotal == null
                                                     ? '—'
                                                     : jobSummaryPartsCostIsZero(personSummaryFooterRowTotal)
@@ -10267,12 +11375,14 @@ ${totalsHtml}
                                                       : `$${formatCurrency(personSummaryFooterRowTotal)}`}
                                                 </td>
                                               </tr>
+                                                )
+                                              })()}
                                             </tbody>
                                           </table>
                                           {ppPersonFooter != null &&
                                           !cardColLoading &&
                                           !jobSummaryPartsCostIsZero(cardCharges) &&
-                                          Math.abs((sumCardF ?? 0) - cardCharges) > 0.02 &&
+                                          Math.abs((sumCardF ?? 0) + unattributedCard - cardCharges) > 0.02 &&
                                           breakdownPersonQ.trim() === '' ? (
                                             <p style={{ margin: '0.35rem 0 0', fontSize: '0.72rem', color: '#b45309' }}>
                                               Per-person card totals may not match job card total; check attributions.
@@ -10283,51 +11393,6 @@ ${totalsHtml}
                                     </section>
                                   )
                                 })()}
-                                <section
-                                  style={{ marginBottom: '0.75rem' }}
-                                  onClick={(e) => e.stopPropagation()}
-                                  onKeyDown={(e) => e.stopPropagation()}
-                                  role="presentation"
-                                >
-                                  {jobSummaryPartsCostIsZero(invoicesFromSupplyHouses) ? (
-                                    <div style={jobSummaryCostSectionBodyStyle}>
-                                      <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>
-                                        No allocated supply house invoices.
-                                      </p>
-                                    </div>
-                                  ) : (
-                                    <details
-                                      style={jobSummaryPartsCostDetailsBoxStyle}
-                                      onToggle={(e) => {
-                                        if (!e.currentTarget.open) return
-                                        void loadJobSummaryInvoiceLinesForJob(job.id)
-                                      }}
-                                    >
-                                      <summary
-                                        style={{
-                                          cursor: 'pointer',
-                                          fontWeight: 600,
-                                          fontSize: '0.8125rem',
-                                          color: '#374151',
-                                          userSelect: 'none',
-                                        }}
-                                        onClick={(e) => e.stopPropagation()}
-                                      >
-                                        Invoices from supply houses{' '}
-                                        <span style={{ fontWeight: 400 }}>${formatCurrency(invoicesFromSupplyHouses)}</span>
-                                      </summary>
-                                      <div style={{ marginTop: '0.5rem' }}>
-                                        <div style={jobSummaryCostSectionBodyStyle}>
-                                          {renderJobSummarySupplyHouseInvoiceTableContent(
-                                            jobSummaryInvoiceLinesByJobId.has(job.id),
-                                            jobSummaryInvoiceLinesByJobId.get(job.id) ?? [],
-                                            invoicesFromSupplyHouses,
-                                          )}
-                                        </div>
-                                      </div>
-                                    </details>
-                                  )}
-                                </section>
                                 <div style={{ display: 'grid', gap: '1rem' }}>
                                   <section>
                                     <details style={jobSummaryPartsCostDetailsBoxStyle}>
@@ -13331,6 +14396,15 @@ ${totalsHtml}
             ×
           </button>
         </div>
+      ) : null}
+      {jobSummaryCostDrilldown ? (
+        <JobSummaryCostCellDrilldownModal
+          open
+          onClose={() => setJobSummaryCostDrilldown(null)}
+          title={jobSummaryCostDrilldown.title}
+        >
+          {jobSummaryCostDrilldown.body}
+        </JobSummaryCostCellDrilldownModal>
       ) : null}
     </div>
   )

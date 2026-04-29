@@ -49,7 +49,7 @@ export const EMPTY_JOB_THREAD_STATS: JobThreadNoteStats = {
 }
 
 /** Normalize PostgREST / RPC row (snake_case; tolerate camelCase or string bigints). */
-function statsFromRpcRow(r: unknown): JobThreadNoteStats {
+export function statsFromRpcRow(r: unknown): JobThreadNoteStats {
   if (r == null || typeof r !== 'object') {
     return { ...EMPTY_JOB_THREAD_STATS }
   }
@@ -67,7 +67,7 @@ function statsFromRpcRow(r: unknown): JobThreadNoteStats {
   }
 }
 
-function rpcRowJobId(r: unknown): string | null {
+export function rpcRowJobIdFromThreadStatsRpc(r: unknown): string | null {
   if (r == null || typeof r !== 'object') return null
   const o = r as Record<string, unknown>
   const id = o.job_id ?? o.jobId
@@ -121,7 +121,7 @@ const THREAD_NOTE_SELECT =
   'id, body, created_at, author:users!jobs_ledger_thread_notes_author_user_id_fkey(name)' as const
 
 /** Avoid oversized uuid[] payloads to jobs_ledger_thread_note_stats in one RPC. */
-const THREAD_STATS_JOB_IDS_CHUNK = 200
+export const THREAD_STATS_JOB_IDS_CHUNK = 200
 
 export function useJobThreadNotes(
   showToast: ToastFn,
@@ -216,7 +216,7 @@ export function useJobThreadNotes(
       setJobThreadStatsByJobId((prev) => {
         const next = { ...prev }
         for (const r of rows) {
-          const id = rpcRowJobId(r)
+          const id = rpcRowJobIdFromThreadStatsRpc(r)
           if (id) next[id] = statsFromRpcRow(r)
         }
         return next
@@ -245,7 +245,7 @@ export function useJobThreadNotes(
         if (threadStatsRefreshGenRef.current !== gen) return
         const rows = (data as unknown[] | null) ?? []
         for (const r of rows) {
-          const id = rpcRowJobId(r)
+          const id = rpcRowJobIdFromThreadStatsRpc(r)
           if (id) next[id] = statsFromRpcRow(r)
         }
       }

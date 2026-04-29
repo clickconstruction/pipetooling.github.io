@@ -1,7 +1,8 @@
 import type { MercuryJobAllocationWithAttributionRow } from './fetchMercuryJobAllocationsWithAttributionForJob'
 
 const JOB_LEVEL_LABEL = 'Job (no per-person split)'
-const UNATTRIBUTED_CARD = 'Unattributed'
+/** Mercury lines with no person attribution; Person summary table merges into the Unassigned row. */
+export const UNATTRIBUTED_CARD = 'Unattributed'
 
 export type TallyLineForPersonRollup = {
   part_id: string | null

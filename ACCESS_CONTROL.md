@@ -5,11 +5,11 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-04-23
+last_updated: 2026-04-28
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
-total_roles: 7
+total_roles: 8
 tables_with_rls: "50+"
 access_patterns: "Ownership, Adoption, Sharing"
 
@@ -17,7 +17,7 @@ key_sections:
   - name: "User Roles"
     line: ~18
     anchor: "#user-roles"
-    description: "Detailed breakdown of all 7 roles"
+    description: "Detailed breakdown of all 8 roles"
   - name: "Page Access Matrix"
     line: ~232
     anchor: "#page-access-matrix"
@@ -70,16 +70,17 @@ when_to_read:
 
 ## Overview
 
-Pipetooling implements comprehensive role-based access control (RBAC) using seven distinct user roles, each with specific permissions tailored to their responsibilities.
+Pipetooling implements comprehensive role-based access control (RBAC) using eight distinct user roles, each with specific permissions tailored to their responsibilities.
 
-### Seven User Roles
+### Eight User Roles
 1. **dev** - System administrators with full access
 2. **master_technician** - Project managers and business owners
 3. **assistant** - Support staff working under masters
 4. **subcontractor** - External workers assigned to specific tasks
-5. **estimator** - Bid estimation specialists
-6. **primary** - Materials and job reports specialist (Reports and Billing tabs on Jobs; Bids full access; Dashboard with Recent Reports and Send task)
-7. **superintendent** - Run jobs, manage subcontractors, draft bids (assigned projects only; no People page)
+5. **helpers** - Field workers with **the same app routing, RLS parity, and Clock/Dispatch service-type rules as subcontractors**; scoped via `helpers_service_type_ids` (same semantics as `subcontractor_service_type_ids`)
+6. **estimator** - Bid estimation specialists
+7. **primary** - Materials and job reports specialist (Reports and Billing tabs on Jobs; Bids full access; Dashboard with Recent Reports and Send task)
+8. **superintendent** - Run jobs, manage subcontractors, draft bids (assigned projects only; no People page)
 
 **Adding a new role?** See [ADDING_A_NEW_ROLE.md](./ADDING_A_NEW_ROLE.md) for a step-by-step guide.
 
@@ -303,6 +304,18 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 - External plumbers assigned to specific work
 - Limited visibility for security
 - Task-based access only
+
+---
+
+### helpers (Helper)
+
+**Purpose**: Same product experience as **subcontractor** — field/crew users with limited navigation, assigned workflow stages only, Clock In and Dispatch filtered by **`helpers_service_type_ids`**, and **`people.kind` = `helper`** for off-roster roster rows.
+
+**Access and permissions**: Treat as **subcontractor** everywhere in this document unless a feature explicitly lists only **subcontractor** — the **`helpers`** enum value is included for parity (routing: `Layout` / `SUBCONTRACTOR_PATHS`, `isSubcontractorLikeRole()`, RLS/RPC batches, Edge guards, Settings manual add/edit).
+
+**Service type filtering**: Configure via **`helpers_service_type_ids`** on `users` (Settings when role is **helpers**), not the subcontractor column.
+
+**Dashboard Assigned Jobs**: **Send to Billing** (Working → Ready to Bill) is **hidden** on the dashboard card; **`update_job_status`** rejects that transition on the plain team-member path for **`helpers`** (same UX intent as subcontractors not billing from this surface — **`RECENT_FEATURES.md`** v2.411, migration **`20270506120000_update_job_status_disallow_helpers_send_to_billing.sql`**).
 
 ---
 
@@ -541,6 +554,17 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 | **NCNS** on own days: read **`attendance_incidents`** where **`subject_user_id = self`** (Calendar badge / day modal); policy `"Attendance incidents subject select own"` | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 | **Salary schedule (green)**: **`scheduled`** chips / modal workday only when **`work_date` > today**; **unpaid time off (`time_off`)** purple chip **all dates** | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
 | **Recorded time** on Calendar: aggregate own **`clock_sessions`** in visible month (toggle) | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+
+### Checklist (`/checklist`)
+
+| Feature | dev | master | assistant | sub | estimator | primary | superintendent |
+|---------|-----|--------|-----------|-----|-----------|---------|----------------|
+| **Roadmap** tab (tech tree): **see** a roadmap row (`can_select_checklist_tech_tree_roadmap`) | ✅ all | ✅ all | ✅ all | ✅ if member | ✅ if member | ✅ all | ✅ if member |
+| **Roadmap**: **create** roadmap, **delete** roadmap | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ |
+| **Roadmap**: **edit graph** (groups/tasks/edges) — `can_edit_checklist_tech_tree_structure_for_roadmap` | ✅ | ✅ | ✅ | ✅ if **editor** | ✅ if **editor** | ✅ | ✅ if **editor** |
+| **Roadmap**: **Members** modal — add/remove, **viewer** / **editor** (`can_manage_checklist_tech_tree_roadmap_members`) | ✅ | ✅ | ✅ | ✅ if **editor** | ✅ if **editor** | ✅ | ✅ if **editor** |
+
+**RLS notes** (v2.408, [`20270427120000_checklist_tech_tree_multi_roadmap.sql`](supabase/migrations/20270427120000_checklist_tech_tree_multi_roadmap.sql)): **Dev**, **master_technician**, **assistant**, and **primary** bypass membership for **select** and **structure** (see all roadmaps). **Subcontractor**, **estimator**, **superintendent** (and anyone not in that bypass set) need a row in **`checklist_tech_tree_roadmap_members`** for each roadmap they can open. Migration backfill adds **viewer** on the **Default** roadmap for all non-archived users, so everyone typically retains access to that graph; additional named roadmaps are visible only to bypass roles or invited members.
 
 ### Quickfill (`/quickfill`)
 

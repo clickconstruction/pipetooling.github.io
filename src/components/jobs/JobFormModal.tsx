@@ -62,6 +62,8 @@ import {
   stripeInvoiceFixtureLineLength,
 } from '../../lib/stripeInvoiceLineDescription'
 import { SearchableSelect } from '../SearchableSelect'
+import type { UserRole } from '../../hooks/useAuth'
+import { fieldRoleServiceTypeIdsForUser, isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
 
 type EstimatesRow = Database['public']['Tables']['estimates']['Row']
 type JobFormServiceType = { id: string; name: string; color: string | null }
@@ -72,6 +74,7 @@ type MeServiceTypeColumns = {
   primary_service_type_ids?: string[] | null
   superintendent_service_type_ids?: string[] | null
   subcontractor_service_type_ids?: string[] | null
+  helpers_service_type_ids?: string[] | null
 }
 
 function visibleServiceTypesForJobForm(types: JobFormServiceType[], me: MeServiceTypeColumns | null): JobFormServiceType[] {
@@ -89,9 +92,12 @@ function visibleServiceTypesForJobForm(types: JobFormServiceType[], me: MeServic
     const f = types.filter((st) => me.superintendent_service_type_ids!.includes(st.id))
     return f.length > 0 ? f : types
   }
-  if (role === 'subcontractor' && me?.subcontractor_service_type_ids && me.subcontractor_service_type_ids.length > 0) {
-    const f = types.filter((st) => me.subcontractor_service_type_ids!.includes(st.id))
-    return f.length > 0 ? f : types
+  if (isSubcontractorLikeRole(role as UserRole)) {
+    const fieldIds = fieldRoleServiceTypeIdsForUser(role as UserRole, me ?? {})
+    if (fieldIds && fieldIds.length > 0) {
+      const f = types.filter((st) => fieldIds.includes(st.id))
+      return f.length > 0 ? f : types
+    }
   }
   return types
 }
@@ -970,7 +976,7 @@ export default function JobFormModal({
           const { data: usersRes } = await supabase
             .from('users')
             .select('id, name, email, role')
-            .in('role', ['assistant', 'master_technician', 'subcontractor', 'estimator', 'primary', 'superintendent'])
+            .in('role', ['assistant', 'master_technician', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent'])
             .order('name')
           let usersList = (usersRes as UserRow[]) ?? []
           if (meRole === 'dev') {
@@ -1002,7 +1008,7 @@ export default function JobFormModal({
           supabase
             .from('users')
             .select(
-              'role, estimator_service_type_ids, primary_service_type_ids, superintendent_service_type_ids, subcontractor_service_type_ids',
+              'role, estimator_service_type_ids, primary_service_type_ids, superintendent_service_type_ids, subcontractor_service_type_ids, helpers_service_type_ids',
             )
             .eq('id', authUser.id)
             .single(),

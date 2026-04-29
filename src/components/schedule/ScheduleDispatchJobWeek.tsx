@@ -28,6 +28,7 @@ import { scheduleFormatWindow } from '../../lib/jobScheduleChicago'
 import { executeScheduleDispatchBlockReassign } from '../../lib/scheduleDispatchDragEnd'
 import { insertScheduleDispatchCopiedLeg } from '../../lib/scheduleDispatchMirrorInsert'
 import { fetchSalariedUserIdSetFromUserIds } from '../../lib/salaryPayConfigGate'
+import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
 import { ScheduleDispatchAddBlockModal } from './ScheduleDispatchAddBlockModal'
 import { ScheduleDispatchBlockNoteModal } from './ScheduleDispatchBlockNoteModal'
 import { PreviewJobModal } from '../calendar/PreviewJobModal'
@@ -1016,7 +1017,7 @@ export function ScheduleDispatchJobWeek() {
         projectId={jobPreview.projectId}
         contextDateKey={jobPreview.dateKey}
         authUserId={authUser?.id}
-        showJobsDeepLink={role !== 'subcontractor'}
+        showJobsDeepLink={!isSubcontractorLikeRole(role)}
       />
     ) : null}
     </>

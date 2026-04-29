@@ -111,6 +111,10 @@ External worker with minimal access. Only sees stages they are assigned to by na
 
 **Key Restriction**: Cannot see any stage they're not explicitly assigned to
 
+### helpers (labeled **Helper** in the app UI)
+
+Same high-level routing and subcontractor-parity policies as **subcontractor** (`SUBCONTRACTOR_PATHS`, `isSubcontractorLikeRole()`). Stored role: PostgreSQL **`user_role`** enum value **`helpers`**. Service-type column: **`users.helpers_service_type_ids`** (Clock/Dispatch), analogous to **`subcontractor_service_type_ids`**. **`people.kind` = `helper`** for off‑roster People rows. See [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) **`### helpers (Helper)`**.
+
 ### estimator (Estimator)
 Bid estimation specialist with access only to Bids and Materials systems. Cannot access ongoing project management, workflows, or dashboard. Can view all customers (for bid creation) and create new customers via Bids modal.
 
@@ -293,9 +297,16 @@ Org-wide Mercury transaction filter for applying customer bank deposits to bille
 ## Checklist
 
 ### Checklist Items / Checklist Instances
-Recurring tasks with Today, History, **Review**, and Manage tabs (Review/Manage require manage-capable roles). **Assignees** are stored in junction tables `checklist_item_assignees` (item, user) and `checklist_instance_assignees` (instance, user)—items and instances can have multiple assignees. Add/Edit modal uses checkboxes for multi-assignee selection; at least one assignee required. Today/History filter by `checklist_instance_assignees.user_id`. **Review** tab: **Outstanding by person** (filters and table) first, then **Task Dispatch** and **Estimator Inbox** cards via `ChecklistReviewInboxes` (inbox cards hidden for assistants). **Link placeholders**: `[1]`, `[2]`, etc. in item titles map to URLs in `checklist_items.links` array; Add/Edit modal provides URL inputs; displayed as clickable links via `ChecklistTitleWithLinks`.
+Recurring tasks with Today, History, **Review**, Manage, and **Roadmap** tabs (Review/Manage require manage-capable roles). **Assignees** are stored in junction tables `checklist_item_assignees` (item, user) and `checklist_instance_assignees` (instance, user)—items and instances can have multiple assignees. Add/Edit modal uses checkboxes for multi-assignee selection; at least one assignee required. Today/History filter by `checklist_instance_assignees.user_id`. **Review** tab: **Outstanding by person** (filters and table) first, then **Task Dispatch** and **Estimator Inbox** cards via `ChecklistReviewInboxes` (inbox cards hidden for assistants). **Link placeholders**: `[1]`, `[2]`, etc. in item titles map to URLs in `checklist_items.links` array; Add/Edit modal provides URL inputs; displayed as clickable links via `ChecklistTitleWithLinks`.
 
 **Database**: `checklist_items`, `checklist_instances`, `checklist_item_assignees`, `checklist_instance_assignees`
+
+### Roadmap (tech tree)
+Named **roadmaps** on the Checklist page (`?tab=roadmap`, optional **`roadmap=<uuid>`**): each roadmap has its own groups of tasks, prerequisite edges, and per-task assignees. **`ChecklistTechTreeRoadmapBar`** — pick roadmap, **New roadmap** (dev/master/assistant/primary), **Members**. **`ChecklistTechTreeRoadmapMembersModal`** — add org users as **viewer** (read + complete assigned tasks) or **editor** (change graph + manage members). **Staff/primary** can access any roadmap without a member row (RLS); others need membership. Implemented in **`ChecklistTechTreeTab`** with a floating **canvas** icon row when the graph has groups—**enter full screen** (bare icon, no chip), **Organize**, **Add group**, **Edit tasks**, **Show all** / **Collapse all**—via **`ChecklistTechTreeMapActionIconButtons`**; an empty graph uses text actions in the roadmap toolbar. Full-screen mode repeats those icons in the overlay header; **exit** is an icon-only control (class **`checklistTechTreeExitFs`** in **`index.css`**).
+
+**Database**: **`checklist_tech_tree_roadmaps`**, **`checklist_tech_tree_roadmap_members`**, **`checklist_tech_tree_groups`** (includes **`roadmap_id`**), **`checklist_tech_tree_group_tasks`**, **`checklist_tech_tree_edges`**, **`checklist_tech_tree_task_assignees`**
+
+**See**: `RECENT_FEATURES.md` → v2.408, v2.407; `MIGRATIONS.md` → **`20270427120000_checklist_tech_tree_multi_roadmap.sql`**; `PROJECT_DOCUMENTATION.md` → Key differentiators, Checklist
 
 **Repeat types**: once, day_of_week (multiple days), days_after_completion
 
@@ -673,7 +684,7 @@ For jobs in **Ready to Bill**, **`jobs_ledger_invoices`** can have **multiple** 
 User-facing label for **manual job materials** lines stored on **`jobs_ledger_materials`** in **Edit Job** and **Job Detail** materials cost accordions (and in Jobs **Parts** totals / Quickfill copy). Replaces the older **Billed materials** wording. See **`RECENT_FEATURES.md`** → v2.277; **`JobFormModal.tsx`**, **`JobDetailMaterialsCostSection.tsx`**.
 
 ### Stages lines `j:` and `b:` (Jobs Stages tab)
-Read-only **T±n (weekday)** summaries under **Assigned / HCP**: **`j:`** (job / field) = calendar-latest of **`last_work_date`** (approved clock sessions cache) and max **`job_schedule_blocks.work_date`** for the job; **`b:`** (billing reference) = calendar-**latest** of **last manual bill date** (**`last_bill_date`**) and invoice **`sent_to_customer_at`** / **`billed_at`** and payment **`paid_on`**—**`—`** only when all of those are empty. Helpers: **`src/lib/stagesJobReferenceDates.ts`**.
+Read-only **T±n (weekday)** summaries under **Assigned / HCP**: **`j:`** (job / field) = calendar-latest of **`last_work_date`** (approved clock sessions cache) and max **`job_schedule_blocks.work_date`** for the job; **`b:`** (billing reference) = calendar-**latest** of **last manual bill date** (**`last_bill_date`**) and invoice **`sent_to_customer_at`** / **`billed_at`** and payment **`paid_on`**; **`—`** only when all of those are empty. **Implementation**: **[`src/lib/stagesJobReferenceDates.ts`](src/lib/stagesJobReferenceDates.ts)**.
 
 ### Stages Last activity — Stripe emailed customer (Jobs)
 When **Jobs** **Stages** **Last activity** shows **Stripe emailed customer** plus a time line and **Resend invoice email**, the job has exactly **one** matching **billed** Stripe invoice line with **`sent_to_customer_at`** set (**`stagesJobLevelStripeEmailedHintInvoice`** in **`Jobs.tsx`**); multiple billed Stripe lines hide the block. **Resend** invokes Edge **`send-stripe-invoice`** (same as **Send Email invoice from Stripe** in **Bill Customer** / hosted bill). **`jobs_ledger_invoices.sent_to_customer_at`** holds the **latest** send timestamp; append-only **`jobs_ledger_invoice_stripe_email_sends`** records each successful **PipeTooling** send for history in the confirm modal. See **`RECENT_FEATURES.md`** → v2.303, v2.304.

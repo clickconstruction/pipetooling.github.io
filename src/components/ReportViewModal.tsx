@@ -1,3 +1,13 @@
+import type { UserRole } from '../hooks/useAuth'
+import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
+import {
+  displayLabelForFieldKey,
+  formatReportFieldValueForRead,
+  REPORT_FIELD_LABEL_JOB_COMPLETION,
+  REPORT_FIELD_LABEL_LEGACY_WHO,
+} from '../lib/reportTemplateFieldDisplay'
+import { isReportSignatureImageDataUrl } from '../lib/reportSignatureField'
+
 export type ReportForView = {
   id: string
   template_name: string
@@ -33,16 +43,48 @@ export function ReportDetailBody({ report }: { report: ReportForView }) {
 
       {report.field_values && Object.keys(report.field_values).length > 0 ? (
         <div style={{ fontSize: '0.875rem' }}>
-          {Object.entries(report.field_values).map(([label, val]) =>
-            val ? (
+          {(() => {
+            const raw = report.field_values ?? {}
+            const hasNewCompletionKey = Object.prototype.hasOwnProperty.call(
+              raw,
+              REPORT_FIELD_LABEL_JOB_COMPLETION,
+            )
+            return Object.entries(raw)
+              .filter(([label]) => {
+                if (label === REPORT_FIELD_LABEL_LEGACY_WHO && hasNewCompletionKey) return false
+                return true
+              })
+              .map(([label, val]) => {
+            const s = val == null ? '' : String(val).trim()
+            if (!s) return null
+            const displayLabel = displayLabelForFieldKey(label)
+            if (isReportSignatureImageDataUrl(s)) {
+              return (
+                <div key={label} style={{ marginBottom: '0.75rem' }}>
+                  <span style={{ color: '#6b7280', fontWeight: 500, display: 'block', marginBottom: '0.25rem' }}>
+                    {displayLabel}
+                  </span>
+                  <img
+                    src={s}
+                    alt=""
+                    style={{ maxWidth: '100%', height: 'auto', display: 'block', marginBottom: '0.25rem' }}
+                  />
+                  <div style={{ fontSize: '1rem', fontWeight: 500, color: '#4b5563' }}>{report.created_by_name}</div>
+                </div>
+              )
+            }
+            return (
               <div key={label} style={{ marginBottom: '0.75rem' }}>
                 <span style={{ color: '#6b7280', fontWeight: 500, display: 'block', marginBottom: '0.25rem' }}>
-                  {label}
+                  {displayLabel}
                 </span>
-                <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{String(val)}</div>
+                <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                  {formatReportFieldValueForRead(label, s)}
+                </div>
               </div>
-            ) : null
-          )}
+            )
+          })
+          })()}
         </div>
       ) : (
         <p style={{ color: '#9ca3af', fontSize: '0.875rem' }}>No content</p>
@@ -55,9 +97,11 @@ type Props = {
   open: boolean
   report: ReportForView | null
   onClose: () => void
+  /** Passed to {@link displayReportTemplateName} for the modal title (legacy `Superintendent Report` → Status Report). */
+  viewerRole?: UserRole | null
 }
 
-export default function ReportViewModal({ open, report, onClose }: Props) {
+export default function ReportViewModal({ open, report, onClose, viewerRole }: Props) {
   if (!open) return null
 
   return (
@@ -88,7 +132,9 @@ export default function ReportViewModal({ open, report, onClose }: Props) {
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: '1.25rem' }}>{report?.template_name ?? 'Report'}</h2>
+            <h2 style={{ margin: 0, fontSize: '1.25rem' }}>
+              {displayReportTemplateName(report?.template_name ?? 'Report', viewerRole)}
+            </h2>
             <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
               {report?.job_display_name ?? 'Unknown job'}
             </p>

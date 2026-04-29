@@ -7,6 +7,7 @@ import { useMatchMedia } from '../hooks/useMatchMedia'
 import type { Database } from '../types/database'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
+import { isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import { aggregateCalendarClockedHoursByDate } from '../lib/calendarClockedHoursByDate'
 import { CLOCK_SESSION_CALENDAR_SELECT } from '../lib/clockSessionSelect'
 import {
@@ -25,7 +26,7 @@ import type { ClockSessionRow } from '../types/clockSessions'
 import { PreviewJobModal } from '../components/calendar/PreviewJobModal'
 import { scheduleFormatWindow } from '../lib/jobScheduleChicago'
 
-type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator'
+type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'helpers' | 'estimator'
 
 const CALENDAR_PLAN_CHIP_CAP = 3
 
@@ -1744,7 +1745,7 @@ export default function Calendar() {
           contextDateKey={previewJobModal.dateKey}
           steps={steps}
           authUserId={authUser?.id}
-          showJobsDeepLink={authRole !== 'subcontractor'}
+          showJobsDeepLink={!isSubcontractorLikeRole(authRole)}
         />
       ) : null}
     </div>

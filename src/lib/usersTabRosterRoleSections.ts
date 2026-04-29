@@ -10,6 +10,7 @@ export const AUTH_USER_ROLE_SECTION_ORDER = [
   'estimator',
   'superintendent',
   'subcontractor',
+  'helpers',
   'dev',
 ] as const
 
@@ -22,6 +23,7 @@ export const AUTH_USER_ROLE_SECTION_LABEL: Record<AuthUserRoleSectionKey, string
   estimator: 'Estimators',
   superintendent: 'Superintendents',
   subcontractor: 'Subcontractors',
+  helpers: 'Helper',
   dev: 'Devs',
 }
 

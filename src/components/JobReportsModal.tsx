@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import ReportViewModal, { ReportDetailBody, type ReportForView } from './ReportViewModal'
 import AdditionalReportModal from './AdditionalReportModal'
 import type { UserRole } from '../hooks/useAuth'
+import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
 
 type ReportWithJobInfo = ReportForView & {
   job_ledger_id: string | null
@@ -253,7 +254,7 @@ export default function JobReportsModal({ open, onClose, jobId, hcpNumber, jobNa
                         {isExpanded ? '▾' : '▸'}
                       </button>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{r.template_name}</div>
+                        <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{displayReportTemplateName(r.template_name, userRole)}</div>
                         <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
                           {r.created_by_name} · {new Date(r.created_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
                         </div>
@@ -292,7 +293,7 @@ export default function JobReportsModal({ open, onClose, jobId, hcpNumber, jobNa
         </div>
       </div>
 
-      <ReportViewModal open={!!viewingReport} report={viewingReport} onClose={() => setViewingReport(null)} />
+      <ReportViewModal open={!!viewingReport} report={viewingReport} onClose={() => setViewingReport(null)} viewerRole={userRole} />
 
       <AdditionalReportModal
         open={newReportOpen}

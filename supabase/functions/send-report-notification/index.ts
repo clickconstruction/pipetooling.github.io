@@ -2,6 +2,10 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
 
+/** Matches client `reportTemplateDisplayName` legacy alias for notification copy. */
+const LEGACY_SUPERINTENDENT_REPORT_TEMPLATE_NAME = 'Superintendent Report'
+const STATUS_REPORT_PUSH_LABEL = 'Status Report'
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -87,7 +91,10 @@ serve(async (req) => {
       .select('name')
       .eq('id', reportRow.template_id)
       .single()
-    const templateName = (templateRow as { name: string } | null)?.name ?? 'Report'
+    let templateName = (templateRow as { name: string } | null)?.name ?? 'Report'
+    if (templateName === LEGACY_SUPERINTENDENT_REPORT_TEMPLATE_NAME) {
+      templateName = STATUS_REPORT_PUSH_LABEL
+    }
 
     // Fetch creator name
     const { data: creatorRow } = await adminClient

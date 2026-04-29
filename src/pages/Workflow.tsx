@@ -6,6 +6,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useToastContext } from '../contexts/ToastContext'
 import { useJobThreadNotes } from '../hooks/useJobThreadNotes'
 import { JobThreadNotesPanel } from '../components/JobThreadNotesPanel'
+import { isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import type { Database } from '../types/database'
 
 type Step = Database['public']['Tables']['project_workflow_steps']['Row']
@@ -132,7 +133,7 @@ function PersonDisplayWithContact({ name, contacts, userNames }: { name: string 
 
 export default function Workflow() {
   const { projectId } = useParams()
-  const { user: authUser, profileName: authProfileName } = useAuth()
+  const { user: authUser, profileName: authProfileName, role: authRole } = useAuth()
   const { showToast } = useToastContext()
   const {
     expandedJobThreadId: expandedWorkflowJobThreadId,
@@ -168,7 +169,7 @@ export default function Workflow() {
   const [templates, setTemplates] = useState<{ id: string; name: string }[]>([])
   const [selectedTemplateId, setSelectedTemplateId] = useState('')
   const [creatingFromTemplate, setCreatingFromTemplate] = useState(false)
-  const [userRole, setUserRole] = useState<'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'superintendent' | null>(null)
+  const [userRole, setUserRole] = useState<'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'helpers' | 'superintendent' | null>(null)
   const [lineItems, setLineItems] = useState<Record<string, LineItem[]>>({})
   const [editingLineItem, setEditingLineItem] = useState<{
     stepId: string
@@ -415,7 +416,7 @@ export default function Workflow() {
     
     // Only subcontractors are filtered to assigned steps
     // Assistants see all stages (RLS handles access control via master adoption)
-    if (userRole === 'subcontractor' && currentUserName) {
+    if (isSubcontractorLikeRole(userRole) && currentUserName) {
       query = query.eq('assigned_to_name', currentUserName)
     }
     
@@ -429,7 +430,7 @@ export default function Workflow() {
     console.log(`Loaded ${stepData.length} steps for workflow ${wfId}`)
     
     // Only subcontractors need this check (assistants see all stages if they have project access)
-    if (userRole === 'subcontractor' && stepData.length === 0) {
+    if (isSubcontractorLikeRole(userRole) && stepData.length === 0) {
       setError('You do not have access to this workflow. You can only view workflows where you are assigned to at least one stage.')
       setSteps([])
       // Track that we've loaded steps for this workflow_id (even if empty)
@@ -769,7 +770,7 @@ export default function Workflow() {
     }
     // Skip redundant run: we already have project, workflow, and steps for this project.
     // Exception: subcontractors must re-run when userRole becomes available (filter by assigned steps).
-    if (project?.id === projectId && workflow?.id && lastLoadedWorkflowId.current === workflow.id && userRole !== 'subcontractor') {
+    if (project?.id === projectId && workflow?.id && lastLoadedWorkflowId.current === workflow.id && !isSubcontractorLikeRole(userRole)) {
       setLoading(false)
       return
     }
@@ -983,7 +984,7 @@ export default function Workflow() {
         .eq('id', authUser.id)
         .single()
       if (userData) {
-        setUserRole((userData as { role: 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'superintendent' }).role)
+        setUserRole((userData as { role: 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'helpers' | 'superintendent' }).role)
         const userName = (userData as { name: string | null; email: string | null }).name || (userData as { name: string | null; email: string | null }).email
         setCurrentUserName(userName)
       }
@@ -1002,7 +1003,7 @@ export default function Workflow() {
           adoptedMasterIds.length > 0
             ? supabase.from('people').select('name, email, phone').is('archived_at', null).in('master_user_id', adoptedMasterIds).order('name')
             : { data: [] as { name: string; email: string | null; phone: string | null }[] },
-          supabase.from('users').select('name, email').in('role', ['subcontractor', 'primary']),
+          supabase.from('users').select('name, email').in('role', ['subcontractor', 'helpers', 'primary']),
         ])
       } else {
         ;[peopleRes, usersRes] = await Promise.all([
@@ -2278,6 +2279,7 @@ export default function Workflow() {
                   submitting={workflowJobThreadSubmittingId === expandedWorkflowJobThreadId}
                   onDraftChange={setWorkflowJobThreadDraft}
                   onSubmit={() => void submitWorkflowJobThreadNote(expandedWorkflowJobThreadId)}
+                  viewerRole={authRole}
                 />
               </div>
             )}
@@ -3181,6 +3183,7 @@ export default function Workflow() {
 
       {stepForm.open && (
         <StepFormModal
+          viewerRole={userRole}
           step={stepForm.step}
           dependsOnStepId={stepForm.depends_on_step_id ?? null}
           insertAfterStepId={stepForm.insertAfterStepId ?? null}
@@ -3765,6 +3768,7 @@ export default function Workflow() {
 }
 
 function StepFormModal({
+  viewerRole,
   step,
   dependsOnStepId,
   insertAfterStepId,
@@ -3775,6 +3779,7 @@ function StepFormModal({
   toDatetimeLocal,
   fromDatetimeLocal,
 }: {
+  viewerRole: 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'helpers' | 'superintendent' | null
   step: Step | null
   dependsOnStepId: string | null
   insertAfterStepId: string | null
@@ -3832,15 +3837,15 @@ function StepFormModal({
         .eq('superintendent_id', authUser.id)
       const adoptedMasterIds = (adopted ?? []).map((r) => r.master_id)
       ;[usersRes, peopleRes] = await Promise.all([
-        supabase.from('users').select('name, role').in('role', ['master_technician', 'subcontractor', 'primary']),
+        supabase.from('users').select('name, role').in('role', ['master_technician', 'subcontractor', 'helpers', 'primary']),
         adoptedMasterIds.length > 0
-          ? supabase.from('people').select('name, kind').is('archived_at', null).in('master_user_id', adoptedMasterIds).in('kind', ['master_technician', 'sub'])
+          ? supabase.from('people').select('name, kind').is('archived_at', null).in('master_user_id', adoptedMasterIds).in('kind', ['master_technician', 'sub', 'helper'])
           : { data: [] as Array<{ name: string; kind: string }> },
       ])
     } else {
       ;[usersRes, peopleRes] = await Promise.all([
-        supabase.from('users').select('name, role').in('role', ['master_technician', 'subcontractor', 'primary']),
-        supabase.from('people').select('name, kind').is('archived_at', null).eq('master_user_id', authUser.id).in('kind', ['master_technician', 'sub']),
+        supabase.from('users').select('name, role').in('role', ['master_technician', 'subcontractor', 'helpers', 'primary']),
+        supabase.from('people').select('name, kind').is('archived_at', null).eq('master_user_id', authUser.id).in('kind', ['master_technician', 'sub', 'helper']),
       ])
     }
     
@@ -3940,12 +3945,13 @@ function StepFormModal({
       return
     }
     
-    // Create new person (default to 'sub' for subcontractor)
+    const offRosterKind: 'sub' | 'helper' = viewerRole === 'helpers' ? 'helper' : 'sub'
+    // Create new person (default to helper/sub for helpers/subcontractor field users)
     const { error: err } = await supabase
       .from('people')
       .insert({
         master_user_id: authUser.id,
-        kind: 'sub',
+        kind: offRosterKind,
         name: trimmedName,
         email: newPerson.email.trim() || null,
         phone: newPerson.phone.trim() || null,

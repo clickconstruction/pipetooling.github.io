@@ -769,6 +769,7 @@ function EstimateListTable({
   onCustomerSnapshotRequest,
   stagesThread,
 }: EstimateListTableProps) {
+  const { role: estimateListViewerRole } = useAuth()
   const showStagesActivity = stagesThread != null
   const threadColSpan = 6 + (showCustomerColumn ? 1 : 0)
 
@@ -1116,6 +1117,7 @@ function EstimateListTable({
                       onDraftChange={st.setEstimateThreadDraft}
                       onSubmit={() => void st.submitEstimateThreadNote(r.id)}
                       submitting={st.estimateThreadSubmittingId === r.id}
+                      viewerRole={estimateListViewerRole}
                     />
                   </td>
                 </tr>

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { PartsPerPersonCostRow } from './partsPerPersonCostSummary'
-import { buildJobSummaryPersonSummaryRows } from './jobSummaryPersonSummaryTable'
+import {
+  buildJobSummaryPersonSummaryRows,
+  partitionUnattributedFromJobSummaryPersonRows,
+} from './jobSummaryPersonSummaryTable'
 
 function row(
   r: Pick<PartsPerPersonCostRow, 'key' | 'displayName' | 'cardCharges'> & Partial<PartsPerPersonCostRow>,
@@ -89,5 +92,25 @@ describe('buildJobSummaryPersonSummaryRows', () => {
     })
     expect(out.length).toBe(1)
     expect(out[0]?.displayName).toBe('Eve')
+  })
+})
+
+describe('partitionUnattributedFromJobSummaryPersonRows', () => {
+  it('pulls Unattributed card and drops the row', () => {
+    const { rows, unattributedCard } = partitionUnattributedFromJobSummaryPersonRows([
+      { normKey: 'a', displayName: 'Ann', hours: 1, teamLabor: 10, card: 0 },
+      { normKey: 'u', displayName: 'Unattributed', hours: 0, teamLabor: 0, card: 99 },
+    ])
+    expect(rows.map((r) => r.displayName)).toEqual(['Ann'])
+    expect(unattributedCard).toBe(99)
+  })
+
+  it('sums multiple Unattributed rows if present', () => {
+    const { rows, unattributedCard } = partitionUnattributedFromJobSummaryPersonRows([
+      { normKey: 'u1', displayName: 'Unattributed', hours: 0, teamLabor: 0, card: 3 },
+      { normKey: 'u2', displayName: 'Unattributed', hours: 0, teamLabor: 0, card: 7 },
+    ])
+    expect(rows).toHaveLength(0)
+    expect(unattributedCard).toBe(10)
   })
 })

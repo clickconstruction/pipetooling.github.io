@@ -1,7 +1,16 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type CSSProperties } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
-import type { UserRole } from '../hooks/useAuth'
+import { useAuth, type UserRole } from '../hooks/useAuth'
+import {
+  additionalReportModalBlueChipTemplate,
+  additionalReportModalTemplateChipLabel,
+  findStatusReportTemplateId,
+} from '../lib/reportTemplateDisplayName'
+import { fieldValueForSubmit } from '../lib/reportTemplateFieldDisplay'
+import { validateReportSignatureDataUrlForSubmit } from '../lib/reportSignatureField'
+import { ReportTemplatePercentField } from './ReportTemplatePercentField'
+import { ReportTemplateSignatureField } from './ReportTemplateSignatureField'
 import JobReportsModal from './JobReportsModal'
 
 type ReportTemplate = Database['public']['Tables']['report_templates']['Row']
@@ -20,6 +29,7 @@ type Props = {
 }
 
 export default function AdditionalReportModal({ open, onClose, onSaved, authUserId, userRole, jobId, hcpNumber, jobName, jobAddress }: Props) {
+  const { profileName } = useAuth()
   const [templates, setTemplates] = useState<ReportTemplate[]>([])
   const [templateFields, setTemplateFields] = useState<Record<string, ReportTemplateField[]>>({})
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('')
@@ -34,8 +44,8 @@ export default function AdditionalReportModal({ open, onClose, onSaved, authUser
       const list = (data as ReportTemplate[]) ?? []
       setTemplates(list)
       if (list.length > 0) {
-        const match = list.find((t) => t.name.toLowerCase() === 'note')
-        setSelectedTemplateId(match?.id ?? list[0]!.id)
+        const id = findStatusReportTemplateId(list) ?? list[0]?.id
+        if (id) setSelectedTemplateId(id)
       }
     })
   }, [open])
@@ -70,9 +80,19 @@ export default function AdditionalReportModal({ open, onClose, onSaved, authUser
     setSaving(true)
     setError(null)
     const fields = templateFields[selectedTemplateId] ?? []
+    for (const f of fields) {
+      if ((f.input_type ?? 'long_text') === 'signature_png') {
+        const msg = validateReportSignatureDataUrlForSubmit(fieldValues[f.label] ?? '')
+        if (msg) {
+          setError(msg)
+          setSaving(false)
+          return
+        }
+      }
+    }
     const fv: Record<string, string> = {}
     for (const f of fields) {
-      fv[f.label] = fieldValues[f.label] ?? ''
+      fv[f.label] = fieldValueForSubmit(f, fieldValues)
     }
 
     let reportedAtLat: number | null = null
@@ -144,6 +164,39 @@ export default function AdditionalReportModal({ open, onClose, onSaved, authUser
   const fields = templateFields[selectedTemplateId] ?? []
   const canSubmit = selectedTemplateId && authUserId
 
+  function reportTypeChipStyles(templateId: string, templateName: string): CSSProperties {
+    const selected = selectedTemplateId === templateId
+    const blueIdle = additionalReportModalBlueChipTemplate(templateName)
+    const base: CSSProperties = {
+      padding: '0.5rem 1rem',
+      fontSize: '0.875rem',
+      borderRadius: 4,
+      cursor: 'pointer',
+    }
+    if (selected) {
+      return {
+        ...base,
+        border: '2px solid #3b82f6',
+        background: '#eff6ff',
+        fontWeight: 600,
+      }
+    }
+    if (blueIdle) {
+      return {
+        ...base,
+        border: '1px solid #3b82f6',
+        background: '#eff6ff',
+        color: '#1e40af',
+        fontWeight: 500,
+      }
+    }
+    return {
+      ...base,
+      border: '1px solid #d1d5db',
+      background: 'white',
+      fontWeight: 400,
+    }
+  }
   return (
     <>
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 65 }}>
@@ -178,17 +231,9 @@ export default function AdditionalReportModal({ open, onClose, onSaved, authUser
                   key={t.id}
                   type="button"
                   onClick={() => setSelectedTemplateId(t.id)}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    fontSize: '0.875rem',
-                    border: selectedTemplateId === t.id ? '2px solid #3b82f6' : '1px solid #d1d5db',
-                    background: selectedTemplateId === t.id ? '#eff6ff' : 'white',
-                    borderRadius: 4,
-                    cursor: 'pointer',
-                    fontWeight: selectedTemplateId === t.id ? 600 : 400,
-                  }}
+                  style={reportTypeChipStyles(t.id, t.name)}
                 >
-                  {t.name}
+                  {additionalReportModalTemplateChipLabel(t.name, userRole)}
                 </button>
               ))}
             </div>
@@ -196,17 +241,44 @@ export default function AdditionalReportModal({ open, onClose, onSaved, authUser
 
           {fields.length > 0 && (
             <div style={{ marginBottom: '1rem' }}>
-              {fields.map((f) => (
-                <div key={f.id} style={{ marginBottom: '0.75rem' }}>
-                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>{f.label}</label>
-                  <textarea
-                    value={fieldValues[f.label] ?? ''}
-                    onChange={(e) => setFieldValues((prev) => ({ ...prev, [f.label]: e.target.value }))}
-                    rows={3}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                  />
-                </div>
-              ))}
+              {fields.map((f) => {
+                const t = f.input_type ?? 'long_text'
+                if (t === 'percent_0_100') {
+                  return (
+                    <ReportTemplatePercentField
+                      key={f.id}
+                      id={`additional-report-pct-${f.id}`}
+                      label={f.label}
+                      value={fieldValues[f.label] ?? '0'}
+                      onChange={(v) => setFieldValues((prev) => ({ ...prev, [f.label]: v }))}
+                    />
+                  )
+                }
+                if (t === 'signature_png') {
+                  return (
+                    <ReportTemplateSignatureField
+                      key={f.id}
+                      reactKeyPrefix={`add-${selectedTemplateId}-${f.id}`}
+                      id={`additional-report-sig-${f.id}`}
+                      label={f.label}
+                      value={fieldValues[f.label] ?? ''}
+                      onChange={(v) => setFieldValues((prev) => ({ ...prev, [f.label]: v }))}
+                      captionBelowCanvas={profileName?.trim() ? profileName : null}
+                    />
+                  )
+                }
+                return (
+                  <div key={f.id} style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>{f.label}</label>
+                    <textarea
+                      value={fieldValues[f.label] ?? ''}
+                      onChange={(e) => setFieldValues((prev) => ({ ...prev, [f.label]: e.target.value }))}
+                      rows={3}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    />
+                  </div>
+                )
+              })}
             </div>
           )}
 

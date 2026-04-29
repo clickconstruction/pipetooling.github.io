@@ -1,4 +1,5 @@
 import type { UserRole } from '../hooks/useAuth'
+import { isSubcontractorLikeRole } from './subcontractorLikeRole'
 
 /**
  * Mirrors `Layout.tsx` route guards so in-app links don’t send users to an unexpected redirect
@@ -79,7 +80,7 @@ export function isPathAllowedForRole(
   if (role == null) return false
   if (role === 'dev' || role === 'master_technician' || role === 'assistant') return true
 
-  if (role === 'subcontractor') {
+  if (role && isSubcontractorLikeRole(role)) {
     return (SUBCONTRACTOR_PATHS as readonly string[]).includes(pathname)
   }
   if (role === 'estimator') {

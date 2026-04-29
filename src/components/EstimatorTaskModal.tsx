@@ -14,6 +14,8 @@ import {
   type BidSearchResult,
   type UnifiedSearchResult,
 } from '../utils/unifiedJobBidSearch'
+import type { UserRole } from '../hooks/useAuth'
+import { fieldRoleServiceTypeIdsForUser, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 
 export default function EstimatorTaskModal() {
   const modal = useEstimatorTaskModal()
@@ -59,7 +61,9 @@ export default function EstimatorTaskModal() {
       if (authUser?.id) {
         const { data: meData } = await supabase
           .from('users')
-          .select('role, estimator_service_type_ids, primary_service_type_ids, subcontractor_service_type_ids')
+          .select(
+            'role, estimator_service_type_ids, primary_service_type_ids, subcontractor_service_type_ids, helpers_service_type_ids',
+          )
           .eq('id', authUser.id)
           .single()
         const me = meData as {
@@ -67,19 +71,24 @@ export default function EstimatorTaskModal() {
           estimator_service_type_ids?: string[] | null
           primary_service_type_ids?: string[] | null
           subcontractor_service_type_ids?: string[] | null
+          helpers_service_type_ids?: string[] | null
         } | null
+        const ur = me?.role as UserRole | undefined
+        const scopedFieldIds = ur ? fieldRoleServiceTypeIdsForUser(ur, me ?? {}) : null
+        if (isSubcontractorLikeRole(ur)) {
+          setSubcontractorServiceTypeIds(scopedFieldIds && scopedFieldIds.length > 0 ? scopedFieldIds : null)
+        } else {
+          setSubcontractorServiceTypeIds(null)
+        }
         const estIds = me?.estimator_service_type_ids
         const primIds = me?.primary_service_type_ids
-        const subIds = me?.subcontractor_service_type_ids ?? null
-        if (me?.role === 'subcontractor') setSubcontractorServiceTypeIds(subIds && subIds.length > 0 ? subIds : null)
-        else setSubcontractorServiceTypeIds(null)
         const filtered =
           me?.role === 'estimator' && estIds && estIds.length > 0
             ? types.filter((t) => estIds.includes(t.id))
             : me?.role === 'primary' && primIds && primIds.length > 0
               ? types.filter((t) => primIds.includes(t.id))
-              : me?.role === 'subcontractor' && subIds && subIds.length > 0
-                ? types.filter((t) => subIds.includes(t.id))
+              : scopedFieldIds && scopedFieldIds.length > 0 && isSubcontractorLikeRole(ur)
+                ? types.filter((t) => scopedFieldIds.includes(t.id))
                 : types
         const filteredIds = filtered.map((t) => t.id)
         if (filtered.length === 1) {

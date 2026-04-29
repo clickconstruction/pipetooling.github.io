@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-04-24
+last_updated: 2026-04-28
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -36,7 +36,7 @@ key_sections:
     description: "How to revert changes"
 
 quick_navigation:
-  - "[Latest Changes](#recent-migrations) - April 2026"
+  - "[Latest Changes](#recent-migrations) - July 2026 · April 2026"
   - "[By Category](#migrations-by-category) - Grouped by system"
   - "[Best Practices](#migration-best-practices) - How to migrate safely"
   - "[Rollback](#rollback-procedures) - Reverting changes"
@@ -358,6 +358,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: [`scheduleDispatchDragEnd.ts`](src/lib/scheduleDispatchDragEnd.ts), [`jobScheduleBlocks.ts`](src/lib/jobScheduleBlocks.ts); **`RECENT_FEATURES.md`** v2.258
 - **Category**: Jobs / Calendar
 
+**`20260428000741_auto_assign_job_team_member_on_schedule_block.sql`**
+- **Purpose**: **AFTER INSERT** on **`job_schedule_blocks`** — add **`assignee_user_id`** to **`jobs_ledger_team_members`** for **`job_id`** (idempotent **`ON CONFLICT DO NOTHING`**); **`SECURITY DEFINER`** so roster INSERT is not gated by unrelated client policies; optional backfill from existing **`job_schedule_blocks`**
+- **Changes**: **`ensure_job_team_member_from_schedule_block()`**, trigger **`job_schedule_blocks_ensure_job_team_member_tr`**
+- **Impact**: Dispatch / Schedule Dispatch / **`ScheduleJobModal`** — any path that inserts **`job_schedule_blocks`**; assigned team roster for Jobs / Clock / subs visibility
+- **Category**: Jobs / Calendar / Dispatch
+
 #### April 5, 2026
 
 **`20260405072854_estimate_create_job_rpc.sql`**
@@ -472,6 +478,22 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Category**: Estimates / Edge
 
 ### July 2026
+
+#### July 7, 2026
+
+**`20270507120000_dashboard_my_last_report_at.sql`**
+- **Purpose**: **Dashboard** assigned / ready-to-bill / superintendent job lists — **`my_last_report_at`** for **Leave Report** schedule reminders (max **`reports.created_at`** per job filtered to **`created_by_user_id = auth.uid()`**)
+- **Changes**: **`CREATE OR REPLACE`** on **`list_assigned_jobs_for_dashboard`**, **`list_ready_to_bill_assigned_jobs_for_dashboard`**, **`list_superintendent_jobs_for_dashboard`** — add **`my_last_report_at timestamptz`** column
+- **Impact**: [`Dashboard.tsx`](src/pages/Dashboard.tsx) + [`shouldShowLeaveReportScheduleReminder`](src/lib/leaveReportScheduleReminder.ts); [`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.411
+- **Category**: Dashboard / Reports
+
+#### July 6, 2026
+
+**`20270506120000_update_job_status_disallow_helpers_send_to_billing.sql`**
+- **Purpose**: **`helpers`** must not move a job **Working → ready_to_bill** via the same path as other team members (**`update_job_status`**)
+- **Changes**: **`CREATE OR REPLACE`** **`update_job_status`** — for **Working → ready_to_bill**, the **team-member** branch (`jobs_ledger_team_members`) skips updates when **`auth.uid()`** has **`users.role = 'helpers'`**
+- **Impact**: Assigned Jobs UI hides **Send to Billing** for helpers; aligns server with [`ACCESS_CONTROL.md`](ACCESS_CONTROL.md) helpers note; [`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.411
+- **Category**: Dashboard / Jobs / Access control
 
 #### July 1, 2026
 
@@ -588,6 +610,18 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Changes**: **`CREATE OR REPLACE FUNCTION`**; updated first billing-guard branch and function **`COMMENT`**
 - **Impact**: [`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx) **`billingBlockedForMigrate`**; [`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.394
 - **Category**: Jobs / Billing / RPC
+
+**`20270426120000_checklist_tech_tree.sql`**
+- **Purpose**: **Checklist → Roadmap** — groups, per-group tasks, task assignees, prerequisite edges; RLS using **`is_dev_or_master_or_assistant()`** for structure and assignee/staff task completion.
+- **Changes**: **`CREATE TABLE`** **`checklist_tech_tree_groups`**, **`checklist_tech_tree_group_tasks`**, **`checklist_tech_tree_task_assignees`**, **`checklist_tech_tree_edges`**
+- **Impact**: [`Checklist.tsx`](src/pages/Checklist.tsx) **`?tab=roadmap`**, [`ChecklistTechTreeTab.tsx`](src/components/checklist/ChecklistTechTreeTab.tsx)
+- **Category**: Checklist
+
+**`20270427120000_checklist_tech_tree_multi_roadmap.sql`**
+
+- **Purpose**: **Checklist → Roadmap** — multiple named roadmaps (`checklist_tech_tree_roadmaps`), **`roadmap_id`** on groups, **`checklist_tech_tree_roadmap_members`** (viewer/editor); backfill **Default** + viewer rows for all non-archived users; RLS helpers **`can_select_checklist_tech_tree_roadmap`**, **`can_edit_checklist_tech_tree_structure_for_roadmap`**, **`is_checklist_tech_tree_staff_or_primary`**.
+- **Impact**: Roadmap tab picker and members UI; URL **`?tab=roadmap&roadmap=<uuid>`**
+- **Category**: Checklist
 
 ### March 2027
 

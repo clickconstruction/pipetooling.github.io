@@ -1041,6 +1041,227 @@ export type Database = {
           },
         ]
       }
+      checklist_tech_tree_edges: {
+        Row: {
+          created_at: string
+          from_group_id: string
+          id: string
+          to_group_id: string
+        }
+        Insert: {
+          created_at?: string
+          from_group_id: string
+          id?: string
+          to_group_id: string
+        }
+        Update: {
+          created_at?: string
+          from_group_id?: string
+          id?: string
+          to_group_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_tech_tree_edges_from_group_id_fkey"
+            columns: ["from_group_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_tech_tree_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_tech_tree_edges_to_group_id_fkey"
+            columns: ["to_group_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_tech_tree_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_tech_tree_group_tasks: {
+        Row: {
+          completed_at: string | null
+          completed_by_user_id: string | null
+          created_at: string
+          group_id: string
+          id: string
+          sort_index: number
+          title: string
+        }
+        Insert: {
+          completed_at?: string | null
+          completed_by_user_id?: string | null
+          created_at?: string
+          group_id: string
+          id?: string
+          sort_index?: number
+          title: string
+        }
+        Update: {
+          completed_at?: string | null
+          completed_by_user_id?: string | null
+          created_at?: string
+          group_id?: string
+          id?: string
+          sort_index?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_tech_tree_group_tasks_completed_by_user_id_fkey"
+            columns: ["completed_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_tech_tree_group_tasks_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_tech_tree_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_tech_tree_groups: {
+        Row: {
+          created_at: string
+          created_by_user_id: string
+          id: string
+          roadmap_id: string
+          sort_index: number
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_user_id: string
+          id?: string
+          roadmap_id: string
+          sort_index?: number
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by_user_id?: string
+          id?: string
+          roadmap_id?: string
+          sort_index?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_tech_tree_groups_created_by_user_id_fkey"
+            columns: ["created_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_tech_tree_groups_roadmap_id_fkey"
+            columns: ["roadmap_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_tech_tree_roadmaps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_tech_tree_roadmap_members: {
+        Row: {
+          created_at: string
+          roadmap_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          roadmap_id: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          roadmap_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_tech_tree_roadmap_members_roadmap_id_fkey"
+            columns: ["roadmap_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_tech_tree_roadmaps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_tech_tree_roadmap_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_tech_tree_roadmaps: {
+        Row: {
+          created_at: string
+          created_by_user_id: string
+          id: string
+          sort_index: number
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_user_id: string
+          id?: string
+          sort_index?: number
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by_user_id?: string
+          id?: string
+          sort_index?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_tech_tree_roadmaps_created_by_user_id_fkey"
+            columns: ["created_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_tech_tree_task_assignees: {
+        Row: {
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_tech_tree_task_assignees_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_tech_tree_group_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_tech_tree_task_assignees_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clock_sessions: {
         Row: {
           approved_at: string | null
@@ -3893,6 +4114,68 @@ export type Database = {
           },
         ]
       }
+      material_po_generator_entries: {
+        Row: {
+          created_at: string
+          created_by: string
+          for_user_id: string
+          id: string
+          job_ledger_id: string
+          notes: string | null
+          po_code: number
+          supply_house_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          for_user_id: string
+          id?: string
+          job_ledger_id: string
+          notes?: string | null
+          po_code: number
+          supply_house_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          for_user_id?: string
+          id?: string
+          job_ledger_id?: string
+          notes?: string | null
+          po_code?: number
+          supply_house_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_po_generator_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_po_generator_entries_for_user_id_fkey"
+            columns: ["for_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_po_generator_entries_job_ledger_id_fkey"
+            columns: ["job_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_po_generator_entries_supply_house_id_fkey"
+            columns: ["supply_house_id"]
+            isOneToOne: false
+            referencedRelation: "supply_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       material_template_items: {
         Row: {
           created_at: string | null
@@ -6261,6 +6544,7 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
+          input_type: string
           label: string
           sequence_order: number
           template_id: string
@@ -6268,6 +6552,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           id?: string
+          input_type?: string
           label: string
           sequence_order?: number
           template_id: string
@@ -6275,6 +6560,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           id?: string
+          input_type?: string
           label?: string
           sequence_order?: number
           template_id?: string
@@ -6291,6 +6577,7 @@ export type Database = {
       }
       report_templates: {
         Row: {
+          app_managed: boolean
           created_at: string | null
           id: string
           name: string
@@ -6298,6 +6585,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          app_managed?: boolean
           created_at?: string | null
           id?: string
           name: string
@@ -6305,6 +6593,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          app_managed?: boolean
           created_at?: string | null
           id?: string
           name?: string
@@ -7752,6 +8041,7 @@ export type Database = {
           email: string
           estimator_prospects_access: boolean
           estimator_service_type_ids: string[] | null
+          helpers_service_type_ids: string[] | null
           id: string
           last_sign_in_at: string | null
           name: string
@@ -7769,6 +8059,7 @@ export type Database = {
           email: string
           estimator_prospects_access?: boolean
           estimator_service_type_ids?: string[] | null
+          helpers_service_type_ids?: string[] | null
           id: string
           last_sign_in_at?: string | null
           name: string
@@ -7786,6 +8077,7 @@ export type Database = {
           email?: string
           estimator_prospects_access?: boolean
           estimator_service_type_ids?: string[] | null
+          helpers_service_type_ids?: string[] | null
           id?: string
           last_sign_in_at?: string | null
           name?: string
@@ -8323,6 +8615,7 @@ export type Database = {
         Args: { assistant_a: string; assistant_b: string }
         Returns: boolean
       }
+      auth_uid_is_helpers_or_subcontractor: { Args: never; Returns: boolean }
       auth_user_can_merge_customers: { Args: never; Returns: boolean }
       auto_clock_out_eod_if_due: { Args: never; Returns: undefined }
       auto_clock_out_open_sessions_eod: { Args: never; Returns: undefined }
@@ -8364,8 +8657,16 @@ export type Database = {
         Args: { step_id_param: string }
         Returns: boolean
       }
+      can_edit_checklist_tech_tree_structure_for_roadmap: {
+        Args: { p_roadmap_id: string }
+        Returns: boolean
+      }
       can_edit_clock_sessions_for_user: {
         Args: { p_target_user_id: string }
+        Returns: boolean
+      }
+      can_manage_checklist_tech_tree_roadmap_members: {
+        Args: { p_roadmap_id: string }
         Returns: boolean
       }
       can_manage_inspection_types: { Args: never; Returns: boolean }
@@ -8376,6 +8677,10 @@ export type Database = {
       }
       can_see_sharing_master: {
         Args: { sharing_master_id: string }
+        Returns: boolean
+      }
+      can_select_checklist_tech_tree_roadmap: {
+        Args: { p_roadmap_id: string }
         Returns: boolean
       }
       check_out_project: { Args: { p_project_id: string }; Returns: Json }
@@ -8585,13 +8890,13 @@ export type Database = {
           allocated_amount: number
           invoice_date: string
           invoice_id: string
-          invoice_link: string | null
+          invoice_link: string
           invoice_number: string
           invoice_total_amount: number
           job_id: string
           pct: number
           supply_house_name: string
-          website_url: string | null
+          website_url: string
         }[]
       }
       get_invoice_amounts_for_jobs: {
@@ -8718,6 +9023,18 @@ export type Database = {
           total_parts: number
         }[]
       }
+      insert_material_po_generator_entry: {
+        Args: {
+          p_for_user_id: string
+          p_job_ledger_id: string
+          p_notes?: string
+          p_supply_house_id?: string
+        }
+        Returns: {
+          out_id: string
+          out_po_code: number
+        }[]
+      }
       insert_report:
         | {
             Args: {
@@ -8743,6 +9060,7 @@ export type Database = {
       is_assistant: { Args: never; Returns: boolean }
       is_assistant_of_pay_approved_master: { Args: never; Returns: boolean }
       is_bid_pricing_user: { Args: never; Returns: boolean }
+      is_checklist_tech_tree_staff_or_primary: { Args: never; Returns: boolean }
       is_cost_matrix_shared_with_current_user: { Args: never; Returns: boolean }
       is_dev: { Args: never; Returns: boolean }
       is_dev_or_master_or_assistant: { Args: never; Returns: boolean }
@@ -8820,13 +9138,21 @@ export type Database = {
           google_drive_link: string
           hcp_number: string
           id: string
+          in_progress_stage_name: string
+          in_progress_step_id: string
           job_address: string
           job_name: string
           job_plans_link: string
+          last_clock_activity_at: string
+          last_job_activity_at: string
           last_report_at: string
+          last_schedule_activity_at: string
+          last_thread_note_at: string
           master_user_id: string
+          my_last_report_at: string
           project_id: string
           revenue: number
+          status: string
         }[]
       }
       list_feedback_peer_candidates: {
@@ -8870,6 +9196,14 @@ export type Database = {
           raw: Json
           remaining_available: number
           returned: boolean
+        }[]
+      }
+      list_my_accessible_job_activity_events: {
+        Args: { p_job_id: string; p_limit?: number }
+        Returns: {
+          activity_at: string
+          kind: string
+          summary: string
         }[]
       }
       list_my_contract_dashboard_prompts: {
@@ -8937,7 +9271,6 @@ export type Database = {
       list_ready_to_bill_assigned_jobs_for_dashboard: {
         Args: never
         Returns: {
-          collect_payment_button_variant: string
           created_at: string
           google_drive_link: string
           hcp_number: string
@@ -8945,9 +9278,15 @@ export type Database = {
           job_address: string
           job_name: string
           job_plans_link: string
+          last_clock_activity_at: string
+          last_job_activity_at: string
           last_report_at: string
+          last_schedule_activity_at: string
+          last_thread_note_at: string
           master_user_id: string
+          my_last_report_at: string
           revenue: number
+          status: string
         }[]
       }
       list_reports_for_bid: {
@@ -9038,6 +9377,7 @@ export type Database = {
           job_address: string
           job_name: string
           job_plans_link: string
+          my_last_report_at: string
           project_id: string
           revenue: number
         }[]
@@ -9503,6 +9843,7 @@ export type Database = {
         | "estimator"
         | "primary"
         | "superintendent"
+        | "helpers"
       workflow_status: "draft" | "active" | "completed"
       writeup_disclosure: "discussed_with_subject" | "withheld_from_subject"
     }
@@ -9662,6 +10003,7 @@ export const Constants = {
         "estimator",
         "primary",
         "superintendent",
+        "helpers",
       ],
       workflow_status: ["draft", "active", "completed"],
       writeup_disclosure: ["discussed_with_subject", "withheld_from_subject"],

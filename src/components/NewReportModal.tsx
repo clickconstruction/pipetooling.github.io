@@ -1,8 +1,14 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useToastContext } from '../contexts/ToastContext'
+import { useAuth } from '../hooks/useAuth'
 import type { Database } from '../types/database'
 import type { UserRole } from '../hooks/useAuth'
+import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
+import { fieldValueForSubmit, normalizePercentFieldValueToString } from '../lib/reportTemplateFieldDisplay'
+import { REPORT_SIGNATURE_ON_FILE, validateReportSignatureDataUrlForSubmit } from '../lib/reportSignatureField'
+import { ReportTemplatePercentField } from './ReportTemplatePercentField'
+import { ReportTemplateSignatureField } from './ReportTemplateSignatureField'
 
 type ReportTemplate = Database['public']['Tables']['report_templates']['Row']
 type ReportTemplateField = Database['public']['Tables']['report_template_fields']['Row']
@@ -28,6 +34,7 @@ type Props = {
 
 export default function NewReportModal({ open, onClose, onSaved, authUserId, userRole, initialJob, initialTemplateName }: Props) {
   const { showToast } = useToastContext()
+  const { profileName } = useAuth()
   const [templates, setTemplates] = useState<ReportTemplate[]>([])
   const [templateFields, setTemplateFields] = useState<Record<string, ReportTemplateField[]>>({})
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('')
@@ -161,8 +168,17 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
       }
     }
     for (const f of fields) {
-      const val = (fieldValues[f.label] ?? '').trim()
-      if (val) parts.push(`${f.label}:\n${val}`)
+      const t = f.input_type ?? 'long_text'
+      if (t === 'percent_0_100') {
+        const n = normalizePercentFieldValueToString(fieldValues[f.label])
+        parts.push(`${f.label}:\n${n}%`)
+      } else if (t === 'signature_png') {
+        const raw = (fieldValues[f.label] ?? '').trim()
+        parts.push(`${f.label}:\n${raw ? REPORT_SIGNATURE_ON_FILE : ''}`)
+      } else {
+        const val = (fieldValues[f.label] ?? '').trim()
+        if (val) parts.push(`${f.label}:\n${val}`)
+      }
     }
     let text = parts.join('\n\n')
     if (!text) return
@@ -186,9 +202,19 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
     setSaving(true)
     setError(null)
     const fields = templateFields[selectedTemplateId] ?? []
+    for (const f of fields) {
+      if ((f.input_type ?? 'long_text') === 'signature_png') {
+        const msg = validateReportSignatureDataUrlForSubmit(fieldValues[f.label] ?? '')
+        if (msg) {
+          setError(msg)
+          setSaving(false)
+          return
+        }
+      }
+    }
     const fv: Record<string, string> = {}
     for (const f of fields) {
-      fv[f.label] = fieldValues[f.label] ?? ''
+      fv[f.label] = fieldValueForSubmit(f, fieldValues)
     }
     const jobLedgerId = selectedJob.source === 'job_ledger' ? selectedJob.id : null
     const projectId = selectedJob.source === 'project' ? selectedJob.id : null
@@ -388,7 +414,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
                     fontWeight: selectedTemplateId === t.id ? 600 : 400,
                   }}
                 >
-                  {t.name}
+                  {displayReportTemplateName(t.name, userRole)}
                 </button>
               ))}
             </div>
@@ -396,17 +422,44 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
 
           {fields.length > 0 && (
             <div style={{ marginBottom: '1rem' }}>
-              {fields.map((f) => (
-                <div key={f.id} style={{ marginBottom: '0.75rem' }}>
-                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>{f.label}</label>
-                  <textarea
-                    value={fieldValues[f.label] ?? ''}
-                    onChange={(e) => setFieldValues((prev) => ({ ...prev, [f.label]: e.target.value }))}
-                    rows={3}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                  />
-                </div>
-              ))}
+              {fields.map((f) => {
+                const t = f.input_type ?? 'long_text'
+                if (t === 'percent_0_100') {
+                  return (
+                    <ReportTemplatePercentField
+                      key={f.id}
+                      id={`new-report-pct-${f.id}`}
+                      label={f.label}
+                      value={fieldValues[f.label] ?? '0'}
+                      onChange={(v) => setFieldValues((prev) => ({ ...prev, [f.label]: v }))}
+                    />
+                  )
+                }
+                if (t === 'signature_png') {
+                  return (
+                    <ReportTemplateSignatureField
+                      key={f.id}
+                      reactKeyPrefix={`new-${selectedTemplateId}-${f.id}`}
+                      id={`new-report-sig-${f.id}`}
+                      label={f.label}
+                      value={fieldValues[f.label] ?? ''}
+                      onChange={(v) => setFieldValues((prev) => ({ ...prev, [f.label]: v }))}
+                      captionBelowCanvas={profileName?.trim() ? profileName : null}
+                    />
+                  )
+                }
+                return (
+                  <div key={f.id} style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>{f.label}</label>
+                    <textarea
+                      value={fieldValues[f.label] ?? ''}
+                      onChange={(e) => setFieldValues((prev) => ({ ...prev, [f.label]: e.target.value }))}
+                      rows={3}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    />
+                  </div>
+                )
+              })}
             </div>
           )}
 

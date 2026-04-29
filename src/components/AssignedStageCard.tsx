@@ -12,6 +12,8 @@ import {
   User,
 } from 'lucide-react'
 import type { Database } from '../types/database'
+import type { UserRole } from '../hooks/useAuth'
+import { isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 
 type Step = Database['public']['Tables']['project_workflow_steps']['Row']
 export type AssignedStep = Step & {
@@ -79,7 +81,7 @@ export default function AssignedStageCard({
       <div className="assignedStageCard-header">
         <div className="assignedStageCard-titleRow">
           <span className="assignedStageCard-stageName">
-            {role === 'subcontractor' && step.project_name
+            {isSubcontractorLikeRole(role as UserRole) && step.project_name
               ? `${step.project_name} - ${step.name}`
               : step.name}
           </span>
@@ -101,7 +103,7 @@ export default function AssignedStageCard({
         <span className={STATUS_BADGE_CLASS[status]}>{STATUS_LABELS[status]}</span>
       </div>
 
-      {role !== 'subcontractor' && (
+      {!isSubcontractorLikeRole(role as UserRole) && (
         <div className="assignedStageCard-projectLink">
           <ExternalLink size={14} aria-hidden />
           <Link

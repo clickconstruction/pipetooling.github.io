@@ -114,7 +114,7 @@ serve(async (req) => {
       return jsonResponse({ error: 'Could not resolve user role' }, 403)
     }
 
-    const isSubcontractor = roleRow.role === 'subcontractor'
+    const isSubcontractor = roleRow.role === 'subcontractor' || roleRow.role === 'helpers'
 
     type InvRow = {
       id: string

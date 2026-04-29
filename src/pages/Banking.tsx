@@ -70,6 +70,7 @@ type BankingPageRole =
   | 'primary'
   | 'superintendent'
   | 'subcontractor'
+  | 'helpers'
   | null
 
 function parseBankingView(params: URLSearchParams, role: BankingPageRole): BankingView {
@@ -717,7 +718,7 @@ export default function Banking() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { showToast } = useToastContext()
-  const [myRole, setMyRole] = useState<'dev' | 'master_technician' | 'assistant' | 'estimator' | 'primary' | 'superintendent' | 'subcontractor' | null>(
+  const [myRole, setMyRole] = useState<'dev' | 'master_technician' | 'assistant' | 'estimator' | 'primary' | 'superintendent' | 'subcontractor' | 'helpers' | null>(
     null,
   )
   const [rows, setRows] = useState<MercuryTxRow[]>([])

@@ -24,9 +24,10 @@ import {
   scheduleFormatWindow,
 } from '../../lib/jobScheduleChicago'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
+import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { useToastContext } from '../../contexts/ToastContext'
-import { useAuth } from '../../hooks/useAuth'
+import { useAuth, type UserRole } from '../../hooks/useAuth'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { useJobMaterialsCostSnapshot } from '../../hooks/useJobMaterialsCostSnapshot'
@@ -483,7 +484,7 @@ export default function DetailJobModal({
     setJobDetailScheduleSessionsFilter('')
   }, [jobId, open])
 
-  const showWorkflowLink = authRole !== 'subcontractor' && authRole !== null
+  const showWorkflowLink = !isSubcontractorLikeRole(authRole as UserRole) && authRole !== null
 
   const modalTitle = useMemo(() => {
     const data = fullJob ?? limitedJob
@@ -660,11 +661,11 @@ export default function DetailJobModal({
     !loading &&
     !error &&
     Boolean(jobId) &&
-    authRole !== 'subcontractor' &&
+    !isSubcontractorLikeRole(authRole as UserRole) &&
     authRole !== null
 
   const handleEditJobClick = () => {
-    if (!jobFormModal || !jobId || authRole === 'subcontractor') return
+    if (!jobFormModal || !jobId || isSubcontractorLikeRole(authRole as UserRole)) return
     jobFormModal.openEditJob(jobId, {
       ...(fullJob ? { initialJob: fullJob } : {}),
       onSaved: () => {
@@ -949,6 +950,7 @@ export default function DetailJobModal({
             showSectionTitle={false}
             showEmptyPlaceholder={false}
             showComposerLabel={false}
+            viewerRole={authRole as UserRole | null}
           />
         </div>
 
@@ -1291,7 +1293,7 @@ export default function DetailJobModal({
             <p style={{ margin: '1rem 0 0', fontSize: '0.8125rem', color: '#9ca3af' }}>
               Payments and invoices are not shown in this view.
             </p>
-            {authRole === 'subcontractor' ? (
+            {isSubcontractorLikeRole(authRole as UserRole) ? (
               <p style={{ margin: '0.5rem 0 0', fontSize: '0.8125rem', color: '#9ca3af' }}>You are assigned on this job.</p>
             ) : null}
           </div>

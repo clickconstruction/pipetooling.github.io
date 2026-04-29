@@ -1,8 +1,10 @@
 import { Fragment, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { AlertCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { formatCurrency } from '../lib/format'
+import { parsePoGeneratorCodeFromPurchaseOrderName } from '../lib/parsePoGeneratorCodeFromPurchaseOrderName'
 import { SupplyHouseForm } from './SupplyHouseForm'
 import { SupplyHouseWebsiteLink } from './SupplyHouseWebsiteLink'
 import type { Database } from '../types/database'
@@ -67,6 +69,8 @@ export function SupplyHousesTab({
   const [selectedSupplyHouseForDetail, setSelectedSupplyHouseForDetail] = useState<SupplyHouse | null>(null)
   const [supplyHouseInvoices, setSupplyHouseInvoices] = useState<SupplyHouseInvoiceWithAllocations[]>([])
   const [supplyHousePOs, setSupplyHousePOs] = useState<PurchaseOrderWithItems[]>([])
+  /** Ledger po_code values visible for this supply house (rows for this house + rows with no supply house); null if fetch failed (no warning icons). */
+  const [poGeneratorCodesForSelectedHouse, setPoGeneratorCodesForSelectedHouse] = useState<Set<number> | null>(null)
   const [supplyHouseDetailLoading, setSupplyHouseDetailLoading] = useState(false)
   const [invoiceFormOpen, setInvoiceFormOpen] = useState(false)
   const [editingInvoice, setEditingInvoice] = useState<SupplyHouseInvoice | null>(null)
@@ -162,15 +166,20 @@ export function SupplyHousesTab({
 
   async function loadSupplyHouseDetail(sh: SupplyHouse) {
     setSupplyHouseDetailLoading(true)
+    setPoGeneratorCodesForSelectedHouse(null)
     const shRes = await supabase.from('supply_houses').select('*').eq('id', sh.id).single()
     const shData = shRes.error
       ? (await supabase.from('supply_houses').select('id, name, contact_name, phone, email, address, notes, website_url, created_at, updated_at').eq('id', sh.id).single()).data
       : shRes.data
     setSelectedSupplyHouseForDetail((shData as SupplyHouse) ?? sh)
-    const [invRes, poRes, allocRes] = await Promise.all([
+    const [invRes, poRes, allocRes, genRes] = await Promise.all([
       supabase.from('supply_house_invoices').select('*').eq('supply_house_id', sh.id).order('invoice_date', { ascending: false }),
       supabase.from('purchase_orders').select('*').eq('supply_house_id', sh.id).order('created_at', { ascending: false }),
       supabase.from('supply_house_invoice_job_allocations').select('invoice_id, job_id, pct'),
+      supabase
+        .from('material_po_generator_entries')
+        .select('po_code')
+        .or(`supply_house_id.eq.${sh.id},supply_house_id.is.null`),
     ])
     const invoices = (invRes.data as SupplyHouseInvoice[]) ?? []
     const allocations = (allocRes.data as { invoice_id: string; job_id: string; pct: number }[]) ?? []
@@ -216,6 +225,12 @@ export function SupplyHousesTab({
       })
     )
     setSupplyHousePOs(posWithItems)
+    if (genRes.error) {
+      setPoGeneratorCodesForSelectedHouse(null)
+    } else {
+      const genRows = (genRes.data ?? []) as { po_code: number }[]
+      setPoGeneratorCodesForSelectedHouse(new Set(genRows.map((r) => Number(r.po_code))))
+    }
     setSupplyHouseDetailLoading(false)
   }
 
@@ -616,8 +631,10 @@ export function SupplyHousesTab({
                       <tr
                         onClick={() => {
                           if (!sh) return
-                          if (isExpanded) setSelectedSupplyHouseForDetail(null)
-                          else loadSupplyHouseDetail(sh)
+                          if (isExpanded) {
+                            setSelectedSupplyHouseForDetail(null)
+                            setPoGeneratorCodesForSelectedHouse(null)
+                          } else loadSupplyHouseDetail(sh)
                         }}
                         style={{
                           borderBottom: '1px solid #e5e7eb',
@@ -695,6 +712,11 @@ export function SupplyHousesTab({
                                         </button>
                                       </div>
                                     </div>
+                                    <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: '0.5rem', lineHeight: 1.4 }}>
+                                      A red icon appears when Purchase Order # contains a PO Generator code (five digits, 10000–99999) that is not on the
+                                      PO Generator ledger for this supply house or with no supply house on the ledger row. Shop-style refs like 40326-1
+                                      are not treated as generator codes. Empty or other text is not flagged.
+                                    </p>
                                     <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
                                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                                         <thead style={{ background: '#f9fafb' }}>
@@ -718,10 +740,30 @@ export function SupplyHousesTab({
                                             return invoicesToShow.length === 0 ? (
                                               <tr><td colSpan={9} style={{ padding: '1rem', color: '#6b7280', textAlign: 'center' }}>No invoices</td></tr>
                                             ) : (
-                                              invoicesToShow.map((inv) => (
+                                              invoicesToShow.map((inv) => {
+                                                const poGenCode = parsePoGeneratorCodeFromPurchaseOrderName(inv.purchase_order_number ?? '')
+                                                const showPoGenMismatch =
+                                                  poGenCode != null &&
+                                                  poGeneratorCodesForSelectedHouse != null &&
+                                                  !poGeneratorCodesForSelectedHouse.has(poGenCode)
+                                                return (
                                               <tr key={inv.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                                                 <td style={{ padding: '0.5rem 0.75rem' }}>{inv.invoice_number}</td>
-                                                <td style={{ padding: '0.5rem 0.75rem' }}>{inv.purchase_order_number ?? '—'}</td>
+                                                <td style={{ padding: '0.5rem 0.75rem' }}>
+                                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                                    <span>{inv.purchase_order_number?.trim() ? inv.purchase_order_number : '—'}</span>
+                                                    {showPoGenMismatch ? (
+                                                      <span title="No PO Generator ledger entry for this number for this supply house.">
+                                                        <AlertCircle
+                                                          size={16}
+                                                          color="#dc2626"
+                                                          aria-label="No PO Generator ledger entry for this number for this supply house."
+                                                          style={{ flexShrink: 0, display: 'block' }}
+                                                        />
+                                                      </span>
+                                                    ) : null}
+                                                  </div>
+                                                </td>
                                                 <td style={{ padding: '0.5rem 0.75rem' }}>{new Date(inv.invoice_date).toLocaleDateString()}</td>
                                                 <td style={{ padding: '0.5rem 0.75rem' }}>{inv.due_date ? new Date(inv.due_date).toLocaleDateString() : '—'}</td>
                                                 <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(inv.amount)}</td>
@@ -757,7 +799,8 @@ export function SupplyHousesTab({
                                                   </button>
                                                 </td>
                                               </tr>
-                                            ))
+                                            )
+                                              })
                                             )
                                           })()}
                                         </tbody>

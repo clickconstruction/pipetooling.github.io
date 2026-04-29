@@ -12,7 +12,7 @@ interface CreateUserRequest {
   password: string
   role: string
   name?: string
-  /** For estimator/subcontractor/superintendent role: IDs of service types to restrict. Omit or empty = all. */
+  /** For estimator/subcontractor/helpers/superintendent role: IDs of service types to restrict. Omit or empty = all. */
   service_type_ids?: string[]
 }
 
@@ -86,7 +86,7 @@ serve(async (req) => {
     }
 
     // Validate role
-    const validRoles = ['dev', 'master_technician', 'assistant', 'subcontractor', 'estimator', 'primary', 'superintendent']
+    const validRoles = ['dev', 'master_technician', 'assistant', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent']
     if (!validRoles.includes(role)) {
       return new Response(
         JSON.stringify({ error: `Invalid role. Must be one of: ${validRoles.join(', ')}` }),
@@ -97,8 +97,9 @@ serve(async (req) => {
     // Validate and resolve service_type_ids when role is estimator, subcontractor, or superintendent
     let estimatorServiceTypeIds: string[] | null = null
     let subcontractorServiceTypeIds: string[] | null = null
+    let helpersServiceTypeIds: string[] | null = null
     let superintendentServiceTypeIds: string[] | null = null
-    if ((role === 'estimator' || role === 'subcontractor' || role === 'superintendent') && service_type_ids && service_type_ids.length > 0) {
+    if ((role === 'estimator' || role === 'subcontractor' || role === 'helpers' || role === 'superintendent') && service_type_ids && service_type_ids.length > 0) {
       const { data: validTypes, error: typesError } = await supabase
         .from('service_types')
         .select('id')
@@ -119,6 +120,7 @@ serve(async (req) => {
       }
       if (role === 'estimator') estimatorServiceTypeIds = validIds
       if (role === 'subcontractor') subcontractorServiceTypeIds = validIds
+      if (role === 'helpers') helpersServiceTypeIds = validIds
       if (role === 'superintendent') superintendentServiceTypeIds = validIds
     }
 
@@ -189,6 +191,9 @@ serve(async (req) => {
     if (role === 'subcontractor' && subcontractorServiceTypeIds !== null) {
       userRecord.subcontractor_service_type_ids = subcontractorServiceTypeIds
     }
+    if (role === 'helpers' && helpersServiceTypeIds !== null) {
+      userRecord.helpers_service_type_ids = helpersServiceTypeIds
+    }
     if (role === 'superintendent' && superintendentServiceTypeIds !== null) {
       userRecord.superintendent_service_type_ids = superintendentServiceTypeIds
     }
@@ -219,6 +224,9 @@ serve(async (req) => {
     }
     if (role === 'subcontractor' && subcontractorServiceTypeIds !== null) {
       userResponse.subcontractor_service_type_ids = subcontractorServiceTypeIds
+    }
+    if (role === 'helpers' && helpersServiceTypeIds !== null) {
+      userResponse.helpers_service_type_ids = helpersServiceTypeIds
     }
     if (role === 'superintendent' && superintendentServiceTypeIds !== null) {
       userResponse.superintendent_service_type_ids = superintendentServiceTypeIds

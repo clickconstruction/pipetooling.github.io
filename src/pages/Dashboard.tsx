@@ -19,6 +19,7 @@ import {
   toastForUpdateJobStatusFailure,
 } from '../lib/updateJobStatusClientFeedback'
 import { useAuth } from '../hooks/useAuth'
+import { isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import { useSendBackCollectPaymentFlowNotice } from '../hooks/useSendBackCollectPaymentFlowNotice'
 import NewReportModal from '../components/NewReportModal'
 import JobReportsModal from '../components/JobReportsModal'
@@ -78,6 +79,9 @@ import { getNextDisplayOrders } from '../utils/checklistOrder'
 import { denverCalendarDayKey, getDefaultWeekRange, getLastWeekRange } from '../utils/dateUtils'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { readEdgeFunctionErrorBody } from '../lib/readEdgeFunctionErrorBody'
+import { labelJobsLedgerStatusForDashboard } from '../lib/jobsLedgerStatusPipeline'
+import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
+import { formatReportFieldValueInlineList } from '../lib/reportSignatureField'
 import { fetchDashboardPhase1 } from '../lib/dashboardBootQueries'
 import { readDashboardBootCache, writeDashboardBootCache } from '../lib/dashboardBootCache'
 import { displayNameFromAuthUser } from '../lib/displayNameFromAuthUser'
@@ -104,6 +108,13 @@ import {
   fetchScheduleBlocksForAssigneeDateRange,
   type JobScheduleBlockRow,
 } from '../lib/jobScheduleBlocks'
+import { shouldShowLeaveReportScheduleReminder } from '../lib/leaveReportScheduleReminder'
+import {
+  SUBCONTRACTOR_ACTIVITY_SOURCE_ORDER,
+  subcontractorActivitySourceLabel,
+  type SubcontractorActivitySource,
+} from '../lib/subcontractorJobActivityCopy'
+import SubcontractorJobActivityModal from '../components/dashboard/SubcontractorJobActivityModal'
 import {
   scheduleDateKeyAddDays,
   scheduleFormatWeekdayLong,
@@ -408,15 +419,114 @@ type DashboardTeamAssignedJobRow = {
   revenue: number | null
   created_at: string | null
   last_report_at?: string | null
+  /** Latest `reports.created_at` authored by viewer (Dashboard Leave Report nag; 12h silence). */
+  my_last_report_at?: string | null
+  /** Max of latest thread note, field report, qualifying clock session, and schedule block (Dashboard "Last activity"). */
+  last_job_activity_at?: string | null
+  last_thread_note_at?: string | null
+  last_clock_activity_at?: string | null
+  last_schedule_activity_at?: string | null
   in_progress_stage_name?: string | null
   project_id?: string | null
   in_progress_step_id?: string | null
   collect_payment_button_variant?: string | null
+  status?: string | null
+}
+
+function canLeaveDashboardJobReport(role: string | null | undefined): boolean {
+  if (!role) return false
+  return (
+    role === 'subcontractor' ||
+    role === 'helpers' ||
+    role === 'dev' ||
+    role === 'master_technician' ||
+    role === 'assistant' ||
+    role === 'primary' ||
+    role === 'superintendent' ||
+    role === 'estimator'
+  )
+}
+
+function DashboardLeaveReportButton(props: {
+  showReminder: boolean
+  onClick: () => void
+  buttonTitle?: string
+}) {
+  const { showReminder, onClick, buttonTitle } = props
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+      <span style={{ position: 'relative', display: 'inline-block' }}>
+        <button
+          type="button"
+          onClick={onClick}
+          title={buttonTitle}
+          style={{
+            padding: '0.35rem 0.75rem',
+            fontSize: '0.875rem',
+            background: '#3b82f6',
+            color: 'white',
+            border: 'none',
+            borderRadius: 4,
+            cursor: 'pointer',
+          }}
+        >
+          Leave<br />Report
+        </button>
+        {showReminder ? (
+          <span
+            role="status"
+            aria-label="Scheduled work ended — leave a job report."
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: '50%',
+              transform: 'translate(-50%, -50%)',
+              display: 'inline-flex',
+              pointerEvents: 'none',
+            }}
+          >
+            {/* Icon: Font Awesome Free 7.x — circle exclamation (OFL/CC-BY) */}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 640 640"
+              width={21}
+              height={21}
+              aria-hidden
+              focusable={false}
+              style={{ color: '#FFE600' }}
+            >
+              <path
+                fill="currentColor"
+                d="M320 576C178.6 576 64 461.4 64 320C64 178.6 178.6 64 320 64C461.4 64 576 178.6 576 320C576 461.4 461.4 576 320 576zM320 384C302.3 384 288 398.3 288 416C288 433.7 302.3 448 320 448C337.7 448 352 433.7 352 416C352 398.3 337.7 384 320 384zM320 192C301.8 192 287.3 207.5 288.6 225.7L296 329.7C296.9 342.3 307.4 352 319.9 352C332.5 352 342.9 342.3 343.8 329.7L351.2 225.7C352.5 207.5 338.1 192 319.8 192z"
+              />
+            </svg>
+          </span>
+        ) : null}
+      </span>
+    </span>
+  )
+}
+
+function subcontractorAssignedJobStageDisplay(
+  j: Pick<DashboardTeamAssignedJobRow, 'in_progress_stage_name' | 'project_id'>,
+): { line: string; title: string | undefined } | null {
+  const name = j.in_progress_stage_name?.trim()
+  if (name) {
+    return { line: `Stage: ${name}`, title: undefined }
+  }
+  if (j.project_id) {
+    return {
+      line: 'Stage: —',
+      title: 'No step is currently in progress for this project',
+    }
+  }
+  return null
 }
 
 function isDashboardTeamReadyToBillRole(role: string | null | undefined): boolean {
   return (
     role === 'subcontractor' ||
+    role === 'helpers' ||
     role === 'primary' ||
     role === 'superintendent' ||
     role === 'estimator'
@@ -439,6 +549,72 @@ function formatDatetime(iso: string | null): string {
   const weekday = date.toLocaleDateString(undefined, { weekday: 'short' })
   const dateTime = date.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
   return `${weekday}, ${dateTime}`
+}
+
+function subcontractorLastActivityTimeMs(iso: string | null | undefined): number | null {
+  const t = (iso ?? '').trim()
+  if (!t) return null
+  const ms = new Date(t).getTime()
+  return Number.isNaN(ms) ? null : ms
+}
+
+/** Which source(s) share the same instant as `last_job_activity_at` (ms tie → comma-joined labels). */
+function subcontractorLastActivityTypeLine(
+  j: Pick<
+    DashboardTeamAssignedJobRow,
+    | 'last_job_activity_at'
+    | 'last_thread_note_at'
+    | 'last_report_at'
+    | 'last_clock_activity_at'
+    | 'last_schedule_activity_at'
+  >,
+): string {
+  const activity = (j.last_job_activity_at ?? '').trim()
+  if (!activity) return 'Activity'
+  const winMs = new Date(activity).getTime()
+  if (Number.isNaN(winMs)) return 'Activity'
+
+  const sources: { key: SubcontractorActivitySource; ms: number | null }[] = [
+    { key: 'thread_note', ms: subcontractorLastActivityTimeMs(j.last_thread_note_at) },
+    { key: 'field_report', ms: subcontractorLastActivityTimeMs(j.last_report_at) },
+    { key: 'clock', ms: subcontractorLastActivityTimeMs(j.last_clock_activity_at) },
+    { key: 'schedule', ms: subcontractorLastActivityTimeMs(j.last_schedule_activity_at) },
+  ]
+  const winners = new Set(sources.filter((s) => s.ms != null && s.ms === winMs).map((s) => s.key))
+  if (winners.size === 0) return 'Activity'
+  return SUBCONTRACTOR_ACTIVITY_SOURCE_ORDER.filter((k) => winners.has(k))
+    .map((k) => subcontractorActivitySourceLabel[k])
+    .join(', ')
+}
+
+type SubcontractorLastActivityLines = { title: string; line1: string; line2: string; line3?: string }
+
+function subcontractorLastActivityBlock(
+  j: Pick<
+    DashboardTeamAssignedJobRow,
+    | 'last_job_activity_at'
+    | 'last_thread_note_at'
+    | 'last_report_at'
+    | 'last_clock_activity_at'
+    | 'last_schedule_activity_at'
+  >,
+): SubcontractorLastActivityLines {
+  const activity = (j.last_job_activity_at ?? '').trim()
+  if (!activity) {
+    return {
+      title: 'No thread notes, field reports, work sessions, or schedule activity on this job yet',
+      line1: 'Last activity:',
+      line2: 'No activity yet',
+    }
+  }
+  const rel = formatTimeSince(activity)
+  const relLine = rel === 'just now' ? 'Just now' : `${rel} ago`
+  return {
+    title: `Latest activity: ${formatDatetime(activity)}`,
+    line1: 'Last activity:',
+    line2: relLine,
+    line3: subcontractorLastActivityTypeLine(j),
+  }
 }
 
 function daysOpen(startedAt: string | null, endedAt: string | null): number | null {
@@ -502,7 +678,7 @@ const PRIMARY_PATHS = new Set(['/dashboard', '/materials', '/jobs', '/bids', '/c
 const SUPERINTENDENT_PATHS = new Set(['/dashboard', '/projects', '/workflows', '/jobs', '/bids', '/materials', '/calendar', '/checklist', '/settings', '/tally'])
 
 function getAllowedPathsForRole(role: string | null, estimatorProspectsAccess?: boolean): Set<string> | null {
-  if (role === 'subcontractor') return SUBCONTRACTOR_PATHS
+  if (role === 'subcontractor' || role === 'helpers') return SUBCONTRACTOR_PATHS
   if (role === 'estimator') {
     return new Set([
       '/dashboard',
@@ -831,9 +1007,14 @@ export default function Dashboard() {
   const [superintendentJobsLoading, setSuperintendentJobsLoading] = useState(false)
   const [superintendentJobsExpanded, setSuperintendentJobsExpanded] = useState(true)
   const [assignedJobsExpanded, setAssignedJobsExpanded] = useState(true)
+  const [assignedStagesExpanded, setAssignedStagesExpanded] = useState(true)
+  const [assignedStagesCompleteExpanded, setAssignedStagesCompleteExpanded] = useState(false)
+  /** One-time expand/collapse heuristic after initial assigned roster load — do not overwrite user toggle on refresh. */
+  const assignedStagesExpandedDefaultAppliedRef = useRef(false)
   const [subScheduleRows, setSubScheduleRows] = useState<JobScheduleBlockRow[]>([])
   const [subScheduleLoading, setSubScheduleLoading] = useState(false)
   const [subScheduleLabels, setSubScheduleLabels] = useState<Map<string, string>>(() => new Map())
+  const [scheduleReminderNow, setScheduleReminderNow] = useState(() => new Date())
   const [readyToBillInvoices, setReadyToBillInvoices] = useState<InvoiceForDashboard[]>([])
   const [readyToBillJobs, setReadyToBillJobs] = useState<JobForDashboard[]>([])
   const [readyToBillLoading, setReadyToBillLoading] = useState(false)
@@ -872,6 +1053,11 @@ export default function Dashboard() {
   const resyncDashboardAfterUpdateJobStatusFailureRef = useRef<() => Promise<void>>(async () => {})
   const dashboardInvoiceSendBackConfirmLockRef = useRef(false)
   const [viewReportsJob, setViewReportsJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string } | null>(null)
+  const [subcontractorJobActivityModalJob, setSubcontractorJobActivityModalJob] = useState<{
+    id: string
+    hcpNumber: string
+    jobName: string
+  } | null>(null)
   const [leaveReportJob, setLeaveReportJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string } | null>(null)
   const [collectPaymentJob, setCollectPaymentJob] = useState<{
     id: string
@@ -2299,14 +2485,19 @@ export default function Dashboard() {
   }, [authUser?.id])
 
   useEffect(() => {
-    if (!authUser?.id || role !== 'subcontractor') {
+    const id = window.setInterval(() => setScheduleReminderNow(new Date()), 60_000)
+    return () => window.clearInterval(id)
+  }, [])
+
+  useEffect(() => {
+    if (!authUser?.id || !canLeaveDashboardJobReport(role)) {
       setSubScheduleRows([])
       setSubScheduleLoading(false)
       return
     }
     let cancelled = false
     const run = async () => {
-      setSubScheduleLoading(true)
+      if (isSubcontractorLikeRole(role)) setSubScheduleLoading(true)
       const todayYmd = scheduleTodayDateKey()
       const tomorrowYmd = scheduleDateKeyAddDays(todayYmd, 1) ?? todayYmd
       const { data, error } = await fetchScheduleBlocksForAssigneeDateRange(
@@ -2331,7 +2522,7 @@ export default function Dashboard() {
   }, [authUser?.id, role, showToast])
 
   useEffect(() => {
-    if (role !== 'subcontractor' || !authUser?.id) {
+    if (!isSubcontractorLikeRole(role) || !authUser?.id) {
       setSubScheduleLabels(new Map())
       return
     }
@@ -2401,6 +2592,18 @@ export default function Dashboard() {
       tomorrowBlocks: subScheduleRows.filter((b) => b.work_date === tomorrowYmd),
     }
   }, [subScheduleRows])
+
+  const leaveReportReminderForJobRow = useCallback(
+    (j: Pick<DashboardTeamAssignedJobRow, 'id' | 'my_last_report_at'>) =>
+      shouldShowLeaveReportScheduleReminder({
+        now: scheduleReminderNow,
+        todayYmd: scheduleTodayDateKey(scheduleReminderNow),
+        jobId: j.id,
+        blocks: subScheduleRows,
+        myLastReportAtIso: j.my_last_report_at ?? null,
+      }),
+    [scheduleReminderNow, subScheduleRows],
+  )
 
   const detailModalAssignedJobsRows = useMemo(
     () => [...assignedJobs, ...assignedReadyToBillJobs],
@@ -3029,9 +3232,10 @@ export default function Dashboard() {
       .eq('id', authUser.id)
       .single()
     const name = (userData as { name: string | null } | null)?.name ?? null
-    
-    if (name) {
-      const withProjectsRes = await supabase.rpc('get_assigned_steps_with_projects_for_dashboard', { p_user_name: name })
+
+    if (!name) return
+
+    const withProjectsRes = await supabase.rpc('get_assigned_steps_with_projects_for_dashboard', { p_user_name: name })
       if (!withProjectsRes.error && Array.isArray(withProjectsRes.data)) {
         const assigned = withProjectsRes.data as AssignedStep[]
         if (assigned.length > 0) {
@@ -3097,7 +3301,6 @@ export default function Dashboard() {
       } else {
         setAssignedSteps([])
       }
-    }
   }
 
   async function loadTodayChecklist() {
@@ -3524,7 +3727,16 @@ export default function Dashboard() {
 
   async function markStarted(step: AssignedStep, startDateTime?: string) {
     const startedAt = startDateTime ? fromDatetimeLocal(startDateTime) : new Date().toISOString()
-    await supabase.from('project_workflow_steps').update({ started_at: startedAt, status: 'in_progress' }).eq('id', step.id)
+    const st = await supabase
+      .from('project_workflow_steps')
+      .update({ started_at: startedAt, status: 'in_progress' })
+      .eq('id', step.id)
+      .select('id')
+    const stRows = Array.isArray(st.data) ? st.data.length : 0
+    if (st.error || stRows === 0) {
+      showToast(st.error?.message ?? 'Could not start this stage. Try again or contact the office.', 'error')
+      return
+    }
     await recordAction(step.id, 'started')
     await loadAssignedSteps()
   }
@@ -3536,10 +3748,22 @@ export default function Dashboard() {
   }
 
   async function markCompleted(step: AssignedStep) {
-    await supabase.from('project_workflow_steps').update({
+    const upd1 = await supabase
+      .from('project_workflow_steps')
+      .update({
       status: 'completed',
       ended_at: new Date().toISOString(),
-    }).eq('id', step.id)
+    })
+      .eq('id', step.id)
+      .select('id')
+    const rowsAffected = Array.isArray(upd1.data) ? upd1.data.length : upd1.data ? 1 : 0
+    if (upd1.error || rowsAffected === 0) {
+      showToast(
+        upd1.error?.message ?? 'Could not mark this stage complete. Try again or contact the office.',
+        'error',
+      )
+      return
+    }
     await recordAction(step.id, 'completed')
     
     // Check if next step is rejected and reopen it
@@ -3560,7 +3784,7 @@ export default function Dashboard() {
       }).eq('id', nextStep.id)
       await recordAction(nextStep.id, 'reopened', 'Previous step was re-completed')
     }
-    
+
     await loadAssignedSteps()
   }
 
@@ -3808,6 +4032,24 @@ export default function Dashboard() {
 
   const showChecklist = checklistLoading || todayChecklist.length > 0
   const showAssigned = assignedLoading || assignedSteps.length > 0
+
+  const activeAssignedSteps = useMemo(
+    () => assignedSteps.filter((s) => s.status !== 'completed'),
+    [assignedSteps],
+  )
+  const completedAssignedSteps = useMemo(
+    () => assignedSteps.filter((s) => s.status === 'completed'),
+    [assignedSteps],
+  )
+
+  useEffect(() => {
+    if (assignedStagesExpandedDefaultAppliedRef.current) return
+    if (assignedLoading) return
+    assignedStagesExpandedDefaultAppliedRef.current = true
+    const hasInProgress = assignedSteps.some((s) => s.status === 'in_progress')
+    setAssignedStagesExpanded(hasInProgress)
+  }, [assignedLoading, assignedSteps])
+
   const showSubscribed = role === 'dev' || role === 'master_technician' || role === 'assistant'
   const showRecent = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
 
@@ -5135,7 +5377,7 @@ export default function Dashboard() {
           ) : null}
         </div>
       )}
-      {role === 'subcontractor' && (
+      {isSubcontractorLikeRole(role) && (
         <div style={{ marginTop: '1.5rem', marginBottom: '2rem' }}>
           <div
             style={{
@@ -6387,7 +6629,7 @@ export default function Dashboard() {
                         )}
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <span style={{ fontWeight: 500 }}>{r.job_display_name || 'Unknown job'}</span>
-                          <span style={{ color: '#6b7280', fontSize: '0.875rem', marginLeft: '0.5rem' }}>· {r.template_name}</span>
+                          <span style={{ color: '#6b7280', fontSize: '0.875rem', marginLeft: '0.5rem' }}>· {displayReportTemplateName(r.template_name, role)}</span>
                           <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.25rem' }}>
                             {new Date(r.created_at).toLocaleString()} · {r.created_by_name}
                           </div>
@@ -6426,7 +6668,7 @@ export default function Dashboard() {
                             onClick={(e) => e.stopPropagation()}
                           >
                             <div style={{ marginBottom: '0.5rem' }}>
-                              <div style={{ fontWeight: 600, fontSize: '1rem' }}>{r.template_name}</div>
+                              <div style={{ fontWeight: 600, fontSize: '1rem' }}>{displayReportTemplateName(r.template_name, role)}</div>
                               <div style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{r.job_display_name || 'Unknown job'}</div>
                             </div>
                             <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
@@ -6453,7 +6695,7 @@ export default function Dashboard() {
                                       <span style={{ color: '#6b7280', fontWeight: 500, display: 'block', marginBottom: '0.25rem' }}>
                                         {label}
                                       </span>
-                                      <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{String(val)}</div>
+                                      <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{formatReportFieldValueInlineList(val)}</div>
                                     </div>
                                   ) : null
                                 )}
@@ -6658,6 +6900,11 @@ export default function Dashboard() {
                           '—'
                         )}
                       </div>
+                      {isSubcontractorLikeRole(role) && (
+                        <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
+                          Job: {labelJobsLedgerStatusForDashboard(j.status)}
+                        </div>
+                      )}
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                       {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
@@ -6719,93 +6966,144 @@ export default function Dashboard() {
                           View<br />Reports
                         </button>
                       )}
-                      {role === 'subcontractor' && !isMobile && (
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: '0.8125rem', color: '#6b7280' }}>
-                          <span>Last report:</span>
-                          <span>
-                            {j.last_report_at
-                              ? (() => {
-                                  const t = formatTimeSince(j.last_report_at)
-                                  return t === 'just now' ? 'Just now' : `${t} ago`
-                                })()
-                              : 'No reports yet'}
-                          </span>
-                        </div>
-                      )}
-                      {role === 'subcontractor' && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => setLeaveReportJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
-                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                          >
-                            Leave<br />Report
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setCollectPaymentJob({
-                                id: j.id,
-                                hcpNumber: j.hcp_number ?? '—',
-                                jobName: j.job_name ?? '—',
-                                buttonVariant: j.collect_payment_button_variant ?? 'default',
-                              })
-                            }
+                      {isSubcontractorLikeRole(role) && !isMobile && (() => {
+                        const b = subcontractorLastActivityBlock(j)
+                        return (
+                          <div
                             style={{
-                              padding: '0.35rem 0.75rem',
-                              fontSize: '0.875rem',
-                              borderRadius: 4,
-                              cursor: 'pointer',
-                              ...((j.collect_payment_button_variant ?? 'default') === 'ready_terminal'
-                                ? {
-                                    background: '#15803d',
-                                    color: '#ffffff',
-                                    border: '1px solid #15803d',
-                                    fontWeight: 600,
-                                  }
-                                : (j.collect_payment_button_variant ?? 'default') === 'pending_dispatch'
-                                  ? {
-                                      background: '#fffbeb',
-                                      color: '#b45309',
-                                      border: '1px solid #f59e0b',
-                                      fontWeight: 500,
-                                    }
-                                  : {
-                                      background: 'white',
-                                      color: '#2563eb',
-                                      border: '1px solid #2563eb',
-                                    }),
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              fontSize: '0.8125rem',
+                              color: '#6b7280',
+                              textAlign: 'center',
+                              maxWidth: 220,
+                              lineHeight: 1.25,
+                              gap: 2,
                             }}
+                            title={b.title}
                           >
-                            {(j.collect_payment_button_variant ?? 'default') === 'pending_dispatch' ? (
-                              <>
-                                Collect<br />
-                                Payment (pending)
-                              </>
-                            ) : (
-                              <>
-                                Collect<br />Payment
-                              </>
-                            )}
-                          </button>
-                        </>
+                            <span>{b.line1}</span>
+                            <span>{b.line2}</span>
+                            {b.line3 != null ? (
+                              <button
+                                type="button"
+                                className="subcontractorLastActivityTypeBtn"
+                                onClick={() =>
+                                  setSubcontractorJobActivityModalJob({
+                                    id: j.id,
+                                    hcpNumber: j.hcp_number ?? '—',
+                                    jobName: j.job_name ?? '—',
+                                  })
+                                }
+                                aria-label={`What last activity means and recent history for ${j.job_name ?? 'this job'}`}
+                              >
+                                {b.line3}
+                              </button>
+                            ) : null}
+                          </div>
+                        )
+                      })()}
+                      {canLeaveDashboardJobReport(role) && (
+                        <DashboardLeaveReportButton
+                          showReminder={leaveReportReminderForJobRow(j)}
+                          onClick={() =>
+                            setLeaveReportJob({
+                              id: j.id,
+                              hcpNumber: j.hcp_number ?? '—',
+                              jobName: j.job_name ?? '—',
+                              jobAddress: j.job_address ?? '—',
+                            })
+                          }
+                        />
                       )}
-                      {j.created_at && (!isMobile || role !== 'subcontractor') && (
+                      {isSubcontractorLikeRole(role) && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCollectPaymentJob({
+                              id: j.id,
+                              hcpNumber: j.hcp_number ?? '—',
+                              jobName: j.job_name ?? '—',
+                              buttonVariant: j.collect_payment_button_variant ?? 'default',
+                            })
+                          }
+                          style={{
+                            padding: '0.35rem 0.75rem',
+                            fontSize: '0.875rem',
+                            borderRadius: 4,
+                            cursor: 'pointer',
+                            ...((j.collect_payment_button_variant ?? 'default') === 'ready_terminal'
+                              ? {
+                                  background: '#15803d',
+                                  color: '#ffffff',
+                                  border: '1px solid #15803d',
+                                  fontWeight: 600,
+                                }
+                              : (j.collect_payment_button_variant ?? 'default') === 'pending_dispatch'
+                                ? {
+                                    background: '#fffbeb',
+                                    color: '#b45309',
+                                    border: '1px solid #f59e0b',
+                                    fontWeight: 500,
+                                  }
+                                : {
+                                    background: 'white',
+                                    color: '#2563eb',
+                                    border: '1px solid #2563eb',
+                                  }),
+                          }}
+                        >
+                          {(j.collect_payment_button_variant ?? 'default') === 'pending_dispatch' ? (
+                            <>
+                              Collect<br />
+                              Payment (pending)
+                            </>
+                          ) : (
+                            <>
+                              Collect<br />Payment
+                            </>
+                          )}
+                        </button>
+                      )}
+                      {j.created_at && (!isMobile || !isSubcontractorLikeRole(role)) && (
                         <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">
                           {isMobile ? <>Open {formatTimeSince(j.created_at)}</> : <>Open<br />{formatTimeSince(j.created_at)}</>}
                         </span>
                       )}
-                      {role === 'subcontractor' && isMobile && (
+                      {isSubcontractorLikeRole(role) && isMobile && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: '100%', fontSize: '0.8125rem', color: '#6b7280' }}>
                           {j.created_at && <span>Open {formatTimeSince(j.created_at)}</span>}
-                          <span>
-                            last report: {j.last_report_at
-                              ? (() => {
-                                  const t = formatTimeSince(j.last_report_at)
-                                  return t === 'just now' ? 'Just now' : `${t} ago`
-                                })()
-                              : 'No reports yet'}
-                          </span>
+                          {(() => {
+                            const b = subcontractorLastActivityBlock(j)
+                            const a11y = [b.line1, b.line2, b.line3].filter(Boolean).join(' ')
+                            return (
+                              <div
+                                style={{ display: 'flex', flexDirection: 'column', gap: 2, lineHeight: 1.25 }}
+                                title={b.title}
+                                aria-label={a11y}
+                              >
+                                <span>{b.line1}</span>
+                                <span>{b.line2}</span>
+                                {b.line3 != null ? (
+                                  <button
+                                    type="button"
+                                    className="subcontractorLastActivityTypeBtn"
+                                    onClick={() =>
+                                      setSubcontractorJobActivityModalJob({
+                                        id: j.id,
+                                        hcpNumber: j.hcp_number ?? '—',
+                                        jobName: j.job_name ?? '—',
+                                      })
+                                    }
+                                    aria-label={`What last activity means and recent history for ${j.job_name ?? 'this job'}`}
+                                  >
+                                    {b.line3}
+                                  </button>
+                                ) : null}
+                              </div>
+                            )
+                          })()}
                         </div>
                       )}
                     </div>
@@ -6899,6 +7197,19 @@ export default function Dashboard() {
                           '—'
                         )}
                       </div>
+                      {isSubcontractorLikeRole(role) && (() => {
+                        const d = subcontractorAssignedJobStageDisplay(j)
+                        if (!d) return null
+                        const { line, title } = d
+                        return (
+                          <div
+                            style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}
+                            title={title}
+                          >
+                            {line}
+                          </div>
+                        )
+                      })()}
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                       {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
@@ -6960,28 +7271,58 @@ export default function Dashboard() {
                           View<br />Reports
                         </button>
                       )}
-                      {role === 'subcontractor' && !isMobile && (
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: '0.8125rem', color: '#6b7280' }}>
-                          <span>Last report:</span>
-                          <span>
-                            {j.last_report_at
-                              ? (() => {
-                                  const t = formatTimeSince(j.last_report_at)
-                                  return t === 'just now' ? 'Just now' : `${t} ago`
-                                })()
-                              : 'No reports yet'}
-                          </span>
-                        </div>
+                      {isSubcontractorLikeRole(role) && !isMobile && (() => {
+                        const b = subcontractorLastActivityBlock(j)
+                        return (
+                          <div
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              fontSize: '0.8125rem',
+                              color: '#6b7280',
+                              textAlign: 'center',
+                              maxWidth: 220,
+                              lineHeight: 1.25,
+                              gap: 2,
+                            }}
+                            title={b.title}
+                          >
+                            <span>{b.line1}</span>
+                            <span>{b.line2}</span>
+                            {b.line3 != null ? (
+                              <button
+                                type="button"
+                                className="subcontractorLastActivityTypeBtn"
+                                onClick={() =>
+                                  setSubcontractorJobActivityModalJob({
+                                    id: j.id,
+                                    hcpNumber: j.hcp_number ?? '—',
+                                    jobName: j.job_name ?? '—',
+                                  })
+                                }
+                                aria-label={`What last activity means and recent history for ${j.job_name ?? 'this job'}`}
+                              >
+                                {b.line3}
+                              </button>
+                            ) : null}
+                          </div>
+                        )
+                      })()}
+                      {canLeaveDashboardJobReport(role) && (
+                        <DashboardLeaveReportButton
+                          showReminder={leaveReportReminderForJobRow(j)}
+                          onClick={() =>
+                            setLeaveReportJob({
+                              id: j.id,
+                              hcpNumber: j.hcp_number ?? '—',
+                              jobName: j.job_name ?? '—',
+                              jobAddress: j.job_address ?? '—',
+                            })
+                          }
+                        />
                       )}
-                      {role === 'subcontractor' && (
-                        <button
-                          type="button"
-                          onClick={() => setLeaveReportJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
-                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                        >
-                          Leave<br />Report
-                        </button>
-                      )}
+                      {role !== 'helpers' ? (
                       <button
                         type="button"
                         onClick={() => {
@@ -6993,36 +7334,60 @@ export default function Dashboard() {
                         style={{
                           padding: '0.35rem 0.75rem',
                           fontSize: '0.875rem',
-                          background: '#3b82f6',
-                          color: 'white',
-                          border: 'none',
+                          background: 'white',
+                          color: '#2563eb',
+                          border: '1px solid #2563eb',
                           borderRadius: 4,
                           cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
+                          opacity: jobStatusUpdatingId === j.id ? 0.6 : 1,
                         }}
                       >
                         {jobStatusUpdatingId === j.id ? '…' : <>Send to<br />Billing</>}
                       </button>
-                      {j.created_at && (!isMobile || role !== 'subcontractor') && (
+                      ) : null}
+                      {j.created_at && (!isMobile || !isSubcontractorLikeRole(role)) && (
                         <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">
                           {isMobile ? <>Open {formatTimeSince(j.created_at)}</> : <>Open<br />{formatTimeSince(j.created_at)}</>}
                         </span>
                       )}
-                      {role === 'subcontractor' && isMobile && (
+                      {isSubcontractorLikeRole(role) && isMobile && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: '100%', fontSize: '0.8125rem', color: '#6b7280' }}>
                           {j.created_at && <span>Open {formatTimeSince(j.created_at)}</span>}
-                          <span>
-                            last report: {j.last_report_at
-                              ? (() => {
-                                  const t = formatTimeSince(j.last_report_at)
-                                  return t === 'just now' ? 'Just now' : `${t} ago`
-                                })()
-                              : 'No reports yet'}
-                          </span>
+                          {(() => {
+                            const b = subcontractorLastActivityBlock(j)
+                            const a11y = [b.line1, b.line2, b.line3].filter(Boolean).join(' ')
+                            return (
+                              <div
+                                style={{ display: 'flex', flexDirection: 'column', gap: 2, lineHeight: 1.25 }}
+                                title={b.title}
+                                aria-label={a11y}
+                              >
+                                <span>{b.line1}</span>
+                                <span>{b.line2}</span>
+                                {b.line3 != null ? (
+                                  <button
+                                    type="button"
+                                    className="subcontractorLastActivityTypeBtn"
+                                    onClick={() =>
+                                      setSubcontractorJobActivityModalJob({
+                                        id: j.id,
+                                        hcpNumber: j.hcp_number ?? '—',
+                                        jobName: j.job_name ?? '—',
+                                      })
+                                    }
+                                    aria-label={`What last activity means and recent history for ${j.job_name ?? 'this job'}`}
+                                  >
+                                    {b.line3}
+                                  </button>
+                                ) : null}
+                              </div>
+                            )
+                          })()}
                         </div>
                       )}
                     </div>
                   </div>
-                  {j.in_progress_stage_name && (
+                  {j.in_progress_stage_name && !isSubcontractorLikeRole(role) && (
                     <Link
                       to={j.project_id && j.in_progress_step_id
                         ? `/workflows/${j.project_id}#step-${j.in_progress_step_id}`
@@ -7209,11 +7574,12 @@ export default function Dashboard() {
                                 style={{
                                   padding: '0.35rem 0.75rem',
                                   fontSize: '0.875rem',
-                                  background: '#3b82f6',
-                                  color: 'white',
-                                  border: 'none',
+                                  background: 'white',
+                                  color: '#2563eb',
+                                  border: '1px solid #2563eb',
                                   borderRadius: 4,
                                   cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
+                                  opacity: jobStatusUpdatingId === j.id ? 0.6 : 1,
                                 }}
                               >
                                 {jobStatusUpdatingId === j.id ? '…' : <>Send to<br />Billing</>}
@@ -7262,29 +7628,92 @@ export default function Dashboard() {
       )}
       {(userLoading || showAssigned) && (
         <div style={{ marginTop: '2rem' }}>
-          <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>Projects: Assigned Stages</h2>
-          {assignedLoading && assignedSteps.length === 0 ? (
-            <AssignedSkeleton />
-          ) : (
-          <div>
-            {assignedSteps.map((s) => (
-              <AssignedStageCard
-                key={s.id}
-                step={s}
-                userNames={userNames}
-                role={role}
-                onSetStart={() => setSetStartStep({ step: s, startDateTime: toDatetimeLocal(new Date().toISOString()) })}
-                onMarkComplete={() => markCompleted(s)}
-                onMarkApproved={() => markApproved(s)}
-                onReject={() => setRejectStep({ step: s, reason: '' })}
-                onSkip={() => setSkipStep({ step: s, reason: '' })}
-                formatDatetime={formatDatetime}
-                daysOpen={daysOpen}
-                personDisplay={personDisplay}
-              />
+          <button
+            type="button"
+            onClick={() => setAssignedStagesExpanded((prev) => !prev)}
+            aria-expanded={assignedStagesExpanded}
+            style={{
+              margin: 0,
+              padding: 0,
+              border: 'none',
+              background: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              marginBottom: assignedStagesExpanded ? '0.75rem' : 0,
+            }}
+          >
+            <span aria-hidden>{assignedStagesExpanded ? '\u25BC' : '\u25B6'}</span>
+            <h2 style={{ fontSize: '1.125rem', margin: 0 }}>
+              Projects: Assigned Stages ({assignedSteps.length})
+            </h2>
+          </button>
+          {assignedStagesExpanded &&
+            (assignedLoading && assignedSteps.length === 0 ? (
+              <AssignedSkeleton />
+            ) : (
+              <div>
+                {activeAssignedSteps.map((s) => (
+                  <AssignedStageCard
+                    key={s.id}
+                    step={s}
+                    userNames={userNames}
+                    role={role}
+                    onSetStart={() => setSetStartStep({ step: s, startDateTime: toDatetimeLocal(new Date().toISOString()) })}
+                    onMarkComplete={() => markCompleted(s)}
+                    onMarkApproved={() => markApproved(s)}
+                    onReject={() => setRejectStep({ step: s, reason: '' })}
+                    onSkip={() => setSkipStep({ step: s, reason: '' })}
+                    formatDatetime={formatDatetime}
+                    daysOpen={daysOpen}
+                    personDisplay={personDisplay}
+                  />
+                ))}
+                {completedAssignedSteps.length > 0 && (
+                  <div style={{ marginTop: activeAssignedSteps.length > 0 ? '1.25rem' : 0, paddingLeft: '1.25rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => setAssignedStagesCompleteExpanded((prev) => !prev)}
+                      aria-expanded={assignedStagesCompleteExpanded}
+                      style={{
+                        margin: 0,
+                        padding: 0,
+                        border: 'none',
+                        background: 'none',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        marginBottom: assignedStagesCompleteExpanded ? '0.75rem' : 0,
+                      }}
+                    >
+                      <span aria-hidden>{assignedStagesCompleteExpanded ? '\u25BC' : '\u25B6'}</span>
+                      <h3 style={{ fontSize: '1rem', margin: 0, fontWeight: 600 }}>
+                        Complete ({completedAssignedSteps.length})
+                      </h3>
+                    </button>
+                    {assignedStagesCompleteExpanded &&
+                      completedAssignedSteps.map((s) => (
+                        <AssignedStageCard
+                          key={s.id}
+                          step={s}
+                          userNames={userNames}
+                          role={role}
+                          onSetStart={() => setSetStartStep({ step: s, startDateTime: toDatetimeLocal(new Date().toISOString()) })}
+                          onMarkComplete={() => markCompleted(s)}
+                          onMarkApproved={() => markApproved(s)}
+                          onReject={() => setRejectStep({ step: s, reason: '' })}
+                          onSkip={() => setSkipStep({ step: s, reason: '' })}
+                          formatDatetime={formatDatetime}
+                          daysOpen={daysOpen}
+                          personDisplay={personDisplay}
+                        />
+                      ))}
+                  </div>
+                )}
+              </div>
             ))}
-          </div>
-          )}
         </div>
       )}
 
@@ -7444,6 +7873,7 @@ export default function Dashboard() {
         onSaved={() => {
           loadRecentReportsRef.current?.()
         }}
+        viewerRole={role}
       />
       <ChecklistItemMuteModal
         open={!!muteModalItemId}
@@ -7465,6 +7895,15 @@ export default function Dashboard() {
           userRole={role}
         />
       )}
+      {subcontractorJobActivityModalJob ? (
+        <SubcontractorJobActivityModal
+          open
+          onClose={() => setSubcontractorJobActivityModalJob(null)}
+          jobId={subcontractorJobActivityModalJob.id}
+          hcpNumber={subcontractorJobActivityModalJob.hcpNumber}
+          jobName={subcontractorJobActivityModalJob.jobName}
+        />
+      ) : null}
       {leaveReportJob && (
         <AdditionalReportModal
           open={!!leaveReportJob}

@@ -21,3 +21,17 @@ export function normalizeJobsLedgerStatus(raw: string | null | undefined): JobsL
 export function labelJobsLedgerStatus(key: JobsLedgerPipelineStatus): string {
   return LABELS[key]
 }
+
+/** Dashboard (subcontractor cards): Stages board–aligned copy for `jobs_ledger.status`. */
+const DASHBOARD_STATUS_LABELS: Record<JobsLedgerPipelineStatus, string> = {
+  working: 'Working',
+  ready_to_bill: 'Ready to Bill',
+  billed: 'Billed Awaiting Payment',
+  paid: 'Paid',
+}
+
+export function labelJobsLedgerStatusForDashboard(raw: string | null | undefined): string {
+  const k = normalizeJobsLedgerStatus(raw)
+  if (!k) return '—'
+  return DASHBOARD_STATUS_LABELS[k] ?? '—'
+}

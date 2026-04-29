@@ -124,7 +124,8 @@ serve(async (req) => {
         .select('role')
         .eq('id', user.id)
         .maybeSingle()
-      if (profErr || !profile || (profile as { role?: string }).role !== 'subcontractor') {
+      const r = (profile as { role?: string }).role
+      if (profErr || !profile || (r !== 'subcontractor' && r !== 'helpers')) {
         return jsonResponse({ error: 'Forbidden' }, 403)
       }
 

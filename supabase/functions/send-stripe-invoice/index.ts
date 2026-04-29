@@ -125,7 +125,7 @@ serve(async (req) => {
     }
 
     const callerRole = roleRow.role
-    const isSubcontractor = callerRole === 'subcontractor'
+    const isSubcontractor = callerRole === 'subcontractor' || callerRole === 'helpers'
 
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     if (!serviceKey?.trim()) {

@@ -1026,6 +1026,10 @@ export function MercuryTransactionAllocationsModal({
         ) : null}
 
         <div style={{ fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.35rem' }}>Job splits</div>
+        <p style={{ margin: '0 0 0.45rem', fontSize: '0.75rem', color: '#64748b' }}>
+          To move this charge to another job, remove the line for the current job and add the new job from search (amounts
+          must still sum to the transaction total).
+        </p>
         <input
           type="text"
           value={jobSearch}

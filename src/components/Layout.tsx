@@ -32,6 +32,7 @@ import { useDailyGoalsGate } from '../contexts/DailyGoalsGateContext'
 import { useAppActivityHeartbeat } from '../hooks/useAppActivityHeartbeat'
 import { hardReloadFromRoot } from '../lib/hardReload'
 import { prefetchDashboardPhase1 } from '../lib/dashboardPrefetch'
+import { isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import { impersonationExitDisplayLabel, impersonationExitTitle } from '../lib/impersonationUiLabels'
 import { IMPERSONATION_CHROME_BUTTON_STYLE } from '../lib/impersonationSession'
 
@@ -142,7 +143,7 @@ export default function Layout() {
   }, [gearOpen, menuOpen, pinForOpen])
 
   useEffect(() => {
-    if (role === 'subcontractor' && !SUBCONTRACTOR_PATHS.includes(location.pathname)) {
+    if (isSubcontractorLikeRole(role) && !SUBCONTRACTOR_PATHS.includes(location.pathname)) {
       navigate('/dashboard', { replace: true })
     }
     if (role === 'estimator' && (location.pathname === '/' || !isEstimatorPathAllowed(location.pathname, estimatorProspectsAccess))) {
@@ -218,7 +219,7 @@ export default function Layout() {
   )
 
   const canShowMaterialsNav =
-    role !== 'subcontractor' &&
+    !isSubcontractorLikeRole(role) &&
     (role === null ||
       role === 'estimator' ||
       role === 'primary' ||
@@ -235,7 +236,7 @@ export default function Layout() {
     role === 'estimator' ||
     role === 'primary' ||
     role === 'superintendent' ||
-    role === 'subcontractor'
+    isSubcontractorLikeRole(role)
 
   const canShowMapNav =
     role === 'dev' || role === 'master_technician' || role === 'assistant'
@@ -394,7 +395,7 @@ export default function Layout() {
             {dashboardContent}
           </NavLink>
         )}
-        {role !== 'subcontractor' && (
+        {!isSubcontractorLikeRole(role) && (
           <>
             {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
               <>
@@ -459,7 +460,7 @@ export default function Layout() {
       >
         {isMobile ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-            {role !== 'subcontractor' && (
+            {!isSubcontractorLikeRole(role) && (
             <div ref={menuRef} style={{ position: 'relative' }}>
               <button
                 type="button"
@@ -711,7 +712,7 @@ export default function Layout() {
             {checklistNavIcon}
           </NavLink>
           )}
-          {role != null && role !== 'subcontractor' && role !== 'primary' && (
+          {role != null && !isSubcontractorLikeRole(role) && role !== 'primary' && (
             <>
               {!(isMobile && role === 'dev') && role !== 'master_technician' && (
                 <NavLink
@@ -1018,7 +1019,14 @@ export default function Layout() {
           ...(location.pathname === '/banking' ? { paddingTop: '0.25rem' } : {}),
         }}
       >
-        <div style={{ flex: 1 }}>
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
           <Suspense fallback={<div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>}>
             <Outlet />
           </Suspense>

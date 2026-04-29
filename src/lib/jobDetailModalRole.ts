@@ -1,3 +1,6 @@
+import type { UserRole } from '../hooks/useAuth'
+import { isSubcontractorLikeRole } from './subcontractorLikeRole'
+
 /** Roles that can load full `JobWithDetails` (jobs_ledger + child embeds) for read-only Job details. */
 export function isStaffFullJobLedgerDetailRole(role: string | null): boolean {
   return (
@@ -17,7 +20,7 @@ export function canExpandJobDetailMaterials(role: string | null): boolean {
   )
 }
 
-/** Job Detail revenue row — hidden for subcontractors. */
+/** Job Detail revenue row — hidden for subcontractors and helpers. */
 export function showJobDetailJobTotal(role: string | null): boolean {
-  return role !== 'subcontractor'
+  return !isSubcontractorLikeRole(role as UserRole)
 }

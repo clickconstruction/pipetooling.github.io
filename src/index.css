@@ -1296,3 +1296,85 @@ body.my-time-boundary-dragging {
 .dashboard-skeleton-pulse {
   animation: dashboard-skeleton-pulse 1.2s ease-in-out infinite;
 }
+
+/* Jobs · Job Summary · Person summary table: clickable cell affordance */
+.jobSummaryBreakdownInteractive {
+  cursor: pointer;
+  color: #1d4ed8;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+}
+.jobSummaryBreakdownInteractive:hover {
+  color: #1e3a8a;
+  text-decoration-style: solid;
+}
+.jobSummaryBreakdownInteractive:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+.jobSummaryBreakdownInteractiveMuted {
+  cursor: pointer;
+  color: #4b5563;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+}
+.jobSummaryBreakdownInteractiveMuted:hover {
+  color: #1e3a8a;
+  text-decoration-style: solid;
+}
+.jobSummaryBreakdownInteractiveMuted:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+/* Checklist · Roadmap: tech tree graph full screen (Fill Display API) */
+.checklistTechTreeCanvasShell:fullscreen {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  background: #fff;
+}
+.checklistTechTreeCanvasShell:-webkit-full-screen {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  background: #fff;
+}
+
+.checklistTechTreeEnterFs:hover,
+.checklistTechTreeExitFs:hover {
+  background: rgba(15, 23, 42, 0.06);
+}
+.checklistTechTreeEnterFs:focus,
+.checklistTechTreeExitFs:focus {
+  outline: none;
+}
+.checklistTechTreeEnterFs:focus-visible,
+.checklistTechTreeExitFs:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+/* Dashboard subcontractor Last activity: type opens help / history modal */
+.subcontractorLastActivityTypeBtn {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: inherit;
+  color: inherit;
+  text-align: inherit;
+  cursor: pointer;
+  max-width: 100%;
+}
+.subcontractorLastActivityTypeBtn:hover {
+  text-decoration: underline;
+}
+.subcontractorLastActivityTypeBtn:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+  border-radius: 2px;
+}

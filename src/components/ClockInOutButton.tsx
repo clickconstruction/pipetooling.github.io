@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { supabase } from '../lib/supabase'
-import { useAuth } from '../hooks/useAuth'
+import { useAuth, type UserRole } from '../hooks/useAuth'
+import { fieldRoleServiceTypeIdsForUser, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import { useDailyGoalsGate } from '../contexts/DailyGoalsGateContext'
 import { useToastContext } from '../contexts/ToastContext'
 import {
@@ -495,19 +496,32 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
       const { data: stData } = await supabase.from('service_types').select('id, name').order('sequence_order', { ascending: true })
       const types = (stData ?? []) as Array<{ id: string; name: string }>
       if (authUser?.id) {
-        const { data: meData } = await supabase.from('users').select('role, estimator_service_type_ids, primary_service_type_ids, subcontractor_service_type_ids').eq('id', authUser.id).single()
-        const me = meData as { role?: string; estimator_service_type_ids?: string[] | null; primary_service_type_ids?: string[] | null; subcontractor_service_type_ids?: string[] | null } | null
+        const { data: meData } = await supabase
+          .from('users')
+          .select('role, estimator_service_type_ids, primary_service_type_ids, subcontractor_service_type_ids, helpers_service_type_ids')
+          .eq('id', authUser.id)
+          .single()
+        const me = meData as {
+          role?: UserRole
+          estimator_service_type_ids?: string[] | null
+          primary_service_type_ids?: string[] | null
+          subcontractor_service_type_ids?: string[] | null
+          helpers_service_type_ids?: string[] | null
+        } | null
         const estIds = me?.estimator_service_type_ids
         const primIds = me?.primary_service_type_ids
-        const subIds = me?.subcontractor_service_type_ids ?? null
-        if (me?.role === 'subcontractor') setSubcontractorServiceTypeIds(subIds && subIds.length > 0 ? subIds : null)
+        const fieldSvcIds = fieldRoleServiceTypeIdsForUser(me?.role ?? null, {
+          subcontractor_service_type_ids: me?.subcontractor_service_type_ids,
+          helpers_service_type_ids: me?.helpers_service_type_ids,
+        })
+        if (isSubcontractorLikeRole(me?.role ?? null)) setSubcontractorServiceTypeIds(fieldSvcIds && fieldSvcIds.length > 0 ? fieldSvcIds : null)
         else setSubcontractorServiceTypeIds(null)
         const filtered = (me?.role === 'estimator' && estIds && estIds.length > 0)
           ? types.filter((t) => estIds.includes(t.id))
           : (me?.role === 'primary' && primIds && primIds.length > 0)
             ? types.filter((t) => primIds.includes(t.id))
-            : (me?.role === 'subcontractor' && subIds && subIds.length > 0)
-              ? types.filter((t) => subIds.includes(t.id))
+            : (isSubcontractorLikeRole(me?.role ?? null) && fieldSvcIds && fieldSvcIds.length > 0)
+              ? types.filter((t) => fieldSvcIds.includes(t.id))
               : types
         const filteredIds = filtered.map((t) => t.id)
         if (filtered.length === 1) {

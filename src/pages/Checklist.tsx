@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, Fragment, type CSSProperties, type PointerEvent } from 'react'
+import { useState, useEffect, useRef, useCallback, Fragment, type CSSProperties, type PointerEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { DndContext, closestCenter, type DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
@@ -12,9 +12,18 @@ import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
 import { getNextDisplayOrders } from '../utils/checklistOrder'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { ChecklistReviewInboxes } from '../components/checklist/ChecklistReviewInboxes'
+import { ChecklistTechTreeTab } from '../components/checklist/ChecklistTechTreeTab'
 
-type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator'
-type ChecklistTab = 'today' | 'history' | 'review' | 'manage'
+type UserRole =
+  | 'dev'
+  | 'master_technician'
+  | 'assistant'
+  | 'subcontractor'
+  | 'helpers'
+  | 'estimator'
+  | 'primary'
+  | 'superintendent'
+type ChecklistTab = 'today' | 'history' | 'roadmap' | 'review' | 'manage'
 
 type ChecklistInstance = {
   id: string
@@ -71,7 +80,7 @@ export default function Checklist() {
 
   useEffect(() => {
     const tab = searchParams.get('tab')
-    if (tab === 'today' || tab === 'history' || tab === 'review' || tab === 'manage') {
+    if (tab === 'today' || tab === 'history' || tab === 'roadmap' || tab === 'review' || tab === 'manage') {
       setActiveTab(tab)
     } else if (!tab && role !== null) {
       const defaultTab =
@@ -85,12 +94,40 @@ export default function Checklist() {
   }, [searchParams, role])
 
   const canManageChecklists = role === 'dev' || role === 'master_technician' || role === 'assistant'
+  /** Matches is_dev_or_master_or_assistant() in DB (includes primary) for roadmap structure + staff overrides */
+  const canEditTechTree =
+    role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
   const [editItemId, setEditItemId] = useState<string | null>(null)
+
+  const onRoadmapUrlParamChange = useCallback(
+    (roadmapId: string) => {
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', 'roadmap')
+        next.set('roadmap', roadmapId)
+        return next
+      })
+    },
+    [setSearchParams],
+  )
 
   if (loading) return <p style={{ padding: '2rem' }}>Loading…</p>
 
   return (
-    <div style={{ padding: '0.25rem 1.5rem 1.5rem' }}>
+    <div
+      style={{
+        padding:
+          activeTab === 'roadmap' ? '0.25rem 1.5rem 0.25rem' : '0.25rem 1.5rem 1.5rem',
+        ...(activeTab === 'roadmap'
+          ? {
+              flex: 1,
+              minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column',
+            }
+          : {}),
+      }}
+    >
       <div style={{ display: 'flex', alignItems: 'center', gap: 0, borderBottom: '1px solid #e5e7eb', marginBottom: '1.5rem' }}>
         <button
           type="button"
@@ -119,6 +156,20 @@ export default function Checklist() {
           style={tabStyle(activeTab === 'history')}
         >
           History
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('roadmap')
+            setSearchParams((p) => {
+              const next = new URLSearchParams(p)
+              next.set('tab', 'roadmap')
+              return next
+            })
+          }}
+          style={tabStyle(activeTab === 'roadmap')}
+        >
+          Roadmap
         </button>
         {canManageChecklists && (
           <>
@@ -160,6 +211,24 @@ export default function Checklist() {
       )}
       {activeTab === 'history' && (
         <ChecklistHistoryTab authUserId={authUser?.id ?? null} canViewOthers={canManageChecklists} canEditHistory={role === 'dev'} setError={setError} />
+      )}
+      {activeTab === 'roadmap' && (
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <ChecklistTechTreeTab
+            authUserId={authUser?.id ?? null}
+            canEditTechTree={canEditTechTree}
+            setError={setError}
+            roadmapIdFromUrl={searchParams.get('roadmap')}
+            onRoadmapUrlParamChange={onRoadmapUrlParamChange}
+          />
+        </div>
       )}
       {activeTab === 'review' && canManageChecklists && (
         <ChecklistOutstandingTab authUserId={authUser?.id ?? null} isDev={role === 'dev'} canManageChecklists={canManageChecklists} setError={setError} setEditItemId={setEditItemId} />

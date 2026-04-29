@@ -51,7 +51,14 @@ function toLocalDateString(d: Date): string {
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
-type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator' | 'primary'
+type UserRole =
+  | 'dev'
+  | 'master_technician'
+  | 'assistant'
+  | 'subcontractor'
+  | 'helpers'
+  | 'estimator'
+  | 'primary'
 
 export default function ChecklistAddModal() {
   const { user: authUser } = useAuth()

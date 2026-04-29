@@ -11,7 +11,7 @@ type ProjectWithCustomer = Project & {
   customers: { name: string } | null
   master_user: { id: string; name: string | null; email: string | null } | null
 }
-type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'superintendent'
+type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'helpers' | 'superintendent'
 
 export default function Projects() {
   const { user: authUser } = useAuth()

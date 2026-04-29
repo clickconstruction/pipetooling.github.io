@@ -7,7 +7,7 @@ import type { Database } from '../types/database'
 import type { Json } from '../types/database'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
-type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor'
+type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'helpers'
 
 function extractContactInfo(ci: Json | null): { phone: string; email: string } {
   if (ci == null) return { phone: '', email: '' }

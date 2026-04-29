@@ -67,7 +67,7 @@ export const PATH_TABS: Record<string, readonly string[]> = {
     'lien-release',
   ],
   '/checklist': ['today', 'history', 'review', 'manage'],
-  '/materials': ['price-book', 'assembly-book', 'templates-po', 'purchase-orders', 'supply-houses'],
+  '/materials': ['price-book', 'assembly-book', 'templates-po', 'purchase-orders', 'supply-houses', 'po-generator'],
   '/documents': ['search', 'estimates', 'bid-proposals', 'jobs', 'supply-invoices', 'upload'],
 }
 
@@ -289,7 +289,7 @@ const SUPERINTENDENT_PATHS = new Set([
 ])
 
 function getAllowedPathsForRole(role: string | null, estimatorProspectsAccess?: boolean): Set<string> | null {
-  if (role === 'subcontractor') return SUBCONTRACTOR_PATHS
+  if (role === 'subcontractor' || role === 'helpers') return SUBCONTRACTOR_PATHS
   if (role === 'estimator') {
     return new Set([
       '/dashboard',

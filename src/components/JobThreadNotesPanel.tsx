@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { getDispatchNoteDisplayMeta } from '../utils/dispatchNoteDisplay'
+import type { UserRole } from '../hooks/useAuth'
+import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
 import ReportViewModal, { type ReportForView } from './ReportViewModal'
 import { firstNonEmptyFieldValueSummary } from '../lib/reportForViewFromJobLedgerRow'
 
@@ -38,6 +40,8 @@ type JobThreadNotesPanelProps = {
   scheduleAction?: { onClick: () => void; disabled?: boolean }
   /** Week grid: navigate to Schedule dispatch (same roles + superintendent when job has team). */
   scheduleDispatchAction?: { onClick: () => void; disabled?: boolean }
+  /** Passed to {@link displayReportTemplateName} for report row titles and ReportViewModal. */
+  viewerRole?: UserRole | null
 }
 
 function JobThreadScheduleButton({
@@ -110,6 +114,7 @@ export function JobThreadNotesPanel({
   showComposerLabel = true,
   scheduleAction,
   scheduleDispatchAction,
+  viewerRole,
 }: JobThreadNotesPanelProps) {
   const [viewingReport, setViewingReport] = useState<ReportForView | null>(null)
 
@@ -203,7 +208,7 @@ export function JobThreadNotesPanel({
                     </span>
                   </div>
                   <div style={{ color: '#1f2937' }}>
-                    <span style={{ fontWeight: 600 }}>{r.template_name}</span>
+                    <span style={{ fontWeight: 600 }}>{displayReportTemplateName(r.template_name, viewerRole)}</span>
                     {summary ? (
                       <div style={{ marginTop: 4, whiteSpace: 'pre-wrap' }}>{summary}</div>
                     ) : null}
@@ -232,7 +237,7 @@ export function JobThreadNotesPanel({
           )}
         </ul>
       )}
-      <ReportViewModal open={viewingReport != null} report={viewingReport} onClose={() => setViewingReport(null)} />
+      <ReportViewModal open={viewingReport != null} report={viewingReport} onClose={() => setViewingReport(null)} viewerRole={viewerRole} />
       {!canPost && (scheduleAction || scheduleDispatchAction) ? (
         <div
           style={{

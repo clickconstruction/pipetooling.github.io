@@ -138,8 +138,8 @@ serve(async (req) => {
       return jsonResponse({ error: 'Could not resolve user role' }, 403)
     }
 
-    if (roleRow.role !== 'subcontractor') {
-      return jsonResponse({ error: 'Only subcontractors can update email from collect payment' }, 403)
+    if (roleRow.role !== 'subcontractor' && roleRow.role !== 'helpers') {
+      return jsonResponse({ error: 'Only subcontractors and helpers can update email from collect payment' }, 403)
     }
 
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')

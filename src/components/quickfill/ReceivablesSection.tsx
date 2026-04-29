@@ -11,6 +11,7 @@ type PersonKind =
   | 'assistant'
   | 'master_technician'
   | 'sub'
+  | 'helper'
   | 'estimator'
   | 'primary'
   | 'superintendent'
@@ -18,6 +19,7 @@ const KIND_TO_USER_ROLE: Record<PersonKind, string> = {
   assistant: 'assistant',
   master_technician: 'master_technician',
   sub: 'subcontractor',
+  helper: 'helpers',
   estimator: 'estimator',
   primary: 'primary',
   superintendent: 'superintendent',
@@ -42,7 +44,7 @@ export function ReceivablesSection() {
   async function loadUsers() {
     if (!authUser?.id) return
     const [usersRes, meRes] = await Promise.all([
-      supabase.from('users').select('id, name, email, role').in('role', ['assistant', 'master_technician', 'subcontractor', 'estimator', 'primary', 'superintendent']).order('name'),
+      supabase.from('users').select('id, name, email, role').in('role', ['assistant', 'master_technician', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent']).order('name'),
       supabase.from('users').select('role').eq('id', authUser.id).single(),
     ])
     let usersList = (usersRes.data as UserRow[]) ?? []

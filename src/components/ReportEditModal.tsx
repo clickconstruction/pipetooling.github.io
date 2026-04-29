@@ -1,6 +1,17 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
+import { useAuth, type UserRole } from '../hooks/useAuth'
+import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
+import {
+  fieldValueForSubmit,
+  REPORT_FIELD_LABEL_JOB_COMPLETION,
+  REPORT_FIELD_LABEL_LEGACY_WHO,
+  tryParsePercent0to100,
+} from '../lib/reportTemplateFieldDisplay'
+import { validateReportSignatureDataUrlForSubmit } from '../lib/reportSignatureField'
+import { ReportTemplatePercentField } from './ReportTemplatePercentField'
+import { ReportTemplateSignatureField } from './ReportTemplateSignatureField'
 
 type ReportTemplateField = Database['public']['Tables']['report_template_fields']['Row']
 
@@ -18,9 +29,11 @@ type Props = {
   report: ReportForEdit | null
   onClose: () => void
   onSaved: () => void
+  viewerRole?: UserRole | null
 }
 
-export default function ReportEditModal({ open, report, onClose, onSaved }: Props) {
+export default function ReportEditModal({ open, report, onClose, onSaved, viewerRole }: Props) {
+  const { profileName } = useAuth()
   const [templateFields, setTemplateFields] = useState<ReportTemplateField[]>([])
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
@@ -36,7 +49,12 @@ export default function ReportEditModal({ open, report, onClose, onSaved }: Prop
       .then(({ data }) => {
         const fields = (data as ReportTemplateField[]) ?? []
         setTemplateFields(fields)
-        setFieldValues((report.field_values ?? {}) as Record<string, string>)
+        const raw = (report.field_values ?? {}) as Record<string, string>
+        const merged = { ...raw }
+        if (merged[REPORT_FIELD_LABEL_JOB_COMPLETION] == null && merged[REPORT_FIELD_LABEL_LEGACY_WHO] != null) {
+          merged[REPORT_FIELD_LABEL_JOB_COMPLETION] = merged[REPORT_FIELD_LABEL_LEGACY_WHO]
+        }
+        setFieldValues(merged)
       })
     setError(null)
   }, [open, report])
@@ -51,9 +69,19 @@ export default function ReportEditModal({ open, report, onClose, onSaved }: Prop
     if (!report) return
     setSaving(true)
     setError(null)
+    for (const f of templateFields) {
+      if ((f.input_type ?? 'long_text') === 'signature_png') {
+        const msg = validateReportSignatureDataUrlForSubmit(fieldValues[f.label] ?? '')
+        if (msg) {
+          setError(msg)
+          setSaving(false)
+          return
+        }
+      }
+    }
     const fv: Record<string, string> = {}
     for (const f of templateFields) {
-      fv[f.label] = fieldValues[f.label] ?? ''
+      fv[f.label] = fieldValueForSubmit(f, fieldValues)
     }
     const { error: err } = await supabase
       .from('reports')
@@ -100,7 +128,7 @@ export default function ReportEditModal({ open, report, onClose, onSaved }: Prop
           <div>
             <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Edit report</h2>
             <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
-              {report?.template_name ?? 'Report'} · {report?.job_display_name ?? 'Unknown job'}
+              {displayReportTemplateName(report?.template_name ?? 'Report', viewerRole)} · {report?.job_display_name ?? 'Unknown job'}
             </p>
           </div>
           <button
@@ -116,17 +144,52 @@ export default function ReportEditModal({ open, report, onClose, onSaved }: Prop
         <form onSubmit={handleSubmit}>
           {templateFields.length > 0 ? (
             <div style={{ marginBottom: '1rem' }}>
-              {templateFields.map((f) => (
-                <div key={f.id} style={{ marginBottom: '0.75rem' }}>
-                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>{f.label}</label>
-                  <textarea
-                    value={fieldValues[f.label] ?? ''}
-                    onChange={(e) => setFieldValues((prev) => ({ ...prev, [f.label]: e.target.value }))}
-                    rows={3}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                  />
-                </div>
-              ))}
+              {templateFields.map((f) => {
+                const t = f.input_type ?? 'long_text'
+                if (t === 'percent_0_100') {
+                  const rawVal = fieldValues[f.label] ?? '0'
+                  const showLegacy = tryParsePercent0to100(rawVal) === null && rawVal.trim() !== ''
+                  return (
+                    <div key={f.id} style={{ marginBottom: '0.75rem' }}>
+                      <ReportTemplatePercentField
+                        id={`edit-report-pct-${f.id}`}
+                        label={f.label}
+                        value={rawVal}
+                        onChange={(v) => setFieldValues((prev) => ({ ...prev, [f.label]: v }))}
+                      />
+                      {showLegacy ? (
+                        <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 4, marginBottom: 0 }}>
+                          Previous answer: {rawVal}
+                        </p>
+                      ) : null}
+                    </div>
+                  )
+                }
+                if (t === 'signature_png') {
+                  return (
+                    <ReportTemplateSignatureField
+                      key={f.id}
+                      reactKeyPrefix={report ? `edit-${report.id}-${f.id}` : `edit-field-${f.id}`}
+                      id={`edit-report-sig-${f.id}`}
+                      label={f.label}
+                      value={fieldValues[f.label] ?? ''}
+                      onChange={(v) => setFieldValues((prev) => ({ ...prev, [f.label]: v }))}
+                      captionBelowCanvas={profileName?.trim() ? profileName : null}
+                    />
+                  )
+                }
+                return (
+                  <div key={f.id} style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>{f.label}</label>
+                    <textarea
+                      value={fieldValues[f.label] ?? ''}
+                      onChange={(e) => setFieldValues((prev) => ({ ...prev, [f.label]: e.target.value }))}
+                      rows={3}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    />
+                  </div>
+                )
+              })}
             </div>
           ) : (
             <p style={{ color: '#6b7280', marginBottom: '1rem' }}>No fields to edit.</p>

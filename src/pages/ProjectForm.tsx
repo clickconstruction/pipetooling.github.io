@@ -6,7 +6,7 @@ import type { Database } from '../types/database'
 
 type ProjectRow = Database['public']['Tables']['projects']['Row']
 type CustomerRow = Database['public']['Tables']['customers']['Row']
-type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor'
+type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'helpers'
 
 const PROJECT_STATUSES: ProjectRow['status'][] = ['awaiting_start', 'active', 'completed', 'on_hold']
 

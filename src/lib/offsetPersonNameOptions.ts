@@ -1,7 +1,7 @@
 import { supabase } from './supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 
-const OFFSET_USER_ROLES = ['assistant', 'master_technician', 'subcontractor', 'estimator', 'primary', 'superintendent'] as const
+const OFFSET_USER_ROLES = ['assistant', 'master_technician', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent'] as const
 
 export type FetchOffsetPersonNameOptionsArgs = {
   authUserId: string

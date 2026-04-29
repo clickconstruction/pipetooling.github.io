@@ -4,7 +4,15 @@ import { getNextDisplayOrders } from '../utils/checklistOrder'
 import { SearchableSelect } from './SearchableSelect'
 import { syncChecklistTitleTextareaHeight } from '../lib/syncChecklistTitleTextareaHeight'
 
-type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator'
+type UserRole =
+  | 'dev'
+  | 'master_technician'
+  | 'assistant'
+  | 'subcontractor'
+  | 'helpers'
+  | 'estimator'
+  | 'primary'
+  | 'superintendent'
 
 type ChecklistItem = {
   id: string

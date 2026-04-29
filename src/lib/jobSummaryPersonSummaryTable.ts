@@ -1,4 +1,4 @@
-import type { PartsPerPersonCostRow } from './partsPerPersonCostSummary'
+import { UNATTRIBUTED_CARD, type PartsPerPersonCostRow } from './partsPerPersonCostSummary'
 import { normalizePersonNameKey } from './personNameKey'
 
 export type TeamLaborPersonCostLite = { personName: string; cost: number; hours?: number }
@@ -73,4 +73,27 @@ export function buildJobSummaryPersonSummaryRows(args: {
   })
 
   return rows
+}
+
+function isUnattributedJobSummaryName(displayName: string | null | undefined): boolean {
+  return (displayName ?? '').trim().toLowerCase() === UNATTRIBUTED_CARD.toLowerCase()
+}
+
+/**
+ * Splits the synthetic **Unattributed** Mercury row out for merge into the Job Summary **Unassigned** line.
+ * Remaining rows are shown as named people; `unattributedCard` is the full unattributed job card total.
+ */
+export function partitionUnattributedFromJobSummaryPersonRows(
+  rows: JobSummaryPersonSummaryRow[],
+): { rows: JobSummaryPersonSummaryRow[]; unattributedCard: number } {
+  let unattributedCard = 0
+  const out: JobSummaryPersonSummaryRow[] = []
+  for (const r of rows) {
+    if (isUnattributedJobSummaryName(r.displayName)) {
+      unattributedCard += Math.abs(Number(r.card) || 0)
+    } else {
+      out.push(r)
+    }
+  }
+  return { rows: out, unattributedCard }
 }

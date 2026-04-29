@@ -1,4 +1,7 @@
 import { useState, useMemo } from 'react'
+import { useAuth } from '../hooks/useAuth'
+import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
+import { isReportSignatureImageDataUrl } from '../lib/reportSignatureField'
 
 export type ReportForMyReports = {
   id: string
@@ -30,7 +33,12 @@ function matchesSearch(report: ReportForMyReports, q: string): boolean {
   if ((report.template_name ?? '').toLowerCase().includes(lower)) return true
   const fv = report.field_values ?? {}
   for (const val of Object.values(fv)) {
-    if (String(val).toLowerCase().includes(lower)) return true
+    const s = String(val)
+    if (isReportSignatureImageDataUrl(s)) {
+      if (lower.includes('signature') || lower.includes('sign')) return true
+      continue
+    }
+    if (s.toLowerCase().includes(lower)) return true
   }
   return false
 }
@@ -47,6 +55,7 @@ export default function MyReportsModal({
   onViewReport,
   onEditReport,
 }: Props) {
+  const { role: viewerRole } = useAuth()
   const [search, setSearch] = useState('')
   const [expandedJobKeys, setExpandedJobKeys] = useState<Set<string>>(new Set())
 
@@ -194,7 +203,7 @@ export default function MyReportsModal({
                                   style={{ flex: 1, minWidth: 0 }}
                                   onClick={() => onViewReport(r)}
                                 >
-                                  <span style={{ fontWeight: 500 }}>{r.template_name}</span>
+                                  <span style={{ fontWeight: 500 }}>{displayReportTemplateName(r.template_name, viewerRole)}</span>
                                   <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.25rem' }}>
                                     {new Date(r.created_at).toLocaleString()}
                                   </div>
