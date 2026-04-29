@@ -476,7 +476,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
         </div>
         <div style={{ marginBottom: '1rem' }}>
           <label htmlFor="edit-customer-folder" style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>
-            Customer Folder
+            Customer Files
           </label>
           <input
             id="edit-customer-folder"
@@ -504,7 +504,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
             htmlFor="edit-customer-job-pictures"
             style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}
           >
-            Job Pictures
+            Customer Pictures
           </label>
           <input
             id="edit-customer-job-pictures"
@@ -864,7 +864,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
                       />
                       <MergeFieldRow
                         fieldId="merge-google-drive"
-                        label="Customer folder"
+                        label="Customer Files"
                         survivorValue={googleDriveLink.trim() || '—'}
                         victimValue={victimRow.google_drive_link?.trim() || '—'}
                         selected={mergeFieldSource.google_drive_link}
@@ -872,7 +872,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
                       />
                       <MergeFieldRow
                         fieldId="merge-job-pictures"
-                        label="Job pictures"
+                        label="Customer Pictures"
                         survivorValue={jobPicturesLink.trim() || '—'}
                         victimValue={victimRow.job_pictures_link?.trim() || '—'}
                         selected={mergeFieldSource.job_pictures_link}

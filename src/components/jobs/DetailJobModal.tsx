@@ -317,7 +317,7 @@ function DetailJobModalFilesPlansRow({
     >
       {drive ? (
         <div style={{ minWidth: 0, textAlign: 'center' }}>
-          <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: '#6b7280', marginBottom: 6 }}>Job Files</div>
+          <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: '#6b7280', marginBottom: 6 }}>Customer Files</div>
           <button type="button" onClick={() => openInExternalBrowser(drive)} style={detailJobFilesPlansButtonStyle}>
             Open Drive folder
           </button>

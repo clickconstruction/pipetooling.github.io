@@ -1,19 +1,27 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 
 type ToastType = 'info' | 'warning' | 'error' | 'success'
 
 export type ToastAnchor = { clientX: number; clientY: number }
+
+/** When `anchor` is set, anchored positioning wins and `placement` is ignored. */
+export type ToastPlacement = 'corner' | 'center'
 
 interface ToastProps {
   message: string
   type?: ToastType
   duration?: number
   anchor?: ToastAnchor
+  /** Default `corner` (top-right). Ignored when `anchor` is set. */
+  placement?: ToastPlacement
   onClose: () => void
 }
 
 const MARGIN = 8
 const MAX_WIDTH_PX = 400
+const Z_CORNER = 9999
+const Z_CENTER_BACKDROP = 10000
+const Z_CENTER_CARD = 10001
 
 function clampAnchoredPosition(clientX: number, clientY: number): { left: number; top: number } {
   if (typeof window === 'undefined') {
@@ -62,7 +70,15 @@ function refineAnchoredPosition(
   return { left, top }
 }
 
-export function Toast({ message, type = 'info', duration = 5000, anchor, onClose }: ToastProps) {
+export function Toast({
+  message,
+  type = 'info',
+  duration = 5000,
+  anchor,
+  placement = 'corner',
+  onClose,
+}: ToastProps) {
+  const messageId = useId()
   const rootRef = useRef<HTMLDivElement>(null)
   const [anchoredPos, setAnchoredPos] = useState<{ left: number; top: number } | null>(() =>
     anchor ? clampAnchoredPosition(anchor.clientX, anchor.clientY) : null,
@@ -98,51 +114,39 @@ export function Toast({ message, type = 'info', duration = 5000, anchor, onClose
     success: { bg: '#10b981', border: '#059669' },
   }
 
-  const baseStyle = {
+  const cardStyleBase = {
     background: colors[type].bg,
     color: 'white',
     padding: '1rem 1.5rem',
     borderRadius: '8px',
     border: `2px solid ${colors[type].border}`,
     boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-    zIndex: 9999,
     maxWidth: `${MAX_WIDTH_PX}px`,
   } as const
 
-  const positionStyle = anchor
-    ? {
-        position: 'fixed' as const,
-        left: anchoredPos?.left ?? 0,
-        top: anchoredPos?.top ?? 0,
-        animation: 'slideInAnchored 0.25s ease-out',
-      }
-    : {
-        position: 'fixed' as const,
-        top: '1rem',
-        right: '1rem',
-        animation: 'slideIn 0.3s ease-out',
-      }
+  const body = (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+      <span id={messageId}>{message}</span>
+      <button
+        type="button"
+        onClick={onClose}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          color: 'white',
+          fontSize: '1.5rem',
+          cursor: 'pointer',
+          padding: 0,
+          lineHeight: 1,
+        }}
+        aria-label="Dismiss"
+      >
+        ×
+      </button>
+    </div>
+  )
 
-  return (
-    <div ref={rootRef} style={{ ...baseStyle, ...positionStyle }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
-        <span>{message}</span>
-        <button
-          onClick={onClose}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            color: 'white',
-            fontSize: '1.5rem',
-            cursor: 'pointer',
-            padding: 0,
-            lineHeight: 1,
-          }}
-        >
-          ×
-        </button>
-      </div>
-      <style>{`
+  const keyframes = `
         @keyframes slideIn {
           from {
             transform: translateX(100%);
@@ -163,7 +167,81 @@ export function Toast({ message, type = 'info', duration = 5000, anchor, onClose
             opacity: 1;
           }
         }
-      `}</style>
+        @keyframes toastCenterIn {
+          from {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.96);
+          }
+          to {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+          }
+        }
+      `
+
+  if (anchor) {
+    const positionStyle = {
+      position: 'fixed' as const,
+      left: anchoredPos?.left ?? 0,
+      top: anchoredPos?.top ?? 0,
+      zIndex: Z_CORNER,
+      animation: 'slideInAnchored 0.25s ease-out',
+    }
+    return (
+      <div ref={rootRef} style={{ ...cardStyleBase, ...positionStyle }}>
+        {body}
+        <style>{keyframes}</style>
+      </div>
+    )
+  }
+
+  if (placement === 'center') {
+    return (
+      <>
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.38)',
+            zIndex: Z_CENTER_BACKDROP,
+          }}
+          onClick={onClose}
+          aria-hidden
+        />
+        <div
+          ref={rootRef}
+          role="alertdialog"
+          aria-modal="true"
+          aria-describedby={messageId}
+          style={{
+            ...cardStyleBase,
+            position: 'fixed',
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: Z_CENTER_CARD,
+            animation: 'toastCenterIn 0.22s ease-out',
+          }}
+        >
+          {body}
+          <style>{keyframes}</style>
+        </div>
+      </>
+    )
+  }
+
+  const cornerStyle = {
+    position: 'fixed' as const,
+    top: '1rem',
+    right: '1rem',
+    zIndex: Z_CORNER,
+    animation: 'slideIn 0.3s ease-out',
+  }
+
+  return (
+    <div ref={rootRef} style={{ ...cardStyleBase, ...cornerStyle }}>
+      {body}
+      <style>{keyframes}</style>
     </div>
   )
 }

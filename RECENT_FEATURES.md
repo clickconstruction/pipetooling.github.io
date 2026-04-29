@@ -12,12 +12,18 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.413 → v2.4"
+version_range: "v2.415 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.415)"
+    line: ~1364
+    description: "Product copy — Customer Files / Customer Pictures (was Job Files / Job Pictures): JobFormModal, DetailJobModal, EditCustomerForm, Jobs/Quickfill Stages alerts, Quickfill section label, Dashboard link, Documents job ledger; docs"
+  - name: "Latest Version (v2.414)"
+    line: ~1380
+    description: "Dashboard — Job pictures link under address on Assigned Jobs, Team Ready to Bill, Superintendent Jobs (job_pictures_link on list_assigned_jobs_for_dashboard RPCs; DashboardJobPicturesLinkRow; openInExternalBrowser)"
   - name: "Latest Version (v2.413)"
-    line: ~1356
-    description: "Quickfill — Stages: customer & job pictures (no-customer-stages): working without job_pictures_link + no customer; union outstanding count; buildStagesWorkingJobsWithoutPicturesList; QuickfillStagesNoCustomerSection + StagesAlertJobListModal"
+    line: ~1395
+    description: "Quickfill — Stages alerts (no-customer-stages): working without job_pictures_link + no customer; union metric; buildStagesWorkingJobsWithoutPicturesList; QuickfillStagesNoCustomerSection + StagesAlertJobListModal (UI labels updated v2.415)"
   - name: "Latest Version (v2.412)"
     line: ~1371
     description: "Materials PO Generator ledger (material_po_generator_entries); Supply Houses invoice PO # vs ledger warning (house or null supply_house_id); parsePoGeneratorCodeFromPurchaseOrderName dash-suffix rule"
@@ -1066,7 +1072,9 @@ when_to_read:
 ---
 
 ## Table of Contents
-**New:** [v2.413 — **Quickfill** — **Stages: customer & job pictures** (`no-customer-stages`): **No job pictures (n)** for **working** jobs with empty **`job_pictures_link`** (**`buildStagesWorkingJobsWithoutPicturesList`**, **`StagesAlertJobListModal`**, **`stages-no-job-pictures-quickfill-modal-title`**); **`Open list`** no-customer (**`StagesNoCustomerJobsModal`**); **union** job-id metric + **`sectionWouldRenderOnPage`**; **[`useQuickfillStagesJobsWithoutCustomer`](src/hooks/useQuickfillStagesJobsWithoutCustomer.ts)**, **[`QuickfillStagesNoCustomerSection`](src/components/quickfill/QuickfillStagesNoCustomerSection.tsx)**](#latest-updates-v2413)
+**New:** [v2.415 — **Product copy** — **Customer Files** / **Customer Pictures** (replaces **Job Files** / **Job Pictures**): Edit Job, Job Detail, Edit Customer, **Jobs** / **Quickfill** Stages pipeline (**No customer pictures**), Quickfill **`Stages: customer link & customer pictures`**, Dashboard **Open customer pictures**, **Documents** job **Docs**; **`job_pictures_link`** / column names unchanged](#latest-updates-v2415)
+**New:** [v2.414 — **Dashboard** — **Job pictures** under job **address** on **Assigned Jobs**, **Team Ready to Bill**, and **Superintendent Jobs**: **`jobs_ledger.job_pictures_link`** on **`list_assigned_jobs_for_dashboard`**, **`list_ready_to_bill_assigned_jobs_for_dashboard`**, **`list_superintendent_jobs_for_dashboard`** ([**`20260429181022_dashboard_list_jobs_job_pictures_link.sql`**](supabase/migrations/20260429181022_dashboard_list_jobs_job_pictures_link.sql)); images **`DashboardJobPicturesLinkRow`** + **`openInExternalBrowser`** ([**`Dashboard.tsx`**](src/pages/Dashboard.tsx))](#latest-updates-v2414)
+**New:** [v2.413 — **Quickfill** — **Stages: customer link & customer pictures** (`no-customer-stages`): **No customer pictures (n)** for **working** jobs with empty **`job_pictures_link`** (**`buildStagesWorkingJobsWithoutPicturesList`**, **`StagesAlertJobListModal`**, **`stages-no-job-pictures-quickfill-modal-title`**); **`Open list`** no-customer (**`StagesNoCustomerJobsModal`**); **union** job-id metric + **`sectionWouldRenderOnPage`**; **[`useQuickfillStagesJobsWithoutCustomer`](src/hooks/useQuickfillStagesJobsWithoutCustomer.ts)**, **[`QuickfillStagesNoCustomerSection`](src/components/quickfill/QuickfillStagesNoCustomerSection.tsx)**](#latest-updates-v2413)
 **New:** [v2.412 — **Materials** — **PO Generator** tab + ledger (**`material_po_generator_entries`**, **`insert_material_po_generator_entry`**); **Supply Houses** — invoice **Purchase Order #** warning vs ledger (**`SupplyHousesTab`**, **`parsePoGeneratorCodeFromPurchaseOrderName`** — **10000–99999**, not `NNNNN-N` shop suffix; ledger codes for **this house** **or** **null** **`supply_house_id`**)](#latest-updates-v2412)
 **New:** [v2.411 — **Dashboard** — **Leave Report** schedule nag (**[`leaveReportScheduleReminder.ts`](src/lib/leaveReportScheduleReminder.ts)**; **12-hour** silence via **`my_last_report_at`**); **yellow** bell on **Leave Report**; **`helpers`** — no **Assigned Jobs** **Send to Billing** (**`update_job_status`**; migrations **`20270506120000`**, **`20270507120000`**)](#latest-updates-v2411)
 **New:** [v2.410 — **Product copy** — **`user_role`** enum value stays **`helpers`**; UI shows **Helper** (singular) — [**`displayLabelForUserRole`](src/lib/userRoleDisplay.ts)**, **[`ACCESS_CONTROL.md`](ACCESS_CONTROL.md)** **`helpers (Helper)`**, People (**Helper (with account)**), Settings matrix + dropdowns + report copy (**Helper users**)](#latest-updates-v2410)
@@ -1167,7 +1175,7 @@ when_to_read:
 **New:** [v2.282 — Bill Customer: Stripe invoice + share panel; webhook lifecycle](#latest-updates-v2282)
 **New:** [v2.281 — Dashboard: copy day job mix (Mix); My Time preview from Clock (punch locked)](#latest-updates-v2281)
 **New:** [v2.280 — Bids Rough takeoffs: catalog unit price, source row, reset / save to catalog](#latest-updates-v2280)
-**New:** [v2.278 — Job Detail: Job Files/Plans when set; numbered Specific Work](#latest-updates-v2278)
+**New:** [v2.278 — Job Detail: Customer Files/Plans when set; numbered Specific Work](#latest-updates-v2278)
 **New:** [v2.277 — Job Detail: stacked Edit Job, materials accordions, Mercury Card column, Other job charges](#latest-updates-v2277)
 **New:** [v2.276 — DetailJobModal: three dates, pipeline, 640px layout, notes chrome](#latest-updates-v2276)
 **New:** [v2.273 — DetailJobModal: Scheduled block weekday in title](#latest-updates-v2273)
@@ -1357,18 +1365,40 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
+## Latest Updates (v2.415)
+
+**Date**: 2026-04-29
+
+### **Product copy** — **Customer Files** / **Customer Pictures**
+
+- User-facing labels **Job Files** and **Job Pictures** are **Customer Files** and **Customer Pictures** (data still in **`google_drive_link`** / **`job_pictures_link`** on **`jobs_ledger`** and **`customers`**).
+- **UI**: **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)**, **[`DetailJobModal.tsx`](src/components/jobs/DetailJobModal.tsx)**, **[`EditCustomerForm.tsx`](src/components/EditCustomerForm.tsx)** (**Customer Files** replaces *Customer Folder* on customer form for parity), **Jobs** / **Quickfill** Stages pipeline (**No customer pictures**, modals), **[`Quickfill.tsx`](src/pages/Quickfill.tsx)** section **Stages: customer link & customer pictures**, **[`Dashboard.tsx`](src/pages/Dashboard.tsx)** (**Open customer pictures**), **[`Documents.tsx`](src/pages/Documents.tsx)** (**Add** / **Open customer files** affordances on job ledger).
+
+---
+
+## Latest Updates (v2.414)
+
+**Date**: 2026-04-29
+
+### **Dashboard** — **Customer pictures** link under address
+
+- **`jobs_ledger.job_pictures_link`** is returned by **`list_assigned_jobs_for_dashboard`**, **`list_ready_to_bill_assigned_jobs_for_dashboard`**, and **`list_superintendent_jobs_for_dashboard`** ([**`20260429181022_dashboard_list_jobs_job_pictures_link.sql`**](supabase/migrations/20260429181022_dashboard_list_jobs_job_pictures_link.sql)).
+- When non-empty after trim, job cards show an **images** icon **below** the Maps **address** row; click uses **`openInExternalBrowser`** (same pattern as **Google Drive** / **Job Plans**). **UI**: **`DashboardJobPicturesLinkRow`** in [**`Dashboard.tsx`**](src/pages/Dashboard.tsx) on **Assigned Jobs**, **Team Ready to Bill**, and **Superintendent Jobs**. (**v2.415**: link **title** / **`aria-label`** say **customer pictures**.)
+
+---
+
 ## Latest Updates (v2.413)
 
 **Date**: 2026-04-29
 
-### **Quickfill** — **Stages: customer & job pictures** (`no-customer-stages`)
+### **Quickfill** — **Stages: customer link & customer pictures** (`no-customer-stages`)
 
-- **Section label** (**`SECTIONS`** in **[`Quickfill.tsx`](src/pages/Quickfill.tsx)**): **Stages: customer & job pictures** (was *No linked customer (Stages)*).
+- **Section label** (**`SECTIONS`** in **[`Quickfill.tsx`](src/pages/Quickfill.tsx)**): **Stages: customer link & customer pictures** (was *No linked customer (Stages)*, then *Stages: customer & job pictures* until **v2.415**).
 - **Same scope as Jobs → Stages with an empty search**: **[`useQuickfillStagesJobsWithoutCustomer`](src/hooks/useQuickfillStagesJobsWithoutCustomer.ts)** keeps **`jobsWithoutCustomer`** via **[`buildStagesJobsWithoutCustomerList`](src/lib/jobsStagesBoard.ts)** and adds **`workingJobsWithoutPictures`** via **[`buildStagesWorkingJobsWithoutPicturesList`](src/lib/jobsStagesBoard.ts)** (**[`stagesWorkingJobsWithoutPicturesFromWorking`](src/lib/jobsStagesBoard.ts)** on the board **`working`** list).
-- **UI** (**[`QuickfillStagesNoCustomerSection.tsx`](src/components/quickfill/QuickfillStagesNoCustomerSection.tsx)**): red-outline **Open list (n)** when there are jobs without a linked customer; **No job pictures (n)** when there are **working** jobs with no **`jobs_ledger.job_pictures_link`** (after trim). Row click → **Edit Job** (**`JobFormModalContext`**), **`runFetchJobs`** on save; **`jobsListBusy`** toast guard.
+- **UI** (**[`QuickfillStagesNoCustomerSection.tsx`](src/components/quickfill/QuickfillStagesNoCustomerSection.tsx)**): red-outline **Open list (n)** when there are jobs without a linked customer; **No customer pictures (n)** when there are **working** jobs with no **`jobs_ledger.job_pictures_link`** (after trim). Row click → **Edit Job** (**`JobFormModalContext`**), **`runFetchJobs`** on save; **`jobsListBusy`** toast guard.
 - **Modals**: **[`StagesNoCustomerJobsModal`](src/components/jobs/StagesNoCustomerJobsModal.tsx)** + **[`StagesAlertJobListModal`](src/components/jobs/StagesAlertJobListModal.tsx)** with **`titleId`** **`stages-no-job-pictures-quickfill-modal-title`** (distinct from Jobs).
 - **Metrics / visibility**: **`quickfillStagesAlertsUnionCount`** = distinct job **`id`**s across both lists (no double-count); **`useReportQuickfillSectionMetric`** and **`sectionWouldRenderOnPage`** use **`fetchEnabled && !loading && union > 0`**.
-- **Jobs** → **Stages**: same **No customer** / **No job pictures** pipeline buttons and modals on the top row (**[`Jobs.tsx`](src/pages/Jobs.tsx)**; Jobs modal **`titleId`** **`stages-no-job-pictures-modal-title`**).
+- **Jobs** → **Stages**: same **No customer** / **No customer pictures** pipeline buttons and modals on the top row (**[`Jobs.tsx`](src/pages/Jobs.tsx)**; Jobs modal **`titleId`** **`stages-no-job-pictures-modal-title`**).
 
 ---
 
@@ -2566,7 +2596,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 ### **Documents** (`/documents`) — **Jobs** ledger, **+** add links, search and header layout
 
 - **Tabs** — **Estimates**, **Bid proposals**, **Jobs**, **Upload** (placeholder). URL **`?tab=`**: `estimates`, `bid-proposals`, `jobs`, `upload` ([`documentsPageTab.ts`](src/lib/documentsPageTab.ts); dashboard pins: [`pinnedTabs.ts`](src/lib/pinnedTabs.ts)).
-- **Ledgers** — Shared columns **Docs | Title | Job | Customer | Status | Total**. **Estimates**: doc icons + modals for **sent** / **customer_accepted**; **Bid proposals**: submission + project folder links, service-type chip, lost bids hidden unless searching; **Jobs**: `jobs_ledger` list, **Job Files** from **`google_drive_link`**, title links to **`/jobs?edit=`**, status via [`jobsLedgerStatusPipeline.ts`](src/lib/jobsLedgerStatusPipeline.ts) ([`Documents.tsx`](src/pages/Documents.tsx)).
+- **Ledgers** — Shared columns **Docs | Title | Job | Customer | Status | Total**. **Estimates**: doc icons + modals for **sent** / **customer_accepted**; **Bid proposals**: submission + project folder links, service-type chip, lost bids hidden unless searching; **Jobs**: `jobs_ledger` list, **Customer Files** from **`google_drive_link`**, title links to **`/jobs?edit=`**, status via [`jobsLedgerStatusPipeline.ts`](src/lib/jobsLedgerStatusPipeline.ts) ([`Documents.tsx`](src/pages/Documents.tsx)).
 - **Docs “+”** — When a link is missing, soft **+** opens [`DocumentsAddDriveLinkModal`](src/components/documents/DocumentsAddDriveLinkModal.tsx): https URL, **Check link** ([`checkGoogleDriveAttachmentUrl`](src/lib/checkGoogleDriveAttachmentUrl.ts) → Edge **`check-estimate-attachment-url`**), **Save** updates **`estimates.customer_attachment_url`** (**draft** only, with row check), **`bids.bid_submission_link`** / **`drive_link`**, or **`jobs_ledger.google_drive_link`**.
 - **Search** — Full width of the page column; no visible **Search** label (`aria-label` on inputs).
 - **Header** — No visible **Documents** title; visually hidden **`h1`**; reduced top padding so tabs sit just under the app nav ([`Documents.tsx`](src/pages/Documents.tsx)).
@@ -3034,9 +3064,9 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 
 **Date**: 2026-04-07
 
-### DetailJobModal — **Job Files** / **Job Plans** when links exist; numbered **Specific Work**
+### DetailJobModal — **Customer Files** / **Job Plans** when links exist; numbered **Specific Work**
 
-- **`DetailJobModalFilesPlansRow`** in **[`DetailJobModal.tsx`](src/components/jobs/DetailJobModal.tsx)**: the whole row is omitted when both **`google_drive_link`** and **`job_plans_link`** are empty after trim; **Job Files** or **Job Plans** appears only when that link is set.
+- **`DetailJobModalFilesPlansRow`** in **[`DetailJobModal.tsx`](src/components/jobs/DetailJobModal.tsx)**: the whole row is omitted when both **`google_drive_link`** and **`job_plans_link`** are empty after trim; **Customer Files** or **Job Plans** appears only when that link is set.
 - **Specific Work (Fixtures / Tie-ins / Repair)**: each fixture line is **`[1]`**, **`[2]`, …** then **name × count** (plain lines; previous bordered cards removed). UI section title includes **Repair**.
 
 ---
@@ -3064,7 +3094,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 - **Friendly date lines** + **title** tooltips: [`formatJobDetailModalDateYmd.ts`](src/lib/formatJobDetailModalDateYmd.ts) (`formatJobDetailModalDateFromYmd`, `formatJobDetailModalDateTitleFromYmd`); **Last bill date** hover merges ISO + activity detail via **`jobDetailBillingHoverTitle`**.
 - **Layout**: **`useNarrowViewport640`** — at ~640px and below, the **3-date** band stacks vertically (**`DetailRow`** **`softBox`**); wider viewports use a **3-column** date grid. **Status** is centered below the dates; **Job Total** sits below **Specific Work (Fixtures / Tie-ins / Repair)** (full detail) or below **Materials cost** (limited snapshot).
 - **Status**: **[`JobLedgerStatusPipeline`](src/components/jobs/JobLedgerStatusPipeline.tsx)** + **[`jobsLedgerStatusPipeline.ts`](src/lib/jobsLedgerStatusPipeline.ts)** — **Working → Ready to bill → Billed → Paid**; current step emphasized (**`aria-current`**). Used for both full and limited job rows.
-- **Lists**: section headings **Other job charges** and **Specific Work (Fixtures / Tie-ins / Repair)** (full load). **Job Files** / **Job Plans** visibility + numbered fixtures: [v2.278](#latest-updates-v2278). **Materials cost** rows + **Edit job** stacking: [v2.277](#latest-updates-v2277).
+- **Lists**: section headings **Other job charges** and **Specific Work (Fixtures / Tie-ins / Repair)** (full load). **Customer Files** / **Job Plans** visibility + numbered fixtures: [v2.278](#latest-updates-v2278). **Materials cost** rows + **Edit job** stacking: [v2.277](#latest-updates-v2277).
 - **Edit job**: gear control left of **Close** — see [v2.277](#latest-updates-v2277) (**`JobFormModal`** stacked above Detail; optional **`onEditJobSaved`**).
 - **Thread notes**: **`JobThreadNotesPanel`** with **`showSectionTitle={false}`**, **`showEmptyPlaceholder={false}`**, **`showComposerLabel={false}`** — chrome-light in Detail (see [v2.264](#latest-updates-v2264) for composer + Realtime). Detail modal backdrop **`z-index` 1004**.
 

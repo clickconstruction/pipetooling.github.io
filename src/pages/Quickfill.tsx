@@ -59,7 +59,7 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-prospects', sectionId: 'prospects', label: 'Prospects' },
   { id: 'quickfill-supply-houses', sectionId: 'supply-houses', label: 'Supply Houses' },
   { id: 'quickfill-jobs-billing', sectionId: 'jobs-billing', label: 'Jobs Billing' },
-  { id: 'quickfill-no-customer-stages', sectionId: 'no-customer-stages', label: 'Stages: customer & job pictures' },
+  { id: 'quickfill-no-customer-stages', sectionId: 'no-customer-stages', label: 'Stages: customer link & customer pictures' },
   { id: 'quickfill-dispatch-inbox', sectionId: 'dispatch-inbox', label: 'Dispatch inbox' },
   { id: 'quickfill-schedule', sectionId: 'schedule', label: 'Schedule' },
   {
@@ -1053,7 +1053,7 @@ function QuickfillPage() {
             onMarkUpToDate={() => void markSectionUpToDate('no-customer-stages')}
             onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'no-customer-stages']))}
             onOpenHistory={() =>
-              setMarkHistoryModal({ sectionId: 'no-customer-stages', label: 'Stages: customer & job pictures' })
+              setMarkHistoryModal({ sectionId: 'no-customer-stages', label: 'Stages: customer link & customer pictures' })
             }
           >
             <QuickfillStagesNoCustomerSection

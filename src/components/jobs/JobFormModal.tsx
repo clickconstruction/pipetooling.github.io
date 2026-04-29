@@ -3171,7 +3171,7 @@ export default function JobFormModal({
                 </div>
                 <div style={{ marginBottom: 0 }}>
                   <label htmlFor="job-form-customer-job-files" style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>
-                    Job Files
+                    Customer Files
                   </label>
                   <input
                     id="job-form-customer-job-files"
@@ -3197,7 +3197,7 @@ export default function JobFormModal({
                 </div>
                 <div style={{ marginBottom: 0 }}>
                   <label htmlFor="job-form-customer-job-pictures" style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>
-                    Job Pictures
+                    Customer Pictures
                   </label>
                   <input
                     id="job-form-customer-job-pictures"

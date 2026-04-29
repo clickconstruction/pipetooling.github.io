@@ -367,7 +367,7 @@ export function stagesJobsWithoutCustomerFromFiltered(filtered: JobWithDetails[]
   return [...list].sort(sortStagesJobsByHcpThenName)
 }
 
-/** Working-stage jobs (after Stages search) with no Job Pictures URL set. */
+/** Working-stage jobs (after Stages search) with no Customer Pictures URL set. */
 export function stagesWorkingJobsWithoutPicturesFromWorking(working: JobWithDetails[]): JobWithDetails[] {
   const list = working.filter((j) => !jobLedgerJobPicturesLinkDefined(j.job_pictures_link))
   return [...list].sort(sortStagesJobsByHcpThenName)
@@ -383,7 +383,7 @@ export function buildStagesJobsWithoutCustomerList(
   return stagesJobsWithoutCustomerFromFiltered(filtered)
 }
 
-/** Same list as Jobs → Stages → "No job pictures" for working jobs with empty `job_pictures_link`. */
+/** Same list as Jobs → Stages → "No customer pictures" for working jobs with empty `job_pictures_link`. */
 export function buildStagesWorkingJobsWithoutPicturesList(
   jobs: JobWithDetails[],
   stagesSearchQuery: string,

@@ -60,7 +60,7 @@ export function QuickfillStagesNoCustomerSection({
     <>
       <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#374151' }}>
         Same data as Jobs → Stages with an empty search: jobs missing a <strong>linked customer</strong>, and{' '}
-        <strong>working</strong> jobs with no <strong>Job Pictures</strong> link. Open a job to fix either.
+        <strong>working</strong> jobs with no <strong>Customer Pictures</strong> link. Open a job to fix either.
       </p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
         {jobsWithoutCustomer.length > 0 ? (
@@ -87,8 +87,8 @@ export function QuickfillStagesNoCustomerSection({
             onClick={() => setPicturesModalOpen(true)}
             onMouseEnter={() => setPicturesBtnHover(true)}
             onMouseLeave={() => setPicturesBtnHover(false)}
-            title="List working jobs missing Job Pictures link"
-            aria-label={`Working jobs with no job pictures link: ${workingJobsWithoutPictures.length} jobs. Open list.`}
+            title="List working jobs missing Customer Pictures link"
+            aria-label={`Working jobs with no customer pictures link: ${workingJobsWithoutPictures.length} jobs. Open list.`}
             style={{
               ...btnStyleBase,
               border: `1px solid ${picturesBtnHover ? '#f87171' : '#fecaca'}`,
@@ -96,7 +96,7 @@ export function QuickfillStagesNoCustomerSection({
               color: picturesBtnHover ? '#991b1b' : '#b91c1c',
             }}
           >
-            No job pictures ({workingJobsWithoutPictures.length})
+            No customer pictures ({workingJobsWithoutPictures.length})
           </button>
         ) : null}
       </div>
@@ -112,8 +112,8 @@ export function QuickfillStagesNoCustomerSection({
         jobs={workingJobsWithoutPictures}
         onSelectJob={openEditJobFromModal}
         titleId="stages-no-job-pictures-quickfill-modal-title"
-        title="Working jobs without Job Pictures"
-        description="Working jobs in the current Stages search with no Job Pictures URL set. Open Edit Job to add a link."
+        title="Working jobs without Customer Pictures"
+        description="Working jobs in the current Stages search with no Customer Pictures URL set. Open Edit Job to add a link."
       />
     </>
   )

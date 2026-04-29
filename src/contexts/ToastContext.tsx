@@ -1,23 +1,42 @@
 import { createContext, useCallback, useContext, useMemo, useState } from 'react'
-import { Toast, type ToastAnchor } from '../components/Toast'
+import { Toast, type ToastAnchor, type ToastPlacement } from '../components/Toast'
 
 type ToastType = 'info' | 'warning' | 'error' | 'success'
 
 type ToastContextValue = {
-  showToast: (message: string, type?: ToastType, durationMs?: number, anchor?: ToastAnchor) => void
+  showToast: (
+    message: string,
+    type?: ToastType,
+    durationMs?: number,
+    anchor?: ToastAnchor,
+    placement?: ToastPlacement,
+  ) => void
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null)
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<
-    Array<{ id: number; message: string; type: ToastType; durationMs?: number; anchor?: ToastAnchor }>
+    Array<{
+      id: number
+      message: string
+      type: ToastType
+      durationMs?: number
+      anchor?: ToastAnchor
+      placement?: ToastPlacement
+    }>
   >([])
 
   const showToast = useCallback(
-    (message: string, type: ToastType = 'info', durationMs?: number, anchor?: ToastAnchor) => {
+    (
+      message: string,
+      type: ToastType = 'info',
+      durationMs?: number,
+      anchor?: ToastAnchor,
+      placement: ToastPlacement = 'corner',
+    ) => {
       const id = Date.now()
-      setToasts((prev) => [...prev, { id, message, type, durationMs, anchor }])
+      setToasts((prev) => [...prev, { id, message, type, durationMs, anchor, placement }])
     },
     [],
   )
@@ -38,6 +57,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           type={toast.type}
           duration={toast.durationMs}
           anchor={toast.anchor}
+          placement={toast.placement ?? 'corner'}
           onClose={() => removeToast(toast.id)}
         />
       ))}

@@ -703,7 +703,7 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
       <DocumentsAddDriveLinkModal
         open={addDriveLinkJob != null}
         onClose={() => setAddDriveLinkJob(null)}
-        title="Add job files link"
+        title="Add customer files link"
         description={addDriveLinkJob?.title ?? null}
         bidSaveColumn={null}
         bidNeedsTargetChoice={false}
@@ -774,7 +774,7 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
                           {hasJobFiles ? (
                             <button
                               type="button"
-                              aria-label="Open job files (Google Drive)"
+                              aria-label="Open customer files (Google Drive)"
                               style={docsIconButtonStyle}
                               onClick={() => openInExternalBrowser(filesLink)}
                             >
@@ -784,8 +784,8 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
                           {!hasJobFiles ? (
                             <button
                               type="button"
-                              aria-label="Add job files link"
-                              title="Add job files link"
+                              aria-label="Add customer files link"
+                              title="Add customer files link"
                               style={docsAddLinkButtonStyle}
                               onClick={() =>
                                 setAddDriveLinkJob({

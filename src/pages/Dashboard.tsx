@@ -1,4 +1,14 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEventHandler,
+} from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { upsertBidNotesReadWatermark } from '../lib/userBidNotesReadState'
@@ -416,6 +426,7 @@ type DashboardTeamAssignedJobRow = {
   job_address: string
   google_drive_link: string | null
   job_plans_link: string | null
+  job_pictures_link?: string | null
   revenue: number | null
   created_at: string | null
   last_report_at?: string | null
@@ -449,7 +460,7 @@ function canLeaveDashboardJobReport(role: string | null | undefined): boolean {
 
 function DashboardLeaveReportButton(props: {
   showReminder: boolean
-  onClick: () => void
+  onClick: MouseEventHandler<HTMLButtonElement>
   buttonTitle?: string
 }) {
   const { showReminder, onClick, buttonTitle } = props
@@ -519,6 +530,76 @@ function subcontractorAssignedJobStageDisplay(
       line: 'Stage: —',
       title: 'No step is currently in progress for this project',
     }
+  }
+  return null
+}
+
+const MY_SCHEDULE_MISSING_JOB_PICTURES_TOAST =
+  'Contact Dispatch and ask them to link a folder for this customer to be able to upload images.'
+const MY_SCHEDULE_MISSING_JOB_PICTURES_TOAST_MS = 5000
+
+function DashboardJobPicturesLinkRow({
+  jobPicturesLink,
+  layout = 'stacked',
+  onMissingClick,
+}: {
+  jobPicturesLink: string | null | undefined
+  layout?: 'stacked' | 'inline'
+  onMissingClick?: () => void
+}) {
+  const url = jobPicturesLink?.trim()
+  const glyph = (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
+      <path d="M128 160C128 124.7 156.7 96 192 96L512 96C547.3 96 576 124.7 576 160L576 416C576 451.3 547.3 480 512 480L192 480C156.7 480 128 451.3 128 416L128 160zM56 192C69.3 192 80 202.7 80 216L80 512C80 520.8 87.2 528 96 528L456 528C469.3 528 480 538.7 480 552C480 565.3 469.3 576 456 576L96 576C60.7 576 32 547.3 32 512L32 216C32 202.7 42.7 192 56 192zM224 224C241.7 224 256 209.7 256 192C256 174.3 241.7 160 224 160C206.3 160 192 174.3 192 192C192 209.7 206.3 224 224 224zM420.5 235.5C416.1 228.4 408.4 224 400 224C391.6 224 383.9 228.4 379.5 235.5L323.2 327.6L298.7 297C294.1 291.3 287.3 288 280 288C272.7 288 265.8 291.3 261.3 297L197.3 377C191.5 384.2 190.4 394.1 194.4 402.4C198.4 410.7 206.8 416 216 416L488 416C496.7 416 504.7 411.3 508.9 403.7C513.1 396.1 513 386.9 508.4 379.4L420.4 235.4z" />
+    </svg>
+  )
+  if (url) {
+    const link = (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Open customer pictures"
+        aria-label="Open customer pictures"
+        onClick={(e) => {
+          e.stopPropagation()
+          e.preventDefault()
+          openInExternalBrowser(url)
+        }}
+        style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', textDecoration: 'none' }}
+      >
+        {/* Font Awesome Free 7.x — images (OFL) */}
+        {glyph}
+      </a>
+    )
+    if (layout === 'inline') return link
+    return <div style={{ marginTop: 6 }}>{link}</div>
+  }
+  if (onMissingClick) {
+    const missingBtn = (
+      <button
+        type="button"
+        title="No customer photos link — tap for instructions"
+        aria-label="No customer photos link — tap for instructions"
+        onClick={(e) => {
+          e.stopPropagation()
+          onMissingClick()
+        }}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          padding: 0,
+          border: 'none',
+          background: 'transparent',
+          cursor: 'pointer',
+          color: '#dc2626',
+        }}
+      >
+        {glyph}
+      </button>
+    )
+    if (layout === 'inline') return missingBtn
+    return <div style={{ marginTop: 6 }}>{missingBtn}</div>
   }
   return null
 }
@@ -5463,22 +5544,71 @@ export default function Dashboard() {
                                 cursor: 'pointer',
                               }}
                             >
-                              <div style={{ fontWeight: 500 }}>{rowLabel}</div>
-                              <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                                {scheduleFormatWindow(b.time_start, b.time_end)}
-                              </div>
-                              {b.note?.trim() ? (
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'flex-start',
+                                  justifyContent: 'space-between',
+                                  gap: '0.75rem',
+                                }}
+                              >
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontWeight: 500 }}>{rowLabel}</div>
+                                  <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                                    {scheduleFormatWindow(b.time_start, b.time_end)}
+                                  </div>
+                                  {b.note?.trim() ? (
+                                    <div
+                                      style={{
+                                        fontSize: '0.8125rem',
+                                        color: '#9ca3af',
+                                        marginTop: '0.35rem',
+                                        wordBreak: 'break-word',
+                                      }}
+                                    >
+                                      {b.note.trim()}
+                                    </div>
+                                  ) : null}
+                                </div>
                                 <div
                                   style={{
-                                    fontSize: '0.8125rem',
-                                    color: '#9ca3af',
-                                    marginTop: '0.35rem',
-                                    wordBreak: 'break-word',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                    flexShrink: 0,
                                   }}
                                 >
-                                  {b.note.trim()}
+                                  <DashboardJobPicturesLinkRow
+                                    layout="inline"
+                                    jobPicturesLink={fromAssigned?.job_pictures_link}
+                                    onMissingClick={() =>
+                                      showToast(
+                                        MY_SCHEDULE_MISSING_JOB_PICTURES_TOAST,
+                                        'error',
+                                        MY_SCHEDULE_MISSING_JOB_PICTURES_TOAST_MS,
+                                        undefined,
+                                        'center',
+                                      )
+                                    }
+                                  />
+                                  {canLeaveDashboardJobReport(role) ? (
+                                    <DashboardLeaveReportButton
+                                      showReminder={
+                                        fromAssigned ? leaveReportReminderForJobRow(fromAssigned) : false
+                                      }
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setLeaveReportJob({
+                                          id: b.job_id,
+                                          hcpNumber: fromAssigned?.hcp_number ?? '—',
+                                          jobName: fromAssigned?.job_name ?? rowLabel,
+                                          jobAddress: fromAssigned?.job_address ?? '—',
+                                        })
+                                      }}
+                                    />
+                                  ) : null}
                                 </div>
-                              ) : null}
+                              </div>
                             </li>
                           )
                         })}
@@ -6900,6 +7030,7 @@ export default function Dashboard() {
                           '—'
                         )}
                       </div>
+                      <DashboardJobPicturesLinkRow jobPicturesLink={j.job_pictures_link} />
                       {isSubcontractorLikeRole(role) && (
                         <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
                           Job: {labelJobsLedgerStatusForDashboard(j.status)}
@@ -7197,6 +7328,7 @@ export default function Dashboard() {
                           '—'
                         )}
                       </div>
+                      <DashboardJobPicturesLinkRow jobPicturesLink={j.job_pictures_link} />
                       {isSubcontractorLikeRole(role) && (() => {
                         const d = subcontractorAssignedJobStageDisplay(j)
                         if (!d) return null
@@ -7538,6 +7670,7 @@ export default function Dashboard() {
                               '—'
                             )}
                           </div>
+                          <DashboardJobPicturesLinkRow jobPicturesLink={j.job_pictures_link} />
                         </div>
                         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
                           {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (

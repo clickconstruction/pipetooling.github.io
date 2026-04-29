@@ -9151,6 +9151,7 @@ export type Database = {
           in_progress_step_id: string
           job_address: string
           job_name: string
+          job_pictures_link: string
           job_plans_link: string
           last_clock_activity_at: string
           last_job_activity_at: string
@@ -9286,6 +9287,7 @@ export type Database = {
           id: string
           job_address: string
           job_name: string
+          job_pictures_link: string
           job_plans_link: string
           last_clock_activity_at: string
           last_job_activity_at: string
@@ -9385,6 +9387,7 @@ export type Database = {
           in_progress_step_id: string
           job_address: string
           job_name: string
+          job_pictures_link: string
           job_plans_link: string
           my_last_report_at: string
           project_id: string

@@ -6164,8 +6164,8 @@ ${totalsHtml}
                     onClick={() => setStagesNoJobPicturesModalOpen(true)}
                     onMouseEnter={() => setStagesNoJobPicturesBtnHover(true)}
                     onMouseLeave={() => setStagesNoJobPicturesBtnHover(false)}
-                    title="List working jobs missing Job Pictures link"
-                    aria-label={`Working jobs with no job pictures link: ${stagesWorkingJobsWithoutPictures.length} jobs. Open list.`}
+                    title="List working jobs missing Customer Pictures link"
+                    aria-label={`Working jobs with no customer pictures link: ${stagesWorkingJobsWithoutPictures.length} jobs. Open list.`}
                     style={{
                       padding: '0.35rem 0.65rem',
                       fontSize: '0.8125rem',
@@ -6177,7 +6177,7 @@ ${totalsHtml}
                       cursor: 'pointer',
                     }}
                   >
-                    No job pictures ({stagesWorkingJobsWithoutPictures.length})
+                    No customer pictures ({stagesWorkingJobsWithoutPictures.length})
                   </button>
                 ) : null}
               </div>
@@ -6195,8 +6195,8 @@ ${totalsHtml}
             jobs={stagesWorkingJobsWithoutPictures}
             onSelectJob={openStagesNoJobPicturesEditJob}
             titleId="stages-no-job-pictures-modal-title"
-            title="Working jobs without Job Pictures"
-            description="Working jobs in the current Stages search with no Job Pictures URL set. Open Edit Job to add a link."
+            title="Working jobs without Customer Pictures"
+            description="Working jobs in the current Stages search with no Customer Pictures URL set. Open Edit Job to add a link."
           />
           {(jobsListLoading || (jobsListRefreshing && !jobsListLoading)) && (
             <div
