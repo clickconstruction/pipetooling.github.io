@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { Fragment, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { SearchableSelect, type SearchableSelectSelectableOption } from '../components/SearchableSelect'
 import { WriteupsContractsSubTab } from '../components/writeups/WriteupsContractsSubTab'
 import type { WriteupListRow } from '../components/writeups/WriteupEditorModal'
@@ -293,6 +293,23 @@ function costLinesTotal(lines: PersonLicenseCostLine[] | undefined): number {
   return (lines ?? []).reduce((s, l) => s + l.amount, 0)
 }
 
+/** Users tab: email/phone on its own row below the name line at ≤640px. */
+function usersTabContactRowStyle(narrow: boolean): CSSProperties {
+  return narrow
+    ? {
+        display: 'block',
+        fontSize: '0.875rem',
+        color: '#6b7280',
+        marginLeft: 0,
+        marginTop: '0.25rem',
+      }
+    : {
+        fontSize: '0.875rem',
+        color: '#6b7280',
+        marginLeft: '0.5rem',
+      }
+}
+
 export default function People() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { user: authUser, role: authRole } = useAuth()
@@ -374,6 +391,8 @@ export default function People() {
   /** Saving key: `p:${personId}` or `u:${userId}` */
   const [usersTabSavingTagKey, setUsersTabSavingTagKey] = useState<string | null>(null)
   const [usersTabTagDraftByKey, setUsersTabTagDraftByKey] = useState<Record<string, string>>({})
+  const [usersTabSearch, setUsersTabSearch] = useState('')
+  const usersTabSearchQ = useMemo(() => usersTabSearch.trim().toLowerCase(), [usersTabSearch])
   const [activityAccessResolved, setActivityAccessResolved] = useState(false)
   const [isActivityViewer, setIsActivityViewer] = useState(false)
   const [activityViewerGrantSet, setActivityViewerGrantSet] = useState<Set<string>>(() => new Set())
@@ -401,6 +420,12 @@ export default function People() {
   /** Roster name → still has salary_work_schedule_templates row (for pay config modal orphan indicator). */
   const [salaryTemplateByPersonName, setSalaryTemplateByPersonName] = useState<Record<string, boolean>>({})
   const [salariedWorkdaysModalOpen, setSalariedWorkdaysModalOpen] = useState(false)
+
+  useEffect(() => {
+    if (activeTab !== 'users') {
+      setUsersTabSearch('')
+    }
+  }, [activeTab])
 
   useEffect(() => {
     if (activeTab !== 'pay') {
@@ -1922,6 +1947,22 @@ export default function People() {
     }
   }
 
+  function usersTabRowMatchesSearch(
+    fields: {
+      name: string
+      email: string | null | undefined
+      phone: string | null | undefined
+      notes: string | null | undefined
+    },
+    q: string,
+  ): boolean {
+    if (!q) return true
+    const hay = [fields.name ?? '', fields.email ?? '', fields.phone ?? '', fields.notes ?? '']
+      .join('\n')
+      .toLowerCase()
+    return hay.includes(q)
+  }
+
   function byKind(k: PersonKind): ({ source: 'user'; id: string; name: string; email: string | null; phone: string | null; notes: string | null } | ({ source: 'people' } & Person))[] {
     const userRole = KIND_TO_USER_ROLE[k]
     const fromUsers = users
@@ -2507,7 +2548,7 @@ export default function People() {
           borderBottom: '1px solid #e5e7eb',
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center',
+          alignItems: narrowViewport ? 'flex-start' : 'center',
           gap: '0.5rem',
         }}
       >
@@ -2662,7 +2703,7 @@ export default function People() {
               <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.35rem' }}>(account)</span>
             )}
             {(item.email || item.phone) && (
-              <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.5rem' }}>
+              <span style={usersTabContactRowStyle(narrowViewport)}>
                 {item.email && (
                   <a href={`mailto:${item.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
                     {item.email}
@@ -7674,18 +7715,44 @@ export default function People() {
       {activeTab === 'users' && (
         <>
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+          <div style={{ marginBottom: '1.25rem', width: '100%' }}>
+            <input
+              type="search"
+              value={usersTabSearch}
+              onChange={(e) => setUsersTabSearch(e.target.value)}
+              placeholder="Search by name, email, phone…"
+              aria-label="Search people on Users tab"
+              style={{
+                width: '100%',
+                padding: '0.3rem 0.65rem',
+                fontSize: '0.875rem',
+                lineHeight: 1.35,
+                border: '1px solid #d1d5db',
+                borderRadius: 6,
+                boxSizing: 'border-box',
+              }}
+            />
+          </div>
           {USERS_TAB_SECTIONS.map((sec) => {
             if (sec.type === 'dev') {
               if (!isDev) return null
               return (
             <section key="users-tab-devs" style={{ marginBottom: '2rem' }}>
               <h2 style={{ margin: '0 0 0.5rem 0', fontSize: '1.125rem' }}>Devs</h2>
-              {users.filter((u) => u.role === 'dev').length === 0 ? (
-                <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>None yet.</p>
-              ) : (
+              {(() => {
+                const devUsersAll = users.filter((u) => u.role === 'dev')
+                if (devUsersAll.length === 0) {
+                  return <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>None yet.</p>
+                }
+                const devUsersFiltered = usersTabSearchQ
+                  ? devUsersAll.filter((u) => usersTabRowMatchesSearch(u, usersTabSearchQ))
+                  : devUsersAll
+                if (usersTabSearchQ && devUsersFiltered.length === 0) {
+                  return <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No matches.</p>
+                }
+                return (
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                  {users
-                    .filter((u) => u.role === 'dev')
+                  {devUsersFiltered
                     .sort((a, b) => a.name.localeCompare(b.name))
                     .map((u) => (
                       <li
@@ -7695,7 +7762,7 @@ export default function People() {
                           borderBottom: '1px solid #e5e7eb',
                           display: 'flex',
                           justifyContent: 'space-between',
-                          alignItems: 'center',
+                          alignItems: narrowViewport ? 'flex-start' : 'center',
                           gap: '0.5rem',
                         }}
                       >
@@ -7749,7 +7816,7 @@ export default function People() {
                             <span style={{ fontWeight: 500 }}>{u.name}</span>
                             <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.35rem' }}>(account)</span>
                             {(u.email || u.phone) && (
-                              <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.5rem' }}>
+                              <span style={usersTabContactRowStyle(narrowViewport)}>
                                 {u.email && (
                                   <a href={`mailto:${u.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
                                     {u.email}
@@ -7789,7 +7856,8 @@ export default function People() {
                       </li>
                     ))}
                 </ul>
-              )}
+                )
+              })()}
             </section>
               )
             }
@@ -7809,23 +7877,32 @@ export default function People() {
                             const usersTabRosterUlStyle = { listStyle: 'none' as const, padding: 0, margin: 0 }
                             if (k === 'sub') {
                               const subItems = byKind('sub')
-                              const withAccount = subItems.filter((i) => i.source === 'user')
-                              const external = subItems.filter((i) => i.source === 'people')
                               if (subItems.length === 0) {
                                 return <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>None yet.</p>
                               }
+                              const withAccount = subItems.filter((i) => i.source === 'user')
+                              const external = subItems.filter((i) => i.source === 'people')
+                              const withAccountF = usersTabSearchQ
+                                ? withAccount.filter((i) => usersTabRowMatchesSearch(i, usersTabSearchQ))
+                                : withAccount
+                              const externalF = usersTabSearchQ
+                                ? external.filter((i) => usersTabRowMatchesSearch(i, usersTabSearchQ))
+                                : external
+                              if (usersTabSearchQ && withAccountF.length === 0 && externalF.length === 0) {
+                                return <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No matches.</p>
+                              }
                               return (
                                 <>
-                                  {withAccount.length > 0 ? (
+                                  {withAccountF.length > 0 ? (
                                     <ul style={usersTabRosterUlStyle}>
-                                      {withAccount.map((item) => renderUsersTabRosterListItem('sub', item))}
+                                      {withAccountF.map((item) => renderUsersTabRosterListItem('sub', item))}
                                     </ul>
                                   ) : null}
-                                  {external.length > 0 ? (
+                                  {externalF.length > 0 ? (
                                     <>
                                       <h3
                                         style={{
-                                          margin: withAccount.length > 0 ? '1rem 0 0.5rem 0' : '0 0 0.5rem 0',
+                                          margin: withAccountF.length > 0 ? '1rem 0 0.5rem 0' : '0 0 0.5rem 0',
                                           fontSize: '1.125rem',
                                           fontWeight: 700,
                                         }}
@@ -7833,7 +7910,7 @@ export default function People() {
                                         External Subcontractors
                                       </h3>
                                       <ul style={usersTabRosterUlStyle}>
-                                        {external.map((item) => renderUsersTabRosterListItem('sub', item))}
+                                        {externalF.map((item) => renderUsersTabRosterListItem('sub', item))}
                                       </ul>
                                     </>
                                   ) : null}
@@ -7842,23 +7919,32 @@ export default function People() {
                             }
                             if (k === 'helper') {
                               const helperItems = byKind('helper')
-                              const withAccount = helperItems.filter((i) => i.source === 'user')
-                              const external = helperItems.filter((i) => i.source === 'people')
                               if (helperItems.length === 0) {
                                 return <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>None yet.</p>
                               }
+                              const withAccount = helperItems.filter((i) => i.source === 'user')
+                              const external = helperItems.filter((i) => i.source === 'people')
+                              const withAccountF = usersTabSearchQ
+                                ? withAccount.filter((i) => usersTabRowMatchesSearch(i, usersTabSearchQ))
+                                : withAccount
+                              const externalF = usersTabSearchQ
+                                ? external.filter((i) => usersTabRowMatchesSearch(i, usersTabSearchQ))
+                                : external
+                              if (usersTabSearchQ && withAccountF.length === 0 && externalF.length === 0) {
+                                return <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No matches.</p>
+                              }
                               return (
                                 <>
-                                  {withAccount.length > 0 ? (
+                                  {withAccountF.length > 0 ? (
                                     <ul style={usersTabRosterUlStyle}>
-                                      {withAccount.map((item) => renderUsersTabRosterListItem('helper', item))}
+                                      {withAccountF.map((item) => renderUsersTabRosterListItem('helper', item))}
                                     </ul>
                                   ) : null}
-                                  {external.length > 0 ? (
+                                  {externalF.length > 0 ? (
                                     <>
                                       <h3
                                         style={{
-                                          margin: withAccount.length > 0 ? '1rem 0 0.5rem 0' : '0 0 0.5rem 0',
+                                          margin: withAccountF.length > 0 ? '1rem 0 0.5rem 0' : '0 0 0.5rem 0',
                                           fontSize: '1.125rem',
                                           fontWeight: 700,
                                         }}
@@ -7866,19 +7952,26 @@ export default function People() {
                                         External Helpers
                                       </h3>
                                       <ul style={usersTabRosterUlStyle}>
-                                        {external.map((item) => renderUsersTabRosterListItem('helper', item))}
+                                        {externalF.map((item) => renderUsersTabRosterListItem('helper', item))}
                                       </ul>
                                     </>
                                   ) : null}
                                 </>
                               )
                             }
-                            if (byKind(k).length === 0) {
+                            const kindItems = byKind(k)
+                            if (kindItems.length === 0) {
                               return <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>None yet.</p>
+                            }
+                            const kindItemsF = usersTabSearchQ
+                              ? kindItems.filter((i) => usersTabRowMatchesSearch(i, usersTabSearchQ))
+                              : kindItems
+                            if (usersTabSearchQ && kindItemsF.length === 0) {
+                              return <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No matches.</p>
                             }
                             return (
                               <ul style={usersTabRosterUlStyle}>
-                                {byKind(k).map((item) => renderUsersTabRosterListItem(k, item))}
+                                {kindItemsF.map((item) => renderUsersTabRosterListItem(k, item))}
                               </ul>
                             )
                           })()}

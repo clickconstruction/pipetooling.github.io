@@ -12,14 +12,17 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.415 → v2.4"
+version_range: "v2.416 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.416)"
+    line: ~1372
+    description: "Checklist Manage client-side search; People Users narrow email/phone line; Review before clock out optional daily-report checkbox"
   - name: "Latest Version (v2.415)"
-    line: ~1364
+    line: ~1384
     description: "Product copy — Customer Files / Customer Pictures (was Job Files / Job Pictures): JobFormModal, DetailJobModal, EditCustomerForm, Jobs/Quickfill Stages alerts, Quickfill section label, Dashboard link, Documents job ledger; docs"
   - name: "Latest Version (v2.414)"
-    line: ~1380
+    line: ~1395
     description: "Dashboard — Job pictures link under address on Assigned Jobs, Team Ready to Bill, Superintendent Jobs (job_pictures_link on list_assigned_jobs_for_dashboard RPCs; DashboardJobPicturesLinkRow; openInExternalBrowser)"
   - name: "Latest Version (v2.413)"
     line: ~1395
@@ -1072,6 +1075,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.416 — **Checklist** **Manage** — **Search by title or assignee** (client-side); **People** **Users** — **email** / **phone** second line **≤640px**; **Review before clock out** — optional **left a report on all my jobs** checkbox (**not** required) — **[`Checklist.tsx`](src/pages/Checklist.tsx)**, **[`People.tsx`](src/pages/People.tsx)**, **[`ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx)**](#latest-updates-v2416)
 **New:** [v2.415 — **Product copy** — **Customer Files** / **Customer Pictures** (replaces **Job Files** / **Job Pictures**): Edit Job, Job Detail, Edit Customer, **Jobs** / **Quickfill** Stages pipeline (**No customer pictures**), Quickfill **`Stages: customer link & customer pictures`**, Dashboard **Open customer pictures**, **Documents** job **Docs**; **`job_pictures_link`** / column names unchanged](#latest-updates-v2415)
 **New:** [v2.414 — **Dashboard** — **Job pictures** under job **address** on **Assigned Jobs**, **Team Ready to Bill**, and **Superintendent Jobs**: **`jobs_ledger.job_pictures_link`** on **`list_assigned_jobs_for_dashboard`**, **`list_ready_to_bill_assigned_jobs_for_dashboard`**, **`list_superintendent_jobs_for_dashboard`** ([**`20260429181022_dashboard_list_jobs_job_pictures_link.sql`**](supabase/migrations/20260429181022_dashboard_list_jobs_job_pictures_link.sql)); images **`DashboardJobPicturesLinkRow`** + **`openInExternalBrowser`** ([**`Dashboard.tsx`**](src/pages/Dashboard.tsx))](#latest-updates-v2414)
 **New:** [v2.413 — **Quickfill** — **Stages: customer link & customer pictures** (`no-customer-stages`): **No customer pictures (n)** for **working** jobs with empty **`job_pictures_link`** (**`buildStagesWorkingJobsWithoutPicturesList`**, **`StagesAlertJobListModal`**, **`stages-no-job-pictures-quickfill-modal-title`**); **`Open list`** no-customer (**`StagesNoCustomerJobsModal`**); **union** job-id metric + **`sectionWouldRenderOnPage`**; **[`useQuickfillStagesJobsWithoutCustomer`](src/hooks/useQuickfillStagesJobsWithoutCustomer.ts)**, **[`QuickfillStagesNoCustomerSection`](src/components/quickfill/QuickfillStagesNoCustomerSection.tsx)**](#latest-updates-v2413)
@@ -1363,6 +1367,18 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.416)
+
+**Date**: 2026-04-29
+
+### **Checklist Manage** — search; **People Users** — mobile contact line; **Clock out** — optional report reminder
+
+- **Checklist → Manage** ([`Checklist.tsx`](src/pages/Checklist.tsx) **`ChecklistManageTab`**): Full-width **Search by title or assignee** above **Add checklist item** / **Filter by assignee**; **`manageSearchQuery`** + **`useMemo`** **`filteredItems`** (trimmed, case-folded match on **`item.title`** and assignee **`users.name`** / **`users.email`**). **No** change to **`loadItems`**. Empty list → *No checklist items yet.*; no matches → *No items match your search.*
+- **People → Users** ([`People.tsx`](src/pages/People.tsx)): At **`useNarrowViewport640`** (**≤640px**), **`usersTabContactRowStyle`** + **`alignItems: flex-start`** on roster / Devs rows puts **email** · **phone** on a **second line** below the name / **(account)** row (**`renderUsersTabRosterListItem`** and Devs list).
+- **Review before clock out** ([`ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx)): After job/bid picks and unified search, optional checkbox **I have left a report on all my jobs for the day.** (text left, box right; row centered; **`clockOutLeftReportsAck`** reset when the modal opens). **Not** required for **Complete clock out**; **not** written to **`clock_sessions`**.
+
 ---
 
 ## Latest Updates (v2.415)

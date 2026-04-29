@@ -108,6 +108,8 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
   const [clockOutReviewNotes, setClockOutReviewNotes] = useState('')
   const [clockOutReviewError, setClockOutReviewError] = useState<string | null>(null)
   const [clockOutSaving, setClockOutSaving] = useState(false)
+  /** Optional self-check in review modal only; not persisted or required to clock out. */
+  const [clockOutLeftReportsAck, setClockOutLeftReportsAck] = useState(false)
   const clockOutNotesRef = useRef<HTMLTextAreaElement>(null)
   const [unifiedSearchText, setUnifiedSearchText] = useState('')
   const [unifiedSearchResults, setUnifiedSearchResults] = useState<UnifiedSearchResult[]>([])
@@ -742,6 +744,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
     setClockOutReviewError(null)
     setUnifiedSearchText('')
     setUnifiedSearchResults([])
+    setClockOutLeftReportsAck(false)
     setClockOutReviewOpen(true)
   }
 
@@ -1558,7 +1561,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <style>{`#clock-out-review-modal textarea:focus,#clock-out-review-modal input[type=text]:focus,#clock-out-review-modal input[type=text]:focus-visible{outline:2px solid #dc2626;outline-offset:2px}`}</style>
+            <style>{`#clock-out-review-modal textarea:focus,#clock-out-review-modal input[type=text]:focus,#clock-out-review-modal input[type=text]:focus-visible,#clock-out-review-modal input[type=checkbox]:focus,#clock-out-review-modal input[type=checkbox]:focus-visible{outline:2px solid #dc2626;outline-offset:2px}`}</style>
             <h3 id="clock-out-review-modal-title" style={{ marginTop: 0, marginBottom: '0.5rem', textAlign: 'center' }}>Review before clock out</h3>
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
               Confirm or update what you worked on for this session. This is saved on the same time entry when you clock out.
@@ -1646,6 +1649,29 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
                 </div>
               )}
               {renderUseLastJobBidShortcut({ disabled: clockOutSaving, useLastStyle: 'focusOrReview' })}
+              <label
+                htmlFor="clock-out-left-reports-ack"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  marginTop: '0.75rem',
+                  fontSize: '0.875rem',
+                  color: '#374151',
+                  cursor: clockOutSaving ? 'default' : 'pointer',
+                }}
+              >
+                <span>I have left a report on all my jobs for the day.</span>
+                <input
+                  id="clock-out-left-reports-ack"
+                  type="checkbox"
+                  checked={clockOutLeftReportsAck}
+                  onChange={(e) => setClockOutLeftReportsAck(e.target.checked)}
+                  disabled={clockOutSaving}
+                  style={{ flexShrink: 0 }}
+                />
+              </label>
             </div>
             {clockOutReviewError && (
               <p style={{ color: '#dc2626', fontSize: '0.875rem', margin: '0 0 0.75rem 0' }}>{clockOutReviewError}</p>

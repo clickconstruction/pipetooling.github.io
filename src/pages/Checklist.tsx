@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, Fragment, type CSSProperties, type PointerEvent } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo, Fragment, type CSSProperties, type PointerEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { DndContext, closestCenter, type DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
@@ -2098,6 +2098,7 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
   const [loading, setLoading] = useState(true)
   const [filterUserId, setFilterUserId] = useState<string>('')
+  const [manageSearchQuery, setManageSearchQuery] = useState('')
   const [muteModalItemId, setMuteModalItemId] = useState<string | null>(null)
   const [muteModalTitle, setMuteModalTitle] = useState('')
   const [manageDeletePending, setManageDeletePending] = useState<{ id: string; title: string } | null>(null)
@@ -2158,6 +2159,20 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
 
   const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
+  const filteredItems = useMemo(() => {
+    const q = manageSearchQuery.trim().toLowerCase()
+    if (!q) return items
+    return items.filter((item) => {
+      if ((item.title ?? '').toLowerCase().includes(q)) return true
+      for (const a of item.checklist_item_assignees ?? []) {
+        const name = (a.users?.name ?? '').toLowerCase()
+        const email = (a.users?.email ?? '').toLowerCase()
+        if (name.includes(q) || email.includes(q)) return true
+      }
+      return false
+    })
+  }, [items, manageSearchQuery])
+
   function isNotificationRecipient(item: ChecklistItem): boolean {
     if (!authUserId) return false
     if (item.notify_on_complete_user_id === authUserId) return true
@@ -2169,6 +2184,24 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
 
   return (
     <div>
+      <div style={{ width: '100%', marginBottom: '1rem' }}>
+        <input
+          id="checklist-manage-search"
+          type="search"
+          placeholder="Search by title or assignee"
+          value={manageSearchQuery}
+          onChange={(e) => setManageSearchQuery(e.target.value)}
+          aria-label="Search by title or assignee"
+          style={{
+            width: '100%',
+            boxSizing: 'border-box',
+            padding: '0.5rem 0.75rem',
+            border: '1px solid #d1d5db',
+            borderRadius: 4,
+            fontSize: '1rem',
+          }}
+        />
+      </div>
       <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
         <button type="button" onClick={() => checklistAddModal?.openAddModal()} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
           Add checklist item
@@ -2201,7 +2234,7 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
           </tr>
         </thead>
         <tbody>
-          {items.map((item) => (
+          {filteredItems.map((item) => (
             <tr key={item.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
               <td style={{ padding: '0.5rem 0.75rem' }}><ChecklistTitleWithLinks title={item.title} links={item.links} /></td>
               <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
@@ -2292,6 +2325,9 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
         </tbody>
       </table>
       {items.length === 0 && <p style={{ color: '#6b7280' }}>No checklist items yet.</p>}
+      {items.length > 0 && filteredItems.length === 0 && (
+        <p style={{ color: '#6b7280' }}>No items match your search.</p>
+      )}
 
       {manageDeletePending && (
         <div
