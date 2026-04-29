@@ -508,6 +508,7 @@ export function QuickfillPeopleHoursNewSection() {
         hoursTodayByUserId={hoursTodayForStrip}
         clockedInTodayRows={myTeam.clockedInTodayStripRows}
         jobsWorkedTodayRows={myTeam.jobsWorkedTodayStripRows}
+        jobsWorkedTodayReportKeys={myTeam.jobsWorkedTodayReportKeys}
         showScopeToggle={showClockStripScopeToggle}
         clockStripScope={clockStripScope}
         onClockStripScopeChange={setClockStripScopePersist}

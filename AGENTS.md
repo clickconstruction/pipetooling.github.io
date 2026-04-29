@@ -18,6 +18,7 @@
 | User role permissions | `ACCESS_CONTROL.md` → Page/Feature access matrices |
 | Adding a new role | `ADDING_A_NEW_ROLE.md` → Step-by-step guide |
 | Term definitions | `GLOSSARY.md` → All domain terms and concepts |
+| **App crash / outage / Supabase load** (*find why the app crashed*, 503, timeouts) | `docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md` → then `docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md` |
 | Recent changes and features | `RECENT_FEATURES.md` → Chronological updates |
 | **Jobs** **Job Summary** tab (dedicated all-status `jobs_ledger` load; optional **HCP #** min filter default **500**, `jobs_jobSummary_minHcpExclusive`; sort unnumbered HCP first; **Mercury** on filtered set; **cost breakdown** **print** — **`printJobSummaryCostBreakdown`**, **Print / Save as PDF**, **`printCostBreakdownJobId`**, supply invoice lines only under **Parts Cost** in print, no duplicate **Invoices** block before **Team Labor**; person-summary **cell drilldown** modals — **`JobSummaryCostCellDrilldownModal`**, **Print** / **Export CSV** in modal, **`domTableToCsv`**, **`.jobSummaryBreakdownInteractive`**; Mercury drilldown **Reassign** → **`MercuryTransactionAllocationsModal`** (**`JobSummaryDrilldownMercuryTable`**, **`canAccessBankingForParts`**) | `RECENT_FEATURES.md` → v2.406, v2.405, v2.404, v2.403, v2.395, v2.396; `PROJECT_DOCUMENTATION.md` → §6 Jobs **Job Summary Tab**; [`src/lib/jobSummaryHcpFilter.ts`](src/lib/jobSummaryHcpFilter.ts), [`src/lib/fetchJobsLedgerWithDetailsForStages.ts`](src/lib/fetchJobsLedgerWithDetailsForStages.ts), [`src/lib/jobSummaryDrilldownMercuryFilter.ts`](src/lib/jobSummaryDrilldownMercuryFilter.ts), [`src/lib/domTableToCsv.ts`](src/lib/domTableToCsv.ts), [`src/pages/Jobs.tsx`](src/pages/Jobs.tsx) |
 | **User day schedule** modal (clock strip **name** → one-day **`job_schedule_blocks`** + clock preview, add block, **Dispatch** / **+** / **Close**; day chevrons on **8 / 12 / 4** row above track; responsive header) | `RECENT_FEATURES.md` → v2.399; [`src/components/UserDayScheduleModal.tsx`](src/components/UserDayScheduleModal.tsx), [`src/contexts/UserDayScheduleModalContext.tsx`](src/contexts/UserDayScheduleModalContext.tsx), [`src/components/Layout.tsx`](src/components/Layout.tsx), [`src/components/DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx) |
@@ -192,8 +193,9 @@ When this workspace has the **Supabase MCP** server enabled, agents can apply ne
 1. **Read [AI_CONTEXT.md](./AI_CONTEXT.md)** — Full overview, file structure, patterns, glossary
 2. **Consult the table above** — For your task, open the relevant doc
 3. **Review code** — `src/pages/` for UI, `supabase/` for backend
-4. **Check RECENT_FEATURES.md** — For context on recent changes
-5. **Ask before changing** — Clarify requirements if unclear
+4. **App crash / Supabase outage triage** — [docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md](./docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md) (see table **Where to Look For**)
+5. **Check RECENT_FEATURES.md** — For context on recent changes
+6. **Ask before changing** — Clarify requirements if unclear
 
 ---
 

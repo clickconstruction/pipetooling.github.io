@@ -89,6 +89,11 @@ import {
   upsertUserTagOrg,
   type UserTagOrgSignals,
 } from '../lib/tagOrg'
+import {
+  contractSigningIconTitle,
+  type ContractSigningTrafficLight,
+  rollupContractSigningStatusByPersonName,
+} from '../lib/contractSigningRollup'
 import { resolveManagerUserIdForFeedback } from '../lib/teamFeedback'
 import { loginAsUser } from '../lib/loginAsUser'
 import { useAuth } from '../hooks/useAuth'
@@ -403,7 +408,9 @@ export default function People() {
   const [canSeePushStatus, setCanSeePushStatus] = useState(false)
   const [pushEnabledUserIds, setPushEnabledUserIds] = useState<Set<string>>(new Set())
   const [locationEnabledUserIds, setLocationEnabledUserIds] = useState<Set<string>>(new Set())
-  const [documentUrlStatusByPersonName, setDocumentUrlStatusByPersonName] = useState<Record<string, 'green' | 'yellow' | 'red'>>({})
+  const [contractSigningStatusByPersonName, setContractSigningStatusByPersonName] = useState<
+    Record<string, ContractSigningTrafficLight>
+  >({})
   const [payConfig, setPayConfig] = useState<Record<string, PayConfigRow>>({})
   const [payConfigSaving, setPayConfigSaving] = useState(false)
   const [payConfigDraft, setPayConfigDraft] = useState<Record<string, string>>({})
@@ -1685,29 +1692,15 @@ export default function People() {
     if (!canAccessContracts) return
     supabase
       .from('person_contract_documents')
-      .select('person_name, url, signing_body_html, canonical_document_url')
+      .select('person_name, contract_lineage_id, lineage_version, status')
       .then(({ data }) => {
         const rows = (data ?? []) as Array<{
           person_name: string
-          url: string | null
-          signing_body_html: string | null
-          canonical_document_url: string | null
+          contract_lineage_id: string
+          lineage_version: number
+          status: string
         }>
-        const byPerson = new Map<string, { total: number; withUrl: number }>()
-        for (const r of rows) {
-          const p = byPerson.get(r.person_name) ?? { total: 0, withUrl: 0 }
-          p.total++
-          if (r.url?.trim() || r.signing_body_html?.trim() || r.canonical_document_url?.trim()) p.withUrl++
-          byPerson.set(r.person_name, p)
-        }
-        const map: Record<string, 'green' | 'yellow' | 'red'> = {}
-        for (const [name, { total, withUrl }] of byPerson) {
-          if (total === 0) continue
-          if (withUrl === total) map[name] = 'green'
-          else if (withUrl > 0) map[name] = 'yellow'
-          else map[name] = 'red'
-        }
-        setDocumentUrlStatusByPersonName(map)
+        setContractSigningStatusByPersonName(rollupContractSigningStatusByPersonName(rows))
       })
   }, [canAccessContracts])
 
@@ -2540,6 +2533,8 @@ export default function People() {
     const isExternalSubRoster =
       (sectionKind === 'sub' || sectionKind === 'helper') && item.source === 'people'
 
+    const contractsSigningLight = contractSigningStatusByPersonName[item.name]
+
     return (
       <li
         key={item.source === 'user' ? `user-${item.id}` : `people-${item.id}`}
@@ -2584,18 +2579,24 @@ export default function People() {
                 <path d="M128 252.6C128 148.4 214 64 320 64C426 64 512 148.4 512 252.6C512 371.9 391.8 514.9 341.6 569.4C329.8 582.2 310.1 582.2 298.3 569.4C248.1 514.9 127.9 371.9 127.9 252.6zM320 320C355.3 320 384 291.3 384 256C384 220.7 355.3 192 320 192C284.7 192 256 220.7 256 256C256 291.3 284.7 320 320 320z" />
               </svg>
             )}
-            {canAccessContracts && documentUrlStatusByPersonName[item.name] && (
+            {canAccessContracts && contractsSigningLight && (
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 640 640"
                 width={14}
                 height={14}
-                fill={documentUrlStatusByPersonName[item.name] === 'green' ? '#22c55e' : documentUrlStatusByPersonName[item.name] === 'yellow' ? '#eab308' : '#ef4444'}
+                fill={
+                  contractsSigningLight === 'green'
+                    ? '#22c55e'
+                    : contractsSigningLight === 'yellow'
+                      ? '#eab308'
+                      : '#ef4444'
+                }
                 role="img"
                 aria-hidden
                 style={{ display: 'inline-block', marginRight: '0.35rem', verticalAlign: 'middle' }}
               >
-                <title>{documentUrlStatusByPersonName[item.name] === 'green' ? 'All documents have URLs' : documentUrlStatusByPersonName[item.name] === 'yellow' ? 'Some documents have URLs' : 'No documents have URLs'}</title>
+                <title>{contractSigningIconTitle(contractsSigningLight)}</title>
                 <path d="M64.1 128C64.1 92.7 92.8 64 128.1 64L277.6 64C294.6 64 310.9 70.7 322.9 82.7L429.3 189.3C441.3 201.3 448 217.6 448 234.6L448 332.1L316 464.1L273.9 464.1L257.8 410.5C253.1 394.8 238.7 384.1 222.3 384.1C211 384.1 200.4 389.2 193.4 398L133.3 473C125 483.3 126.7 498.5 137 506.7C147.3 514.9 162.5 513.3 170.7 502.9L217.8 444.1L233 494.8C236 505 245.4 511.9 256 511.9L287.5 511.9C286.6 515 285.8 518.2 285.2 521.4L274.3 575.9L128.1 575.9C92.8 575.9 64.1 547.2 64.1 511.9L64.1 127.9zM272.1 122.5L272.1 216C272.1 229.3 282.8 240 296.1 240L389.6 240L272.1 122.5zM332.3 530.9C334.8 518.5 340.9 507.1 349.8 498.2L468.7 379.3L548.7 459.3L429.8 578.2C420.9 587.1 409.5 593.2 397.1 595.7L337.5 607.6C336.6 607.8 335.6 607.9 334.6 607.9C326.6 607.9 320 601.4 320 593.3C320 592.3 320.1 591.4 320.3 590.4L332.2 530.8zM600.1 407.9L571.3 436.7L491.3 356.7L520.1 327.9C542.2 305.8 578 305.8 600.1 327.9C622.2 350 622.2 385.8 600.1 407.9z" />
               </svg>
             )}
@@ -7754,7 +7755,9 @@ export default function People() {
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                   {devUsersFiltered
                     .sort((a, b) => a.name.localeCompare(b.name))
-                    .map((u) => (
+                    .map((u) => {
+                      const contractsSigningLight = contractSigningStatusByPersonName[u.name]
+                      return (
                       <li
                         key={u.id}
                         style={{
@@ -7798,18 +7801,24 @@ export default function People() {
                                 <path d="M128 252.6C128 148.4 214 64 320 64C426 64 512 148.4 512 252.6C512 371.9 391.8 514.9 341.6 569.4C329.8 582.2 310.1 582.2 298.3 569.4C248.1 514.9 127.9 371.9 127.9 252.6zM320 320C355.3 320 384 291.3 384 256C384 220.7 355.3 192 320 192C284.7 192 256 220.7 256 256C256 291.3 284.7 320 320 320z" />
                               </svg>
                             )}
-                            {canAccessContracts && documentUrlStatusByPersonName[u.name] && (
+                            {canAccessContracts && contractsSigningLight && (
                               <svg
                                 xmlns="http://www.w3.org/2000/svg"
                                 viewBox="0 0 640 640"
                                 width={14}
                                 height={14}
-                                fill={documentUrlStatusByPersonName[u.name] === 'green' ? '#22c55e' : documentUrlStatusByPersonName[u.name] === 'yellow' ? '#eab308' : '#ef4444'}
+                                fill={
+                                  contractsSigningLight === 'green'
+                                    ? '#22c55e'
+                                    : contractsSigningLight === 'yellow'
+                                      ? '#eab308'
+                                      : '#ef4444'
+                                }
                                 role="img"
                                 aria-hidden
                                 style={{ display: 'inline-block', marginRight: '0.35rem', verticalAlign: 'middle' }}
                               >
-                                <title>{documentUrlStatusByPersonName[u.name] === 'green' ? 'All documents have URLs' : documentUrlStatusByPersonName[u.name] === 'yellow' ? 'Some documents have URLs' : 'No documents have URLs'}</title>
+                                <title>{contractSigningIconTitle(contractsSigningLight)}</title>
                                 <path d="M64.1 128C64.1 92.7 92.8 64 128.1 64L277.6 64C294.6 64 310.9 70.7 322.9 82.7L429.3 189.3C441.3 201.3 448 217.6 448 234.6L448 332.1L316 464.1L273.9 464.1L257.8 410.5C253.1 394.8 238.7 384.1 222.3 384.1C211 384.1 200.4 389.2 193.4 398L133.3 473C125 483.3 126.7 498.5 137 506.7C147.3 514.9 162.5 513.3 170.7 502.9L217.8 444.1L233 494.8C236 505 245.4 511.9 256 511.9L287.5 511.9C286.6 515 285.8 518.2 285.2 521.4L274.3 575.9L128.1 575.9C92.8 575.9 64.1 547.2 64.1 511.9L64.1 127.9zM272.1 122.5L272.1 216C272.1 229.3 282.8 240 296.1 240L389.6 240L272.1 122.5zM332.3 530.9C334.8 518.5 340.9 507.1 349.8 498.2L468.7 379.3L548.7 459.3L429.8 578.2C420.9 587.1 409.5 593.2 397.1 595.7L337.5 607.6C336.6 607.8 335.6 607.9 334.6 607.9C326.6 607.9 320 601.4 320 593.3C320 592.3 320.1 591.4 320.3 590.4L332.2 530.8zM600.1 407.9L571.3 436.7L491.3 356.7L520.1 327.9C542.2 305.8 578 305.8 600.1 327.9C622.2 350 622.2 385.8 600.1 407.9z" />
                               </svg>
                             )}
@@ -7854,7 +7863,8 @@ export default function People() {
                           </button>
                         )}
                       </li>
-                    ))}
+                    )
+                    })}
                 </ul>
                 )
               })()}

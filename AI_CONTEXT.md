@@ -159,7 +159,9 @@ pipetooling.github.io/
 - **`ADDING_A_NEW_ROLE.md`** - Step-by-step guide for adding new roles
 - **`EDGE_FUNCTIONS.md`** - Edge Functions API reference
 - **`RECENT_FEATURES.md`** - Chronological feature log
-- **Team feedback** (clock-out / Dashboard prompts, **People → Feedback** `?tab=feedback` or Settings dev tools, RLS details): **`RECENT_FEATURES.md`** v2.157 (foundation), **v2.162** (eligibility reset, submission SELECT policy, raw submission names), **v2.290** (Feedback tab, modals, Enabled persist, raw detail modal / CSV)
+- **`TROUBLESHOOTING.md`** - White screen, Supabase, sign-in; **load / outage** links **`docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md`**, **`SUPABASE_INCIDENT_RUNBOOK.md`**, **`scripts/capture-supabase-incident.sh`**
+- **`docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md`** - AI agent playbook (*find why the app crashed* / 503 / timeouts); then full runbook
+- **`docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md`** - Supabase CLI inspect + Dashboard logs; **`clock_sessions`** / **`jobs_ledger`** correlation (clock-out / Dashboard prompts, **People → Feedback** `?tab=feedback` or Settings dev tools, RLS details): **`RECENT_FEATURES.md`** v2.157 (foundation), **v2.162** (eligibility reset, submission SELECT policy, raw submission names), **v2.290** (Feedback tab, modals, Enabled persist, raw detail modal / CSV)
 - **Settings layout**: Sharing and Adoption merged into **People & accounts** (`settings-people`); no separate `settings-sharing` jump — **`RECENT_FEATURES.md`** v2.165; **`PROJECT_DOCUMENTATION.md`** Settings §9; **`ACCESS_CONTROL.md`** Settings matrix
 - **Templates & testing** (dev): Collapsible **Workflow email (Edge Function)** invokes **`send-workflow-notification`** for a Resend smoke test — **`RECENT_FEATURES.md`** v2.186; **`WORKFLOW_EMAIL_TESTING.md`**; **`EDGE_FUNCTIONS.md`**
 
@@ -190,6 +192,12 @@ pipetooling.github.io/
 3. **Test query**: Run query manually with `SET LOCAL ROLE` to test policy
 4. **Check adoptions**: Verify `master_assistants` or `master_shares` relationships
 5. **Consult**: See `ACCESS_CONTROL.md` for expected permissions
+
+### Supabase load / “crash” investigation
+
+1. **Agents:** start with **`docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md`** (ordered checklist), then **`docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md`** for full detail.
+2. **`docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md`** — `supabase inspect db … --linked`, Dashboard log export for the same UTC window, and mapping hot queries to `clock_sessions` / `jobs_ledger` triggers.
+3. **`TROUBLESHOOTING.md`** — high disk I/O, long queries SQL; links to the runbook.
 
 ### Fixing TypeScript Errors
 
@@ -229,6 +237,7 @@ AI agents or automated tests can sign in without a password using the dev-login 
 | Bids system | `BIDS_SYSTEM.md` → Complete workflow documentation |
 | Edge Functions API | `EDGE_FUNCTIONS.md` → All Edge Functions with examples |
 | Migration history | `MIGRATIONS.md` → All migrations by date and category |
+| App crash / outage / Supabase load (*find why the app crashed*, 503, DB locks) | `docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md` → `SUPABASE_INCIDENT_RUNBOOK.md`; `scripts/capture-supabase-incident.sh`; `AGENTS.md`; `TROUBLESHOOTING.md` |
 | Workflow features | `WORKFLOW_FEATURES.md` → Stage management, financials |
 | Email templates | `EMAIL_TEMPLATES_SETUP.md`, `EMAIL_TESTING.md` |
 | Database improvements | `DATABASE_IMPROVEMENTS_SUMMARY.md` → v2.22 enhancements |

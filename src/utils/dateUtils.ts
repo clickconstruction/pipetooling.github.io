@@ -16,6 +16,23 @@ export function referenceDateForWorkDateYmd(workDateYmd: string): Date {
   return new Date(Date.UTC(y, mo, d, 12, 0, 0))
 }
 
+/** Calendar YYYY-MM-DD for an ISO timestamp in `APP_CALENDAR_TZ` (Chicago wall date). Empty if invalid. */
+export function calendarYmdInAppTzFromIso(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: APP_CALENDAR_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(d)
+  const y = parts.find((p) => p.type === 'year')?.value
+  const m = parts.find((p) => p.type === 'month')?.value
+  const day = parts.find((p) => p.type === 'day')?.value
+  if (!y || !m || !day) return ''
+  return `${y}-${m}-${day}`
+}
+
 /** E.g. UTC−06:00 (Unicode minus). Null if `Intl` longOffset is unavailable. */
 export function formatIanaTimeZoneLongOffsetLabel(iana: string, at: Date): string | null {
   try {

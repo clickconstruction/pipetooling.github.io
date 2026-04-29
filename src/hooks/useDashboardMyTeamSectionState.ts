@@ -12,7 +12,7 @@ import {
 } from '../types/clockSessions'
 import type { Database } from '../types/database'
 import { getSalarySyntheticClockInIso } from '../lib/salaryOnShift'
-import { denverCalendarDayKey } from '../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, denverCalendarDayKey } from '../utils/dateUtils'
 import type { AssignSessionJobSavedPatch } from '../components/clock-sessions/AssignSessionJobPopover'
 import {
   fetchSalariedUserIdSetFromUserIds,
@@ -1210,6 +1210,57 @@ export function useDashboardMyTeamSectionState(
     [stripWorkDateYmd],
   )
 
+  const jobLedgerIdsForReportsLookup = useMemo(() => {
+    const ids = new Set<string>()
+    for (const row of todaySessionsForStripScope) {
+      if (row.job_ledger_id) ids.add(row.job_ledger_id)
+    }
+    return [...ids].sort()
+  }, [todaySessionsForStripScope])
+
+  const [jobsWorkedTodayReportKeys, setJobsWorkedTodayReportKeys] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  )
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadReportsForStrip() {
+      if (jobLedgerIdsForReportsLookup.length === 0) {
+        setJobsWorkedTodayReportKeys(new Set())
+        return
+      }
+      try {
+        const rows = await withSupabaseRetry(
+          async () =>
+            await supabase
+              .from('reports')
+              .select('job_ledger_id, created_by_user_id, created_at')
+              .in('job_ledger_id', jobLedgerIdsForReportsLookup),
+          'dashboard strip jobs worked today reports',
+        )
+        if (cancelled) return
+        const next = new Set<string>()
+        const list = (rows ?? []) as Array<{
+          job_ledger_id: string | null
+          created_by_user_id: string
+          created_at: string | null
+        }>
+        for (const r of list) {
+          if (!r.job_ledger_id || !r.created_at) continue
+          if (calendarYmdInAppTzFromIso(r.created_at) !== clockStripWorkDateYmd) continue
+          next.add(`${r.job_ledger_id}:${r.created_by_user_id}`)
+        }
+        setJobsWorkedTodayReportKeys(next)
+      } catch {
+        if (!cancelled) setJobsWorkedTodayReportKeys(new Set())
+      }
+    }
+    void loadReportsForStrip()
+    return () => {
+      cancelled = true
+    }
+  }, [clockStripWorkDateYmd, jobLedgerIdsForReportsLookup])
+
   return {
     authUserId,
     memberUserIds,
@@ -1238,6 +1289,7 @@ export function useDashboardMyTeamSectionState(
     clockedInTodayStripRows,
     clockStripWorkDateYmd,
     jobsWorkedTodayStripRows,
+    jobsWorkedTodayReportKeys,
     stripSyntheticSalarySessions,
     pendingApprovalCount,
     loadingSessions,

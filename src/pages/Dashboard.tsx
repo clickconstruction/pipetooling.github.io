@@ -2686,6 +2686,24 @@ export default function Dashboard() {
     [scheduleReminderNow, subScheduleRows],
   )
 
+  const refreshDashboardAssignedJobLists = useCallback(async () => {
+    if (!authUser?.id) return
+    try {
+      const { data: assignedData } = await supabase.rpc('list_assigned_jobs_for_dashboard')
+      if (assignedData) setAssignedJobs(assignedData as unknown as DashboardTeamAssignedJobRow[])
+      if (isDashboardTeamReadyToBillRole(role)) {
+        const { data: rtbAssignedData } = await supabase.rpc('list_ready_to_bill_assigned_jobs_for_dashboard')
+        if (rtbAssignedData) setAssignedReadyToBillJobs(rtbAssignedData as unknown as DashboardTeamAssignedJobRow[])
+      }
+      if (role === 'superintendent') {
+        const { data: superintendentData } = await supabase.rpc('list_superintendent_jobs_for_dashboard')
+        if (superintendentData) setSuperintendentJobs(superintendentData as unknown as DashboardTeamAssignedJobRow[])
+      }
+    } catch {
+      /* keep prior lists */
+    }
+  }, [authUser?.id, role])
+
   const detailModalAssignedJobsRows = useMemo(
     () => [...assignedJobs, ...assignedReadyToBillJobs],
     [assignedJobs, assignedReadyToBillJobs],
@@ -4426,6 +4444,7 @@ export default function Dashboard() {
           hoursTodayByUserId={hoursTodayForStrip}
           clockedInTodayRows={myTeam.clockedInTodayStripRows}
           jobsWorkedTodayRows={myTeam.jobsWorkedTodayStripRows}
+          jobsWorkedTodayReportKeys={myTeam.jobsWorkedTodayReportKeys}
           showScopeToggle={showClockStripScopeToggle}
           clockStripScope={clockStripScope}
           onClockStripScopeChange={setClockStripScopePersist}
@@ -4823,7 +4842,7 @@ export default function Dashboard() {
                             <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
                             <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'ready_to_bill', rtbDraftCount: 0 }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
                             <button type="button" onClick={() => setMarkPaidJob(j)} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : <>Mark<br />Paid</>}</button>
-                            {j.created_at && <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">{isMobile ? <>Open {formatTimeSince(j.created_at)}</> : <>Open<br />{formatTimeSince(j.created_at)}</>}</span>}
+                            {j.created_at && <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created"><>Open<br />{formatTimeSince(j.created_at)}</></span>}
                           </div>
                         </div>
                       </div>
@@ -4844,6 +4863,7 @@ export default function Dashboard() {
           hoursTodayByUserId={hoursTodayForStrip}
           clockedInTodayRows={myTeam.clockedInTodayStripRows}
           jobsWorkedTodayRows={myTeam.jobsWorkedTodayStripRows}
+          jobsWorkedTodayReportKeys={myTeam.jobsWorkedTodayReportKeys}
           showScopeToggle={showClockStripScopeToggle}
           clockStripScope={clockStripScope}
           clockStripNarrowScopeLabel={
@@ -5287,7 +5307,7 @@ export default function Dashboard() {
                         <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
                         <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'ready_to_bill', rtbDraftCount: 0 }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
                         <button type="button" onClick={() => setMarkPaidJob(j)} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : <>Mark<br />Paid</>}</button>
-                        {j.created_at && <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">{isMobile ? <>Open {formatTimeSince(j.created_at)}</> : <>Open<br />{formatTimeSince(j.created_at)}</>}</span>}
+                        {j.created_at && <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created"><>Open<br />{formatTimeSince(j.created_at)}</></span>}
                       </div>
                     </div>
                   </div>
@@ -7199,12 +7219,17 @@ export default function Dashboard() {
                       )}
                       {j.created_at && (!isMobile || !isSubcontractorLikeRole(role)) && (
                         <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">
-                          {isMobile ? <>Open {formatTimeSince(j.created_at)}</> : <>Open<br />{formatTimeSince(j.created_at)}</>}
+                          <>Open<br />{formatTimeSince(j.created_at)}</>
                         </span>
                       )}
                       {isSubcontractorLikeRole(role) && isMobile && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: '100%', fontSize: '0.8125rem', color: '#6b7280' }}>
-                          {j.created_at && <span>Open {formatTimeSince(j.created_at)}</span>}
+                          {j.created_at && (
+                          <span>
+                            Open<br />
+                            {formatTimeSince(j.created_at)}
+                          </span>
+                        )}
                           {(() => {
                             const b = subcontractorLastActivityBlock(j)
                             const a11y = [b.line1, b.line2, b.line3].filter(Boolean).join(' ')
@@ -7479,12 +7504,17 @@ export default function Dashboard() {
                       ) : null}
                       {j.created_at && (!isMobile || !isSubcontractorLikeRole(role)) && (
                         <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">
-                          {isMobile ? <>Open {formatTimeSince(j.created_at)}</> : <>Open<br />{formatTimeSince(j.created_at)}</>}
+                          <>Open<br />{formatTimeSince(j.created_at)}</>
                         </span>
                       )}
                       {isSubcontractorLikeRole(role) && isMobile && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: '100%', fontSize: '0.8125rem', color: '#6b7280' }}>
-                          {j.created_at && <span>Open {formatTimeSince(j.created_at)}</span>}
+                          {j.created_at && (
+                          <span>
+                            Open<br />
+                            {formatTimeSince(j.created_at)}
+                          </span>
+                        )}
                           {(() => {
                             const b = subcontractorLastActivityBlock(j)
                             const a11y = [b.line1, b.line2, b.line3].filter(Boolean).join(' ')
@@ -7721,7 +7751,7 @@ export default function Dashboard() {
                             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                               {j.created_at && (
                                 <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">
-                                  {isMobile ? <>Open {formatTimeSince(j.created_at)}</> : <>Open<br />{formatTimeSince(j.created_at)}</>}
+                                  <>Open<br />{formatTimeSince(j.created_at)}</>
                                 </span>
                               )}
                             </div>
@@ -8026,6 +8056,7 @@ export default function Dashboard() {
           jobAddress={viewReportsJob.jobAddress}
           authUserId={authUser?.id ?? null}
           userRole={role}
+          onReportSaved={() => void refreshDashboardAssignedJobLists()}
         />
       )}
       {subcontractorJobActivityModalJob ? (
@@ -8041,7 +8072,11 @@ export default function Dashboard() {
         <AdditionalReportModal
           open={!!leaveReportJob}
           onClose={() => setLeaveReportJob(null)}
-          onSaved={() => setLeaveReportJob(null)}
+          onSaved={() => {
+            setLeaveReportJob(null)
+            void refreshDashboardAssignedJobLists()
+          }}
+          onReportSaved={() => void refreshDashboardAssignedJobLists()}
           authUserId={authUser?.id ?? null}
           userRole={role}
           jobId={leaveReportJob.id}

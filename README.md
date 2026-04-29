@@ -40,7 +40,8 @@ A web application for Master Plumbers to track plumbing work across multiple pro
 | Bids system features | [BIDS_SYSTEM.md](./BIDS_SYSTEM.md) - All 10 tabs documented |
 | Edge Functions / API | [EDGE_FUNCTIONS.md](./EDGE_FUNCTIONS.md) - Complete API reference |
 | Recent changes/features | [RECENT_FEATURES.md](./RECENT_FEATURES.md) - Chronological updates |
-| Troubleshooting | [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - White screen, Supabase, sign-in |
+| App crash / outage / Supabase load (AI + CLI triage) | [docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md](./docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md) → [SUPABASE_INCIDENT_RUNBOOK.md](./docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md); capture: [`scripts/capture-supabase-incident.sh`](./scripts/capture-supabase-incident.sh) |
+| Troubleshooting | [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - White screen, Supabase, sign-in, load investigation |
 | Migration history | [MIGRATIONS.md](./MIGRATIONS.md) - All database changes |
 | Understanding terminology | [GLOSSARY.md](./GLOSSARY.md) - All domain terms and concepts defined |
 
@@ -49,6 +50,7 @@ A web application for Master Plumbers to track plumbing work across multiple pro
 - **Adding a page**: Create component → Add route → Update navigation → Verify role access
 - **Fixing RLS issue**: Check user role → Review table policies → Verify adoption/sharing
 - **Understanding feature**: Check RECENT_FEATURES.md → Read relevant system doc → Review code
+- **App crash / Supabase load**: Read [docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md](./docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md) → Run `./scripts/capture-supabase-incident.sh` (or `supabase inspect`) → Full detail in [SUPABASE_INCIDENT_RUNBOOK.md](./docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md)
 
 **Key Constraints to Remember**:
 - Never edit existing migrations (append-only)
@@ -73,8 +75,11 @@ A web application for Master Plumbers to track plumbing work across multiple pro
 - **[ACCESS_CONTROL.md](./ACCESS_CONTROL.md)** - Role-based permissions matrix and access patterns
 - **[MIGRATIONS.md](./MIGRATIONS.md)** - Database migration history and tracking
 
-🔧 **Troubleshooting**:
-- **[TROUBLESHOOTING.md](./TROUBLESHOOTING.md)** - White screen fix, Supabase issues, sign-in, duplicate pins
+🔧 **Troubleshooting & incidents**:
+- **[TROUBLESHOOTING.md](./TROUBLESHOOTING.md)** - White screen, Supabase issues, sign-in, duplicate pins, load investigation links
+- **[docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md](./docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md)** - AI/agent playbook (*find why the app crashed*)
+- **[docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md](./docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md)** - Full Supabase CLI + Dashboard log workflow
+- **[scripts/capture-supabase-incident.sh](./scripts/capture-supabase-incident.sh)** - One-shot `supabase inspect` capture (gitignored output under `docs/runbooks/supabase-inspect-snapshot/`)
 
 📝 **Feature-Specific Documentation**:
 - **[PRIVATE_NOTES_SETUP.md](./PRIVATE_NOTES_SETUP.md)** - Private notes, line items, and projections setup

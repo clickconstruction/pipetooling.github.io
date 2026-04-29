@@ -23,3 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# Local Supabase inspect snapshots (see docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md)
+docs/runbooks/supabase-inspect-snapshot/

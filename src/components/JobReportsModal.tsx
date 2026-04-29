@@ -23,9 +23,23 @@ type Props = {
   userRole?: UserRole | null
   filterCreatedByUserId?: string | null
   zIndex?: number
+  /** Called after a new report is saved from this modal (e.g. Dashboard refreshes Leave Report nag). */
+  onReportSaved?: () => void
 }
 
-export default function JobReportsModal({ open, onClose, jobId, hcpNumber, jobName, jobAddress, authUserId, userRole, filterCreatedByUserId, zIndex = 55 }: Props) {
+export default function JobReportsModal({
+  open,
+  onClose,
+  jobId,
+  hcpNumber,
+  jobName,
+  jobAddress,
+  authUserId,
+  userRole,
+  filterCreatedByUserId,
+  zIndex = 55,
+  onReportSaved,
+}: Props) {
   const [reports, setReports] = useState<ReportForView[]>([])
   const [loading, setLoading] = useState(false)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
@@ -301,6 +315,7 @@ export default function JobReportsModal({ open, onClose, jobId, hcpNumber, jobNa
         onSaved={() => {
           handleReportAdded()
           setNewReportOpen(false)
+          onReportSaved?.()
         }}
         authUserId={authUserId}
         userRole={userRole}

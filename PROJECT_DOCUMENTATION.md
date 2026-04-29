@@ -50,7 +50,9 @@ related_docs:
   - "[ACCESS_CONTROL.md](./ACCESS_CONTROL.md) - Role permissions"
   - "[EDGE_FUNCTIONS.md](./EDGE_FUNCTIONS.md) - API reference"
   - "[MIGRATIONS.md](./MIGRATIONS.md) - Schema changes"
-  - "[TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - White screen, Supabase, sign-in"
+  - "[TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - White screen, Supabase, sign-in; app crash / load investigation (runbooks + capture script)"
+  - "[docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md](./docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md) - AI agent playbook: find why the app crashed"
+  - "[docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md](./docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md) - Supabase CLI + Dashboard logs workflow"
   - "[GLOSSARY.md](./GLOSSARY.md) - Term definitions"
 
 prerequisites:

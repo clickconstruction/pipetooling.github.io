@@ -12,11 +12,14 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.416 → v2.4"
+version_range: "v2.417 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.416)"
+  - name: "Latest Version (v2.417)"
     line: ~1372
+    description: "Docs — agent app crash playbook, AGENTS.md row, capture-supabase-incident.sh, README/TROUBLESHOOTING/AI_CONTEXT/PROJECT_DOCUMENTATION/runbook cross-links; 28P01 note in SUPABASE_INCIDENT_RUNBOOK"
+  - name: "Latest Version (v2.416)"
+    line: ~1400
     description: "Checklist Manage client-side search; People Users narrow email/phone line; Review before clock out optional daily-report checkbox"
   - name: "Latest Version (v2.415)"
     line: ~1384
@@ -1075,6 +1078,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.417 — **Docs / operations** — **App crash triage for AI agents**: **`docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md`** (playbook), **`AGENTS.md`** table row, **`scripts/capture-supabase-incident.sh`**; **README** / **TROUBLESHOOTING** / **AI_CONTEXT** / **PROJECT_DOCUMENTATION** / **`SUPABASE_INCIDENT_RUNBOOK`** cross-links; **28P01** DB password note in runbook](#latest-updates-v2417)
 **New:** [v2.416 — **Checklist** **Manage** — **Search by title or assignee** (client-side); **People** **Users** — **email** / **phone** second line **≤640px**; **Review before clock out** — optional **left a report on all my jobs** checkbox (**not** required) — **[`Checklist.tsx`](src/pages/Checklist.tsx)**, **[`People.tsx`](src/pages/People.tsx)**, **[`ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx)**](#latest-updates-v2416)
 **New:** [v2.415 — **Product copy** — **Customer Files** / **Customer Pictures** (replaces **Job Files** / **Job Pictures**): Edit Job, Job Detail, Edit Customer, **Jobs** / **Quickfill** Stages pipeline (**No customer pictures**), Quickfill **`Stages: customer link & customer pictures`**, Dashboard **Open customer pictures**, **Documents** job **Docs**; **`job_pictures_link`** / column names unchanged](#latest-updates-v2415)
 **New:** [v2.414 — **Dashboard** — **Job pictures** under job **address** on **Assigned Jobs**, **Team Ready to Bill**, and **Superintendent Jobs**: **`jobs_ledger.job_pictures_link`** on **`list_assigned_jobs_for_dashboard`**, **`list_ready_to_bill_assigned_jobs_for_dashboard`**, **`list_superintendent_jobs_for_dashboard`** ([**`20260429181022_dashboard_list_jobs_job_pictures_link.sql`**](supabase/migrations/20260429181022_dashboard_list_jobs_job_pictures_link.sql)); images **`DashboardJobPicturesLinkRow`** + **`openInExternalBrowser`** ([**`Dashboard.tsx`**](src/pages/Dashboard.tsx))](#latest-updates-v2414)
@@ -1367,6 +1371,23 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.417)
+
+**Date**: 2026-04-29
+
+### **Documentation** — AI / operator triage when the app *crashes* or Supabase is under load
+
+- **`docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md`** — Short ordered checklist for agents (phrases like *find why the app crashed*); when to use **`supabase inspect`**, **28P01** / **`SUPABASE_DB_PASSWORD`**, CLI vs Dashboard logs; points to **`SUPABASE_INCIDENT_RUNBOOK.md`** Phase D–E.
+- **`AGENTS.md`** — **Where to Look For** row: app crash / outage / Supabase load → agent playbook → full runbook.
+- **`scripts/capture-supabase-incident.sh`** — One-shot **`supabase inspect`** + **`inspect report`**; writes **`docs/runbooks/supabase-inspect-snapshot/incident-<UTC>/`** (gitignored).
+- **`README.md`** — Agent task table + **Troubleshooting & incidents** bullets (playbook, runbook, script).
+- **`TROUBLESHOOTING.md`** — *Investigating errors under load* lists agent playbook, runbook, capture script; **Related docs** updated.
+- **`AI_CONTEXT.md`** — **Documentation (Start Here)** bullets for runbooks; **Where to Look For** row; **Supabase load** subsection already starts with agent playbook.
+- **`PROJECT_DOCUMENTATION.md`** — **related_docs** YAML entries for agent playbook + runbook; expanded **TROUBLESHOOTING** line.
+- **`docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md`** — Top: agents start at **AGENT_APP_CRASH_INVESTIGATION**; link to capture script; **Preconditions** **28P01** troubleshooting sentence.
+
 ---
 
 ## Latest Updates (v2.416)

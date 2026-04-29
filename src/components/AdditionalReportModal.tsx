@@ -20,6 +20,8 @@ type Props = {
   open: boolean
   onClose: () => void
   onSaved: () => void
+  /** Invoked after a report is saved from the nested Job Reports UI (Dashboard refreshes assigned-job nag state). */
+  onReportSaved?: () => void
   authUserId: string | null
   userRole?: UserRole | null
   jobId: string
@@ -28,7 +30,18 @@ type Props = {
   jobAddress: string
 }
 
-export default function AdditionalReportModal({ open, onClose, onSaved, authUserId, userRole, jobId, hcpNumber, jobName, jobAddress }: Props) {
+export default function AdditionalReportModal({
+  open,
+  onClose,
+  onSaved,
+  onReportSaved,
+  authUserId,
+  userRole,
+  jobId,
+  hcpNumber,
+  jobName,
+  jobAddress,
+}: Props) {
   const { profileName } = useAuth()
   const [templates, setTemplates] = useState<ReportTemplate[]>([])
   const [templateFields, setTemplateFields] = useState<Record<string, ReportTemplateField[]>>({})
@@ -303,6 +316,7 @@ export default function AdditionalReportModal({ open, onClose, onSaved, authUser
         userRole={userRole}
         filterCreatedByUserId={authUserId}
         zIndex={70}
+        onReportSaved={onReportSaved}
       />
     )}
     </>

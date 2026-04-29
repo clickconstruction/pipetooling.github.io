@@ -46,6 +46,9 @@ import {
   shouldShowSalaryStripNameSuffix,
 } from '../types/clockSessions'
 import { CopyDayJobMixModal, CopyDayJobMixIcon } from './day-job-mix/CopyDayJobMixModal'
+import { JobsWorkedTodayReportIcon } from './icons/JobsWorkedTodayReportIcon'
+
+const EMPTY_JOBS_WORKED_TODAY_REPORT_KEYS: ReadonlySet<string> = new Set<string>()
 
 const timeOpts: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit' }
 
@@ -552,6 +555,7 @@ export function DashboardTeamActiveClockStrip({
   hideCurrentlyInTable = false,
   enableCopyDayJobMix = false,
   clockStripWorkDateYmd,
+  jobsWorkedTodayReportKeys = EMPTY_JOBS_WORKED_TODAY_REPORT_KEYS,
 }: {
   sessions: DashboardStripSession[]
   hoursTodayByUserId: Readonly<Record<string, number>>
@@ -586,6 +590,8 @@ export function DashboardTeamActiveClockStrip({
   enableCopyDayJobMix?: boolean
   /** Strip `work_date` (YYYY-MM-DD), e.g. from my team hook `clockStripWorkDateYmd`. */
   clockStripWorkDateYmd?: string
+  /** `(jobLedgerId:userId)` when user filed a report for that job on the strip calendar day. */
+  jobsWorkedTodayReportKeys?: ReadonlySet<string>
 }) {
   const clockStripWorkDateResolved =
     clockStripWorkDateYmd ?? new Date().toLocaleDateString('en-CA')
@@ -2285,6 +2291,12 @@ export function DashboardTeamActiveClockStrip({
                                                 flexWrap: 'wrap',
                                               }}
                                             >
+                                              {job.jobLedgerId !== JOBS_WORKED_TODAY_UNASSIGNED_ID &&
+                                              jobsWorkedTodayReportKeys.has(
+                                                `${job.jobLedgerId}:${s.user_id}`,
+                                              ) ? (
+                                                <JobsWorkedTodayReportIcon />
+                                              ) : null}
                                               {personName}
                                               {clockStripOverlapByUserId.get(s.user_id) ? (
                                                 <StripClockOverlapBadge />

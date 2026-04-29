@@ -118,7 +118,20 @@ Options: wait for it to finish, or temporarily upgrade compute to speed it up.
 
 ---
 
+## Investigating errors under load (CLI + logs)
+
+For **timeouts**, **503s**, **DB contention**, or “everyone clocked out and the app died”:
+
+1. **AI agents / Cursor:** start with **[docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md](./docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md)** (ordered checklist, what CLI cannot see, 28P01 auth). Same file is linked from [AGENTS.md](./AGENTS.md).
+2. Follow **[docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md](./docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md)** — `supabase inspect db … --linked`, Dashboard log export, and a correlation table for `clock_sessions` / `jobs_ledger` triggers.
+3. **Quick capture:** from repo root run `./scripts/capture-supabase-incident.sh` — writes **`docs/runbooks/supabase-inspect-snapshot/incident-<UTC>/`** (gitignored); attach that folder when asking an agent to analyze an incident.
+4. The CLI does **not** replace hosted **Logs Explorer** exports for API/Auth; capture those for the same UTC window as the incident.
+
+---
+
 ## Related docs
 
+- [docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md](./docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md) - Agent playbook: *find why the app crashed*
+- [docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md](./docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md) - Supabase CLI inspect + platform logs workflow
 - [TROUBLESHOOT_404.md](./TROUBLESHOOT_404.md) - RPC and Edge function 404 issues
 - [RECENT_FEATURES.md](./RECENT_FEATURES.md) - Fix app and pin features (v2.51)
