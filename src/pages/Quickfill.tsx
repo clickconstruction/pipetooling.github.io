@@ -10,6 +10,7 @@ import { BilledAwaitingPaymentSection } from '../components/quickfill/BilledAwai
 import { CantReachSection } from '../components/quickfill/CantReachSection'
 import { CrewJobsSection } from '../components/quickfill/CrewJobsSection'
 import { JobsBillingReminderSection } from '../components/quickfill/JobsBillingReminderSection'
+import { QuickfillStagesNoCustomerSection } from '../components/quickfill/QuickfillStagesNoCustomerSection'
 import { QuickfillSectionMarkHistoryModal } from '../components/quickfill/QuickfillSectionMarkHistoryModal'
 import { UnpricedFixturesSection } from '../components/quickfill/UnpricedFixturesSection'
 import { SupplyHousesSection } from '../components/quickfill/SupplyHousesSection'
@@ -35,6 +36,7 @@ import { useToastContext } from '../contexts/ToastContext'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useDispatchInbox } from '../hooks/useDispatchInbox'
+import { useQuickfillStagesJobsWithoutCustomer } from '../hooks/useQuickfillStagesJobsWithoutCustomer'
 import { useUnpricedFixturesCount } from '../hooks/useUnpricedFixturesCount'
 import { canRoleUseArBankCount, useArBankUnallocatedCount } from '../hooks/useArBankUnallocatedCount'
 import { useStaleTallyStaffFollowUp } from '../hooks/useStaleTallyStaffFollowUp'
@@ -57,6 +59,7 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-prospects', sectionId: 'prospects', label: 'Prospects' },
   { id: 'quickfill-supply-houses', sectionId: 'supply-houses', label: 'Supply Houses' },
   { id: 'quickfill-jobs-billing', sectionId: 'jobs-billing', label: 'Jobs Billing' },
+  { id: 'quickfill-no-customer-stages', sectionId: 'no-customer-stages', label: 'Stages: customer & job pictures' },
   { id: 'quickfill-dispatch-inbox', sectionId: 'dispatch-inbox', label: 'Dispatch inbox' },
   { id: 'quickfill-schedule', sectionId: 'schedule', label: 'Schedule' },
   {
@@ -391,6 +394,23 @@ function QuickfillPage() {
   } = useDispatchInbox()
   const { getOutstandingCount } = useQuickfillSectionMetricsContext()
   const unpricedFixturesCount = useUnpricedFixturesCount()
+  const quickfillNoCustomerStages = useQuickfillStagesJobsWithoutCustomer()
+  const quickfillStagesAlertsUnionCount = useMemo(() => {
+    if (!quickfillNoCustomerStages.fetchEnabled) return null
+    const ids = new Set<string>()
+    for (const j of quickfillNoCustomerStages.jobsWithoutCustomer) ids.add(j.id)
+    for (const j of quickfillNoCustomerStages.workingJobsWithoutPictures) ids.add(j.id)
+    return ids.size
+  }, [
+    quickfillNoCustomerStages.fetchEnabled,
+    quickfillNoCustomerStages.jobsWithoutCustomer,
+    quickfillNoCustomerStages.workingJobsWithoutPictures,
+  ])
+  useReportQuickfillSectionMetric(
+    'no-customer-stages',
+    quickfillStagesAlertsUnionCount,
+    quickfillNoCustomerStages.fetchEnabled && quickfillNoCustomerStages.loading,
+  )
   const {
     peopleCount: staleTallyStaffPeopleCount,
     transactionCount: staleTallyStaffTxCount,
@@ -599,6 +619,11 @@ function QuickfillPage() {
       if (!isSectionVisible(sectionId)) return false
       if (sectionId === 'warnings') return warningsSectionOnPage
       if (sectionId === 'unpriced-fixtures') return unpricedFixturesCount > 0
+      if (sectionId === 'no-customer-stages') {
+        if (!quickfillNoCustomerStages.fetchEnabled) return false
+        if (quickfillNoCustomerStages.loading) return false
+        return quickfillStagesAlertsUnionCount != null && quickfillStagesAlertsUnionCount > 0
+      }
       if (sectionId === 'dispatch-inbox') return dispatchInboxEligible
       if (sectionId === 'schedule' || sectionId === 'tomorrow-schedule') {
         return role != null && CAN_USE_SCHEDULE_DISPATCH_FOR_QUICKFILL_SCHEDULE.has(role)
@@ -606,7 +631,17 @@ function QuickfillPage() {
       if (sectionId === 'prospects') return canAccessProspects
       return true
     },
-    [hiddenSectionIds, warningsSectionOnPage, unpricedFixturesCount, dispatchInboxEligible, role, canAccessProspects],
+    [
+      hiddenSectionIds,
+      warningsSectionOnPage,
+      unpricedFixturesCount,
+      dispatchInboxEligible,
+      role,
+      canAccessProspects,
+      quickfillNoCustomerStages.fetchEnabled,
+      quickfillNoCustomerStages.loading,
+      quickfillStagesAlertsUnionCount,
+    ],
   )
 
   const orderedSections = useMemo(() => {
@@ -1002,6 +1037,30 @@ function QuickfillPage() {
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'jobs-billing', label: 'Jobs Billing' })}
           >
             <JobsBillingReminderSection minHcpNumber={jobsBillingMinHcp} />
+          </QuickfillSectionWrapper>
+        )
+      case 'no-customer-stages':
+        return (
+          <QuickfillSectionWrapper
+            id={id}
+            sectionId={sectionId}
+            label={label}
+            bannerText={bannerText}
+            withTopDivider={withTopDivider}
+            color={getButtonColor(sectionMarks['no-customer-stages']?.marked_at ?? null)}
+            collapsed={isCollapsed('no-customer-stages') && !forceExpandedSections.has('no-customer-stages')}
+            mark={sectionMarks['no-customer-stages']}
+            onMarkUpToDate={() => void markSectionUpToDate('no-customer-stages')}
+            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'no-customer-stages']))}
+            onOpenHistory={() =>
+              setMarkHistoryModal({ sectionId: 'no-customer-stages', label: 'Stages: customer & job pictures' })
+            }
+          >
+            <QuickfillStagesNoCustomerSection
+              jobsWithoutCustomer={quickfillNoCustomerStages.jobsWithoutCustomer}
+              workingJobsWithoutPictures={quickfillNoCustomerStages.workingJobsWithoutPictures}
+              jobsListBusy={quickfillNoCustomerStages.jobsListBusy}
+            />
           </QuickfillSectionWrapper>
         )
       case 'dispatch-inbox':

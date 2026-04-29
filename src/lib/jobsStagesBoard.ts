@@ -1,5 +1,6 @@
 import type { Database } from '../types/database'
 import type { JobWithDetails } from '../types/jobWithDetails'
+import { jobLedgerHasCustomerForBilling } from './jobLedgerCustomerForBilling'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -345,6 +346,51 @@ export function buildJobsStagesBoardLists(
     readyToBillRows,
     billedRows,
   }
+}
+
+/** HCP numeric then job name; shared by Stages list modals. */
+export function sortStagesJobsByHcpThenName(a: JobWithDetails, b: JobWithDetails): number {
+  const ha = (a.hcp_number ?? '').trim()
+  const hb = (b.hcp_number ?? '').trim()
+  const cmpHcp = ha.localeCompare(hb, undefined, { numeric: true })
+  if (cmpHcp !== 0) return cmpHcp
+  return (a.job_name ?? '').localeCompare(b.job_name ?? '', undefined, { sensitivity: 'base' })
+}
+
+export function jobLedgerJobPicturesLinkDefined(link: string | null | undefined): boolean {
+  return String(link ?? '').trim().length > 0
+}
+
+/** Jobs on the Stages board filter that lack a linked customer, sorted like the Jobs Stages modal. */
+export function stagesJobsWithoutCustomerFromFiltered(filtered: JobWithDetails[]): JobWithDetails[] {
+  const list = filtered.filter((j) => !jobLedgerHasCustomerForBilling(j.customer_id))
+  return [...list].sort(sortStagesJobsByHcpThenName)
+}
+
+/** Working-stage jobs (after Stages search) with no Job Pictures URL set. */
+export function stagesWorkingJobsWithoutPicturesFromWorking(working: JobWithDetails[]): JobWithDetails[] {
+  const list = working.filter((j) => !jobLedgerJobPicturesLinkDefined(j.job_pictures_link))
+  return [...list].sort(sortStagesJobsByHcpThenName)
+}
+
+/** Same list as Stages "No customer" for the given search and optional schedule/clock extra ids. */
+export function buildStagesJobsWithoutCustomerList(
+  jobs: JobWithDetails[],
+  stagesSearchQuery: string,
+  extraJobIds?: ReadonlySet<string> | null,
+): JobWithDetails[] {
+  const { filtered } = buildJobsStagesBoardLists(jobs, stagesSearchQuery, extraJobIds)
+  return stagesJobsWithoutCustomerFromFiltered(filtered)
+}
+
+/** Same list as Jobs → Stages → "No job pictures" for working jobs with empty `job_pictures_link`. */
+export function buildStagesWorkingJobsWithoutPicturesList(
+  jobs: JobWithDetails[],
+  stagesSearchQuery: string,
+  extraJobIds?: ReadonlySet<string> | null,
+): JobWithDetails[] {
+  const { working } = buildJobsStagesBoardLists(jobs, stagesSearchQuery, extraJobIds)
+  return stagesWorkingJobsWithoutPicturesFromWorking(working)
 }
 
 /** Which Stages accordion contains this invoice row, if any. */

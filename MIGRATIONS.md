@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-04-28
+last_updated: 2026-04-29
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -363,6 +363,18 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Changes**: **`ensure_job_team_member_from_schedule_block()`**, trigger **`job_schedule_blocks_ensure_job_team_member_tr`**
 - **Impact**: Dispatch / Schedule Dispatch / **`ScheduleJobModal`** — any path that inserts **`job_schedule_blocks`**; assigned team roster for Jobs / Clock / subs visibility
 - **Category**: Jobs / Calendar / Dispatch
+
+**`20260428231416_material_po_generator.sql`**
+- **Purpose**: **Materials PO Generator** — **`material_po_generator_entries`** (unique **`po_code`** 10000–99999, **`job_ledger_id`**, **`for_user_id`**, **`supply_house_id`**, notes, **`created_by`**); job-scoped **SELECT** **RLS** for dev / master / assistant (aligned with **`jobs_ledger`** visibility); **`insert_material_po_generator_entry`** (**`SECURITY DEFINER`**, random code retries)
+- **Changes**: **`CREATE TABLE`** + **RLS** + **RPC**
+- **Impact**: [`Materials.tsx`](src/pages/Materials.tsx) **PO Generator** tab; [`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.412
+- **Category**: Materials / Ledger / RPC
+
+**`20260428232212_material_po_generator_supply_house_optional.sql`**
+- **Purpose**: **`supply_house_id`** nullable on **`material_po_generator_entries`**; **`insert_material_po_generator_entry`** accepts **`NULL`** supply house
+- **Changes**: **`ALTER COLUMN`** **DROP NOT NULL**; **`CREATE OR REPLACE`** **`insert_material_po_generator_entry`**
+- **Impact**: [`Materials.tsx`](src/pages/Materials.tsx); Supply Houses invoice **Purchase Order #** warning includes ledger rows with **null** **`supply_house_id`** ([`SupplyHousesTab.tsx`](src/components/SupplyHousesTab.tsx)); [`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.412
+- **Category**: Materials / Ledger / RPC
 
 #### April 5, 2026
 

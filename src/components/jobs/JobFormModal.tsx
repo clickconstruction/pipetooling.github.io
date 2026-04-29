@@ -27,6 +27,7 @@ import { MoneyDecimalAmountInput } from '../MoneyDecimalAmountInput'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { resolveCustomerIdForJobPayload } from '../../lib/jobLedgerCustomer'
+import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
 import { revenueDollarsFromFixtures } from '../../lib/revenueFromJobFixtures'
 import { resolveEffectiveJobMasterUserId } from '../../lib/resolveEffectiveJobMasterUserId'
 import { getBillingStripeModePref, stripeModeInvokeBody } from '../../lib/billingStripeModePref'
@@ -379,10 +380,6 @@ function sanitizeMoneyTyping(raw: string): string {
   return out
 }
 
-function jobLedgerHasCustomerForBilling(customerId: string | null | undefined): boolean {
-  return customerId != null && String(customerId).trim().length > 0
-}
-
 type ProjectOption = {
   id: string
   name: string
@@ -602,6 +599,7 @@ export default function JobFormModal({
   const [dateMet, setDateMet] = useState('')
   const [lastBillDate, setLastBillDate] = useState('')
   const [googleDriveLink, setGoogleDriveLink] = useState('')
+  const [jobPicturesLink, setJobPicturesLink] = useState('')
   const [jobPlansLink, setJobPlansLink] = useState('')
   const [payments, setPayments] = useState<PaymentRow[]>(() => [newEmptyPaymentRow()])
   const refreshEditingJobAndHydratePayments = useCallback((jobId: string) => {
@@ -798,7 +796,6 @@ export default function JobFormModal({
   const jobFormProjectSectionRef = useRef<HTMLDivElement | null>(null)
   const jobFormProjectSelectRef = useRef<HTMLSelectElement | null>(null)
   const jobFormProjectDisconnectRef = useRef<HTMLButtonElement | null>(null)
-  const jobFormJobFilesSectionRef = useRef<HTMLDivElement | null>(null)
   const jobFormJobPlansSectionRef = useRef<HTMLDivElement | null>(null)
   const jobFormGoogleDriveInputRef = useRef<HTMLInputElement | null>(null)
   const jobFormJobPlansInputRef = useRef<HTMLInputElement | null>(null)
@@ -899,6 +896,7 @@ export default function JobFormModal({
     setCustomerExpanded(billingGate && !jobLedgerHasCustomerForBilling(job.customer_id))
     setLastBillDate(job.last_bill_date ? job.last_bill_date.slice(0, 10) : '')
     setGoogleDriveLink(job.google_drive_link ?? '')
+    setJobPicturesLink(job.job_pictures_link ?? '')
     setJobPlansLink(job.job_plans_link ?? '')
     setProjectFilesPlansExpanded(false)
     setPayments(paymentRowsFromJob(job))
@@ -944,6 +942,7 @@ export default function JobFormModal({
     setCustomerExpanded(true)
     setLastBillDate('')
     setGoogleDriveLink('')
+    setJobPicturesLink('')
     setJobPlansLink('')
     setProjectFilesPlansExpanded(!!projectPrefill)
     setPayments([newEmptyPaymentRow()])
@@ -1482,16 +1481,6 @@ export default function JobFormModal({
       })
     })
   }, [projectId])
-
-  const scrollToJobFilesSection = useCallback(() => {
-    setProjectFilesPlansExpanded(true)
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        jobFormJobFilesSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-        jobFormGoogleDriveInputRef.current?.focus()
-      })
-    })
-  }, [])
 
   const scrollToJobPlansSection = useCallback(() => {
     setProjectFilesPlansExpanded(true)
@@ -2258,6 +2247,7 @@ export default function JobFormModal({
           customer_phone: customerPhone.trim() || null,
           last_bill_date: lastBillDate.trim() || null,
           google_drive_link: googleDriveLink.trim() || null,
+          job_pictures_link: jobPicturesLink.trim() || null,
           job_plans_link: jobPlansLink.trim() || null,
           revenue: revNum,
           payments_made: paymentsMadeNum,
@@ -2364,6 +2354,7 @@ export default function JobFormModal({
             customer_phone: customerPhone.trim() || null,
             last_bill_date: lastBillDate.trim() || null,
             google_drive_link: googleDriveLink.trim() || null,
+            job_pictures_link: jobPicturesLink.trim() || null,
             job_plans_link: jobPlansLink.trim() || null,
             revenue: revNum,
             payments_made: paymentsMadeNum,
@@ -2948,7 +2939,7 @@ export default function JobFormModal({
                   minWidth: 0,
                 }}
               >
-                {/* Match Project | Files | Plans | Bid row: fixed chevron slot + same gap as job-form-project-files-plans-trigger */}
+                {/* Match Project | Plans | Bid row: fixed chevron slot + same gap as job-form-project-files-plans-trigger */}
                 <span
                   aria-hidden
                   style={{
@@ -3155,7 +3146,7 @@ export default function JobFormModal({
                   <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Customer Email</label>
                   <input type="email" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
                 </div>
-                <div style={{ marginBottom: 0 }}>
+                <div style={{ marginBottom: '0.75rem' }}>
                   <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>
                     Date Met
                     {customerId && customers.find((c) => c.id === customerId)?.date_met && (
@@ -3178,6 +3169,57 @@ export default function JobFormModal({
                     }}
                   />
                 </div>
+                <div style={{ marginBottom: 0 }}>
+                  <label htmlFor="job-form-customer-job-files" style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>
+                    Job Files
+                  </label>
+                  <input
+                    id="job-form-customer-job-files"
+                    ref={jobFormGoogleDriveInputRef}
+                    type="url"
+                    value={googleDriveLink}
+                    onChange={(e) => setGoogleDriveLink(e.target.value)}
+                    placeholder="https://drive.google.com/..."
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  />
+                  <a
+                    href="https://drive.google.com/drive/folders/1cOTvZrJFTUlxTiUMoESdMtTRvQgxft60?usp=drive_link"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      openInExternalBrowser('https://drive.google.com/drive/folders/1cOTvZrJFTUlxTiUMoESdMtTRvQgxft60?usp=drive_link')
+                    }}
+                    style={{ fontSize: '0.8125rem', color: '#2563eb', marginTop: 4, display: 'inline-block' }}
+                  >
+                    customer and job folders
+                  </a>
+                </div>
+                <div style={{ marginBottom: 0 }}>
+                  <label htmlFor="job-form-customer-job-pictures" style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>
+                    Job Pictures
+                  </label>
+                  <input
+                    id="job-form-customer-job-pictures"
+                    type="url"
+                    value={jobPicturesLink}
+                    onChange={(e) => setJobPicturesLink(e.target.value)}
+                    placeholder="https://drive.google.com/..."
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  />
+                  <a
+                    href="https://drive.google.com/drive/folders/1cOTvZrJFTUlxTiUMoESdMtTRvQgxft60?usp=drive_link"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      openInExternalBrowser('https://drive.google.com/drive/folders/1cOTvZrJFTUlxTiUMoESdMtTRvQgxft60?usp=drive_link')
+                    }}
+                    style={{ fontSize: '0.8125rem', color: '#2563eb', marginTop: 4, display: 'inline-block' }}
+                  >
+                    customer and job folders
+                  </a>
+                </div>
               </div>
             )}
             <div style={{ marginBottom: projectFilesPlansExpanded ? '0.5rem' : 0 }}>
@@ -3195,7 +3237,7 @@ export default function JobFormModal({
                 id="job-form-project-files-plans-trigger"
                 aria-expanded={projectFilesPlansExpanded}
                 aria-controls="job-form-project-files-plans-panel"
-                aria-label="Expand or collapse project, files, plans, and bid"
+                aria-label="Expand or collapse project, plans, and bid"
                 onClick={() => setProjectFilesPlansExpanded((p) => !p)}
                 style={{
                   display: 'inline-flex',
@@ -3227,24 +3269,6 @@ export default function JobFormModal({
                 </button>
               ) : (
                 <span style={projectFilesPlansPlainSegmentStyle}>Project</span>
-              )}
-              <span aria-hidden style={projectFilesPlansPipeStyle}>
-                {' | '}
-              </span>
-              {googleDriveLink.trim() ? (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    scrollToJobFilesSection()
-                  }}
-                  style={projectFilesPlansJumpLinkStyle}
-                  aria-label="Show Job Files"
-                >
-                  Files
-                </button>
-              ) : (
-                <span style={projectFilesPlansPlainSegmentStyle}>Files</span>
               )}
               <span aria-hidden style={projectFilesPlansPipeStyle}>
                 {' | '}
@@ -3287,7 +3311,7 @@ export default function JobFormModal({
               <div
                 id="job-form-project-files-plans-panel"
                 role="region"
-                aria-label="Project, files, plans, and bid"
+                aria-label="Project, plans, and bid"
                 style={{ paddingLeft: '1.25rem', borderLeft: '2px solid #e5e7eb' }}
               >
                 <div ref={jobFormProjectSectionRef} style={{ marginBottom: '0.75rem' }}>
@@ -3357,28 +3381,7 @@ export default function JobFormModal({
                     </>
                   )}
                 </div>
-                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
-                  <div ref={jobFormJobFilesSectionRef} style={{ flex: 1, minWidth: 200 }}>
-                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Files</label>
-                    <input
-                      ref={jobFormGoogleDriveInputRef}
-                      type="url"
-                      value={googleDriveLink}
-                      onChange={(e) => setGoogleDriveLink(e.target.value)}
-                      placeholder="https://drive.google.com/..."
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
-                    />
-                    <a
-                      href="https://drive.google.com/drive/folders/1cOTvZrJFTUlxTiUMoESdMtTRvQgxft60?usp=drive_link"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => { e.preventDefault(); openInExternalBrowser('https://drive.google.com/drive/folders/1cOTvZrJFTUlxTiUMoESdMtTRvQgxft60?usp=drive_link') }}
-                      style={{ fontSize: '0.8125rem', color: '#2563eb', marginTop: 4, display: 'inline-block' }}
-                    >
-                      job folders
-                    </a>
-                  </div>
-                  <div ref={jobFormJobPlansSectionRef} style={{ flex: 1, minWidth: 200 }}>
+                <div ref={jobFormJobPlansSectionRef} style={{ marginBottom: '0.75rem' }}>
                     <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Plans</label>
                     <input
                       ref={jobFormJobPlansInputRef}
@@ -3388,7 +3391,6 @@ export default function JobFormModal({
                       placeholder="https://drive.google.com/..."
                       style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
                     />
-                  </div>
                 </div>
                 <div ref={jobFormBidSectionRef} style={{ marginBottom: '0.75rem' }}>
                   <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Bid proposal</label>

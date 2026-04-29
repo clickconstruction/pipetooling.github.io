@@ -26,6 +26,7 @@ import {
   stripeInvoiceFooterActivePreset,
 } from '../../lib/stripeInvoiceFooter'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
+import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
 import { maybePromoteJobToBilledAfterCustomerInvoice } from '../../lib/promoteJobToBilledIfFullyInvoiced'
 import { StripeBillPreSubmitPreview } from './StripeBillPreSubmitPreview'
 import StripeBillingModeToggle from './StripeBillingModeToggle'
@@ -182,10 +183,6 @@ function todayIsoDate(): string {
   const m = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
   return `${y}-${m}-${day}`
-}
-
-function jobLedgerHasCustomerForBilling(customerId: string | null | undefined): boolean {
-  return customerId != null && String(customerId).trim().length > 0
 }
 
 function defaultStripeLineDescriptionFromJob(j: JobBillingContext): string {

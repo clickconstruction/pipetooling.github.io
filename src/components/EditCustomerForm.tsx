@@ -11,10 +11,22 @@ import {
   type CustomerRow as CustomerPickRow,
 } from '../lib/customerContactDisplay'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
 
-type MergeField = 'name' | 'address' | 'contact_info' | 'customer_type' | 'date_met' | 'master_user_id'
+const JOB_FOLDERS_DRIVE_URL =
+  'https://drive.google.com/drive/folders/1cOTvZrJFTUlxTiUMoESdMtTRvQgxft60?usp=drive_link'
+
+type MergeField =
+  | 'name'
+  | 'address'
+  | 'contact_info'
+  | 'customer_type'
+  | 'date_met'
+  | 'master_user_id'
+  | 'google_drive_link'
+  | 'job_pictures_link'
 
 const MERGE_FIELD_KEYS: MergeField[] = [
   'name',
@@ -23,6 +35,8 @@ const MERGE_FIELD_KEYS: MergeField[] = [
   'customer_type',
   'date_met',
   'master_user_id',
+  'google_drive_link',
+  'job_pictures_link',
 ]
 
 function defaultMergeFieldSource(): Record<MergeField, 'survivor' | 'victim'> {
@@ -33,6 +47,8 @@ function defaultMergeFieldSource(): Record<MergeField, 'survivor' | 'victim'> {
     customer_type: 'survivor',
     date_met: 'survivor',
     master_user_id: 'survivor',
+    google_drive_link: 'survivor',
+    job_pictures_link: 'survivor',
   }
 }
 
@@ -120,6 +136,8 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [dateMet, setDateMet] = useState('')
+  const [googleDriveLink, setGoogleDriveLink] = useState('')
+  const [jobPicturesLink, setJobPicturesLink] = useState('')
   const [customerType, setCustomerType] = useState<'commercial' | 'residential' | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -231,7 +249,9 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
           async () =>
             await supabase
               .from('customers')
-              .select('id, name, address, contact_info, date_met, master_user_id, customer_type')
+              .select(
+                'id, name, address, contact_info, date_met, master_user_id, customer_type, google_drive_link, job_pictures_link',
+              )
               .order('name'),
           'customers for merge picker',
         )
@@ -310,6 +330,8 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
       setPhone(contactInfo.phone || '')
       setEmail(contactInfo.email || '')
       setDateMet(row.date_met ? (row.date_met.split('T')[0] || '') : '')
+      setGoogleDriveLink(row.google_drive_link ?? '')
+      setJobPicturesLink(row.job_pictures_link ?? '')
       setCustomerType(
         row.customer_type === 'commercial' || row.customer_type === 'residential'
           ? row.customer_type
@@ -338,6 +360,8 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
       contact_info: contactInfoToJson(phone, email),
       customer_type: customerType,
       date_met: dateMet.trim() || null,
+      google_drive_link: googleDriveLink.trim() || null,
+      job_pictures_link: jobPicturesLink.trim() || null,
     }
     if (customerMasterId && myRole !== 'estimator') {
       payload.master_user_id = customerMasterId
@@ -449,6 +473,59 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
             onChange={(e) => setAddress(e.target.value)}
             style={{ width: '100%', padding: '0.5rem' }}
           />
+        </div>
+        <div style={{ marginBottom: '1rem' }}>
+          <label htmlFor="edit-customer-folder" style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>
+            Customer Folder
+          </label>
+          <input
+            id="edit-customer-folder"
+            type="url"
+            value={googleDriveLink}
+            onChange={(e) => setGoogleDriveLink(e.target.value)}
+            placeholder="https://drive.google.com/..."
+            style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+          />
+          <a
+            href={JOB_FOLDERS_DRIVE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => {
+              e.preventDefault()
+              openInExternalBrowser(JOB_FOLDERS_DRIVE_URL)
+            }}
+            style={{ fontSize: '0.8125rem', color: '#2563eb', marginTop: 4, display: 'inline-block' }}
+          >
+            customer and job folders
+          </a>
+        </div>
+        <div style={{ marginBottom: '1rem' }}>
+          <label
+            htmlFor="edit-customer-job-pictures"
+            style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}
+          >
+            Job Pictures
+          </label>
+          <input
+            id="edit-customer-job-pictures"
+            type="url"
+            value={jobPicturesLink}
+            onChange={(e) => setJobPicturesLink(e.target.value)}
+            placeholder="https://drive.google.com/..."
+            style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+          />
+          <a
+            href={JOB_FOLDERS_DRIVE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => {
+              e.preventDefault()
+              openInExternalBrowser(JOB_FOLDERS_DRIVE_URL)
+            }}
+            style={{ fontSize: '0.8125rem', color: '#2563eb', marginTop: 4, display: 'inline-block' }}
+          >
+            customer and job folders
+          </a>
         </div>
         <div style={{ marginBottom: '1rem' }}>
           <label htmlFor="edit-phone" style={{ display: 'block', marginBottom: 4 }}>
@@ -784,6 +861,22 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
                         victimValue={masterShortLabel(victimRow.master_user_id ?? '', availableMasters)}
                         selected={mergeFieldSource.master_user_id}
                         onChange={(s) => setFieldSource('master_user_id', s)}
+                      />
+                      <MergeFieldRow
+                        fieldId="merge-google-drive"
+                        label="Customer folder"
+                        survivorValue={googleDriveLink.trim() || '—'}
+                        victimValue={victimRow.google_drive_link?.trim() || '—'}
+                        selected={mergeFieldSource.google_drive_link}
+                        onChange={(s) => setFieldSource('google_drive_link', s)}
+                      />
+                      <MergeFieldRow
+                        fieldId="merge-job-pictures"
+                        label="Job pictures"
+                        survivorValue={jobPicturesLink.trim() || '—'}
+                        victimValue={victimRow.job_pictures_link?.trim() || '—'}
+                        selected={mergeFieldSource.job_pictures_link}
+                        onChange={(s) => setFieldSource('job_pictures_link', s)}
                       />
                     </div>
                   )}

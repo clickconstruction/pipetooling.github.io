@@ -1799,7 +1799,9 @@ export type Database = {
           created_at: string | null
           customer_type: string | null
           date_met: string | null
+          google_drive_link: string | null
           id: string
+          job_pictures_link: string | null
           master_user_id: string
           name: string
           stripe_customer_id: string | null
@@ -1811,7 +1813,9 @@ export type Database = {
           created_at?: string | null
           customer_type?: string | null
           date_met?: string | null
+          google_drive_link?: string | null
           id?: string
+          job_pictures_link?: string | null
           master_user_id: string
           name: string
           stripe_customer_id?: string | null
@@ -1823,7 +1827,9 @@ export type Database = {
           created_at?: string | null
           customer_type?: string | null
           date_met?: string | null
+          google_drive_link?: string | null
           id?: string
+          job_pictures_link?: string | null
           master_user_id?: string
           name?: string
           stripe_customer_id?: string | null
@@ -3191,6 +3197,7 @@ export type Database = {
           id: string
           job_address: string
           job_name: string
+          job_pictures_link: string | null
           job_plans_link: string | null
           last_bill_date: string | null
           last_work_date: string | null
@@ -3215,6 +3222,7 @@ export type Database = {
           id?: string
           job_address?: string
           job_name?: string
+          job_pictures_link?: string | null
           job_plans_link?: string | null
           last_bill_date?: string | null
           last_work_date?: string | null
@@ -3239,6 +3247,7 @@ export type Database = {
           id?: string
           job_address?: string
           job_name?: string
+          job_pictures_link?: string | null
           job_plans_link?: string | null
           last_bill_date?: string | null
           last_work_date?: string | null

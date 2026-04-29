@@ -34,6 +34,8 @@ import { useBillCustomerModal } from '../contexts/BillCustomerModalContext'
 import { canRoleUseArBankCount, useArBankUnallocatedCount } from '../hooks/useArBankUnallocatedCount'
 import BankPaymentsModal from '../components/jobs/BankPaymentsModal'
 import JobBookModal from '../components/jobs/JobBookModal'
+import StagesNoCustomerJobsModal from '../components/jobs/StagesNoCustomerJobsModal'
+import StagesAlertJobListModal from '../components/jobs/StagesAlertJobListModal'
 import JobBookIcon from '../components/icons/JobBookIcon'
 import BilledPaymentConfirmationModal from '../components/jobs/BilledPaymentConfirmationModal'
 import BilledBillViewModal from '../components/jobs/BilledBillViewModal'
@@ -138,10 +140,13 @@ import {
   locateStagesInvoiceSection,
   readyToBillRowsExposureTotal,
   stagesInvoiceVisibleWithEmptySearch,
+  stagesJobsWithoutCustomerFromFiltered,
   stagesMergedBillingInvoiceId,
+  stagesWorkingJobsWithoutPicturesFromWorking,
   type InvoiceWithJob,
   type StageRow,
 } from '../lib/jobsStagesBoard'
+import { jobLedgerHasCustomerForBilling } from '../lib/jobLedgerCustomerForBilling'
 import {
   fetchJobIdsMatchingScheduleOrClockSessions,
   shouldFetchStagesScheduleSessionSearch,
@@ -153,11 +158,6 @@ type CustomerRow = Database['public']['Tables']['customers']['Row']
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 type InspectionRow = Database['public']['Tables']['inspections']['Row']
 type UserRow = { id: string; name: string; email: string | null; role: string; notes: string | null }
-
-/** Jobs ledger row must be linked to a customers row before Invoice/Update or instant billed. */
-function jobLedgerHasCustomerForBilling(customerId: string | null | undefined): boolean {
-  return customerId != null && String(customerId).trim().length > 0
-}
 
 type TallyPartRow = {
   id: string
@@ -1194,6 +1194,10 @@ export default function Jobs() {
   })
   const [billedTotalByNameModalOpen, setBilledTotalByNameModalOpen] = useState(false)
   const [billedTotalByNameExpandedName, setBilledTotalByNameExpandedName] = useState<string | null>(null)
+  const [stagesNoCustomerModalOpen, setStagesNoCustomerModalOpen] = useState(false)
+  const [stagesNoCustomerBtnHover, setStagesNoCustomerBtnHover] = useState(false)
+  const [stagesNoJobPicturesModalOpen, setStagesNoJobPicturesModalOpen] = useState(false)
+  const [stagesNoJobPicturesBtnHover, setStagesNoJobPicturesBtnHover] = useState(false)
   const [jobBookModalOpen, setJobBookModalOpen] = useState(false)
   const [capableToBillModalOpen, setCapableToBillModalOpen] = useState(false)
   const [whenInvoiceBillModal, setWhenInvoiceBillModal] = useState<{
@@ -1322,6 +1326,44 @@ export default function Jobs() {
     () => buildJobsStagesBoardLists(jobs, stagesSearchQuery, stagesSearchExtraJobIds),
     [jobs, stagesSearchQuery, stagesSearchExtraJobIds],
   )
+
+  const stagesJobsWithoutCustomer = useMemo(
+    () => stagesJobsWithoutCustomerFromFiltered(stagesBoardLists.filtered),
+    [stagesBoardLists.filtered],
+  )
+
+  const stagesWorkingJobsWithoutPictures = useMemo(
+    () => stagesWorkingJobsWithoutPicturesFromWorking(stagesBoardLists.working),
+    [stagesBoardLists.working],
+  )
+
+  const openStagesNoCustomerEditJob = useCallback(
+    (jobId: string) => {
+      setStagesNoCustomerModalOpen(false)
+      tryOpenEditJob(jobId, { onSaved: () => void loadJobs() })
+    },
+    [tryOpenEditJob, loadJobs],
+  )
+
+  const openStagesNoJobPicturesEditJob = useCallback(
+    (jobId: string) => {
+      setStagesNoJobPicturesModalOpen(false)
+      tryOpenEditJob(jobId, { onSaved: () => void loadJobs() })
+    },
+    [tryOpenEditJob, loadJobs],
+  )
+
+  useEffect(() => {
+    if (stagesJobsWithoutCustomer.length === 0) {
+      setStagesNoCustomerModalOpen(false)
+    }
+  }, [stagesJobsWithoutCustomer.length])
+
+  useEffect(() => {
+    if (stagesWorkingJobsWithoutPictures.length === 0) {
+      setStagesNoJobPicturesModalOpen(false)
+    }
+  }, [stagesWorkingJobsWithoutPictures.length])
 
   const focusStagesSection = useCallback((key: 'working' | 'readyToBill' | 'billed') => {
     setStagesSectionOpen((prev) => ({ ...prev, [key]: true }))
@@ -6000,78 +6042,162 @@ ${totalsHtml}
               display: 'flex',
               flexWrap: 'wrap',
               alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.35rem',
-              textAlign: 'center',
+              gap: '0.5rem',
+              width: '100%',
             }}
           >
-            <span style={{ display: 'inline-flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '0.35em', rowGap: 0 }}>
-              <button
-                type="button"
-                onClick={() => focusStagesSection('working')}
-                aria-label={`Jump to Working, ${stagesBoardLists.working.length} jobs`}
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flex: '1 1 auto',
+                gap: '0.35rem',
+                textAlign: 'center',
+                minWidth: 0,
+              }}
+            >
+              <span style={{ display: 'inline-flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '0.35em', rowGap: 0 }}>
+                <button
+                  type="button"
+                  onClick={() => focusStagesSection('working')}
+                  aria-label={`Jump to Working, ${stagesBoardLists.working.length} jobs`}
+                  style={{
+                    padding: 0,
+                    border: 'none',
+                    background: 'none',
+                    cursor: 'pointer',
+                    font: 'inherit',
+                    color: '#1d4ed8',
+                    textDecoration: 'underline',
+                    textUnderlineOffset: '2px',
+                  }}
+                >
+                  Working
+                </button>
+                <span>({stagesBoardLists.working.length})</span>
+              </span>
+              <span style={{ color: '#9ca3af', userSelect: 'none' }} aria-hidden>
+                →
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '0.35em', rowGap: 0 }}>
+                <button
+                  type="button"
+                  onClick={() => focusStagesSection('readyToBill')}
+                  aria-label={`Jump to Ready to Bill, ${stagesBoardLists.readyToBillRows.length} rows`}
+                  style={{
+                    padding: 0,
+                    border: 'none',
+                    background: 'none',
+                    cursor: 'pointer',
+                    font: 'inherit',
+                    color: '#1d4ed8',
+                    textDecoration: 'underline',
+                    textUnderlineOffset: '2px',
+                  }}
+                >
+                  Ready to Bill
+                </button>
+                <span>({stagesBoardLists.readyToBillRows.length})</span>
+              </span>
+              <span style={{ color: '#9ca3af', userSelect: 'none' }} aria-hidden>
+                →
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '0.35em', rowGap: 0 }}>
+                <button
+                  type="button"
+                  onClick={() => focusStagesSection('billed')}
+                  aria-label={`Jump to Billed Awaiting Payment, ${stagesBoardLists.billedRows.length} rows`}
+                  style={{
+                    padding: 0,
+                    border: 'none',
+                    background: 'none',
+                    cursor: 'pointer',
+                    font: 'inherit',
+                    color: '#1d4ed8',
+                    textDecoration: 'underline',
+                    textUnderlineOffset: '2px',
+                  }}
+                >
+                  Billed Awaiting Payment
+                </button>
+                <span>({stagesBoardLists.billedRows.length})</span>
+              </span>
+            </div>
+            {stagesJobsWithoutCustomer.length > 0 || stagesWorkingJobsWithoutPictures.length > 0 ? (
+              <div
                 style={{
-                  padding: 0,
-                  border: 'none',
-                  background: 'none',
-                  cursor: 'pointer',
-                  font: 'inherit',
-                  color: '#1d4ed8',
-                  textDecoration: 'underline',
-                  textUnderlineOffset: '2px',
+                  marginLeft: 'auto',
+                  flexShrink: 0,
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '0.5rem',
+                  alignItems: 'center',
                 }}
               >
-                Working
-              </button>
-              <span>({stagesBoardLists.working.length})</span>
-            </span>
-            <span style={{ color: '#9ca3af', userSelect: 'none' }} aria-hidden>
-              →
-            </span>
-            <span style={{ display: 'inline-flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '0.35em', rowGap: 0 }}>
-              <button
-                type="button"
-                onClick={() => focusStagesSection('readyToBill')}
-                aria-label={`Jump to Ready to Bill, ${stagesBoardLists.readyToBillRows.length} rows`}
-                style={{
-                  padding: 0,
-                  border: 'none',
-                  background: 'none',
-                  cursor: 'pointer',
-                  font: 'inherit',
-                  color: '#1d4ed8',
-                  textDecoration: 'underline',
-                  textUnderlineOffset: '2px',
-                }}
-              >
-                Ready to Bill
-              </button>
-              <span>({stagesBoardLists.readyToBillRows.length})</span>
-            </span>
-            <span style={{ color: '#9ca3af', userSelect: 'none' }} aria-hidden>
-              →
-            </span>
-            <span style={{ display: 'inline-flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '0.35em', rowGap: 0 }}>
-              <button
-                type="button"
-                onClick={() => focusStagesSection('billed')}
-                aria-label={`Jump to Billed Awaiting Payment, ${stagesBoardLists.billedRows.length} rows`}
-                style={{
-                  padding: 0,
-                  border: 'none',
-                  background: 'none',
-                  cursor: 'pointer',
-                  font: 'inherit',
-                  color: '#1d4ed8',
-                  textDecoration: 'underline',
-                  textUnderlineOffset: '2px',
-                }}
-              >
-                Billed Awaiting Payment
-              </button>
-              <span>({stagesBoardLists.billedRows.length})</span>
-            </span>
+                {stagesJobsWithoutCustomer.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setStagesNoCustomerModalOpen(true)}
+                    onMouseEnter={() => setStagesNoCustomerBtnHover(true)}
+                    onMouseLeave={() => setStagesNoCustomerBtnHover(false)}
+                    title="List jobs missing a linked customer"
+                    aria-label={`No linked customer: ${stagesJobsWithoutCustomer.length} jobs. Open list.`}
+                    style={{
+                      padding: '0.35rem 0.65rem',
+                      fontSize: '0.8125rem',
+                      fontWeight: 500,
+                      border: `1px solid ${stagesNoCustomerBtnHover ? '#f87171' : '#fecaca'}`,
+                      borderRadius: 4,
+                      background: '#fef2f2',
+                      color: stagesNoCustomerBtnHover ? '#991b1b' : '#b91c1c',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    No customer ({stagesJobsWithoutCustomer.length})
+                  </button>
+                ) : null}
+                {stagesWorkingJobsWithoutPictures.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setStagesNoJobPicturesModalOpen(true)}
+                    onMouseEnter={() => setStagesNoJobPicturesBtnHover(true)}
+                    onMouseLeave={() => setStagesNoJobPicturesBtnHover(false)}
+                    title="List working jobs missing Job Pictures link"
+                    aria-label={`Working jobs with no job pictures link: ${stagesWorkingJobsWithoutPictures.length} jobs. Open list.`}
+                    style={{
+                      padding: '0.35rem 0.65rem',
+                      fontSize: '0.8125rem',
+                      fontWeight: 500,
+                      border: `1px solid ${stagesNoJobPicturesBtnHover ? '#f87171' : '#fecaca'}`,
+                      borderRadius: 4,
+                      background: '#fef2f2',
+                      color: stagesNoJobPicturesBtnHover ? '#991b1b' : '#b91c1c',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    No job pictures ({stagesWorkingJobsWithoutPictures.length})
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
           </div>
+          <StagesNoCustomerJobsModal
+            open={stagesNoCustomerModalOpen}
+            onClose={() => setStagesNoCustomerModalOpen(false)}
+            jobs={stagesJobsWithoutCustomer}
+            onSelectJob={openStagesNoCustomerEditJob}
+          />
+          <StagesAlertJobListModal
+            open={stagesNoJobPicturesModalOpen}
+            onClose={() => setStagesNoJobPicturesModalOpen(false)}
+            jobs={stagesWorkingJobsWithoutPictures}
+            onSelectJob={openStagesNoJobPicturesEditJob}
+            titleId="stages-no-job-pictures-modal-title"
+            title="Working jobs without Job Pictures"
+            description="Working jobs in the current Stages search with no Job Pictures URL set. Open Edit Job to add a link."
+          />
           {(jobsListLoading || (jobsListRefreshing && !jobsListLoading)) && (
             <div
               role="status"

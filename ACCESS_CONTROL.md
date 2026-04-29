@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-04-28
+last_updated: 2026-04-29
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -178,7 +178,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 
 **Materials**:
 - Full CRUD on parts, prices, supply houses
-- Supply Houses tab: supply house invoices (AP)
+- **Supply Houses** and **PO Generator** tabs: supply house invoices (AP); PO Generator ledger (**`material_po_generator_entries`**, dev/master/assistant)
 - Create and manage templates
 - Create and manage purchase orders
 - View price history
@@ -247,7 +247,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 
 **Materials**:
 - Full access (same as master/dev)
-- Manage price book, templates, purchase orders
+- Manage price book, templates, purchase orders; **Supply Houses** and **PO Generator** tabs
 - Confirm prices on POs
 
 **Special Features**:
@@ -351,7 +351,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 - **Can edit existing customers** from **Customers** page or edit modal: UPDATE RLS + trigger forbid changing `master_user_id` or `stripe_customer_id`
 
 **Materials - Full Access**:
-- Same permissions as master_technician
+- Same permissions as master_technician **except** the **Supply Houses** and **PO Generator** tabs are **hidden** in the UI (restricted URLs redirect—same pattern as primaries for those tabs)
 - Price book management (parts, prices, supply houses)
 - Template creation and editing
 - Purchase order management
@@ -402,6 +402,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 
 **Materials - Full Access**:
 - Same as estimator/master_technician (subject to primary_service_type_ids if set)
+- **UI**: **Supply Houses** and **PO Generator** tabs hidden (restricted URLs redirect)
 - Price book management (parts, prices, supply houses)
 - Template creation and editing
 - Purchase order management
@@ -477,7 +478,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 
 **Materials**:
 - Price book and Assembly book (subject to superintendent_service_type_ids if set)
-- Supply Houses, Templates & PO, Purchase Orders tabs hidden (like primary)
+- Supply Houses, **PO Generator**, Templates & PO, Purchase Orders tabs hidden (like primary)
 
 **What They Cannot Do**:
 - No People page (only enough access to support Workflow assignment)
@@ -572,6 +573,7 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 |---------|-----|--------|-----------|-----|-----------|---------|----------------|
 | **Schedule** section — read-only per-user day row (**`DispatchAddBlockTimeRange`**, same window as Add schedule block); roster + **`job_schedule_blocks`** for selected **`work_date`**; link to **`/schedule-dispatch`** with **`week`**, optional **`day`** / **`jobId`**; **`quickfill_section_marks.section_id` = `schedule`** (shown only for **dev**, **master_technician**, **assistant**, **superintendent** — same gate as **`sectionWouldRenderOnPage`** in **`Quickfill.tsx`**) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ |
 | **Prospects** — active prospect warmth counts (0–3 and 4+); **Open Prospects** to **`/prospects?tab=prospect-list`**. **Team (last 30 days)** for **dev** / **master_technician** / **assistant** — **line chart** (**`recharts`**, **Y** = **Marked + Updated** per day; same data as **Prospects → Team**, which stays **per-day tables**). Shown when **`canAccessProspects`** in **`Quickfill.tsx`**. **Estimator** only when **Settings** grants **`estimator_prospects_access`** (warmth + CTA; no Team sub-block) | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
+| **Stages: customer & job pictures** (`no-customer-stages`) — **[`useQuickfillStagesJobsWithoutCustomer`](src/hooks/useQuickfillStagesJobsWithoutCustomer.ts)**; **Open list** (no linked customer) + **No job pictures** (**working**, empty **`job_pictures_link`**); **union** metric; same empty–Stages-search rules as **Jobs → Stages** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **Email**, **Texts**, **Physical inbox** — textarea + mark with note history; **mark** / **`quickfill_section_marks`** **UPSERT**: dev / master / assistant only (**RLS**). **Physical inbox** inline Task / Task Dispatch / Estimator buttons (same role gates as [`Layout.tsx`](src/components/Layout.tsx) header) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 ### Settings (selected)

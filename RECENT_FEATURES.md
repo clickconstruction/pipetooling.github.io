@@ -7,25 +7,31 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-28
+last_updated: 2026-04-29
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.411 → v2.4"
+version_range: "v2.413 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.413)"
+    line: ~1356
+    description: "Quickfill — Stages: customer & job pictures (no-customer-stages): working without job_pictures_link + no customer; union outstanding count; buildStagesWorkingJobsWithoutPicturesList; QuickfillStagesNoCustomerSection + StagesAlertJobListModal"
+  - name: "Latest Version (v2.412)"
+    line: ~1371
+    description: "Materials PO Generator ledger (material_po_generator_entries); Supply Houses invoice PO # vs ledger warning (house or null supply_house_id); parsePoGeneratorCodeFromPurchaseOrderName dash-suffix rule"
   - name: "Latest Version (v2.411)"
-    line: ~1348
+    line: ~1367
     description: "Dashboard — Leave Report schedule nag (12h silence via my_last_report_at); helpers omit Send to Billing + update_job_status; migrations 20270506 / 20270507"
   - name: "Latest Version (v2.410)"
-    line: ~1362
+    line: ~1378
     description: "Product copy — Helper role display (singular); enum stays helpers — userRoleDisplay.ts, Users/Roster, Settings matrix + dropdowns, ACCESS_CONTROL"
   - name: "Latest Version (v2.409)"
-    line: ~1372
+    line: ~1388
     description: "Dashboard Assigned Jobs / Superintendent Jobs — Send to Billing white outline (#2563eb) vs Leave Report solid blue; disabled opacity — Dashboard.tsx"
   - name: "Latest Version (v2.408)"
-    line: ~1356
+    line: ~1398
     description: "Checklist Roadmap: multiple roadmaps (picker, ?roadmap=), Members modal (viewer/editor), Default backfill; checklist_tech_tree_roadmaps + roadmap_members + RLS"
   - name: "Latest Version (v2.407)"
     line: ~1352
@@ -1060,6 +1066,8 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.413 — **Quickfill** — **Stages: customer & job pictures** (`no-customer-stages`): **No job pictures (n)** for **working** jobs with empty **`job_pictures_link`** (**`buildStagesWorkingJobsWithoutPicturesList`**, **`StagesAlertJobListModal`**, **`stages-no-job-pictures-quickfill-modal-title`**); **`Open list`** no-customer (**`StagesNoCustomerJobsModal`**); **union** job-id metric + **`sectionWouldRenderOnPage`**; **[`useQuickfillStagesJobsWithoutCustomer`](src/hooks/useQuickfillStagesJobsWithoutCustomer.ts)**, **[`QuickfillStagesNoCustomerSection`](src/components/quickfill/QuickfillStagesNoCustomerSection.tsx)**](#latest-updates-v2413)
+**New:** [v2.412 — **Materials** — **PO Generator** tab + ledger (**`material_po_generator_entries`**, **`insert_material_po_generator_entry`**); **Supply Houses** — invoice **Purchase Order #** warning vs ledger (**`SupplyHousesTab`**, **`parsePoGeneratorCodeFromPurchaseOrderName`** — **10000–99999**, not `NNNNN-N` shop suffix; ledger codes for **this house** **or** **null** **`supply_house_id`**)](#latest-updates-v2412)
 **New:** [v2.411 — **Dashboard** — **Leave Report** schedule nag (**[`leaveReportScheduleReminder.ts`](src/lib/leaveReportScheduleReminder.ts)**; **12-hour** silence via **`my_last_report_at`**); **yellow** bell on **Leave Report**; **`helpers`** — no **Assigned Jobs** **Send to Billing** (**`update_job_status`**; migrations **`20270506120000`**, **`20270507120000`**)](#latest-updates-v2411)
 **New:** [v2.410 — **Product copy** — **`user_role`** enum value stays **`helpers`**; UI shows **Helper** (singular) — [**`displayLabelForUserRole`](src/lib/userRoleDisplay.ts)**, **[`ACCESS_CONTROL.md`](ACCESS_CONTROL.md)** **`helpers (Helper)`**, People (**Helper (with account)**), Settings matrix + dropdowns + report copy (**Helper users**)](#latest-updates-v2410)
 **New:** [v2.409 — **Dashboard** **Assigned Jobs** / **Superintendent Jobs** — **Send to Billing** outlined (**white** background, **`#2563eb`** border + text); **Leave Report** stays solid primary blue — matches **View Reports** chrome; **`opacity`** when **`jobStatusUpdatingId`** — **[`Dashboard.tsx`](src/pages/Dashboard.tsx)**](#latest-updates-v2409)
@@ -1347,6 +1355,32 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.413)
+
+**Date**: 2026-04-29
+
+### **Quickfill** — **Stages: customer & job pictures** (`no-customer-stages`)
+
+- **Section label** (**`SECTIONS`** in **[`Quickfill.tsx`](src/pages/Quickfill.tsx)**): **Stages: customer & job pictures** (was *No linked customer (Stages)*).
+- **Same scope as Jobs → Stages with an empty search**: **[`useQuickfillStagesJobsWithoutCustomer`](src/hooks/useQuickfillStagesJobsWithoutCustomer.ts)** keeps **`jobsWithoutCustomer`** via **[`buildStagesJobsWithoutCustomerList`](src/lib/jobsStagesBoard.ts)** and adds **`workingJobsWithoutPictures`** via **[`buildStagesWorkingJobsWithoutPicturesList`](src/lib/jobsStagesBoard.ts)** (**[`stagesWorkingJobsWithoutPicturesFromWorking`](src/lib/jobsStagesBoard.ts)** on the board **`working`** list).
+- **UI** (**[`QuickfillStagesNoCustomerSection.tsx`](src/components/quickfill/QuickfillStagesNoCustomerSection.tsx)**): red-outline **Open list (n)** when there are jobs without a linked customer; **No job pictures (n)** when there are **working** jobs with no **`jobs_ledger.job_pictures_link`** (after trim). Row click → **Edit Job** (**`JobFormModalContext`**), **`runFetchJobs`** on save; **`jobsListBusy`** toast guard.
+- **Modals**: **[`StagesNoCustomerJobsModal`](src/components/jobs/StagesNoCustomerJobsModal.tsx)** + **[`StagesAlertJobListModal`](src/components/jobs/StagesAlertJobListModal.tsx)** with **`titleId`** **`stages-no-job-pictures-quickfill-modal-title`** (distinct from Jobs).
+- **Metrics / visibility**: **`quickfillStagesAlertsUnionCount`** = distinct job **`id`**s across both lists (no double-count); **`useReportQuickfillSectionMetric`** and **`sectionWouldRenderOnPage`** use **`fetchEnabled && !loading && union > 0`**.
+- **Jobs** → **Stages**: same **No customer** / **No job pictures** pipeline buttons and modals on the top row (**[`Jobs.tsx`](src/pages/Jobs.tsx)**; Jobs modal **`titleId`** **`stages-no-job-pictures-modal-title`**).
+
+---
+
+## Latest Updates (v2.412)
+
+**Date**: 2026-04-29
+
+### **Materials** — **PO Generator** + **Supply Houses** invoice **PO #** vs ledger
+
+- **PO Generator** (`/materials?tab=po-generator`): **dev**, **master_technician**, **assistant** — form (**job**, **for user**, optional **supply house** searchable picker, optional **notes**) → **Generate** calls **`insert_material_po_generator_entry`**; **`material_po_generator_entries`** stores unique **`po_code`** (10000–99999), **`job_ledger_id`**, **`for_user_id`**, optional **`supply_house_id`**, **`created_by`**. Ledger table on the tab; service-type chip filters job search/ledger via **`jobs_ledger`**. **Migrations**: **`20260428231416_material_po_generator.sql`**, **`20260428232212_material_po_generator_supply_house_optional.sql`**.
+- **Supply Houses** expanded row — **Invoices** table **Purchase Order #** column: red **`AlertCircle`** when the field parses to a **PO Generator-style** five-digit code (10000–99999) that is **not** in visible **`material_po_generator_entries`** rows for **`supply_house_id =` this house `OR supply_house_id IS NULL`** (so codes generated without a supply house still match). **Parser** (**[`parsePoGeneratorCodeFromPurchaseOrderName.ts`](src/lib/parsePoGeneratorCodeFromPurchaseOrderName.ts)**): shop-style **`40326-1`** (**`NNNNN-N`**) is **not** treated as code **`40326`**. If the ledger query fails, **no** icons (fail open). **UI**: **[`SupplyHousesTab.tsx`](src/components/SupplyHousesTab.tsx)**.
+
 ---
 
 ## Latest Updates (v2.411)

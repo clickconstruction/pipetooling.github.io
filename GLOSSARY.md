@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-04-23
+last_updated: 2026-04-29
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -77,6 +77,7 @@ when_to_read:
 - [Task Dispatch](#task-dispatch)
 - [Bids System](#bids-system)
 - [Materials System](#materials-system)
+- [PO Generator ledger](#po-generator-ledger)
 - [Database Concepts](#database-concepts)
 - [Technical Terms](#technical-terms)
 - [UI/UX Terms](#uiux-terms)
@@ -512,6 +513,11 @@ Supplier or vendor where materials are purchased (Ferguson, HD Supply, local plu
 
 **Fields**: name, contact info, address, notes, monthly_payment_day (day 1–31 when payment is typically due; used for Due column in supply house list)
 
+### PO Generator ledger
+Shop PO / reference codes (10000–99999) generated from **Materials → PO Generator** and stored in **`material_po_generator_entries`** with **`job_ledger_id`**, **`for_user_id`**, optional **`supply_house_id`**, and unique **`po_code`**. **Supply Houses** → expanded house → **Invoices** **Purchase Order #** can show a red warning when that field contains a parsed generator-style code not present on visible ledger rows for this supply house or with **null** **`supply_house_id`**. Parser: **[`parsePoGeneratorCodeFromPurchaseOrderName`](src/lib/parsePoGeneratorCodeFromPurchaseOrderName.ts)** — treats strings like **`40326-1`** as shop refs, not **`40326`**.
+
+**See**: **[`RECENT_FEATURES.md`](RECENT_FEATURES.md)** v2.412; **[`MIGRATIONS.md`](MIGRATIONS.md)** **`20260428231416_material_po_generator.sql`**, **`20260428232212_material_po_generator_supply_house_optional.sql`**
+
 ### Price / Part Price
 Cost of a specific part from a specific supply house. One price per (part, supply_house) combination.
 
@@ -913,7 +919,7 @@ Feature in Customers page for bulk-pasting customer data from spreadsheet.
 **Visibility**: Collapsed by default, hidden in Bids modal
 
 ### Quickfill (page)
-The **`/quickfill`** route — day-to-day workflow hub (section marks, hours, **Prospects**, schedule, inboxes, etc.). Not the same as **Quick Fill** (customer bulk paste). **Prospects** block: warmth pipeline + (for **dev** / **master** / **assistant**) a **30-day Team activity line chart** — **`RECENT_FEATURES.md`** v2.381 / v2.382, **`PROJECT_DOCUMENTATION.md`** (Quickfill), **`ACCESS_CONTROL.md`**.
+The **`/quickfill`** route — day-to-day workflow hub (section marks, hours, **Prospects**, **Stages: customer & job pictures** (`no-customer-stages` — empty–Stages-search lists + union metric, **`QuickfillStagesNoCustomerSection`**, **v2.413**), schedule, inboxes, etc.). Not the same as **Quick Fill** (customer bulk paste). **Prospects** block: warmth pipeline + (for **dev** / **master** / **assistant**) a **30-day Team activity line chart** — **`RECENT_FEATURES.md`** v2.381 / v2.382, **`PROJECT_DOCUMENTATION.md`** (Quickfill), **`ACCESS_CONTROL.md`**.
 
 ### Expandable Row
 Table row that expands to show additional details.
