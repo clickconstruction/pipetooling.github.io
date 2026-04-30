@@ -1,6 +1,6 @@
 import { useState, useEffect, type CSSProperties } from 'react'
 import { supabase } from '../lib/supabase'
-import ReportViewModal, { ReportDetailBody, type ReportForView } from './ReportViewModal'
+import ReportViewModal, { ReportDetailBody, ReportLocationMapsLink, type ReportForView } from './ReportViewModal'
 import AdditionalReportModal from './AdditionalReportModal'
 import type { UserRole } from '../hooks/useAuth'
 import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
@@ -269,8 +269,22 @@ export default function JobReportsModal({
                       </button>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{displayReportTemplateName(r.template_name, userRole)}</div>
-                        <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                          {r.created_by_name} · {new Date(r.created_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                        <div
+                          style={{
+                            fontSize: '0.875rem',
+                            color: '#6b7280',
+                            display: 'flex',
+                            alignItems: 'center',
+                            flexWrap: 'wrap',
+                            gap: 6,
+                          }}
+                        >
+                          <span>
+                            {r.created_by_name} · {new Date(r.created_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                          </span>
+                          {r.reported_at_lat != null && r.reported_at_lng != null ? (
+                            <ReportLocationMapsLink lat={Number(r.reported_at_lat)} lng={Number(r.reported_at_lng)} stopPropagation />
+                          ) : null}
                         </div>
                       </div>
                       <button
@@ -296,7 +310,7 @@ export default function JobReportsModal({
                         }}
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <ReportDetailBody report={r} />
+                        <ReportDetailBody report={r} fieldLayout="inline" />
                       </div>
                     )}
                   </li>

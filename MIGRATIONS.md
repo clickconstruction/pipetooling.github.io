@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-04-29
+last_updated: 2026-04-30
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -91,6 +91,28 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ## Recent Migrations
 
 ### April 2026
+
+#### April 30, 2026
+
+**`20260430064919_recurring_job_report_activity_scope_last_week.sql`**
+- **Purpose**: **`calendar_last_week`** on **`recurring_job_report_schedule_recipients.activity_scope`**; **`reporting_window_calendar_week_prior_to_anchor`** (Sun–Sat week **before** the week containing anchor; **`reporting_date`** = that week’s Sunday for dispatch dedup).
+- **Impact**: **`recurringJobReportCore`**, **`recurring-job-report-*`**; [`RecurringEmailReportsModal.tsx`](src/components/jobs/RecurringEmailReportsModal.tsx)
+- **Category**: Jobs / Reports / Email / RPC
+
+**`20260430063059_recurring_job_report_activity_scope_crew_filter.sql`**
+- **Purpose**: Recipient columns **`activity_scope`** (`calendar_yesterday` \| `calendar_today` \| `calendar_week`) and **`crew_filter`** (`all_users` \| `my_team`); **drop **`job_scope`**; backfill from legacy **`job_scope`**; **`reporting_window_calendar_civil_day`**; extend **`reporting_window_for_recurring_job_email`** so **`calendar_yesterday`** matches **`prior_calendar_day`** (day before anchor).
+- **Impact**: **`recurringJobReportCore`**, **`recurring-job-report-preview`**, **`recurring-job-report-test-send`**, **`recurring-job-report-dispatch`**, **[`RecurringEmailReportsModal.tsx`](src/components/jobs/RecurringEmailReportsModal.tsx)**; **`EDGE_FUNCTIONS.md`**, **`RECENT_FEATURES.md`**
+- **Category**: Jobs / Reports / Email / RPC
+
+**`20260430060716_recurring_job_report_recipient_job_scopes_schedule.sql`**
+- **Purpose**: Recipient **`job_scope`** — `member_jobs_only`, `schedule_today`, `schedule_yesterday`, `schedule_this_week` (**drop `all_jobs`**; existing rows migrated to **`member_jobs_only`**); **`reporting_window_calendar_week_containing_anchor`**, optional **`p_anchor_date`** on **`reporting_window_for_recurring_job_email`** for preview anchoring; **`dispatch_log.reporting_date`** comment (week Sunday dedup for weekly scope).
+- **Impact**: Edge **`recurringJobReportCore`**, **`recurring-job-report-*`**; [`RecurringEmailReportsModal.tsx`](src/components/jobs/RecurringEmailReportsModal.tsx)
+- **Category**: Jobs / Reports / Email
+
+**`20260430054614_recurring_job_report_schedules.sql`**
+- **Purpose**: **Recurring Email Reports (Jobs)** — `recurring_job_report_schedules`, `recurring_job_report_schedule_recipients`, `recurring_job_report_dispatch_log`; RLS dev/master/assistant for schedule scope master; trigger for `days_of_week` 0–6; **`user_can_manage_recurring_job_report_scope`**, **`reporting_window_for_recurring_job_email`**; pg_cron **`recurring-job-report-dispatch`** (`*/15`) via `PROJECT_URL` / `CRON_SECRET` vault secrets
+- **Impact**: Edge **`recurring-job-report-preview`**, **`recurring-job-report-test-send`**, **`recurring-job-report-dispatch`**; [`RecurringEmailReportsModal.tsx`](src/components/jobs/RecurringEmailReportsModal.tsx), [`Jobs.tsx`](src/pages/Jobs.tsx) Reports tab
+- **Category**: Jobs / Reports / Email / Cron / RLS
 
 #### April 20, 2026
 
@@ -490,6 +512,54 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Category**: Estimates / Edge
 
 ### July 2026
+
+#### July 16, 2026
+
+**`20270516120000_salary_sync_close_continuous_fragments_at_t_end.sql`**
+- **Purpose**: **Continuous** salary template — after My Time splits the single canonical block into indexed **`salary_schedule`** fragments (`salary_segment_index` 1..N), **`salary_sync`** could leave open rows beyond template **`t_end`**; closes them once **`p_now ≥ t_end`**
+- **Changes**: **`CREATE OR REPLACE`** **`salary_sync_one_user_clock_sessions`** — in **`v_mode = 'continuous'`**, **`UPDATE`** open (**`clocked_out_at`** **`IS NULL`**) non-final **`salary_schedule`** rows with **`salary_segment_index IS NOT NULL`** to **`clocked_out_at = t_end`** when **`clocked_in_at < t_end`**, **before** the NULL-index canonical row logic; updated **`COMMENT`** + **`REVOKE ALL`**
+- **Impact**: Sync / cron / Clock In strip refresh; see [`SALARY_CLOCK_SESSIONS.md`](SALARY_CLOCK_SESSIONS.md) **Continuous template mode**
+- **Category**: Salary / `clock_sessions` / RPC
+
+#### July 15, 2026
+
+**`20270515120000_report_list_rpc_include_coordinates.sql`**
+- **Purpose**: Align **`reported_at_lat`** / **`reported_at_lng`** visibility in report **list** RPCs with roles that legitimately see location metadata (supersedes office-only NULL masking introduced in **`20260415120006`** / **`20260415120007`**)
+- **Changes**: **`CREATE OR REPLACE`** on **`list_reports_with_job_info`**, **`list_reports_for_job_ledger`**, **`list_my_reports`** — return coordinates for **primary**, **superintendent**, **estimator**; **helpers** / **subcontractor** receive values **only on rows they authored** (`created_by_user_id = auth.uid()`)
+- **Impact**: **[`JobReportsModal.tsx`](src/components/JobReportsModal.tsx)** **`ReportLocationMapsLink`** when list payloads include coords; **`RECENT_FEATURES.md`** v2.418
+- **Category**: Reports / RPC / Access control
+
+#### July 14, 2026
+
+**`20270514120000_list_reports_rpc_superintendent_job_anchor.sql`**
+- **Purpose**: Superintendent-visible rows from **`list_reports_with_job_info`** / **`list_reports_for_job_ledger`** match **`superintendent_report_job_anchor_allowed`** (same predicate as **`reports`** INSERT policy)
+- **Changes**: **`CREATE OR REPLACE`** both RPCs — superintendent branch uses shared anchor helper instead of stricter **`jobs_ledger`**/`project`-only filter
+- **Impact**: **View Reports** lists newly saved superintendent reports (parity with Additional Report save); **`RECENT_FEATURES.md`** v2.418
+- **Category**: Reports / RPC / Superintendent
+
+#### July 13, 2026
+
+**`20270513120000_superintendent_report_anchor_team_assignment.sql`**
+- **Purpose**: Superintendent may anchor **`reports`** to jobs they access via **`jobs_ledger_team_members`** even when **`project_id`** is unset (parity with **`list_assigned_jobs_for_dashboard`**)
+- **Changes**: **`CREATE OR REPLACE`** **`superintendent_report_job_anchor_allowed`** — add team-member **`EXISTS`** branch alongside project superintendent link
+- **Impact**: Additional Report save on crew-assigned jobs without project link; **`RECENT_FEATURES.md`** v2.418
+- **Category**: Reports / RLS / Superintendent
+
+#### July 12, 2026
+
+**`20270512120000_superintendent_report_anchor_row_security_off.sql`**
+- **Purpose**: **`superintendent_report_job_anchor_allowed`** must read **`jobs_ledger`** inside **`SECURITY DEFINER`** without caller RLS hiding anchor rows
+- **Changes**: **`CREATE OR REPLACE`** function — **`SET row_security TO off`** so **`jobs_ledger`** reads inside **`SECURITY DEFINER`** are not masked by **`jobs_ledger`** RLS during anchor evaluation
+- **Impact**: Fixes false negatives when evaluating superintendent report insert eligibility; **`RECENT_FEATURES.md`** v2.418
+- **Category**: Reports / RLS / Superintendent
+
+#### July 11, 2026
+
+**`20270511120000_superintendent_reports_job_anchor_security_definer.sql`**
+- **Purpose**: **`reports`** INSERT for **`superintendent`** uses **`SECURITY DEFINER`** helper **`superintendent_report_job_anchor_allowed(job_ledger_id)`** instead of inline **`jobs_ledger`** subqueries under **`reports`** RLS
+- **Changes**: **`CREATE`** helper + **`CREATE POLICY`** update on **`reports`** INSERT for superintendent role
+- **Impact**: Reliable superintendent report submission against **`jobs_ledger`** RLS; foundation for **`20270512120000`** / **`20270513120000`** / **`20270514120000`**; **`RECENT_FEATURES.md`** v2.418
+- **Category**: Reports / RLS / Superintendent
 
 #### July 7, 2026
 
@@ -1328,7 +1398,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260415120000_add_location_to_reports.sql`**
 - **Purpose**: Optional location capture when reports are submitted
 - **Changes**: Add `reported_at_lat`, `reported_at_lng` (both NUMERIC, nullable) to `reports`
-- **Impact**: NewReportModal and AdditionalReportModal request geolocation on submit; coordinates stored when permission granted; ReportViewModal shows location icon (dev/master/assistant only)
+- **Impact**: NewReportModal and AdditionalReportModal request geolocation on submit; coordinates stored when permission granted; UI Maps affordance depends on RPC-returned coords (**expanded roles / own-row rules** — **`20270515120000_report_list_rpc_include_coordinates.sql`**, **`RECENT_FEATURES.md`** v2.418).
 - **Category**: Reports
 
 **`20260415120005_insert_report_add_location_params.sql`**
@@ -1340,13 +1410,13 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260415120006_list_reports_with_job_info_add_location.sql`**
 - **Purpose**: Return reported_at_lat/lng in list_reports_with_job_info, role-gated
 - **Changes**: Add reported_at_lat, reported_at_lng to RPC return; only dev/master_technician/assistant receive values; others get NULL
-- **Impact**: ReportViewModal shows location icon only for devs, masters, assistants
+- **Impact**: Initial office-role-only masking for coordinates in **`list_reports_with_job_info`** / **`list_reports_for_job_ledger`** payloads. **Expanded**: **`20270515120000_report_list_rpc_include_coordinates.sql`** returns coordinates for **primary**, **superintendent**, **estimator**, and **helpers**/**subcontractor** on **own** rows (see **`RECENT_FEATURES.md`** v2.418).
 - **Category**: Reports
 
 **`20260415120007_list_my_reports_add_location.sql`**
 - **Purpose**: Same role-gated location columns for list_my_reports
 - **Changes**: Add reported_at_lat, reported_at_lng with same conditional as list_reports_with_job_info
-- **Impact**: My Reports modal and Dashboard report views respect location visibility by role
+- **Impact**: Initial office-role-only masking on **`list_my_reports`**. **Expanded**: **`20270515120000_report_list_rpc_include_coordinates.sql`** returns coords on the viewer’s **own** rows for **helpers** / **subcontractor** as well (**`RECENT_FEATURES.md`** v2.418).
 - **Category**: Reports
 
 **`20260415120003_add_checklist_item_links.sql`**

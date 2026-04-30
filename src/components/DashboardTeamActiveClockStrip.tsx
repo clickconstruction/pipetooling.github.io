@@ -47,8 +47,12 @@ import {
 } from '../types/clockSessions'
 import { CopyDayJobMixModal, CopyDayJobMixIcon } from './day-job-mix/CopyDayJobMixModal'
 import { JobsWorkedTodayReportIcon } from './icons/JobsWorkedTodayReportIcon'
+import ReportViewModal, { type ReportForView } from './ReportViewModal'
+import { reportForViewFromJobLedgerRow, type ReportForJobLedgerRow } from '../lib/reportForViewFromJobLedgerRow'
+import { useAuth } from '../hooks/useAuth'
 
 const EMPTY_JOBS_WORKED_TODAY_REPORT_KEYS: ReadonlySet<string> = new Set<string>()
+const EMPTY_JOBS_WORKED_TODAY_REPORT_ID_BY_KEY: ReadonlyMap<string, string> = new Map<string, string>()
 
 const timeOpts: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit' }
 
@@ -556,6 +560,8 @@ export function DashboardTeamActiveClockStrip({
   enableCopyDayJobMix = false,
   clockStripWorkDateYmd,
   jobsWorkedTodayReportKeys = EMPTY_JOBS_WORKED_TODAY_REPORT_KEYS,
+  jobsWorkedTodayReportIdByKey = EMPTY_JOBS_WORKED_TODAY_REPORT_ID_BY_KEY,
+  jobsWorkedTodayJobLedgerIdsWithReport,
 }: {
   sessions: DashboardStripSession[]
   hoursTodayByUserId: Readonly<Record<string, number>>
@@ -592,7 +598,12 @@ export function DashboardTeamActiveClockStrip({
   clockStripWorkDateYmd?: string
   /** `(jobLedgerId:userId)` when user filed a report for that job on the strip calendar day. */
   jobsWorkedTodayReportKeys?: ReadonlySet<string>
+  /** Latest report id per `${jobLedgerId}:${userId}` on the strip calendar day (for opening the report). */
+  jobsWorkedTodayReportIdByKey?: ReadonlyMap<string, string>
+  /** `jobLedgerId` when any report exists for that job on the strip calendar day; `null` while loading. */
+  jobsWorkedTodayJobLedgerIdsWithReport?: ReadonlySet<string> | null
 }) {
+  const { role: viewerRole } = useAuth()
   const clockStripWorkDateResolved =
     clockStripWorkDateYmd ?? new Date().toLocaleDateString('en-CA')
   const userDayScheduleModal = useUserDayScheduleModal()
@@ -633,6 +644,30 @@ export function DashboardTeamActiveClockStrip({
     sourceUserId: string
     sourceDisplayName: string
   } | null>(null)
+  const [stripViewingReport, setStripViewingReport] = useState<ReportForView | null>(null)
+
+  const openJobsWorkedTodayReport = useCallback(
+    async (jobLedgerId: string, userId: string) => {
+      const reportId = jobsWorkedTodayReportIdByKey.get(`${jobLedgerId}:${userId}`)
+      if (!reportId) return
+      try {
+        const rows = await withSupabaseRetry(
+          () => supabase.rpc('list_reports_for_job_ledger', { p_job_id: jobLedgerId }),
+          'clock strip open report',
+        )
+        const list = (rows ?? []) as ReportForJobLedgerRow[]
+        const row = list.find((r) => r.id === reportId)
+        if (!row) {
+          console.error('clock strip open report: row not found after fetch', reportId)
+          return
+        }
+        setStripViewingReport(reportForViewFromJobLedgerRow(row))
+      } catch (e) {
+        console.error(e)
+      }
+    },
+    [jobsWorkedTodayReportIdByKey],
+  )
 
   useEffect(() => {
     if (!copyDayJobMixMode) setCopyDayJobMixModal(null)
@@ -2122,6 +2157,12 @@ export function DashboardTeamActiveClockStrip({
                                   minWidth: 0,
                                 }}
                               >
+                                {jobsWorkedTodayJobLedgerIdsWithReport != null &&
+                                !isUnassignedAggregateRow &&
+                                hasSessions &&
+                                !jobsWorkedTodayJobLedgerIdsWithReport.has(job.jobLedgerId) ? (
+                                  <JobsWorkedTodayReportIcon variant="missing" />
+                                ) : null}
                                 {isUnassignedAggregateRow ? (
                                   <span
                                     style={{
@@ -2295,7 +2336,25 @@ export function DashboardTeamActiveClockStrip({
                                               jobsWorkedTodayReportKeys.has(
                                                 `${job.jobLedgerId}:${s.user_id}`,
                                               ) ? (
-                                                <JobsWorkedTodayReportIcon />
+                                                <button
+                                                  type="button"
+                                                  onClick={() => void openJobsWorkedTodayReport(job.jobLedgerId, s.user_id)}
+                                                  title="View report"
+                                                  aria-label={`View field report for ${personName}`}
+                                                  style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    padding: 0,
+                                                    margin: 0,
+                                                    border: 'none',
+                                                    background: 'none',
+                                                    cursor: 'pointer',
+                                                    font: 'inherit',
+                                                    color: 'inherit',
+                                                  }}
+                                                >
+                                                  <JobsWorkedTodayReportIcon decorative />
+                                                </button>
                                               ) : null}
                                               {personName}
                                               {clockStripOverlapByUserId.get(s.user_id) ? (
@@ -2471,6 +2530,12 @@ export function DashboardTeamActiveClockStrip({
       onApplied={() => onClockSessionsMutated?.()}
     />
   ) : null}
+  <ReportViewModal
+    open={stripViewingReport != null}
+    report={stripViewingReport}
+    onClose={() => setStripViewingReport(null)}
+    viewerRole={viewerRole}
+  />
     </>
   )
 }

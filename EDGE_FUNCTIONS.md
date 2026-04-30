@@ -1203,6 +1203,53 @@ No body required. Validates via `X-Cron-Secret` header or `{"cron_secret": "..."
 
 ---
 
+### recurring-job-report-preview
+
+**Purpose**: Return server-built HTML for a job-activity digest (crew clock hours/session notes + field reports) **without sending mail**. Jobs are **all** **`jobs_ledger`** rows under **`scope_master_user_id`** that have qualifying **clock sessions** or **field reports** in the chosen window. **Recipient schedule blocks are not used** for which jobs appear. Validates JWT via `getUser`; caller must satisfy **`user_can_manage_recurring_job_report_scope`** for **`scope_master_user_id`**.
+
+**Endpoint**: `POST /functions/v1/recurring-job-report-preview`
+
+**Body (JSON)**:
+- `scope_master_user_id` (uuid, required) — org (**`jobs_ledger.master_user_id`**) universe
+- **`activity_scope`** (required): **`calendar_yesterday`** \| **`calendar_today`** \| **`calendar_week`** \| **`calendar_last_week`** — calendar window in **`timezone`** (half-open local midnights → UTC; **`calendar_week`** is Sun–Sat week **containing** **`anchor_date`**; **`calendar_last_week`** is the **prior** Sun–Sat week).
+- **`crew_filter`** (required): **`all_users`** \| **`my_team`** — **`my_team`** = **`recipient_user_id`** plus **`team_leader_assignments.member_user_id`** where **`leader_user_id = recipient_user_id`** (Dashboard **My team** roster); **`all_users`** does not restrict activity rows by user.
+- `recipient_user_id` (optional) — defaults to caller; affects **`my_team`** resolution only.
+- `timezone` (optional, default **`America/Chicago`**).
+- **`anchor_date`** (**`YYYY-MM-DD`**, civil date in **`timezone`**, required when not sending a manual **`window`**) — **“today”** in zone for resolving yesterday / today / week bounds.
+- Manual **`window`** (optional) overrides RPC bounds (**advanced testing**): provide **`window_start_utc`** / **`window_end_utc`** (ISO); optional **`period_kind`**: **`daily`** (default) \| **`weekly`** for **`reporting_date`** idempotency semantics when dispatching.
+
+**Response**: `{ "html": "..." }`
+
+**Verify JWT**: `false` in `supabase/config.toml` (same gateway pattern as `test-email`); function validates Bearer.
+
+**Secrets**: `SUPABASE_ANON_KEY` + Bearer for auth; **`SUPABASE_SERVICE_ROLE_KEY`** for aggregated reads inside the worker.
+
+---
+
+### recurring-job-report-test-send
+
+Same payload as **`recurring-job-report-preview`**. Sends **`[TEST]`** email via **Resend** to the **authenticated user's** **`users.email`** only (never arbitrary addresses).
+
+**Secrets**: **`RESEND_API_KEY`**, **`SUPABASE_SERVICE_ROLE_KEY`**.
+
+---
+
+### recurring-job-report-dispatch
+
+**Purpose**: pg_cron `*/15` — finds **enabled** schedules whose **timezone wall day-of-week + quarter-hour TIME** matches **now**, loads recipients (max **50** per schedule), skips **dispatch log** duplicates for **`reporting_date`**, builds HTML body, sends with Resend to each **`recipient_user_id`**.
+
+**Endpoint**: `POST /functions/v1/recurring-job-report-dispatch`
+
+**Auth**: **`X-Cron-Secret`** **`CRON_SECRET`** (same as **`send-scheduled-reminders`**)
+
+**Secrets**: `SUPABASE_SERVICE_ROLE_KEY`, **`RESEND_API_KEY`**, `CRON_SECRET`
+
+**Cron**: **`20260430054614_recurring_job_report_schedules.sql`** registers job **`recurring-job-report-dispatch`** with vault **`PROJECT_URL`** + **`CRON_SECRET`** (uppercase).
+
+Per-recipient **`activity_scope`** + **`crew_filter`** (from **`recurring_job_report_schedule_recipients`**) resolve the **UTC window** and filtered activity; **`recurring_job_report_dispatch_log.reporting_date`** dedupes by civil **summary day** for daily scopes and **week Sunday** for **`calendar_week`** and **`calendar_last_week`**.
+
+---
+
 ### sync-salary-sessions
 
 **Purpose**: Materialize and close `clock_sessions` with `origin = 'salary_schedule'` for all users who have a row in `salary_work_schedule_templates`, for the current **America/Chicago** calendar date. Intended to run every 1–5 minutes via cron (same auth pattern as `send-scheduled-reminders`).
@@ -1219,7 +1266,7 @@ No body required. Validates via `X-Cron-Secret` header or `{"cron_secret": "..."
 
 **Success**: `{ "success": true, "work_date": "YYYY-MM-DD" }`
 
-**Database behavior**: Invokes **`sync_salary_clock_sessions_for_day`**, which runs **`salary_sync_one_user_clock_sessions`** per templated user. That function uses **template block boundaries**: mass-close all opens for the user/**`work_date`** at each block end; open canonical **`salary_schedule`** rows only when no session is open that day. See **[`SALARY_CLOCK_SESSIONS.md`](SALARY_CLOCK_SESSIONS.md)**.
+**Database behavior**: Invokes **`sync_salary_clock_sessions_for_day`**, which runs **`salary_sync_one_user_clock_sessions`** per templated user — **canonical **`salary_schedule`** open/close**, **split-mode** half-open **overlap** guards, **continuous** indexed-fragment close at **`t_end`** after My Time splits (**`20270516120000`**); ordinary **`user_punch`** rows are **not** bulk-closed at template ends in the current function body. Details: **[`SALARY_CLOCK_SESSIONS.md`](SALARY_CLOCK_SESSIONS.md)**.
 
 ---
 

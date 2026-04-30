@@ -9,7 +9,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from 'react'
-import { FileSpreadsheet } from 'lucide-react'
+import { FileSpreadsheet, Folder, Images, PanelRightOpen, Pencil } from 'lucide-react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { pageUnderlineTabStyle } from '../lib/pageUnderlineTabStyle'
@@ -27,6 +27,7 @@ import { laborItemsSubtotal, lineLaborCost } from '../lib/peopleLaborJobItemLine
 import { getDispatchNoteDisplayMeta } from '../utils/dispatchNoteDisplay'
 import NewReportModal from '../components/NewReportModal'
 import JobReportsModal from '../components/JobReportsModal'
+import RecurringEmailReportsModal from '../components/jobs/RecurringEmailReportsModal'
 import AddInspectionModal from '../components/AddInspectionModal'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { jobBillingContextFromJob } from '../lib/jobBillingContext'
@@ -181,6 +182,31 @@ type TallyPartRow = {
 }
 
 type JobsTab = 'reports' | 'stages' | 'billing' | 'sub_sheet_ledger' | 'combined-labor' | 'teams-summary' | 'parts' | 'job-summary' | 'inspections' | 'billed'
+
+const JOBS_REPORTS_TAB_TOAST_NO_CUSTOMER_FILES =
+  "Customer Files isn't linked for this job yet. Contact Dispatch to have it added."
+
+const JOBS_REPORTS_TAB_TOAST_NO_CUSTOMER_PICTURES =
+  "Customer Pictures isn't linked for this job yet. Contact Dispatch to have it added."
+
+/** Row shape from `list_reports_with_job_info` (Reports tab); link columns added in 20270517120000 migration. */
+type ReportWithJob = {
+  id: string
+  template_id: string
+  template_name: string
+  created_by_user_id: string
+  created_by_name: string
+  created_at: string
+  updated_at: string
+  field_values: Record<string, string>
+  job_ledger_id: string | null
+  project_id: string | null
+  job_display_name: string
+  job_hcp_number: string
+  job_google_drive_link?: string | null
+  job_job_pictures_link?: string | null
+  job_address?: string | null
+}
 
 /** Align with Layout mobile breakpoint; shortens primary create button to "New". */
 const JOBS_SHORT_NEW_JOB_BUTTON_MQ = '(max-width: 640px)'
@@ -1014,20 +1040,6 @@ export default function Jobs() {
   const [teamLaborLoading, setTeamLaborLoading] = useState(false)
 
   // Reports tab state
-  type ReportWithJob = {
-    id: string
-    template_id: string
-    template_name: string
-    created_by_user_id: string
-    created_by_name: string
-    created_at: string
-    updated_at: string
-    field_values: Record<string, string>
-    job_ledger_id: string | null
-    project_id: string | null
-    job_display_name: string
-    job_hcp_number: string
-  }
   const [reportsList, setReportsList] = useState<ReportWithJob[]>([])
   const [reportsLoading, setReportsLoading] = useState(false)
   const [reportsSearch, setReportsSearch] = useState('')
@@ -1035,6 +1047,7 @@ export default function Jobs() {
   const [reportsExpandedJobs, setReportsExpandedJobs] = useState<Set<string>>(new Set())
   const [reportsExpandedPersons, setReportsExpandedPersons] = useState<Set<string>>(new Set())
   const [newReportModalOpen, setNewReportModalOpen] = useState(false)
+  const [recurringEmailReportsModalOpen, setRecurringEmailReportsModalOpen] = useState(false)
   const [reportsDeletingId, setReportsDeletingId] = useState<string | null>(null)
   const [addInspectionModalOpen, setAddInspectionModalOpen] = useState(false)
   const [inspections, setInspections] = useState<InspectionRow[]>([])
@@ -2042,6 +2055,74 @@ export default function Jobs() {
   }
 
   const canManageTemplates = myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant'
+
+  const [scopeMastersForRecurringReports, setScopeMastersForRecurringReports] = useState<
+    readonly { id: string; label: string }[]
+  >([])
+
+  useEffect(() => {
+    if (!authUser?.id) {
+      setScopeMastersForRecurringReports([])
+      return
+    }
+    if (!(authRole === 'dev' || authRole === 'master_technician' || authRole === 'assistant')) {
+      setScopeMastersForRecurringReports([])
+      return
+    }
+    let cancelled = false
+
+    if (authRole === 'master_technician') {
+      const label = ((authProfileName ?? authUser.email ?? authUser.id) as string).trim()
+      setScopeMastersForRecurringReports([{ id: authUser.id, label }])
+      return
+    }
+
+    async function load() {
+      if (authRole === 'assistant') {
+        const { data: maps, error } = await supabase
+          .from('master_assistants')
+          .select('master_id')
+          .eq('assistant_id', authUser!.id)
+        if (cancelled) return
+        if (error || !maps?.length) {
+          setScopeMastersForRecurringReports([])
+          return
+        }
+        const mids = [...new Set(maps.map((r) => r.master_id))]
+        const { data: masters } = await supabase.from('users').select('id,name').in('id', mids)
+        if (cancelled) return
+        setScopeMastersForRecurringReports(
+          ((masters ?? []) as Array<{ id: string; name: string }>).map((u) => ({
+            id: u.id,
+            label: (u.name ?? '').trim() || u.id,
+          })),
+        )
+        return
+      }
+
+      if (authRole === 'dev') {
+        const { data: masters } = await supabase
+          .from('users')
+          .select('id,name')
+          .eq('role', 'master_technician')
+          .is('archived_at', null)
+          .order('name', { ascending: true })
+          .limit(200)
+        if (cancelled) return
+        setScopeMastersForRecurringReports(
+          ((masters ?? []) as Array<{ id: string; name: string }>).map((u) => ({
+            id: u.id,
+            label: (u.name ?? '').trim() || u.id,
+          })),
+        )
+      }
+    }
+
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [authUser?.id, authUser?.email, authRole, authProfileName])
 
   function openReportTemplatesModal() {
     setReportTemplatesModalOpen(true)
@@ -5561,16 +5642,31 @@ ${totalsHtml}
             >
               New report
             </button>
+            {canManageTemplates ? (
+              <button
+                type="button"
+                onClick={() => setRecurringEmailReportsModalOpen(true)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: '#f3f4f6',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  color: '#111827',
+                }}
+              >
+                Recurring Email Reports
+              </button>
+            ) : null}
             {canManageTemplates && (
               <button
                 type="button"
                 onClick={openReportTemplatesModal}
                 title="Manage templates"
-                style={{ padding: '0.35rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                aria-label="Manage report templates"
+                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" fill="currentColor">
-                  <path d="M192 112L304 112L304 200C304 239.8 336.2 272 376 272L464 272L464 512C464 520.8 456.8 528 448 528L192 528C183.2 528 176 520.8 176 512L176 128C176 119.2 183.2 112 192 112zM352 131.9L444.1 224L376 224C362.7 224 352 213.3 352 200L352 131.9zM192 64C156.7 64 128 92.7 128 128L128 512C128 547.3 156.7 576 192 576L448 576C483.3 576 512 547.3 512 512L512 250.5C512 233.5 505.3 217.2 493.3 205.2L370.7 82.7C358.7 70.7 342.5 64 325.5 64L192 64zM248 320C234.7 320 224 330.7 224 344C224 357.3 234.7 368 248 368L392 368C405.3 368 416 357.3 416 344C416 330.7 405.3 320 392 320L248 320zM248 416C234.7 416 224 426.7 224 440C224 453.3 234.7 464 248 464L392 464C405.3 464 416 453.3 416 440C416 426.7 405.3 416 392 416L248 416z" />
-                </svg>
+                Templates
               </button>
             )}
             <input
@@ -5709,11 +5805,46 @@ ${totalsHtml}
                                 return next
                               })
                             }
-                            style={{ width: '100%', padding: '0.75rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f9fafb', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: '0.875rem' }}
+                            style={{
+                              width: '100%',
+                              minWidth: 0,
+                              padding: '0.75rem 1rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.5rem',
+                              background: '#f9fafb',
+                              border: 'none',
+                              cursor: 'pointer',
+                              textAlign: 'left',
+                              fontSize: '0.875rem',
+                            }}
                           >
-                            <span>{displayName}</span>
-                            <span style={{ color: '#6b7280' }}>{reps.length} report{reps.length !== 1 ? 's' : ''}</span>
-                            <span style={{ transform: isExpanded ? 'rotate(180deg)' : 'none' }}>▼</span>
+                            <span
+                              style={{
+                                flex: 1,
+                                minWidth: 0,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {displayName}
+                            </span>
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                flexShrink: 0,
+                                marginLeft: 'auto',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              <span style={{ color: '#6b7280', fontVariantNumeric: 'tabular-nums' }}>
+                                {reps.length} report{reps.length !== 1 ? 's' : ''}
+                              </span>
+                              <span style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', flexShrink: 0 }}>▼</span>
+                            </span>
                           </button>
                           {isExpanded && (
                             <div style={{ padding: '0.5rem 1rem', borderTop: '1px solid #e5e7eb' }}>
@@ -5784,22 +5915,174 @@ ${totalsHtml}
                     const isExpanded = reportsExpandedJobs.has(key)
                     return (
                       <div key={key} style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setReportsExpandedJobs((prev) => {
-                              const next = new Set(prev)
-                              if (next.has(key)) next.delete(key)
-                              else next.add(key)
-                              return next
-                            })
-                          }
-                          style={{ width: '100%', padding: '0.75rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f9fafb', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: '0.875rem' }}
-                        >
-                          <span>{displayName}{hcp}</span>
-                          <span style={{ color: '#6b7280' }}>{reps.length} report{reps.length !== 1 ? 's' : ''}</span>
-                          <span style={{ transform: isExpanded ? 'rotate(180deg)' : 'none' }}>▼</span>
-                        </button>
+                        <div style={{ display: 'flex', alignItems: 'center', background: '#f9fafb' }}>
+                          {job.job_ledger_id ? (
+                            <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0, paddingLeft: '0.5rem' }}>
+                              {(() => {
+                                const jid = job.job_ledger_id as string
+                                const drive = (job.job_google_drive_link ?? '').trim()
+                                const jpics = (job.job_job_pictures_link ?? '').trim()
+                                const iconBtnBase: CSSProperties = {
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  padding: '0.25rem',
+                                  flexShrink: 0,
+                                  border: 'none',
+                                  background: 'none',
+                                  cursor: 'pointer',
+                                  borderRadius: 4,
+                                  color: 'inherit',
+                                }
+                                return (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        drive
+                                          ? openInExternalBrowser(drive)
+                                          : showToast(JOBS_REPORTS_TAB_TOAST_NO_CUSTOMER_FILES, 'warning', undefined, undefined, 'center')
+                                      }
+                                      title={
+                                        drive
+                                          ? 'Open Customer Files'
+                                          : JOBS_REPORTS_TAB_TOAST_NO_CUSTOMER_FILES
+                                      }
+                                      aria-label={
+                                        drive
+                                          ? 'Open Customer Files link'
+                                          : 'Customer Files not linked; contact Dispatch'
+                                      }
+                                      style={{
+                                        ...iconBtnBase,
+                                        color: drive ? '#2563eb' : '#dc2626',
+                                      }}
+                                    >
+                                      <Folder size={18} strokeWidth={2} aria-hidden />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        jpics
+                                          ? openInExternalBrowser(jpics)
+                                          : showToast(JOBS_REPORTS_TAB_TOAST_NO_CUSTOMER_PICTURES, 'warning', undefined, undefined, 'center')
+                                      }
+                                      title={
+                                        jpics
+                                          ? 'Open Customer Pictures'
+                                          : JOBS_REPORTS_TAB_TOAST_NO_CUSTOMER_PICTURES
+                                      }
+                                      aria-label={
+                                        jpics
+                                          ? 'Open Customer Pictures link'
+                                          : 'Customer Pictures not linked; contact Dispatch'
+                                      }
+                                      style={{
+                                        ...iconBtnBase,
+                                        color: jpics ? '#2563eb' : '#dc2626',
+                                      }}
+                                    >
+                                      <Images size={18} strokeWidth={2} aria-hidden />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        tryOpenEditJob(jid, {
+                                          initialJob: jobs.find((jRow) => jRow.id === jid),
+                                          onSaved: () => {
+                                            void loadJobs()
+                                            void loadReports()
+                                          },
+                                        })
+                                      }
+                                      title="Edit job"
+                                      aria-label="Edit job"
+                                      style={{
+                                        ...iconBtnBase,
+                                        color: '#2563eb',
+                                      }}
+                                    >
+                                      <Pencil size={18} strokeWidth={2} aria-hidden />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const hLabel = (job.job_hcp_number ?? '').trim() || '—'
+                                        const nameLabel = (job.job_display_name ?? '').trim() || 'Job'
+                                        jobDetailModal?.openJobDetail({
+                                          jobId: jid,
+                                          prefillRowLabel: `${hLabel} · ${nameLabel}`,
+                                          prefillAddress: (job.job_address ?? '').trim() || null,
+                                          onEditJobSaved: () => void loadJobs(),
+                                        })
+                                      }}
+                                      title="Job preview"
+                                      aria-label={`Job preview — ${displayName}`}
+                                      style={{
+                                        ...iconBtnBase,
+                                        color: '#2563eb',
+                                      }}
+                                    >
+                                      <PanelRightOpen size={18} strokeWidth={2} aria-hidden />
+                                    </button>
+                                  </>
+                                )
+                              })()}
+                            </div>
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setReportsExpandedJobs((prev) => {
+                                const next = new Set(prev)
+                                if (next.has(key)) next.delete(key)
+                                else next.add(key)
+                                return next
+                              })
+                            }
+                            style={{
+                              flex: 1,
+                              minWidth: 0,
+                              padding: '0.75rem 1rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.5rem',
+                              background: 'transparent',
+                              border: 'none',
+                              cursor: 'pointer',
+                              textAlign: 'left',
+                              fontSize: '0.875rem',
+                            }}
+                          >
+                            <span
+                              style={{
+                                flex: 1,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                minWidth: 0,
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {displayName}
+                              {hcp}
+                            </span>
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                flexShrink: 0,
+                                marginLeft: 'auto',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              <span style={{ color: '#6b7280', fontVariantNumeric: 'tabular-nums' }}>
+                                {reps.length} report{reps.length !== 1 ? 's' : ''}
+                              </span>
+                              <span style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', flexShrink: 0 }}>▼</span>
+                            </span>
+                          </button>
+                        </div>
                         {isExpanded && (
                           <div style={{ padding: '0.5rem 1rem', borderTop: '1px solid #e5e7eb' }}>
                             {reps.map((r) => (
@@ -13893,6 +14176,13 @@ ${totalsHtml}
         onSaved={() => { setNewReportModalOpen(false); loadReports(); }}
         authUserId={authUser?.id ?? null}
         userRole={authRole}
+      />
+      <RecurringEmailReportsModal
+        open={recurringEmailReportsModalOpen}
+        onClose={() => setRecurringEmailReportsModalOpen(false)}
+        authUserId={authUser?.id}
+        authRole={authRole}
+        scopeMasterChoices={scopeMastersForRecurringReports}
       />
       {viewReportsJob && (
         <JobReportsModal

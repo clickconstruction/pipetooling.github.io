@@ -6500,6 +6500,147 @@ export type Database = {
           },
         ]
       }
+      recurring_job_report_dispatch_log: {
+        Row: {
+          dispatched_at: string
+          id: string
+          recipient_user_id: string
+          reporting_date: string
+          schedule_id: string
+        }
+        Insert: {
+          dispatched_at?: string
+          id?: string
+          recipient_user_id: string
+          reporting_date: string
+          schedule_id: string
+        }
+        Update: {
+          dispatched_at?: string
+          id?: string
+          recipient_user_id?: string
+          reporting_date?: string
+          schedule_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_job_report_dispatch_log_recipient_user_id_fkey"
+            columns: ["recipient_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_job_report_dispatch_log_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_job_report_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recurring_job_report_schedule_recipients: {
+        Row: {
+          activity_scope: string
+          created_at: string
+          crew_filter: string
+          id: string
+          recipient_user_id: string
+          schedule_id: string
+        }
+        Insert: {
+          activity_scope: string
+          created_at?: string
+          crew_filter: string
+          id?: string
+          recipient_user_id: string
+          schedule_id: string
+        }
+        Update: {
+          activity_scope?: string
+          created_at?: string
+          crew_filter?: string
+          id?: string
+          recipient_user_id?: string
+          schedule_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_job_report_schedule_recipients_recipient_user_id_fkey"
+            columns: ["recipient_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_job_report_schedule_recipients_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_job_report_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recurring_job_report_schedules: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          days_of_week: number[]
+          enabled: boolean
+          filters: Json
+          id: string
+          name: string
+          reporting_preset: string
+          scope_master_user_id: string
+          time_local: string
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          days_of_week: number[]
+          enabled?: boolean
+          filters?: Json
+          id?: string
+          name: string
+          reporting_preset?: string
+          scope_master_user_id: string
+          time_local: string
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          days_of_week?: number[]
+          enabled?: boolean
+          filters?: Json
+          id?: string
+          name?: string
+          reporting_preset?: string
+          scope_master_user_id?: string
+          time_local?: string
+          timezone?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_job_report_schedules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_job_report_schedules_scope_master_user_id_fkey"
+            columns: ["scope_master_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       report_enabled_users: {
         Row: {
           created_at: string | null
@@ -9346,8 +9487,11 @@ export type Database = {
           created_by_user_id: string
           field_values: Json
           id: string
+          job_address: string
           job_display_name: string
+          job_google_drive_link: string
           job_hcp_number: string
+          job_job_pictures_link: string
           job_ledger_id: string
           project_id: string
           reported_at_lat: number
@@ -9580,6 +9724,38 @@ export type Database = {
       }
       report_edit_window_days: { Args: never; Returns: number }
       report_sub_visibility_months: { Args: never; Returns: number }
+      reporting_window_calendar_civil_day: {
+        Args: { p_civil_day: string; p_timezone: string }
+        Returns: {
+          reporting_date: string
+          window_end_utc: string
+          window_start_utc: string
+        }[]
+      }
+      reporting_window_calendar_week_containing_anchor: {
+        Args: { p_anchor_date?: string; p_timezone: string }
+        Returns: {
+          reporting_date: string
+          window_end_utc: string
+          window_start_utc: string
+        }[]
+      }
+      reporting_window_calendar_week_prior_to_anchor: {
+        Args: { p_anchor_date?: string; p_timezone: string }
+        Returns: {
+          reporting_date: string
+          window_end_utc: string
+          window_start_utc: string
+        }[]
+      }
+      reporting_window_for_recurring_job_email: {
+        Args: { p_anchor_date?: string; p_preset: string; p_timezone: string }
+        Returns: {
+          reporting_date: string
+          window_end_utc: string
+          window_start_utc: string
+        }[]
+      }
       restore_rejected_clock_sessions: {
         Args: { p_session_ids: string[] }
         Returns: {
@@ -9723,6 +9899,10 @@ export type Database = {
         Args: { e: Database["public"]["Tables"]["estimates"]["Row"] }
         Returns: boolean
       }
+      superintendent_report_job_anchor_allowed: {
+        Args: { p_job_ledger_id: string }
+        Returns: boolean
+      }
       sync_crew_bids_from_clock: {
         Args: { p_person_name: string; p_work_date: string }
         Returns: undefined
@@ -9803,6 +9983,10 @@ export type Database = {
         Returns: boolean
       }
       user_can_manage_estimate_catalog: { Args: never; Returns: boolean }
+      user_can_manage_recurring_job_report_scope: {
+        Args: { p_scope_master_user_id: string }
+        Returns: boolean
+      }
       user_can_read_labels_for_master: {
         Args: { p_master_user_id: string }
         Returns: boolean

@@ -494,6 +494,16 @@ verify_jwt = false
 [functions.send-scheduled-reminders]
 verify_jwt = false
 
+# Recurring Email Reports — JWT validated in-function (same gateway pattern as test-email).
+[functions.recurring-job-report-preview]
+verify_jwt = false
+
+[functions.recurring-job-report-test-send]
+verify_jwt = false
+
+[functions.recurring-job-report-dispatch]
+verify_jwt = false
+
 # DB webhook / service role: Bearer is service role or TEAM_LEAD_CLOCK_WEBHOOK_SECRET in function.
 [functions.notify-team-lead-clock]
 verify_jwt = false

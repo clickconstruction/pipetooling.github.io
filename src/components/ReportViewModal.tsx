@@ -19,26 +19,67 @@ export type ReportForView = {
   reported_at_lng?: number | null
 }
 
-export function ReportDetailBody({ report }: { report: ReportForView }) {
+export function ReportLocationMapsLink({
+  lat,
+  lng,
+  iconSize = 16,
+  stopPropagation,
+}: {
+  lat: number
+  lng: number
+  iconSize?: number
+  /** When nested in clickable rows, prevent toggle bubbling */
+  stopPropagation?: boolean
+}) {
+  const latN = Number(lat)
+  const lngN = Number(lng)
+  return (
+    <a
+      href={`https://www.google.com/maps?q=${latN},${lngN}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Open reported location in Google Maps"
+      title={`${latN.toFixed(4)}, ${lngN.toFixed(4)}`}
+      style={{ color: '#2563eb', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+      onClick={
+        stopPropagation
+          ? (e) => {
+              e.stopPropagation()
+            }
+          : undefined
+      }
+      onKeyDown={
+        stopPropagation
+          ? (e) => {
+              e.stopPropagation()
+            }
+          : undefined
+      }
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={iconSize} height={iconSize} aria-hidden>
+        <path d="M128 252.6C128 148.4 214 64 320 64C426 64 512 148.4 512 252.6C512 371.9 391.8 514.9 341.6 569.4C329.8 582.2 310.1 582.2 298.3 569.4C248.1 514.9 127.9 371.9 127.9 252.6zM320 320C355.3 320 384 291.3 384 256C384 220.7 355.3 192 320 192C284.7 192 256 220.7 256 256C256 291.3 284.7 320 320 320z" fill="currentColor" />
+      </svg>
+    </a>
+  )
+}
+
+export function ReportDetailBody({
+  report,
+  fieldLayout = 'stacked',
+}: {
+  report: ReportForView
+  /** `inline`: `Label - value` on one flow (full-screen Job Reports); `stacked`: label above value (default). */
+  fieldLayout?: 'stacked' | 'inline'
+}) {
+  const lat = report.reported_at_lat
+  const lng = report.reported_at_lng
+  const hasLoc = lat != null && lng != null
+
   return (
     <>
       <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: '1rem', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
         {new Date(report.created_at).toLocaleString()} · {report.created_by_name}
-        {report.reported_at_lat != null && report.reported_at_lng != null && (
-          <a
-            href={`https://www.google.com/maps?q=${report.reported_at_lat},${report.reported_at_lng}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            title={`${Number(report.reported_at_lat).toFixed(4)}, ${Number(report.reported_at_lng).toFixed(4)}`}
-            style={{ color: '#2563eb', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16}>
-              <path d="M128 252.6C128 148.4 214 64 320 64C426 64 512 148.4 512 252.6C512 371.9 391.8 514.9 341.6 569.4C329.8 582.2 310.1 582.2 298.3 569.4C248.1 514.9 127.9 371.9 127.9 252.6zM320 320C355.3 320 384 291.3 384 256C384 220.7 355.3 192 320 192C284.7 192 256 220.7 256 256C256 291.3 284.7 320 320 320z" fill="currentColor" />
-            </svg>
-          </a>
-        )}
+        {hasLoc && <ReportLocationMapsLink lat={Number(lat)} lng={Number(lng)} stopPropagation />}
       </div>
 
       {report.field_values && Object.keys(report.field_values).length > 0 ? (
@@ -75,12 +116,22 @@ export function ReportDetailBody({ report }: { report: ReportForView }) {
             }
             return (
               <div key={label} style={{ marginBottom: '0.75rem' }}>
-                <span style={{ color: '#6b7280', fontWeight: 500, display: 'block', marginBottom: '0.25rem' }}>
-                  {displayLabel}
-                </span>
-                <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                  {formatReportFieldValueForRead(label, s)}
-                </div>
+                {fieldLayout === 'inline' ? (
+                  <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                    <span style={{ color: '#6b7280', fontWeight: 500 }}>{displayLabel}</span>
+                    {' - '}
+                    <span>{formatReportFieldValueForRead(label, s)}</span>
+                  </div>
+                ) : (
+                  <>
+                    <span style={{ color: '#6b7280', fontWeight: 500, display: 'block', marginBottom: '0.25rem' }}>
+                      {displayLabel}
+                    </span>
+                    <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                      {formatReportFieldValueForRead(label, s)}
+                    </div>
+                  </>
+                )}
               </div>
             )
           })

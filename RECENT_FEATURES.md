@@ -7,16 +7,31 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-29
+last_updated: 2026-04-30
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.417 → v2.4"
+version_range: "v2.422 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.422)"
+    line: ~1390
+    description: "Recurring Email Reports — calendar_last_week scope + reporting_window_calendar_week_prior_to_anchor"
+  - name: "Latest Version (v2.421)"
+    line: ~1405
+    description: "Recurring Email Reports — org-wide activity digest; activity_scope + crew_filter (team_leader_assignments); drop schedule/job_scope job filtering"
+  - name: "Latest Version (v2.420)"
+    line: ~1420
+    description: "Jobs Reports — Recurring Email Reports modal; schedules/recipients tables, cron dispatch, preview & test-send Edge functions"
+  - name: "Latest Version (v2.419)"
+    line: ~1430
+    description: "Salary sync — continuous template + My Time split: indexed salary_schedule fragments close at continuous t_end (20270516120000); SALARY_CLOCK_SESSIONS.md, PROJECT_DOCUMENTATION, GLOSSARY"
+  - name: "Latest Version (v2.418)"
+    line: ~1403
+    description: "Reports — superintendent report anchor RLS + team parity + list_reports_* RPC alignment; reported_at_lat/lng in list RPCs for primary/superintendent/estimator + own rows helpers/subcontractor; JobReportsModal inline ReportDetailBody + ReportLocationMapsLink (ReportViewModal)"
   - name: "Latest Version (v2.417)"
-    line: ~1372
+    line: ~1410
     description: "Docs — agent app crash playbook, AGENTS.md row, capture-supabase-incident.sh, README/TROUBLESHOOTING/AI_CONTEXT/PROJECT_DOCUMENTATION/runbook cross-links; 28P01 note in SUPABASE_INCIDENT_RUNBOOK"
   - name: "Latest Version (v2.416)"
     line: ~1400
@@ -1078,6 +1093,8 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.419 — **Salary sync** — **continuous** workday split in **My Time**: open **indexed** **`salary_schedule`** fragments (**`salary_segment_index`** 1..N) **close at **`t_end`** once **`p_now ≥ t_end`** (non-final, **`clocked_out_at IS NULL`**, **`clocked_in_at < t_end`**); **`salary_sync_one_user_clock_sessions`** — **[`20270516120000_salary_sync_close_continuous_fragments_at_t_end.sql`](supabase/migrations/20270516120000_salary_sync_close_continuous_fragments_at_t_end.sql)**; docs — **`SALARY_CLOCK_SESSIONS.md`**, **`PROJECT_DOCUMENTATION.md`** (**`clock_sessions`**), **`GLOSSARY.md`**, **`MIGRATIONS.md`](#latest-updates-v2419)
+**New:** [v2.418 — **Reports** — superintendent **`reports`** anchor (**`superintendent_report_job_anchor_allowed`**, SECURITY DEFINER + **`row_security` off**, team-member branch); **`list_reports_with_job_info`** / **`list_reports_for_job_ledger`** parity; **`reported_at_lat/lng`** in list RPCs (**primary**, **superintendent**, **estimator**, **helpers**/**subcontractor** own rows); **`list_my_reports`** coords on own rows (**`20270511120000`** … **`20270515120000`**); **[`JobReportsModal`](src/components/JobReportsModal.tsx)** — **`ReportDetailBody`** **`fieldLayout="inline"`**, **`ReportLocationMapsLink`** on collapsed row + detail (**[`ReportViewModal.tsx`](src/components/ReportViewModal.tsx)**)](#latest-updates-v2418)
 **New:** [v2.417 — **Docs / operations** — **App crash triage for AI agents**: **`docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md`** (playbook), **`AGENTS.md`** table row, **`scripts/capture-supabase-incident.sh`**; **README** / **TROUBLESHOOTING** / **AI_CONTEXT** / **PROJECT_DOCUMENTATION** / **`SUPABASE_INCIDENT_RUNBOOK`** cross-links; **28P01** DB password note in runbook](#latest-updates-v2417)
 **New:** [v2.416 — **Checklist** **Manage** — **Search by title or assignee** (client-side); **People** **Users** — **email** / **phone** second line **≤640px**; **Review before clock out** — optional **left a report on all my jobs** checkbox (**not** required) — **[`Checklist.tsx`](src/pages/Checklist.tsx)**, **[`People.tsx`](src/pages/People.tsx)**, **[`ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx)**](#latest-updates-v2416)
 **New:** [v2.415 — **Product copy** — **Customer Files** / **Customer Pictures** (replaces **Job Files** / **Job Pictures**): Edit Job, Job Detail, Edit Customer, **Jobs** / **Quickfill** Stages pipeline (**No customer pictures**), Quickfill **`Stages: customer link & customer pictures`**, Dashboard **Open customer pictures**, **Documents** job **Docs**; **`job_pictures_link`** / column names unchanged](#latest-updates-v2415)
@@ -1371,6 +1388,68 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.422)
+
+**Date**: 2026-04-30
+
+### **Jobs Reports — Recurring Email Reports** — **Jobs last week** scope
+
+- **Product** — New **`activity_scope`** **`calendar_last_week`**: full Sun–Sat week **before** the week that contains **anchor** (schedule TZ “today”), same half-open rules as **this week**. Dispatch dedup uses that week’s **Sunday** as **`reporting_date`**.
+- **Migration** — **[`20260430064919_recurring_job_report_activity_scope_last_week.sql`](supabase/migrations/20260430064919_recurring_job_report_activity_scope_last_week.sql)** — **`reporting_window_calendar_week_prior_to_anchor`**, CHECK constraint.
+- **Edge + UI** — **`recurringJobReportCore`**, preview/test **`isActivityScope`**; modal **Jobs last week (Sun–Sat)** option — **[`RecurringEmailReportsModal.tsx`](src/components/jobs/RecurringEmailReportsModal.tsx)**.
+
+---
+
+## Latest Updates (v2.421)
+
+**Date**: 2026-04-30
+
+### **Jobs Reports — Recurring Email Reports** — **org-wide** digest (**activity scope** + **crew filter**)
+
+- **Product** — Each email lists **master org jobs** (**`jobs_ledger.master_user_id = scope_master_user_id`**) that have **clock sessions** or **field reports** in the selected **calendar window**. **Recipient schedule blocks are not** used for job selection. **Scope**: Jobs yesterday / today / this week (**`calendar_yesterday`**, **`calendar_today`**, **`calendar_week`**). **Filter**: **All users** vs **My team** — **`my_team`** = recipient + **`team_leader_assignments`** where **`leader_user_id = recipient`** (same roster as Dashboard **My team**).
+- **Migration** — **[`20260430063059_recurring_job_report_activity_scope_crew_filter.sql`](supabase/migrations/20260430063059_recurring_job_report_activity_scope_crew_filter.sql)** replaces **`job_scope`** with **`activity_scope`** + **`crew_filter`**; **`reporting_window_calendar_civil_day`**; **`reporting_window_for_recurring_job_email`** accepts **`calendar_yesterday`** like **`prior_calendar_day`**.
+- **Edge** — **`recurringJobReportCore`**: window from **`activity_scope`**, crew filter queries; **`recurring-job-report-preview`** / **`test-send`** bodies use **`activity_scope`**, **`crew_filter`**, **`anchor_date`**; **`dispatch`** reads new columns per recipient.
+- **UI** — **[`RecurringEmailReportsModal.tsx`](src/components/jobs/RecurringEmailReportsModal.tsx)**: Org · Recipient · **Scope** · **Filter** columns; **`EDGE_FUNCTIONS.md`**, **`MIGRATIONS.md`**.
+
+---
+
+## Latest Updates (v2.420)
+
+**Date**: 2026-04-30
+
+### **Jobs Reports** — recurring email summaries (**Recurring Email Reports**)
+
+- **UI** — **`Recurring Email Reports`** on the Jobs **Reports** tab ([`Jobs.tsx`](src/pages/Jobs.tsx)); modal [`RecurringEmailReportsModal.tsx`](src/components/jobs/RecurringEmailReportsModal.tsx): schedules (**15-minute** wall times aligned with **`*/15` pg_cron**), weekdays (**0–6**), timezone (defaults **`APP_CALENDAR_TZ`**), recipients with **scope** (**Jobs yesterday · today · this week**) and **crew filter** (**All users · My team** via **`team_leader_assignments`**); **Preview HTML** / **test send** use **`anchor_date`** (schedule timezone civil “today”). *(Recipient semantics refined in **v2.421**.)*
+- **Backend** — Tables `recurring_job_report_schedules`, `recurring_job_report_schedule_recipients`, `recurring_job_report_dispatch_log`; RLS mirrors checklist-style dev/master/assistant access to **`scope_master_user_id`**; **`user_can_manage_recurring_job_report_scope`**, **`reporting_window_for_recurring_job_email`**, **`reporting_window_calendar_week_containing_anchor`**; **`[20260430054614_recurring_job_report_schedules.sql](supabase/migrations/20260430054614_recurring_job_report_schedules.sql)`** + historical **`[20260430060716_recurring_job_report_recipient_job_scopes_schedule.sql](supabase/migrations/20260430060716_recurring_job_report_recipient_job_scopes_schedule.sql)`** register **`pg_cron` `recurring-job-report-dispatch`**. *(Column model: **v2.421** → **`activity_scope`** / **`crew_filter`** in **`[20260430063059_recurring_job_report_activity_scope_crew_filter.sql](supabase/migrations/20260430063059_recurring_job_report_activity_scope_crew_filter.sql)`**.)*
+- **Edge** — **`recurring-job-report-preview`** (JWT + scope RPC check), **`recurring-job-report-test-send`**, **`recurring-job-report-dispatch`** (`X-Cron-Secret` **`CRON_SECRET`**); summaries include crew clock hours/notes (**non-rejected, non-revoked**) and **field reports** in the window (**`reports.created_at`**); Resend **`RESEND_API_KEY`**. **`EDGE_FUNCTIONS.md`**, **`MIGRATIONS.md`**.
+
+---
+
+## Latest Updates (v2.419)
+
+**Date**: 2026-04-30
+
+### **Salary sync** — close **continuous** split **`salary_schedule`** rows at **`t_end`**
+
+- **Problem**: With template **`mode = continuous`**, after **My Time** splits the single auto block into **indexed** **`salary_schedule`** segments (**`salary_segment_index`** 1..N), **`salary_sync`** no longer INSERTs the NULL-index row (**`20270402100000`**) — but prior logic did **not** set **`clocked_out_at`** on those fragments at the planned end of day, so a segment could stay **open**.
+- **Change**: **`salary_sync_one_user_clock_sessions`** — when **`v_mode = 'continuous'`** and **`p_now ≥ t_end`**, **`UPDATE`** open (**`clocked_out_at IS NULL`**), non-final indexed **`salary_schedule`** rows for that user/**`work_date`** with **`clocked_in_at < t_end`** to **`clocked_out_at = t_end`**, **before** the NULL-index canonical path — **[`20270516120000_salary_sync_close_continuous_fragments_at_t_end.sql`](supabase/migrations/20270516120000_salary_sync_close_continuous_fragments_at_t_end.sql)**.
+- **Documentation**: **`SALARY_CLOCK_SESSIONS.md`** (Continuous template mode + migration index), **`PROJECT_DOCUMENTATION.md`** (`clock_sessions`), **`GLOSSARY.md`**, **`MIGRATIONS.md`**.
+
+---
+
+## Latest Updates (v2.418)
+
+**Date**: 2026-04-29
+
+### **Reports** — superintendent anchor + list parity; coordinate visibility in RPCs; **View Reports** inline layout + Maps link
+
+- **Superintendent job anchor** — **`superintendent_report_job_anchor_allowed`** (**`SECURITY DEFINER`**, **`SET row_security = off`** inside so **`jobs_ledger`** reads in the helper are not masked by caller RLS): superintendent **`reports`** INSERT policy delegates to this helper instead of an inline **`jobs_ledger`** **`EXISTS`**. Team assignment branch (**`jobs_ledger_team_members`**) matches **`list_assigned_jobs_for_dashboard`** scope so anchors work when the job has **no** **`project_id`** but the superintendent is on the crew — **[`20270511120000_superintendent_reports_job_anchor_security_definer.sql`](supabase/migrations/20270511120000_superintendent_reports_job_anchor_security_definer.sql)**, **[`20270512120000_superintendent_report_anchor_row_security_off.sql`](supabase/migrations/20270512120000_superintendent_report_anchor_row_security_off.sql)**, **[`20270513120000_superintendent_report_anchor_team_assignment.sql`](supabase/migrations/20270513120000_superintendent_report_anchor_team_assignment.sql)**.
+- **List RPC parity** — **`list_reports_with_job_info`** / **`list_reports_for_job_ledger`** superintendent filters use the same anchor helper so rows listed after save match INSERT rules (**empty modal after save** resolved) — **[`20270514120000_list_reports_rpc_superintendent_job_anchor.sql`](supabase/migrations/20270514120000_list_reports_rpc_superintendent_job_anchor.sql)**.
+- **Coordinates in list outputs** — **`reported_at_lat`** / **`reported_at_lng`** returned for **primary**, **superintendent**, **estimator**, and for **helpers** / **subcontractor** on **their own** report rows (replacing earlier office-only NULL masking from **`20260415120006`** / **`20260415120007`**); **`list_my_reports`** returns coordinates on the viewer’s own rows — **[`20270515120000_report_list_rpc_include_coordinates.sql`](supabase/migrations/20270515120000_report_list_rpc_include_coordinates.sql)**.
+- **UI** — **[`ReportViewModal.tsx`](src/components/ReportViewModal.tsx)**: **`ReportLocationMapsLink`** opens Google Maps (**`aria-label`**); **`ReportDetailBody`** **`fieldLayout`** **`'stacked'`** (default) | **`'inline'`** — inline renders non-signature fields as **`Label — value`** on one line. **[`JobReportsModal.tsx`](src/components/JobReportsModal.tsx)** passes **`fieldLayout="inline"`** for full-screen report detail and shows **`ReportLocationMapsLink`** on collapsed rows when coordinates exist.
+
 ---
 
 ## Latest Updates (v2.417)

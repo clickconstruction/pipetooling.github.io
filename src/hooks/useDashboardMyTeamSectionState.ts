@@ -1221,26 +1221,38 @@ export function useDashboardMyTeamSectionState(
   const [jobsWorkedTodayReportKeys, setJobsWorkedTodayReportKeys] = useState<ReadonlySet<string>>(
     () => new Set(),
   )
+  const [jobsWorkedTodayJobLedgerIdsWithReport, setJobsWorkedTodayJobLedgerIdsWithReport] =
+    useState<ReadonlySet<string> | null>(null)
+  const [jobsWorkedTodayReportIdByKey, setJobsWorkedTodayReportIdByKey] = useState<
+    ReadonlyMap<string, string>
+  >(() => new Map())
 
   useEffect(() => {
     let cancelled = false
     async function loadReportsForStrip() {
       if (jobLedgerIdsForReportsLookup.length === 0) {
         setJobsWorkedTodayReportKeys(new Set())
+        setJobsWorkedTodayJobLedgerIdsWithReport(new Set())
+        setJobsWorkedTodayReportIdByKey(new Map())
         return
       }
+      setJobsWorkedTodayJobLedgerIdsWithReport(null)
       try {
         const rows = await withSupabaseRetry(
           async () =>
             await supabase
               .from('reports')
-              .select('job_ledger_id, created_by_user_id, created_at')
+              .select('id, job_ledger_id, created_by_user_id, created_at')
               .in('job_ledger_id', jobLedgerIdsForReportsLookup),
           'dashboard strip jobs worked today reports',
         )
         if (cancelled) return
         const next = new Set<string>()
+        const jobIdsWithReport = new Set<string>()
+        const idByKey = new Map<string, string>()
+        const latestCreatedAtByKey = new Map<string, string>()
         const list = (rows ?? []) as Array<{
+          id: string
           job_ledger_id: string | null
           created_by_user_id: string
           created_at: string | null
@@ -1248,11 +1260,24 @@ export function useDashboardMyTeamSectionState(
         for (const r of list) {
           if (!r.job_ledger_id || !r.created_at) continue
           if (calendarYmdInAppTzFromIso(r.created_at) !== clockStripWorkDateYmd) continue
-          next.add(`${r.job_ledger_id}:${r.created_by_user_id}`)
+          const key = `${r.job_ledger_id}:${r.created_by_user_id}`
+          next.add(key)
+          jobIdsWithReport.add(r.job_ledger_id)
+          const prevAt = latestCreatedAtByKey.get(key)
+          if (prevAt == null || r.created_at > prevAt) {
+            latestCreatedAtByKey.set(key, r.created_at)
+            idByKey.set(key, r.id)
+          }
         }
         setJobsWorkedTodayReportKeys(next)
+        setJobsWorkedTodayJobLedgerIdsWithReport(jobIdsWithReport)
+        setJobsWorkedTodayReportIdByKey(idByKey)
       } catch {
-        if (!cancelled) setJobsWorkedTodayReportKeys(new Set())
+        if (!cancelled) {
+          setJobsWorkedTodayReportKeys(new Set())
+          setJobsWorkedTodayJobLedgerIdsWithReport(new Set())
+          setJobsWorkedTodayReportIdByKey(new Map())
+        }
       }
     }
     void loadReportsForStrip()
@@ -1290,6 +1315,8 @@ export function useDashboardMyTeamSectionState(
     clockStripWorkDateYmd,
     jobsWorkedTodayStripRows,
     jobsWorkedTodayReportKeys,
+    jobsWorkedTodayReportIdByKey,
+    jobsWorkedTodayJobLedgerIdsWithReport,
     stripSyntheticSalarySessions,
     pendingApprovalCount,
     loadingSessions,

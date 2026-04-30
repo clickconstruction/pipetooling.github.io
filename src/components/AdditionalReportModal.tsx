@@ -1,7 +1,9 @@
 import { useState, useEffect, type CSSProperties } from 'react'
+import { Folder, Images } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
 import { useAuth, type UserRole } from '../hooks/useAuth'
+import { useToastContext } from '../contexts/ToastContext'
 import {
   additionalReportModalBlueChipTemplate,
   additionalReportModalTemplateChipLabel,
@@ -9,12 +11,20 @@ import {
 } from '../lib/reportTemplateDisplayName'
 import { fieldValueForSubmit } from '../lib/reportTemplateFieldDisplay'
 import { validateReportSignatureDataUrlForSubmit } from '../lib/reportSignatureField'
+import { openInExternalBrowser } from '../lib/openInExternalBrowser'
+import { withSupabaseRetry } from '../utils/errorHandling'
 import { ReportTemplatePercentField } from './ReportTemplatePercentField'
 import { ReportTemplateSignatureField } from './ReportTemplateSignatureField'
 import JobReportsModal from './JobReportsModal'
 
 type ReportTemplate = Database['public']['Tables']['report_templates']['Row']
 type ReportTemplateField = Database['public']['Tables']['report_template_fields']['Row']
+
+const TOAST_NO_CUSTOMER_FILES =
+  "Customer Files isn't linked for this job yet. Contact Dispatch to have it added."
+
+const TOAST_NO_CUSTOMER_PICTURES =
+  "Customer Pictures isn't linked for this job yet. Contact Dispatch to have it added."
 
 type Props = {
   open: boolean
@@ -43,6 +53,7 @@ export default function AdditionalReportModal({
   jobAddress,
 }: Props) {
   const { profileName } = useAuth()
+  const { showToast } = useToastContext()
   const [templates, setTemplates] = useState<ReportTemplate[]>([])
   const [templateFields, setTemplateFields] = useState<Record<string, ReportTemplateField[]>>({})
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('')
@@ -50,6 +61,50 @@ export default function AdditionalReportModal({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showJobReportsModal, setShowJobReportsModal] = useState(false)
+  const [jobLinksLoading, setJobLinksLoading] = useState(false)
+  const [customerFilesUrl, setCustomerFilesUrl] = useState('')
+  const [customerPicturesUrl, setCustomerPicturesUrl] = useState('')
+
+  useEffect(() => {
+    if (!open) {
+      setJobLinksLoading(false)
+      setCustomerFilesUrl('')
+      setCustomerPicturesUrl('')
+      return
+    }
+    let cancelled = false
+    setJobLinksLoading(true)
+    ;(async () => {
+      try {
+        const data = await withSupabaseRetry(
+          async () =>
+            await supabase
+              .from('jobs_ledger')
+              .select('google_drive_link, job_pictures_link')
+              .eq('id', jobId)
+              .maybeSingle(),
+          'AdditionalReportModal job customer links',
+        )
+        if (cancelled) return
+        const row =
+          data && typeof data === 'object' && data !== null
+            ? (data as { google_drive_link?: string | null; job_pictures_link?: string | null })
+            : null
+        setCustomerFilesUrl((row?.google_drive_link ?? '').trim())
+        setCustomerPicturesUrl((row?.job_pictures_link ?? '').trim())
+      } catch {
+        if (!cancelled) {
+          setCustomerFilesUrl('')
+          setCustomerPicturesUrl('')
+        }
+      } finally {
+        if (!cancelled) setJobLinksLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, jobId])
 
   useEffect(() => {
     if (!open) return
@@ -225,6 +280,99 @@ export default function AdditionalReportModal({
             </p>
           </div>
           <button type="button" onClick={handleClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: '#6b7280' }} aria-label="Close">×</button>
+        </div>
+
+        <div
+          style={{
+            display: 'flex',
+            gap: '0.5rem',
+            alignItems: 'center',
+            marginBottom: '1rem',
+            flexWrap: 'wrap',
+          }}
+        >
+          <button
+            type="button"
+            disabled={jobLinksLoading}
+            onClick={() => {
+              if (jobLinksLoading) return
+              if (customerFilesUrl) openInExternalBrowser(customerFilesUrl)
+              else showToast(TOAST_NO_CUSTOMER_FILES, 'warning', undefined, undefined, 'center')
+            }}
+            aria-label={
+              jobLinksLoading
+                ? 'Loading Customer Files link'
+                : customerFilesUrl
+                  ? 'Open Customer Files link'
+                  : 'Customer Files not linked; contact Dispatch'
+            }
+            title={
+              jobLinksLoading
+                ? 'Loading…'
+                : customerFilesUrl
+                  ? 'Open Customer Files'
+                  : TOAST_NO_CUSTOMER_FILES
+            }
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 40,
+              height: 40,
+              padding: 0,
+              border: `1px solid ${
+                jobLinksLoading ? '#e5e7eb' : customerFilesUrl ? '#c7d2fe' : '#fecaca'
+              }`,
+              borderRadius: 6,
+              background: '#fff',
+              cursor: jobLinksLoading ? 'not-allowed' : 'pointer',
+              opacity: jobLinksLoading ? 0.85 : 1,
+              color: jobLinksLoading ? '#9ca3af' : customerFilesUrl ? '#2563eb' : '#dc2626',
+            }}
+          >
+            <Folder size={22} strokeWidth={2} aria-hidden />
+          </button>
+          <button
+            type="button"
+            disabled={jobLinksLoading}
+            onClick={() => {
+              if (jobLinksLoading) return
+              if (customerPicturesUrl) openInExternalBrowser(customerPicturesUrl)
+              else showToast(TOAST_NO_CUSTOMER_PICTURES, 'warning', undefined, undefined, 'center')
+            }}
+            aria-label={
+              jobLinksLoading
+                ? 'Loading Customer Pictures link'
+                : customerPicturesUrl
+                  ? 'Open Customer Pictures link'
+                  : 'Customer Pictures not linked; contact Dispatch'
+            }
+            title={
+              jobLinksLoading
+                ? 'Loading…'
+                : customerPicturesUrl
+                  ? 'Open Customer Pictures'
+                  : TOAST_NO_CUSTOMER_PICTURES
+            }
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 40,
+              height: 40,
+              padding: 0,
+              border: `1px solid ${
+                jobLinksLoading ? '#e5e7eb' : customerPicturesUrl ? '#c7d2fe' : '#fecaca'
+              }`,
+              borderRadius: 6,
+              background: '#fff',
+              cursor: jobLinksLoading ? 'not-allowed' : 'pointer',
+              opacity: jobLinksLoading ? 0.85 : 1,
+              color: jobLinksLoading ? '#9ca3af' : customerPicturesUrl ? '#2563eb' : '#dc2626',
+            }}
+          >
+            <Images size={22} strokeWidth={2} aria-hidden />
+          </button>
         </div>
 
         <button
