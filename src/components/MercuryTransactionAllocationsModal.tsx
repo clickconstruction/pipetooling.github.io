@@ -14,9 +14,17 @@ import {
   type SearchableSelectOption,
   type SearchableSelectSelectableOption,
 } from './SearchableSelect'
+import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
+import { formatBidLedgerShortLine, formatJobLedgerShortLine } from '../lib/ledgerDisplayPrefixes'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
-type JobSearchRow = { id: string; hcp_number: string; job_name: string; job_address: string }
+type JobSearchRow = {
+  id: string
+  hcp_number: string
+  job_name: string
+  job_address: string
+  service_type_id: string | null
+}
 
 /** Runtime RPC args (`replace_mercury_transaction_splits` allows null for XOR/clear; `gen types` does not). */
 type ReplaceMercuryTransactionSplitsCall = {
@@ -100,18 +108,13 @@ function formatPostedDate(iso: string | null): string {
   }
 }
 
-function bidDisplayLabel(bidNumber: string | null, projectName: string | null): string {
-  const b = typeof bidNumber === 'string' && bidNumber.trim() !== '' ? `B${bidNumber.trim()}` : 'Bid'
-  const p = typeof projectName === 'string' && projectName.trim() !== '' ? projectName.trim() : ''
-  return p !== '' ? `${b} · ${p}` : b
-}
-
 function dispatchScheduledJobToSearchRow(d: DispatchScheduledJobForAssign): JobSearchRow {
   return {
     id: d.jobId,
     hcp_number: d.hcp_number,
     job_name: d.job_name,
     job_address: d.job_address,
+    service_type_id: d.service_type_id,
   }
 }
 
@@ -281,6 +284,7 @@ export function MercuryTransactionAllocationsModal({
   tallyActAsUserId = null,
 }: MercuryTransactionAllocationsModalProps) {
   const { showToast } = useToastContext()
+  const ledgerPrefixMap = useLedgerPrefixMap()
   const [lines, setLines] = useState<SplitLine[]>([])
   const [userId, setUserId] = useState<string>('')
   const [stripAttribution, setStripAttribution] = useState(false)
@@ -445,13 +449,19 @@ export function MercuryTransactionAllocationsModal({
             async () =>
               supabase
                 .from('jobs_ledger')
-                .select('id, hcp_number, job_name, job_address')
+                .select('id, hcp_number, job_name, job_address, service_type_id')
                 .in('id', jobOrder),
             'MercuryTransactionAllocationsModal staff day jobs_ledger',
           )
           if (cancelled) return
           const byId = new Map(
-            ((jobRows ?? []) as { id: string; hcp_number: string | null; job_name: string | null; job_address: string | null }[]).map(
+            ((jobRows ?? []) as {
+              id: string
+              hcp_number: string | null
+              job_name: string | null
+              job_address: string | null
+              service_type_id: string | null
+            }[]).map(
               (j) => [j.id, j],
             ),
           )
@@ -465,6 +475,7 @@ export function MercuryTransactionAllocationsModal({
               hcp_number: hn,
               job_name: jn || '—',
               job_address: ja,
+              service_type_id: row?.service_type_id ?? null,
             })
           }
         }
@@ -473,12 +484,17 @@ export function MercuryTransactionAllocationsModal({
         if (bidOrder.length > 0) {
           const bidRows = await withSupabaseRetry(
             async () =>
-              supabase.from('bids').select('id, bid_number, project_name').in('id', bidOrder),
+              supabase.from('bids').select('id, bid_number, project_name, service_type_id').in('id', bidOrder),
             'MercuryTransactionAllocationsModal staff day bids',
           )
           if (cancelled) return
           const byId = new Map(
-            ((bidRows ?? []) as { id: string; bid_number: string | null; project_name: string | null }[]).map((b) => [
+            ((bidRows ?? []) as {
+              id: string
+              bid_number: string | null
+              project_name: string | null
+              service_type_id: string | null
+            }[]).map((b) => [
               b.id,
               b,
             ]),
@@ -487,7 +503,12 @@ export function MercuryTransactionAllocationsModal({
             const row = byId.get(id)
             sessionBids.push({
               id,
-              label: bidDisplayLabel(row?.bid_number ?? null, row?.project_name ?? null),
+              label: formatBidLedgerShortLine(
+                ledgerPrefixMap,
+                row?.service_type_id ?? null,
+                row?.bid_number ?? null,
+                row?.project_name ?? null,
+              ),
             })
           }
         }
@@ -511,7 +532,7 @@ export function MercuryTransactionAllocationsModal({
     return () => {
       cancelled = true
     }
-  }, [open, tallySelfService, tallyActAsUserId, transaction?.posted_at, transaction?.id])
+  }, [open, tallySelfService, tallyActAsUserId, transaction?.posted_at, transaction?.id, ledgerPrefixMap])
 
   const allocationSum = useMemo(() => {
     let sum = 0
@@ -545,7 +566,7 @@ export function MercuryTransactionAllocationsModal({
   const addJobLine = useCallback((row: JobSearchRow) => {
     setLines((prev) => {
       if (prev.some((p) => p.jobId === row.id)) return prev
-      const label = `${row.hcp_number} · ${row.job_name}`.trim()
+      const label = formatJobLedgerShortLine(ledgerPrefixMap, row.service_type_id, row.hcp_number, row.job_name).trim()
       const appended = [
         ...prev,
         { jobId: row.id, jobLabel: label, mode: 'dollars' as SplitMode, valueStr: '', note: '' },
@@ -554,7 +575,7 @@ export function MercuryTransactionAllocationsModal({
     })
     setJobSearch('')
     setJobResults([])
-  }, [displayTotal])
+  }, [displayTotal, ledgerPrefixMap])
 
   const removeLine = useCallback((jobId: string) => {
     setLines((prev) => {
@@ -960,7 +981,9 @@ export function MercuryTransactionAllocationsModal({
                           <div style={{ fontWeight: 600 }}>
                             {d.windowsLabel}
                             <span style={{ fontWeight: 400, color: '#64748b' }}> | </span>
-                            <span style={{ fontWeight: 600 }}>{d.hcp_number}</span> {d.job_name}
+                            <span style={{ fontWeight: 600 }}>
+                              {formatJobLedgerShortLine(ledgerPrefixMap, d.service_type_id, d.hcp_number, d.job_name)}
+                            </span>
                           </div>
                           {addr !== '' ? (
                             <div style={{ fontSize: '0.8125rem', color: '#6b7280', fontWeight: 400 }}>{addr}</div>
@@ -999,7 +1022,9 @@ export function MercuryTransactionAllocationsModal({
                         fontFamily: 'inherit',
                       }}
                     >
-                      <span style={{ fontWeight: 600 }}>{r.hcp_number}</span> {r.job_name}
+                      <span style={{ fontWeight: 600 }}>
+                        {formatJobLedgerShortLine(ledgerPrefixMap, r.service_type_id, r.hcp_number, r.job_name)}
+                      </span>
                       <span style={{ color: '#6b7280' }}> · {r.job_address}</span>
                     </button>
                   ))}
@@ -1065,7 +1090,9 @@ export function MercuryTransactionAllocationsModal({
                   cursor: 'pointer',
                 }}
               >
-                <span style={{ fontWeight: 600 }}>{r.hcp_number}</span> {r.job_name}
+                <span style={{ fontWeight: 600 }}>
+                  {formatJobLedgerShortLine(ledgerPrefixMap, r.service_type_id ?? null, r.hcp_number, r.job_name)}
+                </span>
                 <span style={{ color: '#6b7280' }}> · {r.job_address}</span>
               </button>
             ))}

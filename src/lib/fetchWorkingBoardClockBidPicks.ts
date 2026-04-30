@@ -7,6 +7,7 @@ export type WorkingBoardClockBidPick = Extract<UnifiedSearchResult, { source: 'b
 type BidJoinRow = {
   id: string
   bid_number: string | null
+  service_type_id: string | null
   project_name: string | null
   address: string | null
   customers: { name: string | null } | { name: string | null }[] | null
@@ -50,7 +51,7 @@ export async function fetchWorkingBoardClockBidPicks(userId: string | null | und
         supabase
           .from('bids')
           .select(
-            'id, bid_number, project_name, address, customers(name), bids_gc_builders(name), service_type:service_types(name)',
+            'id, bid_number, service_type_id, project_name, address, customers(name), bids_gc_builders(name), service_type:service_types(name)',
           )
           .in('id', orderedIds),
       'fetch bids for working board clock picks',
@@ -75,6 +76,7 @@ export async function fetchWorkingBoardClockBidPicks(userId: string | null | und
         address: r.address ?? '',
         customer_name: custName || gcName,
         service_type_name: st?.name ?? null,
+        service_type_id: r.service_type_id ?? null,
       })
     }
     return out

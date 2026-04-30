@@ -8,6 +8,7 @@ import {
   type BidSearchResult,
   type UnifiedSearchResult,
 } from '../utils/unifiedJobBidSearch'
+import { useLedgerDisplayPrefixes } from '../contexts/LedgerDisplayPrefixContext'
 
 type Props = {
   sessionIds: string[]
@@ -19,6 +20,7 @@ type Props = {
 }
 
 export function AssignFocusModal({ sessionIds, label, onSaved, onClose, overlayZIndex = 1100 }: Props) {
+  const { prefixMap } = useLedgerDisplayPrefixes()
   const [searchText, setSearchText] = useState('')
   const [searchResults, setSearchResults] = useState<UnifiedSearchResult[]>([])
   const [loading, setLoading] = useState(false)
@@ -175,7 +177,7 @@ export function AssignFocusModal({ sessionIds, label, onSaved, onClose, overlayZ
                             </span>
                           ) : null
                         })()}
-                      {formatUnifiedResult(item)}
+                      {formatUnifiedResult(item, prefixMap)}
                     </div>
                   </button>
                 )

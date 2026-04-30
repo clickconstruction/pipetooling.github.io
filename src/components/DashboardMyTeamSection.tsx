@@ -14,6 +14,7 @@ import {
 } from './clock-sessions'
 import type { ClockSessionRow } from '../types/clockSessions'
 import DashboardMyTeamPendingBanner from './DashboardMyTeamPendingBanner'
+import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 
 function formatDecimalHours(hours: number): string {
   return `${hours.toFixed(2)}h`
@@ -100,6 +101,7 @@ export default function DashboardMyTeamSection({
     ledgerPeopleForFilter,
     simpleLedgerGroups,
   } = myTeam
+  const prefixMap = useLedgerPrefixMap()
 
   const refreshPendingAfterAction = useCallback(async () => {
     const y = window.scrollY
@@ -576,7 +578,7 @@ export default function DashboardMyTeamSection({
                                     {g.sessions.map((s) => {
                                       const personName = personDisplayName(s)
                                       const hrs = sessionDecimalHours(s)
-                                      const jobFull = formatClockSessionJobOrBidLabel(s)
+                                      const jobFull = formatClockSessionJobOrBidLabel(s, prefixMap)
                                       const jobDisplay = jobFull ? truncateJobLabel(jobFull) : '—'
                                       const jobTruncated = Boolean(jobFull && jobFull.length > JOB_LABEL_DISPLAY_MAX)
                                       return (
@@ -612,7 +614,7 @@ export default function DashboardMyTeamSection({
                                 orderedLedgerSessions.map((s) => {
                                   const personName = personDisplayName(s)
                                   const hrs = sessionDecimalHours(s)
-                                  const jobFull = formatClockSessionJobOrBidLabel(s)
+                                  const jobFull = formatClockSessionJobOrBidLabel(s, prefixMap)
                                   const jobDisplay = jobFull ? truncateJobLabel(jobFull) : '—'
                                   const jobTruncated = Boolean(jobFull && jobFull.length > JOB_LABEL_DISPLAY_MAX)
                                   return (
@@ -660,7 +662,7 @@ export default function DashboardMyTeamSection({
                           renderDuration={renderDurationDurationFirst}
                           renderJob={() => null}
                           renderNotesSecondary={(s) => {
-                            const label = formatClockSessionJobOrBidLabel(s)
+                            const label = formatClockSessionJobOrBidLabel(s, prefixMap)
                             return label ? <span title={label}>{label}</span> : null
                           }}
                         />
@@ -686,7 +688,7 @@ export default function DashboardMyTeamSection({
                   locationVariant="full"
                   emptyMessage="No active sessions"
                   renderNotesSecondary={(s) => {
-                    const label = formatClockSessionJobOrBidLabel(s)
+                    const label = formatClockSessionJobOrBidLabel(s, prefixMap)
                     return label ? <span title={label}>{label}</span> : null
                   }}
                   renderJob={() => (
@@ -746,7 +748,7 @@ export default function DashboardMyTeamSection({
                   locationVariant="full"
                   emptyMessage="No sessions awaiting approval"
                   renderNotesSecondary={(s) => {
-                    const label = formatClockSessionJobOrBidLabel(s)
+                    const label = formatClockSessionJobOrBidLabel(s, prefixMap)
                     return label ? <span title={label}>{label}</span> : null
                   }}
                   renderJob={(s) => (

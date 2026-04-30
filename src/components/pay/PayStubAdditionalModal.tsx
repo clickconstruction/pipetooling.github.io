@@ -18,6 +18,7 @@ import { CLOCK_SESSION_CALENDAR_SELECT } from '../../lib/clockSessionSelect'
 import { shortJobOrBidLabelFromEmbeds, type ClockSessionRow } from '../../types/clockSessions'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
+import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 
 type StubPick = {
   id: string
@@ -98,6 +99,7 @@ export function PayStubAdditionalModal({
   baseHourlyWage = 0,
   onOpenMyTimeForDay,
 }: PayStubAdditionalModalProps) {
+  const prefixMap = useLedgerPrefixMap()
   const [savingRowId, setSavingRowId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
@@ -709,10 +711,13 @@ export function PayStubAdditionalModal({
                       !adding
                     const hasLine = Boolean(existingLineForSession(lines, s.id))
                     const jobLine =
-                      shortJobOrBidLabelFromEmbeds({
-                        jobs_ledger: s.jobs_ledger ?? null,
-                        bids: s.bids ?? null,
-                      }) ?? '—'
+                      shortJobOrBidLabelFromEmbeds(
+                        {
+                          jobs_ledger: s.jobs_ledger ?? null,
+                          bids: s.bids ?? null,
+                        },
+                        prefixMap,
+                      ) ?? '—'
                     const notesTrim = (s.notes ?? '').trim()
                     const notesLine = notesTrim.length > 0 ? notesTrim : '—'
                     return (

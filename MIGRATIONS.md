@@ -94,6 +94,21 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### April 30, 2026
 
+**`20260430203800_restore_pct_complete_on_jobs_ledger_detail_rpcs.sql`**
+- **Purpose**: Restore **`pct_complete`** on **`get_jobs_ledger_by_ids`**, **`get_jobs_ledger_by_ids_paid_only`**, **`get_jobs_ledger_by_hcp_numbers`**, **`get_jobs_ledger_by_hcp_numbers_paid_only`** alongside **`service_type_id`** (regression fix after ledger-prefix RPC work).
+- **Impact**: [`People.tsx`](src/pages/People.tsx), job/bid label flows that use those RPCs; regenerate **`src/types/database.ts`**
+- **Category**: Jobs / RPC
+
+**`20260430202750_crew_rpcs_service_type_id_for_ledger_prefixes.sql`**
+- **Purpose**: Add **`service_type_id`** to job/crew-related RPC result sets where needed for **trade-specific** ledger display prefixes.
+- **Impact**: Client formatters keyed by **`service_type_id`** ([`ledgerDisplayPrefixes.ts`](src/lib/ledgerDisplayPrefixes.ts)); stages/crew loads
+- **Category**: Jobs / Bids / RPC
+
+**`20260430201832_service_types_ledger_display_prefixes.sql`**
+- **Purpose**: **`service_types.ledger_job_prefix`**, **`ledger_bid_prefix`** (nullable); backfill **Plumbing** `JP`/`BP`, **Electrical** `JE`/`BE`, **HVAC** `JH`/`BH`; replace **`search_jobs_ledger`** (returns **`service_type_id`**, prefix-aware HCP match) and **`search_bids_for_clock`** (returns **`service_type_id`**, prefix-aware bid match).
+- **Impact**: [`Settings.tsx`](src/pages/Settings.tsx) Service types modal; [`unifiedJobBidSearch.ts`](src/utils/unifiedJobBidSearch.ts), Clock In, Jobs, Bids, Documents, My Time, Edge **`notify-dispatch-request`** / **`notify-estimator-request`**; **`PROJECT_DOCUMENTATION.md`**, **`GLOSSARY.md`**, **`RECENT_FEATURES.md`** **v2.432**
+- **Category**: Settings / service_types / Search RPC / RLS unchanged
+
 **`20260430071645_recurring_job_report_include_costs.sql`**
 - **Purpose**: Per-recipient **`include_costs`** on **`recurring_job_report_schedule_recipients`** — when true, recurring digest emails add a **Cost** column (**hours × people_pay_config.hourly_wage** matched on **`trim(users.name)` = `person_name`**); missing wage renders **—**.
 - **Impact**: **`recurringJobReportCore`**, **`recurring-job-report-preview`** / **`test-send`** (**`include_costs`** body) / **`dispatch`** (**`select include_costs`**); **[`RecurringEmailReportsModal.tsx`](src/components/jobs/RecurringEmailReportsModal.tsx)**; **`EDGE_FUNCTIONS.md`**, **`RECENT_FEATURES.md`**, **`AGENTS.md`**, **`AI_CONTEXT.md`**, **`PROJECT_DOCUMENTATION.md`**, **`ACCESS_CONTROL.md`**

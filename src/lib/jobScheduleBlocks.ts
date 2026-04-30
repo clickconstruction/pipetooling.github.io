@@ -162,16 +162,22 @@ export type DispatchScheduledJobForAssign = {
   hcp_number: string
   job_name: string
   job_address: string
+  service_type_id: string | null
   /** One span per schedule block, same order as Dispatch (start / end display lines). */
   windowSpans: DispatchScheduledWindowSpan[]
   /** Joined time windows for tooltip (e.g. "9:00 AM–12:00 PM; 1:00 PM–4:00 PM"), en-dash between times. */
   windowsLabel: string
 }
 
-const DISPATCH_ASSIGN_SELECT = `${SELECT_FIELDS}, jobs_ledger(hcp_number, job_name, job_address)`
+const DISPATCH_ASSIGN_SELECT = `${SELECT_FIELDS}, jobs_ledger(hcp_number, job_name, job_address, service_type_id)`
 
 type JobScheduleBlockWithJobEmbed = JobScheduleBlockRow & {
-  jobs_ledger: { hcp_number: string | null; job_name: string | null; job_address: string | null } | null
+  jobs_ledger: {
+    hcp_number: string | null
+    job_name: string | null
+    job_address: string | null
+    service_type_id: string | null
+  } | null
 }
 
 /**
@@ -223,6 +229,7 @@ export async function fetchDispatchScheduledJobsForAssigneeDay(
         hcp_number: (jl.hcp_number ?? '').trim(),
         job_name: (jl.job_name ?? '').trim() || '—',
         job_address: (jl.job_address ?? '').trim(),
+        service_type_id: jl.service_type_id ?? null,
         windowSpans,
         windowsLabel: windowSpans.map((s) => `${s.startLabel}${enDash}${s.endLabel}`).join('; '),
       })

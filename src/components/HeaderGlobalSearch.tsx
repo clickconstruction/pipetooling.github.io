@@ -20,12 +20,14 @@ import type { UserRole } from '../hooks/useAuth'
 import { fieldRoleServiceTypeIdsForUser, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import {
   formatUnifiedResult,
-  getBidServiceTypeTag,
+  serviceTypeTagForUnifiedRow,
   type JobSearchResult,
   type BidSearchResult,
   type EstimateNavSearchResult,
   type UnifiedSearchResult,
 } from '../utils/unifiedJobBidSearch'
+import { useLedgerDisplayPrefixes } from '../contexts/LedgerDisplayPrefixContext'
+import type { LedgerPrefixMap } from '../lib/ledgerDisplayPrefixes'
 
 const HEADER_ROW_MIN_HEIGHT = 'calc(1rem + 1.25em)'
 const MIN_HEADER_SEARCH_CHARS = 2
@@ -56,6 +58,7 @@ type HeaderGlobalSearchContextValue = {
   toolbarButtonRef: RefObject<HTMLButtonElement | null>
   selectResult: (r: UnifiedSearchResult) => void
   navOverlayBackground: string
+  prefixMap: LedgerPrefixMap
 }
 
 const HeaderGlobalSearchContext = createContext<HeaderGlobalSearchContextValue | null>(null)
@@ -80,6 +83,7 @@ export function HeaderGlobalSearchProvider({
   const navigate = useNavigate()
   const bidPreview = useBidPreview()
   const jobDetailModal = useJobDetailModal()
+  const { prefixMap } = useLedgerDisplayPrefixes()
   const [open, setOpen] = useState(false)
   const [query, setQueryState] = useState('')
   const [results, setResults] = useState<UnifiedSearchResult[]>([])
@@ -264,8 +268,9 @@ export function HeaderGlobalSearchProvider({
         toolbarButtonRef,
         selectResult,
         navOverlayBackground,
+        prefixMap,
       }) satisfies HeaderGlobalSearchContextValue,
-    [open, openSearch, closeSearch, query, setQuery, results, selectResult, navOverlayBackground],
+    [open, openSearch, closeSearch, query, setQuery, results, selectResult, navOverlayBackground, prefixMap],
   )
 
   return <HeaderGlobalSearchContext.Provider value={value}>{children}</HeaderGlobalSearchContext.Provider>
@@ -402,7 +407,7 @@ export function HeaderGlobalSearchNavLayer() {
             }}
           >
             {ctx.results.map((r) => {
-              const bidTag = r.source === 'bid' ? getBidServiceTypeTag(r.service_type_name ?? null) : null
+              const tradeTag = serviceTypeTagForUnifiedRow(r)
               return (
                 <li key={`${r.source}-${r.id}`} role="option">
                   <button
@@ -422,22 +427,22 @@ export function HeaderGlobalSearchNavLayer() {
                     }}
                   >
                     <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
-                      {bidTag ? (
+                      {tradeTag ? (
                         <span
                           style={{
                             fontSize: '0.65rem',
                             fontWeight: 700,
                             padding: '0.1rem 0.28rem',
                             borderRadius: 3,
-                            background: bidTag.color,
+                            background: tradeTag.color,
                             color: '#111827',
                             lineHeight: 1.2,
                           }}
                         >
-                          {bidTag.tag}
+                          {tradeTag.tag}
                         </span>
                       ) : null}
-                      <span>{formatUnifiedResult(r)}</span>
+                      <span>{formatUnifiedResult(r, ctx.prefixMap)}</span>
                     </span>
                   </button>
                 </li>

@@ -17,6 +17,7 @@ import { useCostMatrixTotal } from '../hooks/useCostMatrixTotal'
 import { fetchSubLaborDueTotal } from '../hooks/useSubLaborDueTotal'
 import { usePushNotifications } from '../hooks/usePushNotifications'
 import { useToastContext } from '../contexts/ToastContext'
+import { useLedgerDisplayPrefixes } from '../contexts/LedgerDisplayPrefixContext'
 import ReportViewModal from '../components/ReportViewModal'
 import ReportEditModal, { type ReportForEdit } from '../components/ReportEditModal'
 import MyReportsModal, { type ReportForMyReports } from '../components/MyReportsModal'
@@ -129,6 +130,8 @@ interface ServiceType {
   sequence_order: number
   created_at: string
   updated_at: string
+  ledger_job_prefix?: string | null
+  ledger_bid_prefix?: string | null
 }
 
 interface FixtureType {
@@ -400,6 +403,7 @@ export default function Settings() {
   )
   const pushNotifications = usePushNotifications(authUser?.id)
   const { showToast } = useToastContext()
+  const { reload: reloadLedgerPrefixMap } = useLedgerDisplayPrefixes()
   const allSalariedDevNarrowViewport = useNarrowViewport640()
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [myEstimatorProspectsAccess, setMyEstimatorProspectsAccess] = useState(false)
@@ -623,6 +627,8 @@ export default function Settings() {
   const [serviceTypeName, setServiceTypeName] = useState('')
   const [serviceTypeDescription, setServiceTypeDescription] = useState('')
   const [serviceTypeColor, setServiceTypeColor] = useState('')
+  const [serviceTypeLedgerJobPrefix, setServiceTypeLedgerJobPrefix] = useState('')
+  const [serviceTypeLedgerBidPrefix, setServiceTypeLedgerBidPrefix] = useState('')
   const [serviceTypeSaving, setServiceTypeSaving] = useState(false)
   const [serviceTypeError, setServiceTypeError] = useState<string | null>(null)
 
@@ -3155,6 +3161,8 @@ export default function Settings() {
     setServiceTypeName(serviceType?.name || '')
     setServiceTypeDescription(serviceType?.description || '')
     setServiceTypeColor(serviceType?.color || '')
+    setServiceTypeLedgerJobPrefix((serviceType?.ledger_job_prefix ?? '').trim())
+    setServiceTypeLedgerBidPrefix((serviceType?.ledger_bid_prefix ?? '').trim())
     setServiceTypeError(null)
     setServiceTypeFormOpen(true)
   }
@@ -3164,6 +3172,8 @@ export default function Settings() {
     setServiceTypeName('')
     setServiceTypeDescription('')
     setServiceTypeColor('')
+    setServiceTypeLedgerJobPrefix('')
+    setServiceTypeLedgerBidPrefix('')
     setServiceTypeError(null)
     setServiceTypeFormOpen(false)
   }
@@ -3179,7 +3189,27 @@ export default function Settings() {
       setServiceTypeSaving(false)
       return
     }
-    
+
+    const jobPx = serviceTypeLedgerJobPrefix.trim()
+    const bidPx = serviceTypeLedgerBidPrefix.trim()
+    const MAX_PREFIX = 4
+    if (jobPx.length > MAX_PREFIX || bidPx.length > MAX_PREFIX) {
+      setServiceTypeError(`Ledger prefixes must be at most ${MAX_PREFIX} characters`)
+      setServiceTypeSaving(false)
+      return
+    }
+    const normPx = (s: string) => s.trim().toLowerCase()
+    const others = serviceTypes.filter((st) => !editingServiceType || st.id !== editingServiceType.id)
+    if (jobPx && others.some((st) => normPx(st.ledger_job_prefix ?? '') === normPx(jobPx))) {
+      setServiceTypeError('Another service type already uses this job ledger prefix')
+      setServiceTypeSaving(false)
+      return
+    }
+    if (bidPx && others.some((st) => normPx(st.ledger_bid_prefix ?? '') === normPx(bidPx))) {
+      setServiceTypeError('Another service type already uses this bid ledger prefix')
+      setServiceTypeSaving(false)
+      return
+    }
     if (editingServiceType) {
       // Update existing service type
       const { error: e } = await supabase
@@ -3188,6 +3218,8 @@ export default function Settings() {
           name: serviceTypeName.trim(),
           description: serviceTypeDescription.trim() || null,
           color: serviceTypeColor.trim() || null,
+          ledger_job_prefix: jobPx || null,
+          ledger_bid_prefix: bidPx || null,
         } as any)
         .eq('id', editingServiceType.id)
       
@@ -3197,6 +3229,7 @@ export default function Settings() {
         setServiceTypeError(e.message)
       } else {
         await loadServiceTypes()
+        void reloadLedgerPrefixMap()
         closeEditServiceType()
       }
     } else {
@@ -3208,6 +3241,8 @@ export default function Settings() {
           name: serviceTypeName.trim(),
           description: serviceTypeDescription.trim() || null,
           color: serviceTypeColor.trim() || null,
+          ledger_job_prefix: jobPx || null,
+          ledger_bid_prefix: bidPx || null,
           sequence_order: maxSeq + 1,
         } as any)
       
@@ -3217,6 +3252,7 @@ export default function Settings() {
         setServiceTypeError(e.message)
       } else {
         await loadServiceTypes()
+        void reloadLedgerPrefixMap()
         closeEditServiceType()
       }
     }
@@ -10334,10 +10370,41 @@ export default function Settings() {
                     />
                   </div>
                   
-                  <div style={{ marginBottom: '1.5rem' }}>
+                  <div style={{ marginBottom: '1rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>
-                      Color (optional)
+                      Job ledger prefix (HCP #)
                     </label>
+                    <input
+                      type="text"
+                      value={serviceTypeLedgerJobPrefix}
+                      onChange={(e) => setServiceTypeLedgerJobPrefix(e.target.value)}
+                      placeholder="e.g. JP — leave empty for J"
+                      maxLength={4}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    />
+                    <p style={{ margin: '0.35rem 0 0', color: '#6b7280', fontSize: '0.8125rem' }}>
+                      Shown before the job number in the app. Empty uses the default <strong>J</strong>. Max 4 characters.
+                    </p>
+                  </div>
+
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>
+                      Bid ledger prefix (bid #)
+                    </label>
+                    <input
+                      type="text"
+                      value={serviceTypeLedgerBidPrefix}
+                      onChange={(e) => setServiceTypeLedgerBidPrefix(e.target.value)}
+                      placeholder="e.g. BP — leave empty for B"
+                      maxLength={4}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    />
+                    <p style={{ margin: '0.35rem 0 0', color: '#6b7280', fontSize: '0.8125rem' }}>
+                      Shown before the bid number in the app. Empty uses the default <strong>B</strong>. Max 4 characters.
+                    </p>
+                  </div>
+                  
+                  <div style={{ marginBottom: '1.5rem' }}>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                       <input
                         type="color"

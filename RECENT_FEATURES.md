@@ -12,20 +12,29 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.429 → v2.4"
+version_range: "v2.432 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.432)"
+    line: ~1430
+    description: "Trade-specific ledger prefixes — service_types ledger_job_prefix/ledger_bid_prefix; Settings; ledgerDisplayPrefixes; search_jobs_ledger + search_bids_for_clock; UI + Edge notify"
+  - name: "Latest Version (v2.431)"
+    line: ~1448
+    description: "Clock In / Update Focus — empty-notes toast refocuses notes field; Update Focus keeps hydrated session job/bid selected (dispatch/working highlights + showUpdateFocusAssociationChip when off pick lists)"
+  - name: "Latest Version (v2.430)"
+    line: ~1440
+    description: "Estimates mobile layout — estimatesPageShellCss (width/min-width, max-width min caps, ≤640px padding); EstimateListCards + useNarrowViewport640; table scroll wrappers; email preview overflow + responsive imgs; CustomerNotesTable overflow-x; AcceptHeaderBrandPicker min(900px,100%)"
   - name: "Latest Version (v2.429)"
-    line: ~1414
+    line: ~1455
     description: "Dashboard clock strip — default Organization scope when localStorage unset; Everyone / Organization labels for assistants; merged Clocked in + Jobs header single-line scroll ≤640px"
   - name: "Latest Version (v2.428)"
-    line: ~1430
+    line: ~1468
     description: "Dashboard clock strip — Mix + Show all / Needs attention same height (stripClockedInChromeBtnLayout)"
   - name: "Latest Version (v2.427)"
-    line: ~1432
+    line: ~1478
     description: "Dashboard — collapsible Projects: Subscribed Stages; Assigned Stages panel aria-controls / region ids"
   - name: "Latest Version (v2.426)"
-    line: ~1445
+    line: ~1489
     description: "Dashboard Clock In / Update Focus / clock-out review — associationChipFromSearch chip; missing-reports heading; modal copy trims; v2.416 daily-report checkbox docs retired"
   - name: "Latest Version (v2.425)"
     line: ~1445
@@ -1114,6 +1123,9 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.432 — **Ledger display prefixes** — per–**`service_types`** **`ledger_job_prefix`** / **`ledger_bid_prefix`** (dev **Settings** → Service types; backfill **JP/BP**, **JE/BE**, **JH/BH**); null/blank → legacy **`J`**/**`B`**; **`search_jobs_ledger`** / **`search_bids_for_clock`** return **`service_type_id`** and match **J/B** or configured prefix + digits; **[`ledgerDisplayPrefixes.ts`](src/lib/ledgerDisplayPrefixes.ts)** + UI surfaces (Clock In, Jobs, Bids, Documents, My Time, banking alloc search); Edge **`notify-dispatch-request`** / **`notify-estimator-request`** — migrations **`20260430201832`**, **`20260430202750`**, **`20260430203800`**](#latest-updates-v2432)
+**New:** [v2.431 — **Dashboard** **Clock In** / **Update Focus** — **Complete Clock In** with empty required notes: toast then caret returns to **What do you plan to accomplish?** (**`queueMicrotask`** + **`clockInNotesRef`**); **Update Focus** opens with blank notes + focused textarea; **session job/bid** rehydrated like clock-out review (**`updateFocusModalOpen`** in hydration **`useEffect`**); opening no longer clears **`selectedAssociation`**; **Dispatch** / **Working** rows highlight current session; gray **summary + Clear** when hydrated association is **not** on those lists after picks load (**`showUpdateFocusAssociationChip`**) — **[`ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx)**](#latest-updates-v2431)
+**New:** [v2.430 — **Estimates** mobile-friendly layout — **`estimatesPageShellCss`** (**`.estimates-page-modern`**, **`estimates-page-shell--list`** / **`--detail`**, **`≤640px`** padding); **`EstimateListCards`** + **`useNarrowViewport640`** (`≤640px` replaces **`EstimateListTable`** on Ledger / Stages); **`estimateListTableScrollWrapStyle`**; Customer experience **Email** preview **`overflow-x`** + **`estimate-email-html-preview-root`** **`img`** scaling; expanded draft **`CustomerNotesTable`** **`overflow-x`**; **`AcceptHeaderBrandPicker`** **`max-width: min(900px, 100%)`** — **[`Estimates.tsx`](src/pages/Estimates.tsx)**, **[`AcceptHeaderBrandPicker.tsx`](src/components/estimates/AcceptHeaderBrandPicker.tsx)**](#latest-updates-v2430)
 **New:** [v2.429 — **Dashboard** clock strip — **Organization** default when **`dashboard_clock_strip_scope`** absent (**`readClockStripScopeFromStorage`**, **`stripScopeEligible`**); **Everyone** / **Organization** labels for **assistant** (parity); **≤640px** merged **Clocked in today** + **Jobs worked today** header — **nowrap** + horizontal scroll (**`mergedJobsHeaderTitlesOverflowWrap`**) — **[`Dashboard.tsx`](src/pages/Dashboard.tsx)**, **[`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)**](#latest-updates-v2429)
 **New:** [v2.428 — **Dashboard** clock strip — **Mix** matches **Show all** / **Needs attention** height (**`stripClockedInChromeBtnLayout`**, shared **`scopeBtn`** typography) — **[`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)**](#latest-updates-v2428)
 **New:** [v2.427 — **Dashboard** — **Projects: Subscribed Stages** disclosure (chevron + expand/collapse); **Projects: Assigned Stages** **`aria-controls`** + **`dashboard-assigned-stages-panel`** region (**[`Dashboard.tsx`](src/pages/Dashboard.tsx)**)](#latest-updates-v2427)
@@ -1415,6 +1427,53 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
+## Latest Updates (v2.432)
+
+**Date**: 2026-04-30
+
+### **Settings / Jobs / Bids** — trade-specific **ledger** prefixes (HCP / bid #)
+
+- **Database** — **`service_types`**: nullable **`ledger_job_prefix`**, **`ledger_bid_prefix`** ([**`20260430201832_service_types_ledger_display_prefixes.sql`**](supabase/migrations/20260430201832_service_types_ledger_display_prefixes.sql)). Backfill: **Plumbing** `JP`/`BP`, **Electrical** `JE`/`BE`, **HVAC** `JH`/`BH`; other rows **null** → app uses **`J`** / **`B`**.
+- **Settings (dev)** — Service type modal: load/save/validate prefix fields (trim, max length, uniqueness). [`Settings.tsx`](src/pages/Settings.tsx).
+- **Client** — [`ledgerDisplayPrefixes.ts`](src/lib/ledgerDisplayPrefixes.ts): **`buildPrefixMap`**, **`resolveJobPrefix`** / **`resolveBidPrefix`**, format helpers for labels; **[`LedgerDisplayPrefixContext`](src/contexts/LedgerDisplayPrefixContext.tsx)** (**`useLedgerPrefixMap`**) supplies the map app-wide; [`unifiedJobBidSearch.ts`](src/utils/unifiedJobBidSearch.ts) **`JobSearchResult`/`BidSearchResult`** include **`service_type_id`**.
+- **Search RPCs** — **`search_jobs_ledger`**, **`search_bids_for_clock`**: **`service_type_id`** in results; matching accepts legacy **`J`/`B` + remainder** and **dynamic `ledger_*_prefix` + remainder** (case-insensitive).
+- **Other RPCs** — Crew/detail functions gain **`service_type_id`** ([**`20260430202750_crew_rpcs_service_type_id_for_ledger_prefixes.sql`**](supabase/migrations/20260430202750_crew_rpcs_service_type_id_for_ledger_prefixes.sql)); **`pct_complete`** restored on **`get_jobs_ledger_by_ids*`** / **`get_jobs_ledger_by_hcp_numbers*`** ([**`20260430203800_restore_pct_complete_on_jobs_ledger_detail_rpcs.sql`**](supabase/migrations/20260430203800_restore_pct_complete_on_jobs_ledger_detail_rpcs.sql)).
+- **Edge** — [`supabase/functions/_shared/ledgerDisplayPrefixes.ts`](supabase/functions/_shared/ledgerDisplayPrefixes.ts); **Task Dispatch** / **Estimator Inbox** push body lines use trade prefixes when a referenced job/bid loads **`service_types`**.
+- **Estimates** — **Quote #** remains **`E…`** (out of scope for trade prefixes).
+- **Tests** — [`ledgerDisplayPrefixes.test.ts`](src/lib/ledgerDisplayPrefixes.test.ts).
+- **Docs** — **`PROJECT_DOCUMENTATION.md`** (**Service Types** table), **`GLOSSARY.md`** (**Bid Number**, **Ledger display prefix**), **`MIGRATIONS.md`**, **`AGENTS.md`**, **`AI_CONTEXT.md`**, **`EDGE_FUNCTIONS.md`**.
+
+---
+
+## Latest Updates (v2.431)
+
+**Date**: 2026-04-30
+
+### **Dashboard** — **Clock In** / **Update Focus** modal UX
+
+- **Clock In** — **[`ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx)** **`handleCompleteClockIn`**: submitting with empty required **What do you plan to accomplish?** still shows the existing error toast; **`queueMicrotask(() => clockInNotesRef.current?.focus())`** returns the caret to that textarea.
+- **Update Focus** — Notes (**What are you now going to work on?**) still opens **blank** with focus in the field (**`handleOpenUpdateFocusModal`** + existing **`updateFocusModalOpen`** focus **`useEffect`**).
+- **Session job/bid** — Opening **Update Focus** no longer clears **`selectedAssociation`** in the reset **`useEffect`** (search fields only). The same **hydrate-from-`openSession`** logic used for **Review before clock out** runs when **`updateFocusModalOpen`** is true: **`jobs_ledger`** / **`bids`** + customer load into **`selectedAssociation`**. **Dispatch** / **Working** pick buttons already highlight when **`selectedAssociation`** matches.
+- **Gray chip when off pick lists** — **`showUpdateFocusAssociationChip`** (**`useMemo`**): after **`assignedJobsListLoading`** is false, if there is a **`selectedAssociation`** that is **not** on today's **`scheduledDispatchJobs`** or **`workingBoardBidPicks`**, the **Update Focus** modal shows the gray **summary + Clear** row (**`associationChipFromSearch || showUpdateFocusAssociationChip`**). Avoids a flash before picks load.
+- **Docs** — **`PROJECT_DOCUMENTATION.md`** (Dashboard **Clock In/Out**), **`AGENTS.md`**, **`AI_CONTEXT.md`**.
+
+---
+
+## Latest Updates (v2.430)
+
+**Date**: 2026-04-30
+
+### **Estimates** — mobile-friendly layout (list, detail, previews)
+
+- **Shell** — **[`Estimates.tsx`](src/pages/Estimates.tsx)** injects **`estimatesPageShellCss`**: **`.estimates-page-modern`** gets **`width: 100%`**, **`min-width: 0`**, centered margins; **`estimates-page-shell--list`** caps **`max-width: min(1100px, 100%)`**; **`estimates-page-shell--detail`** caps **`max-width: min(900px, 100%)`**; **`@media (max-width: 640px)`** reduces page padding.
+- **Tables** — Ledger + Stages **`EstimateListTable`** wrappers use **`estimateListTableScrollWrapStyle`** (**`overflow-x: auto`**, **`max-width: 100%`**, **`min-width: 0`**) so wide grids scroll inside the page.
+- **Cards** — **`useNarrowViewport640`** (**`≤640px`**): **`EstimateListCards`** replaces the multi-column table on Ledger and Stages (same row data: quote **#**, title link, customer snapshot, status / acceptance / job actions, total, updated, expandable estimate thread + **`JobThreadNotesPanel`**).
+- **Customer experience / draft** — **Email** tab HTML preview wrapped for horizontal scroll; inner **`estimate-email-html-preview-root`** plus CSS **`img { max-width: 100%; height: auto }`**. Expanded draft **`CustomerNotesTable`** sits in **`overflow-x: auto`**. Acceptance / Thank you preview shells use **`max-width: min(640px, 100%)`** + **`width: 100%`**. **`customer_accepted`** quote snapshot card matches that pattern.
+- **Draft picker** — **[`AcceptHeaderBrandPicker.tsx`](src/components/estimates/AcceptHeaderBrandPicker.tsx)** root **`max-width: min(900px, 100%)`**, **`width: 100%`**.
+- **Docs** — **`PROJECT_DOCUMENTATION.md`** (Estimates UI), **`AI_CONTEXT.md`** (Estimates bullet).
+
+---
+
 ## Latest Updates (v2.429)
 
 **Date**: 2026-04-30
@@ -1455,7 +1514,7 @@ when_to_read:
 
 ### **Dashboard** — **Clock In** / **Update Focus** / **Review before clock out**
 
-- **Job/bid chip** — **[`ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx)** **`associationChipFromSearch`**: the **summary row + Clear** (**Clock In** orange chip; **Update Focus** / clock-out review gray chip) appears only after picking a row from the **typed** unified search. **Dispatch** schedule picks, **Working** bid quick-picks, **Use last**, and **clock-out** association **hydrate-from-session** do **not** show the chip (outline / highlights already show the choice). Flag resets when each modal opens; **`onAssociatePickBefore`** on non-search picks clears it.
+- **Job/bid chip** — **[`ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx)** **`associationChipFromSearch`**: the **summary row + Clear** (**Clock In** orange chip; **Review before clock out** gray chip) appears only after picking a row from the **typed** unified search. **Update Focus** gray chip also appears when the hydrated session job/bid is **not** on today’s **Dispatch** / **Working** pick lists (**`showUpdateFocusAssociationChip`** after picks load — **v2.431**). **Dispatch** schedule picks, **Working** bid quick-picks, **Use last**, and row highlights for hydrated IDs do **not** require **`associationChipFromSearch`** for schedule/working matches. Flag resets when **Clock In** / clock-out review modals open as before; **Update Focus** opening clears search only (**`selectedAssociation`** preserved until hydrate replaces it). **`onAssociatePickBefore`** on non-search picks clears **`associationChipFromSearch`**.
 - **Review before clock out** — Removed the gray intro line under the modal title (*Confirm or update what you worked on…*). **Missing reports from today (click to make report):** lists schedule jobs missing a same-day field report (when **`canLeaveJobFieldReport`**); row tap opens **`AdditionalReportModal`**. The **v2.416** optional **I have left a report on all my jobs** checkbox was **removed** from the product earlier; use this list instead — docs (**`PROJECT_DOCUMENTATION.md`**, **`AI_CONTEXT.md`**, **`AGENTS.md`**, **v2.416** entry here) updated to match.
 - **Update Focus** — For **hourly** flows, removed the subtitle that explained clock-out + new session; **salaried** **Link this shift to a different job or bid…** line unchanged.
 

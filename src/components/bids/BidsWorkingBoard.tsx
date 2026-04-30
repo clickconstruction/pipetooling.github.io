@@ -18,13 +18,15 @@ import { supabase } from '../../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import type { Database } from '../../types/database'
 import { BidBoardNotesPanel, type BidBoardNotesTab } from './BidBoardNotesPanel'
+import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
+import { formatBidLedgerNumberLabel, resolveBidLedgerPrefix } from '../../lib/ledgerDisplayPrefixes'
 
 type BidWorkingColumn = Database['public']['Tables']['bid_working_board_columns']['Row']
 type BidWorkingPlacement = Database['public']['Tables']['bid_working_board_placements']['Row']
 
 export type BidsWorkingBoardBid = Pick<
   Database['public']['Tables']['bids']['Row'],
-  'id' | 'project_name' | 'address' | 'bid_number' | 'estimator_id' | 'account_manager_id'
+  'id' | 'project_name' | 'address' | 'bid_number' | 'estimator_id' | 'account_manager_id' | 'service_type_id'
 > & {
   customers?: { id: string; name: string | null } | null
 }
@@ -136,6 +138,7 @@ function SortableWorkingCard({
   isDeepLinkHighlight,
   deepLinkHighlightGen,
 }: SortableCardProps) {
+  const prefixMap = useLedgerPrefixMap()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: bid.id })
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -154,7 +157,9 @@ function SortableWorkingCard({
         }
       : {}),
   }
-  const bidNum = bid.bid_number ? `B${bid.bid_number}` : '—'
+  const bidNum = bid.bid_number
+    ? formatBidLedgerNumberLabel(resolveBidLedgerPrefix(bid.service_type_id, prefixMap), bid.bid_number)
+    : '—'
   const addr = formatCardAddress(bid.address)
 
   return (

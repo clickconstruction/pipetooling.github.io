@@ -9,17 +9,19 @@ import { MapPin, Check } from 'lucide-react'
 import BidServiceTypeSearchToggles from './BidServiceTypeSearchToggles'
 import {
   formatUnifiedResult,
-  getBidServiceTypeTag,
+  serviceTypeTagForUnifiedRow,
   type JobSearchResult,
   type BidSearchResult,
   type UnifiedSearchResult,
 } from '../utils/unifiedJobBidSearch'
+import { useLedgerDisplayPrefixes } from '../contexts/LedgerDisplayPrefixContext'
 import type { UserRole } from '../hooks/useAuth'
 import { fieldRoleServiceTypeIdsForUser, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 
 export default function EstimatorTaskModal() {
   const modal = useEstimatorTaskModal()
   const { user: authUser } = useAuth()
+  const { prefixMap } = useLedgerDisplayPrefixes()
   const { showToast } = useToastContext()
   const titleInputRef = useRef<HTMLInputElement>(null)
   const [title, setTitle] = useState('')
@@ -177,7 +179,7 @@ export default function EstimatorTaskModal() {
               links: linkArr.length ? linkArr : [],
               job_ledger_id: ref?.source === 'job' ? ref.id : null,
               bid_id: ref?.source === 'bid' ? ref.id : null,
-              reference_summary: ref ? formatUnifiedResult(ref) : null,
+              reference_summary: ref ? formatUnifiedResult(ref, prefixMap) : null,
               ...(locationLat != null &&
                 locationLng != null && { location_lat: locationLat, location_lng: locationLng }),
             })
@@ -304,15 +306,15 @@ export default function EstimatorTaskModal() {
                     gap: '0.35rem',
                   }}
                 >
-                  {selectedReference.source === 'bid' && (() => {
-                    const t = getBidServiceTypeTag(selectedReference.service_type_name)
+                  {(() => {
+                    const t = serviceTypeTagForUnifiedRow(selectedReference)
                     return t ? (
                       <span style={{ padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: t.color, color: '#fff', borderRadius: 4 }}>
                         [{t.tag}]
                       </span>
                     ) : null
                   })()}
-                  {formatUnifiedResult(selectedReference)}
+                  {formatUnifiedResult(selectedReference, prefixMap)}
                 </span>
                 <button
                   type="button"
@@ -374,15 +376,15 @@ export default function EstimatorTaskModal() {
                       fontSize: '0.875rem',
                     }}
                   >
-                    {r.source === 'bid' && (() => {
-                      const t = getBidServiceTypeTag(r.service_type_name)
+                    {(() => {
+                      const t = serviceTypeTagForUnifiedRow(r)
                       return t ? (
                         <span style={{ marginRight: '0.35rem', padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: t.color, color: '#fff', borderRadius: 4 }}>
                           [{t.tag}]
                         </span>
                       ) : null
                     })()}
-                    {formatUnifiedResult(r)}
+                    {formatUnifiedResult(r, prefixMap)}
                   </button>
                 ))}
               </div>

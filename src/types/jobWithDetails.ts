@@ -23,7 +23,12 @@ export type JobWithDetails = JobsLedgerRow & {
   report_count?: number
   project?: { id: string; name: string } | null
   /** Embedded bid when `bid_id` is set (`jobs_ledger.bid_id` → `bids`). */
-  linkedBid?: { id: string; project_name: string | null; bid_number: string | null } | null
+  linkedBid?: {
+    id: string
+    project_name: string | null
+    bid_number: string | null
+    service_type_id: string | null
+  } | null
   /** From `service_types:service_type_id(name)` on detail fetch (`fetchJobWithDetailsById`). */
   serviceType?: { name: string } | null
   /** Max `job_schedule_blocks.work_date` for this job; set in Jobs `loadJobs` only. */

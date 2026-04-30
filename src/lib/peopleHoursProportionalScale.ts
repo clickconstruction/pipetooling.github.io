@@ -1,5 +1,6 @@
 import type { ClockSessionRow } from '../types/clockSessions'
 import { shortJobOrBidLabelFromEmbeds } from '../types/clockSessions'
+import type { LedgerPrefixMap } from './ledgerDisplayPrefixes'
 import { MIN_SEGMENT_MS, normalizeDayEditorSession, type DayEditorSession } from './myTimeDayTimeline'
 
 export function toDayEditorSession(row: {
@@ -110,14 +111,14 @@ export function scaleClosedSessionsToTargetHours(
   })
 }
 
-export function buildJobBidLabelMapsFromClockRows(rows: ClockSessionRow[]): {
+export function buildJobBidLabelMapsFromClockRows(rows: ClockSessionRow[], prefixMap: LedgerPrefixMap): {
   jobLabels: Record<string, string>
   bidLabels: Record<string, string>
 } {
   const jobLabels: Record<string, string> = {}
   const bidLabels: Record<string, string> = {}
   for (const r of rows) {
-    const label = shortJobOrBidLabelFromEmbeds(r)
+    const label = shortJobOrBidLabelFromEmbeds(r, prefixMap)
     if (!label) continue
     if (r.job_ledger_id) jobLabels[r.job_ledger_id] = label
     if (r.bid_id) bidLabels[r.bid_id] = label

@@ -1,6 +1,21 @@
 /** Shared types + label for unified job/bid search (Clock In, Task Dispatch reference, etc.) */
 
-export type JobSearchResult = { id: string; hcp_number: string; job_name: string; job_address: string }
+import {
+  formatBidLedgerNumberLabel,
+  formatJobLedgerNumberLabel,
+  type LedgerPrefixMap,
+  resolveBidLedgerPrefix,
+  resolveJobLedgerPrefix,
+} from '../lib/ledgerDisplayPrefixes'
+
+export type JobSearchResult = {
+  id: string
+  hcp_number: string
+  job_name: string
+  job_address: string
+  service_type_id?: string | null
+  service_type_name?: string | null
+}
 export type BidSearchResult = {
   id: string
   bid_number: string
@@ -8,6 +23,7 @@ export type BidSearchResult = {
   address: string
   customer_name: string
   service_type_name?: string | null
+  service_type_id?: string | null
 }
 /** Row from `search_estimates_for_nav` RPC. */
 export type EstimateNavSearchResult = {
@@ -18,8 +34,25 @@ export type EstimateNavSearchResult = {
   subtitle: string | null
 }
 export type UnifiedSearchResult =
-  | { source: 'job'; id: string; hcp_number: string; job_name: string; job_address: string }
-  | { source: 'bid'; id: string; bid_number: string; project_name: string; address: string; customer_name: string; service_type_name?: string | null }
+  | {
+      source: 'job'
+      id: string
+      hcp_number: string
+      job_name: string
+      job_address: string
+      service_type_id?: string | null
+      service_type_name?: string | null
+    }
+  | {
+      source: 'bid'
+      id: string
+      bid_number: string
+      project_name: string
+      address: string
+      customer_name: string
+      service_type_name?: string | null
+      service_type_id?: string | null
+    }
   | {
       source: 'estimate'
       id: string
@@ -40,13 +73,21 @@ export function getBidServiceTypeTag(serviceTypeName: string | null | undefined)
   return BID_SERVICE_TYPE_TAGS[serviceTypeName.trim()] ?? null
 }
 
-export function formatUnifiedResult(r: UnifiedSearchResult): string {
+/** Trade pill for unified job/bid rows (estimates have no service type here). */
+export function serviceTypeTagForUnifiedRow(r: UnifiedSearchResult): { tag: string; color: string } | null {
+  if (r.source === 'estimate') return null
+  return getBidServiceTypeTag(r.service_type_name)
+}
+
+export function formatUnifiedResult(r: UnifiedSearchResult, prefixMap: LedgerPrefixMap): string {
   if (r.source === 'job') {
-    const prefix = `J${(r.hcp_number || '').trim() || '—'}`
+    const pref = resolveJobLedgerPrefix(r.service_type_id ?? null, prefixMap)
+    const prefix = formatJobLedgerNumberLabel(pref, r.hcp_number)
     return `${prefix} · ${r.job_name || '—'} - ${r.job_address || '—'}`
   }
   if (r.source === 'bid') {
-    const prefix = `B${(r.bid_number || '').trim() || '—'}`
+    const pref = resolveBidLedgerPrefix(r.service_type_id ?? null, prefixMap)
+    const prefix = formatBidLedgerNumberLabel(pref, r.bid_number)
     return `${prefix} · ${r.project_name || '—'} - ${r.address || r.customer_name || '—'}`
   }
   const en = r.estimate_number
@@ -55,11 +96,13 @@ export function formatUnifiedResult(r: UnifiedSearchResult): string {
   return `${prefix} · ${(r.title || '').trim() || '—'} - ${tail}`
 }
 
-/** J{hcp} · job name (no address) + trimmed address for two-line schedule quick-picks. */
+/** `{prefix}{hcp} · job name` (no address) + trimmed address for two-line schedule quick-picks. */
 export function formatUnifiedJobSchedulePrimaryLine(
   r: Extract<UnifiedSearchResult, { source: 'job' }>,
+  prefixMap: LedgerPrefixMap,
 ): { title: string; address: string } {
-  const prefix = `J${(r.hcp_number || '').trim() || '—'}`
+  const pref = resolveJobLedgerPrefix(r.service_type_id ?? null, prefixMap)
+  const prefix = formatJobLedgerNumberLabel(pref, r.hcp_number)
   return {
     title: `${prefix} · ${r.job_name || '—'}`,
     address: (r.job_address || '').trim(),

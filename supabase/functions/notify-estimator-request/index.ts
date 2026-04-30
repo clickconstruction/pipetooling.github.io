@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
+import { formatBidLedgerNumberLabel, formatJobLedgerNumberLabel } from '../_shared/ledgerDisplayPrefixes.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -160,28 +161,34 @@ serve(async (req) => {
     } else if (estimatorRow.job_ledger_id) {
       const { data: job } = await adminClient
         .from('jobs_ledger')
-        .select('hcp_number, job_name, job_address')
+        .select('hcp_number, job_name, job_address, service_types(ledger_job_prefix)')
         .eq('id', estimatorRow.job_ledger_id)
         .maybeSingle()
-      const j = job as { hcp_number?: string; job_name?: string; job_address?: string } | null
+      const j = job as {
+        hcp_number?: string | null
+        job_name?: string | null
+        job_address?: string | null
+        service_types?: { ledger_job_prefix?: string | null } | null
+      } | null
       if (j) {
-        const prefix = `J${(j.hcp_number || '').trim() || '—'}`
+        const prefix = formatJobLedgerNumberLabel(j.service_types?.ledger_job_prefix ?? null, j.hcp_number)
         refSuffix = ` · ${prefix} · ${j.job_name || '—'} - ${j.job_address || '—'}`
       }
     } else if (estimatorRow.bid_id) {
       const { data: bid } = await adminClient
         .from('bids')
-        .select('bid_number, project_name, address, customer_name')
+        .select('bid_number, project_name, address, customer_name, service_types(ledger_bid_prefix)')
         .eq('id', estimatorRow.bid_id)
         .maybeSingle()
       const b = bid as {
-        bid_number?: string
-        project_name?: string
-        address?: string
-        customer_name?: string
+        bid_number?: string | null
+        project_name?: string | null
+        address?: string | null
+        customer_name?: string | null
+        service_types?: { ledger_bid_prefix?: string | null } | null
       } | null
       if (b) {
-        const prefix = `B${(b.bid_number || '').trim() || '—'}`
+        const prefix = formatBidLedgerNumberLabel(b.service_types?.ledger_bid_prefix ?? null, b.bid_number)
         refSuffix = ` · ${prefix} · ${b.project_name || '—'} - ${b.address || b.customer_name || '—'}`
       }
     }

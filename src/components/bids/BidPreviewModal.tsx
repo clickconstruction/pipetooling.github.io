@@ -5,6 +5,8 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import type { BidWithBuilder, EstimatorUser } from '../../types/bidWithBuilder'
 import { CustomerSnapshotModal } from '../customers/CustomerSnapshotModal'
 import { BidBoardNotesPanel, type BidBoardNotesTab } from './BidBoardNotesPanel'
+import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
+import { formatBidLedgerNumberLabel, resolveBidLedgerPrefix } from '../../lib/ledgerDisplayPrefixes'
 
 export type BidPreviewTabUrl =
   | 'bid-board'
@@ -132,6 +134,7 @@ export function BidPreviewModal({
 }: BidPreviewModalProps) {
   const { role } = useAuth()
   const { showToast } = useToastContext()
+  const ledgerPrefixMap = useLedgerPrefixMap()
   const [notesTab, setNotesTab] = useState<BidBoardNotesTab>('all')
   const [gcBuilderSnapshotOpen, setGcBuilderSnapshotOpen] = useState(false)
   const tabActions = buildTabActions(role)
@@ -228,7 +231,14 @@ export function BidPreviewModal({
                 }}
               >
                 <div style={{ flex: '0 1 auto', fontSize: '0.875rem', color: '#374151' }}>
-                  <span style={{ color: '#3b82f6', fontWeight: 600 }}>{bid.bid_number != null && String(bid.bid_number).trim() ? `B${bid.bid_number}` : '—'}</span>
+                  <span style={{ color: '#3b82f6', fontWeight: 600 }}>
+                    {bid.bid_number != null && String(bid.bid_number).trim()
+                      ? formatBidLedgerNumberLabel(
+                          resolveBidLedgerPrefix(bid.service_type_id, ledgerPrefixMap),
+                          bid.bid_number,
+                        )
+                      : '—'}
+                  </span>
                   {bid.service_type?.name ? (
                     <span style={{ marginLeft: '0.5rem', color: '#6b7280' }}>· {bid.service_type.name}</span>
                   ) : null}

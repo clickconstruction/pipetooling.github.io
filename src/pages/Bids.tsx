@@ -24,6 +24,12 @@ import { useAuth } from '../hooks/useAuth'
 import { useWorkingBoardInboxCount } from '../hooks/useWorkingBoardInboxCount'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useToastContext } from '../contexts/ToastContext'
+import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
+import {
+  formatBidLedgerNumberLabel,
+  resolveBidLedgerPrefix,
+  type LedgerPrefixMap,
+} from '../lib/ledgerDisplayPrefixes'
 import { useNewCustomerModal } from '../contexts/NewCustomerModalContext'
 import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
 import { OPEN_BID_EDIT_QUERY, useBidPreview } from '../contexts/BidPreviewModalContext'
@@ -752,12 +758,12 @@ function bidDisplayName(b: Bid): string {
   return b.project_name || ''
 }
 
-/** Tab header when a bid is selected: `B{n} project name` (space) if `bid_number` is set, else project name or `Bid`. */
-function bidWorkflowTabHeading(b: Bid): string {
+/** Tab header when a bid is selected: `{prefix}{n} project name` if `bid_number` is set, else project name or `Bid`. */
+function bidWorkflowTabHeading(b: Bid, prefixMap: LedgerPrefixMap): string {
   const name = bidDisplayName(b).trim()
   const label = name || 'Bid'
   const num = b.bid_number?.trim()
-  if (num) return `B${num} ${label}`
+  if (num) return `${formatBidLedgerNumberLabel(resolveBidLedgerPrefix(b.service_type_id, prefixMap), num)} ${label}`
   return label
 }
 
@@ -769,14 +775,16 @@ type BidWorkflowTabTitleWithPreviewProps = {
 }
 
 function BidWorkflowTabTitleWithPreview({ bid, previewEnabled, onOpenPreview, h2Style }: BidWorkflowTabTitleWithPreviewProps) {
+  const prefixMap = useLedgerPrefixMap()
   const mergedH2Style: CSSProperties = h2Style ?? { margin: 0 }
   const name = bidDisplayName(bid).trim()
   const label = name || 'Bid'
   const num = bid.bid_number?.trim()
   if (!previewEnabled || !num) {
-    return <h2 style={mergedH2Style}>{bidWorkflowTabHeading(bid)}</h2>
+    return <h2 style={mergedH2Style}>{bidWorkflowTabHeading(bid, prefixMap)}</h2>
   }
-  const previewA11y = `Preview bid B${num}`
+  const numLabel = formatBidLedgerNumberLabel(resolveBidLedgerPrefix(bid.service_type_id, prefixMap), num)
+  const previewA11y = `Preview bid ${numLabel}`
   return (
     <h2 style={mergedH2Style}>
       <button
@@ -795,7 +803,7 @@ function BidWorkflowTabTitleWithPreview({ bid, previewEnabled, onOpenPreview, h2
           textDecoration: 'underline',
         }}
       >
-        {`B${num}`}
+        {numLabel}
       </button>
       {' '}
       {label}
@@ -803,12 +811,18 @@ function BidWorkflowTabTitleWithPreview({ bid, previewEnabled, onOpenPreview, h2
   )
 }
 
-/** Bid Board “Bid #” cell: smaller “B” prefix, number at inherited size. */
-function BidBoardBidNumberMark({ bidNumber }: { bidNumber: string }) {
+/** Bid Board “Bid #” cell: smaller first glyph of trade prefix, remainder + number at inherited size. */
+function BidBoardBidNumberMark({ bidPrefix, bidNumber }: { bidPrefix: string; bidNumber: string }) {
+  const pref = (bidPrefix || 'B').trim() || 'B'
+  const first = pref.slice(0, 1)
+  const rest = pref.slice(1)
   return (
     <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.05em', font: 'inherit' }}>
-      <span style={{ fontSize: '0.7em', lineHeight: 1, fontWeight: 600 }}>B</span>
-      <span>{bidNumber}</span>
+      <span style={{ fontSize: '0.7em', lineHeight: 1, fontWeight: 600 }}>{first}</span>
+      <span>
+        {rest}
+        {bidNumber}
+      </span>
     </span>
   )
 }
@@ -1341,6 +1355,7 @@ export default function Bids() {
   const { showToast } = useToastContext()
   const newCustomerModal = useNewCustomerModal()
   const bidPreview = useBidPreview()
+  const ledgerPrefixMap = useLedgerPrefixMap()
   const editCustomerModal = useEditCustomerModal()
   const location = useLocation()
   const navigate = useNavigate()
@@ -10012,8 +10027,9 @@ export default function Bids() {
           {(() => {
             const num = (bid as { bid_number?: string | null }).bid_number?.trim()
             if (!num) return '-'
-            const label = `B${num}`
-            if (!bidPreview) return <BidBoardBidNumberMark bidNumber={num} />
+            const pref = resolveBidLedgerPrefix((bid as Bid).service_type_id, ledgerPrefixMap)
+            const label = formatBidLedgerNumberLabel(pref, num)
+            if (!bidPreview) return <BidBoardBidNumberMark bidPrefix={pref} bidNumber={num} />
             const a11y = `Preview bid ${label}`
             return (
               <button
@@ -10031,7 +10047,7 @@ export default function Bids() {
                   font: 'inherit',
                 }}
               >
-                <BidBoardBidNumberMark bidNumber={num} />
+                <BidBoardBidNumberMark bidPrefix={pref} bidNumber={num} />
               </button>
             )
           })()}
@@ -10444,12 +10460,13 @@ export default function Bids() {
                     <tbody>
                       {staffOutcomeDrilldownBids.map((bid) => {
                         const num = (bid as { bid_number?: string | null }).bid_number?.trim()
+                        const pref = num ? resolveBidLedgerPrefix((bid as Bid).service_type_id, ledgerPrefixMap) : 'B'
                         const gc = bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'
                         const parts = formatDateYYMMDDParts(bid.bid_due_date)
                         return (
                           <tr key={bid.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                             <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', whiteSpace: 'nowrap' }}>
-                              {num ? <BidBoardBidNumberMark bidNumber={num} /> : '—'}
+                              {num ? <BidBoardBidNumberMark bidPrefix={pref} bidNumber={num} /> : '—'}
                             </td>
                             <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem' }}>{gc}</td>
                             <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem' }}>

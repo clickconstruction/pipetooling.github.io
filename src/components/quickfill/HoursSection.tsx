@@ -17,6 +17,7 @@ import {
 } from '../clock-sessions'
 import type { ClockSessionRow } from '../../types/clockSessions'
 import { mergeToUnified, type UnifiedAssignment } from '../../utils/crewAssignments'
+import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 
 type PayConfigRow = { person_name: string; hourly_wage: number | null; is_salary: boolean; show_in_hours: boolean; show_in_cost_matrix: boolean; record_hours_but_salary: boolean }
 type HoursRow = { person_name: string; work_date: string; hours: number }
@@ -60,6 +61,7 @@ function hmsToDecimal(str: string): number {
 
 export function HoursSection() {
   const { user: authUser } = useAuth()
+  const prefixMap = useLedgerPrefixMap()
   const [canAccessHours, setCanAccessHours] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -469,7 +471,7 @@ export function HoursSection() {
               locationVariant="full"
               emptyMessage="No pending sessions"
               renderNotesSecondary={(s) => {
-                const label = formatClockSessionJobOrBidLabel(s)
+                const label = formatClockSessionJobOrBidLabel(s, prefixMap)
                 return label ? <span title={label}>{label}</span> : null
               }}
               renderJob={(s) => {

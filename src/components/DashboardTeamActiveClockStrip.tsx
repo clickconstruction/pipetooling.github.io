@@ -46,6 +46,8 @@ import {
   isSyntheticSalaryStripSession,
   shouldShowSalaryStripNameSuffix,
 } from '../types/clockSessions'
+import type { LedgerPrefixMap } from '../lib/ledgerDisplayPrefixes'
+import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { CopyDayJobMixModal, CopyDayJobMixIcon } from './day-job-mix/CopyDayJobMixModal'
 import { JobsWorkedTodayReportIcon } from './icons/JobsWorkedTodayReportIcon'
 import ReportViewModal, { type ReportForView } from './ReportViewModal'
@@ -133,13 +135,14 @@ function stripActionsPayloadFromSession(
   personName: string,
   timeRangeLabel: string,
   stripStatus: 'pending' | 'approved',
+  prefixMap: LedgerPrefixMap,
 ): ClockSessionStripActionsPayload {
   const hasJobOrBid = !!(s.job_ledger_id || s.bid_id)
-  const fromEmbeds = formatClockSessionJobOrBidLabelFromEmbeds(s)
+  const fromEmbeds = formatClockSessionJobOrBidLabelFromEmbeds(s, prefixMap)
   const assignmentLabel =
     fromEmbeds ?? (s.job_ledger_id ? 'Job linked' : s.bid_id ? 'Bid linked' : null)
-  const assignmentShortLabel = shortJobOrBidLabelFromEmbeds(s) ?? assignmentLabel
-  const modalLines = formatClockSessionJobOrBidModalLinesFromEmbeds(s)
+  const assignmentShortLabel = shortJobOrBidLabelFromEmbeds(s, prefixMap) ?? assignmentLabel
+  const modalLines = formatClockSessionJobOrBidModalLinesFromEmbeds(s, prefixMap)
   const assignmentModalLine1 =
     modalLines?.line1 ?? (s.job_ledger_id ? 'Job linked' : s.bid_id ? 'Bid linked' : null)
   const assignmentModalLine2 = modalLines?.line2 ?? null
@@ -207,8 +210,8 @@ function stripPersonDisplayName(s: TodaySessionStripRow): string {
 }
 
 /** One-line compact label for the strip table (full address in title via formatClockSessionJobOrBidLabel). */
-function shortJobOrBidLabel(s: ClockSessionRow): string | null {
-  return shortJobOrBidLabelFromEmbeds(s)
+function shortJobOrBidLabel(s: ClockSessionRow, prefixMap: LedgerPrefixMap): string | null {
+  return shortJobOrBidLabelFromEmbeds(s, prefixMap)
 }
 
 /** Same second math as useDashboardMyTeamSectionState sessionDurationSeconds (aligns with Today totals). */
@@ -708,6 +711,7 @@ export function DashboardTeamActiveClockStrip({
   jobsWorkedTodayJobLedgerIdsWithReport?: ReadonlySet<string> | null
 }) {
   const { role: viewerRole } = useAuth()
+  const prefixMap = useLedgerPrefixMap()
   const clockStripWorkDateResolved =
     clockStripWorkDateYmd ?? new Date().toLocaleDateString('en-CA')
   const userDayScheduleModal = useUserDayScheduleModal()
@@ -824,10 +828,11 @@ export function DashboardTeamActiveClockStrip({
         stripClockedInTodayDisplayLabel(row, authUserId),
         timeRangeLabel,
         st === 'approved' ? 'approved' : 'pending',
+        prefixMap,
       )
     }
     return normalizeStripActionsPayloadFallback(stripActionsSession)
-  }, [authUserId, stripActionsSession, clockedInTodayRows, optimisticStripApprovedIds])
+  }, [authUserId, stripActionsSession, clockedInTodayRows, optimisticStripApprovedIds, prefixMap])
 
   useEffect(() => {
     setOptimisticStripApprovedIds((prev) => {
@@ -1378,8 +1383,8 @@ export function DashboardTeamActiveClockStrip({
               const todayH = synthetic
                 ? Math.max(todayHBase, sessionDurationSeconds(s.clocked_in_at, null, nowMs) / 3600)
                 : todayHBase
-              const fullJobBid = synthetic ? null : formatClockSessionJobOrBidLabel(s as ClockSessionRow)
-              const shortJb = synthetic ? null : shortJobOrBidLabel(s as ClockSessionRow)
+              const fullJobBid = synthetic ? null : formatClockSessionJobOrBidLabel(s as ClockSessionRow, prefixMap)
+              const shortJb = synthetic ? null : shortJobOrBidLabel(s as ClockSessionRow, prefixMap)
               const jobHref =
                 !synthetic && s.job_ledger_id
                   ? `/jobs?edit=${encodeURIComponent(s.job_ledger_id)}`
@@ -1781,8 +1786,8 @@ export function DashboardTeamActiveClockStrip({
                                       const sec = sessionDurationSeconds(s.clocked_in_at, s.clocked_out_at, nowMs)
                                       const dur = formatDurationFromSeconds(sec)
                                       const memo = (s.notes ?? '').trim()
-                                      const fullJobBid = formatClockSessionJobOrBidLabelFromEmbeds(s)
-                                      const shortJb = shortJobOrBidLabelFromEmbeds(s)
+                                      const fullJobBid = formatClockSessionJobOrBidLabelFromEmbeds(s, prefixMap)
+                                      const shortJb = shortJobOrBidLabelFromEmbeds(s, prefixMap)
                                       const jobHref = s.job_ledger_id
                                         ? `/jobs?edit=${encodeURIComponent(s.job_ledger_id)}`
                                         : null
@@ -1837,6 +1842,7 @@ export function DashboardTeamActiveClockStrip({
                                                           stripApproveStatus === 'approved'
                                                             ? 'approved'
                                                             : 'pending',
+                                                          prefixMap,
                                                         ),
                                                       )
                                                     }}
@@ -2369,6 +2375,7 @@ export function DashboardTeamActiveClockStrip({
                                                       stripApproveStatus === 'approved'
                                                         ? 'approved'
                                                         : 'pending',
+                                                      prefixMap,
                                                     ),
                                                   )
                                                 }}

@@ -3,6 +3,8 @@ import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { AssignFocusModal } from './AssignFocusModal'
+import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
+import { formatBidLedgerSummaryLine, formatJobLedgerSummaryLine } from '../lib/ledgerDisplayPrefixes'
 
 function getDaysInRange(start: string, end: string): string[] {
   const days: string[] = []
@@ -90,6 +92,7 @@ export function ReviewHoursModal({
   onClose,
 }: Props) {
   const { user: authUser } = useAuth()
+  const prefixMap = useLedgerPrefixMap()
   const [personIndex, setPersonIndex] = useState(initialPersonIndex)
   const [startDate, setStartDate] = useState(initialStartDate)
   const [endDate, setEndDate] = useState(initialEndDate)
@@ -203,13 +206,41 @@ export function ReviewHoursModal({
       bidIds.length > 0 ? supabase.rpc('get_bids_by_ids', { p_bid_ids: bidIds }) : { data: [] },
     ])
 
-    const jobsMap = new Map<string, { hcp_number: string; job_name: string; job_address: string }>()
-    for (const j of (jobsRes.data ?? []) as { id: string; hcp_number: string; job_name: string; job_address: string }[]) {
-      jobsMap.set(j.id, { hcp_number: j.hcp_number, job_name: j.job_name, job_address: j.job_address })
+    const jobsMap = new Map<
+      string,
+      { hcp_number: string; job_name: string; job_address: string; service_type_id: string | null }
+    >()
+    for (const j of (jobsRes.data ?? []) as Array<{
+      id: string
+      hcp_number: string
+      job_name: string
+      job_address: string
+      service_type_id: string | null
+    }>) {
+      jobsMap.set(j.id, {
+        hcp_number: j.hcp_number,
+        job_name: j.job_name,
+        job_address: j.job_address,
+        service_type_id: j.service_type_id,
+      })
     }
-    const bidsMap = new Map<string, { bid_number: string; project_name: string; address: string }>()
-    for (const b of (bidsRes.data ?? []) as { id: string; bid_number: string; project_name: string; address: string }[]) {
-      bidsMap.set(b.id, { bid_number: b.bid_number, project_name: b.project_name, address: b.address })
+    const bidsMap = new Map<
+      string,
+      { bid_number: string; project_name: string; address: string; service_type_id: string | null }
+    >()
+    for (const b of (bidsRes.data ?? []) as Array<{
+      id: string
+      bid_number: string
+      project_name: string
+      address: string
+      service_type_id: string | null
+    }>) {
+      bidsMap.set(b.id, {
+        bid_number: b.bid_number,
+        project_name: b.project_name,
+        address: b.address,
+        service_type_id: b.service_type_id,
+      })
     }
 
     const parentItems: BreakdownItem[] = []
@@ -221,10 +252,14 @@ export function ReviewHoursModal({
       let label = ''
       if (group.type === 'job' && group.jobId) {
         const j = jobsMap.get(group.jobId)
-        label = j ? `J${(j.hcp_number || '').trim() || '—'} · ${j.job_name || '—'} - ${j.job_address || '—'}` : `Job ${group.jobId.slice(0, 8)}…`
+        label = j
+          ? formatJobLedgerSummaryLine(prefixMap, j.service_type_id, j.hcp_number, j.job_name, j.job_address)
+          : `Job ${group.jobId.slice(0, 8)}…`
       } else if (group.type === 'bid' && group.bidId) {
         const b = bidsMap.get(group.bidId)
-        label = b ? `B${(b.bid_number || '').trim() || '—'} · ${b.project_name || '—'} - ${b.address || '—'}` : `Bid ${group.bidId.slice(0, 8)}…`
+        label = b
+          ? formatBidLedgerSummaryLine(prefixMap, b.service_type_id, b.bid_number, b.project_name, b.address)
+          : `Bid ${group.bidId.slice(0, 8)}…`
       }
       parentItems.push({
         key,
@@ -262,7 +297,7 @@ export function ReviewHoursModal({
       return next
     })
     setLoading(false)
-  }, [personName, startDate, endDate])
+  }, [personName, startDate, endDate, prefixMap])
 
   useEffect(() => {
     void loadData()

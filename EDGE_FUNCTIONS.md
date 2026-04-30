@@ -1061,6 +1061,7 @@ When the Dispatch group is empty: `push_sent: 0`, `recipients: 0`, friendly `mes
 1. User-scoped client loads `dispatch_requests` by id; rejects if not found or `from_user_id !== auth.uid()`.
 2. Admin client loads all `dispatch_group_members`, then for each user loads `push_subscriptions` and sends push (`tag`: `dispatch-<request_id>`, `url`: `/dashboard`).
 3. Logs `notification_history` with `template_type: dispatch_request` per recipient when at least one push succeeded for that recipient.
+4. Optional **job/bid** line in the push body uses **`service_types.ledger_job_prefix`** / **`ledger_bid_prefix`** (fallback **J** / **B**) via shared **[`_shared/ledgerDisplayPrefixes.ts`](supabase/functions/_shared/ledgerDisplayPrefixes.ts)** when the referenced row includes **`service_type_id`** — **RECENT_FEATURES** **v2.432**.
 
 ---
 
@@ -1104,6 +1105,7 @@ When the Estimator Inbox group is empty: `push_sent: 0`, `recipients: 0`, friend
 1. User-scoped client loads `estimator_requests` by id; rejects if not found or `from_user_id !== auth.uid()`.
 2. Admin client loads all `estimator_group_members`, then for each user loads `push_subscriptions` and sends push (`tag`: `estimator-<request_id>`, `url`: `/dashboard`).
 3. Logs `notification_history` with `template_type: estimator_request` per recipient when at least one push succeeded for that recipient.
+4. Optional **job/bid** line in the push body uses trade-specific prefixes (**`_shared/ledgerDisplayPrefixes.ts`**) — same as **notify-dispatch-request** (**v2.432**).
 
 ---
 

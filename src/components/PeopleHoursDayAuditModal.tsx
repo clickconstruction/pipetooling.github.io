@@ -11,6 +11,8 @@ import {
 } from '../utils/crewAssignments'
 import { getBidServiceTypeTag } from '../utils/unifiedJobBidSearch'
 import { ClockSessionEditSplitModal } from './ClockSessionEditSplitModal'
+import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
+import { formatBidLedgerShortLine, formatJobLedgerShortLine } from '../lib/ledgerDisplayPrefixes'
 
 type CrewRow = MergedCrewMapRow
 
@@ -70,6 +72,7 @@ export function PeopleHoursDayAuditModal({
   onCrewSaved,
   showToast,
 }: Props) {
+  const prefixMap = useLedgerPrefixMap()
   const [sessions, setSessions] = useState<ClockSessionRow[]>([])
   const [sessionsLoading, setSessionsLoading] = useState(true)
   const [sessionsFetchError, setSessionsFetchError] = useState<string | null>(null)
@@ -88,8 +91,24 @@ export function PeopleHoursDayAuditModal({
   const [jobSearchText, setJobSearchText] = useState('')
   const [jobSearchResults, setJobSearchResults] = useState<
     Array<
-      | { type: 'job'; id: string; hcp_number: string; job_name: string; job_address: string }
-      | { type: 'bid'; id: string; bid_number: string; project_name: string; address: string; service_type_name?: string }
+      | {
+          type: 'job'
+          id: string
+          hcp_number: string
+          job_name: string
+          job_address: string
+          service_type_id?: string | null
+          service_type_name?: string | null
+        }
+      | {
+          type: 'bid'
+          id: string
+          bid_number: string
+          project_name: string
+          address: string
+          service_type_name?: string
+          service_type_id?: string | null
+        }
     >
   >([])
 
@@ -179,7 +198,13 @@ export function PeopleHoursDayAuditModal({
               async () => {
                 const r = await supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: [...jobIds] })
                 return r as {
-                  data: Array<{ id: string; hcp_number: string; job_name: string; job_address: string }> | null
+                  data: Array<{
+                    id: string
+                    hcp_number: string
+                    job_name: string
+                    job_address: string
+                    service_type_id: string | null
+                  }> | null
                   error: { message: string } | null
                 }
               },
@@ -187,7 +212,12 @@ export function PeopleHoursDayAuditModal({
             )
             if (gen !== fetchGenRef.current) return
             for (const j of list ?? []) {
-              jobMap[j.id] = { hcp_number: j.hcp_number ?? '', job_name: j.job_name ?? '', job_address: j.job_address ?? '' }
+              jobMap[j.id] = {
+                hcp_number: j.hcp_number ?? '',
+                job_name: j.job_name ?? '',
+                job_address: j.job_address ?? '',
+                service_type_id: j.service_type_id,
+              }
             }
           } catch {
             if (gen !== fetchGenRef.current) return
@@ -200,7 +230,13 @@ export function PeopleHoursDayAuditModal({
               async () => {
                 const r = await supabase.rpc('get_bids_by_ids', { p_bid_ids: [...bidIds] })
                 return r as {
-                  data: Array<{ id: string; bid_number: string; project_name: string; address: string }> | null
+                  data: Array<{
+                    id: string
+                    bid_number: string
+                    project_name: string
+                    address: string
+                    service_type_id: string | null
+                  }> | null
                   error: { message: string } | null
                 }
               },
@@ -208,7 +244,12 @@ export function PeopleHoursDayAuditModal({
             )
             if (gen !== fetchGenRef.current) return
             for (const b of list ?? []) {
-              bidMap[b.id] = { bid_number: b.bid_number ?? '', project_name: b.project_name ?? '', address: b.address ?? '' }
+              bidMap[b.id] = {
+                bid_number: b.bid_number ?? '',
+                project_name: b.project_name ?? '',
+                address: b.address ?? '',
+                service_type_id: b.service_type_id,
+              }
             }
           } catch {
             if (gen !== fetchGenRef.current) return
@@ -249,8 +290,22 @@ export function PeopleHoursDayAuditModal({
           supabase.rpc('search_jobs_ledger', { search_text: q }),
           supabase.rpc('search_bids_for_clock', { p_search_text: q }),
         ]).then(([jobsRes, bidsRes]) => {
-          const jobs = (jobsRes.data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>
-          const bidsRaw = (bidsRes.data ?? []) as Array<{ id: string; bid_number?: string; project_name: string; address: string; service_type_name?: string }>
+          const jobs = (jobsRes.data ?? []) as Array<{
+            id: string
+            hcp_number: string
+            job_name: string
+            job_address: string
+            service_type_id: string | null
+            service_type_name?: string | null
+          }>
+          const bidsRaw = (bidsRes.data ?? []) as Array<{
+            id: string
+            bid_number?: string
+            project_name: string
+            address: string
+            service_type_name?: string
+            service_type_id: string | null
+          }>
           const bids = bidsRaw.map((b) => ({ type: 'bid' as const, ...b, bid_number: b.bid_number ?? '' }))
           const merged = [...jobs.map((j) => ({ type: 'job' as const, ...j })), ...bids]
           setJobSearchResults(merged)
@@ -282,8 +337,22 @@ export function PeopleHoursDayAuditModal({
 
   function addAssignmentToDraft(
     item:
-      | { type: 'job'; id: string; hcp_number: string; job_name: string; job_address: string }
-      | { type: 'bid'; id: string; bid_number: string; project_name: string; address: string }
+      | {
+          type: 'job'
+          id: string
+          hcp_number: string
+          job_name: string
+          job_address: string
+          service_type_id?: string | null
+        }
+      | {
+          type: 'bid'
+          id: string
+          bid_number: string
+          project_name: string
+          address: string
+          service_type_id?: string | null
+        },
   ) {
     const current = draft ?? rowFromMap
     if (current.unifiedAssignments.some((a) => a.type === item.type && a.id === item.id)) return
@@ -298,12 +367,22 @@ export function PeopleHoursDayAuditModal({
     if (item.type === 'job') {
       setJobDetailsMap((prev) => ({
         ...prev,
-        [item.id]: { hcp_number: item.hcp_number, job_name: item.job_name, job_address: item.job_address },
+        [item.id]: {
+          hcp_number: item.hcp_number,
+          job_name: item.job_name,
+          job_address: item.job_address,
+          service_type_id: item.service_type_id ?? null,
+        },
       }))
     } else {
       setBidDetailsMap((prev) => ({
         ...prev,
-        [item.id]: { bid_number: item.bid_number, project_name: item.project_name, address: item.address },
+        [item.id]: {
+          bid_number: item.bid_number,
+          project_name: item.project_name,
+          address: item.address,
+          service_type_id: item.service_type_id ?? null,
+        },
       }))
     }
     setDraft({ ...current, unifiedAssignments: newAssignments })
@@ -489,9 +568,13 @@ export function PeopleHoursDayAuditModal({
                 const bid = s.bid_id ? bidDetailsMap[s.bid_id] : undefined
                 let linkLabel: string | null = null
                 if (s.job_ledger_id) {
-                  linkLabel = job ? `J${(job.hcp_number || '').trim() || '—'} · ${job.job_name || '—'}` : 'Job'
+                  linkLabel = job
+                    ? formatJobLedgerShortLine(prefixMap, job.service_type_id ?? null, job.hcp_number, job.job_name)
+                    : 'Job'
                 } else if (s.bid_id) {
-                  linkLabel = bid ? `B${(bid.bid_number || '').trim() || '—'} · ${bid.project_name || '—'}` : 'Bid'
+                  linkLabel = bid
+                    ? formatBidLedgerShortLine(prefixMap, bid.service_type_id ?? null, bid.bid_number, bid.project_name)
+                    : 'Bid'
                 }
                 const showClockEdit = isEditMode && canEditCrewJobs && !sessionsUserMissing && !!s.user_id
                 return (
@@ -586,7 +669,7 @@ export function PeopleHoursDayAuditModal({
                     <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem', marginBottom: '0.5rem' }}>
                       {draftRow.unifiedAssignments.map((a, idx) => {
                         const details = a.type === 'job' ? jobDetailsMap[a.id] : bidDetailsMap[a.id]
-                        const label = formatAssignmentLabel(a.type, details) || a.id.slice(0, 8)
+                        const label = formatAssignmentLabel(a.type, details, prefixMap) || a.id.slice(0, 8)
                         return (
                           <span
                             key={getAssignmentKey(a)}
@@ -675,8 +758,22 @@ export function PeopleHoursDayAuditModal({
                                 onClick={() => {
                                   addAssignmentToDraft(
                                     item.type === 'job'
-                                      ? { type: 'job', id: item.id, hcp_number: item.hcp_number, job_name: item.job_name, job_address: item.job_address }
-                                      : { type: 'bid', id: item.id, bid_number: item.bid_number, project_name: item.project_name, address: item.address }
+                                      ? {
+                                          type: 'job',
+                                          id: item.id,
+                                          hcp_number: item.hcp_number,
+                                          job_name: item.job_name,
+                                          job_address: item.job_address,
+                                          service_type_id: item.service_type_id ?? null,
+                                        }
+                                      : {
+                                          type: 'bid',
+                                          id: item.id,
+                                          bid_number: item.bid_number,
+                                          project_name: item.project_name,
+                                          address: item.address,
+                                          service_type_id: item.service_type_id ?? null,
+                                        },
                                   )
                                   setJobSearchOpen(false)
                                   setJobSearchText('')
@@ -685,7 +782,7 @@ export function PeopleHoursDayAuditModal({
                                 style={{ display: 'block', width: '100%', padding: '0.5rem', textAlign: 'left', border: 'none', borderBottom: '1px solid #e5e7eb', background: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
                               >
                                 <div style={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                  {item.type === 'bid' && (() => {
+                                  {(() => {
                                     const t = getBidServiceTypeTag(item.service_type_name)
                                     return t ? (
                                       <span style={{ padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: t.color, color: '#fff', borderRadius: 4 }}>
@@ -694,8 +791,8 @@ export function PeopleHoursDayAuditModal({
                                     ) : null
                                   })()}
                                   {item.type === 'job'
-                                    ? `J${(item.hcp_number || '').trim() || '—'} · ${item.job_name || '—'}`
-                                    : `B${(item.bid_number || '').trim() || '—'} · ${item.project_name || '—'}`}
+                                    ? formatJobLedgerShortLine(prefixMap, item.service_type_id ?? null, item.hcp_number, item.job_name)
+                                    : formatBidLedgerShortLine(prefixMap, item.service_type_id ?? null, item.bid_number, item.project_name)}
                                 </div>
                                 {(item.type === 'job' ? item.job_address : item.address) ? (
                                   <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>{item.type === 'job' ? item.job_address : item.address}</div>
@@ -754,7 +851,7 @@ export function PeopleHoursDayAuditModal({
                 <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.8125rem', color: '#374151' }}>
                   {initialCrewRow.unifiedAssignments.map((a) => {
                     const details = a.type === 'job' ? jobDetailsMap[a.id] : bidDetailsMap[a.id]
-                    const label = formatAssignmentLabel(a.type, details)
+                    const label = formatAssignmentLabel(a.type, details, prefixMap)
                     return (
                       <li key={`${a.type}:${a.id}`} style={{ marginBottom: '0.35rem' }}>
                         {label} — {a.pct}%

@@ -27,7 +27,7 @@ export type JobsLedgerStagesPrimaryRow = JobsLedgerRow & {
   jobs_ledger_team_members?: (JobsLedgerTeamMember & { users: { name: string } | null })[]
   reports?: Array<{ job_ledger_id: string | null }>
   projects?: { id: string; name: string } | null
-  bids?: { id: string; project_name: string | null; bid_number: string | null } | null
+  bids?: { id: string; project_name: string | null; bid_number: string | null; service_type_id: string | null } | null
   service_types?: { name: string } | null
 }
 
@@ -83,7 +83,14 @@ export async function enrichJobsLedgerPrimaryRows(rows: JobsLedgerStagesPrimaryR
       team_members: team ?? [],
       report_count: (rep ?? []).length,
       project: proj ?? null,
-      linkedBid: bidEmbed ?? null,
+      linkedBid: bidEmbed
+        ? {
+            id: bidEmbed.id,
+            project_name: bidEmbed.project_name,
+            bid_number: bidEmbed.bid_number,
+            service_type_id: bidEmbed.service_type_id ?? null,
+          }
+        : null,
       last_schedule_work_date: null,
     }
   })
@@ -244,7 +251,14 @@ export async function enrichJobsLedgerPrimaryRowsJobSummarySlim(
       team_members: team ?? [],
       report_count: (rep ?? []).length,
       project: proj ?? null,
-      linkedBid: bidEmbed ?? null,
+      linkedBid: bidEmbed
+        ? {
+            id: bidEmbed.id,
+            project_name: bidEmbed.project_name,
+            bid_number: bidEmbed.bid_number,
+            service_type_id: bidEmbed.service_type_id ?? null,
+          }
+        : null,
       last_schedule_work_date: null,
       linkedEstimateForStages: null,
     }

@@ -8,6 +8,8 @@ import {
 } from '../lib/scheduleDispatchHub'
 import { type ClockSessionForDispatchBand } from '../lib/clockSessionsToDispatchSecondaryBands'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
+import { formatBidLedgerShortLine } from '../lib/ledgerDisplayPrefixes'
 
 export type PersonDayScheduleData = {
   loading: boolean
@@ -28,6 +30,7 @@ export function usePersonDayScheduleData(
   workDateYmd: string | null,
   onDataError: (message: string, variant: 'error' | 'warning') => void,
 ): PersonDayScheduleData {
+  const ledgerPrefixMap = useLedgerPrefixMap()
   const [loading, setLoading] = useState(false)
   const [blocks, setBlocks] = useState<JobScheduleBlockRow[]>([])
   const [sessions, setSessions] = useState<ClockSessionForDispatchBand[]>([])
@@ -101,15 +104,22 @@ export function usePersonDayScheduleData(
               async () =>
                 await supabase
                   .from('bids')
-                  .select('id, bid_number, project_name')
+                  .select('id, bid_number, project_name, service_type_id')
                   .in('id', [...bidIds]),
               'person day schedule bids for clock',
             )
             for (const br of bidRows ?? []) {
-              const b = br as { id: string; bid_number: string | null; project_name: string | null }
+              const b = br as {
+                id: string
+                bid_number: string | null
+                project_name: string | null
+                service_type_id: string | null
+              }
               const num = b.bid_number?.trim()
               const pn = (b.project_name ?? '').trim()
-              const label = num ? `B${num}${pn ? ` · ${pn}` : ''}` : pn || 'Bid'
+              const label = num
+                ? formatBidLedgerShortLine(ledgerPrefixMap, b.service_type_id, b.bid_number, b.project_name)
+                : pn || 'Bid'
               bidMap.set(b.id, label)
             }
           } catch (e) {
@@ -127,7 +137,7 @@ export function usePersonDayScheduleData(
         if (!quiet) setLoading(false)
       }
     },
-    [userId, workDateYmd, onDataError],
+    [userId, workDateYmd, onDataError, ledgerPrefixMap],
   )
 
   useEffect(() => {

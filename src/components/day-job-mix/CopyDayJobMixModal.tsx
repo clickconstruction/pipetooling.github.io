@@ -8,6 +8,7 @@ import { leaderReplaceClockSessionClusterMixed } from '../../lib/leaderClockSess
 import { normalizeDayEditorSession, type DayEditorSession } from '../../lib/myTimeDayTimeline'
 import { supabase } from '../../lib/supabase'
 import { DatabaseError, formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
+import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 
 type CalendarSessionRow = {
   id: string
@@ -68,6 +69,7 @@ export function CopyDayJobMixModal({
   nowMs: number
   onApplied: () => void
 }) {
+  const prefixMap = useLedgerPrefixMap()
   const [step, setStep] = useState<'pick' | 'confirm'>('pick')
   const [targetUserId, setTargetUserId] = useState('')
   const [busy, setBusy] = useState(false)
@@ -86,16 +88,19 @@ export function CopyDayJobMixModal({
   )
 
   const sourceMix = useMemo(
-    () => (sourceRow ? sessionsToMixRows(sourceRow.todaySessions, nowMs) : []),
-    [sourceRow, nowMs],
+    () => (sourceRow ? sessionsToMixRows(sourceRow.todaySessions, nowMs, prefixMap) : []),
+    [sourceRow, nowMs, prefixMap],
   )
 
   const targetCandidates = useMemo(
     () =>
       clockedInTodayRows.filter(
-        (r) => r.userId !== sourceUserId && r.todaySessions.length > 0 && totalMixSeconds(sessionsToMixRows(r.todaySessions, nowMs)) > 0,
+        (r) =>
+          r.userId !== sourceUserId &&
+          r.todaySessions.length > 0 &&
+          totalMixSeconds(sessionsToMixRows(r.todaySessions, nowMs, prefixMap)) > 0,
       ),
-    [clockedInTodayRows, sourceUserId, nowMs],
+    [clockedInTodayRows, sourceUserId, nowMs, prefixMap],
   )
 
   const targetRow = useMemo(
@@ -104,8 +109,8 @@ export function CopyDayJobMixModal({
   )
 
   const targetPreviewMix = useMemo(
-    () => (targetRow ? sessionsToMixRows(targetRow.todaySessions, nowMs) : []),
-    [targetRow, nowMs],
+    () => (targetRow ? sessionsToMixRows(targetRow.todaySessions, nowMs, prefixMap) : []),
+    [targetRow, nowMs, prefixMap],
   )
 
   const targetHasApproved = useMemo(

@@ -101,6 +101,7 @@ import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
 import { useHoursGridFirstColWidthPx } from '../hooks/useHoursGridFirstColWidthPx'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useToastContext } from '../contexts/ToastContext'
+import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { HoursUnassignedModal } from '../components/HoursUnassignedModal'
 import { PeopleHoursDayAuditModal } from '../components/PeopleHoursDayAuditModal'
 import { ClockSessionEditSplitModal } from '../components/ClockSessionEditSplitModal'
@@ -321,6 +322,7 @@ export default function People() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { user: authUser, role: authRole } = useAuth()
   const { showToast } = useToastContext()
+  const prefixMap = useLedgerPrefixMap()
   const narrowViewport = useNarrowViewport640()
   const { widthPx: hoursGridFirstColWidthPx, measurer: hoursGridFirstColMeasurer } = useHoursGridFirstColWidthPx()
   const hoursGridFirstColW = hoursGridFirstColWidthPx ?? 200
@@ -476,21 +478,21 @@ export default function People() {
   const [rejectedClockSessions, setRejectedClockSessions] = useState<ClockSessionRow[]>([])
   const [hoursClockSessionsSearch, setHoursClockSessionsSearch] = useState('')
   const activeClockSessionsFiltered = useMemo(
-    () => activeClockSessions.filter((s) => clockSessionMatchesSearch(s, hoursClockSessionsSearch)),
-    [activeClockSessions, hoursClockSessionsSearch],
+    () => activeClockSessions.filter((s) => clockSessionMatchesSearch(s, hoursClockSessionsSearch, prefixMap)),
+    [activeClockSessions, hoursClockSessionsSearch, prefixMap],
   )
   const pendingApprovalClockSessionsFiltered = useMemo(
     () =>
-      pendingApprovalClockSessions.filter((s) => clockSessionMatchesSearch(s, hoursClockSessionsSearch)),
-    [pendingApprovalClockSessions, hoursClockSessionsSearch],
+      pendingApprovalClockSessions.filter((s) => clockSessionMatchesSearch(s, hoursClockSessionsSearch, prefixMap)),
+    [pendingApprovalClockSessions, hoursClockSessionsSearch, prefixMap],
   )
   const approvedClockSessionsFiltered = useMemo(
-    () => approvedClockSessions.filter((s) => clockSessionMatchesSearch(s, hoursClockSessionsSearch)),
-    [approvedClockSessions, hoursClockSessionsSearch],
+    () => approvedClockSessions.filter((s) => clockSessionMatchesSearch(s, hoursClockSessionsSearch, prefixMap)),
+    [approvedClockSessions, hoursClockSessionsSearch, prefixMap],
   )
   const rejectedClockSessionsFiltered = useMemo(
-    () => rejectedClockSessions.filter((s) => clockSessionMatchesSearch(s, hoursClockSessionsSearch)),
-    [rejectedClockSessions, hoursClockSessionsSearch],
+    () => rejectedClockSessions.filter((s) => clockSessionMatchesSearch(s, hoursClockSessionsSearch, prefixMap)),
+    [rejectedClockSessions, hoursClockSessionsSearch, prefixMap],
   )
   const hoursClockSessionsSearching = hoursClockSessionsSearch.trim().length > 0
   const noClockSessionsMatchSearch =
@@ -6229,7 +6231,7 @@ export default function People() {
       mapped.sort((a, b) => new Date(a.clocked_in_at).getTime() - new Date(b.clocked_in_at).getTime())
       const scaled = scaleClosedSessionsToTargetHours(mapped, hoursDecimal)
       if (scaled != null && scaled.length > 0) {
-        const { jobLabels, bidLabels } = buildJobBidLabelMapsFromClockRows(dayRows)
+        const { jobLabels, bidLabels } = buildJobBidLabelMapsFromClockRows(dayRows, prefixMap)
         setHoursManualDraftEditor({
           subjectUserId: u.id,
           subjectDisplayName: u.name?.trim() ?? personName,
@@ -6814,8 +6816,24 @@ export default function People() {
           : supabase.rpc('get_jobs_ledger_by_hcp_numbers', { p_hcp_numbers: allLaborHcps })
         : { data: [] },
     ])
-    const crewJobsLedger = (crewJobsRes.data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string; revenue: number | null; pct_complete: number | null }>
-    const laborJobsLedger = (laborJobsRes.data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string; revenue: number | null; pct_complete: number | null }>
+    const crewJobsLedger = (crewJobsRes.data ?? []) as Array<{
+      id: string
+      hcp_number: string
+      job_name: string
+      job_address: string
+      revenue: number | null
+      pct_complete: number | null
+      service_type_id: string | null
+    }>
+    const laborJobsLedger = (laborJobsRes.data ?? []) as Array<{
+      id: string
+      hcp_number: string
+      job_name: string
+      job_address: string
+      revenue: number | null
+      pct_complete: number | null
+      service_type_id: string | null
+    }>
     const jobsById = new Map<string, (typeof crewJobsLedger)[0]>()
     const jobIdByHcp = new Map<string, string>()
     for (const j of crewJobsLedger) {
@@ -10134,7 +10152,7 @@ export default function People() {
               onDurationClick={openHoursMyTimeFromSession}
               emptyMessage={hoursClockSessionsSearching ? 'No matching sessions' : 'No active sessions'}
               renderNotesSecondary={(s) => {
-                const label = formatClockSessionJobOrBidLabel(s)
+                const label = formatClockSessionJobOrBidLabel(s, prefixMap)
                 return label ? (
                   <span title={label.replace(/\n/g, ' ')} style={{ whiteSpace: 'pre-line' }}>
                     {label}
@@ -10193,7 +10211,7 @@ export default function People() {
               onDurationClick={openHoursMyTimeFromSession}
               emptyMessage={hoursClockSessionsSearching ? 'No matching sessions' : 'No sessions awaiting approval'}
               renderNotesSecondary={(s) => {
-                const label = formatClockSessionJobOrBidLabel(s)
+                const label = formatClockSessionJobOrBidLabel(s, prefixMap)
                 return label ? (
                   <span title={label.replace(/\n/g, ' ')} style={{ whiteSpace: 'pre-line' }}>
                     {label}

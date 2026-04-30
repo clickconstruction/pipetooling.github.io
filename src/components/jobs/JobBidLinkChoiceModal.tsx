@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
+import { formatBidLedgerDocTitle, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 
 export type JobBidLinkOption = {
   id: string
@@ -6,6 +8,7 @@ export type JobBidLinkOption = {
   bid_number: string | null
   customer_id: string | null
   customers: { name: string } | null
+  service_type_id?: string | null
 }
 
 type JobBidLinkChoiceModalProps = {
@@ -17,10 +20,10 @@ type JobBidLinkChoiceModalProps = {
   onLinked: (bidId: string) => void
 }
 
-function bidRowTitle(b: JobBidLinkOption): string {
+function bidRowTitle(b: JobBidLinkOption, prefixMap: LedgerPrefixMap): string {
   const name = (b.project_name ?? '').trim() || 'Untitled'
   const n = b.bid_number != null && String(b.bid_number).trim() !== '' ? String(b.bid_number).trim() : null
-  return n ? `B${n} | ${name}` : name
+  return n ? formatBidLedgerDocTitle(prefixMap, b.service_type_id ?? null, n, name) : name
 }
 
 export default function JobBidLinkChoiceModal({
@@ -31,6 +34,7 @@ export default function JobBidLinkChoiceModal({
   customerId,
   onLinked,
 }: JobBidLinkChoiceModalProps) {
+  const prefixMap = useLedgerPrefixMap()
   const [showAllBids, setShowAllBids] = useState(false)
   const [search, setSearch] = useState('')
 
@@ -58,12 +62,12 @@ export default function JobBidLinkChoiceModal({
     const q = search.trim().toLowerCase()
     if (!q) return scopedBids
     return scopedBids.filter((b) => {
-      if (bidRowTitle(b).toLowerCase().includes(q)) return true
+      if (bidRowTitle(b, prefixMap).toLowerCase().includes(q)) return true
       if (b.bid_number != null && String(b.bid_number).toLowerCase().includes(q)) return true
       if ((b.customers?.name ?? '').toLowerCase().includes(q)) return true
       return false
     })
-  }, [scopedBids, search])
+  }, [scopedBids, search, prefixMap])
 
   if (!open) return null
 
@@ -172,7 +176,7 @@ export default function JobBidLinkChoiceModal({
                   e.currentTarget.style.background = 'white'
                 }}
               >
-                <div style={{ fontWeight: 500 }}>{bidRowTitle(b)}</div>
+                <div style={{ fontWeight: 500 }}>{bidRowTitle(b, prefixMap)}</div>
                 {b.customers?.name ? (
                   <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 2 }}>{b.customers.name}</div>
                 ) : null}

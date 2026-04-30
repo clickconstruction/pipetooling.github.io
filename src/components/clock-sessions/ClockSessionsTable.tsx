@@ -1,7 +1,9 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { useMemo, useState } from 'react'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
+import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { formatClockSessionJobOrBidLabel, type ClockSessionRow } from '../../types/clockSessions'
+import type { LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import { ClockSessionLocationCell } from './ClockSessionLocationCell'
 
 const thStyle = { padding: '0.35rem 0.5rem', textAlign: 'left' as const, borderBottom: '1px solid #e5e7eb' }
@@ -156,14 +158,16 @@ function hasAccountabilityStatus(s: ClockSessionRow): boolean {
 /** Notes + optional inline job + secondary line (shared by table cell and mobile card). */
 function ClockSessionNotesJobContent({
   s,
+  prefixMap,
   renderJob,
   renderNotesSecondary,
 }: {
   s: ClockSessionRow
+  prefixMap: LedgerPrefixMap
   renderJob?: (session: ClockSessionRow) => ReactNode
   renderNotesSecondary?: (session: ClockSessionRow) => ReactNode
 }) {
-  const jobLabel = formatClockSessionJobOrBidLabel(s)
+  const jobLabel = formatClockSessionJobOrBidLabel(s, prefixMap)
   const jobTitle = jobLabel ?? undefined
   const jobDisplay = jobLabel ?? '—'
   const jobFromRender = renderJob?.(s)
@@ -266,6 +270,7 @@ function SessionTimeLocationBlock({
 
 function ClockSessionCard({
   s,
+  prefixMap,
   renderDuration,
   locationVariant,
   renderJob,
@@ -274,6 +279,7 @@ function ClockSessionCard({
   renderActions,
 }: {
   s: ClockSessionRow
+  prefixMap: LedgerPrefixMap
   renderDuration: (session: ClockSessionRow) => ReactNode
   locationVariant: 'compact' | 'full'
   renderJob?: (session: ClockSessionRow) => ReactNode
@@ -340,7 +346,12 @@ function ClockSessionCard({
           wordBreak: 'break-word',
         }}
       >
-        <ClockSessionNotesJobContent s={s} renderJob={renderJob} renderNotesSecondary={renderNotesSecondary} />
+        <ClockSessionNotesJobContent
+          s={s}
+          prefixMap={prefixMap}
+          renderJob={renderJob}
+          renderNotesSecondary={renderNotesSecondary}
+        />
         {showStatusBlock ? (
           <div
             style={{
@@ -392,6 +403,7 @@ export function ClockSessionsTable({
   enableDurationColumnSort = false,
   onDurationClick,
 }: ClockSessionsTableProps) {
+  const prefixMap = useLedgerPrefixMap()
   const [durationSortActive, setDurationSortActive] = useState(false)
 
   const displaySessions = useMemo(() => {
@@ -450,6 +462,7 @@ export function ClockSessionsTable({
             <ClockSessionCard
               key={s.id}
               s={s}
+              prefixMap={prefixMap}
               renderDuration={renderDurationForNarrow}
               locationVariant={locationVariant}
               renderJob={renderJob}
@@ -538,7 +551,12 @@ export function ClockSessionsTable({
                       wordBreak: 'break-word',
                     }}
                   >
-                    <ClockSessionNotesJobContent s={s} renderJob={renderJob} renderNotesSecondary={renderNotesSecondary} />
+                    <ClockSessionNotesJobContent
+                      s={s}
+                      prefixMap={prefixMap}
+                      renderJob={renderJob}
+                      renderNotesSecondary={renderNotesSecondary}
+                    />
                   </td>
                   <td style={{ ...tdStyle, fontSize: '0.8125rem', whiteSpace: 'pre-line', color: '#6b7280' }}>
                     {formatAccountability(s)}

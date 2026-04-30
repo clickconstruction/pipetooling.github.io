@@ -1,5 +1,6 @@
 import type { TodaySessionStripRow } from '../hooks/useDashboardMyTeamSectionState'
 import { formatClockSessionJobOrBidLabelFromEmbeds } from '../types/clockSessions'
+import type { LedgerPrefixMap } from './ledgerDisplayPrefixes'
 
 /** Same second math as strip / useDashboardMyTeamSectionState.sessionDurationSeconds */
 export function dayMixSessionDurationSeconds(
@@ -34,7 +35,11 @@ function stripSessionEligible(s: Pick<TodaySessionStripRow, 'rejected_at' | 'rev
 /**
  * Duration-weighted job/bid mix for strip sessions (excludes rejected/revoked, same as Clocked in today aggregates).
  */
-export function sessionsToMixRows(sessions: readonly TodaySessionStripRow[], nowMs: number): DayJobMixRow[] {
+export function sessionsToMixRows(
+  sessions: readonly TodaySessionStripRow[],
+  nowMs: number,
+  prefixMap: LedgerPrefixMap,
+): DayJobMixRow[] {
   const byKey = new Map<
     string,
     { job_ledger_id: string | null; bid_id: string | null; label: string; seconds: number }
@@ -47,7 +52,7 @@ export function sessionsToMixRows(sessions: readonly TodaySessionStripRow[], now
     const job_ledger_id = s.job_ledger_id
     const bid_id = s.bid_id
     const key = dayJobMixAllocationKey(job_ledger_id, bid_id)
-    const label = formatClockSessionJobOrBidLabelFromEmbeds(s) ?? 'Unassigned'
+    const label = formatClockSessionJobOrBidLabelFromEmbeds(s, prefixMap) ?? 'Unassigned'
     const cur = byKey.get(key)
     if (cur) {
       cur.seconds += sec

@@ -10,6 +10,8 @@ import {
 } from '../../utils/dateUtils'
 import { splitSignedAmountEqually } from '../../lib/splitSignedAmountEqually'
 import type { Json } from '../../types/database'
+import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
+import { formatBidLedgerShortLine, formatJobLedgerShortLine } from '../../lib/ledgerDisplayPrefixes'
 
 export type TallyClockWindowAllocateModalProps = {
   open: boolean
@@ -38,12 +40,6 @@ function formatTallyCurrency(n: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
 }
 
-function bidDisplayLabel(bidNumber: string | null, projectName: string | null): string {
-  const b = typeof bidNumber === 'string' && bidNumber.trim() !== '' ? `B${bidNumber.trim()}` : 'Bid'
-  const p = typeof projectName === 'string' && projectName.trim() !== '' ? projectName.trim() : ''
-  return p !== '' ? `${b} · ${p}` : b
-}
-
 export function TallyClockWindowAllocateModal({
   open,
   onClose,
@@ -54,6 +50,7 @@ export function TallyClockWindowAllocateModal({
   onSaved,
 }: TallyClockWindowAllocateModalProps) {
   const { showToast } = useToastContext()
+  const ledgerPrefixMap = useLedgerPrefixMap()
   const [loadError, setLoadError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [pickerRows, setPickerRows] = useState<PickerRow[]>([])
@@ -152,7 +149,7 @@ export function TallyClockWindowAllocateModal({
             async () =>
               supabase
                 .from('jobs_ledger')
-                .select('id, hcp_number, job_name, job_address')
+                .select('id, hcp_number, job_name, job_address, service_type_id')
                 .in('id', [...jobIds]),
             'TallyClockWindowAllocateModal jobs_ledger',
           )
@@ -163,11 +160,12 @@ export function TallyClockWindowAllocateModal({
               hcp_number: string | null
               job_name: string | null
               job_address: string | null
+              service_type_id: string | null
             }
             const hn = row.hcp_number?.trim() ?? ''
             const jn = row.job_name?.trim() ?? ''
             const ja = row.job_address?.trim() ?? ''
-            const main = `${hn}${hn && jn ? ' · ' : ''}${jn}`.trim() || row.id
+            const main = formatJobLedgerShortLine(ledgerPrefixMap, row.service_type_id, hn || null, jn || null).trim() || row.id
             jobLabelById.set(row.id, ja ? `${main} — ${ja}` : main)
           }
         }
@@ -178,14 +176,22 @@ export function TallyClockWindowAllocateModal({
             async () =>
               supabase
                 .from('bids')
-                .select('id, bid_number, project_name')
+                .select('id, bid_number, project_name, service_type_id')
                 .in('id', [...bidIds]),
             'TallyClockWindowAllocateModal bids',
           )
           if (cancelled) return
           for (const b of bidRows ?? []) {
-            const row = b as { id: string; bid_number: string | null; project_name: string | null }
-            bidLabelById.set(row.id, bidDisplayLabel(row.bid_number, row.project_name))
+            const row = b as {
+              id: string
+              bid_number: string | null
+              project_name: string | null
+              service_type_id: string | null
+            }
+            bidLabelById.set(
+              row.id,
+              formatBidLedgerShortLine(ledgerPrefixMap, row.service_type_id, row.bid_number, row.project_name),
+            )
           }
         }
 
@@ -213,7 +219,7 @@ export function TallyClockWindowAllocateModal({
     return () => {
       cancelled = true
     }
-  }, [open, userId, postedAtIso, reset])
+  }, [open, userId, postedAtIso, reset, ledgerPrefixMap])
 
   useEffect(() => {
     if (!open) return

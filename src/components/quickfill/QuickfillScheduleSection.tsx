@@ -48,6 +48,8 @@ import {
   referenceDateForWorkDateYmd,
   ymdAddDays,
 } from '../../utils/dateUtils'
+import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
+import { formatBidLedgerShortLine } from '../../lib/ledgerDisplayPrefixes'
 import { QUICKFILL_SECTION_BANNER_BOX_STYLE } from '../../lib/quickfillSectionBannerStyle'
 import { groupRosterUsersByAuthRoleSection } from '../../lib/usersTabRosterRoleSections'
 import { blocksToSegments } from '../../lib/quickfillScheduleSegments'
@@ -90,6 +92,7 @@ export function QuickfillScheduleSection({
   const navigate = useNavigate()
   const { role, user: authUser } = useAuth()
   const { showToast } = useToastContext()
+  const ledgerPrefixMap = useLedgerPrefixMap()
   const canEditSchedule = role != null && CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES.has(role)
   const showClockStripScopeToggle =
     role === 'dev' || role === 'master_technician' || role === 'assistant'
@@ -453,15 +456,22 @@ export function QuickfillScheduleSection({
             async () =>
               await supabase
                 .from('bids')
-                .select('id, bid_number, project_name')
+                .select('id, bid_number, project_name, service_type_id')
                 .in('id', [...bidIds]),
             'quickfill schedule bids for clock sessions',
           )
           for (const br of bidRows ?? []) {
-            const b = br as { id: string; bid_number: string | null; project_name: string | null }
+            const b = br as {
+              id: string
+              bid_number: string | null
+              project_name: string | null
+              service_type_id: string | null
+            }
             const num = b.bid_number?.trim()
             const pn = (b.project_name ?? '').trim()
-            const label = num ? `B${num}${pn ? ` · ${pn}` : ''}` : pn || 'Bid'
+            const label = num
+              ? formatBidLedgerShortLine(ledgerPrefixMap, b.service_type_id, b.bid_number, b.project_name)
+              : pn || 'Bid'
             bidMap.set(b.id, label)
           }
         } catch (e) {
@@ -508,7 +518,7 @@ export function QuickfillScheduleSection({
     } finally {
       if (!quiet) setLoading(false)
     }
-  }, [workDate, role, showToast])
+  }, [workDate, role, showToast, ledgerPrefixMap])
 
   const saveQuickfillBlockModal = useCallback(async () => {
     if (!blockModalState || !authUser?.id) return

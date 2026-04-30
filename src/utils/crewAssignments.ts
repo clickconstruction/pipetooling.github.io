@@ -1,10 +1,25 @@
 import type { CrewJobAssignment } from './teamLabor'
 import type { CrewBidAssignment } from './teamLabor'
+import {
+  formatBidLedgerShortLine,
+  formatJobLedgerShortLine,
+  type LedgerPrefixMap,
+} from '../lib/ledgerDisplayPrefixes'
 
 export type UnifiedAssignment = { type: 'job'; id: string; pct: number } | { type: 'bid'; id: string; pct: number }
 
-export type JobDetails = { hcp_number: string; job_name: string; job_address: string }
-export type BidDetails = { bid_number: string; project_name: string; address: string }
+export type JobDetails = {
+  hcp_number: string
+  job_name: string
+  job_address: string
+  service_type_id?: string | null
+}
+export type BidDetails = {
+  bid_number: string
+  project_name: string
+  address: string
+  service_type_id?: string | null
+}
 
 export function mergeToUnified(
   jobAssignments: CrewJobAssignment[],
@@ -102,15 +117,14 @@ export function splitFromUnified(unified: UnifiedAssignment[]): {
 
 export function formatAssignmentLabel(
   type: 'job' | 'bid',
-  details: JobDetails | BidDetails | undefined
+  details: JobDetails | BidDetails | undefined,
+  prefixMap: LedgerPrefixMap,
 ): string {
   if (!details) return '—'
   if (type === 'job') {
     const d = details as JobDetails
-    const prefix = `J${(d.hcp_number || '').trim() || '—'}`
-    return `${prefix} · ${d.job_name || '—'}`
+    return formatJobLedgerShortLine(prefixMap, d.service_type_id ?? null, d.hcp_number, d.job_name)
   }
   const d = details as BidDetails
-  const prefix = `B${(d.bid_number || '').trim() || '—'}`
-  return `${prefix} · ${d.project_name || '—'}`
+  return formatBidLedgerShortLine(prefixMap, d.service_type_id ?? null, d.bid_number, d.project_name)
 }

@@ -37,6 +37,7 @@ import EstimateAccept from './pages/EstimateAccept'
 import EstimatePublicTerms from './pages/EstimatePublicTerms'
 import ContractAccept from './pages/ContractAccept'
 import { ToastProvider, useToastContext } from './contexts/ToastContext'
+import { LedgerDisplayPrefixProvider } from './contexts/LedgerDisplayPrefixContext'
 import { registerSW } from 'virtual:pwa-register'
 import { ForceReloadProvider } from './contexts/ForceReloadContext'
 import { ChecklistAddModalProvider } from './contexts/ChecklistAddModalContext'
@@ -229,10 +230,17 @@ function AppContent() {
   )
 }
 
+function LedgerDisplayPrefixBridge({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth()
+  return <LedgerDisplayPrefixProvider authUserId={user?.id ?? null}>{children}</LedgerDisplayPrefixProvider>
+}
+
 export default function App() {
   return (
     <ToastProvider>
-      <AppContent />
+      <LedgerDisplayPrefixBridge>
+        <AppContent />
+      </LedgerDisplayPrefixBridge>
     </ToastProvider>
   )
 }

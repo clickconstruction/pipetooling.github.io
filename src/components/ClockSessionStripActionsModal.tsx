@@ -1,7 +1,14 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { formatUnifiedResult, getBidServiceTypeTag, type JobSearchResult, type BidSearchResult, type UnifiedSearchResult } from '../utils/unifiedJobBidSearch'
+import {
+  formatUnifiedResult,
+  serviceTypeTagForUnifiedRow,
+  type JobSearchResult,
+  type BidSearchResult,
+  type UnifiedSearchResult,
+} from '../utils/unifiedJobBidSearch'
+import { useLedgerDisplayPrefixes } from '../contexts/LedgerDisplayPrefixContext'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 
 export type ClockSessionStripActionsPayload = {
@@ -53,6 +60,7 @@ export function ClockSessionStripActionsModal({
   onError,
 }: Props) {
   void _innerPopoverZIndex
+  const { prefixMap } = useLedgerDisplayPrefixes()
   const titleId = useId()
   const assignmentRegionId = useId()
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -428,8 +436,8 @@ export function ClockSessionStripActionsModal({
                         }}
                       >
                         <span style={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                          {item.source === 'bid' && (() => {
-                            const t = getBidServiceTypeTag(item.service_type_name)
+                          {(() => {
+                            const t = serviceTypeTagForUnifiedRow(item)
                             return t ? (
                               <span
                                 style={{
@@ -445,7 +453,7 @@ export function ClockSessionStripActionsModal({
                               </span>
                             ) : null
                           })()}
-                          {formatUnifiedResult(item)}
+                          {formatUnifiedResult(item, prefixMap)}
                         </span>
                       </button>
                     ))

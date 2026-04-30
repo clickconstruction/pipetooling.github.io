@@ -69,6 +69,8 @@ import {
   type MergeJobAllocOption,
 } from './my-time-day-editor/MyTimeMergeSegmentsModal'
 import { useToastContext } from '../contexts/ToastContext'
+import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
+import { formatBidLedgerSummaryLine, formatJobLedgerSummaryLine } from '../lib/ledgerDisplayPrefixes'
 import { forceClockOutDefaultOutIso } from '../lib/forceClockOutDefaultOut'
 import { supabase } from '../lib/supabase'
 import { formatErrorMessage, DatabaseError, withSupabaseRetry } from '../utils/errorHandling'
@@ -316,6 +318,7 @@ export function DashboardMyTimeDayEditorModal({
   onPatchSeededSessionsJobBid,
 }: Props) {
   const { showToast } = useToastContext()
+  const prefixMap = useLedgerPrefixMap()
   void _editableRangeProp
   const saveableRange = getThisAndLastWeekRange()
   const currentWeekRange = getDefaultWeekRange()
@@ -857,8 +860,20 @@ export function DashboardMyTimeDayEditorModal({
     let cancelled = false
     void (async () => {
       try {
-        type JobRow = { id: string; hcp_number: string; job_name: string; job_address: string }
-        type BidRow = { id: string; bid_number: string; project_name: string; address: string }
+        type JobRow = {
+          id: string
+          hcp_number: string
+          job_name: string
+          job_address: string
+          service_type_id: string | null
+        }
+        type BidRow = {
+          id: string
+          bid_number: string
+          project_name: string
+          address: string
+          service_type_id: string | null
+        }
         const [jobsData, bidsData] = await Promise.all([
           needJobs.length > 0
             ? withSupabaseRetry(
@@ -880,7 +895,7 @@ export function DashboardMyTimeDayEditorModal({
         for (const id of needJobs) {
           const j = byJobId.get(id)
           nextJ[id] = j
-            ? `J${(j.hcp_number || '').trim() || '—'} · ${j.job_name || '—'} - ${j.job_address || '—'}`
+            ? formatJobLedgerSummaryLine(prefixMap, j.service_type_id, j.hcp_number, j.job_name, j.job_address)
             : `Job ${id.slice(0, 8)}…`
         }
         const bidRows = (bidsData ?? []) as BidRow[]
@@ -889,7 +904,7 @@ export function DashboardMyTimeDayEditorModal({
         for (const id of needBids) {
           const b = byBidId.get(id)
           nextB[id] = b
-            ? `B${(b.bid_number || '').trim() || '—'} · ${b.project_name || '—'} - ${b.address || '—'}`
+            ? formatBidLedgerSummaryLine(prefixMap, b.service_type_id, b.bid_number, b.project_name, b.address)
             : `Bid ${id.slice(0, 8)}…`
         }
         if (Object.keys(nextJ).length > 0) setExtraJobLabels((prev) => ({ ...prev, ...nextJ }))
@@ -906,7 +921,7 @@ export function DashboardMyTimeDayEditorModal({
     return () => {
       cancelled = true
     }
-  }, [sortedSessions, extraJobLabels, extraBidLabels, jobLabelsSerialized, bidLabelsSerialized])
+  }, [sortedSessions, extraJobLabels, extraBidLabels, jobLabelsSerialized, bidLabelsSerialized, prefixMap])
 
   const mergedJobLabels = useMemo(
     () => ({ ...jobLabels, ...extraJobLabels }),

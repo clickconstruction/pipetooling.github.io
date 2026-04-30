@@ -19,6 +19,7 @@ import {
   filterSessionsToSalariedSalaryOrigin,
 } from '../lib/salaryPayConfigGate'
 import { hasPairwiseClockIntervalOverlap } from '../lib/myTimeDayTimeline'
+import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 
 function optimisticPatchClockSessionRow(row: ClockSessionRow, patch: AssignSessionJobSavedPatch): ClockSessionRow {
   if (row.id !== patch.sessionId) return row
@@ -35,6 +36,7 @@ function optimisticPatchClockSessionRow(row: ClockSessionRow, patch: AssignSessi
         hcp_number: sel.hcp_number ?? null,
         job_name: sel.job_name ?? null,
         job_address: sel.job_address ?? null,
+        service_type_id: sel.service_type_id ?? null,
       },
       bids: null,
     }
@@ -49,6 +51,7 @@ function optimisticPatchClockSessionRow(row: ClockSessionRow, patch: AssignSessi
         project_name: sel.project_name ?? null,
         address: sel.address ?? null,
         customers: { name: sel.customer_name?.trim() ? sel.customer_name : null },
+        service_type_id: sel.service_type_id ?? null,
       },
       jobs_ledger: null,
     }
@@ -116,11 +119,17 @@ export type TodaySessionStripRow = {
   job_ledger_id: string | null
   bid_id: string | null
   users: { name: string | null } | null
-  jobs_ledger: { hcp_number: string | null; job_name: string | null; job_address: string | null } | null
+  jobs_ledger: {
+    hcp_number: string | null
+    job_name: string | null
+    job_address: string | null
+    service_type_id?: string | null
+  } | null
   bids: {
     bid_number: string | null
     project_name: string | null
     address: string | null
+    service_type_id?: string | null
     customers: { name: string | null } | null
   } | null
 }
@@ -140,6 +149,7 @@ function optimisticPatchTodayStripRow(row: TodaySessionStripRow, patch: AssignSe
         hcp_number: sel.hcp_number ?? null,
         job_name: sel.job_name ?? null,
         job_address: sel.job_address ?? null,
+        service_type_id: sel.service_type_id ?? null,
       },
       bids: null,
     }
@@ -154,6 +164,7 @@ function optimisticPatchTodayStripRow(row: TodaySessionStripRow, patch: AssignSe
         project_name: sel.project_name ?? null,
         address: sel.address ?? null,
         customers: { name: sel.customer_name?.trim() ? sel.customer_name : null },
+        service_type_id: sel.service_type_id ?? null,
       },
       jobs_ledger: null,
     }
@@ -249,6 +260,7 @@ export function useDashboardMyTeamSectionState(
   authUserId: string | undefined,
   options?: DashboardMyTeamSectionOptions,
 ) {
+  const prefixMap = useLedgerPrefixMap()
   const orgWideStripEnabled = options?.orgWideStripEnabled === true
   const stripWorkDateYmd = options?.stripWorkDateYmd
   const [{ start: dateStart, end: dateEnd }, setDateRange] = useState(weekStartEndEnCA)
@@ -1067,14 +1079,20 @@ export function useDashboardMyTeamSectionState(
       }
       const labelSession = sessions[0]!
       const label =
-        shortJobOrBidLabelFromEmbeds({
+        shortJobOrBidLabelFromEmbeds(
+          {
+            jobs_ledger: labelSession.jobs_ledger,
+            bids: null,
+          },
+          prefixMap,
+        ) ?? 'Job linked'
+      const lines = formatClockSessionJobOrBidModalLinesFromEmbeds(
+        {
           jobs_ledger: labelSession.jobs_ledger,
           bids: null,
-        }) ?? 'Job linked'
-      const lines = formatClockSessionJobOrBidModalLinesFromEmbeds({
-        jobs_ledger: labelSession.jobs_ledger,
-        bids: null,
-      })
+        },
+        prefixMap,
+      )
       const rawAddr = (lines?.line2 ?? labelSession.jobs_ledger?.job_address ?? '').trim()
       const addressLine = rawAddr.length > 0 ? rawAddr : null
       const distinctPeopleCount = new Set(sessions.map((s) => s.user_id)).size
@@ -1107,7 +1125,7 @@ export function useDashboardMyTeamSectionState(
       })
     }
     return out
-  }, [todaySessionsForStripScope, todayHoursNowMs])
+  }, [todaySessionsForStripScope, todayHoursNowMs, prefixMap])
 
   const stripSyntheticSalarySessions = useMemo((): SyntheticSalaryStripSession[] => {
     if (!salaryStripMeta) return []

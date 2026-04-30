@@ -172,7 +172,7 @@ Column order (left to right; leading **expand** chevron opens inline **Notes** â
 1. **Project Folder** - Folder icon linking to drive folder (or dash if none)
 2. **Job Plans** - Document icon linking to plans (or dash if none)
 3. **GC/Builder** - Customer name (clickable for details)
-4. **Bid #** - Auto-generated for new bids; displayed as **B456** on the board and in Clock In search. **When set, `B{n}` is clickable on the Bid Board** and opens **Bid preview** (same as the Preview column). Editable only by dev, master, assistant (read-only for estimator, primary)
+4. **Bid #** - Auto-generated for new bids; displayed with **trade-specific prefix** + number (e.g. **`BP456`**, **`B456`** when **`service_types.ledger_bid_prefix`** is blank â€” **v2.432**) on the board and in Clock In search. **When set, prefix+`{n}` is clickable on the Bid Board** and opens **Bid preview** (same as the Preview column). Editable only by dev, master, assistant (read-only for estimator, primary)
 5. **Project Name** - Bid identifier
 6. **Address** - Project location; line break after first comma (street on line 1, city/state on line 2)
 7. **Account Man** - Account manager or estimator name

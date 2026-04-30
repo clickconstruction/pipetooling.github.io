@@ -3,6 +3,7 @@ import {
   formatClockSessionJobOrBidLabelFromEmbeds,
   shortJobOrBidLabelFromEmbeds,
 } from '../types/clockSessions'
+import type { LedgerPrefixMap } from './ledgerDisplayPrefixes'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
 
 /** PostgREST row shape for CLOCK_SESSION_CALENDAR_SELECT. */
@@ -113,16 +114,16 @@ export function formatCalendarSessionDurationCompact(
 
 export const CALENDAR_SESSION_CHIP_CAP = 3
 
-export function calendarSessionChipLabel(s: ClockSessionRow): string {
-  const j = shortJobOrBidLabelFromEmbeds(s)
+export function calendarSessionChipLabel(s: ClockSessionRow, prefixMap: LedgerPrefixMap): string {
+  const j = shortJobOrBidLabelFromEmbeds(s, prefixMap)
   if (j) return j
   if (s.origin === 'salary_schedule') return 'Scheduled'
   return 'No job'
 }
 
-export function calendarSessionChipTooltip(s: ClockSessionRow): string {
+export function calendarSessionChipTooltip(s: ClockSessionRow, prefixMap: LedgerPrefixMap): string {
   const parts: string[] = []
-  const full = formatClockSessionJobOrBidLabelFromEmbeds(s)
+  const full = formatClockSessionJobOrBidLabelFromEmbeds(s, prefixMap)
   if (full) parts.push(full)
   else if (s.origin === 'salary_schedule') parts.push('Scheduled (salary)')
   const n = (s.notes ?? '').trim()

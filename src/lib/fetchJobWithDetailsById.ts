@@ -22,7 +22,7 @@ function mapRowToJobWithDetails(
     jobs_ledger_team_members?: (JobsLedgerTeamMember & { users: { name: string } | null })[]
     reports?: Array<{ job_ledger_id: string | null }>
     projects?: { id: string; name: string } | null
-    bids?: { id: string; project_name: string | null; bid_number: string | null } | null
+    bids?: { id: string; project_name: string | null; bid_number: string | null; service_type_id: string | null } | null
     service_types?: { name: string } | null
   },
 ): JobWithDetails {

@@ -17,6 +17,8 @@ import {
   type BidDetails,
 } from '../utils/crewAssignments'
 import { getBidServiceTypeTag } from '../utils/unifiedJobBidSearch'
+import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
+import { formatBidLedgerShortLine, formatJobLedgerShortLine } from '../lib/ledgerDisplayPrefixes'
 
 const NOTES_PREVIEW_MAX = 80
 
@@ -96,6 +98,7 @@ export function CrewJobsBlock({
   onFocusTeamLaborConsumed,
 }: CrewJobsBlockProps) {
   const { user: authUser } = useAuth()
+  const prefixMap = useLedgerPrefixMap()
 
   const [canAccess, setCanAccess] = useState(false)
   /** False until `loadAccess` finishes so we do not treat empty team labor as final before fetch runs. */
@@ -115,8 +118,16 @@ export function CrewJobsBlock({
   const [crewJobSearchText, setCrewJobSearchText] = useState('')
   const [crewJobSearchResults, setCrewJobSearchResults] = useState<
     Array<
-      | { type: 'job'; id: string; hcp_number: string; job_name: string; job_address: string }
-      | { type: 'bid'; id: string; bid_number: string; project_name: string; address: string; service_type_name?: string }
+      | { type: 'job'; id: string; hcp_number: string; job_name: string; job_address: string; service_type_id?: string | null }
+      | {
+          type: 'bid'
+          id: string
+          bid_number: string
+          project_name: string
+          address: string
+          service_type_name?: string
+          service_type_id?: string | null
+        }
     >
   >([])
   const [teamLaborSearch, setTeamLaborSearch] = useState('')
@@ -410,8 +421,22 @@ export function CrewJobsBlock({
   function addAssignmentToPerson(
     personName: string,
     item:
-      | { type: 'job'; id: string; hcp_number: string; job_name: string; job_address: string }
-      | { type: 'bid'; id: string; bid_number: string; project_name: string; address: string }
+      | {
+          type: 'job'
+          id: string
+          hcp_number: string
+          job_name: string
+          job_address: string
+          service_type_id?: string | null
+        }
+      | {
+          type: 'bid'
+          id: string
+          bid_number: string
+          project_name: string
+          address: string
+          service_type_id?: string | null
+        },
   ) {
     const row = crewJobsData[personName] ?? { crew_lead_person_name: null, unifiedAssignments: [] }
     if (row.unifiedAssignments.some((a) => a.type === item.type && a.id === item.id)) return
@@ -426,12 +451,22 @@ export function CrewJobsBlock({
     if (item.type === 'job') {
       setCrewJobDetailsMap((prev) => ({
         ...prev,
-        [item.id]: { hcp_number: item.hcp_number, job_name: item.job_name, job_address: item.job_address },
+        [item.id]: {
+          hcp_number: item.hcp_number,
+          job_name: item.job_name,
+          job_address: item.job_address,
+          service_type_id: item.service_type_id ?? null,
+        },
       }))
     } else {
       setCrewBidDetailsMap((prev) => ({
         ...prev,
-        [item.id]: { bid_number: item.bid_number, project_name: item.project_name, address: item.address },
+        [item.id]: {
+          bid_number: item.bid_number,
+          project_name: item.project_name,
+          address: item.address,
+          service_type_id: item.service_type_id ?? null,
+        },
       }))
     }
     saveCrewRow(personName, { ...row, unifiedAssignments: newAssignments })
@@ -522,8 +557,19 @@ export function CrewJobsBlock({
     if (missingJobs.length > 0) {
       supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: missingJobs }).then(({ data }) => {
         const map: Record<string, JobDetails> = {}
-        for (const r of (data ?? []) as { id: string; hcp_number: string; job_name: string; job_address: string }[]) {
-          map[r.id] = { hcp_number: r.hcp_number ?? '', job_name: r.job_name ?? '', job_address: r.job_address ?? '' }
+        for (const r of (data ?? []) as Array<{
+          id: string
+          hcp_number: string
+          job_name: string
+          job_address: string
+          service_type_id: string | null
+        }>) {
+          map[r.id] = {
+            hcp_number: r.hcp_number ?? '',
+            job_name: r.job_name ?? '',
+            job_address: r.job_address ?? '',
+            service_type_id: r.service_type_id,
+          }
         }
         setCrewJobDetailsMap((prev) => ({ ...prev, ...map }))
       })
@@ -531,8 +577,19 @@ export function CrewJobsBlock({
     if (missingBids.length > 0) {
       supabase.rpc('get_bids_by_ids', { p_bid_ids: missingBids }).then(({ data }) => {
         const map: Record<string, BidDetails> = {}
-        for (const r of (data ?? []) as { id: string; bid_number: string; project_name: string; address: string }[]) {
-          map[r.id] = { bid_number: r.bid_number ?? '', project_name: r.project_name ?? '', address: r.address ?? '' }
+        for (const r of (data ?? []) as Array<{
+          id: string
+          bid_number: string
+          project_name: string
+          address: string
+          service_type_id: string | null
+        }>) {
+          map[r.id] = {
+            bid_number: r.bid_number ?? '',
+            project_name: r.project_name ?? '',
+            address: r.address ?? '',
+            service_type_id: r.service_type_id,
+          }
         }
         setCrewBidDetailsMap((prev) => ({ ...prev, ...map }))
       })
@@ -547,8 +604,21 @@ export function CrewJobsBlock({
           supabase.rpc('search_jobs_ledger', { search_text: q }),
           supabase.rpc('search_bids_for_clock', { p_search_text: q }),
         ]).then(([jobsRes, bidsRes]) => {
-          const jobs = (jobsRes.data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>
-          const bidsRaw = (bidsRes.data ?? []) as Array<{ id: string; bid_number?: string; project_name: string; address: string; service_type_name?: string }>
+          const jobs = (jobsRes.data ?? []) as Array<{
+            id: string
+            hcp_number: string
+            job_name: string
+            job_address: string
+            service_type_id: string | null
+          }>
+          const bidsRaw = (bidsRes.data ?? []) as Array<{
+            id: string
+            bid_number?: string
+            project_name: string
+            address: string
+            service_type_name?: string
+            service_type_id: string | null
+          }>
           const bids = bidsRaw.map((b) => ({ ...b, bid_number: b.bid_number ?? '' }))
           const merged = [
             ...jobs.map((j) => ({ type: 'job' as const, ...j })),
@@ -706,7 +776,7 @@ export function CrewJobsBlock({
                         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem' }}>
                           {row.unifiedAssignments.map((a, idx) => {
                             const details = a.type === 'job' ? crewJobDetailsMap[a.id] : crewBidDetailsMap[a.id]
-                            const label = formatAssignmentLabel(a.type, details) || a.id.slice(0, 8)
+                            const label = formatAssignmentLabel(a.type, details, prefixMap) || a.id.slice(0, 8)
                             const titleAttr = a.type === 'job' ? (details as JobDetails)?.job_address : (details as BidDetails)?.address
                             return (
                               <span
@@ -804,7 +874,7 @@ export function CrewJobsBlock({
                             ? assignments
                                 .map((a) => {
                                   const details = a.type === 'job' ? crewJobDetailsMap[a.id] : crewBidDetailsMap[a.id]
-                                  return formatAssignmentLabel(a.type, details)
+                                  return formatAssignmentLabel(a.type, details, prefixMap)
                                 })
                                 .join(', ')
                             : 'Inherits from crew lead'}
@@ -1059,8 +1129,22 @@ export function CrewJobsBlock({
                     addAssignmentToPerson(
                       crewJobSearchModal!.personName,
                       item.type === 'job'
-                        ? { type: 'job', id: item.id, hcp_number: item.hcp_number, job_name: item.job_name, job_address: item.job_address }
-                        : { type: 'bid', id: item.id, bid_number: item.bid_number, project_name: item.project_name, address: item.address }
+                        ? {
+                            type: 'job',
+                            id: item.id,
+                            hcp_number: item.hcp_number,
+                            job_name: item.job_name,
+                            job_address: item.job_address,
+                            service_type_id: item.service_type_id ?? null,
+                          }
+                        : {
+                            type: 'bid',
+                            id: item.id,
+                            bid_number: item.bid_number,
+                            project_name: item.project_name,
+                            address: item.address,
+                            service_type_id: item.service_type_id ?? null,
+                          }
                     )
                   }
                   style={{
@@ -1085,8 +1169,8 @@ export function CrewJobsBlock({
                       ) : null
                     })()}
                     {item.type === 'job'
-                      ? `J${(item.hcp_number || '').trim() || '—'} · ${item.job_name || '—'}`
-                      : `B${(item.bid_number || '').trim() || '—'} · ${item.project_name || '—'}`}
+                      ? formatJobLedgerShortLine(prefixMap, item.service_type_id ?? null, item.hcp_number, item.job_name)
+                      : formatBidLedgerShortLine(prefixMap, item.service_type_id ?? null, item.bid_number, item.project_name)}
                   </div>
                   {(item.type === 'job' ? item.job_address : item.address) && (
                     <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>

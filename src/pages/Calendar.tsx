@@ -25,6 +25,7 @@ import { resolveCalendarWorkday, UNPAID_TIME_OFF_LABEL } from '../lib/resolveCal
 import type { ClockSessionRow } from '../types/clockSessions'
 import { PreviewJobModal } from '../components/calendar/PreviewJobModal'
 import { scheduleFormatWindow } from '../lib/jobScheduleChicago'
+import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'helpers' | 'estimator'
 
@@ -238,6 +239,7 @@ function calendarRecordedHasVisibleSummary(rec: { hours: number; openCount: numb
 
 export default function Calendar() {
   const { user: authUser, role: authRole } = useAuth()
+  const prefixMap = useLedgerPrefixMap()
   const mobileCalendarLayout = useMatchMedia(CALENDAR_MOBILE_CHROME_MQ)
   const [userName, setUserName] = useState<string | null>(null)
   const [steps, setSteps] = useState<CalendarStep[]>([])
@@ -1119,7 +1121,7 @@ export default function Calendar() {
                                     display: 'block',
                                     overflow: 'hidden',
                                   }}
-                                  title={`${calendarSessionChipTooltip(s)} | ${formatSessionRangeCentral(s.clocked_in_at, s.clocked_out_at)} · ${formatCalendarSessionDurationCompact(s, nowMs)}`}
+                                  title={`${calendarSessionChipTooltip(s, prefixMap)} | ${formatSessionRangeCentral(s.clocked_in_at, s.clocked_out_at)} · ${formatCalendarSessionDurationCompact(s, nowMs)}`}
                                 >
                                   <span
                                     style={{
@@ -1130,7 +1132,7 @@ export default function Calendar() {
                                       whiteSpace: 'nowrap',
                                     }}
                                   >
-                                    {calendarSessionChipLabel(s)}
+                                    {calendarSessionChipLabel(s, prefixMap)}
                                   </span>
                                   <span
                                     style={{
@@ -1435,7 +1437,7 @@ export default function Calendar() {
                                     background: '#fafafa',
                                   }}
                                 >
-                                  <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{calendarSessionChipLabel(s)}</div>
+                                  <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{calendarSessionChipLabel(s, prefixMap)}</div>
                                   <div style={{ fontSize: '0.8125rem', color: '#4b5563', marginTop: 4 }}>
                                     {formatSessionRangeCentral(s.clocked_in_at, s.clocked_out_at)}
                                     {' · '}

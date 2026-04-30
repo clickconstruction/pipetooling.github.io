@@ -22,6 +22,8 @@ import { type DocumentsPageTab, parseDocumentsPageTabFromSearch } from '../lib/d
 import { labelJobsLedgerStatus, normalizeJobsLedgerStatus } from '../lib/jobsLedgerStatusPipeline'
 import DocumentsJobBilledInvoiceModal from '../components/documents/DocumentsJobBilledInvoiceModal'
 import { billingTypeLabel } from '../components/jobs/HostedStripeBillPanel'
+import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
+import { formatBidLedgerDocTitle, formatJobLedgerDocTitle } from '../lib/ledgerDisplayPrefixes'
 
 type LedgerEstimateRow = Tables<'estimates'> & {
   customers: { name: string | null; address: string | null; contact_info: unknown } | null
@@ -85,6 +87,7 @@ type LedgerBidRow = Pick<
   | 'project_name'
   | 'address'
   | 'bid_number'
+  | 'service_type_id'
   | 'bid_value'
   | 'bid_date_sent'
   | 'outcome'
@@ -462,6 +465,7 @@ type LedgerJobRow = Pick<
   Tables<'jobs_ledger'>,
   | 'id'
   | 'hcp_number'
+  | 'service_type_id'
   | 'job_name'
   | 'job_address'
   | 'status'
@@ -507,7 +511,13 @@ function formatJobRevenueUsd(n: number | null | undefined): string {
 type SupplyHouseInvoiceLedgerAllocation = {
   job_id: string
   pct: number
-  jobs_ledger: { id: string; hcp_number: string | null; job_name: string | null; job_address: string | null } | null
+  jobs_ledger: {
+    id: string
+    hcp_number: string | null
+    job_name: string | null
+    job_address: string | null
+    service_type_id: string | null
+  } | null
 }
 
 type SupplyHouseInvoiceLedgerRow = Tables<'supply_house_invoices'> & {
@@ -600,6 +610,7 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
   const embedded = embedSearch !== undefined
   const { user } = useAuth()
   const { showToast } = useToastContext()
+  const prefixMap = useLedgerPrefixMap()
   const [rows, setRows] = useState<LedgerJobRow[]>([])
   const [invoicesByJobId, setInvoicesByJobId] = useState<Map<string, DocumentsJobLedgerInvoiceRow[]>>(() => new Map())
   const [loading, setLoading] = useState(true)
@@ -627,7 +638,7 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
           await supabase
             .from('jobs_ledger')
             .select(
-              'id, hcp_number, job_name, job_address, status, revenue, google_drive_link, updated_at, customer_name, customer_email, customers(name, address)',
+              'id, hcp_number, service_type_id, job_name, job_address, status, revenue, google_drive_link, updated_at, customer_name, customer_email, customers(name, address)',
             )
             .order('updated_at', { ascending: false, nullsFirst: false })
             .limit(200),
@@ -761,7 +772,9 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
                 const cx = jobLedgerCustomerLines(r)
                 const hcp = (r.hcp_number ?? '').trim()
                 const jn = (r.job_name ?? '').trim()
-                const titleText = hcp ? `J${hcp} | ${jn || '—'}` : jn || '—'
+                const titleText = hcp
+                  ? formatJobLedgerDocTitle(prefixMap, r.service_type_id ?? null, hcp, jn)
+                  : jn || '—'
                 const addr = (r.job_address ?? '').trim()
                 const filesLink = (r.google_drive_link ?? '').trim()
                 const hasJobFiles = !!filesLink
@@ -863,6 +876,7 @@ function DocumentsBidProposalsLedger({ embedSearch }: DocumentsLedgerEmbedProps 
   const embedded = embedSearch !== undefined
   const { user } = useAuth()
   const { showToast } = useToastContext()
+  const prefixMap = useLedgerPrefixMap()
   const [rows, setRows] = useState<LedgerBidRow[]>([])
   const [countRowsByBidId, setCountRowsByBidId] = useState<Map<string, Array<{ fixture: string; count: number }>>>(
     () => new Map(),
@@ -884,7 +898,7 @@ function DocumentsBidProposalsLedger({ embedSearch }: DocumentsLedgerEmbedProps 
           await supabase
             .from('bids')
             .select(
-              'id, project_name, address, bid_number, bid_value, bid_date_sent, outcome, updated_at, bid_submission_link, drive_link, customers(name, address), service_type:service_types(name)',
+              'id, project_name, address, bid_number, service_type_id, bid_value, bid_date_sent, outcome, updated_at, bid_submission_link, drive_link, customers(name, address), service_type:service_types(name)',
             )
             .order('updated_at', { ascending: false, nullsFirst: false })
             .limit(200),
@@ -1033,7 +1047,9 @@ function DocumentsBidProposalsLedger({ embedSearch }: DocumentsLedgerEmbedProps 
                 const addr = (r.address ?? '').trim()
                 const bidNum = r.bid_number != null && String(r.bid_number).trim() !== '' ? String(r.bid_number).trim() : null
                 const titleBase = (r.project_name ?? '').trim() || 'Untitled'
-                const titleText = bidNum ? `B${bidNum} | ${titleBase}` : titleBase
+                const titleText = bidNum
+                  ? formatBidLedgerDocTitle(prefixMap, r.service_type_id ?? null, bidNum, titleBase)
+                  : titleBase
                 const serviceTag = getBidServiceTypeTag(r.service_type?.name)
                 return (
                   <tr key={r.id}>
@@ -1150,6 +1166,7 @@ function DocumentsSupplyHouseInvoicesLedger({ embedSearch }: DocumentsLedgerEmbe
   const embedded = embedSearch !== undefined
   const { user } = useAuth()
   const { showToast } = useToastContext()
+  const prefixMap = useLedgerPrefixMap()
   const [rows, setRows] = useState<SupplyHouseInvoiceLedgerRow[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -1182,7 +1199,7 @@ function DocumentsSupplyHouseInvoicesLedger({ embedSearch }: DocumentsLedgerEmbe
               supply_house_invoice_job_allocations(
                 job_id,
                 pct,
-                jobs_ledger(id, hcp_number, job_name, job_address)
+                jobs_ledger(id, hcp_number, job_name, job_address, service_type_id)
               )`,
             )
             .order('invoice_date', { ascending: false })
@@ -1295,7 +1312,10 @@ function DocumentsSupplyHouseInvoicesLedger({ embedSearch }: DocumentsLedgerEmbe
                     const ja = (jl?.job_address ?? '').trim()
                     const pct = Number(a.pct)
                     const pctStr = Number.isFinite(pct) && pct > 0 ? ` · ${pct}%` : ''
-                    const line1 = `${hcp ? `Job #${hcp}` : '—'} | ${jn || '—'}${pctStr}`
+                    const line1 =
+                      (hcp
+                        ? formatJobLedgerDocTitle(prefixMap, jl?.service_type_id ?? null, hcp, jn)
+                        : `— | ${jn || '—'}`) + pctStr
                     return ja ? `${line1} — ${ja}` : line1
                   })
                   .join('; ')
@@ -1345,7 +1365,10 @@ function DocumentsSupplyHouseInvoicesLedger({ embedSearch }: DocumentsLedgerEmbe
                             const ja = (jl?.job_address ?? '').trim()
                             const pct = Number(a.pct)
                             const pctStr = Number.isFinite(pct) && pct > 0 ? ` · ${pct}%` : ''
-                            const line1 = `${hcp ? `Job #${hcp}` : '—'} | ${jn || '—'}${pctStr}`
+                            const line1 =
+                      (hcp
+                        ? formatJobLedgerDocTitle(prefixMap, jl?.service_type_id ?? null, hcp, jn)
+                        : `— | ${jn || '—'}`) + pctStr
                             return (
                               <Link
                                 key={`${r.id}-${a.job_id}-${a.pct}`}

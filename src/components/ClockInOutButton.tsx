@@ -8,10 +8,13 @@ import {
   formatUnifiedResult,
   formatUnifiedJobSchedulePrimaryLine,
   getBidServiceTypeTag,
+  serviceTypeTagForUnifiedRow,
   type JobSearchResult,
   type BidSearchResult,
   type UnifiedSearchResult,
 } from '../utils/unifiedJobBidSearch'
+import { useLedgerDisplayPrefixes } from '../contexts/LedgerDisplayPrefixContext'
+import { formatBidLedgerNumberLabel, resolveBidLedgerPrefix } from '../lib/ledgerDisplayPrefixes'
 import { getTeamFeedbackEligibility } from '../lib/teamFeedback'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { denverCalendarDayKey } from '../utils/dateUtils'
@@ -66,6 +69,7 @@ function dispatchScheduledJobToUnified(d: DispatchScheduledJobForAssign): Extrac
     hcp_number: d.hcp_number,
     job_name: d.job_name,
     job_address: d.job_address,
+    service_type_id: d.service_type_id ?? null,
   }
 }
 
@@ -124,6 +128,7 @@ export default function ClockInOutButton({
   onFieldReportSaved,
 }: Props) {
   const { user: authUser, role } = useAuth()
+  const { prefixMap } = useLedgerDisplayPrefixes()
   const { showToast } = useToastContext()
   const { notifyFirstClockInOfDay } = useDailyGoalsGate()
   const [openSession, setOpenSession] = useState<OpenSession | null>(null)
@@ -198,7 +203,17 @@ export default function ClockInOutButton({
       const id = o.id
       if (source === 'job' && typeof id === 'string') {
         if (typeof o.hcp_number === 'string' && typeof o.job_name === 'string' && typeof o.job_address === 'string') {
-          return { source: 'job', id, hcp_number: o.hcp_number, job_name: o.job_name, job_address: o.job_address }
+          const stid = o.service_type_id
+          const stname = o.service_type_name
+          return {
+            source: 'job',
+            id,
+            hcp_number: o.hcp_number,
+            job_name: o.job_name,
+            job_address: o.job_address,
+            service_type_id: typeof stid === 'string' ? stid : null,
+            service_type_name: typeof stname === 'string' ? stname : null,
+          }
         }
       }
       if (source === 'bid' && typeof id === 'string') {
@@ -208,6 +223,7 @@ export default function ClockInOutButton({
           typeof o.address === 'string' &&
           typeof o.customer_name === 'string'
         ) {
+          const stid = o.service_type_id
           return {
             source: 'bid',
             id,
@@ -216,6 +232,7 @@ export default function ClockInOutButton({
             address: o.address,
             customer_name: o.customer_name,
             service_type_name: typeof o.service_type_name === 'string' ? o.service_type_name : null,
+            service_type_id: typeof stid === 'string' ? stid : null,
           }
         }
       }
@@ -448,13 +465,22 @@ export default function ClockInOutButton({
         setScheduledDispatchJobs(dispatchRows)
         setWorkingBoardBidPicks(workingPicks)
         const onScheduleIds = new Set(dispatchRows.map((d) => d.jobId))
-        const jobs = (data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>
+        const jobs = (data ?? []) as Array<{
+          id: string
+          hcp_number: string
+          job_name: string
+          job_address: string
+          service_type_id?: string | null
+          service_type_name?: string | null
+        }>
         const mapped: UnifiedSearchResult[] = jobs.map((j) => ({
           source: 'job' as const,
           id: j.id,
           hcp_number: j.hcp_number ?? '',
           job_name: j.job_name ?? '',
           job_address: j.job_address ?? '',
+          service_type_id: j.service_type_id ?? null,
+          service_type_name: (j.service_type_name ?? '').trim() || null,
         }))
         const mappedFiltered = mapped.filter((r) => r.source !== 'job' || !onScheduleIds.has(r.id))
         lastDefaultUnifiedResultsRef.current = mappedFiltered
@@ -706,13 +732,14 @@ export default function ClockInOutButton({
             async () =>
               supabase
                 .from('jobs_ledger')
-                .select('id, hcp_number, job_name, job_address')
+                .select('id, hcp_number, job_name, job_address, service_type_id, service_types(name)')
                 .eq('id', jobLedgerId)
                 .maybeSingle(),
             'hydrate clock-out job',
           )
           if (cancelled) return
-          const job = row as JobSearchResult | null
+          type JobHydrate = JobSearchResult & { service_types?: { name: string } | null }
+          const job = row as JobHydrate | null
           if (!job) {
             setSelectedAssociation(null)
             return
@@ -723,6 +750,8 @@ export default function ClockInOutButton({
             hcp_number: job.hcp_number ?? '',
             job_name: job.job_name ?? '',
             job_address: job.job_address ?? '',
+            service_type_id: job.service_type_id ?? null,
+            service_type_name: job.service_types?.name?.trim() || null,
           })
           return
         }
@@ -733,13 +762,14 @@ export default function ClockInOutButton({
             project_name: string | null
             address: string | null
             customer_id: string | null
+            service_type_id: string | null
             service_type: { name: string } | null
           }
           const bid = await withSupabaseRetry(
             async () =>
               supabase
                 .from('bids')
-                .select('id, bid_number, project_name, address, customer_id, service_type:service_types(name)')
+                .select('id, bid_number, service_type_id, project_name, address, customer_id, service_type:service_types(name)')
                 .eq('id', bidId)
                 .maybeSingle(),
             'hydrate clock-out bid',
@@ -768,6 +798,7 @@ export default function ClockInOutButton({
             address: b.address ?? '',
             customer_name,
             service_type_name: b.service_type?.name ?? null,
+            service_type_id: b.service_type_id ?? null,
           })
         }
       } catch {
@@ -1031,7 +1062,7 @@ export default function ClockInOutButton({
         {scheduledDispatchJobs.map((d) => {
           const u = dispatchScheduledJobToUnified(d)
           const win = d.windowsLabel?.trim()
-          const { title, address } = formatUnifiedJobSchedulePrimaryLine(u)
+          const { title, address } = formatUnifiedJobSchedulePrimaryLine(u, prefixMap)
           const isSelected = selectedAssociation?.source === 'job' && selectedAssociation.id === d.jobId
           const line1 = win ? `${win} | ${title}` : title
           const titleAttr = address ? `${line1}\n${address}` : line1
@@ -1102,7 +1133,8 @@ export default function ClockInOutButton({
         }}
       >
         {workingBoardBidPicks.map((b) => {
-          const prefix = `B${(b.bid_number || '').trim() || '—'}`
+          const pref = resolveBidLedgerPrefix(b.service_type_id ?? null, prefixMap)
+          const prefix = formatBidLedgerNumberLabel(pref, b.bid_number)
           const line1 = `${prefix} · ${b.project_name || '—'}`
           const sub = (b.address || '').trim() || (b.customer_name || '').trim()
           const titleAttr = sub ? `${line1}\n${sub}` : line1
@@ -1210,7 +1242,7 @@ export default function ClockInOutButton({
           disabled={opts.disabled}
           style={{ ...useLastBtnStyle, alignSelf: 'flex-start' }}
         >
-          Use last: {formatUnifiedResult(lastSelectedJobBid)}
+          Use last: {formatUnifiedResult(lastSelectedJobBid, prefixMap)}
         </button>
       </div>
     )
@@ -1478,15 +1510,15 @@ export default function ClockInOutButton({
               {selectedAssociation && associationChipFromSearch && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                   <span style={clockInSelectedAssociationChipStyle}>
-                    {selectedAssociation.source === 'bid' && (() => {
-                      const t = getBidServiceTypeTag(selectedAssociation.service_type_name)
+                    {(() => {
+                      const t = serviceTypeTagForUnifiedRow(selectedAssociation)
                       return t ? (
                         <span style={{ padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: t.color, color: '#fff', borderRadius: 4 }}>
                           [{t.tag}]
                         </span>
                       ) : null
                     })()}
-                    {formatUnifiedResult(selectedAssociation)}
+                    {formatUnifiedResult(selectedAssociation, prefixMap)}
                   </span>
                   <button
                     type="button"
@@ -1540,15 +1572,15 @@ export default function ClockInOutButton({
                               }),
                         }}
                       >
-                        {r.source === 'bid' && (() => {
-                          const t = getBidServiceTypeTag(r.service_type_name)
+                        {(() => {
+                          const t = serviceTypeTagForUnifiedRow(r)
                           return t ? (
                             <span style={{ marginRight: '0.35rem', padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: t.color, color: '#fff', borderRadius: 4 }}>
                               [{t.tag}]
                             </span>
                           ) : null
                         })()}
-                        {formatUnifiedResult(r)}
+                        {formatUnifiedResult(r, prefixMap)}
                       </button>
                     ))
                   )}
@@ -1644,15 +1676,15 @@ export default function ClockInOutButton({
               {selectedAssociation && (associationChipFromSearch || showUpdateFocusAssociationChip) && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                   <span style={{ flex: 1, padding: '0.5rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    {selectedAssociation.source === 'bid' && (() => {
-                      const t = getBidServiceTypeTag(selectedAssociation.service_type_name)
+                    {(() => {
+                      const t = serviceTypeTagForUnifiedRow(selectedAssociation)
                       return t ? (
                         <span style={{ padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: t.color, color: '#fff', borderRadius: 4 }}>
                           [{t.tag}]
                         </span>
                       ) : null
                     })()}
-                    {formatUnifiedResult(selectedAssociation)}
+                    {formatUnifiedResult(selectedAssociation, prefixMap)}
                   </span>
                   <button
                     type="button"
@@ -1688,15 +1720,15 @@ export default function ClockInOutButton({
                         }}
                         style={{ display: 'block', width: '100%', padding: '0.5rem 0.75rem', textAlign: 'left', border: 'none', background: selectedAssociation && selectedAssociation.source === r.source && selectedAssociation.id === r.id ? '#eff6ff' : 'white', cursor: 'pointer', borderBottom: '1px solid #e5e7eb', fontSize: '0.875rem' }}
                       >
-                        {r.source === 'bid' && (() => {
-                          const t = getBidServiceTypeTag(r.service_type_name)
+                        {(() => {
+                          const t = serviceTypeTagForUnifiedRow(r)
                           return t ? (
                             <span style={{ marginRight: '0.35rem', padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: t.color, color: '#fff', borderRadius: 4 }}>
                               [{t.tag}]
                             </span>
                           ) : null
                         })()}
-                        {formatUnifiedResult(r)}
+                        {formatUnifiedResult(r, prefixMap)}
                       </button>
                     ))
                   )}
@@ -1783,15 +1815,15 @@ export default function ClockInOutButton({
               {selectedAssociation && associationChipFromSearch && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                   <span style={{ flex: 1, padding: '0.5rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    {selectedAssociation.source === 'bid' && (() => {
-                      const t = getBidServiceTypeTag(selectedAssociation.service_type_name)
+                    {(() => {
+                      const t = serviceTypeTagForUnifiedRow(selectedAssociation)
                       return t ? (
                         <span style={{ padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: t.color, color: '#fff', borderRadius: 4 }}>
                           [{t.tag}]
                         </span>
                       ) : null
                     })()}
-                    {formatUnifiedResult(selectedAssociation)}
+                    {formatUnifiedResult(selectedAssociation, prefixMap)}
                   </span>
                   <button
                     type="button"
@@ -1837,15 +1869,15 @@ export default function ClockInOutButton({
                           fontSize: '0.875rem',
                         }}
                       >
-                        {r.source === 'bid' && (() => {
-                          const t = getBidServiceTypeTag(r.service_type_name)
+                        {(() => {
+                          const t = serviceTypeTagForUnifiedRow(r)
                           return t ? (
                             <span style={{ marginRight: '0.35rem', padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: t.color, color: '#fff', borderRadius: 4 }}>
                               [{t.tag}]
                             </span>
                           ) : null
                         })()}
-                        {formatUnifiedResult(r)}
+                        {formatUnifiedResult(r, prefixMap)}
                       </button>
                     ))
                   )}
@@ -1875,7 +1907,7 @@ export default function ClockInOutButton({
                       {scheduledJobsMissingReport.map((d) => {
                           const u = dispatchScheduledJobToUnified(d)
                           const win = d.windowsLabel?.trim()
-                          const { title, address } = formatUnifiedJobSchedulePrimaryLine(u)
+                          const { title, address } = formatUnifiedJobSchedulePrimaryLine(u, prefixMap)
                           const line1 = win ? `${win} | ${title}` : title
                           return (
                             <button

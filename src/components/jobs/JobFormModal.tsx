@@ -18,6 +18,8 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { useAuth } from '../../hooks/useAuth'
 import { useMercuryLedgerNicknames } from '../../hooks/useMercuryLedgerNicknames'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
+import { formatBidLedgerDocTitle, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import { parseCustomerImport } from '../../utils/parseCustomerImport'
 import { nameSimilarity } from '../../utils/nameSimilarity'
 import { formatPostgrestOrUnknownError, withSupabaseRetry } from '../../utils/errorHandling'
@@ -393,11 +395,18 @@ const JOB_FORM_OVERLAY_Z_INDEX = 1010
 const JOB_FORM_NESTED_OVERLAY_Z_INDEX = JOB_FORM_OVERLAY_Z_INDEX + 1
 const JOB_FORM_MIGRATE_OVERLAY_Z_INDEX = JOB_FORM_NESTED_OVERLAY_Z_INDEX + 1
 
-function formatJobFormBidLinkTitle(summary: { project_name: string | null; bid_number: string | null } | null): string {
+function formatJobFormBidLinkTitle(
+  prefixMap: LedgerPrefixMap,
+  summary: {
+    project_name: string | null
+    bid_number: string | null
+    service_type_id?: string | null
+  } | null,
+): string {
   if (!summary) return ''
   const name = (summary.project_name ?? '').trim() || 'Untitled'
   const n = summary.bid_number != null && String(summary.bid_number).trim() !== '' ? String(summary.bid_number).trim() : null
-  return n ? `B${n} | ${name}` : name
+  return n ? formatBidLedgerDocTitle(prefixMap, summary.service_type_id ?? null, n, name) : name
 }
 
 function ReadOnlyPaymentRefCopy({
@@ -485,6 +494,7 @@ export default function JobFormModal({
   const { user: authUser, role: authRole } = useAuth()
   const { nicknameByDebitCard } = useMercuryLedgerNicknames()
   const { showToast } = useToastContext()
+  const prefixMap = useLedgerPrefixMap()
   const billCustomer = useBillCustomerModal()
   const newProjectModal = useNewProjectModal()
   const navigate = useNavigate()
@@ -575,6 +585,7 @@ export default function JobFormModal({
   const [linkedBidSummary, setLinkedBidSummary] = useState<{
     project_name: string | null
     bid_number: string | null
+    service_type_id?: string | null
   } | null>(null)
   const [bids, setBids] = useState<JobBidLinkOption[]>([])
   const [serviceTypes, setServiceTypes] = useState<JobFormServiceType[]>([])
@@ -886,9 +897,13 @@ export default function JobFormModal({
     setBidId(job.bid_id ?? null)
     setLinkedBidSummary(
       job.bid_id && job.linkedBid
-        ? { project_name: job.linkedBid.project_name, bid_number: job.linkedBid.bid_number }
+        ? {
+            project_name: job.linkedBid.project_name,
+            bid_number: job.linkedBid.bid_number,
+            service_type_id: job.linkedBid.service_type_id ?? null,
+          }
         : job.bid_id
-          ? { project_name: null, bid_number: null }
+          ? { project_name: null, bid_number: null, service_type_id: null }
           : null,
     )
     setFormServiceTypeId(job.service_type_id ?? '')
@@ -1000,7 +1015,7 @@ export default function JobFormModal({
           supabase.from('projects').select('id, name, customer_id, master_user_id, customers(name)').order('name'),
           supabase
             .from('bids')
-            .select('id, project_name, bid_number, customer_id, customers(name)')
+            .select('id, project_name, bid_number, service_type_id, customer_id, customers(name)')
             .order('updated_at', { ascending: false })
             .limit(800),
           supabase.from('service_types').select('id, name, color, description, sequence_order').order('sequence_order', { ascending: true }),
@@ -1084,11 +1099,15 @@ export default function JobFormModal({
     const b = bids.find((x) => x.id === bidId)
     if (!b) return
     setLinkedBidSummary((prev) => {
-      const label = formatJobFormBidLinkTitle(prev)
+      const label = formatJobFormBidLinkTitle(prefixMap, prev)
       if (label && label !== 'Untitled') return prev
-      return { project_name: b.project_name, bid_number: b.bid_number }
+      return {
+        project_name: b.project_name,
+        bid_number: b.bid_number,
+        service_type_id: b.service_type_id ?? null,
+      }
     })
-  }, [bids, bidId])
+  }, [bids, bidId, prefixMap])
 
   useEffect(() => {
     const jobId = editing?.id ?? null
@@ -3397,7 +3416,7 @@ export default function JobFormModal({
                   {bidId ? (
                     <>
                       <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: '#374151' }}>
-                        Linked: <strong>{formatJobFormBidLinkTitle(linkedBidSummary)}</strong>
+                        Linked: <strong>{formatJobFormBidLinkTitle(prefixMap, linkedBidSummary)}</strong>
                       </p>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
                         <Link
@@ -5846,8 +5865,12 @@ export default function JobFormModal({
             setBidId(id)
             setLinkedBidSummary(
               opt
-                ? { project_name: opt.project_name, bid_number: opt.bid_number }
-                : { project_name: null, bid_number: null },
+                ? {
+                    project_name: opt.project_name,
+                    bid_number: opt.bid_number,
+                    service_type_id: opt.service_type_id ?? null,
+                  }
+                : { project_name: null, bid_number: null, service_type_id: null },
             )
             if (opt?.customer_id && !customerId) {
               setCustomerId(opt.customer_id)

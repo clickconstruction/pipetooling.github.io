@@ -9,11 +9,12 @@ import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import {
   formatUnifiedResult,
-  getBidServiceTypeTag,
+  serviceTypeTagForUnifiedRow,
   type JobSearchResult,
   type BidSearchResult,
   type UnifiedSearchResult,
 } from '../../utils/unifiedJobBidSearch'
+import { useLedgerDisplayPrefixes } from '../../contexts/LedgerDisplayPrefixContext'
 import type { ClockSessionRow } from '../../types/clockSessions'
 import { isDraftPeopleHoursSessionId } from '../../lib/peopleHoursManualDraftSession'
 
@@ -62,6 +63,7 @@ function dispatchPickToUnified(p: DispatchScheduledJobForAssign): UnifiedSearchR
   return {
     source: 'job',
     id: p.jobId,
+    service_type_id: p.service_type_id,
     hcp_number: p.hcp_number,
     job_name: p.job_name,
     job_address: p.job_address,
@@ -119,6 +121,7 @@ export function AssignSessionJobPopover({
   dispatchScheduleWorkDateYmd,
   draftLocalJobBidAssign,
 }: Props) {
+  const { prefixMap } = useLedgerDisplayPrefixes()
   const [open, setOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
   const [searchResults, setSearchResults] = useState<UnifiedSearchResult[]>([])
@@ -471,7 +474,7 @@ export function AssignSessionJobPopover({
                     {dispatchPicks.map((p) => {
                       const item = dispatchPickToUnified(p)
                       const isCurrent = session.job_ledger_id === p.jobId
-                      const label = `${isCurrent ? 'Current: ' : ''}${formatUnifiedResult(item)}`
+                      const label = `${isCurrent ? 'Current: ' : ''}${formatUnifiedResult(item, prefixMap)}`
                       const a11yRanges =
                         p.windowSpans.length > 0
                           ? p.windowSpans.map((s) => `${s.startLabel} to ${s.endLabel}`).join(', ')
@@ -579,9 +582,9 @@ export function AssignSessionJobPopover({
                   </div>
                 ) : (
                   searchResults.map((item) => {
-                    const bidTag = item.source === 'bid' ? getBidServiceTypeTag(item.service_type_name) : null
-                    /* Unknown bid service_type_name or jobs: left gutter stays 4px transparent (no gray stripe — avoids implying a trade). */
-                    const stripeColor = bidTag?.color ?? 'transparent'
+                    const tradeTag = serviceTypeTagForUnifiedRow(item)
+                    /* Unknown service_type_name: left gutter stays 4px transparent (no gray stripe — avoids implying a trade). */
+                    const stripeColor = tradeTag?.color ?? 'transparent'
                     return (
                       <button
                         key={`${item.source}:${item.id}`}
@@ -618,21 +621,21 @@ export function AssignSessionJobPopover({
                           }}
                         >
                           <div style={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                            {bidTag ? (
+                            {tradeTag ? (
                               <span
                                 style={{
                                   padding: '0.1rem 0.35rem',
                                   fontSize: '0.6875rem',
                                   fontWeight: 500,
-                                  background: bidTag.color,
+                                  background: tradeTag.color,
                                   color: '#fff',
                                   borderRadius: 4,
                                 }}
                               >
-                                [{bidTag.tag}]
+                                [{tradeTag.tag}]
                               </span>
                             ) : null}
-                            {formatUnifiedResult(item)}
+                            {formatUnifiedResult(item, prefixMap)}
                           </div>
                         </div>
                       </button>

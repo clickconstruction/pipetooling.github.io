@@ -7022,6 +7022,8 @@ export type Database = {
           created_at: string | null
           description: string | null
           id: string
+          ledger_bid_prefix: string | null
+          ledger_job_prefix: string | null
           name: string
           sequence_order: number
           updated_at: string | null
@@ -7031,6 +7033,8 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          ledger_bid_prefix?: string | null
+          ledger_job_prefix?: string | null
           name: string
           sequence_order?: number
           updated_at?: string | null
@@ -7040,6 +7044,8 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          ledger_bid_prefix?: string | null
+          ledger_job_prefix?: string | null
           name?: string
           sequence_order?: number
           updated_at?: string | null
@@ -9031,6 +9037,7 @@ export type Database = {
           bid_number: string
           id: string
           project_name: string
+          service_type_id: string
         }[]
       }
       get_collect_payment_certify_payload: {
@@ -9075,7 +9082,9 @@ export type Database = {
           id: string
           job_address: string
           job_name: string
+          pct_complete: number
           revenue: number
+          service_type_id: string
         }[]
       }
       get_jobs_ledger_by_hcp_numbers_paid_only: {
@@ -9085,7 +9094,9 @@ export type Database = {
           id: string
           job_address: string
           job_name: string
+          pct_complete: number
           revenue: number
+          service_type_id: string
         }[]
       }
       get_jobs_ledger_by_ids: {
@@ -9095,7 +9106,9 @@ export type Database = {
           id: string
           job_address: string
           job_name: string
+          pct_complete: number
           revenue: number
+          service_type_id: string
         }[]
       }
       get_jobs_ledger_by_ids_paid_only: {
@@ -9105,7 +9118,9 @@ export type Database = {
           id: string
           job_address: string
           job_name: string
+          pct_complete: number
           revenue: number
+          service_type_id: string
         }[]
       }
       get_jobs_ledger_by_status: {
@@ -9306,6 +9321,8 @@ export type Database = {
           my_last_report_at: string
           project_id: string
           revenue: number
+          service_type_id: string
+          service_type_name: string
           status: string
         }[]
       }
@@ -9810,6 +9827,8 @@ export type Database = {
           customer_name: string
           id: string
           project_name: string
+          service_type_id: string
+          service_type_name: string
         }[]
       }
       search_estimates_for_nav: {
@@ -9857,6 +9876,8 @@ export type Database = {
           id: string
           job_address: string
           job_name: string
+          service_type_id: string
+          service_type_name: string
         }[]
       }
       set_mercury_transaction_ar_returned: {
