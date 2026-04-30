@@ -12,14 +12,20 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.426 → v2.4"
+version_range: "v2.428 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.428)"
+    line: ~1414
+    description: "Dashboard clock strip — Mix + Show all / Needs attention same height (stripClockedInChromeBtnLayout)"
+  - name: "Latest Version (v2.427)"
+    line: ~1432
+    description: "Dashboard — collapsible Projects: Subscribed Stages; Assigned Stages panel aria-controls / region ids"
   - name: "Latest Version (v2.426)"
-    line: ~1402
+    line: ~1445
     description: "Dashboard Clock In / Update Focus / clock-out review — associationChipFromSearch chip; missing-reports heading; modal copy trims; v2.416 daily-report checkbox docs retired"
   - name: "Latest Version (v2.425)"
-    line: ~1413
+    line: ~1445
     description: "Recurring Email Reports — per-recipient include_costs + wage-derived Cost column (HTML + text); migrations + Edge + modal"
   - name: "Latest Version (v2.424)"
     line: ~1409
@@ -1105,6 +1111,8 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.428 — **Dashboard** clock strip — **Mix** matches **Show all** / **Needs attention** height (**`stripClockedInChromeBtnLayout`**, shared **`scopeBtn`** typography) — **[`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)**](#latest-updates-v2428)
+**New:** [v2.427 — **Dashboard** — **Projects: Subscribed Stages** disclosure (chevron + expand/collapse); **Projects: Assigned Stages** **`aria-controls`** + **`dashboard-assigned-stages-panel`** region (**[`Dashboard.tsx`](src/pages/Dashboard.tsx)**)](#latest-updates-v2427)
 **New:** [v2.426 — **Dashboard** **Clock In** / **Update Focus** / **Review before clock out** — job/bid **summary + Clear** only after **typed search** (`associationChipFromSearch`); **Missing reports from today (click to make report)**; shorter modal copy; retired **v2.416** checkbox from product — **[`ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx)**](#latest-updates-v2426)
 **New:** [v2.419 — **Salary sync** — **continuous** workday split in **My Time**: open **indexed** **`salary_schedule`** fragments (**`salary_segment_index`** 1..N) **close at **`t_end`** once **`p_now ≥ t_end`** (non-final, **`clocked_out_at IS NULL`**, **`clocked_in_at < t_end`**); **`salary_sync_one_user_clock_sessions`** — **[`20270516120000_salary_sync_close_continuous_fragments_at_t_end.sql`](supabase/migrations/20270516120000_salary_sync_close_continuous_fragments_at_t_end.sql)**; docs — **`SALARY_CLOCK_SESSIONS.md`**, **`PROJECT_DOCUMENTATION.md`** (**`clock_sessions`**), **`GLOSSARY.md`**, **`MIGRATIONS.md`](#latest-updates-v2419)
 **New:** [v2.418 — **Reports** — superintendent **`reports`** anchor (**`superintendent_report_job_anchor_allowed`**, SECURITY DEFINER + **`row_security` off**, team-member branch); **`list_reports_with_job_info`** / **`list_reports_for_job_ledger`** parity; **`reported_at_lat/lng`** in list RPCs (**primary**, **superintendent**, **estimator**, **helpers**/**subcontractor** own rows); **`list_my_reports`** coords on own rows (**`20270511120000`** … **`20270515120000`**); **[`JobReportsModal`](src/components/JobReportsModal.tsx)** — **`ReportDetailBody`** **`fieldLayout="inline"`**, **`ReportLocationMapsLink`** on collapsed row + detail (**[`ReportViewModal.tsx`](src/components/ReportViewModal.tsx)**)](#latest-updates-v2418)
@@ -1401,6 +1409,27 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.428)
+
+**Date**: 2026-04-30
+
+### **Dashboard** clock strip — **Mix** / **Needs attention** / **Show all**
+
+- **Chrome** — **`stripClockedInChromeBtnLayout`** (**`minHeight`**, **`inline-flex`**, **`boxSizing`**) on **Mix** and the filter toggle; **Mix** uses **`scopeBtn`** padding/font only (removed larger padding / **`STRIP_SUMMARY_CELL_FONT_REM`** label). **[`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)**.
+
+---
+
+## Latest Updates (v2.427)
+
+**Date**: 2026-04-30
+
+### **Dashboard** — **Projects: Assigned Stages** / **Projects: Subscribed Stages**
+
+- **Subscribed Stages** — Same disclosure pattern as Assigned: ▶/▼ toggle, **`subscribedStagesExpanded`** (default expanded), **`aria-controls`** → **`dashboard-subscribed-stages-panel`**, **`role="region"`** + **`aria-labelledby`** (**[`Dashboard.tsx`](src/pages/Dashboard.tsx)**). Title includes count **`({subscribedSteps.length})`**.
+- **Assigned Stages** — **`aria-controls="dashboard-assigned-stages-panel"`**, heading **`id="dashboard-assigned-stages-heading"`**, skeleton + card list wrapped in the labeled region for assistive tech.
+
 ---
 
 ## Latest Updates (v2.426)

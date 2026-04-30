@@ -7,6 +7,7 @@ import {
   useMemo,
   useState,
   type CSSProperties,
+  type ReactNode,
 } from 'react'
 import { Link } from 'react-router-dom'
 import {
@@ -309,9 +310,77 @@ const STRIP_SECTION_HEAD_TEXT = '#ffffff'
 /** Per-cell bottom edge (avoid border-collapse dropping the soft line under the first column). */
 const STRIP_SECTION_HEAD_BOTTOM_EDGE = 'inset 0 -1px 0 0 rgba(255,255,255,0.22)'
 
+/** Canonical 0.75rem for strip summary cells (`Today`, `hours | clock-in`). */
+const STRIP_SUMMARY_CELL_FONT_REM = '0.75rem' as const
+
+/** Orange strip bar titles and column labels — explicit parity (incl. iOS PWA). */
+const stripOrangeHeaderTypography: CSSProperties = {
+  fontSize: STRIP_SUMMARY_CELL_FONT_REM,
+  fontWeight: 600,
+  color: STRIP_SECTION_HEAD_TEXT,
+  lineHeight: 1.2,
+  fontFamily: 'inherit',
+  WebkitTextSizeAdjust: '100%',
+}
+
+/** White chevron on orange bar (same sizing as adjacent header text). */
+const stripOrangeBarChevronButton: CSSProperties = {
+  ...stripOrangeHeaderTypography,
+  border: 'none',
+  background: 'none',
+  padding: '0.1rem',
+  cursor: 'pointer',
+}
+
+/** Expand chevron on neutral body rows — same metrics as orange bar chevrons. */
+const stripBodyExpandChevronButton: CSSProperties = {
+  ...stripOrangeBarChevronButton,
+  color: '#374151',
+}
+
+const stripOrangeHeaderTitleButton: CSSProperties = {
+  ...stripOrangeHeaderTypography,
+  border: 'none',
+  background: 'none',
+  padding: 0,
+  margin: 0,
+  cursor: 'pointer',
+}
+
+/** Hours total in Currently In “Today” cell and Clocked “Today | First clock-in”. */
+const stripClockStripSummaryHoursButton: CSSProperties = {
+  border: 'none',
+  background: 'none',
+  padding: 0,
+  margin: 0,
+  cursor: 'pointer',
+  fontFamily: 'inherit',
+  fontSize: STRIP_SUMMARY_CELL_FONT_REM,
+  fontWeight: 600,
+  color: '#1d4ed8',
+  WebkitTextSizeAdjust: '100%',
+}
+
+const stripClockStripSummaryHoursReadonly: CSSProperties = {
+  fontFamily: 'inherit',
+  fontSize: STRIP_SUMMARY_CELL_FONT_REM,
+  fontWeight: 600,
+  color: '#374151',
+  WebkitTextSizeAdjust: '100%',
+}
+
+/** Pipe + clock time (`| 9:31 AM`) and Currently In “Session | In” fragments. */
+const stripClockStripSummaryPipeTime: CSSProperties = {
+  fontFamily: 'inherit',
+  fontSize: STRIP_SUMMARY_CELL_FONT_REM,
+  fontWeight: 400,
+  color: '#4b5563',
+  WebkitTextSizeAdjust: '100%',
+}
+
 const stripSectionTh: CSSProperties = {
   ...th,
-  color: STRIP_SECTION_HEAD_TEXT,
+  ...stripOrangeHeaderTypography,
   borderBottom: 'none',
   boxShadow: STRIP_SECTION_HEAD_BOTTOM_EDGE,
 }
@@ -327,6 +396,14 @@ const mergedHeaderTitleCluster: CSSProperties = {
   gap: '0.3em',
   minWidth: 0,
   maxWidth: '100%',
+}
+
+/** Narrow viewports: keep merged titles on one row; parent clips → horizontal scroll. */
+const mergedJobsHeaderTitlesOverflowWrap: CSSProperties = {
+  minWidth: 0,
+  maxWidth: '100%',
+  overflowX: 'auto',
+  WebkitOverflowScrolling: 'touch',
 }
 
 const JOBS_WORKED_TODAY_COL_SPAN = 2
@@ -407,6 +484,16 @@ const scopeBtn = (active: boolean): CSSProperties => ({
   color: '#374151',
   fontWeight: active ? 600 : 500,
 })
+
+/** Mix + Needs attention / Show all in strip header — same min-height (16px icon vs text line). */
+const stripClockedInChromeBtnLayout: CSSProperties = {
+  flexShrink: 0,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  boxSizing: 'border-box',
+  minHeight: '1.5rem',
+}
 
 const jobBidCellFlex: CSSProperties = {
   display: 'flex',
@@ -648,6 +735,17 @@ export function DashboardTeamActiveClockStrip({
   }
   const stripRejectTitleId = useId()
   const shortCurrentlyInHeader = useMatchMedia(STRIP_SHORT_CURRENTLY_IN_HEADER_MQ)
+  const mergedJobsStripTitleClusterStyle: CSSProperties = shortCurrentlyInHeader
+    ? { ...mergedHeaderTitleCluster, flexWrap: 'nowrap' }
+    : mergedHeaderTitleCluster
+  const wrapMergedJobsHeaderTitles = (children: ReactNode) =>
+    shortCurrentlyInHeader ? (
+      <div style={mergedJobsHeaderTitlesOverflowWrap}>
+        <div style={mergedJobsStripTitleClusterStyle}>{children}</div>
+      </div>
+    ) : (
+      <div style={mergedHeaderTitleCluster}>{children}</div>
+    )
   const nowMs = useIntervalNowMs(45_000)
   const [salaryMaterializeBusyUserId, setSalaryMaterializeBusyUserId] = useState<string | null>(null)
   const [stripApproveBusy, setStripApproveBusy] = useState<ReadonlySet<string>>(() => new Set())
@@ -1022,22 +1120,19 @@ export function DashboardTeamActiveClockStrip({
           }
           style={{
             ...scopeBtn(copyDayJobMixMode),
-            flexShrink: 0,
-            display: 'inline-flex',
-            alignItems: 'center',
+            ...stripClockedInChromeBtnLayout,
             gap: 4,
-            padding: '0.25rem 0.45rem',
           }}
         >
           <CopyDayJobMixIcon active={copyDayJobMixMode} />
-          <span style={{ fontSize: '0.65rem', lineHeight: 1.2 }}>Mix</span>
+          <span>Mix</span>
         </button>
       ) : null}
       {showClockedInTodayToggle ? (
         <button
           type="button"
           onClick={() => setClockedInTodayTableMode((m) => (m === 'all' ? 'missing' : 'all'))}
-          style={{ ...scopeBtn(false), flexShrink: 0 }}
+          style={{ ...scopeBtn(false), ...stripClockedInChromeBtnLayout }}
           title="Limit to people with an unassigned session or a closed session pending approval"
           aria-label={
             clockedInTodayTableMode === 'all'
@@ -1084,15 +1179,7 @@ export function DashboardTeamActiveClockStrip({
                 clockedInTodayRows.length === 1 ? 'person' : 'people'
               }`
       }
-      style={{
-        border: 'none',
-        background: 'none',
-        padding: '0.1rem',
-        cursor: 'pointer',
-        fontSize: '0.65rem',
-        color: STRIP_SECTION_HEAD_TEXT,
-        lineHeight: 1,
-      }}
+      style={stripOrangeBarChevronButton}
     >
       <span aria-hidden>
         {clockedInTodayExpandMode === 'collapsed' ? '\u25B6' : '\u25BC'}
@@ -1134,18 +1221,7 @@ export function DashboardTeamActiveClockStrip({
                 clockedInTodayRows.length === 1 ? 'person' : 'people'
               }`
       }
-      style={{
-        border: 'none',
-        background: 'none',
-        padding: 0,
-        margin: 0,
-        cursor: 'pointer',
-        font: 'inherit',
-        fontWeight: 600,
-        color: STRIP_SECTION_HEAD_TEXT,
-        lineHeight: 1.2,
-        textAlign: 'left' as const,
-      }}
+      style={{ ...stripOrangeHeaderTitleButton, textAlign: 'left' }}
     >
       Clocked in today ({clockedInTodayRows.length})
     </button>
@@ -1170,18 +1246,7 @@ export function DashboardTeamActiveClockStrip({
           ? `Show jobs worked today, ${jobsWorkedTodayRows.length} jobs`
           : `Hide jobs worked today, ${jobsWorkedTodayRows.length} jobs`
       }
-      style={{
-        border: 'none',
-        background: 'none',
-        padding: 0,
-        margin: 0,
-        cursor: 'pointer',
-        font: 'inherit',
-        fontWeight: 600,
-        color: STRIP_SECTION_HEAD_TEXT,
-        lineHeight: 1.2,
-        textAlign: 'left' as const,
-      }}
+      style={{ ...stripOrangeHeaderTitleButton, textAlign: 'left' }}
     >
       Jobs worked today ({jobsWorkedTodayRows.length})
     </button>
@@ -1271,7 +1336,7 @@ export function DashboardTeamActiveClockStrip({
               <tr style={{ background: STRIP_SECTION_HEAD_BG }}>
                 <th
                   scope="col"
-                  style={{ ...stripSectionTh, fontWeight: 700, ...stripCurrentlyInFirstCol }}
+                  style={{ ...stripSectionTh, ...stripCurrentlyInFirstCol }}
                   aria-label={`Currently in: ${sessions.length} ${
                     sessions.length === 1 ? 'person' : 'people'
                   }`}
@@ -1329,11 +1394,10 @@ export function DashboardTeamActiveClockStrip({
               const titleText = synthetic ? 'On schedule; session sync may follow' : fullJobBid ?? linkText ?? undefined
               const elapsedStr = formatElapsedOpen(s.clocked_in_at, nowMs)
               const inStr = inDate.toLocaleTimeString(undefined, timeOpts)
-              const sessionInPartStyle: CSSProperties = { color: '#4b5563', fontWeight: 400 }
               const sessionInCell = (
                 <>
-                  <span style={sessionInPartStyle}>{elapsedStr}</span>
-                  <span style={sessionInPartStyle}>{' | '}{inStr}</span>
+                  <span style={stripClockStripSummaryPipeTime}>{elapsedStr}</span>
+                  <span style={stripClockStripSummaryPipeTime}>{' | '}{inStr}</span>
                 </>
               )
               const memo = (s.notes ?? '').trim()
@@ -1373,14 +1437,7 @@ export function DashboardTeamActiveClockStrip({
                         title="Edit today's time"
                         aria-label={`Edit today's time for ${personName(s)}`}
                         style={{
-                          border: 'none',
-                          background: 'none',
-                          padding: 0,
-                          margin: 0,
-                          cursor: 'pointer',
-                          font: 'inherit',
-                          fontWeight: 600,
-                          color: '#1d4ed8',
+                          ...stripClockStripSummaryHoursButton,
                           textAlign: 'right',
                           width: '100%',
                         }}
@@ -1388,7 +1445,9 @@ export function DashboardTeamActiveClockStrip({
                         {formatHoursH(todayH)}
                       </button>
                     ) : (
-                      <span style={{ fontWeight: 600, color: '#374151' }}>{formatHoursH(todayH)}</span>
+                      <span style={stripClockStripSummaryHoursReadonly}>
+                        {formatHoursH(todayH)}
+                      </span>
                     )}
                   </td>
                   <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' as const }}>
@@ -1590,15 +1649,7 @@ export function DashboardTeamActiveClockStrip({
                                   return next
                                 })
                               }
-                              style={{
-                                border: 'none',
-                                background: 'none',
-                                padding: '0.1rem',
-                                cursor: 'pointer',
-                                fontSize: '0.65rem',
-                                color: '#374151',
-                                lineHeight: 1,
-                              }}
+                              style={stripBodyExpandChevronButton}
                             >
                               <span aria-hidden>{expanded ? '\u25BC' : '\u25B6'}</span>
                             </button>
@@ -1676,25 +1727,16 @@ export function DashboardTeamActiveClockStrip({
                               }
                               title="Edit today's time"
                               aria-label={`Edit today's time for ${rowLabel}`}
-                              style={{
-                                border: 'none',
-                                background: 'none',
-                                padding: 0,
-                                margin: 0,
-                                cursor: 'pointer',
-                                font: 'inherit',
-                                fontWeight: 600,
-                                color: '#1d4ed8',
-                              }}
+                              style={stripClockStripSummaryHoursButton}
                             >
                               {formatHoursH(row.hoursToday)}
                             </button>
                           ) : (
-                            <span style={{ fontWeight: 600, color: '#374151' }}>
+                            <span style={{ ...stripClockStripSummaryHoursReadonly, whiteSpace: 'nowrap' }}>
                               {formatHoursH(row.hoursToday)}
                             </span>
                           )}
-                          <span style={{ color: '#4b5563', fontWeight: 400 }}>
+                          <span style={{ ...stripClockStripSummaryPipeTime, whiteSpace: 'nowrap' }}>
                             {' | '}
                             {new Date(row.firstClockedInAt).toLocaleTimeString(undefined, timeOpts)}
                           </span>
@@ -2015,15 +2057,7 @@ export function DashboardTeamActiveClockStrip({
                                   ? `Show jobs worked today, ${jobsWorkedTodayRows.length} jobs`
                                   : `Hide jobs worked today, ${jobsWorkedTodayRows.length} jobs`
                               }
-                              style={{
-                                border: 'none',
-                                background: 'none',
-                                padding: '0.1rem',
-                                cursor: 'pointer',
-                                fontSize: '0.65rem',
-                                color: STRIP_SECTION_HEAD_TEXT,
-                                lineHeight: 1,
-                              }}
+                              style={stripOrangeBarChevronButton}
                             >
                               <span aria-hidden>
                                 {jobsWorkedTodaySectionCollapsed ? '\u25B6' : '\u25BC'}
@@ -2049,15 +2083,7 @@ export function DashboardTeamActiveClockStrip({
                               ? `Show jobs worked today, ${jobsWorkedTodayRows.length} jobs`
                               : `Hide jobs worked today, ${jobsWorkedTodayRows.length} jobs`
                           }
-                          style={{
-                            border: 'none',
-                            background: 'none',
-                            padding: '0.1rem',
-                            cursor: 'pointer',
-                            fontSize: '0.65rem',
-                            color: STRIP_SECTION_HEAD_TEXT,
-                            lineHeight: 1,
-                          }}
+                          style={stripOrangeBarChevronButton}
                         >
                           <span aria-hidden>
                             {jobsWorkedTodaySectionCollapsed ? '\u25B6' : '\u25BC'}
@@ -2084,23 +2110,33 @@ export function DashboardTeamActiveClockStrip({
                     >
                       {mergeClockedInHeaderIntoJobs ? (
                         !jobsWorkedTodaySectionCollapsed ? (
-                          <div style={mergedHeaderTitleCluster}>
-                            <span style={srOnly}>{'Expand session rows. '}</span>
-                            {citExpandModeTitleButton}
-                            <span style={srOnly}>{' '}</span>
-                            <span>Jobs worked today ({jobsWorkedTodayRows.length})</span>
-                          </div>
+                          wrapMergedJobsHeaderTitles(
+                            <>
+                              <span style={srOnly}>{'Expand session rows. '}</span>
+                              {citExpandModeTitleButton}
+                              <span style={srOnly}>{' '}</span>
+                              <span style={stripOrangeHeaderTypography}>
+                                Jobs worked today ({jobsWorkedTodayRows.length})
+                              </span>
+                            </>,
+                          )
                         ) : (
-                          <div style={mergedHeaderTitleCluster}>
-                            <span style={srOnly}>{'Expand session rows. '}</span>
-                            <span>Clocked in today ({clockedInTodayRows.length})</span>
-                            {jobsExpandModeTitleButton}
-                          </div>
+                          wrapMergedJobsHeaderTitles(
+                            <>
+                              <span style={srOnly}>{'Expand session rows. '}</span>
+                              <span style={stripOrangeHeaderTypography}>
+                                Clocked in today ({clockedInTodayRows.length})
+                              </span>
+                              {jobsExpandModeTitleButton}
+                            </>,
+                          )
                         )
                       ) : (
                         <>
                           <span style={srOnly}>{'Expand session rows per job. '}</span>
-                          Jobs worked today ({jobsWorkedTodayRows.length})
+                          <span style={stripOrangeHeaderTypography}>
+                            Jobs worked today ({jobsWorkedTodayRows.length})
+                          </span>
                         </>
                       )}
                     </th>
@@ -2147,15 +2183,7 @@ export function DashboardTeamActiveClockStrip({
                                     return next
                                   })
                                 }
-                                style={{
-                                  border: 'none',
-                                  background: 'none',
-                                  padding: '0.1rem',
-                                  cursor: 'pointer',
-                                  fontSize: '0.65rem',
-                                  color: '#374151',
-                                  lineHeight: 1,
-                                }}
+                                style={stripBodyExpandChevronButton}
                               >
                                 <span aria-hidden>{jobDetailExpanded ? '\u25BC' : '\u25B6'}</span>
                               </button>

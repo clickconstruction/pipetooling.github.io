@@ -29,7 +29,7 @@ import {
   shouldResyncJobsAfterUpdateJobStatusFailure,
   toastForUpdateJobStatusFailure,
 } from '../lib/updateJobStatusClientFeedback'
-import { useAuth } from '../hooks/useAuth'
+import { useAuth, type UserRole } from '../hooks/useAuth'
 import { isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import { useSendBackCollectPaymentFlowNotice } from '../hooks/useSendBackCollectPaymentFlowNotice'
 import NewReportModal from '../components/NewReportModal'
@@ -139,15 +139,23 @@ import type { ClockSessionRow, DashboardStripSession } from '../types/clockSessi
 
 const DASHBOARD_CLOCK_STRIP_SCOPE_KEY = 'dashboard_clock_strip_scope'
 
-function readClockStripScope(): 'team' | 'everyone' {
+function stripScopeEligible(role: UserRole | null): boolean {
+  return role === 'dev' || role === 'master_technician' || role === 'assistant'
+}
+
+/** Explicit stored preference wins; missing key defaults org-wide for dev/master/assistant. */
+function readClockStripScopeFromStorage(role: UserRole | null): 'team' | 'everyone' {
   try {
-    if (typeof localStorage !== 'undefined' && localStorage.getItem(DASHBOARD_CLOCK_STRIP_SCOPE_KEY) === 'everyone') {
-      return 'everyone'
+    if (typeof localStorage === 'undefined') {
+      return stripScopeEligible(role) ? 'everyone' : 'team'
     }
+    const v = localStorage.getItem(DASHBOARD_CLOCK_STRIP_SCOPE_KEY)
+    if (v === 'everyone') return 'everyone'
+    if (v === 'team') return 'team'
+    return stripScopeEligible(role) ? 'everyone' : 'team'
   } catch {
-    /* ignore */
+    return stripScopeEligible(role) ? 'everyone' : 'team'
   }
-  return 'team'
 }
 
 function toDatetimeLocal(iso: string | null): string {
@@ -855,7 +863,9 @@ export default function Dashboard() {
   const showStripSubjectMyTimeEditor =
     showClockStripScopeToggle || role === 'superintendent'
   const pendingClockBannerAtMyTeamTop = Boolean(authUser?.id && !showClockStripScopeToggle)
-  const [clockStripScope, setClockStripScope] = useState<'team' | 'everyone'>(readClockStripScope)
+  const [clockStripScope, setClockStripScope] = useState<'team' | 'everyone'>(() =>
+    readClockStripScopeFromStorage(role),
+  )
   const setClockStripScopePersist = useCallback((next: 'team' | 'everyone') => {
     setClockStripScope(next)
     try {
@@ -864,6 +874,17 @@ export default function Dashboard() {
       /* ignore */
     }
   }, [])
+  useEffect(() => {
+    if (!stripScopeEligible(role)) return
+    try {
+      if (typeof localStorage === 'undefined') return
+      if (localStorage.getItem(DASHBOARD_CLOCK_STRIP_SCOPE_KEY) != null) return
+      localStorage.setItem(DASHBOARD_CLOCK_STRIP_SCOPE_KEY, 'everyone')
+      setClockStripScope('everyone')
+    } catch {
+      /* ignore */
+    }
+  }, [role])
   const orgWideStripEnabled = showClockStripScopeToggle && clockStripScope === 'everyone'
   const myTeam = useDashboardMyTeamSectionState(authUser?.id, { orgWideStripEnabled })
   const goToPendingSessionsInMyTeam = useCallback(() => {
@@ -1077,6 +1098,7 @@ export default function Dashboard() {
   const [assignedJobsExpanded, setAssignedJobsExpanded] = useState(true)
   const [assignedStagesExpanded, setAssignedStagesExpanded] = useState(true)
   const [assignedStagesCompleteExpanded, setAssignedStagesCompleteExpanded] = useState(false)
+  const [subscribedStagesExpanded, setSubscribedStagesExpanded] = useState(true)
   /** One-time expand/collapse heuristic after initial assigned roster load — do not overwrite user toggle on refresh. */
   const assignedStagesExpandedDefaultAppliedRef = useRef(false)
   const [subScheduleRows, setSubScheduleRows] = useState<JobScheduleBlockRow[]>([])
@@ -4437,6 +4459,8 @@ export default function Dashboard() {
           jobsWorkedTodayJobLedgerIdsWithReport={myTeam.jobsWorkedTodayJobLedgerIdsWithReport}
           showScopeToggle={showClockStripScopeToggle}
           clockStripScope={clockStripScope}
+          clockStripNarrowScopeLabel={showClockStripScopeToggle ? 'Everyone' : undefined}
+          clockStripWideScopeLabel={showClockStripScopeToggle ? 'Organization' : undefined}
           onClockStripScopeChange={setClockStripScopePersist}
           showJobBidColumn={showClockStripScopeToggle}
           onJobBidSaved={(patch) => {
@@ -4858,12 +4882,8 @@ export default function Dashboard() {
           jobsWorkedTodayJobLedgerIdsWithReport={myTeam.jobsWorkedTodayJobLedgerIdsWithReport}
           showScopeToggle={showClockStripScopeToggle}
           clockStripScope={clockStripScope}
-          clockStripNarrowScopeLabel={
-            role === 'dev' || role === 'master_technician' ? 'Everyone' : undefined
-          }
-          clockStripWideScopeLabel={
-            role === 'dev' || role === 'master_technician' ? 'Organization' : undefined
-          }
+          clockStripNarrowScopeLabel={showClockStripScopeToggle ? 'Everyone' : undefined}
+          clockStripWideScopeLabel={showClockStripScopeToggle ? 'Organization' : undefined}
           onClockStripScopeChange={setClockStripScopePersist}
           showJobBidColumn={showClockStripScopeToggle}
           onJobBidSaved={(patch) => {
@@ -7799,6 +7819,7 @@ export default function Dashboard() {
             type="button"
             onClick={() => setAssignedStagesExpanded((prev) => !prev)}
             aria-expanded={assignedStagesExpanded}
+            aria-controls="dashboard-assigned-stages-panel"
             style={{
               margin: 0,
               padding: 0,
@@ -7812,15 +7833,21 @@ export default function Dashboard() {
             }}
           >
             <span aria-hidden>{assignedStagesExpanded ? '\u25BC' : '\u25B6'}</span>
-            <h2 style={{ fontSize: '1.125rem', margin: 0 }}>
+            <h2 id="dashboard-assigned-stages-heading" style={{ fontSize: '1.125rem', margin: 0 }}>
               Projects: Assigned Stages ({assignedSteps.length})
             </h2>
           </button>
           {assignedStagesExpanded &&
             (assignedLoading && assignedSteps.length === 0 ? (
-              <AssignedSkeleton />
+              <div
+                id="dashboard-assigned-stages-panel"
+                role="region"
+                aria-labelledby="dashboard-assigned-stages-heading"
+              >
+                <AssignedSkeleton />
+              </div>
             ) : (
-              <div>
+              <div id="dashboard-assigned-stages-panel" role="region" aria-labelledby="dashboard-assigned-stages-heading">
                 {activeAssignedSteps.map((s) => (
                   <AssignedStageCard
                     key={s.id}
@@ -7954,46 +7981,75 @@ export default function Dashboard() {
       
       {showSubscribed && (
         <div style={{ marginTop: '2rem' }}>
-          <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>Projects: Subscribed Stages</h2>
-          {subscribedLoading && subscribedSteps.length === 0 ? (
-            <SubscribedSkeleton />
-          ) : subscribedSteps.length === 0 ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>
-              No subscribed stages. Go to a workflow and enable &quot;Notify when started&quot;, &quot;Notify when complete&quot;, or &quot;Notify when re-opened&quot; for steps you want to track here.
-            </p>
-          ) : (
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-            {subscribedSteps.map((sub) => {
-              const notifications = []
-              if (sub.notify_when_started) notifications.push('started')
-              if (sub.notify_when_complete) notifications.push('complete')
-              if (sub.notify_when_reopened) notifications.push('re-opened')
-              return (
-                <li
-                  key={sub.step_id}
-                  style={{
-                    padding: '0.75rem 0',
-                    borderBottom: '1px solid #e5e7eb',
-                  }}
-                >
-                  <div>
-                    <Link to={`/workflows/${sub.project_id}#step-${sub.step_id}`} style={{ fontWeight: 500 }}>
-                      {sub.step_name}
-                    </Link>
-                    <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>
-                      Project: <Link to={`/projects/${sub.project_id}/edit`} style={{ color: '#2563eb' }}>{sub.project_name}</Link>
-                    </div>
-                    {notifications.length > 0 && (
-                      <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 4 }}>
-                        Notify when: {notifications.join(', ')}
-                      </div>
-                    )}
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
-          )}
+          <button
+            type="button"
+            onClick={() => setSubscribedStagesExpanded((prev) => !prev)}
+            aria-expanded={subscribedStagesExpanded}
+            aria-controls="dashboard-subscribed-stages-panel"
+            style={{
+              margin: 0,
+              padding: 0,
+              border: 'none',
+              background: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              marginBottom: subscribedStagesExpanded ? '0.75rem' : 0,
+            }}
+          >
+            <span aria-hidden>{subscribedStagesExpanded ? '\u25BC' : '\u25B6'}</span>
+            <h2 id="dashboard-subscribed-stages-heading" style={{ fontSize: '1.125rem', margin: 0 }}>
+              Projects: Subscribed Stages ({subscribedSteps.length})
+            </h2>
+          </button>
+          {subscribedStagesExpanded ? (
+            <div
+              id="dashboard-subscribed-stages-panel"
+              role="region"
+              aria-labelledby="dashboard-subscribed-stages-heading"
+            >
+              {subscribedLoading && subscribedSteps.length === 0 ? (
+                <SubscribedSkeleton />
+              ) : subscribedSteps.length === 0 ? (
+                <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>
+                  No subscribed stages. Go to a workflow and enable &quot;Notify when started&quot;, &quot;Notify when complete&quot;, or &quot;Notify when re-opened&quot; for steps you want to track here.
+                </p>
+              ) : (
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  {subscribedSteps.map((sub) => {
+                    const notifications = []
+                    if (sub.notify_when_started) notifications.push('started')
+                    if (sub.notify_when_complete) notifications.push('complete')
+                    if (sub.notify_when_reopened) notifications.push('re-opened')
+                    return (
+                      <li
+                        key={sub.step_id}
+                        style={{
+                          padding: '0.75rem 0',
+                          borderBottom: '1px solid #e5e7eb',
+                        }}
+                      >
+                        <div>
+                          <Link to={`/workflows/${sub.project_id}#step-${sub.step_id}`} style={{ fontWeight: 500 }}>
+                            {sub.step_name}
+                          </Link>
+                          <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>
+                            Project: <Link to={`/projects/${sub.project_id}/edit`} style={{ color: '#2563eb' }}>{sub.project_name}</Link>
+                          </div>
+                          {notifications.length > 0 && (
+                            <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 4 }}>
+                              Notify when: {notifications.join(', ')}
+                            </div>
+                          )}
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </div>
+          ) : null}
         </div>
       )}
 
