@@ -13,6 +13,7 @@ import {
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import type { UserRole } from '../hooks/useAuth'
 import type { Tables } from '../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
@@ -355,6 +356,33 @@ const estimateDetailCreateJobButtonStyle: CSSProperties = {
 
 const ESTIMATES_PAGE_CLASS = 'estimates-page-modern'
 
+/** Width clamp + responsive padding; modifiers cap content width on large screens. */
+const estimatesPageShellCss = `
+  .${ESTIMATES_PAGE_CLASS} {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    padding: 1rem;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .${ESTIMATES_PAGE_CLASS}.estimates-page-shell--list {
+    max-width: min(1100px, 100%);
+  }
+  .${ESTIMATES_PAGE_CLASS}.estimates-page-shell--detail {
+    max-width: min(900px, 100%);
+  }
+  .${ESTIMATES_PAGE_CLASS} .estimate-email-html-preview-root img {
+    max-width: 100%;
+    height: auto;
+  }
+  @media (max-width: 640px) {
+    .${ESTIMATES_PAGE_CLASS} {
+      padding: 0.75rem 0.5rem;
+    }
+  }
+`
+
 const estimatesFocusVisibleCss = `
   .${ESTIMATES_PAGE_CLASS} input:not([type="radio"]):not([type="checkbox"]):focus-visible,
   .${ESTIMATES_PAGE_CLASS} textarea:focus-visible,
@@ -384,7 +412,16 @@ const estimateCustomerSearchHighlightCss = `
   }
 `
 
-const estimateDetailPageCss = `${estimatesFocusVisibleCss}\n${estimateCustomerSearchHighlightCss}`
+const estimateDetailPageCss = `${estimatesPageShellCss}\n${estimatesFocusVisibleCss}\n${estimateCustomerSearchHighlightCss}`
+
+const estimatesListPageCss = `${estimatesPageShellCss}\n${estimatesFocusVisibleCss}\n${estimatesListCustomerSnapshotBtnCss}`
+
+/** Keeps wide estimate tables from widening the whole page (flex min-width chain). */
+const estimateListTableScrollWrapStyle: CSSProperties = {
+  overflowX: 'auto',
+  maxWidth: '100%',
+  minWidth: 0,
+}
 
 const estInputBase: CSSProperties = {
   border: '1px solid #d1d5db',
@@ -1130,10 +1167,337 @@ function EstimateListTable({
   )
 }
 
+function EstimateListCards({
+  rows,
+  setAcceptanceModalEstimateId,
+  setCreateJobFromListRow,
+  showCustomerColumn = false,
+  onCustomerSnapshotRequest,
+  stagesThread,
+}: EstimateListTableProps) {
+  const { role: estimateListViewerRole } = useAuth()
+
+  function renderExpandControl(estimateId: string) {
+    if (!stagesThread) return null
+    const expanded = stagesThread.expandedEstimateThreadId === estimateId
+    const stat = stagesThread.estimateThreadStatsByEstimateId[estimateId]
+    const count = stat?.note_count ?? 0
+    return (
+      <button
+        type="button"
+        onClick={() => stagesThread.toggleEstimateThreadExpanded(estimateId)}
+        aria-expanded={expanded}
+        title={count > 0 ? `${count} thread note(s)` : 'Estimate notes thread'}
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 2,
+          padding: '0.25rem',
+          border: 'none',
+          background: 'none',
+          cursor: 'pointer',
+          color: '#374151',
+          fontSize: '0.75rem',
+          lineHeight: 1.1,
+          flexShrink: 0,
+          alignSelf: 'flex-start',
+        }}
+      >
+        <span aria-hidden>{expanded ? '\u25BC' : '\u25B6'}</span>
+        {count > 0 ? (
+          <span style={{ fontSize: '0.65rem', color: '#2563eb', fontWeight: 600 }}>{count}</span>
+        ) : null}
+      </button>
+    )
+  }
+
+  function renderCustomerSection(r: EstimateListRow) {
+    if (!showCustomerColumn) {
+      return (
+        <div style={{ ...estimateListCustomerCellStyle, marginTop: '0.35rem' }}>
+          {estimateListCustomerSubline(r)}
+        </div>
+      )
+    }
+    const { primary, secondary } = estimateListCustomerColumnLines(r)
+    const cust = r.customers
+    const hasCustomerName = cust != null && (cust.name ?? '').trim() !== ''
+    const primaryIsName =
+      hasCustomerName && (secondary != null || (cust.address ?? '').trim() === '')
+    const cid = r.customer_id
+    const inner = (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', minWidth: 0 }}>
+        <span style={primaryIsName ? estimateListCustomerColumnNameStyle : estimateListCustomerCellStyle}>
+          {primary}
+        </span>
+        {secondary ? <span style={estimateListCustomerCellStyle}>{secondary}</span> : null}
+      </div>
+    )
+    if (cid && onCustomerSnapshotRequest) {
+      const labelName = (cust?.name ?? primary).trim() || 'customer'
+      return (
+        <button
+          type="button"
+          className={ESTIMATE_LIST_CUSTOMER_SNAPSHOT_BTN_CLASS}
+          onClick={() => onCustomerSnapshotRequest(cid)}
+          style={{ ...estimateListCustomerSnapshotButtonStyle, marginTop: '0.35rem' }}
+          aria-label={`View customer details for ${labelName}`}
+        >
+          {inner}
+        </button>
+      )
+    }
+    return <div style={{ marginTop: '0.35rem' }}>{inner}</div>
+  }
+
+  function renderStatusSection(r: EstimateListRow) {
+    if (r.status === 'customer_accepted') {
+      return (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+            gap: '0.35rem',
+            marginTop: '0.5rem',
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setAcceptanceModalEstimateId(r.id)}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              cursor: 'pointer',
+              color: '#1d4ed8',
+              textDecoration: 'underline',
+              font: 'inherit',
+              textAlign: 'left',
+            }}
+            aria-label={`View acceptance record for estimate ${r.estimate_number}`}
+          >
+            Accepted — view
+          </button>
+          {r.job_ledger_id ? (
+            <Link
+              to={`/jobs?edit=${r.job_ledger_id}`}
+              style={{ fontSize: '0.85rem', fontWeight: 500, color: '#15803d' }}
+            >
+              {(() => {
+                const hcp = estimateLinkedJobHcp(r)
+                return hcp ? `Job #${hcp}` : 'Job linked'
+              })()}
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setCreateJobFromListRow(r)}
+              style={estimateListCreateJobButtonStyle}
+              title="Create a linked job from this estimate"
+              aria-label="Create job from estimate"
+            >
+              Create job
+            </button>
+          )}
+        </div>
+      )
+    }
+    return (
+      <div style={{ marginTop: '0.5rem', fontWeight: 600, color: '#374151' }}>{statusLabel(r.status)}</div>
+    )
+  }
+
+  function renderLastActivitySection(r: EstimateListRow) {
+    if (!stagesThread) return null
+    const st = stagesThread
+    const estimateId = r.id
+    const stat = st.estimateThreadStatsByEstimateId[estimateId]
+    const count = stat?.note_count ?? 0
+    const notes = st.estimateThreadNotesByEstimateId[estimateId]
+    const lastNote = notes?.length ? notes[notes.length - 1] : undefined
+    const fromThreadBody = (lastNote?.body ?? '').trim()
+    const expanded = st.expandedEstimateThreadId === estimateId
+    const toggle = () => st.toggleEstimateThreadExpanded(estimateId)
+
+    const previewButtonStyle: CSSProperties = {
+      flex: 1,
+      minWidth: 0,
+      cursor: 'pointer',
+      margin: 0,
+      padding: 0,
+      border: 'none',
+      background: 'transparent',
+      font: 'inherit',
+      textAlign: 'left',
+    }
+
+    if (count === 0 || !stat?.last_note_at) {
+      return (
+        <div
+          style={{
+            display: 'flex',
+            gap: '0.35rem',
+            marginTop: '0.65rem',
+            alignItems: 'flex-start',
+          }}
+        >
+          {renderExpandControl(estimateId)}
+          <button type="button" onClick={toggle} style={previewButtonStyle}>
+            <span style={{ fontSize: '0.8125rem', color: '#9ca3af' }}>—</span>
+          </button>
+        </div>
+      )
+    }
+    const meta = getDispatchNoteDisplayMeta(stat.last_note_at)
+    const author = stat.last_note_author_name?.trim() || lastNote?.author?.name?.trim() || ''
+    const body = (stat.last_note_body ?? '').trim() || fromThreadBody
+    const titleWithNotes = count > 0 ? `${count} thread note(s)` : 'Estimate notes thread'
+
+    return (
+      <div
+        style={{
+          display: 'flex',
+          gap: '0.35rem',
+          marginTop: '0.65rem',
+          alignItems: 'flex-start',
+        }}
+      >
+        {renderExpandControl(estimateId)}
+        <button
+          type="button"
+          title={titleWithNotes}
+          aria-expanded={expanded}
+          onClick={toggle}
+          style={previewButtonStyle}
+        >
+          <div style={{ fontSize: '0.6875rem', color: '#6b7280', marginBottom: '0.2rem' }}>
+            {author ? <span>{author}</span> : null}
+            {author ? <span style={{ margin: '0 0.35rem' }}>·</span> : null}
+            <span>{meta.weekdayTimeChicago}</span>
+            <span style={{ marginLeft: '0.35rem' }}>({meta.daysAgoLabel})</span>
+          </div>
+          <div
+            style={{
+              fontSize: '0.8125rem',
+              color: '#374151',
+              lineHeight: 1.35,
+              wordBreak: 'break-word',
+              whiteSpace: 'pre-wrap',
+              maxHeight: '4.2em',
+              overflow: 'hidden',
+            }}
+          >
+            {body || '—'}
+          </div>
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div role="list" style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', minWidth: 0 }}>
+      {rows.map((r) => {
+        const updatedLines = formatEstimateListUpdatedLines(r.updated_at)
+        const expanded = stagesThread?.expandedEstimateThreadId === r.id
+        const st = stagesThread
+        return (
+          <div
+            key={r.id}
+            role="listitem"
+            style={{
+              border: '1px solid #e5e7eb',
+              borderRadius: 8,
+              padding: '0.75rem',
+              background: '#fff',
+              minWidth: 0,
+            }}
+          >
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  gap: '0.75rem',
+                  alignItems: 'flex-start',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <div style={{ flex: '1 1 12rem', minWidth: 0 }}>
+                  <Link
+                    to={`/estimates/${r.estimate_number}`}
+                    style={{
+                      fontVariantNumeric: 'tabular-nums',
+                      fontWeight: 600,
+                      fontSize: '0.9rem',
+                    }}
+                  >
+                    #{r.estimate_number}
+                  </Link>
+                  <div
+                    style={{
+                      fontWeight: 600,
+                      fontSize: '1rem',
+                      marginTop: '0.15rem',
+                      overflowWrap: 'break-word',
+                      wordBreak: 'break-word',
+                    }}
+                  >
+                    <Link to={`/estimates/${r.estimate_number}`} style={{ color: '#111827', textDecoration: 'none' }}>
+                      {r.title || '—'}
+                    </Link>
+                  </div>
+                  {renderCustomerSection(r)}
+                </div>
+                <div style={{ textAlign: 'right', flexShrink: 0, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600 }}>{formatMoney(r.total_cents)}</div>
+                  {updatedLines ? (
+                    <div style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.25rem', lineHeight: 1.25 }}>
+                      <span>{updatedLines.short}</span>
+                      <div style={{ fontSize: '0.8rem', color: '#9ca3af' }}>{updatedLines.relative}</div>
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: '0.85rem', color: '#9ca3af' }}>—</span>
+                  )}
+                </div>
+              </div>
+              {renderStatusSection(r)}
+              {renderLastActivitySection(r)}
+              {st && expanded ? (
+                <div
+                  style={{
+                    marginTop: '0.75rem',
+                    paddingTop: '0.75rem',
+                    borderTop: '1px solid #e5e7eb',
+                    minWidth: 0,
+                  }}
+                >
+                  <JobThreadNotesPanel
+                    sectionTitle="Estimate activity / notes"
+                    showComposerLabel={false}
+                    notes={st.estimateThreadNotesByEstimateId[r.id] ?? []}
+                    loading={st.estimateThreadNotesLoadingId === r.id}
+                    canPost={st.canPostNotes}
+                    draft={st.estimateThreadDraft}
+                    onDraftChange={st.setEstimateThreadDraft}
+                    onSubmit={() => void st.submitEstimateThreadNote(r.id)}
+                    submitting={st.estimateThreadSubmittingId === r.id}
+                    viewerRole={estimateListViewerRole}
+                  />
+                </div>
+              ) : null}
+            </div>
+        )
+      })}
+    </div>
+  )
+}
+
 type EstimateListTab = 'all' | 'followup'
 
 function EstimateList() {
   const { user, role, profileName } = useAuth()
+  const narrowViewport640 = useNarrowViewport640()
   const { showToast } = useToastContext()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -1269,8 +1633,8 @@ function EstimateList() {
   }
 
   return (
-    <div className={ESTIMATES_PAGE_CLASS} style={{ padding: '1rem', maxWidth: 1100, margin: '0 auto' }}>
-      <style>{`${estimatesFocusVisibleCss}${estimatesListCustomerSnapshotBtnCss}`}</style>
+    <div className={`${ESTIMATES_PAGE_CLASS} estimates-page-shell--list`}>
+      <style>{estimatesListPageCss}</style>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
         <h1 style={{ margin: 0 }}>Estimates</h1>
         <button type="button" onClick={() => void createDraft()} disabled={creating} style={estPrimaryButton(creating)}>
@@ -1368,14 +1732,24 @@ function EstimateList() {
           ) : filteredRows.length === 0 ? (
             <p style={{ marginTop: '1rem', color: '#6b7280' }}>No estimates match your search.</p>
           ) : (
-            <div style={{ overflowX: 'auto', marginTop: '1rem' }}>
-              <EstimateListTable
-                rows={filteredRows}
-                setAcceptanceModalEstimateId={setAcceptanceModalEstimateId}
-                setCreateJobFromListRow={setCreateJobFromListRow}
-                showCustomerColumn
-                onCustomerSnapshotRequest={setCustomerSnapshotId}
-              />
+            <div style={{ ...estimateListTableScrollWrapStyle, marginTop: '1rem' }}>
+              {narrowViewport640 ? (
+                <EstimateListCards
+                  rows={filteredRows}
+                  setAcceptanceModalEstimateId={setAcceptanceModalEstimateId}
+                  setCreateJobFromListRow={setCreateJobFromListRow}
+                  showCustomerColumn
+                  onCustomerSnapshotRequest={setCustomerSnapshotId}
+                />
+              ) : (
+                <EstimateListTable
+                  rows={filteredRows}
+                  setAcceptanceModalEstimateId={setAcceptanceModalEstimateId}
+                  setCreateJobFromListRow={setCreateJobFromListRow}
+                  showCustomerColumn
+                  onCustomerSnapshotRequest={setCustomerSnapshotId}
+                />
+              )}
             </div>
           )}
         </div>
@@ -1413,15 +1787,26 @@ function EstimateList() {
                 {followupBuckets.unsent.length === 0 ? (
                   <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem' }}>No estimates</p>
                 ) : (
-                  <div style={{ overflowX: 'auto' }}>
-                    <EstimateListTable
-                      rows={followupBuckets.unsent}
-                      setAcceptanceModalEstimateId={setAcceptanceModalEstimateId}
-                      setCreateJobFromListRow={setCreateJobFromListRow}
-                      showCustomerColumn
-                      onCustomerSnapshotRequest={setCustomerSnapshotId}
-                      stagesThread={estimatesStagesThread}
-                    />
+                  <div style={estimateListTableScrollWrapStyle}>
+                    {narrowViewport640 ? (
+                      <EstimateListCards
+                        rows={followupBuckets.unsent}
+                        setAcceptanceModalEstimateId={setAcceptanceModalEstimateId}
+                        setCreateJobFromListRow={setCreateJobFromListRow}
+                        showCustomerColumn
+                        onCustomerSnapshotRequest={setCustomerSnapshotId}
+                        stagesThread={estimatesStagesThread}
+                      />
+                    ) : (
+                      <EstimateListTable
+                        rows={followupBuckets.unsent}
+                        setAcceptanceModalEstimateId={setAcceptanceModalEstimateId}
+                        setCreateJobFromListRow={setCreateJobFromListRow}
+                        showCustomerColumn
+                        onCustomerSnapshotRequest={setCustomerSnapshotId}
+                        stagesThread={estimatesStagesThread}
+                      />
+                    )}
                   </div>
                 )}
               </section>
@@ -1430,15 +1815,26 @@ function EstimateList() {
                 {followupBuckets.sent.length === 0 ? (
                   <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem' }}>No estimates</p>
                 ) : (
-                  <div style={{ overflowX: 'auto' }}>
-                    <EstimateListTable
-                      rows={followupBuckets.sent}
-                      setAcceptanceModalEstimateId={setAcceptanceModalEstimateId}
-                      setCreateJobFromListRow={setCreateJobFromListRow}
-                      showCustomerColumn
-                      onCustomerSnapshotRequest={setCustomerSnapshotId}
-                      stagesThread={estimatesStagesThread}
-                    />
+                  <div style={estimateListTableScrollWrapStyle}>
+                    {narrowViewport640 ? (
+                      <EstimateListCards
+                        rows={followupBuckets.sent}
+                        setAcceptanceModalEstimateId={setAcceptanceModalEstimateId}
+                        setCreateJobFromListRow={setCreateJobFromListRow}
+                        showCustomerColumn
+                        onCustomerSnapshotRequest={setCustomerSnapshotId}
+                        stagesThread={estimatesStagesThread}
+                      />
+                    ) : (
+                      <EstimateListTable
+                        rows={followupBuckets.sent}
+                        setAcceptanceModalEstimateId={setAcceptanceModalEstimateId}
+                        setCreateJobFromListRow={setCreateJobFromListRow}
+                        showCustomerColumn
+                        onCustomerSnapshotRequest={setCustomerSnapshotId}
+                        stagesThread={estimatesStagesThread}
+                      />
+                    )}
                   </div>
                 )}
               </section>
@@ -1447,15 +1843,26 @@ function EstimateList() {
                 {followupBuckets.accepted.length === 0 ? (
                   <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem' }}>No estimates</p>
                 ) : (
-                  <div style={{ overflowX: 'auto' }}>
-                    <EstimateListTable
-                      rows={followupBuckets.accepted}
-                      setAcceptanceModalEstimateId={setAcceptanceModalEstimateId}
-                      setCreateJobFromListRow={setCreateJobFromListRow}
-                      showCustomerColumn
-                      onCustomerSnapshotRequest={setCustomerSnapshotId}
-                      stagesThread={estimatesStagesThread}
-                    />
+                  <div style={estimateListTableScrollWrapStyle}>
+                    {narrowViewport640 ? (
+                      <EstimateListCards
+                        rows={followupBuckets.accepted}
+                        setAcceptanceModalEstimateId={setAcceptanceModalEstimateId}
+                        setCreateJobFromListRow={setCreateJobFromListRow}
+                        showCustomerColumn
+                        onCustomerSnapshotRequest={setCustomerSnapshotId}
+                        stagesThread={estimatesStagesThread}
+                      />
+                    ) : (
+                      <EstimateListTable
+                        rows={followupBuckets.accepted}
+                        setAcceptanceModalEstimateId={setAcceptanceModalEstimateId}
+                        setCreateJobFromListRow={setCreateJobFromListRow}
+                        showCustomerColumn
+                        onCustomerSnapshotRequest={setCustomerSnapshotId}
+                        stagesThread={estimatesStagesThread}
+                      />
+                    )}
                   </div>
                 )}
               </section>
@@ -2700,7 +3107,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
 
   if (loading || !row) {
     return (
-      <div className={ESTIMATES_PAGE_CLASS} style={{ padding: '1rem' }}>
+      <div className={`${ESTIMATES_PAGE_CLASS} estimates-page-shell--detail`}>
         <style>{estimateDetailPageCss}</style>
         <p>Loading…</p>
       </div>
@@ -2708,7 +3115,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   }
 
   return (
-    <div className={ESTIMATES_PAGE_CLASS} style={{ padding: '1rem', maxWidth: 900, margin: '0 auto' }}>
+    <div className={`${ESTIMATES_PAGE_CLASS} estimates-page-shell--detail`}>
       <style>{estimateDetailPageCss}</style>
       <div style={{ marginBottom: '1rem' }}>
         <Link to="/estimates">← Estimates</Link>
@@ -2897,7 +3304,14 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                     </button>
                   </div>
                   {customerNotesExpanded && customerId ? (
-                    <div style={{ marginTop: '0.75rem' }}>
+                    <div
+                      style={{
+                        marginTop: '0.75rem',
+                        maxWidth: '100%',
+                        minWidth: 0,
+                        overflowX: 'auto',
+                      }}
+                    >
                       <CustomerNotesTable
                         customerId={customerId}
                         customerName={selectedCustomer.name?.trim() || 'Customer'}
@@ -4028,7 +4442,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 padding: '1rem',
                 border: '1px solid #e5e7eb',
                 borderRadius: 8,
-                maxWidth: 640,
+                maxWidth: 'min(640px, 100%)',
+                width: '100%',
+                boxSizing: 'border-box',
                 background: 'white',
                 fontFamily: 'system-ui, sans-serif',
               }}
@@ -4316,16 +4732,25 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 </p>
                 <div
                   style={{
-                    margin: 0,
-                    background: 'white',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: 6,
-                    padding: '0.75rem',
-                    fontFamily: 'system-ui, sans-serif',
+                    maxWidth: '100%',
+                    minWidth: 0,
+                    overflowX: 'auto',
                   }}
-                  // eslint-disable-next-line react/no-danger -- HTML is generated only via buildEstimateEmailHtml (escaped plain body)
-                  dangerouslySetInnerHTML={{ __html: customerEmailPreviewHtml }}
-                />
+                >
+                  <div
+                    className="estimate-email-html-preview-root"
+                    style={{
+                      margin: 0,
+                      background: 'white',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: 6,
+                      padding: '0.75rem',
+                      fontFamily: 'system-ui, sans-serif',
+                    }}
+                    // eslint-disable-next-line react/no-danger -- HTML is generated only via buildEstimateEmailHtml (escaped plain body)
+                    dangerouslySetInnerHTML={{ __html: customerEmailPreviewHtml }}
+                  />
+                </div>
                 <p style={{ margin: '0.75rem 0 0.35rem', fontWeight: 600 }}>Plain text</p>
                 <pre
                   style={{
@@ -4354,7 +4779,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                   borderRadius: 8,
                   padding: '1rem',
                   background: 'white',
-                  maxWidth: 640,
+                  maxWidth: 'min(640px, 100%)',
+                  width: '100%',
+                  boxSizing: 'border-box',
                 }}
               >
                 <EstimateAcceptBody
@@ -4441,7 +4868,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                   borderRadius: 8,
                   padding: 0,
                   background: 'white',
-                  maxWidth: 640,
+                  maxWidth: 'min(640px, 100%)',
+                  width: '100%',
+                  boxSizing: 'border-box',
                   overflow: 'hidden',
                 }}
               >

@@ -59,7 +59,8 @@ export function AcceptHeaderBrandPicker({
         borderRadius: 8,
         padding: '1rem',
         background: '#ffffff',
-        maxWidth: 900,
+        maxWidth: 'min(900px, 100%)',
+        width: '100%',
         boxSizing: 'border-box',
       }}
     >
