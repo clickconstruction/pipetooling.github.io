@@ -12,11 +12,14 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.428 → v2.4"
+version_range: "v2.429 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.428)"
+  - name: "Latest Version (v2.429)"
     line: ~1414
+    description: "Dashboard clock strip — default Organization scope when localStorage unset; Everyone / Organization labels for assistants; merged Clocked in + Jobs header single-line scroll ≤640px"
+  - name: "Latest Version (v2.428)"
+    line: ~1430
     description: "Dashboard clock strip — Mix + Show all / Needs attention same height (stripClockedInChromeBtnLayout)"
   - name: "Latest Version (v2.427)"
     line: ~1432
@@ -1111,6 +1114,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.429 — **Dashboard** clock strip — **Organization** default when **`dashboard_clock_strip_scope`** absent (**`readClockStripScopeFromStorage`**, **`stripScopeEligible`**); **Everyone** / **Organization** labels for **assistant** (parity); **≤640px** merged **Clocked in today** + **Jobs worked today** header — **nowrap** + horizontal scroll (**`mergedJobsHeaderTitlesOverflowWrap`**) — **[`Dashboard.tsx`](src/pages/Dashboard.tsx)**, **[`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)**](#latest-updates-v2429)
 **New:** [v2.428 — **Dashboard** clock strip — **Mix** matches **Show all** / **Needs attention** height (**`stripClockedInChromeBtnLayout`**, shared **`scopeBtn`** typography) — **[`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)**](#latest-updates-v2428)
 **New:** [v2.427 — **Dashboard** — **Projects: Subscribed Stages** disclosure (chevron + expand/collapse); **Projects: Assigned Stages** **`aria-controls`** + **`dashboard-assigned-stages-panel`** region (**[`Dashboard.tsx`](src/pages/Dashboard.tsx)**)](#latest-updates-v2427)
 **New:** [v2.426 — **Dashboard** **Clock In** / **Update Focus** / **Review before clock out** — job/bid **summary + Clear** only after **typed search** (`associationChipFromSearch`); **Missing reports from today (click to make report)**; shorter modal copy; retired **v2.416** checkbox from product — **[`ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx)**](#latest-updates-v2426)
@@ -1409,6 +1413,19 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.429)
+
+**Date**: 2026-04-30
+
+### **Dashboard** clock strip — scope default, labels, merged mobile header
+
+- **Scope** — For **dev**, **master_technician**, and **assistant**, when **`localStorage`** key **`dashboard_clock_strip_scope`** is missing, **`readClockStripScopeFromStorage`** returns **`everyone`** (**Organization** in the UI). A **`useEffect`** in **[`Dashboard.tsx`](src/pages/Dashboard.tsx)** persists **`everyone`** once **`role`** hydrates so first paint and stored preference stay aligned. Explicit **`team`** or **`everyone`** values always win.
+- **Labels** — Assistants see the same **Everyone** | **Organization** toggle labels as dev/master (was **My team** wording).
+- **Merged header** — When **`mergeClockedInHeaderIntoJobs`** combines **Clocked in today** and **Jobs worked today** titles on narrow viewports (**≤640px**, **`shortCurrentlyInHeader`**), **`wrapMergedJobsHeaderTitles`** + **`mergedJobsHeaderTitlesOverflowWrap`** keep both titles on one line with horizontal scroll instead of stacking.
+- **Docs** — **`PROJECT_DOCUMENTATION.md`** (Dashboard **Currently clocked in** / workflow stages lists), **`AGENTS.md`**, **`AI_CONTEXT.md`**, **`ACCESS_CONTROL.md`** (**Copy day job mix** row).
+
 ---
 
 ## Latest Updates (v2.428)

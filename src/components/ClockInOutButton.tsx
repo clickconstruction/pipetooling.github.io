@@ -170,6 +170,15 @@ export default function ClockInOutButton({
     if (lastSelectedJobBid?.source !== 'job') return false
     return scheduledDispatchJobs.some((d) => d.jobId === lastSelectedJobBid.id)
   }, [lastSelectedJobBid, scheduledDispatchJobs])
+
+  const showUpdateFocusAssociationChip = useMemo(() => {
+    if (!selectedAssociation || assignedJobsListLoading) return false
+    if (selectedAssociation.source === 'job') {
+      return !scheduledDispatchJobs.some((d) => d.jobId === selectedAssociation.id)
+    }
+    return !workingBoardBidPicks.some((b) => b.id === selectedAssociation.id)
+  }, [selectedAssociation, assignedJobsListLoading, scheduledDispatchJobs, workingBoardBidPicks])
+
   const [teamFeedbackOpen, setTeamFeedbackOpen] = useState(false)
   const [salaryUiActive, setSalaryUiActive] = useState(false)
   /** Leave report overlay from Review before clock out (scheduled jobs missing a report today). */
@@ -403,8 +412,6 @@ export default function ClockInOutButton({
       setUpdateFocusError(null)
       setUnifiedSearchText('')
       setUnifiedSearchResults([])
-      setSelectedAssociation(null)
-      setAssociationChipFromSearch(false)
     }
   }, [updateFocusModalOpen])
 
@@ -684,7 +691,7 @@ export default function ClockInOutButton({
   }, [clockOutReviewOpen, clockOutSaving])
 
   useEffect(() => {
-    if (!clockOutReviewOpen || !openSession) return
+    if (!(clockOutReviewOpen || updateFocusModalOpen) || !openSession) return
     let cancelled = false
     if (!openSession.job_ledger_id && !openSession.bid_id) {
       setSelectedAssociation(null)
@@ -770,7 +777,13 @@ export default function ClockInOutButton({
     return () => {
       cancelled = true
     }
-  }, [clockOutReviewOpen, openSession?.id, openSession?.job_ledger_id, openSession?.bid_id])
+  }, [
+    clockOutReviewOpen,
+    updateFocusModalOpen,
+    openSession?.id,
+    openSession?.job_ledger_id,
+    openSession?.bid_id,
+  ])
 
   useEffect(() => {
     if (!(updateFocusModalOpen || clockOutReviewOpen)) return
@@ -806,6 +819,7 @@ export default function ClockInOutButton({
     if (!userId || !userName?.trim() || !clockInNotes.trim()) {
       if (!clockInNotes.trim()) {
         showToast('Please describe what you intend to accomplish today', 'error')
+        queueMicrotask(() => clockInNotesRef.current?.focus())
       }
       return
     }
@@ -907,7 +921,7 @@ export default function ClockInOutButton({
 
   function handleOpenUpdateFocusModal() {
     if (!openSession) return
-    setUpdateFocusNotes(openSession.notes?.trim() ?? '')
+    setUpdateFocusNotes('')
     setUpdateFocusError(null)
     setUpdateFocusModalOpen(true)
   }
@@ -1627,7 +1641,7 @@ export default function ClockInOutButton({
               <div style={{ marginBottom: '0.25rem' }}>
                 <span style={{ fontWeight: 500 }}>Update the Job or Bid you are working on?</span>
               </div>
-              {selectedAssociation && associationChipFromSearch && (
+              {selectedAssociation && (associationChipFromSearch || showUpdateFocusAssociationChip) && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                   <span style={{ flex: 1, padding: '0.5rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                     {selectedAssociation.source === 'bid' && (() => {
