@@ -27,7 +27,9 @@ import {
   scheduleUpdateFocusLocationPatches,
 } from '../lib/patchClockPunchSessionLocations'
 import { buildClockBidsSearchParams } from '../lib/clockBidsSearchParams'
+import { canLeaveJobFieldReport } from '../lib/canLeaveJobFieldReport'
 import BidServiceTypeSearchToggles from './BidServiceTypeSearchToggles'
+import AdditionalReportModal from './AdditionalReportModal'
 import TeamFeedbackWizard from './team-feedback/TeamFeedbackWizard'
 
 function formatElapsed(seconds: number): string {
@@ -67,6 +69,26 @@ function dispatchScheduledJobToUnified(d: DispatchScheduledJobForAssign): Extrac
   }
 }
 
+/** Matches Complete Clock In button and Clock In modal chrome. */
+const CLOCK_IN_ACCENT_ORANGE = '#ff6600'
+
+const clockInSelectionOutlineSelected: CSSProperties = {
+  border: `2px solid ${CLOCK_IN_ACCENT_ORANGE}`,
+  background: '#fff7ed',
+  boxSizing: 'border-box',
+}
+
+const clockInSelectedAssociationChipStyle: CSSProperties = {
+  flex: 1,
+  padding: '0.5rem',
+  borderRadius: 6,
+  fontSize: '0.875rem',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '0.35rem',
+  ...clockInSelectionOutlineSelected,
+}
+
 function computeTotalSecondsToday(sessions: TodaySession[]): number {
   const now = Date.now()
   return sessions.reduce((sum, s) => {
@@ -76,6 +98,13 @@ function computeTotalSecondsToday(sessions: TodaySession[]): number {
   }, 0)
 }
 
+type ClockOutLeaveReportJobPick = {
+  id: string
+  hcpNumber: string
+  jobName: string
+  jobAddress: string
+}
+
 type Props = {
   userId: string
   userName: string | null
@@ -83,10 +112,18 @@ type Props = {
   onOpenMyTimeDayEditor?: () => void
   /** Called after a successful clock-in (new open session), after sessions refresh. */
   onClockInSuccess?: () => void
+  /** After filing a job field report from the clock-out modal (Dashboard assigned-job / Leave Report nag). */
+  onFieldReportSaved?: () => void
 }
 
-export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEditor, onClockInSuccess }: Props) {
-  const { user: authUser } = useAuth()
+export default function ClockInOutButton({
+  userId,
+  userName,
+  onOpenMyTimeDayEditor,
+  onClockInSuccess,
+  onFieldReportSaved,
+}: Props) {
+  const { user: authUser, role } = useAuth()
   const { showToast } = useToastContext()
   const { notifyFirstClockInOfDay } = useDailyGoalsGate()
   const [openSession, setOpenSession] = useState<OpenSession | null>(null)
@@ -96,6 +133,8 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
   const [actionLoading, setActionLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [clockInModalOpen, setClockInModalOpen] = useState(false)
+  /** Clock In: show orange summary. Update Focus / clock out: gray chip. Only after unified search tap. */
+  const [associationChipFromSearch, setAssociationChipFromSearch] = useState(false)
   const [clockInNotes, setClockInNotes] = useState('')
   const [clockInError, setClockInError] = useState<string | null>(null)
   const clockInNotesRef = useRef<HTMLTextAreaElement>(null)
@@ -108,8 +147,6 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
   const [clockOutReviewNotes, setClockOutReviewNotes] = useState('')
   const [clockOutReviewError, setClockOutReviewError] = useState<string | null>(null)
   const [clockOutSaving, setClockOutSaving] = useState(false)
-  /** Optional self-check in review modal only; not persisted or required to clock out. */
-  const [clockOutLeftReportsAck, setClockOutLeftReportsAck] = useState(false)
   const clockOutNotesRef = useRef<HTMLTextAreaElement>(null)
   const [unifiedSearchText, setUnifiedSearchText] = useState('')
   const [unifiedSearchResults, setUnifiedSearchResults] = useState<UnifiedSearchResult[]>([])
@@ -135,6 +172,12 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
   }, [lastSelectedJobBid, scheduledDispatchJobs])
   const [teamFeedbackOpen, setTeamFeedbackOpen] = useState(false)
   const [salaryUiActive, setSalaryUiActive] = useState(false)
+  /** Leave report overlay from Review before clock out (scheduled jobs missing a report today). */
+  const [clockOutLeaveReportJob, setClockOutLeaveReportJob] = useState<ClockOutLeaveReportJobPick | null>(null)
+  const [scheduledJobsMissingReport, setScheduledJobsMissingReport] = useState<DispatchScheduledJobForAssign[]>([])
+  const [missingReportsCheckLoading, setMissingReportsCheckLoading] = useState(false)
+  const [scheduledMissingReportsNonce, setScheduledMissingReportsNonce] = useState(0)
+  const missingReportsFetchGenRef = useRef(0)
 
   function parseLastJobBidFromStorage(raw: string | null): UnifiedSearchResult | null {
     if (!raw?.trim()) return null
@@ -318,6 +361,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
       setUnifiedSearchText('')
       setUnifiedSearchResults([])
       setSelectedAssociation(null)
+      setAssociationChipFromSearch(false)
     }
   }, [clockInModalOpen])
 
@@ -360,6 +404,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
       setUnifiedSearchText('')
       setUnifiedSearchResults([])
       setSelectedAssociation(null)
+      setAssociationChipFromSearch(false)
     }
   }, [updateFocusModalOpen])
 
@@ -444,6 +489,72 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
     openSession?.work_date,
     openSession?.clocked_in_at,
     openSession?.id,
+  ])
+
+  useEffect(() => {
+    if (!clockOutReviewOpen) setClockOutLeaveReportJob(null)
+  }, [clockOutReviewOpen])
+
+  useEffect(() => {
+    if (!clockOutReviewOpen || !openSession || !userId || !canLeaveJobFieldReport(role)) {
+      setScheduledJobsMissingReport([])
+      setMissingReportsCheckLoading(false)
+      return
+    }
+    const dispatchSnapshot = scheduledDispatchJobs
+    const jobIds = [...new Set(dispatchSnapshot.map((d) => d.jobId))]
+    if (jobIds.length === 0) {
+      setScheduledJobsMissingReport([])
+      setMissingReportsCheckLoading(false)
+      return
+    }
+    const scheduleYmd =
+      openSession.work_date.trim() || denverCalendarDayKey(new Date(openSession.clocked_in_at).getTime())
+    const rid = ++missingReportsFetchGenRef.current
+    setMissingReportsCheckLoading(true)
+    void (async () => {
+      try {
+        const rows = await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('reports')
+              .select('job_ledger_id, created_at')
+              .eq('created_by_user_id', userId)
+              .in('job_ledger_id', jobIds),
+          'clock-out Dispatch jobs reports check',
+        )
+        if (rid !== missingReportsFetchGenRef.current) return
+        const jobsWithReportToday = new Set<string>()
+        const list = (rows ?? []) as { job_ledger_id: string | null; created_at: string | null }[]
+        for (const r of list) {
+          const jid = r.job_ledger_id
+          const ca = r.created_at
+          if (!jid || !ca) continue
+          if (denverCalendarDayKey(new Date(ca).getTime()) === scheduleYmd) {
+            jobsWithReportToday.add(jid)
+          }
+        }
+        setScheduledJobsMissingReport(dispatchSnapshot.filter((d) => !jobsWithReportToday.has(d.jobId)))
+      } catch {
+        if (rid === missingReportsFetchGenRef.current) {
+          setScheduledJobsMissingReport([])
+        }
+      } finally {
+        if (rid === missingReportsFetchGenRef.current) {
+          setMissingReportsCheckLoading(false)
+        }
+      }
+    })()
+    return () => {
+      missingReportsFetchGenRef.current++
+    }
+  }, [
+    clockOutReviewOpen,
+    openSession,
+    scheduledDispatchJobs,
+    userId,
+    role,
+    scheduledMissingReportsNonce,
   ])
 
   useEffect(() => {
@@ -740,11 +851,11 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
     if (salaryUiActive) return
     if (!openSession) return
     setSelectedAssociation(null)
+    setAssociationChipFromSearch(false)
     setClockOutReviewNotes(openSession.notes?.trim() ?? '')
     setClockOutReviewError(null)
     setUnifiedSearchText('')
     setUnifiedSearchResults([])
-    setClockOutLeftReportsAck(false)
     setClockOutReviewOpen(true)
   }
 
@@ -875,6 +986,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
   function renderScheduledDispatchPicks(
     disabled: boolean,
     useLastLike: 'clockIn' | 'updateFocus' | 'clockOutReview',
+    onAssociatePickBefore?: () => void,
   ) {
     if (scheduledDispatchJobs.length === 0) return null
     const base =
@@ -891,7 +1003,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
           }
     const selected =
       useLastLike === 'clockIn'
-        ? { border: '1px solid #3b82f6', background: '#dbeafe' }
+        ? clockInSelectionOutlineSelected
         : { border: '1px solid #9ca3af', background: '#f3f4f6' }
     return (
       <div
@@ -916,6 +1028,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
               disabled={disabled}
               title={titleAttr || undefined}
               onClick={() => {
+                onAssociatePickBefore?.()
                 setSelectedAssociation(u)
                 setUnifiedSearchResults([])
                 setUnifiedSearchText('')
@@ -946,6 +1059,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
   function renderWorkingBoardBidPicks(
     disabled: boolean,
     useLastLike: 'clockIn' | 'updateFocus' | 'clockOutReview',
+    onAssociatePickBefore?: () => void,
   ) {
     if (workingBoardBidPicks.length === 0) return null
     const base =
@@ -962,7 +1076,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
           }
     const selected =
       useLastLike === 'clockIn'
-        ? { border: '1px solid #10b981', background: '#d1fae5' }
+        ? clockInSelectionOutlineSelected
         : { border: '1px solid #9ca3af', background: '#f3f4f6' }
     return (
       <div
@@ -987,6 +1101,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
               disabled={disabled}
               title={titleAttr || undefined}
               onClick={() => {
+                onAssociatePickBefore?.()
                 setSelectedAssociation(b)
                 setUnifiedSearchResults([])
                 setUnifiedSearchText('')
@@ -1031,19 +1146,37 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
     )
   }
 
-  function renderUseLastJobBidShortcut(opts: { disabled: boolean; useLastStyle: 'clockIn' | 'focusOrReview' }) {
+  function renderUseLastJobBidShortcut(opts: {
+    disabled: boolean
+    useLastStyle: 'clockIn' | 'focusOrReview'
+    /** Fired before assigning association so summary chip hides for non-search picks. */
+    onAssociatePickBefore?: () => void
+  }) {
     const showUseLast = Boolean(lastSelectedJobBid && !useLastHiddenBySchedule)
     if (!showUseLast || !lastSelectedJobBid) return null
+    const useLastMatchesSelection =
+      opts.useLastStyle === 'clockIn' &&
+      selectedAssociation != null &&
+      selectedAssociation.source === lastSelectedJobBid.source &&
+      selectedAssociation.id === lastSelectedJobBid.id
     const useLastBtnStyle: CSSProperties =
       opts.useLastStyle === 'clockIn'
-        ? {
-            padding: '0.25rem 0.5rem',
-            fontSize: '0.8125rem',
-            border: '1px solid #bfdbfe',
-            borderRadius: 6,
-            background: '#eff6ff',
-            cursor: opts.disabled ? 'not-allowed' : 'pointer',
-          }
+        ? useLastMatchesSelection
+          ? {
+              padding: '0.25rem 0.5rem',
+              fontSize: '0.8125rem',
+              cursor: opts.disabled ? 'not-allowed' : 'pointer',
+              borderRadius: 6,
+              ...clockInSelectionOutlineSelected,
+            }
+          : {
+              padding: '0.25rem 0.5rem',
+              fontSize: '0.8125rem',
+              border: '1px solid #bfdbfe',
+              borderRadius: 6,
+              background: '#eff6ff',
+              cursor: opts.disabled ? 'not-allowed' : 'pointer',
+            }
         : {
             padding: '0.25rem 0.5rem',
             fontSize: '0.8125rem',
@@ -1056,7 +1189,10 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
       <div style={{ marginTop: '0.5rem' }}>
         <button
           type="button"
-          onClick={() => setSelectedAssociation(lastSelectedJobBid)}
+          onClick={() => {
+            opts.onAssociatePickBefore?.()
+            setSelectedAssociation(lastSelectedJobBid)
+          }}
           disabled={opts.disabled}
           style={{ ...useLastBtnStyle, alignSelf: 'flex-start' }}
         >
@@ -1268,9 +1404,9 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
               boxSizing: 'border-box',
               fontSize: '1.125rem',
               fontWeight: 600,
-              border: '2px solid #ff6600',
+              border: `2px solid ${CLOCK_IN_ACCENT_ORANGE}`,
               borderRadius: 8,
-              background: canClockIn ? '#ff6600' : '#f3f4f6',
+              background: canClockIn ? CLOCK_IN_ACCENT_ORANGE : '#f3f4f6',
               color: canClockIn ? 'white' : '#9ca3af',
               cursor: canClockIn && !actionLoading ? 'pointer' : 'not-allowed',
             }}
@@ -1303,11 +1439,11 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
               overflowY: 'auto',
               boxSizing: 'border-box',
               boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
-              borderTop: '4px solid #ff6600',
+              borderTop: `4px solid ${CLOCK_IN_ACCENT_ORANGE}`,
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <style>{`#clock-in-modal textarea:focus,#clock-in-modal textarea:focus-visible,#clock-in-modal input[type=text]:focus,#clock-in-modal input[type=text]:focus-visible,#clock-in-modal button:focus-visible{outline:2px solid #ff6600;outline-offset:2px}`}</style>
+            <style>{`#clock-in-modal textarea:focus,#clock-in-modal textarea:focus-visible,#clock-in-modal input[type=text]:focus,#clock-in-modal input[type=text]:focus-visible,#clock-in-modal button:focus-visible{outline:2px solid ${CLOCK_IN_ACCENT_ORANGE};outline-offset:2px}`}</style>
             <h3 id="clock-in-modal-title" style={{ marginTop: 0, marginBottom: '1rem', textAlign: 'center' }}>Ready to clock in?</h3>
             <label style={{ display: 'block', marginBottom: '0.5rem' }}>
               <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>What do you plan to accomplish?</span>
@@ -1325,9 +1461,9 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
               <div style={{ marginBottom: '0.25rem' }}>
                 <span style={{ fontWeight: 500 }}>What job or bid should we change for your time?</span>
               </div>
-              {selectedAssociation && (
+              {selectedAssociation && associationChipFromSearch && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                  <span style={{ flex: 1, padding: '0.5rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <span style={clockInSelectedAssociationChipStyle}>
                     {selectedAssociation.source === 'bid' && (() => {
                       const t = getBidServiceTypeTag(selectedAssociation.service_type_name)
                       return t ? (
@@ -1340,7 +1476,11 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
                   </span>
                   <button
                     type="button"
-                    onClick={() => { setSelectedAssociation(null); setUnifiedSearchResults([]) }}
+                    onClick={() => {
+                      setAssociationChipFromSearch(false)
+                      setSelectedAssociation(null)
+                      setUnifiedSearchResults([])
+                    }}
                     disabled={actionLoading}
                     style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 6, background: 'white', cursor: actionLoading ? 'not-allowed' : 'pointer' }}
                   >
@@ -1348,20 +1488,43 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
                   </button>
                 </div>
               )}
-              {renderScheduledDispatchPicks(actionLoading, 'clockIn')}
-              {renderWorkingBoardBidPicks(actionLoading, 'clockIn')}
+              {renderScheduledDispatchPicks(actionLoading, 'clockIn', () => setAssociationChipFromSearch(false))}
+              {renderWorkingBoardBidPicks(actionLoading, 'clockIn', () => setAssociationChipFromSearch(false))}
               {renderUnifiedJobBidSearchRow(actionLoading)}
-              {(unifiedSearchResults.length > 0 || (assignedJobsListLoading && !unifiedSearchText.trim())) && (
+              {unifiedSearchText.trim() !== '' &&
+                (unifiedSearchResults.length > 0 || assignedJobsListLoading) && (
                 <div style={{ maxHeight: 160, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4, marginTop: '0.25rem' }}>
-                  {assignedJobsListLoading && unifiedSearchResults.length === 0 && !unifiedSearchText.trim() ? (
+                  {assignedJobsListLoading && unifiedSearchResults.length === 0 ? (
                     <div style={{ padding: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>Loading…</div>
                   ) : (
                     unifiedSearchResults.map((r) => (
                       <button
                         key={`${r.source}-${r.id}`}
                         type="button"
-                        onClick={() => { setSelectedAssociation(r); setUnifiedSearchResults([]); setUnifiedSearchText('') }}
-                        style={{ display: 'block', width: '100%', padding: '0.5rem 0.75rem', textAlign: 'left', border: 'none', background: selectedAssociation && selectedAssociation.source === r.source && selectedAssociation.id === r.id ? '#eff6ff' : 'white', cursor: 'pointer', borderBottom: '1px solid #e5e7eb', fontSize: '0.875rem' }}
+                        onClick={() => {
+                          setSelectedAssociation(r)
+                          setAssociationChipFromSearch(true)
+                          setUnifiedSearchResults([])
+                          setUnifiedSearchText('')
+                        }}
+                        style={{
+                          display: 'block',
+                          width: '100%',
+                          padding: '0.5rem 0.75rem',
+                          textAlign: 'left',
+                          fontSize: '0.875rem',
+                          cursor: 'pointer',
+                          boxSizing: 'border-box',
+                          ...(selectedAssociation &&
+                          selectedAssociation.source === r.source &&
+                          selectedAssociation.id === r.id
+                            ? { ...clockInSelectionOutlineSelected, borderRadius: 4 }
+                            : {
+                                border: 'none',
+                                background: 'white',
+                                borderBottom: '1px solid #e5e7eb',
+                              }),
+                        }}
                       >
                         {r.source === 'bid' && (() => {
                           const t = getBidServiceTypeTag(r.service_type_name)
@@ -1377,7 +1540,11 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
                   )}
                 </div>
               )}
-              {renderUseLastJobBidShortcut({ disabled: actionLoading, useLastStyle: 'clockIn' })}
+              {renderUseLastJobBidShortcut({
+                disabled: actionLoading,
+                useLastStyle: 'clockIn',
+                onAssociatePickBefore: () => setAssociationChipFromSearch(false),
+              })}
             </div>
             {clockInError && (
               <p style={{ color: '#dc2626', fontSize: '0.875rem', margin: '0 0 0.75rem 0' }}>
@@ -1399,7 +1566,14 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
                 type="button"
                 onClick={handleCompleteClockIn}
                 disabled={actionLoading}
-                style={{ padding: '0.5rem 1rem', border: '1px solid #ff6600', borderRadius: 6, background: '#ff6600', color: 'white', cursor: actionLoading ? 'not-allowed' : 'pointer' }}
+                style={{
+                  padding: '0.5rem 1rem',
+                  border: `1px solid ${CLOCK_IN_ACCENT_ORANGE}`,
+                  borderRadius: 6,
+                  background: CLOCK_IN_ACCENT_ORANGE,
+                  color: 'white',
+                  cursor: actionLoading ? 'not-allowed' : 'pointer',
+                }}
               >
                 {actionLoading ? 'Clocking in…' : 'Complete Clock In'}
               </button>
@@ -1431,14 +1605,14 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
             onClick={(e) => e.stopPropagation()}
           >
             <style>{`#update-focus-modal textarea:focus,#update-focus-modal input[type=text]:focus,#update-focus-modal input[type=text]:focus-visible{outline:2px solid #3b82f6;outline-offset:2px}`}</style>
-            <h3 id="update-focus-modal-title" style={{ marginTop: 0, marginBottom: '0.5rem', textAlign: 'center' }}>Update Focus</h3>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
-              {salaryUiActive
-                ? 'Link this shift to a different job or bid. Your session times stay the same.'
-                : 'This will clock out your current session and start a new one with the focus below.'}
-            </p>
+            <h3 id="update-focus-modal-title" style={{ marginTop: 0, marginBottom: salaryUiActive ? '0.5rem' : '1rem', textAlign: 'center' }}>Update Focus</h3>
+            {salaryUiActive ? (
+              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                Link this shift to a different job or bid. Your session times stay the same.
+              </p>
+            ) : null}
             <label style={{ display: 'block', marginBottom: '0.5rem' }}>
-              <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>What are you working on?</span>
+              <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>What are you now going to work on?</span>
               <textarea
                 ref={updateFocusNotesRef}
                 value={updateFocusNotes}
@@ -1451,9 +1625,9 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
             </label>
             <div style={{ marginBottom: '0.5rem' }}>
               <div style={{ marginBottom: '0.25rem' }}>
-                <span style={{ fontWeight: 500 }}>What Job or Bid are you going to work on?</span>
+                <span style={{ fontWeight: 500 }}>Update the Job or Bid you are working on?</span>
               </div>
-              {selectedAssociation && (
+              {selectedAssociation && associationChipFromSearch && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                   <span style={{ flex: 1, padding: '0.5rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                     {selectedAssociation.source === 'bid' && (() => {
@@ -1468,7 +1642,10 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
                   </span>
                   <button
                     type="button"
-                    onClick={() => setSelectedAssociation(null)}
+                    onClick={() => {
+                      setAssociationChipFromSearch(false)
+                      setSelectedAssociation(null)
+                    }}
                     disabled={updateFocusLoading}
                     style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: updateFocusLoading ? 'not-allowed' : 'pointer' }}
                   >
@@ -1476,19 +1653,25 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
                   </button>
                 </div>
               )}
-              {renderScheduledDispatchPicks(updateFocusLoading, 'updateFocus')}
-              {renderWorkingBoardBidPicks(updateFocusLoading, 'updateFocus')}
+              {renderScheduledDispatchPicks(updateFocusLoading, 'updateFocus', () => setAssociationChipFromSearch(false))}
+              {renderWorkingBoardBidPicks(updateFocusLoading, 'updateFocus', () => setAssociationChipFromSearch(false))}
               {renderUnifiedJobBidSearchRow(updateFocusLoading)}
-              {(unifiedSearchResults.length > 0 || (assignedJobsListLoading && !unifiedSearchText.trim())) && (
+              {unifiedSearchText.trim() !== '' &&
+                (unifiedSearchResults.length > 0 || assignedJobsListLoading) && (
                 <div style={{ maxHeight: 160, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4, marginTop: '0.25rem' }}>
-                  {assignedJobsListLoading && unifiedSearchResults.length === 0 && !unifiedSearchText.trim() ? (
+                  {assignedJobsListLoading && unifiedSearchResults.length === 0 ? (
                     <div style={{ padding: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>Loading…</div>
                   ) : (
                     unifiedSearchResults.map((r) => (
                       <button
                         key={`${r.source}-${r.id}`}
                         type="button"
-                        onClick={() => { setSelectedAssociation(r); setUnifiedSearchResults([]); setUnifiedSearchText('') }}
+                        onClick={() => {
+                          setSelectedAssociation(r)
+                          setAssociationChipFromSearch(true)
+                          setUnifiedSearchResults([])
+                          setUnifiedSearchText('')
+                        }}
                         style={{ display: 'block', width: '100%', padding: '0.5rem 0.75rem', textAlign: 'left', border: 'none', background: selectedAssociation && selectedAssociation.source === r.source && selectedAssociation.id === r.id ? '#eff6ff' : 'white', cursor: 'pointer', borderBottom: '1px solid #e5e7eb', fontSize: '0.875rem' }}
                       >
                         {r.source === 'bid' && (() => {
@@ -1505,7 +1688,11 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
                   )}
                 </div>
               )}
-              {renderUseLastJobBidShortcut({ disabled: updateFocusLoading, useLastStyle: 'focusOrReview' })}
+              {renderUseLastJobBidShortcut({
+                disabled: updateFocusLoading,
+                useLastStyle: 'focusOrReview',
+                onAssociatePickBefore: () => setAssociationChipFromSearch(false),
+              })}
             </div>
             {updateFocusError && (
               <p style={{ color: '#dc2626', fontSize: '0.875rem', margin: '0 0 0.75rem 0' }}>{updateFocusError}</p>
@@ -1561,11 +1748,8 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <style>{`#clock-out-review-modal textarea:focus,#clock-out-review-modal input[type=text]:focus,#clock-out-review-modal input[type=text]:focus-visible,#clock-out-review-modal input[type=checkbox]:focus,#clock-out-review-modal input[type=checkbox]:focus-visible{outline:2px solid #dc2626;outline-offset:2px}`}</style>
-            <h3 id="clock-out-review-modal-title" style={{ marginTop: 0, marginBottom: '0.5rem', textAlign: 'center' }}>Review before clock out</h3>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
-              Confirm or update what you worked on for this session. This is saved on the same time entry when you clock out.
-            </p>
+            <style>{`#clock-out-review-modal textarea:focus,#clock-out-review-modal input[type=text]:focus,#clock-out-review-modal input[type=text]:focus-visible{outline:2px solid #dc2626;outline-offset:2px}`}</style>
+            <h3 id="clock-out-review-modal-title" style={{ marginTop: 0, marginBottom: '1rem', textAlign: 'center' }}>Review before clock out</h3>
             <label style={{ display: 'block', marginBottom: '0.5rem' }}>
               <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>What did you work on?</span>
               <textarea
@@ -1582,7 +1766,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
               <div style={{ marginBottom: '0.25rem' }}>
                 <span style={{ fontWeight: 500 }}>What Job or Bid were you working on?</span>
               </div>
-              {selectedAssociation && (
+              {selectedAssociation && associationChipFromSearch && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                   <span style={{ flex: 1, padding: '0.5rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                     {selectedAssociation.source === 'bid' && (() => {
@@ -1597,7 +1781,10 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
                   </span>
                   <button
                     type="button"
-                    onClick={() => setSelectedAssociation(null)}
+                    onClick={() => {
+                      setAssociationChipFromSearch(false)
+                      setSelectedAssociation(null)
+                    }}
                     disabled={clockOutSaving}
                     style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: clockOutSaving ? 'not-allowed' : 'pointer' }}
                   >
@@ -1605,12 +1792,13 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
                   </button>
                 </div>
               )}
-              {renderScheduledDispatchPicks(clockOutSaving, 'clockOutReview')}
-              {renderWorkingBoardBidPicks(clockOutSaving, 'clockOutReview')}
+              {renderScheduledDispatchPicks(clockOutSaving, 'clockOutReview', () => setAssociationChipFromSearch(false))}
+              {renderWorkingBoardBidPicks(clockOutSaving, 'clockOutReview', () => setAssociationChipFromSearch(false))}
               {renderUnifiedJobBidSearchRow(clockOutSaving)}
-              {(unifiedSearchResults.length > 0 || (assignedJobsListLoading && !unifiedSearchText.trim())) && (
+              {unifiedSearchText.trim() !== '' &&
+                (unifiedSearchResults.length > 0 || assignedJobsListLoading) && (
                 <div style={{ maxHeight: 160, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4, marginTop: '0.25rem' }}>
-                  {assignedJobsListLoading && unifiedSearchResults.length === 0 && !unifiedSearchText.trim() ? (
+                  {assignedJobsListLoading && unifiedSearchResults.length === 0 ? (
                     <div style={{ padding: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>Loading…</div>
                   ) : (
                     unifiedSearchResults.map((r) => (
@@ -1619,6 +1807,7 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
                         type="button"
                         onClick={() => {
                           setSelectedAssociation(r)
+                          setAssociationChipFromSearch(true)
                           setUnifiedSearchResults([])
                           setUnifiedSearchText('')
                         }}
@@ -1648,30 +1837,76 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
                   )}
                 </div>
               )}
-              {renderUseLastJobBidShortcut({ disabled: clockOutSaving, useLastStyle: 'focusOrReview' })}
-              <label
-                htmlFor="clock-out-left-reports-ack"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem',
-                  marginTop: '0.75rem',
-                  fontSize: '0.875rem',
-                  color: '#374151',
-                  cursor: clockOutSaving ? 'default' : 'pointer',
-                }}
-              >
-                <span>I have left a report on all my jobs for the day.</span>
-                <input
-                  id="clock-out-left-reports-ack"
-                  type="checkbox"
-                  checked={clockOutLeftReportsAck}
-                  onChange={(e) => setClockOutLeftReportsAck(e.target.checked)}
-                  disabled={clockOutSaving}
-                  style={{ flexShrink: 0 }}
-                />
-              </label>
+              {renderUseLastJobBidShortcut({
+                disabled: clockOutSaving,
+                useLastStyle: 'focusOrReview',
+                onAssociatePickBefore: () => setAssociationChipFromSearch(false),
+              })}
+              {canLeaveJobFieldReport(role) && scheduledDispatchJobs.length > 0 ? (
+                <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #e5e7eb' }}>
+                  <div
+                    style={{
+                      fontSize: '0.8125rem',
+                      fontWeight: 600,
+                      color: '#374151',
+                      marginBottom: '0.35rem',
+                    }}
+                  >
+                    Missing reports from today (click to make report):
+                  </div>
+                  {missingReportsCheckLoading ? (
+                    <p style={{ margin: 0, fontSize: '0.8125rem', color: '#6b7280' }}>Checking…</p>
+                  ) : scheduledJobsMissingReport.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {scheduledJobsMissingReport.map((d) => {
+                          const u = dispatchScheduledJobToUnified(d)
+                          const win = d.windowsLabel?.trim()
+                          const { title, address } = formatUnifiedJobSchedulePrimaryLine(u)
+                          const line1 = win ? `${win} | ${title}` : title
+                          return (
+                            <button
+                              key={d.jobId}
+                              type="button"
+                              disabled={clockOutSaving}
+                              onClick={() => {
+                                if (clockOutSaving) return
+                                setClockOutLeaveReportJob({
+                                  id: d.jobId,
+                                  hcpNumber: d.hcp_number || '—',
+                                  jobName: d.job_name,
+                                  jobAddress: d.job_address || '—',
+                                })
+                              }}
+                              style={{
+                                display: 'block',
+                                width: '100%',
+                                padding: '0.25rem 0.5rem',
+                                textAlign: 'left',
+                                boxSizing: 'border-box',
+                                fontSize: '0.8125rem',
+                                cursor: clockOutSaving ? 'not-allowed' : 'pointer',
+                                border: '1px solid #fecaca',
+                                borderRadius: 4,
+                                background: '#fef2f2',
+                              }}
+                            >
+                              <div>{line1}</div>
+                              {address ? (
+                                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>
+                                  {address}
+                                </div>
+                              ) : null}
+                            </button>
+                          )
+                        })}
+                    </div>
+                  ) : (
+                    <p style={{ margin: 0, fontSize: '0.8125rem', color: '#6b7280' }}>
+                      You've reported on all Dispatch-scheduled jobs today.
+                    </p>
+                  )}
+                </div>
+              ) : null}
             </div>
             {clockOutReviewError && (
               <p style={{ color: '#dc2626', fontSize: '0.875rem', margin: '0 0 0.75rem 0' }}>{clockOutReviewError}</p>
@@ -1707,6 +1942,28 @@ export default function ClockInOutButton({ userId, userName, onOpenMyTimeDayEdit
         </div>
       )}
     </div>
+    {clockOutLeaveReportJob ? (
+      <AdditionalReportModal
+        open
+        onClose={() => setClockOutLeaveReportJob(null)}
+        onSaved={() => {
+          setClockOutLeaveReportJob(null)
+          setScheduledMissingReportsNonce((n) => n + 1)
+          onFieldReportSaved?.()
+        }}
+        onReportSaved={() => {
+          setScheduledMissingReportsNonce((n) => n + 1)
+          onFieldReportSaved?.()
+        }}
+        authUserId={userId}
+        userRole={role}
+        jobId={clockOutLeaveReportJob.id}
+        hcpNumber={clockOutLeaveReportJob.hcpNumber}
+        jobName={clockOutLeaveReportJob.jobName}
+        jobAddress={clockOutLeaveReportJob.jobAddress}
+        overlayZIndex={1100}
+      />
+    ) : null}
     <TeamFeedbackWizard
       open={teamFeedbackOpen}
       onClose={() => setTeamFeedbackOpen(false)}

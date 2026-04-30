@@ -94,6 +94,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### April 30, 2026
 
+**`20260430071645_recurring_job_report_include_costs.sql`**
+- **Purpose**: Per-recipient **`include_costs`** on **`recurring_job_report_schedule_recipients`** — when true, recurring digest emails add a **Cost** column (**hours × people_pay_config.hourly_wage** matched on **`trim(users.name)` = `person_name`**); missing wage renders **—**.
+- **Impact**: **`recurringJobReportCore`**, **`recurring-job-report-preview`** / **`test-send`** (**`include_costs`** body) / **`dispatch`** (**`select include_costs`**); **[`RecurringEmailReportsModal.tsx`](src/components/jobs/RecurringEmailReportsModal.tsx)**; **`EDGE_FUNCTIONS.md`**, **`RECENT_FEATURES.md`**, **`AGENTS.md`**, **`AI_CONTEXT.md`**, **`PROJECT_DOCUMENTATION.md`**, **`ACCESS_CONTROL.md`**
+- **Category**: Jobs / Reports / Email
+
 **`20260430064919_recurring_job_report_activity_scope_last_week.sql`**
 - **Purpose**: **`calendar_last_week`** on **`recurring_job_report_schedule_recipients.activity_scope`**; **`reporting_window_calendar_week_prior_to_anchor`** (Sun–Sat week **before** the week containing anchor; **`reporting_date`** = that week’s Sunday for dispatch dedup).
 - **Impact**: **`recurringJobReportCore`**, **`recurring-job-report-*`**; [`RecurringEmailReportsModal.tsx`](src/components/jobs/RecurringEmailReportsModal.tsx)
@@ -1012,7 +1017,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260330150000_team_leader_assignments.sql`**
 - **Purpose**: Team leader assignments (leader → member) and scoped access to member clock sessions / crew sync tables
 - **Changes**: Create `team_leader_assignments` (unique leader/member pair, no self-pair); helpers `is_team_lead_for_member`, `is_team_lead_for_person_name`, `can_manage_team_leader_assignments`; RLS on assignments; extend `clock_sessions`, `people_hours`, `people_crew_jobs`, `people_crew_bids` policies for team-lead paths; publish `team_leader_assignments` to `supabase_realtime` when missing
-- **Impact**: Settings → Team Hours Sharing; Dashboard → My Team pending sessions for leaders; team leads without pay access can approve/reject member sessions
+- **Impact**: Settings → Team Hours Sharing; **People → Teams** (`?tab=teams`); Dashboard → My Team pending sessions for leaders; team leads without pay access can approve/reject member sessions
 - **Category**: Hours / Clock Sessions / RLS
 
 **`20260330160000_team_leader_approve_revoke_rpcs.sql`**
@@ -1056,7 +1061,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260327230557_team_leader_assignment_dashboard_visibility.sql`**
 - **Purpose**: Per leader→member link, control whether the leader sees full **My Team** on Dashboard or **Currently clocked in** strip only
 - **Changes**: Add `team_leader_assignments.dashboard_hours_visibility` (`'full'` | `'strip_only'`, default `'full'`); trigger `team_leader_assignments_dashboard_visibility_dev_only_trg` + function `team_leader_assignments_dashboard_visibility_dev_only()` — only `is_dev()` may change the column
-- **Impact**: Settings → Team Hours Sharing → **Leader dashboard** (dev edits); hook/UI omit strip-only members from detailed My Team and pending banner counts; strip unchanged
+- **Impact**: Settings → Team Hours Sharing; **People → Teams**; **Leader dashboard** (dev edits); hook/UI omit strip-only members from detailed My Team and pending banner counts; strip unchanged
 - **Category**: Hours / Dashboard / RLS
 
 ### June 2026

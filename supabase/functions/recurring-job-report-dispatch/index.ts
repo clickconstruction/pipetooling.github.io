@@ -5,6 +5,7 @@ import type { ActivityScopeMode, CrewFilterMode } from '../_shared/recurringJobR
 import {
   buildRecurringJobReportHtml,
   buildRecurringJobReportPayload,
+  buildRecurringJobReportTextFallback,
   recurringJobReportEmailSubject,
   sendResendHtmlEmail,
   getReportingWindowForActivityScope,
@@ -38,6 +39,7 @@ type RecipientRow = {
   recipient_user_id: string
   activity_scope: ActivityScopeMode
   crew_filter: CrewFilterMode
+  include_costs?: boolean | null
 }
 
 serve(async (req) => {
@@ -115,7 +117,7 @@ serve(async (req) => {
 
       const { data: recipients, error: recErr } = await admin
         .from('recurring_job_report_schedule_recipients')
-        .select('recipient_user_id, activity_scope, crew_filter')
+        .select('recipient_user_id, activity_scope, crew_filter, include_costs')
         .eq('schedule_id', raw.id)
         .limit(MAX_RECIPIENTS_PER_SCHEDULE)
 
@@ -162,22 +164,19 @@ serve(async (req) => {
         }
 
         try {
+          const includeCosts = r.include_costs === true
+
           const payload = await buildRecurringJobReportPayload(admin, {
             scopeMasterUserId: raw.scope_master_user_id,
             recipientUserId: recipientId,
             crewFilter: r.crew_filter,
             window,
+            includeCosts,
           })
-          const html = buildRecurringJobReportHtml(payload)
+          const html = buildRecurringJobReportHtml(payload, undefined, includeCosts)
           const subject = recurringJobReportEmailSubject(payload)
 
-          let textFallback = ''
-          for (const j of payload.jobs) {
-            textFallback += `${j.job.hcp_number} ${j.job.job_name}\n`
-            for (const [, row] of j.byUserId) {
-              textFallback += `  ${row.displayName}: ${row.hours.toFixed(2)}h\n`
-            }
-          }
+          const textFallback = buildRecurringJobReportTextFallback(payload, includeCosts)
 
           const send = await sendResendHtmlEmail({
             to: emailTo,

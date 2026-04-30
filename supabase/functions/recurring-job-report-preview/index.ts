@@ -30,6 +30,8 @@ type Body = {
   /** When `window` is set manually (advanced testing). */
   period_kind?: ReportingPeriodKind
   window?: { window_start_utc: string; window_end_utc: string; reporting_date: string }
+  /** When true, digest includes Cost (hours × pay config hourly_wage keyed by trim(users.name)). */
+  include_costs?: boolean
 }
 
 function isActivityScope(s: unknown): s is ActivityScopeMode {
@@ -143,14 +145,17 @@ serve(async (req) => {
       })
     }
 
+    const includeCosts = body.include_costs === true
+
     const payload = await buildRecurringJobReportPayload(admin, {
       scopeMasterUserId: body.scope_master_user_id,
       recipientUserId,
       crewFilter: body.crew_filter,
       window,
+      includeCosts,
     })
 
-    const html = buildRecurringJobReportHtml(payload)
+    const html = buildRecurringJobReportHtml(payload, undefined, includeCosts)
     return new Response(JSON.stringify({ html, payload_preview: true }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

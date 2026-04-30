@@ -10,6 +10,7 @@ import type {
 import {
   buildRecurringJobReportHtml,
   buildRecurringJobReportPayload,
+  buildRecurringJobReportTextFallback,
   getReportingWindowForActivityScope,
   recurringJobReportEmailSubject,
   sendResendHtmlEmail,
@@ -30,6 +31,7 @@ type Body = {
   anchor_date: string
   period_kind?: ReportingPeriodKind
   window?: { window_start_utc: string; window_end_utc: string; reporting_date: string }
+  include_costs?: boolean
 }
 
 function isActivityScope(s: unknown): s is ActivityScopeMode {
@@ -162,26 +164,24 @@ serve(async (req) => {
       })
     }
 
+    const includeCosts = body.include_costs === true
+
     const payload = await buildRecurringJobReportPayload(admin, {
       scopeMasterUserId: body.scope_master_user_id,
       recipientUserId,
       crewFilter: body.crew_filter,
       window,
+      includeCosts,
     })
 
     const html = buildRecurringJobReportHtml(
       payload,
       '<strong>Test email</strong> — This message was triggered from PipeTooling. Recipients normally receive summaries like this.',
+      includeCosts,
     )
     const subject = `[TEST] ${recurringJobReportEmailSubject(payload)}`
 
-    let textFallback = ''
-    for (const j of payload.jobs) {
-      textFallback += `${j.job.hcp_number} ${j.job.job_name}\n`
-      for (const [, row] of j.byUserId) {
-        textFallback += `  ${row.displayName}: ${row.hours.toFixed(2)}h\n`
-      }
-    }
+    const textFallback = buildRecurringJobReportTextFallback(payload, includeCosts)
 
     const send = await sendResendHtmlEmail({
       to: sendTo,

@@ -12,20 +12,32 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.422 → v2.4"
+version_range: "v2.426 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.426)"
+    line: ~1402
+    description: "Dashboard Clock In / Update Focus / clock-out review — associationChipFromSearch chip; missing-reports heading; modal copy trims; v2.416 daily-report checkbox docs retired"
+  - name: "Latest Version (v2.425)"
+    line: ~1413
+    description: "Recurring Email Reports — per-recipient include_costs + wage-derived Cost column (HTML + text); migrations + Edge + modal"
+  - name: "Latest Version (v2.424)"
+    line: ~1409
+    description: "People → Teams tab — team_leader_assignments tree + compact per-leader Add member; docs (ACCESS_CONTROL, PROJECT_DOCUMENTATION, MIGRATIONS, AGENTS, AI_CONTEXT)"
+  - name: "Latest Version (v2.423)"
+    line: ~1406
+    description: "Recurring Email Reports digest — jobs_ledger.job_address under each job heading (HTML + text fallback)"
   - name: "Latest Version (v2.422)"
-    line: ~1390
+    line: ~1403
     description: "Recurring Email Reports — calendar_last_week scope + reporting_window_calendar_week_prior_to_anchor"
   - name: "Latest Version (v2.421)"
-    line: ~1405
+    line: ~1415
     description: "Recurring Email Reports — org-wide activity digest; activity_scope + crew_filter (team_leader_assignments); drop schedule/job_scope job filtering"
   - name: "Latest Version (v2.420)"
-    line: ~1420
+    line: ~1428
     description: "Jobs Reports — Recurring Email Reports modal; schedules/recipients tables, cron dispatch, preview & test-send Edge functions"
   - name: "Latest Version (v2.419)"
-    line: ~1430
+    line: ~1440
     description: "Salary sync — continuous template + My Time split: indexed salary_schedule fragments close at continuous t_end (20270516120000); SALARY_CLOCK_SESSIONS.md, PROJECT_DOCUMENTATION, GLOSSARY"
   - name: "Latest Version (v2.418)"
     line: ~1403
@@ -35,7 +47,7 @@ key_sections:
     description: "Docs — agent app crash playbook, AGENTS.md row, capture-supabase-incident.sh, README/TROUBLESHOOTING/AI_CONTEXT/PROJECT_DOCUMENTATION/runbook cross-links; 28P01 note in SUPABASE_INCIDENT_RUNBOOK"
   - name: "Latest Version (v2.416)"
     line: ~1400
-    description: "Checklist Manage client-side search; People Users narrow email/phone line; Review before clock out optional daily-report checkbox"
+    description: "Checklist Manage client-side search; People Users narrow email/phone line"
   - name: "Latest Version (v2.415)"
     line: ~1384
     description: "Product copy — Customer Files / Customer Pictures (was Job Files / Job Pictures): JobFormModal, DetailJobModal, EditCustomerForm, Jobs/Quickfill Stages alerts, Quickfill section label, Dashboard link, Documents job ledger; docs"
@@ -1093,10 +1105,11 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.426 — **Dashboard** **Clock In** / **Update Focus** / **Review before clock out** — job/bid **summary + Clear** only after **typed search** (`associationChipFromSearch`); **Missing reports from today (click to make report)**; shorter modal copy; retired **v2.416** checkbox from product — **[`ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx)**](#latest-updates-v2426)
 **New:** [v2.419 — **Salary sync** — **continuous** workday split in **My Time**: open **indexed** **`salary_schedule`** fragments (**`salary_segment_index`** 1..N) **close at **`t_end`** once **`p_now ≥ t_end`** (non-final, **`clocked_out_at IS NULL`**, **`clocked_in_at < t_end`**); **`salary_sync_one_user_clock_sessions`** — **[`20270516120000_salary_sync_close_continuous_fragments_at_t_end.sql`](supabase/migrations/20270516120000_salary_sync_close_continuous_fragments_at_t_end.sql)**; docs — **`SALARY_CLOCK_SESSIONS.md`**, **`PROJECT_DOCUMENTATION.md`** (**`clock_sessions`**), **`GLOSSARY.md`**, **`MIGRATIONS.md`](#latest-updates-v2419)
 **New:** [v2.418 — **Reports** — superintendent **`reports`** anchor (**`superintendent_report_job_anchor_allowed`**, SECURITY DEFINER + **`row_security` off**, team-member branch); **`list_reports_with_job_info`** / **`list_reports_for_job_ledger`** parity; **`reported_at_lat/lng`** in list RPCs (**primary**, **superintendent**, **estimator**, **helpers**/**subcontractor** own rows); **`list_my_reports`** coords on own rows (**`20270511120000`** … **`20270515120000`**); **[`JobReportsModal`](src/components/JobReportsModal.tsx)** — **`ReportDetailBody`** **`fieldLayout="inline"`**, **`ReportLocationMapsLink`** on collapsed row + detail (**[`ReportViewModal.tsx`](src/components/ReportViewModal.tsx)**)](#latest-updates-v2418)
 **New:** [v2.417 — **Docs / operations** — **App crash triage for AI agents**: **`docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md`** (playbook), **`AGENTS.md`** table row, **`scripts/capture-supabase-incident.sh`**; **README** / **TROUBLESHOOTING** / **AI_CONTEXT** / **PROJECT_DOCUMENTATION** / **`SUPABASE_INCIDENT_RUNBOOK`** cross-links; **28P01** DB password note in runbook](#latest-updates-v2417)
-**New:** [v2.416 — **Checklist** **Manage** — **Search by title or assignee** (client-side); **People** **Users** — **email** / **phone** second line **≤640px**; **Review before clock out** — optional **left a report on all my jobs** checkbox (**not** required) — **[`Checklist.tsx`](src/pages/Checklist.tsx)**, **[`People.tsx`](src/pages/People.tsx)**, **[`ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx)**](#latest-updates-v2416)
+**New:** [v2.416 — **Checklist** **Manage** — **Search by title or assignee** (client-side); **People** **Users** — **email** / **phone** second line **≤640px** — **[`Checklist.tsx`](src/pages/Checklist.tsx)**, **[`People.tsx`](src/pages/People.tsx)**](#latest-updates-v2416)
 **New:** [v2.415 — **Product copy** — **Customer Files** / **Customer Pictures** (replaces **Job Files** / **Job Pictures**): Edit Job, Job Detail, Edit Customer, **Jobs** / **Quickfill** Stages pipeline (**No customer pictures**), Quickfill **`Stages: customer link & customer pictures`**, Dashboard **Open customer pictures**, **Documents** job **Docs**; **`job_pictures_link`** / column names unchanged](#latest-updates-v2415)
 **New:** [v2.414 — **Dashboard** — **Job pictures** under job **address** on **Assigned Jobs**, **Team Ready to Bill**, and **Superintendent Jobs**: **`jobs_ledger.job_pictures_link`** on **`list_assigned_jobs_for_dashboard`**, **`list_ready_to_bill_assigned_jobs_for_dashboard`**, **`list_superintendent_jobs_for_dashboard`** ([**`20260429181022_dashboard_list_jobs_job_pictures_link.sql`**](supabase/migrations/20260429181022_dashboard_list_jobs_job_pictures_link.sql)); images **`DashboardJobPicturesLinkRow`** + **`openInExternalBrowser`** ([**`Dashboard.tsx`**](src/pages/Dashboard.tsx))](#latest-updates-v2414)
 **New:** [v2.413 — **Quickfill** — **Stages: customer link & customer pictures** (`no-customer-stages`): **No customer pictures (n)** for **working** jobs with empty **`job_pictures_link`** (**`buildStagesWorkingJobsWithoutPicturesList`**, **`StagesAlertJobListModal`**, **`stages-no-job-pictures-quickfill-modal-title`**); **`Open list`** no-customer (**`StagesNoCustomerJobsModal`**); **union** job-id metric + **`sectionWouldRenderOnPage`**; **[`useQuickfillStagesJobsWithoutCustomer`](src/hooks/useQuickfillStagesJobsWithoutCustomer.ts)**, **[`QuickfillStagesNoCustomerSection`](src/components/quickfill/QuickfillStagesNoCustomerSection.tsx)**](#latest-updates-v2413)
@@ -1390,6 +1403,53 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
+## Latest Updates (v2.426)
+
+**Date**: 2026-04-30
+
+### **Dashboard** — **Clock In** / **Update Focus** / **Review before clock out**
+
+- **Job/bid chip** — **[`ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx)** **`associationChipFromSearch`**: the **summary row + Clear** (**Clock In** orange chip; **Update Focus** / clock-out review gray chip) appears only after picking a row from the **typed** unified search. **Dispatch** schedule picks, **Working** bid quick-picks, **Use last**, and **clock-out** association **hydrate-from-session** do **not** show the chip (outline / highlights already show the choice). Flag resets when each modal opens; **`onAssociatePickBefore`** on non-search picks clears it.
+- **Review before clock out** — Removed the gray intro line under the modal title (*Confirm or update what you worked on…*). **Missing reports from today (click to make report):** lists schedule jobs missing a same-day field report (when **`canLeaveJobFieldReport`**); row tap opens **`AdditionalReportModal`**. The **v2.416** optional **I have left a report on all my jobs** checkbox was **removed** from the product earlier; use this list instead — docs (**`PROJECT_DOCUMENTATION.md`**, **`AI_CONTEXT.md`**, **`AGENTS.md`**, **v2.416** entry here) updated to match.
+- **Update Focus** — For **hourly** flows, removed the subtitle that explained clock-out + new session; **salaried** **Link this shift to a different job or bid…** line unchanged.
+
+---
+
+## Latest Updates (v2.425)
+
+**Date**: 2026-04-30
+
+### **Jobs Reports — Recurring Email Reports** — **Include costs**
+
+- **Product** — Per-recipient **`include_costs`** (preview sandbox checkbox + recipient grid). When enabled, the **Clock time** table adds **Cost** (**hours × `people_pay_config.hourly_wage`**) keyed by **`trim(users.name)` ↔ `person_name`**; missing or null hourly wage shows **—** (salary / no pay row). Plain-text fallback matches.
+- **Migration** — **`[20260430071645_recurring_job_report_include_costs.sql](supabase/migrations/20260430071645_recurring_job_report_include_costs.sql)**.
+- **Edge** — **`recurringJobReportCore`**: **`buildRecurringJobReportPayload`**, **`buildRecurringJobReportHtml`**, **`buildRecurringJobReportTextFallback`**; **`recurring-job-report-preview`** / **`recurring-job-report-test-send`** optional body **`include_costs`**; **`recurring-job-report-dispatch`** reads **`recurring_job_report_schedule_recipients.include_costs`**.
+- **UI** — **[`RecurringEmailReportsModal.tsx`](src/components/jobs/RecurringEmailReportsModal.tsx)**; **`EDGE_FUNCTIONS.md`**, **`MIGRATIONS.md`**, **`AGENTS.md`** (Where to Look For), **`AI_CONTEXT.md`** (Jobs), **`PROJECT_DOCUMENTATION.md`** (Jobs Reports tab), **`ACCESS_CONTROL.md`** (dev / master / assistant).
+
+---
+
+## Latest Updates (v2.424)
+
+**Date**: 2026-04-30
+
+### **People → Teams** — Team Hours assignments tree (**`team_leader_assignments`**)
+
+- **UI** — **[`PeopleTeamsTab.tsx`](src/components/people/PeopleTeamsTab.tsx)** (**`/people?tab=teams`**, tab after **Users**): leaders grouped with members below; global Leader/Member **Add**; search; per-row **Leader dashboard** (`full` | `strip_only`, **dev-only**); **Add member** + select + **Add** in the **leader header row** (compact layout).
+- **Access** — **dev**, **master_technician**, **assistant** only (same **`can_manage_team_leader_assignments`** as Settings); deep-link **`?tab=teams`** redirects for other roles — **[`People.tsx`](src/pages/People.tsx)**.
+- **Docs** — **`ACCESS_CONTROL.md`** (People Management + Settings Team Hours Sharing), **`PROJECT_DOCUMENTATION.md`** (`team_leader_assignments`), **`MIGRATIONS.md`** impact line, **`AGENTS.md`**, **`AI_CONTEXT.md`**.
+
+---
+
+## Latest Updates (v2.423)
+
+**Date**: 2026-04-30
+
+### **Jobs Reports — Recurring Email Reports** — job **address** in digest
+
+- **Edge** — [**`recurringJobReportCore.ts`**](supabase/functions/_shared/recurringJobReportCore.ts): load **`jobs_ledger.job_address`**; HTML and Resend **`text`** fallback show address under each job heading when set.
+
+---
+
 ## Latest Updates (v2.422)
 
 **Date**: 2026-04-30
@@ -1473,11 +1533,12 @@ when_to_read:
 
 **Date**: 2026-04-29
 
-### **Checklist Manage** — search; **People Users** — mobile contact line; **Clock out** — optional report reminder
+### **Checklist Manage** — search; **People Users** — mobile contact line
 
 - **Checklist → Manage** ([`Checklist.tsx`](src/pages/Checklist.tsx) **`ChecklistManageTab`**): Full-width **Search by title or assignee** above **Add checklist item** / **Filter by assignee**; **`manageSearchQuery`** + **`useMemo`** **`filteredItems`** (trimmed, case-folded match on **`item.title`** and assignee **`users.name`** / **`users.email`**). **No** change to **`loadItems`**. Empty list → *No checklist items yet.*; no matches → *No items match your search.*
 - **People → Users** ([`People.tsx`](src/pages/People.tsx)): At **`useNarrowViewport640`** (**≤640px**), **`usersTabContactRowStyle`** + **`alignItems: flex-start`** on roster / Devs rows puts **email** · **phone** on a **second line** below the name / **(account)** row (**`renderUsersTabRosterListItem`** and Devs list).
-- **Review before clock out** ([`ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx)): After job/bid picks and unified search, optional checkbox **I have left a report on all my jobs for the day.** (text left, box right; row centered; **`clockOutLeftReportsAck`** reset when the modal opens). **Not** required for **Complete clock out**; **not** written to **`clock_sessions`**.
+
+*(**v2.426** retired the short-lived clock-out optional daily-report checkbox that had been summarized under this header; **`ClockInOutButton`** uses the **Missing reports from today…** interactive list instead.)*
 
 ---
 
@@ -4736,7 +4797,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 
 ### Dashboard — My Team: “People you lead” roster
 
-- Team leads see a **sorted list** of people assigned to them (**Team Hours Sharing** in Settings), with display names from **`users`** (name, then email, then a short id suffix if the row is not visible under RLS).
+- Team leads see a **sorted list** of people assigned to them (**Team Hours Sharing** in Settings **or** **People → Teams**), with display names from **`users`** (name, then email, then a short id suffix if the row is not visible under RLS).
 - The list appears **above** the pending clock sessions description so it stays visible when there are **no** pending sessions in the selected date range.
 
 **Files**: [`src/components/DashboardMyTeamSection.tsx`](src/components/DashboardMyTeamSection.tsx)

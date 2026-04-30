@@ -1205,7 +1205,7 @@ No body required. Validates via `X-Cron-Secret` header or `{"cron_secret": "..."
 
 ### recurring-job-report-preview
 
-**Purpose**: Return server-built HTML for a job-activity digest (crew clock hours/session notes + field reports) **without sending mail**. Jobs are **all** **`jobs_ledger`** rows under **`scope_master_user_id`** that have qualifying **clock sessions** or **field reports** in the chosen window. **Recipient schedule blocks are not used** for which jobs appear. Validates JWT via `getUser`; caller must satisfy **`user_can_manage_recurring_job_report_scope`** for **`scope_master_user_id`**.
+**Purpose**: Return server-built HTML for a job-activity digest (crew clock hours/session notes + field reports) **without sending mail**. Jobs are **all** **`jobs_ledger`** rows under **`scope_master_user_id`** that have qualifying **clock sessions** or **field reports** in the chosen window. **Recipient schedule blocks are not used** for which jobs appear. Validates JWT via `getUser`; caller must satisfy **`user_can_manage_recurring_job_report_scope`** for **`scope_master_user_id`**. Each job section shows **`jobs_ledger.job_address`** under the title when non-empty (multi-line addresses use line breaks; plain-text emails mirror the same). Optional **`include_costs`**: **`true`** adds a **Clock time** **Cost** column (**hours × people_pay_config.hourly_wage** where **`trim(users.name)`** matches **`person_name`**); missing or null wage shows **—** (service role reads pay rows).
 
 **Endpoint**: `POST /functions/v1/recurring-job-report-preview`
 
@@ -1217,6 +1217,7 @@ No body required. Validates via `X-Cron-Secret` header or `{"cron_secret": "..."
 - `timezone` (optional, default **`America/Chicago`**).
 - **`anchor_date`** (**`YYYY-MM-DD`**, civil date in **`timezone`**, required when not sending a manual **`window`**) — **“today”** in zone for resolving yesterday / today / week bounds.
 - Manual **`window`** (optional) overrides RPC bounds (**advanced testing**): provide **`window_start_utc`** / **`window_end_utc`** (ISO); optional **`period_kind`**: **`daily`** (default) \| **`weekly`** for **`reporting_date`** idempotency semantics when dispatching.
+- **`include_costs`** (optional boolean, default false) — when **`true`**, HTML and eventual plain-text mirrors include wage-derived **cost** per person on clock rows (see purpose above).
 
 **Response**: `{ "html": "..." }`
 
@@ -1228,7 +1229,7 @@ No body required. Validates via `X-Cron-Secret` header or `{"cron_secret": "..."
 
 ### recurring-job-report-test-send
 
-Same payload as **`recurring-job-report-preview`**. Sends **`[TEST]`** email via **Resend** to the **authenticated user's** **`users.email`** only (never arbitrary addresses).
+Same payload as **`recurring-job-report-preview`** (including optional **`include_costs`**). Sends **`[TEST]`** email via **Resend** to the **authenticated user's** **`users.email`** only (never arbitrary addresses).
 
 **Secrets**: **`RESEND_API_KEY`**, **`SUPABASE_SERVICE_ROLE_KEY`**.
 
@@ -1246,7 +1247,7 @@ Same payload as **`recurring-job-report-preview`**. Sends **`[TEST]`** email via
 
 **Cron**: **`20260430054614_recurring_job_report_schedules.sql`** registers job **`recurring-job-report-dispatch`** with vault **`PROJECT_URL`** + **`CRON_SECRET`** (uppercase).
 
-Per-recipient **`activity_scope`** + **`crew_filter`** (from **`recurring_job_report_schedule_recipients`**) resolve the **UTC window** and filtered activity; **`recurring_job_report_dispatch_log.reporting_date`** dedupes by civil **summary day** for daily scopes and **week Sunday** for **`calendar_week`** and **`calendar_last_week`**.
+Per-recipient **`activity_scope`** + **`crew_filter`** + **`include_costs`** (from **`recurring_job_report_schedule_recipients`**) resolve the **UTC window**, filtered activity, and whether clock rows include **Cost**; **`recurring_job_report_dispatch_log.reporting_date`** dedupes by civil **summary day** for daily scopes and **week Sunday** for **`calendar_week`** and **`calendar_last_week`**.
 
 ---
 

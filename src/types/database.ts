@@ -6545,6 +6545,7 @@ export type Database = {
           created_at: string
           crew_filter: string
           id: string
+          include_costs: boolean
           recipient_user_id: string
           schedule_id: string
         }
@@ -6553,6 +6554,7 @@ export type Database = {
           created_at?: string
           crew_filter: string
           id?: string
+          include_costs?: boolean
           recipient_user_id: string
           schedule_id: string
         }
@@ -6561,6 +6563,7 @@ export type Database = {
           created_at?: string
           crew_filter?: string
           id?: string
+          include_costs?: boolean
           recipient_user_id?: string
           schedule_id?: string
         }

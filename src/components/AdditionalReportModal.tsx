@@ -38,6 +38,8 @@ type Props = {
   hcpNumber: string
   jobName: string
   jobAddress: string
+  /** Backdrop stacking; clock-out review uses 1000+ so nested leave-report must stack above it. */
+  overlayZIndex?: number
 }
 
 export default function AdditionalReportModal({
@@ -51,6 +53,7 @@ export default function AdditionalReportModal({
   hcpNumber,
   jobName,
   jobAddress,
+  overlayZIndex = 65,
 }: Props) {
   const { profileName } = useAuth()
   const { showToast } = useToastContext()
@@ -267,7 +270,17 @@ export default function AdditionalReportModal({
   }
   return (
     <>
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 65 }}>
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.4)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: overlayZIndex,
+      }}
+    >
       <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 560, maxHeight: '90vh', overflow: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
           <div>
@@ -463,7 +476,7 @@ export default function AdditionalReportModal({
         authUserId={authUserId}
         userRole={userRole}
         filterCreatedByUserId={authUserId}
-        zIndex={70}
+        zIndex={overlayZIndex + 5}
         onReportSaved={onReportSaved}
       />
     )}

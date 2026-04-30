@@ -116,10 +116,11 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 - Claim dev role via Settings (enter promotion code from DEV_PROMOTION_CODE secret)
 - Manage Pay Approved Masters (**Settings → People & accounts**); only dev can change Show in Hours per person
 - Manage **Task Dispatch** group in **Settings → People & accounts**: choose which **assistants** receive dispatch pushes and see the Dispatch inbox on Dashboard
-- Manage **Team Hours Sharing** (Settings → Dashboard & alerts): link leaders to members for My Team hours approval on Dashboard; **only dev** can set per-assignment **Leader dashboard** (full My Team vs clock strip only)
+- Manage **Team Hours Sharing** (Settings → Dashboard & alerts **or** **People → Teams**, `?tab=teams`): link leaders to members for My Team hours approval on Dashboard; **only dev** can set per-assignment **Leader dashboard** (full My Team vs clock strip only)
 - **Dashboard → Rejected sessions (all users)**: org-wide rejected clock sessions for review (same delete as People → Hours)
 - **People → Feedback** (`?tab=feedback`, dev-only): full team feedback admin (**`TeamFeedbackDevSettingsBlock`**) — **Enabled** persists to **`team_feedback_settings`**; **Settings** / **Eligibility** modals; raw submissions (detail modal, CSV, dev delete). Same surface as **Settings → People & accounts → Team feedback**
 - Delete reports (Jobs Reports tab); masters, assistants, primaries cannot delete reports
+- Jobs **Reports tab** — **Recurring Email Reports**: configure org digest schedules and recipients (optional per-recipient **include costs**, which emails wage-derived dollar amounts for clocked people to that recipient). **`user_can_manage_recurring_job_report_scope`** and Edge **`recurring-job-report-*`**; see **`RECENT_FEATURES.md`** v2.425, **`EDGE_FUNCTIONS.md`**, **`PROJECT_DOCUMENTATION.md`** (Jobs Reports tab)
 
 **Use Cases**:
 - System maintenance and troubleshooting
@@ -166,9 +167,11 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 - Jobs page — Stages tab: Billed Awaiting Payment section with Total by Name modal
 - Jobs page — Labor tab: Add labor jobs per person (fixture rows, job #, date, labor rate)
 - Jobs page — Sub Sheet Ledger tab: View all labor jobs; Edit and Delete (own jobs); shared jobs show "Created by [name]"
+- Jobs page — **Reports tab** — **Recurring Email Reports**: same as dev (schedules, recipients, optional **include costs** in digest emails)
 - Pay tab (dev, Pay Approved Masters, or shared by dev): Due by Trade, Due by Team, Cost matrix, Teams; People pay config, Share Cost Matrix and Teams (**Settings → People & accounts** → Sharing and Adoption), Tag colors at bottom. Cost matrix date headers on two lines (Mon / 2/16) on mobile. Dev can share Cost matrix and Teams (view-only) with selected masters or assistants from that Settings section
 - Pay History tab (dev, Pay Approved Masters, and their assistants): Ledger of generated pay stubs with **Search** by person name; **Paid to date** / **Balance** from **`pay_stub_payments`**; **Record payment** (partial installments); **Generate Pay Reports** bulk modal (includes **Partial** / fully paid counts) and single-person generator; **Print** from ledger row; **View** (HTML preview) from bulk modal only; dev-only delete via red trash icon
 - Hours tab (dev, Pay Approved Masters, and their assistants): Timesheet entry
+- **People → Teams** (`?tab=teams`): manage **`team_leader_assignments`** (leader→member links for Dashboard **My Team**); same capabilities as Settings **Team Hours Sharing**; per-link **Leader dashboard** visibility (**full** vs **strip only**) — **dev-only**
 
 **Bids**:
 - Full access to all bids features
@@ -200,7 +203,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 
 **Access**:
 - Dashboard, Customers, Projects, People, Jobs, Calendar, Bids, Materials, Prospects
-- **Settings** (via gear menu): Change password, push notifications, Dashboard buttons, **Dashboard Page Pins** (Page pins card only—manage own pins, Clear all, Remove per pin), **Team Hours Sharing** (leader → member links for My Team). Does NOT see dev-only sections (Pin Billed, Cost matrix, Supply Houses AP, Sub Labor Due, user management, email templates, etc.). The PAGE_ACCESS table in Settings is a reference display; assistants can navigate to Settings.
+- **Settings** (via gear menu): Change password, push notifications, Dashboard buttons, **Dashboard Page Pins** (Page pins card only—manage own pins, Clear all, Remove per pin), **Team Hours Sharing** (leader → member links for My Team; same data as **People → Teams**). Does NOT see dev-only sections (Pin Billed, Cost matrix, Supply Houses AP, Sub Labor Due, user management, email templates, etc.). The PAGE_ACCESS table in Settings is a reference display; assistants can navigate to Settings.
 - **Blocked**: Templates
 
 **Permissions**:
@@ -239,6 +242,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 - Pay tab (if shared by dev): View-only Cost matrix and Teams (no People pay config, no Add team or edit teams)
 - Pay History tab (if master is Pay Approved): Ledger (with name search), generators, **Print**; **View** from bulk **Generate Pay Reports** modal; dev-only stub delete icon
 - Hours tab (if master is Pay Approved): Timesheet entry for people in roster
+- **People → Teams** (`?tab=teams`): manage **`team_leader_assignments`** (same as Settings **Team Hours Sharing**); per-link **Leader dashboard** — **dev-only**
 
 **Bids**:
 - Full access to all bids features (same as master/dev)
@@ -256,6 +260,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 
 **Jobs**:
 - Team Labor tab: Hidden from assistants (dev and master only)
+- **Reports tab** — **Recurring Email Reports**: schedules and recipients with optional **include costs** (same product as dev/master; **`user_can_manage_recurring_job_report_scope`**)
 
 **Prospects**:
 - Team tab: Visible to dev and assistant; shows last 30 days of prospect activity (User | Cards Marked | Cards Updated)
@@ -581,7 +586,7 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 | Feature | dev | master | assistant | sub | estimator | primary | superintendent |
 |---------|-----|--------|-----------|-----|-----------|---------|----------------|
 | People & accounts (`#settings-people`): adoption, master sharing, primaries/superintendents, Share Cost Matrix and Teams (dev); dev-only user tools and Task Dispatch above sharing | ✅ | ✅ (sharing block only) | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Team Hours Sharing (leader → member links for My Team; Dashboard & alerts); **Leader dashboard** column (full vs strip only) **editable dev-only** | ✅ | ✅ view | ✅ view | ❌ | ❌ | ❌ | ❌ |
+| Team Hours Sharing (leader → member links for My Team; **Settings → Dashboard & alerts** and **People → Teams** `?tab=teams`); **Leader dashboard** column (full vs strip only) **editable dev-only** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **Job Book** (`job_book_entries`): **SELECT** all **authenticated** (e.g. **Collect Payment** Step 1 catalog); **INSERT/UPDATE/DELETE** **dev** / **master_technician** / **assistant** only (**Settings → Job Book**) | ✅ | ✅ | ✅ | ✅ read | ✅ read | ✅ read | ✅ read |
 
 ### Customer Management
@@ -625,6 +630,7 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 | Contracts tab (templates, assignments, document status per person) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Writeups tab (`?tab=writeups`): custom form templates, writeups about a subject user, Discussed vs Withheld disclosure; submitted rows immutable; dev-only delete submitted; **unified list** also shows **read-only** NCNS rows from **`attendance_incidents`** (same RLS as incidents); legacy `?tab=contracts&contracts_sub=writeups` redirects to `tab=writeups` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Activity tab (first-party app usage: org-wide UTC table; dev grants assistant / master / primary) | ✅ + manage grants | ✅ if granted | ✅ if granted | ❌ | ❌ | ✅ if granted | ❌ |
+| **Teams** tab (`?tab=teams`): manage **`team_leader_assignments`** (add/remove leader→member links; leader-centric tree; search); **Leader dashboard** visibility **dev-only** (same RLS as Settings **Team Hours Sharing**) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 ### Workflow Management
 

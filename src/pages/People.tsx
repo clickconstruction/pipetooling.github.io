@@ -116,6 +116,7 @@ import {
   RejectedClockSessionsSection,
 } from '../components/clock-sessions'
 import PeopleAppActivityPanel from '../components/people/PeopleAppActivityPanel'
+import PeopleTeamsTab from '../components/people/PeopleTeamsTab'
 import TeamFeedbackDevSettingsBlock from '../components/team-feedback/TeamFeedbackDevSettingsBlock'
 import { PeoplePayConfigModal } from '../components/people/PeoplePayConfigModal'
 import { SalariedWorkdaysBulkModal } from '../components/people/SalariedWorkdaysBulkModal'
@@ -251,6 +252,7 @@ type PersonActiveProject = { id: string; name: string }
 
 type PeopleTab =
   | 'users'
+  | 'teams'
   | 'pay_stubs'
   | 'pay'
   | 'hours'
@@ -645,6 +647,8 @@ export default function People() {
   const [editingUserNote, setEditingUserNote] = useState<{ id: string; name: string; notes: string; phone: string } | null>(null)
   const [userNoteSaving, setUserNoteSaving] = useState(false)
   const [authUserRole, setAuthUserRole] = useState<string | null>(null)
+  const canAccessTeamsTab =
+    authRole !== null && ['dev', 'master_technician', 'assistant'].includes(authRole)
 
   // Hours tab state (unassigned hours modal, crew jobs by date)
   type CrewJobAssignment = { job_id: string; pct: number }
@@ -1321,6 +1325,7 @@ export default function People() {
       setActiveTab('hours')
     } else if (
       tab === 'users' ||
+      tab === 'teams' ||
       tab === 'pay_stubs' ||
       tab === 'pay' ||
       tab === 'hours' ||
@@ -1334,6 +1339,15 @@ export default function People() {
       tab === 'feedback' ||
       tab === 'activity'
     ) {
+      if (tab === 'teams' && !canAccessTeamsTab) {
+        setSearchParams((p) => {
+          const next = new URLSearchParams(p)
+          next.set('tab', 'users')
+          return next
+        }, { replace: true })
+        setActiveTab('users')
+        return
+      }
       if (tab === 'activity' && activityAccessResolved && !canSeeActivityTab) {
         setSearchParams((p) => {
           const next = new URLSearchParams(p)
@@ -1360,7 +1374,7 @@ export default function People() {
         return next
       }, { replace: true })
     }
-  }, [searchParams, activityAccessResolved, canSeeActivityTab, canAccessContracts, setSearchParams])
+  }, [searchParams, activityAccessResolved, canSeeActivityTab, canAccessContracts, canAccessTeamsTab, setSearchParams])
 
   useEffect(() => {
     if (searchParams.get('tab') !== 'contracts') return
@@ -7517,6 +7531,22 @@ export default function People() {
         >
           Users
         </button>
+        {canAccessTeamsTab && (
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('teams')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'teams')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'teams')}
+          >
+            Teams
+          </button>
+        )}
         {(canAccessPay || canAccessHours) && (
           <button
             type="button"
@@ -8231,6 +8261,10 @@ export default function People() {
           )}
         </>
       )}
+
+      {activeTab === 'teams' && canAccessTeamsTab && authUser?.id ? (
+        <PeopleTeamsTab authUserId={authUser.id} authUserRole={authRole ?? authUserRole} />
+      ) : null}
 
       {activeTab === 'pay_stubs' && canAccessPay && (
         <div>

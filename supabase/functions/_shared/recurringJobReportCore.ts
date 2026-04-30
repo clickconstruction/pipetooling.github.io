@@ -51,6 +51,15 @@ export interface JobRow {
   id: string
   job_name: string
   hcp_number: string
+  job_address: string
+}
+
+export type RecurringJobReportClockRow = {
+  displayName: string
+  hours: number
+  notes: string[]
+  /** Wage × hours when `includeCosts` was true for the build; otherwise null. */
+  costDollars: number | null
 }
 
 export interface RecurringJobReportPayload {
@@ -61,14 +70,7 @@ export interface RecurringJobReportPayload {
   windowEndUtc: string
   jobs: Array<{
     job: JobRow
-    byUserId: Map<
-      string,
-      {
-        displayName: string
-        hours: number
-        notes: string[]
-      }
-    >
+    byUserId: Map<string, RecurringJobReportClockRow>
     reports: Array<{
       id: string
       created_at: string
@@ -102,6 +104,13 @@ function escapeHtml(s: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
+}
+
+function hourlyWageToNumber(raw: unknown): number | null {
+  if (raw == null) return null
+  const n = typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw) : Number.NaN
+  if (!Number.isFinite(n) || n < 0) return null
+  return n
 }
 
 export async function getReportingWindowForPreset(
@@ -228,9 +237,11 @@ export async function buildRecurringJobReportPayload(
     recipientUserId: string
     crewFilter: CrewFilterMode
     window: ReportingWindowUtc
+    /** When true, resolve hourly wages from `users.name` ↔ `people_pay_config.person_name` for each clock row. */
+    includeCosts?: boolean
   },
 ): Promise<RecurringJobReportPayload> {
-  const { scopeMasterUserId, recipientUserId, crewFilter, window } = params
+  const { scopeMasterUserId, recipientUserId, crewFilter, window, includeCosts = false } = params
   const ws = window.windowStartUtc
   const we = window.windowEndUtc
   const periodKind: ReportingPeriodKind = window.periodKind ?? 'daily'
@@ -250,10 +261,13 @@ export async function buildRecurringJobReportPayload(
 
   const { data: jlRows } = await admin
     .from('jobs_ledger')
-    .select('id, job_name, hcp_number, master_user_id')
+    .select('id, job_name, hcp_number, master_user_id, job_address')
     .eq('master_user_id', scopeMasterUserId)
 
-  const masterJobs = (jlRows ?? []) as JobRow[]
+  const masterJobs = ((jlRows ?? []) as JobRow[]).map((row) => ({
+    ...row,
+    job_address: row.job_address ?? '',
+  }))
   const masterIds = masterJobs.map((j) => j.id)
   if (masterIds.length === 0) {
     return { ...payloadHead(), jobs: [] }
@@ -328,14 +342,44 @@ export async function buildRecurringJobReportPayload(
   for (const r of reports) userIds.add(r.created_by_user_id)
 
   const names = new Map<string, string>()
+  const payNameByUserId = new Map<string, string>()
   if (userIds.size > 0) {
     const { data: usersRows } = await admin
       .from('users')
       .select('id, name')
       .in('id', [...userIds])
     for (const u of usersRows ?? []) {
-      const row = u as { id: string; name: string }
-      names.set(row.id, (row.name ?? '').trim() || row.id)
+      const row = u as { id: string; name: string | null }
+      const trimmed = (row.name ?? '').trim()
+      names.set(row.id, trimmed || row.id)
+      payNameByUserId.set(row.id, trimmed)
+    }
+  }
+
+  const hourlyRateByUserId = new Map<string, number | null>()
+  if (includeCosts && userIds.size > 0) {
+    const uniquePayNames = [
+      ...new Set(
+        [...userIds].map((id) => payNameByUserId.get(id) ?? '').filter((pn) => pn.length > 0),
+      ),
+    ]
+    const wageByPersonName = new Map<string, number | null>()
+    for (let i = 0; i < uniquePayNames.length; i += ID_CHUNK) {
+      const chunk = uniquePayNames.slice(i, i + ID_CHUNK)
+      const { data: pcRows } = await admin
+        .from('people_pay_config')
+        .select('person_name, hourly_wage')
+        .in('person_name', chunk)
+      for (const pr of pcRows ?? []) {
+        const p = pr as { person_name: string; hourly_wage: unknown }
+        const pn = (p.person_name ?? '').trim()
+        if (!pn) continue
+        wageByPersonName.set(pn, hourlyWageToNumber(p.hourly_wage))
+      }
+    }
+    for (const uid of userIds) {
+      const pn = payNameByUserId.get(uid) ?? ''
+      hourlyRateByUserId.set(uid, pn ? wageByPersonName.get(pn) ?? null : null)
     }
   }
 
@@ -345,10 +389,7 @@ export async function buildRecurringJobReportPayload(
     const job = jobById.get(jid)
     if (!job) continue
 
-    const byUserId = new Map<
-      string,
-      { displayName: string; hours: number; notes: string[] }
-    >()
+    const byUserId = new Map<string, RecurringJobReportClockRow>()
 
     for (const s of sessions.filter((x) => x.job_ledger_id === jid)) {
       const nm = names.get(s.user_id) ?? s.user_id
@@ -362,10 +403,21 @@ export async function buildRecurringJobReportPayload(
           displayName: nm,
           hours: hrs,
           notes: notesTxt ? [notesTxt] : [],
+          costDollars: null,
         })
       } else {
         prev.hours += hrs
         if (notesTxt) prev.notes.push(notesTxt)
+      }
+    }
+
+    if (!includeCosts) {
+      for (const row of byUserId.values()) row.costDollars = null
+    } else {
+      for (const [uid, row] of byUserId) {
+        const rate = hourlyRateByUserId.get(uid) ?? null
+        row.costDollars =
+          rate != null ? Math.round(row.hours * rate * 100) / 100 : null
       }
     }
 
@@ -427,7 +479,11 @@ export function recurringJobReportEmailSubject(payload: Pick<
   return `Job activity summary — ${payload.reportingDate}`
 }
 
-export function buildRecurringJobReportHtml(payload: RecurringJobReportPayload, bannerNote?: string): string {
+export function buildRecurringJobReportHtml(
+  payload: RecurringJobReportPayload,
+  bannerNote?: string,
+  includeCosts = false,
+): string {
   const dateLabel =
     payload.periodKind === 'weekly' && payload.weekEndYmd
       ? `${escapeHtml(payload.reportingDate)} – ${escapeHtml(payload.weekEndYmd)}`
@@ -446,7 +502,12 @@ export function buildRecurringJobReportHtml(payload: RecurringJobReportPayload, 
   for (const { job, byUserId, reports } of payload.jobs) {
     const jobTitle = escapeHtml(`${job.hcp_number} · ${job.job_name}`)
     body += `<div style="margin-bottom:28px;border:1px solid #e5e7eb;border-radius:10px;padding:16px;background:#fff;">
-      <h2 style="margin:0 0 12px;font-size:16px;">${jobTitle}</h2>`
+      <h2 style="margin:0 0 8px;font-size:16px;">${jobTitle}</h2>`
+    const addrTrim = (job.job_address ?? '').trim()
+    if (addrTrim) {
+      const addrHtml = escapeHtml(addrTrim).replace(/\n/g, '<br/>')
+      body += `<div style="font-size:13px;color:#6b7280;margin:0 0 12px;line-height:1.4;">${addrHtml}</div>`
+    }
 
     if (byUserId.size === 0 && reports.length === 0) {
       body += `<p style="color:#6b7280;margin:0;">No clock sessions or reports in this window.</p>`
@@ -454,7 +515,11 @@ export function buildRecurringJobReportHtml(payload: RecurringJobReportPayload, 
       if (byUserId.size > 0) {
         body += `<h3 style="margin:0 0 8px;font-size:14px;color:#374151;">Clock time</h3><table style="width:100%;border-collapse:collapse;margin-bottom:12px;"><thead><tr>
           <th align="left" style="padding:6px;border-bottom:1px solid #e5e7eb;">Person</th>
-          <th align="left" style="padding:6px;border-bottom:1px solid #e5e7eb;">Hours</th>
+          <th align="left" style="padding:6px;border-bottom:1px solid #e5e7eb;">Hours</th>${
+          includeCosts
+            ? '<th align="left" style="padding:6px;border-bottom:1px solid #e5e7eb;">Cost</th>'
+            : ''
+        }
           <th align="left" style="padding:6px;border-bottom:1px solid #e5e7eb;">Session notes</th>
           </tr></thead><tbody>`
         const rows = [...byUserId.entries()].sort((a, b) =>
@@ -462,9 +527,21 @@ export function buildRecurringJobReportHtml(payload: RecurringJobReportPayload, 
         )
         for (const [, u] of rows) {
           const notesHtml = escapeHtml(u.notes.join('\n---\n')).replace(/\n/g, '<br/>')
+          const costCell =
+            includeCosts &&
+            u.costDollars != null &&
+            Number.isFinite(u.costDollars)
+              ? escapeHtml(`$${u.costDollars.toFixed(2)}`)
+              : includeCosts
+              ? '—'
+              : ''
           body += `<tr>
             <td style="padding:6px;border-bottom:1px solid #f3f4f6;vertical-align:top;">${escapeHtml(u.displayName)}</td>
-            <td style="padding:6px;border-bottom:1px solid #f3f4f6;vertical-align:top;">${escapeHtml(u.hours.toFixed(2))}</td>
+            <td style="padding:6px;border-bottom:1px solid #f3f4f6;vertical-align:top;">${escapeHtml(u.hours.toFixed(2))}</td>${
+            includeCosts
+              ? `<td style="padding:6px;border-bottom:1px solid #f3f4f6;vertical-align:top;">${costCell}</td>`
+              : ''
+          }
             <td style="padding:6px;border-bottom:1px solid #f3f4f6;vertical-align:top;color:#374151;font-size:13px;">${notesHtml || '—'}</td>
           </tr>`
         }
@@ -494,6 +571,27 @@ export function buildRecurringJobReportHtml(payload: RecurringJobReportPayload, 
 
   body += `<p style="margin:24px 0 0;color:#9ca3af;font-size:12px;">PipeTooling — recurring job reports</p></div>`
   return body
+}
+
+export function buildRecurringJobReportTextFallback(payload: RecurringJobReportPayload, includeCosts: boolean): string {
+  let textFallback = ''
+  for (const j of payload.jobs) {
+    textFallback += `${j.job.hcp_number} ${j.job.job_name}\n`
+    const ta = (j.job.job_address ?? '').trim()
+    if (ta) textFallback += `${ta.split('\n').map((ln) => `  ${ln}`).join('\n')}\n`
+    for (const [, row] of j.byUserId) {
+      if (includeCosts) {
+        const costPart =
+          row.costDollars != null && Number.isFinite(row.costDollars)
+            ? `$${row.costDollars.toFixed(2)}`
+            : '—'
+        textFallback += `  ${row.displayName}: ${row.hours.toFixed(2)}h  ${costPart}\n`
+      } else {
+        textFallback += `  ${row.displayName}: ${row.hours.toFixed(2)}h\n`
+      }
+    }
+  }
+  return textFallback
 }
 
 export async function sendResendHtmlEmail(opts: {

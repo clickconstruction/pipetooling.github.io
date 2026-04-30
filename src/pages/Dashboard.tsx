@@ -23,6 +23,7 @@ import {
   stripeModeForBillingFromRole,
 } from '../lib/voidStripeInvoiceForRevert'
 import { getAccessTokenForEdgeFunctions } from '../lib/supabaseAccessTokenForEdge'
+import { canLeaveJobFieldReport } from '../lib/canLeaveJobFieldReport'
 import { syncJobToReadyToBillIfNoBilledInvoicesRemain } from '../lib/syncJobToReadyToBillIfNoBilledInvoicesRemain'
 import {
   shouldResyncJobsAfterUpdateJobStatusFailure,
@@ -442,20 +443,6 @@ type DashboardTeamAssignedJobRow = {
   in_progress_step_id?: string | null
   collect_payment_button_variant?: string | null
   status?: string | null
-}
-
-function canLeaveDashboardJobReport(role: string | null | undefined): boolean {
-  if (!role) return false
-  return (
-    role === 'subcontractor' ||
-    role === 'helpers' ||
-    role === 'dev' ||
-    role === 'master_technician' ||
-    role === 'assistant' ||
-    role === 'primary' ||
-    role === 'superintendent' ||
-    role === 'estimator'
-  )
 }
 
 function DashboardLeaveReportButton(props: {
@@ -2571,7 +2558,7 @@ export default function Dashboard() {
   }, [])
 
   useEffect(() => {
-    if (!authUser?.id || !canLeaveDashboardJobReport(role)) {
+    if (!authUser?.id || !canLeaveJobFieldReport(role)) {
       setSubScheduleRows([])
       setSubScheduleLoading(false)
       return
@@ -4398,6 +4385,7 @@ export default function Dashboard() {
             userName={clockDisplayName}
             onOpenMyTimeDayEditor={dashboardSelfIsSalary ? undefined : openMyTimePreviewFromClock}
             onClockInSuccess={handleClockInSuccessContractPrompt}
+            onFieldReportSaved={() => void refreshDashboardAssignedJobLists()}
           />
         </div>
       )}
@@ -5615,7 +5603,7 @@ export default function Dashboard() {
                                       )
                                     }
                                   />
-                                  {canLeaveDashboardJobReport(role) ? (
+                                  {canLeaveJobFieldReport(role) ? (
                                     <DashboardLeaveReportButton
                                       showReminder={
                                         fromAssigned ? leaveReportReminderForJobRow(fromAssigned) : false
@@ -7163,7 +7151,7 @@ export default function Dashboard() {
                           </div>
                         )
                       })()}
-                      {canLeaveDashboardJobReport(role) && (
+                      {canLeaveJobFieldReport(role) && (
                         <DashboardLeaveReportButton
                           showReminder={leaveReportReminderForJobRow(j)}
                           onClick={() =>
@@ -7478,7 +7466,7 @@ export default function Dashboard() {
                           </div>
                         )
                       })()}
-                      {canLeaveDashboardJobReport(role) && (
+                      {canLeaveJobFieldReport(role) && (
                         <DashboardLeaveReportButton
                           showReminder={leaveReportReminderForJobRow(j)}
                           onClick={() =>

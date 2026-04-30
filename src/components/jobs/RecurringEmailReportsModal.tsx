@@ -79,7 +79,7 @@ const recipientTableScopeFilterSelect: CompactSelectStyle = {
 }
 
 /** Until types reflect migration, read optional columns safely. */
-type RecipientRowLoose = RecipientRow & { activity_scope?: string; crew_filter?: string }
+type RecipientRowLoose = RecipientRow & { activity_scope?: string; crew_filter?: string; include_costs?: boolean }
 
 function parseActivityScopeFromRow(row: RecipientRowLoose): ActivityScope {
   const v = row.activity_scope
@@ -99,11 +99,16 @@ function parseCrewFilterFromRow(row: RecipientRowLoose): CrewFilter {
   return 'all_users'
 }
 
+function parseIncludeCostsFromRow(row: RecipientRowLoose): boolean {
+  return row.include_costs === true
+}
+
 type RecipientDraftRow = {
   localId: string
   recipient_user_id: string
   activity_scope: ActivityScope
   crew_filter: CrewFilter
+  include_costs: boolean
 }
 
 type Props = {
@@ -161,6 +166,7 @@ export default function RecurringEmailReportsModal({
   /** Preview & test sandbox: activity window under selected org master. */
   const [sandboxActivityScope, setSandboxActivityScope] = useState<ActivityScope>('calendar_yesterday')
   const [sandboxCrewFilter, setSandboxCrewFilter] = useState<CrewFilter>('all_users')
+  const [sandboxIncludeCosts, setSandboxIncludeCosts] = useState(false)
   const [sandboxRecipientUserId, setSandboxRecipientUserId] = useState<string | null>(null)
   const [previewHtml, setPreviewHtml] = useState('')
   const [previewLoading, setPreviewLoading] = useState(false)
@@ -293,6 +299,7 @@ export default function RecurringEmailReportsModal({
         recipient_user_id: r.recipient_user_id,
         activity_scope: parseActivityScopeFromRow(r as RecipientRowLoose),
         crew_filter: parseCrewFilterFromRow(r as RecipientRowLoose),
+        include_costs: parseIncludeCostsFromRow(r as RecipientRowLoose),
       })),
     })
   }
@@ -351,6 +358,7 @@ export default function RecurringEmailReportsModal({
             recipient_user_id: r.recipient_user_id,
             activity_scope: r.activity_scope,
             crew_filter: r.crew_filter,
+            include_costs: r.include_costs,
           }))
         if (recIns.length) {
           const { error: ie } = await supabase.from('recurring_job_report_schedule_recipients').insert(recIns)
@@ -380,6 +388,7 @@ export default function RecurringEmailReportsModal({
             recipient_user_id: r.recipient_user_id,
             activity_scope: r.activity_scope,
             crew_filter: r.crew_filter,
+            include_costs: r.include_costs,
           }))
         if (recIns.length) {
           const { error: ie } = await supabase.from('recurring_job_report_schedule_recipients').insert(recIns)
@@ -435,6 +444,7 @@ export default function RecurringEmailReportsModal({
               crew_filter: sandboxCrewFilter,
               timezone: tz,
               anchor_date: anchorYmd,
+              include_costs: sandboxIncludeCosts,
             },
           }),
         'recurring-job-report-preview',
@@ -472,6 +482,7 @@ export default function RecurringEmailReportsModal({
               crew_filter: sandboxCrewFilter,
               timezone: tz,
               anchor_date: anchorYmd,
+              include_costs: sandboxIncludeCosts,
             },
           }),
         'recurring-job-report-test-send',
@@ -497,6 +508,7 @@ export default function RecurringEmailReportsModal({
                 recipient_user_id: '',
                 activity_scope: 'calendar_yesterday',
                 crew_filter: 'all_users',
+                include_costs: false,
               },
             ],
           },
@@ -626,6 +638,18 @@ export default function RecurringEmailReportsModal({
                     </option>
                   ))}
                 </select>
+              </label>
+              <label style={{ ...previewToolbarLabelStyle, justifyContent: 'flex-end', marginBottom: 2 }}>
+                <span aria-hidden />
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0.4rem 0' }}>
+                  <input
+                    type="checkbox"
+                    checked={sandboxIncludeCosts}
+                    onChange={(e) => setSandboxIncludeCosts(e.target.checked)}
+                    style={{ width: '1.1rem', height: '1.1rem', flexShrink: 0 }}
+                  />
+                  Include costs
+                </span>
               </label>
               <button
                 type="button"
@@ -840,6 +864,7 @@ export default function RecurringEmailReportsModal({
                     <col style={{ width: '1%' }} />
                     <col style={{ width: '1%' }} />
                     <col style={{ width: '1%' }} />
+                    <col style={{ width: '1%' }} />
                   </colgroup>
                   <thead>
                     <tr>
@@ -860,6 +885,12 @@ export default function RecurringEmailReportsModal({
                         style={{ borderBottom: '1px solid #e5e7eb', padding: 6, whiteSpace: 'nowrap' }}
                       >
                         Filter
+                      </th>
+                      <th
+                        align="left"
+                        style={{ borderBottom: '1px solid #e5e7eb', padding: 6, whiteSpace: 'nowrap' }}
+                      >
+                        Include costs
                       </th>
                       <th style={{ borderBottom: '1px solid #e5e7eb', padding: 6, whiteSpace: 'nowrap' }} />
                     </tr>
@@ -943,6 +974,30 @@ export default function RecurringEmailReportsModal({
                               </option>
                             ))}
                           </select>
+                        </td>
+                        <td
+                          style={{
+                            padding: 6,
+                            borderBottom: '1px solid #f3f4f6',
+                            whiteSpace: 'nowrap',
+                            textAlign: 'center',
+                          }}
+                          title="Add Cost column: hours × hourly wage from People pay config when user name matches person_name."
+                        >
+                          <input
+                            type="checkbox"
+                            checked={r.include_costs}
+                            onChange={(e) =>
+                              setDraft({
+                                ...draft,
+                                recipientDrafts: draft.recipientDrafts.map((x) =>
+                                  x.localId === r.localId ? { ...x, include_costs: e.target.checked } : x,
+                                ),
+                              })
+                            }
+                            style={{ width: '1.15rem', height: '1.15rem' }}
+                            aria-label="Include costs for this recipient"
+                          />
                         </td>
                         <td
                           style={{
