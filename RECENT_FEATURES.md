@@ -12,11 +12,17 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.433 → v2.4"
+version_range: "v2.435 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.435)"
+    line: ~1441
+    description: "Jobs New Job — Import from estimate or bid: JobFormImportEstimateOrBidModal; search_estimates_for_nav + search_bids_for_clock; prefill bid/estimate; job_ledger_id guard"
+  - name: "Latest Version (v2.434)"
+    line: ~1450
+    description: "Estimates — Email when customer accepts: Notify me + SearchableMultiSelect Also notify (role groups + separator labels); accept_notify NULL draft default self + all master_technician; SearchableSelect separator label preserved in search filter"
   - name: "Latest Version (v2.433)"
-    line: ~1430
+    line: ~1448
     description: "Unified job/bid search — trade pills on job rows (service_type_name); search_jobs_ledger JOIN; list_assigned_jobs_for_dashboard; serviceTypeTagForUnifiedRow; Clock In, header search, strip assign, Dispatch/Estimator, People Hours audit"
   - name: "Latest Version (v2.432)"
     line: ~1448
@@ -1126,6 +1132,8 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.435 — **Jobs** **New Job** — **Import from estimate or bid**: nested **[`JobFormImportEstimateOrBidModal`](src/components/jobs/JobFormImportEstimateOrBidModal.tsx)** — **`search_estimates_for_nav`** + **`search_bids_for_clock`** (debounced, no jobs); **bid** → link + name/address/customer/service type + optional empty drive/plans; **estimate** → title/address/customer + **Specific Work** from snapshot (**`normalizeEstimateLineItemsFromJson`** / **`fixturesPayloadForCreateJobFromEstimate`**), toast if **`job_ledger_id`** set; **HCP #** never auto — **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)**](#latest-updates-v2435)
+**New:** [v2.434 — **Estimates** — **Email when customer accepts**: **Notify me** + **[`SearchableMultiSelect`](src/components/SearchableMultiSelect.tsx)** **Also notify** (role groups **Master technicians → Assistants → Superintendents → everyone else**, tiny captions on **[`SearchableSelectSeparatorListRow`](src/components/SearchableSelect.tsx)**); draft **`accept_notify_user_ids` `NULL`**: load default **current user + all `master_technician`** (query in detail load; fallback **self only** on error); **`[]`** = explicitly no recipients; group-aware search keeps separator **`label`** via **`splitOptionGroups` / `filterSearchableSelectOptionsByQuery`** — **[`Estimates.tsx`](src/pages/Estimates.tsx)**; migration **`20260430213314`**](#latest-updates-v2434)
 **New:** [v2.433 — **Unified job/bid search** — **trade** color pills (**`[plum]`** / **`[elec]`** / **`[hvac]`**) on **job** rows (same mapping as bids: Plumbing / Electrical / HVAC); **`search_jobs_ledger`** + **`list_assigned_jobs_for_dashboard`** return **`service_type_name`**; **`serviceTypeTagForUnifiedRow`** in **[`unifiedJobBidSearch.ts`](src/utils/unifiedJobBidSearch.ts)** — **[`ClockInOutButton`](src/components/ClockInOutButton.tsx)**, **[`HeaderGlobalSearch`](src/components/HeaderGlobalSearch.tsx)**, **[`ClockSessionStripActionsModal`](src/components/ClockSessionStripActionsModal.tsx)**, **[`AssignSessionJobPopover`](src/components/clock-sessions/AssignSessionJobPopover.tsx)**, **[`DispatchTaskModal`](src/components/DispatchTaskModal.tsx)**, **[`EstimatorTaskModal`](src/components/EstimatorTaskModal.tsx)**, **[`PeopleHoursDayAuditModal`](src/components/PeopleHoursDayAuditModal.tsx)**; migrations **`20260430205318`**, **`20270518120000`**](#latest-updates-v2433)
 **New:** [v2.432 — **Ledger display prefixes** — per–**`service_types`** **`ledger_job_prefix`** / **`ledger_bid_prefix`** (dev **Settings** → Service types; backfill **JP/BP**, **JE/BE**, **JH/BH**); null/blank → legacy **`J`**/**`B`**; **`search_jobs_ledger`** / **`search_bids_for_clock`** return **`service_type_id`** and match **J/B** or configured prefix + digits; **[`ledgerDisplayPrefixes.ts`](src/lib/ledgerDisplayPrefixes.ts)** + UI surfaces (Clock In, Jobs, Bids, Documents, My Time, banking alloc search); Edge **`notify-dispatch-request`** / **`notify-estimator-request`** — migrations **`20260430201832`**, **`20260430202750`**, **`20260430203800`**](#latest-updates-v2432)
 **New:** [v2.431 — **Dashboard** **Clock In** / **Update Focus** — **Complete Clock In** with empty required notes: toast then caret returns to **What do you plan to accomplish?** (**`queueMicrotask`** + **`clockInNotesRef`**); **Update Focus** opens with blank notes + focused textarea; **session job/bid** rehydrated like clock-out review (**`updateFocusModalOpen`** in hydration **`useEffect`**); opening no longer clears **`selectedAssociation`**; **Dispatch** / **Working** rows highlight current session; gray **summary + Clear** when hydrated association is **not** on those lists after picks load (**`showUpdateFocusAssociationChip`**) — **[`ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx)**](#latest-updates-v2431)
@@ -1429,6 +1437,32 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.435)
+
+**Date**: 2026-04-30
+
+### **Jobs** — **New Job** — **Import** from estimate or bid
+
+- **UI** — [`JobFormImportEstimateOrBidModal.tsx`](src/components/jobs/JobFormImportEstimateOrBidModal.tsx): debounced search (≥2 chars, 300ms), **`search_estimates_for_nav`** + **`search_bids_for_clock`** only; **Estimate** / **Bid** rows; nested overlay z-index above migrate overlay ([`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx) **`JOB_FORM_IMPORT_SOURCE_OVERLAY_Z_INDEX`**).
+- **Prefill** — **Bid**: link bid, name/address/customer/service type (role-visible types), optional drive/plans when form fields empty. **Estimate**: title/address/customer or **`customer_email`**, **Specific Work** from snapshot; toast block when **`job_ledger_id`** set; clears bid link; **`normalizeEstimateLineItemsFromJson`** + **`fixturesPayloadForCreateJobFromEstimate`**. **HCP #** never auto-filled.
+- **Import visibility** — **Import from estimate or bid** only while the new-job form is still empty: any text/links/associations (including **Linked project**, **bid**, or CRM/customer fields from the project flow), extra fixture/material/payment rows, team picks, or a **trade** change after load hides it. The default auto-picked **trade** on open does not hide Import; sub-modal auto-closes if the sheet becomes non-empty while open.
+- **Docs** — **`PROJECT_DOCUMENTATION.md`** (Jobs), this file.
+
+---
+
+## Latest Updates (v2.434)
+
+**Date**: 2026-04-30
+
+### **Estimates** — **Email when customer accepts** (staff recipients)
+
+- **Database** — **`estimates.accept_notify_user_ids`** (`uuid[]`, nullable) + **`estimate_accept_notify_filter_eligible_user_ids`** — [**`20260430213314_estimates_accept_notify_user_ids.sql`**](supabase/migrations/20260430213314_estimates_accept_notify_user_ids.sql). **`NULL`**: not yet persisted for this field. **`[]`**: explicitly no staff notify email. Non-null arrays: used as stored after **`accept-estimate`** filters ids.
+- **Draft default** — When **`accept_notify_user_ids`** is **`NULL`** on load and the row is **`draft`**, **[`Estimates.tsx`](src/pages/Estimates.tsx)** sets selection to **deduped `[current user, …every master_technician id]`** via **`users`** query in the detail **`load`** path; on failure, **`[current user]`** only (previous behavior).
+- **UI** — **Notify me** (self) + **[`SearchableMultiSelect`](src/components/SearchableMultiSelect.tsx)** **Also notify** (self excluded from option list). Options: **Master technicians → Assistants → Superintendents → everyone else**, alphabetical within group; **[`SearchableSelectSeparatorOption`](src/components/SearchableSelect.tsx)** optional **`label`** (Assistants / Superintendents / Everyone else) on **[`SearchableSelectSeparatorListRow`](src/components/SearchableSelect.tsx)**; search filter rebuild preserves full separator rows so captions survive filtering.
+- **Docs** — **`PROJECT_DOCUMENTATION.md`** (Estimates), **`EDGE_FUNCTIONS.md`** (**accept-estimate**), **`MIGRATIONS.md`**, **`AGENTS.md`**, **`AI_CONTEXT.md`**.
+
 ---
 
 ## Latest Updates (v2.433)

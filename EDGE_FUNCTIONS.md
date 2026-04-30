@@ -703,11 +703,15 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Body**: `{ "token": string, "printedName": string, "agreedTerms": true }`
 
-**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` (optional; staff notify skipped if missing)
 
 **Gateway**: `verify_jwt = false`
 
 **Behavior**: Idempotent if already `customer_accepted` (returns **`200`** + **`alreadyAccepted: true`**). Captures **`acceptor_ip`** from **`x-forwarded-for`** (first hop) and **`user-agent`** on the real **`sent` → `customer_accepted`** update.
+
+**Staff email** (after successful **`sent` → `customer_accepted`**): For each user id in **`estimates.accept_notify_user_ids`** (nullable before first save; empty array = explicitly no recipients), calls **`estimate_accept_notify_filter_eligible_user_ids`** then emails each resolved **`users.email`** via Resend (same From as customer estimate mail). Link uses **`ESTIMATE_PUBLIC_ORIGIN`** (or fallback **https://pipetooling.github.io**) to **`/estimates/{estimate_number}`**. Failures are **`console.error`** only; HTTP **`200`** is still returned if the DB update succeeded.
+
+**Draft app default (not Edge)**: When the column is **`NULL`**, [`Estimates.tsx`](src/pages/Estimates.tsx) pre-selects the signed-in user and every **`master_technician`** on estimate detail load (Supabase **`users`** query; dedupe; on failure, self only)—until staff save the draft, which persists the array. **`[]`** remains explicitly no recipients.
 
 **Audit**:
 - **First acceptance** (**`sent` → `customer_accepted`**): the **`estimate_customer_events`** row (**`public_accept_submitted`**, IP/UA, **`metadata.had_signature`**) is written by the **database trigger** [`estimates_audit_customer_accepted_trigger`](supabase/migrations/20260406033952_estimates_audit_customer_accepted_trigger.sql) in the **same transaction** as the **`estimates`** update (Edge does not insert that row on the success path).

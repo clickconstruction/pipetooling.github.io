@@ -64,6 +64,8 @@ import EstimateCustomerDocument, {
 } from '../components/estimates/EstimateCustomerDocument'
 import EstimateCustomerAcceptLinkButtons from '../components/estimates/EstimateCustomerAcceptLinkButtons'
 import IpAddressMapButton from '../components/estimates/IpAddressMapButton'
+import { SearchableMultiSelect } from '../components/SearchableMultiSelect'
+import type { SearchableSelectOption } from '../components/SearchableSelect'
 import {
   estimateLineItemRecentsStorageKey,
   loadRecentCatalogIds,
@@ -322,6 +324,24 @@ type EstimateListRow = Tables<'estimates'> & {
 /** Detail load embeds linked job HCP when `job_ledger_id` is set. */
 type EstimateDetailRow = Tables<'estimates'> & {
   jobs_ledger?: { hcp_number: string } | null
+}
+
+type EstimateNotifyUserOption = { id: string; name: string; email: string; role?: UserRole }
+
+/** Section caption on "Also notify" role-group separators (group below the divider). */
+function estimateAcceptNotifySeparatorLabel(
+  bucketKey: 'master' | 'assistant' | 'superintendent' | 'rest',
+): string | undefined {
+  switch (bucketKey) {
+    case 'assistant':
+      return 'Assistants'
+    case 'superintendent':
+      return 'Superintendents'
+    case 'rest':
+      return 'Everyone else'
+    default:
+      return undefined
+  }
 }
 
 const ESTIMATE_JOB_SECTION_HASH = 'estimate-job'
@@ -1943,7 +1963,7 @@ function EstimateList() {
 }
 
 function EstimateDetail({ routeSegment }: { routeSegment: string }) {
-  const { user, role } = useAuth()
+  const { user, role, profileName } = useAuth()
   const { showToast } = useToastContext()
   const editCustomerModal = useEditCustomerModal()
   const navigate = useNavigate()
@@ -2001,6 +2021,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   const [draftTitleEditing, setDraftTitleEditing] = useState(false)
   const [customerNotesExpanded, setCustomerNotesExpanded] = useState(false)
   const [detailCustomerSnapshotId, setDetailCustomerSnapshotId] = useState<string | null>(null)
+  const [acceptNotifyUserIds, setAcceptNotifyUserIds] = useState<string[]>([])
+  const [notifyUserOptions, setNotifyUserOptions] = useState<EstimateNotifyUserOption[]>([])
+  const [acceptNotifyResolvedUsers, setAcceptNotifyResolvedUsers] = useState<EstimateNotifyUserOption[]>([])
   const customerNotesQueryCustomerId = row?.status === 'draft' && customerId ? customerId : null
   const {
     entries: customerNotesEntries,
@@ -2038,6 +2061,8 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     setAttachmentCheckMessage('')
     prevCustomerIdForAutosave.current = undefined
     setDetailCustomerSnapshotId(null)
+    setAcceptNotifyUserIds([])
+    setAcceptNotifyResolvedUsers([])
   }, [routeSegment])
 
   useEffect(() => {
@@ -2100,6 +2125,54 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   useEffect(() => {
     void loadCatalogFromDb()
   }, [loadCatalogFromDb])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      if (!user?.id) {
+        if (!cancelled) setNotifyUserOptions([])
+        return
+      }
+      try {
+        const [usersRes, meRes] = await Promise.all([
+          withSupabaseRetry(
+            async () =>
+              await supabase
+                .from('users')
+                .select('id, name, email, role')
+                .in('role', [
+                  'assistant',
+                  'master_technician',
+                  'subcontractor',
+                  'helpers',
+                  'estimator',
+                  'primary',
+                  'superintendent',
+                ])
+                .order('name'),
+            'load estimate notify user options',
+          ),
+          supabase.from('users').select('role').eq('id', user.id).single(),
+        ])
+        let usersList = (usersRes as EstimateNotifyUserOption[]) ?? []
+        const meRole = (meRes.data as { role?: string } | null)?.role
+        if (meRole === 'dev') {
+          const { data: devUsers } = await supabase.from('users').select('id, name, email, role').eq('role', 'dev')
+          if (devUsers?.length) {
+            const existingIds = new Set(usersList.map((u) => u.id))
+            const newDevs = (devUsers as EstimateNotifyUserOption[]).filter((u) => !existingIds.has(u.id))
+            usersList = [...usersList, ...newDevs]
+          }
+        }
+        if (!cancelled) setNotifyUserOptions(usersList)
+      } catch {
+        if (!cancelled) setNotifyUserOptions([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [user?.id])
 
   useEffect(() => {
     let cancelled = false
@@ -2267,6 +2340,53 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       }
       setForAddress(r.for_address ?? '')
       setInternalNotes(r.internal_notes ?? '')
+      {
+        const raw = r.accept_notify_user_ids
+        if (raw === null || raw === undefined) {
+          if (r.status === 'draft' && user?.id) {
+            try {
+              const masterRows =
+                (await withSupabaseRetry(
+                  async () =>
+                    await supabase.from('users').select('id').eq('role', 'master_technician'),
+                  'load estimate default notify master technicians',
+                )) ?? []
+              const masterIds = masterRows
+                .map((row) => row.id)
+                .filter((id): id is string => typeof id === 'string' && id.length > 0)
+              setAcceptNotifyUserIds([...new Set([user.id, ...masterIds])])
+            } catch {
+              setAcceptNotifyUserIds([user.id])
+            }
+          } else {
+            setAcceptNotifyUserIds([])
+          }
+        } else {
+          setAcceptNotifyUserIds(
+            raw.filter((x): x is string => typeof x === 'string' && x.length > 0),
+          )
+        }
+      }
+      {
+        const ids =
+          Array.isArray(r.accept_notify_user_ids) ?
+            r.accept_notify_user_ids.filter((x): x is string => typeof x === 'string' && x.length > 0)
+          : []
+        if (r.status !== 'draft' && ids.length > 0) {
+          try {
+            const nu = await withSupabaseRetry(
+              async () =>
+                await supabase.from('users').select('id, name, email').in('id', ids),
+              'load estimate notify display users',
+            )
+            setAcceptNotifyResolvedUsers((nu ?? []) as EstimateNotifyUserOption[])
+          } catch {
+            setAcceptNotifyResolvedUsers([])
+          }
+        } else {
+          setAcceptNotifyResolvedUsers([])
+        }
+      }
       if (r.status === 'draft') {
         setCustomerAttachmentUrl(r.customer_attachment_url ?? '')
         setCustomerAttachmentLabel(r.customer_attachment_label ?? '')
@@ -2396,6 +2516,71 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
 
   const isDraft = row?.status === 'draft'
   const draftNeedsCustomer = isDraft && !customerId
+
+  const acceptNotifyOtherSelectOptions = useMemo((): SearchableSelectOption[] => {
+    const others = notifyUserOptions.filter((opt) => opt.id !== user?.id)
+    const sortByName = (a: EstimateNotifyUserOption, b: EstimateNotifyUserOption) => {
+      const na = a.name?.trim() || '—'
+      const nb = b.name?.trim() || '—'
+      return na.localeCompare(nb, undefined, { sensitivity: 'base' })
+    }
+    const masters: EstimateNotifyUserOption[] = []
+    const assistants: EstimateNotifyUserOption[] = []
+    const supers: EstimateNotifyUserOption[] = []
+    const rest: EstimateNotifyUserOption[] = []
+    for (const opt of others) {
+      const r = opt.role
+      if (r === 'master_technician') masters.push(opt)
+      else if (r === 'assistant') assistants.push(opt)
+      else if (r === 'superintendent') supers.push(opt)
+      else rest.push(opt)
+    }
+    masters.sort(sortByName)
+    assistants.sort(sortByName)
+    supers.sort(sortByName)
+    rest.sort(sortByName)
+    const toSelectable = (opt: EstimateNotifyUserOption) => {
+      const name = opt.name?.trim() || '—'
+      const email = opt.email?.trim() || ''
+      return {
+        value: opt.id,
+        label: `${name} ${email}`.trim(),
+        labelContent: (
+          <>
+            <span style={{ fontWeight: 500 }}>{name}</span>
+            <span style={{ color: '#6b7280' }}> · {email || 'no email'}</span>
+          </>
+        ),
+      }
+    }
+    const bucketMeta = [
+      { key: 'master', rows: masters },
+      { key: 'assistant', rows: assistants },
+      { key: 'superintendent', rows: supers },
+      { key: 'rest', rows: rest },
+    ] as const
+    const out: SearchableSelectOption[] = []
+    let prevKey: (typeof bucketMeta)[number]['key'] | null = null
+    for (const { key, rows } of bucketMeta) {
+      if (!rows.length) continue
+      if (prevKey !== null) {
+        const sepLabel = estimateAcceptNotifySeparatorLabel(key)
+        out.push({
+          kind: 'separator',
+          id: `estimate-notify-sep-${prevKey}-${key}`,
+          ...(sepLabel ? { label: sepLabel } : {}),
+        })
+      }
+      prevKey = key
+      out.push(...rows.map(toSelectable))
+    }
+    return out
+  }, [notifyUserOptions, user?.id])
+
+  const acceptNotifyOtherIds = useMemo(
+    () => acceptNotifyUserIds.filter((id) => id !== user?.id),
+    [acceptNotifyUserIds, user?.id],
+  )
 
   const requestCustomerFirst = useCallback(() => {
     if (customerId) return
@@ -2797,6 +2982,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               accept_header_brand: acceptHeaderBrand,
               customer_attachment_url: attDb.url,
               customer_attachment_label: attDb.label,
+              accept_notify_user_ids: [...new Set(acceptNotifyUserIds.filter((id) => typeof id === 'string' && id.length > 0))],
             })
             .eq('id', row.id)
             .eq('status', 'draft'),
@@ -4428,6 +4614,73 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               </div>
             </details>
           </fieldset>
+          <fieldset
+            style={{
+              marginTop: '1rem',
+              marginLeft: 'auto',
+              marginRight: 'auto',
+              border: '1px solid #e5e7eb',
+              borderRadius: 8,
+              padding: '0.75rem',
+              maxWidth: 560,
+              width: '100%',
+              boxSizing: 'border-box',
+            }}
+          >
+            <legend style={{ fontWeight: 500, padding: '0 0.35rem' }}>Email when customer accepts</legend>
+            <p style={{ margin: '0 0 0.65rem', fontSize: '0.85rem', color: '#6b7280', lineHeight: 1.45 }}>
+              Choose who gets an email when the customer submits acceptance. Check <strong>Notify me</strong> for
+              yourself, then search below to add anyone else.
+            </p>
+            {user?.id ? (
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '0.5rem',
+                  fontSize: '0.875rem',
+                  cursor: 'pointer',
+                  marginBottom: '0.75rem',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={acceptNotifyUserIds.includes(user.id)}
+                  onChange={(e) => {
+                    const on = e.target.checked
+                    setAcceptNotifyUserIds((prev) => {
+                      const others = prev.filter((id) => id !== user.id)
+                      if (on) return [...new Set([user.id, ...others])]
+                      return others
+                    })
+                  }}
+                  style={{ marginTop: '0.15rem', flexShrink: 0 }}
+                />
+                <span>
+                  <span style={{ fontWeight: 600 }}>Notify me</span>
+                  <span style={{ fontWeight: 500 }}> · {profileName?.trim() || 'You'}</span>
+                  <span style={{ color: '#6b7280' }}> · {user.email?.trim() || '—'}</span>
+                </span>
+              </label>
+            ) : null}
+            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: '0.35rem' }}>
+              Also notify
+            </div>
+            <SearchableMultiSelect
+              id="estimate-accept-notify-others"
+              options={acceptNotifyOtherSelectOptions}
+              value={acceptNotifyOtherIds}
+              onChange={(next) => {
+                setAcceptNotifyUserIds((prev) => {
+                  const selfOn = user?.id ? prev.includes(user.id) : false
+                  const base = selfOn && user?.id ? [user.id] : []
+                  return [...new Set([...base, ...next])]
+                })
+              }}
+              listAriaLabel="Additional acceptance notify recipients"
+              pinSelectedToTop
+            />
+          </fieldset>
           <label style={{ display: 'block', marginTop: '1rem' }}>
             <span style={{ fontWeight: 500 }}>Internal notes</span>
             <AutosizeTextarea
@@ -4468,6 +4721,32 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
 
       {!isDraft && (
         <div style={{ marginTop: '1rem' }}>
+          <div
+            style={{
+              marginBottom: '1rem',
+              padding: '0.75rem',
+              border: '1px solid #e5e7eb',
+              borderRadius: 8,
+              fontSize: '0.875rem',
+              boxSizing: 'border-box',
+            }}
+          >
+            <div style={{ fontWeight: 600, marginBottom: '0.35rem' }}>Acceptance notify recipients</div>
+            {acceptNotifyResolvedUsers.length === 0 ? (
+              <p style={{ margin: 0, color: '#6b7280' }}>No staff email recipients were set for this quote.</p>
+            ) : (
+              <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
+                {acceptNotifyResolvedUsers.map((u) => (
+                  <li key={u.id} style={{ marginBottom: '0.25rem' }}>
+                    {u.name?.trim() || '—'} · {u.email?.trim() || '—'}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: '#6b7280' }}>
+              This list was locked when the quote was sent.
+            </p>
+          </div>
           {row.status === 'customer_accepted' ? (
             <div
               key={`customer-accepted-record-${row.id}`}

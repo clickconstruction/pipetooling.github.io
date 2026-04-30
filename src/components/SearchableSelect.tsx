@@ -24,7 +24,7 @@ export type SearchableSelectSelectableOption = {
 }
 
 /** Non-interactive divider between option groups (e.g. Schedule assignee sections). */
-export type SearchableSelectSeparatorOption = { kind: 'separator'; id: string }
+export type SearchableSelectSeparatorOption = { kind: 'separator'; id: string; label?: string }
 
 export type SearchableSelectOption = SearchableSelectSelectableOption | SearchableSelectSeparatorOption
 
@@ -34,6 +34,52 @@ export function isSelectableOption(o: SearchableSelectOption): o is SearchableSe
 
 export function isSeparatorOption(o: SearchableSelectOption): o is SearchableSelectSeparatorOption {
   return 'kind' in o && o.kind === 'separator'
+}
+
+/** Shared list row for separator options (single-select portal list + multi-select). */
+export function SearchableSelectSeparatorListRow({ separator: o }: { separator: SearchableSelectSeparatorOption }) {
+  const hasLabel = Boolean(o.label?.trim())
+  return (
+    <li
+      role="separator"
+      aria-hidden
+      style={{
+        listStyle: 'none',
+        margin: 0,
+        padding: hasLabel ? '0.45rem 0.5rem 0.15rem' : '0.35rem 0.5rem 0',
+        background: '#f9fafb',
+      }}
+    >
+      {hasLabel ? (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            margin: 0,
+            width: '100%',
+          }}
+        >
+          <div style={{ flex: 1, height: 1, background: '#d1d5db', minWidth: 8 }} />
+          <span
+            style={{
+              flexShrink: 0,
+              fontSize: '0.625rem',
+              fontWeight: 600,
+              letterSpacing: '0.04em',
+              color: '#6b7280',
+              textTransform: 'uppercase',
+            }}
+          >
+            {o.label}
+          </span>
+          <div style={{ flex: 1, height: 1, background: '#d1d5db', minWidth: 8 }} />
+        </div>
+      ) : (
+        <div style={{ borderTop: '1px solid #d1d5db', margin: 0 }} />
+      )}
+    </li>
+  )
 }
 
 type ListPosition = { top: number; left: number; width: number }
@@ -93,25 +139,25 @@ function normalizeOptions(
   return [emptyOption, ...rest]
 }
 
-/** Split options into selectable groups; `separatorIds[i]` sits between group i and i+1. */
+/** Split options into selectable groups; `separators[i]` sits between group i and i+1. */
 function splitOptionGroups(options: SearchableSelectOption[]): {
   groups: SearchableSelectSelectableOption[][]
-  separatorIds: string[]
+  separators: SearchableSelectSeparatorOption[]
 } {
   const groups: SearchableSelectSelectableOption[][] = []
-  const separatorIds: string[] = []
+  const separators: SearchableSelectSeparatorOption[] = []
   let cur: SearchableSelectSelectableOption[] = []
   for (const row of options) {
     if (isSeparatorOption(row)) {
       groups.push(cur)
-      separatorIds.push(row.id)
+      separators.push(row)
       cur = []
     } else {
       cur.push(row)
     }
   }
   groups.push(cur)
-  return { groups, separatorIds }
+  return { groups, separators }
 }
 
 function filterOptionsBySearch(
@@ -120,7 +166,7 @@ function filterOptionsBySearch(
 ): SearchableSelectOption[] {
   const q = queryLower.trim().toLowerCase()
   if (!q) return allOptions
-  const { groups, separatorIds } = splitOptionGroups(allOptions)
+  const { groups, separators } = splitOptionGroups(allOptions)
   const filteredGroups = groups.map((g) =>
     g.filter((o) => o.label.toLowerCase().includes(q)),
   )
@@ -129,8 +175,8 @@ function filterOptionsBySearch(
     const g = filteredGroups[i]!
     const nextGroup = filteredGroups[i + 1]
     out.push(...g)
-    if (i < separatorIds.length && g.length > 0 && nextGroup && nextGroup.length > 0) {
-      out.push({ kind: 'separator', id: separatorIds[i]! })
+    if (i < separators.length && g.length > 0 && nextGroup && nextGroup.length > 0) {
+      out.push(separators[i]!)
     }
   }
   return out
@@ -501,26 +547,7 @@ export function SearchableSelect({
           <ul id={listId} role="listbox" aria-label={listAriaLabel} style={listboxStyle}>
             {filteredForRender.map((o, idx) => {
               if (isSeparatorOption(o)) {
-                return (
-                  <li
-                    key={`sep-${o.id}-${idx}`}
-                    role="separator"
-                    aria-hidden
-                    style={{
-                      listStyle: 'none',
-                      margin: 0,
-                      padding: '0.35rem 0.5rem 0',
-                      background: '#f9fafb',
-                    }}
-                  >
-                    <div
-                      style={{
-                        borderTop: '1px solid #d1d5db',
-                        margin: 0,
-                      }}
-                    />
-                  </li>
-                )
+                return <SearchableSelectSeparatorListRow key={`sep-${o.id}-${idx}`} separator={o} />
               }
               const nextRow = idx + 1 < filteredForRender.length ? filteredForRender[idx + 1] : undefined
               const nextIsSep = nextRow ? isSeparatorOption(nextRow) : false

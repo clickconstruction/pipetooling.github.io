@@ -3,6 +3,7 @@ import {
   filterSearchableSelectOptionsByQuery,
   isSelectableOption,
   isSeparatorOption,
+  SearchableSelectSeparatorListRow,
   type SearchableSelectOption,
 } from './SearchableSelect'
 
@@ -115,20 +116,7 @@ export function SearchableMultiSelect({
         ) : (
           rowsToRender.map((row, idx) => {
             if (isSeparatorOption(row)) {
-              return (
-                <li
-                  key={`sep-${row.id}-${idx}`}
-                  role="separator"
-                  aria-hidden
-                  style={{
-                    margin: 0,
-                    padding: '0.35rem 0.5rem 0',
-                    background: '#f9fafb',
-                  }}
-                >
-                  <div style={{ borderTop: '1px solid #d1d5db', margin: 0 }} />
-                </li>
-              )
+              return <SearchableSelectSeparatorListRow key={`sep-${row.id}-${idx}`} separator={row} />
             }
             const checked = value.includes(row.value)
             const rowId = `${listId}-opt-${row.value}`

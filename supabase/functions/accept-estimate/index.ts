@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { clientIpFromRequest, insertEstimateCustomerEvent } from '../_shared/logEstimateCustomerEvent.ts'
 
 const SIGNATURE_BUCKET = 'estimate-acceptor-signatures'
@@ -47,6 +48,84 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+type EstimateFetchRow = {
+  id: string
+  status: string
+  public_token_expires_at: string | null
+  valid_until: string | null
+  accept_notify_user_ids: string[] | null
+  master_user_id: string
+  estimate_number: number
+  title: string
+}
+
+function escapeHtmlLite(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+/** Best-effort staff emails; failures logged only (customer acceptance already persisted). */
+async function notifyStaffEstimateAccepted(params: {
+  admin: ReturnType<typeof createClient>
+  masterUserId: string
+  candidateIds: string[] | null | undefined
+  estimateNumber: number
+  title: string
+  acceptorPrintedName: string
+}): Promise<void> {
+  const raw = params.candidateIds ?? []
+  const ids = [...new Set(raw.filter((x) => typeof x === 'string' && x.length > 0))]
+  if (ids.length === 0) return
+
+  const resendApiKey = Deno.env.get('RESEND_API_KEY')
+  if (!resendApiKey) {
+    console.warn('accept-estimate: RESEND_API_KEY not set; skipping staff notify')
+    return
+  }
+
+  const origin = (Deno.env.get('ESTIMATE_PUBLIC_ORIGIN') ?? 'https://pipetooling.github.io').replace(/\/$/, '')
+
+  const { data: eligible, error: rpcErr } = await params.admin.rpc('estimate_accept_notify_filter_eligible_user_ids', {
+    p_master_user_id: params.masterUserId,
+    p_candidate_ids: ids,
+  })
+  if (rpcErr) {
+    console.error('accept-estimate: estimate_accept_notify_filter_eligible_user_ids', rpcErr)
+    return
+  }
+  const eligibleArr = Array.isArray(eligible) ? (eligible as string[]) : []
+  if (eligibleArr.length === 0) return
+
+  const { data: userRows, error: usersErr } = await params.admin
+    .from('users')
+    .select('id, email, name')
+    .in('id', eligibleArr)
+  if (usersErr) {
+    console.error('accept-estimate: notify users select', usersErr)
+    return
+  }
+
+  const quote = Number(params.estimateNumber)
+  const acceptor = params.acceptorPrintedName.trim()
+  const titleTrim = params.title.trim()
+  const subject = `Quote #${quote} accepted — ${acceptor}`
+  const appLink = `${origin}/estimates/${quote}`
+  const textPlain =
+    `${acceptor} accepted estimate #${quote}${titleTrim ? `: ${titleTrim}` : ''}.\n\n` + `Open in PipeTooling: ${appLink}\n`
+  const htmlBody =
+    `<p><strong>${escapeHtmlLite(acceptor)}</strong> accepted <strong>Quote #${quote}</strong>` +
+    `${titleTrim ? `: ${escapeHtmlLite(titleTrim)}` : ''}.</p>` +
+    `<p><a href="${appLink}">Open estimate in PipeTooling</a></p>`
+
+  for (const u of userRows ?? []) {
+    const em = typeof u.email === 'string' ? u.email.trim() : ''
+    if (!em) continue
+    const r = await sendEmailViaResend(em, subject, textPlain, htmlBody, resendApiKey)
+    if (!r.success) {
+      console.error('accept-estimate: staff notify Resend', { to: em, error: r.error })
+    }
+  }
 }
 
 serve(async (req) => {
@@ -105,11 +184,15 @@ serve(async (req) => {
     })
     const tokenHash = await sha256HexFromString(raw)
 
-    const { data: row, error: fetchErr } = await admin
+    const { data: rowRaw, error: fetchErr } = await admin
       .from('estimates')
-      .select('id, status, public_token_expires_at, valid_until, acceptor_printed_name')
+      .select(
+        'id, status, public_token_expires_at, valid_until, accept_notify_user_ids, master_user_id, estimate_number, title',
+      )
       .eq('public_token_hash', tokenHash)
       .maybeSingle()
+
+    const row = rowRaw as EstimateFetchRow | null
 
     if (fetchErr || !row) {
       return new Response(JSON.stringify({ error: 'Not found' }), {
@@ -251,6 +334,19 @@ serve(async (req) => {
     }
 
     // sent -> customer_accepted audit: DB trigger estimates_audit_customer_accepted_trigger (same txn as UPDATE).
+
+    try {
+      await notifyStaffEstimateAccepted({
+        admin,
+        masterUserId: row.master_user_id,
+        candidateIds: row.accept_notify_user_ids,
+        estimateNumber: row.estimate_number,
+        title: row.title ?? '',
+        acceptorPrintedName: printedName,
+      })
+    } catch (notifyErr) {
+      console.error('accept-estimate: notify staff failed (non-fatal)', notifyErr)
+    }
 
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,

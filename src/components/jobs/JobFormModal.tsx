@@ -53,6 +53,11 @@ import {
 import { MaterialsCostAccordionRow } from './JobFormMaterialsCostAccordion'
 import JobProjectLinkChoiceModal from './JobProjectLinkChoiceModal'
 import JobBidLinkChoiceModal, { type JobBidLinkOption } from './JobBidLinkChoiceModal'
+import { JobFormImportEstimateOrBidModal } from './JobFormImportEstimateOrBidModal'
+import {
+  fixturesPayloadForCreateJobFromEstimate,
+} from '../../lib/createJobFromEstimateSubmit'
+import { normalizeEstimateLineItemsFromJson } from '../../lib/estimateLineItemNormalize'
 import type { JobBillingContext } from '../../lib/jobBillingContext'
 import { useBillCustomerModal } from '../../contexts/BillCustomerModalContext'
 import { useNewProjectModal } from '../../contexts/NewProjectModalContext'
@@ -145,6 +150,81 @@ type FixtureRow = {
   /** Unit price in dollars; null when unset. */
   line_unit_price: number | null
   line_description: string
+}
+
+function fixtureRowHasUserContent(row: FixtureRow): boolean {
+  if ((row.name ?? '').trim() !== '') return true
+  if ((row.line_description ?? '').trim() !== '') return true
+  if (row.line_unit_price != null && Number.isFinite(Number(row.line_unit_price))) return true
+  const c = Number(row.count)
+  if (Number.isFinite(c) && c !== 1) return true
+  return false
+}
+
+function paymentRowHasUserContent(row: PaymentRow): boolean {
+  if (Number(row.amount) !== 0) return true
+  if ((row.note ?? '').trim() !== '') return true
+  if ((row.reference_number ?? '').trim() !== '') return true
+  if ((row.payment_type ?? '').trim() !== '') return true
+  if (row.invoice_id != null && String(row.invoice_id).trim() !== '') return true
+  if (row.mercury_transaction_id != null && String(row.mercury_transaction_id).trim() !== '') return true
+  return false
+}
+
+/** True when the New Job sheet has any user-visible content; hides **Import** to avoid accidental overwrites. */
+function newJobFormHasBlockingContent(args: {
+  jobName: string
+  jobAddress: string
+  hcpNumber: string
+  customerName: string
+  customerEmail: string
+  customerPhone: string
+  dateMet: string
+  customerId: string | null
+  bidId: string | null
+  projectId: string | null
+  formServiceTypeId: string
+  /** Set on new-job init so auto-picked trade does not hide Import. */
+  initialNewJobServiceTypeId: string
+  googleDriveLink: string
+  jobPicturesLink: string
+  jobPlansLink: string
+  lastBillDate: string
+  fixtures: FixtureRow[]
+  materials: MaterialRow[]
+  payments: PaymentRow[]
+  teamMemberIds: string[]
+}): boolean {
+  if (args.jobName.trim() || args.jobAddress.trim() || args.hcpNumber.trim()) return true
+  if (
+    args.customerId ||
+    args.customerName.trim() ||
+    args.customerEmail.trim() ||
+    args.customerPhone.trim() ||
+    args.dateMet.trim()
+  ) {
+    return true
+  }
+  if (args.bidId || args.projectId) return true
+  if (
+    args.formServiceTypeId.trim() !== '' &&
+    args.formServiceTypeId !== args.initialNewJobServiceTypeId
+  ) {
+    return true
+  }
+  if (
+    args.googleDriveLink.trim() ||
+    args.jobPicturesLink.trim() ||
+    args.jobPlansLink.trim() ||
+    args.lastBillDate.trim()
+  ) {
+    return true
+  }
+  if (args.fixtures.length > 1 || args.fixtures.some(fixtureRowHasUserContent)) return true
+  if (args.materials.length > 1 || args.materials.some(materialRowHasUserContent)) return true
+  if (args.payments.length > 1 || args.payments.some(paymentRowHasUserContent)) return true
+  if (args.teamMemberIds.length > 0) return true
+  return false
 }
 
 const FIXTURE_SCOPE_FIELD_LABEL_VISUALLY_HIDDEN: CSSProperties = {
@@ -394,6 +474,8 @@ type ProjectOption = {
 const JOB_FORM_OVERLAY_Z_INDEX = 1010
 const JOB_FORM_NESTED_OVERLAY_Z_INDEX = JOB_FORM_OVERLAY_Z_INDEX + 1
 const JOB_FORM_MIGRATE_OVERLAY_Z_INDEX = JOB_FORM_NESTED_OVERLAY_Z_INDEX + 1
+/** Above other job-form overlays so Import-from search stacks on top. */
+const JOB_FORM_IMPORT_SOURCE_OVERLAY_Z_INDEX = JOB_FORM_MIGRATE_OVERLAY_Z_INDEX + 1
 
 function formatJobFormBidLinkTitle(
   prefixMap: LedgerPrefixMap,
@@ -592,6 +674,9 @@ export default function JobFormModal({
   const [meServiceTypeColumns, setMeServiceTypeColumns] = useState<MeServiceTypeColumns | null>(null)
   const [formServiceTypeId, setFormServiceTypeId] = useState('')
   const [jobBidLinkChoiceOpen, setJobBidLinkChoiceOpen] = useState(false)
+  const [jobImportSourceOpen, setJobImportSourceOpen] = useState(false)
+  /** Auto-picked trade on new-job load; changing away from this counts as “content” for hiding Import. */
+  const initialNewJobServiceTypeIdRef = useRef('')
   const [customers, setCustomers] = useState<CustomerRow[]>([])
   const [users, setUsers] = useState<UserRow[]>([])
   const [customerSearch, setCustomerSearch] = useState('')
@@ -633,6 +718,58 @@ export default function JobFormModal({
   const [fixtureScopeExpandedById, setFixtureScopeExpandedById] = useState<Record<string, boolean>>({})
   const jobTotalBidDollars = useMemo(() => revenueDollarsFromFixtures(fixtures), [fixtures])
   const [teamMemberIds, setTeamMemberIds] = useState<string[]>([])
+  const newJobImportBlockedByContent = useMemo(() => {
+    if (mode !== 'new' || editing) return false
+    return newJobFormHasBlockingContent({
+      jobName,
+      jobAddress,
+      hcpNumber,
+      customerName,
+      customerEmail,
+      customerPhone,
+      dateMet,
+      customerId,
+      bidId,
+      projectId,
+      formServiceTypeId,
+      initialNewJobServiceTypeId: initialNewJobServiceTypeIdRef.current,
+      googleDriveLink,
+      jobPicturesLink,
+      jobPlansLink,
+      lastBillDate,
+      fixtures,
+      materials,
+      payments,
+      teamMemberIds,
+    })
+  }, [
+    mode,
+    editing,
+    jobName,
+    jobAddress,
+    hcpNumber,
+    customerName,
+    customerEmail,
+    customerPhone,
+    dateMet,
+    customerId,
+    bidId,
+    projectId,
+    formServiceTypeId,
+    googleDriveLink,
+    jobPicturesLink,
+    jobPlansLink,
+    lastBillDate,
+    fixtures,
+    materials,
+    payments,
+    teamMemberIds,
+  ])
+  useEffect(() => {
+    if (newJobImportBlockedByContent && jobImportSourceOpen) {
+      setJobImportSourceOpen(false)
+    }
+  }, [newJobImportBlockedByContent, jobImportSourceOpen])
   const [contractorsSearch, setContractorsSearch] = useState('')
   const [contractorsDropdownOpen, setContractorsDropdownOpen] = useState(false)
   const contractorsDropdownRef = useRef<HTMLDivElement | null>(null)
@@ -977,7 +1114,210 @@ export default function JobFormModal({
     setUnlinkMercuryConfirmRowId(null)
     setDeleteJobConfirmOpen(false)
     setFormServiceTypeId('')
+    setJobImportSourceOpen(false)
   }
+
+  const applyPrefillFromBid = useCallback(
+    async (bidRowId: string) => {
+      try {
+        const row = await withSupabaseRetry(
+          async () =>
+            await supabase
+              .from('bids')
+              .select(
+                'id, project_name, bid_number, service_type_id, customer_id, address, drive_link, plans_link, customers(name, address, contact_info, date_met)',
+              )
+              .eq('id', bidRowId)
+              .maybeSingle(),
+          'job form import bid',
+        )
+        if (!row) {
+          showToast('Bid not found.', 'error')
+          return
+        }
+        const b = row as {
+          id: string
+          project_name: string | null
+          bid_number: string | null
+          service_type_id: string | null
+          customer_id: string | null
+          address: string | null
+          drive_link: string | null
+          plans_link: string | null
+          customers: {
+            name: string
+            address: string | null
+            contact_info: unknown
+            date_met: string | null
+          } | null
+        }
+        setBidId(b.id)
+        setJobName((b.project_name ?? '').trim())
+        setJobAddress((b.address ?? '').trim())
+        setLinkedBidSummary({
+          project_name: b.project_name,
+          bid_number: b.bid_number,
+          service_type_id: b.service_type_id ?? null,
+        })
+        setBids((prev) => {
+          if (prev.some((x) => x.id === b.id)) return prev
+          const opt: JobBidLinkOption = {
+            id: b.id,
+            project_name: b.project_name,
+            bid_number: b.bid_number,
+            customer_id: b.customer_id,
+            customers: b.customers ? { name: b.customers.name } : null,
+            service_type_id: b.service_type_id ?? null,
+          }
+          return [opt, ...prev]
+        })
+        const vis = visibleServiceTypesForJobForm(serviceTypes, meServiceTypeColumns)
+        const allowed = new Set(vis.map((s) => s.id))
+        if (b.service_type_id && allowed.has(b.service_type_id)) {
+          setFormServiceTypeId(b.service_type_id)
+        } else if (b.service_type_id) {
+          showToast('Bid trade is not available for your role in this form; choose a service type.', 'info')
+        }
+        if (b.customer_id) {
+          setCustomerId(b.customer_id)
+          const cList = customers.find((c) => c.id === b.customer_id)
+          if (cList) {
+            setCustomerName(cList.name ?? '')
+            setDateMet(cList.date_met ? (cList.date_met.split('T')[0] ?? '') : '')
+            const ci = cList.contact_info as { phone?: string; email?: string } | null
+            if (ci) {
+              setCustomerEmail(ci.email ?? '')
+              setCustomerPhone(ci.phone ?? '')
+            } else {
+              setCustomerEmail('')
+              setCustomerPhone('')
+            }
+          } else if (b.customers) {
+            setCustomerName(b.customers.name ?? '')
+            setDateMet(b.customers.date_met ? (b.customers.date_met.split('T')[0] ?? '') : '')
+            const ci = b.customers.contact_info as { phone?: string; email?: string } | null
+            if (ci) {
+              setCustomerEmail(ci.email ?? '')
+              setCustomerPhone(ci.phone ?? '')
+            } else {
+              setCustomerEmail('')
+              setCustomerPhone('')
+            }
+          } else {
+            setCustomerName('')
+            setCustomerEmail('')
+            setCustomerPhone('')
+            setDateMet('')
+          }
+        } else {
+          setCustomerId(null)
+          setCustomerName('')
+          setCustomerEmail('')
+          setCustomerPhone('')
+          setDateMet('')
+        }
+        setGoogleDriveLink((prev) => (prev.trim() ? prev : (b.drive_link ?? '').trim()))
+        setJobPlansLink((prev) => (prev.trim() ? prev : (b.plans_link ?? '').trim()))
+        showToast('Imported from bid.', 'success')
+      } catch (e) {
+        showToast(formatPostgrestOrUnknownError(e, 'Could not load bid'), 'error')
+      }
+    },
+    [customers, meServiceTypeColumns, serviceTypes, showToast],
+  )
+
+  const applyPrefillFromEstimate = useCallback(
+    async (estimateId: string) => {
+      try {
+        const row = await withSupabaseRetry(
+          async () =>
+            await supabase
+              .from('estimates')
+              .select('id, customer_id, for_address, title, line_items_snapshot, job_ledger_id, customer_email')
+              .eq('id', estimateId)
+              .maybeSingle(),
+          'job form import estimate',
+        )
+        if (!row) {
+          showToast('Estimate not found.', 'error')
+          return
+        }
+        const e = row as Pick<
+          EstimatesRow,
+          'id' | 'customer_id' | 'for_address' | 'title' | 'line_items_snapshot' | 'job_ledger_id' | 'customer_email'
+        >
+        if (e.job_ledger_id) {
+          showToast('This estimate is already linked to a job.', 'warning')
+          return
+        }
+        setBidId(null)
+        setLinkedBidSummary(null)
+        setJobName((e.title ?? '').trim())
+        setJobAddress((e.for_address ?? '').trim())
+        const lines = normalizeEstimateLineItemsFromJson(e.line_items_snapshot)
+        const payload = fixturesPayloadForCreateJobFromEstimate(lines)
+        const nextFixtures: FixtureRow[] =
+          payload.length > 0
+            ? payload.map((p) => ({
+                id: crypto.randomUUID(),
+                name: p.name,
+                count: p.count,
+                line_unit_price: p.line_unit_price,
+                line_description: p.line_description ?? '',
+              }))
+            : [{ id: crypto.randomUUID(), name: '', count: 1, line_unit_price: null, line_description: '' }]
+        setFixtures(nextFixtures)
+        setFixtureScopeExpandedById({})
+        const estimateCustomerId = e.customer_id
+        if (estimateCustomerId) {
+          setCustomerId(estimateCustomerId)
+          let cList = customers.find((c) => c.id === estimateCustomerId)
+          if (!cList) {
+            const fetched = await withSupabaseRetry(
+              async () =>
+                await supabase
+                  .from('customers')
+                  .select('id, name, address, contact_info, date_met, master_user_id, customer_type')
+                  .eq('id', estimateCustomerId)
+                  .maybeSingle(),
+              'job form import estimate customer',
+            )
+            if (fetched) {
+              cList = fetched as CustomerRow
+              setCustomers((prev) => (prev.some((c) => c.id === cList!.id) ? prev : [...prev, cList!]))
+            }
+          }
+          if (cList) {
+            setCustomerName(cList.name ?? '')
+            setDateMet(cList.date_met ? (cList.date_met.split('T')[0] ?? '') : '')
+            const ci = cList.contact_info as { phone?: string; email?: string } | null
+            if (ci) {
+              setCustomerEmail(ci.email ?? '')
+              setCustomerPhone(ci.phone ?? '')
+            } else {
+              setCustomerEmail('')
+              setCustomerPhone('')
+            }
+          } else {
+            setCustomerName('')
+            setCustomerEmail((e.customer_email ?? '').trim())
+            setCustomerPhone('')
+            setDateMet('')
+          }
+        } else {
+          setCustomerId(null)
+          setCustomerName('')
+          setCustomerEmail((e.customer_email ?? '').trim())
+          setCustomerPhone('')
+          setDateMet('')
+        }
+        showToast('Imported from estimate.', 'success')
+      } catch (err) {
+        showToast(formatPostgrestOrUnknownError(err, 'Could not load estimate'), 'error')
+      }
+    },
+    [customers, showToast],
+  )
 
   useLayoutEffect(() => {
     if (!authUser?.id) return
@@ -1042,6 +1382,7 @@ export default function JobFormModal({
           const meSt = (meRow as MeServiceTypeColumns | null) ?? null
           const vis = visibleServiceTypesForJobForm(allServiceTypes, meSt)
           const defId = pickDefaultServiceTypeId(vis) ?? ''
+          initialNewJobServiceTypeIdRef.current = defId
           setFormServiceTypeId(defId)
           if (newJobProjectId) {
             const { data: pdata } = await supabase.from('projects').select('customer_id, customers(name, address, contact_info, date_met)').eq('id', newJobProjectId).single()
@@ -2546,8 +2887,39 @@ export default function JobFormModal({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', gap: '0.5rem' }}>
-          <h2 style={{ margin: 0, fontSize: '1.25rem' }}>{editing ? 'Edit Job' : 'New Job'}</h2>
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
+          <h2 style={{ margin: 0, fontSize: '1.25rem', flexShrink: 0 }}>{editing ? 'Edit Job' : 'New Job'}</h2>
+          {mode === 'new' && !editing && !newJobImportBlockedByContent ? (
+            <div
+              style={{
+                flex: 1,
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                minWidth: 0,
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setJobImportSourceOpen(true)}
+                aria-label="Import from estimate or bid"
+                style={{
+                  padding: '0.4rem 0.85rem',
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  color: '#1d4ed8',
+                  background: '#eff6ff',
+                  border: '1px solid #bfdbfe',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                }}
+              >
+                Import
+              </button>
+            </div>
+          ) : (
+            <div style={{ flex: 1, minWidth: 0 }} aria-hidden />
+          )}
           <div
             style={{
               display: 'flex',
@@ -2556,6 +2928,7 @@ export default function JobFormModal({
               gap: '0.25rem',
               justifyContent: 'flex-end',
               fontSize: '0.875rem',
+              flexShrink: 0,
             }}
           >
             <span style={{ color: '#6b7280', userSelect: 'none' }}>Link to:</span>
@@ -5879,6 +6252,15 @@ export default function JobFormModal({
             setProjectFilesPlansExpanded(true)
             showToast('Bid linked. Save the job to keep changes.', 'info')
           }}
+        />
+      )}
+      {jobImportSourceOpen && (
+        <JobFormImportEstimateOrBidModal
+          open={jobImportSourceOpen}
+          onClose={() => setJobImportSourceOpen(false)}
+          zIndex={JOB_FORM_IMPORT_SOURCE_OVERLAY_Z_INDEX}
+          onSelectBid={applyPrefillFromBid}
+          onSelectEstimate={applyPrefillFromEstimate}
         />
       )}
       {jobProjectLinkChoiceOpen && (

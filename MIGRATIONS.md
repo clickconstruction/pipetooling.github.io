@@ -94,6 +94,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### April 30, 2026
 
+**`20260430213314_estimates_accept_notify_user_ids.sql`**
+- **Purpose**: **`estimates.accept_notify_user_ids`** (`uuid[]`, nullable) — staff to email after **`sent` → `customer_accepted`** (Edge **`accept-estimate`** + **`estimate_accept_notify_filter_eligible_user_ids`**); draft-editable only; post-accept frozen with other estimate fields per **`estimates_protect_after_accept`**.
+- **Impact**: [`Estimates.tsx`](src/pages/Estimates.tsx) **Email when customer accepts**; [`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md) **accept-estimate**; **`PROJECT_DOCUMENTATION.md`** (Estimates); **`RECENT_FEATURES.md`** **v2.434** (UI: notify me + searchable **Also notify**, role-grouped options, default **`NULL`** → self + all **`master_technician`** on load).
+- **Category**: Estimates / Email / RLS
+
 **`20260430205318_search_jobs_ledger_service_type_name.sql`**
 - **Purpose**: **`search_jobs_ledger`** **`RETURNS TABLE`** adds **`service_type_name`** via **`LEFT JOIN public.service_types`** (canonical trade name for UI pills).
 - **Impact**: Unified job/bid search surfaces ([`unifiedJobBidSearch.ts`](src/utils/unifiedJobBidSearch.ts), Clock In, Layout header search, strip assign, Dispatch/Estimator modals, People Hours audit); regenerate **`src/types/database.ts`**

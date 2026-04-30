@@ -2241,6 +2241,7 @@ export type Database = {
       estimates: {
         Row: {
           accept_header_brand: string | null
+          accept_notify_user_ids: string[] | null
           acceptor_consented_at: string | null
           acceptor_ip: string | null
           acceptor_printed_name: string | null
@@ -2275,6 +2276,7 @@ export type Database = {
         }
         Insert: {
           accept_header_brand?: string | null
+          accept_notify_user_ids?: string[] | null
           acceptor_consented_at?: string | null
           acceptor_ip?: string | null
           acceptor_printed_name?: string | null
@@ -2309,6 +2311,7 @@ export type Database = {
         }
         Update: {
           accept_header_brand?: string | null
+          accept_notify_user_ids?: string[] | null
           acceptor_consented_at?: string | null
           acceptor_ip?: string | null
           acceptor_printed_name?: string | null
@@ -8961,6 +8964,10 @@ export type Database = {
       ensure_single_ready_to_bill_invoice_for_job: {
         Args: { p_job_id: string }
         Returns: Json
+      }
+      estimate_accept_notify_filter_eligible_user_ids: {
+        Args: { p_candidate_ids: string[]; p_master_user_id: string }
+        Returns: string[]
       }
       estimates_thread_note_stats: {
         Args: { p_estimate_ids: string[] }
