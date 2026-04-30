@@ -3788,7 +3788,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                       Supporting document
                     </h2>
                     <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: '#6b7280', lineHeight: 1.45 }}>
-                      Preview — add a label and URL in Supporting document (customer) below.
+                      Preview — add a label and URL in Supporting document (Optional) below.
                     </p>
                   </div>
                 </div>
@@ -3842,7 +3842,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               boxSizing: 'border-box',
             }}
           >
-            <legend style={{ fontWeight: 500, padding: '0 0.35rem' }}>Supporting document (customer)</legend>
+            <legend style={{ fontWeight: 500, padding: '0 0.35rem' }}>Supporting document (Optional)</legend>
             {isDraft ? (
               <>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500 }}>
