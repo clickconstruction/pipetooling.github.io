@@ -254,6 +254,9 @@ export function ClockSessionStripApproveControl({
             cursor: busy ? 'wait' : 'pointer',
             borderRadius: 4,
             touchAction: 'manipulation',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+            WebkitTouchCallout: 'none',
             opacity: busy ? 0.55 : 1,
           }}
         >
@@ -323,6 +326,9 @@ export function ClockSessionStripApproveControl({
           cursor: busy ? 'wait' : 'pointer',
           borderRadius: 4,
           touchAction: 'manipulation',
+          userSelect: 'none',
+          WebkitUserSelect: 'none',
+          WebkitTouchCallout: 'none',
           opacity: busy ? 0.55 : 1,
         }}
       >

@@ -354,6 +354,13 @@ const clockedInTodaySessionBlock: CSSProperties = {
   paddingBottom: '0.2rem',
 }
 
+/** iOS/WebKit — long-press Session actions must not drag text selection across the dense row / page. */
+const stripSessionActionsRowChromeNoSelect: CSSProperties = {
+  userSelect: 'none',
+  WebkitUserSelect: 'none',
+  WebkitTouchCallout: 'none',
+}
+
 /** Jobs worked today: one flex row per session; underline width matches that row’s content. */
 const jobsWorkedTodaySessionRowShell: CSSProperties = {
   display: 'flex',
@@ -367,6 +374,7 @@ const jobsWorkedTodaySessionRowShell: CSSProperties = {
   paddingBottom: '0.2rem',
   fontSize: '0.68rem',
   color: '#6b7280',
+  ...stripSessionActionsRowChromeNoSelect,
 }
 
 const jobsWorkedTodaySessionList: CSSProperties = {
@@ -439,14 +447,23 @@ const jobBidStripLink: CSSProperties = {
   fontSize: '0.72rem',
 }
 
-const jobBidStripMemo: CSSProperties = {
+/** Session memo (`clocked_sessions.notes`): one typography block for Currently In, Focus, Clocked detail (iOS PWA parity). */
+const stripSessionMemoTextStyle: CSSProperties = {
+  color: '#6b7280',
+  fontSize: '0.72rem',
+  fontWeight: 400,
+  lineHeight: 1.25,
+  fontFamily: 'inherit',
+  WebkitTextSizeAdjust: '100%',
+}
+
+const stripSessionMemoCellStyle: CSSProperties = {
+  ...stripSessionMemoTextStyle,
   flex: '1 1 0',
   minWidth: 0,
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
-  color: '#6b7280',
-  fontSize: '0.72rem',
 }
 
 const STRIP_POPOVER_Z = 1100
@@ -636,6 +653,25 @@ export function DashboardTeamActiveClockStrip({
   const [stripApproveBusy, setStripApproveBusy] = useState<ReadonlySet<string>>(() => new Set())
   const [stripRejectConfirm, setStripRejectConfirm] = useState<StripRejectClockSessionPayload | null>(null)
   const [stripActionsSession, setStripActionsSession] = useState<ClockSessionStripActionsPayload | null>(null)
+
+  /** Clear stray iOS/WebKit selection after opening Session actions (long-press + modal). */
+  useEffect(() => {
+    if (stripActionsSession == null) return
+    let cancelled = false
+    const id1 = requestAnimationFrame(() => {
+      if (cancelled) return
+      window.getSelection()?.removeAllRanges()
+      requestAnimationFrame(() => {
+        if (cancelled) return
+        window.getSelection()?.removeAllRanges()
+      })
+    })
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(id1)
+    }
+  }, [stripActionsSession])
+
   const [optimisticStripApprovedIds, setOptimisticStripApprovedIds] = useState<ReadonlySet<string>>(
     () => new Set(),
   )
@@ -1424,7 +1460,7 @@ export function DashboardTeamActiveClockStrip({
                               {linkText}
                             </Link>
                           ) : null}
-                          <span style={jobBidStripMemo} title={memo || undefined}>
+                          <span style={stripSessionMemoCellStyle} title={memo || undefined}>
                             {memo || '—'}
                           </span>
                         </div>
@@ -1449,16 +1485,8 @@ export function DashboardTeamActiveClockStrip({
                     </td>
                   )}
                   {!showJobBidColumn && (
-                    <td style={{ ...td, maxWidth: 200, color: '#6b7280', fontSize: '0.72rem' }}>
-                      <div
-                        style={{
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                          maxWidth: '100%',
-                        }}
-                        title={memo || undefined}
-                      >
+                    <td style={{ ...td, maxWidth: 200 }}>
+                      <div style={stripSessionMemoCellStyle} title={memo || undefined}>
                         {memo || '—'}
                       </div>
                     </td>
@@ -1735,6 +1763,7 @@ export function DashboardTeamActiveClockStrip({
                                             <div style={clockedInTodaySessionBlock}>
                                               <div
                                                 style={{
+                                                  ...stripSessionActionsRowChromeNoSelect,
                                                   display: 'flex',
                                                   alignItems: 'center',
                                                   flexWrap: 'nowrap',
@@ -1863,10 +1892,7 @@ export function DashboardTeamActiveClockStrip({
                                                       </span>
                                                     ) : null}
                                                     <span
-                                                      style={{
-                                                        ...jobBidStripMemo,
-                                                        fontSize: '0.68rem',
-                                                      }}
+                                                      style={stripSessionMemoCellStyle}
                                                       title={memo || undefined}
                                                     >
                                                       {memo || '—'}
