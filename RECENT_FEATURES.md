@@ -12,11 +12,14 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.432 → v2.4"
+version_range: "v2.433 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.432)"
+  - name: "Latest Version (v2.433)"
     line: ~1430
+    description: "Unified job/bid search — trade pills on job rows (service_type_name); search_jobs_ledger JOIN; list_assigned_jobs_for_dashboard; serviceTypeTagForUnifiedRow; Clock In, header search, strip assign, Dispatch/Estimator, People Hours audit"
+  - name: "Latest Version (v2.432)"
+    line: ~1448
     description: "Trade-specific ledger prefixes — service_types ledger_job_prefix/ledger_bid_prefix; Settings; ledgerDisplayPrefixes; search_jobs_ledger + search_bids_for_clock; UI + Edge notify"
   - name: "Latest Version (v2.431)"
     line: ~1448
@@ -1123,6 +1126,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.433 — **Unified job/bid search** — **trade** color pills (**`[plum]`** / **`[elec]`** / **`[hvac]`**) on **job** rows (same mapping as bids: Plumbing / Electrical / HVAC); **`search_jobs_ledger`** + **`list_assigned_jobs_for_dashboard`** return **`service_type_name`**; **`serviceTypeTagForUnifiedRow`** in **[`unifiedJobBidSearch.ts`](src/utils/unifiedJobBidSearch.ts)** — **[`ClockInOutButton`](src/components/ClockInOutButton.tsx)**, **[`HeaderGlobalSearch`](src/components/HeaderGlobalSearch.tsx)**, **[`ClockSessionStripActionsModal`](src/components/ClockSessionStripActionsModal.tsx)**, **[`AssignSessionJobPopover`](src/components/clock-sessions/AssignSessionJobPopover.tsx)**, **[`DispatchTaskModal`](src/components/DispatchTaskModal.tsx)**, **[`EstimatorTaskModal`](src/components/EstimatorTaskModal.tsx)**, **[`PeopleHoursDayAuditModal`](src/components/PeopleHoursDayAuditModal.tsx)**; migrations **`20260430205318`**, **`20270518120000`**](#latest-updates-v2433)
 **New:** [v2.432 — **Ledger display prefixes** — per–**`service_types`** **`ledger_job_prefix`** / **`ledger_bid_prefix`** (dev **Settings** → Service types; backfill **JP/BP**, **JE/BE**, **JH/BH**); null/blank → legacy **`J`**/**`B`**; **`search_jobs_ledger`** / **`search_bids_for_clock`** return **`service_type_id`** and match **J/B** or configured prefix + digits; **[`ledgerDisplayPrefixes.ts`](src/lib/ledgerDisplayPrefixes.ts)** + UI surfaces (Clock In, Jobs, Bids, Documents, My Time, banking alloc search); Edge **`notify-dispatch-request`** / **`notify-estimator-request`** — migrations **`20260430201832`**, **`20260430202750`**, **`20260430203800`**](#latest-updates-v2432)
 **New:** [v2.431 — **Dashboard** **Clock In** / **Update Focus** — **Complete Clock In** with empty required notes: toast then caret returns to **What do you plan to accomplish?** (**`queueMicrotask`** + **`clockInNotesRef`**); **Update Focus** opens with blank notes + focused textarea; **session job/bid** rehydrated like clock-out review (**`updateFocusModalOpen`** in hydration **`useEffect`**); opening no longer clears **`selectedAssociation`**; **Dispatch** / **Working** rows highlight current session; gray **summary + Clear** when hydrated association is **not** on those lists after picks load (**`showUpdateFocusAssociationChip`**) — **[`ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx)**](#latest-updates-v2431)
 **New:** [v2.430 — **Estimates** mobile-friendly layout — **`estimatesPageShellCss`** (**`.estimates-page-modern`**, **`estimates-page-shell--list`** / **`--detail`**, **`≤640px`** padding); **`EstimateListCards`** + **`useNarrowViewport640`** (`≤640px` replaces **`EstimateListTable`** on Ledger / Stages); **`estimateListTableScrollWrapStyle`**; Customer experience **Email** preview **`overflow-x`** + **`estimate-email-html-preview-root`** **`img`** scaling; expanded draft **`CustomerNotesTable`** **`overflow-x`**; **`AcceptHeaderBrandPicker`** **`max-width: min(900px, 100%)`** — **[`Estimates.tsx`](src/pages/Estimates.tsx)**, **[`AcceptHeaderBrandPicker.tsx`](src/components/estimates/AcceptHeaderBrandPicker.tsx)**](#latest-updates-v2430)
@@ -1425,6 +1429,19 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.433)
+
+**Date**: 2026-04-30
+
+### **Clock / Dispatch / Search** — **trade** pills on **job** rows in unified job/bid search
+
+- **Database** — **`search_jobs_ledger`**: **`service_type_name`** (LEFT JOIN **`service_types`**) — [**`20260430205318_search_jobs_ledger_service_type_name.sql`**](supabase/migrations/20260430205318_search_jobs_ledger_service_type_name.sql). **`list_assigned_jobs_for_dashboard`**: **`service_type_name`** (scalar subquery; reapplies columns dropped by later RPC versions) — [**`20270518120000_list_assigned_jobs_service_type_name.sql`**](supabase/migrations/20270518120000_list_assigned_jobs_service_type_name.sql).
+- **Shared types** — **[`unifiedJobBidSearch.ts`](src/utils/unifiedJobBidSearch.ts)**: **`JobSearchResult`**, job branch of **`UnifiedSearchResult`**, **`serviceTypeTagForUnifiedRow`** → same **`BID_SERVICE_TYPE_TAGS`** / **`getBidServiceTypeTag`** as bids; **`estimate`** rows return no pill.
+- **UI** — Pills on job + bid rows: **[`ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx)** (search lists + association chips; dashboard rows + **`jobs_ledger`** hydrate **`service_types(name)`**), **[`HeaderGlobalSearch.tsx`](src/components/HeaderGlobalSearch.tsx)**, **[`ClockSessionStripActionsModal.tsx`](src/components/ClockSessionStripActionsModal.tsx)**, **[`AssignSessionJobPopover.tsx`](src/components/clock-sessions/AssignSessionJobPopover.tsx)**, **[`DispatchTaskModal.tsx`](src/components/DispatchTaskModal.tsx)**, **[`EstimatorTaskModal.tsx`](src/components/EstimatorTaskModal.tsx)**, **[`PeopleHoursDayAuditModal.tsx`](src/components/PeopleHoursDayAuditModal.tsx)**. **`BidServiceTypeSearchToggles`** still affect **bid** RPC params only.
+- **Docs** — **`PROJECT_DOCUMENTATION.md`**, **`MIGRATIONS.md`**, **`AGENTS.md`**, **`AI_CONTEXT.md`**.
+
 ---
 
 ## Latest Updates (v2.432)

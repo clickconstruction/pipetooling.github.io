@@ -412,7 +412,44 @@ const estimateCustomerSearchHighlightCss = `
   }
 `
 
-const estimateDetailPageCss = `${estimatesPageShellCss}\n${estimatesFocusVisibleCss}\n${estimateCustomerSearchHighlightCss}`
+const estimateDetailLineItemRowCss = `
+  .${ESTIMATES_PAGE_CLASS} .estimate-detail-line-item-block {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .${ESTIMATES_PAGE_CLASS} .estimate-detail-line-item-line {
+    flex: 1 1 120px;
+    min-width: 0;
+  }
+  .${ESTIMATES_PAGE_CLASS} .estimate-detail-line-item-line input {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+  .${ESTIMATES_PAGE_CLASS} .estimate-detail-line-item-qty-unit {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+  }
+  @media (max-width: 640px) {
+    .${ESTIMATES_PAGE_CLASS} .estimate-detail-line-item-block {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .${ESTIMATES_PAGE_CLASS} .estimate-detail-line-item-line {
+      flex: none;
+      width: 100%;
+    }
+    .${ESTIMATES_PAGE_CLASS} .estimate-detail-line-item-qty-unit {
+      width: 100%;
+    }
+  }
+`
+
+const estimateDetailPageCss = `${estimatesPageShellCss}\n${estimatesFocusVisibleCss}\n${estimateCustomerSearchHighlightCss}\n${estimateDetailLineItemRowCss}`
 
 const estimatesListPageCss = `${estimatesPageShellCss}\n${estimatesFocusVisibleCss}\n${estimatesListCustomerSnapshotBtnCss}`
 
@@ -3991,73 +4028,70 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                       gap: '0.35rem',
                     }}
                   >
-                    <div
-                      style={{
-                        display: 'flex',
-                        gap: '0.5rem',
-                        flexWrap: 'wrap',
-                        alignItems: 'center',
-                      }}
-                    >
-                      <input
-                        placeholder="Line item"
-                        value={ln.line_item}
-                        onChange={(e) => updateLine(i, { line_item: e.target.value })}
-                        style={{ ...estInputBase, flex: '1 1 120px', padding: '0.5rem', minWidth: 0 }}
-                      />
-                      <input
-                        className="no-spinner"
-                        type="number"
-                        min={0}
-                        step="any"
-                        placeholder="Count"
-                        title="Count"
-                        value={ln.quantity}
-                        onChange={(e) => {
-                          let q = Number(e.target.value)
-                          if (!Number.isFinite(q) || q <= 0) q = 1
-                          updateLine(i, { quantity: q })
-                        }}
-                        style={{ ...estInputBase, width: 72, padding: '0.5rem' }}
-                      />
-                      <input
-                        className="no-spinner"
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        placeholder="Unit ($)"
-                        value={ln.unit_price_cents ? ln.unit_price_cents / 100 : ''}
-                        onChange={(e) =>
-                          updateLine(i, { unit_price_cents: Math.round(Number(e.target.value || '0') * 100) })
-                        }
-                        style={{ ...estInputBase, width: 100, padding: '0.5rem' }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setLines((p) => p.filter((_, j) => j !== i))}
-                        aria-label="Remove line"
-                        title="Remove line"
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          width: 28,
-                          height: 28,
-                          margin: 0,
-                          padding: 0,
-                          border: '1px solid #fca5a5',
-                          borderRadius: '50%',
-                          background: '#fef2f2',
-                          color: '#b91c1c',
-                          fontSize: '1.125rem',
-                          fontWeight: 500,
-                          lineHeight: 0,
-                          cursor: 'pointer',
-                          flexShrink: 0,
-                        }}
-                      >
-                        −
-                      </button>
+                    <div className="estimate-detail-line-item-block">
+                      <div className="estimate-detail-line-item-line">
+                        <input
+                          placeholder="Line item"
+                          value={ln.line_item}
+                          onChange={(e) => updateLine(i, { line_item: e.target.value })}
+                          style={{ ...estInputBase, padding: '0.5rem' }}
+                        />
+                      </div>
+                      <div className="estimate-detail-line-item-qty-unit">
+                        <input
+                          className="no-spinner"
+                          type="number"
+                          min={0}
+                          step="any"
+                          placeholder="Count"
+                          title="Count"
+                          value={ln.quantity}
+                          onChange={(e) => {
+                            let q = Number(e.target.value)
+                            if (!Number.isFinite(q) || q <= 0) q = 1
+                            updateLine(i, { quantity: q })
+                          }}
+                          style={{ ...estInputBase, width: 72, padding: '0.5rem' }}
+                        />
+                        <input
+                          className="no-spinner"
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          placeholder="Unit ($)"
+                          value={ln.unit_price_cents ? ln.unit_price_cents / 100 : ''}
+                          onChange={(e) =>
+                            updateLine(i, { unit_price_cents: Math.round(Number(e.target.value || '0') * 100) })
+                          }
+                          style={{ ...estInputBase, width: 100, padding: '0.5rem' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setLines((p) => p.filter((_, j) => j !== i))}
+                          aria-label="Remove line"
+                          title="Remove line"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: 28,
+                            height: 28,
+                            margin: 0,
+                            padding: 0,
+                            border: '1px solid #fca5a5',
+                            borderRadius: '50%',
+                            background: '#fef2f2',
+                            color: '#b91c1c',
+                            fontSize: '1.125rem',
+                            fontWeight: 500,
+                            lineHeight: 0,
+                            cursor: 'pointer',
+                            flexShrink: 0,
+                          }}
+                        >
+                          −
+                        </button>
+                      </div>
                     </div>
                     <input
                       placeholder="Description (optional)"

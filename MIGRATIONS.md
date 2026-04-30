@@ -94,6 +94,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### April 30, 2026
 
+**`20260430205318_search_jobs_ledger_service_type_name.sql`**
+- **Purpose**: **`search_jobs_ledger`** **`RETURNS TABLE`** adds **`service_type_name`** via **`LEFT JOIN public.service_types`** (canonical trade name for UI pills).
+- **Impact**: Unified job/bid search surfaces ([`unifiedJobBidSearch.ts`](src/utils/unifiedJobBidSearch.ts), Clock In, Layout header search, strip assign, Dispatch/Estimator modals, People Hours audit); regenerate **`src/types/database.ts`**
+- **Category**: Jobs / Search RPC
+
 **`20260430203800_restore_pct_complete_on_jobs_ledger_detail_rpcs.sql`**
 - **Purpose**: Restore **`pct_complete`** on **`get_jobs_ledger_by_ids`**, **`get_jobs_ledger_by_ids_paid_only`**, **`get_jobs_ledger_by_hcp_numbers`**, **`get_jobs_ledger_by_hcp_numbers_paid_only`** alongside **`service_type_id`** (regression fix after ledger-prefix RPC work).
 - **Impact**: [`People.tsx`](src/pages/People.tsx), job/bid label flows that use those RPCs; regenerate **`src/types/database.ts`**
@@ -532,6 +537,13 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Category**: Estimates / Edge
 
 ### July 2026
+
+#### July 18, 2026
+
+**`20270518120000_list_assigned_jobs_service_type_name.sql`**
+- **Purpose**: **`list_assigned_jobs_for_dashboard`** adds **`service_type_name`** (scalar subquery on **`service_types`**) and restores **`job_pictures_link`**, **`service_type_id`** on the recreated function (aligns with post-**`20270507120000`** RPC shape) so the Clock In default job list can show **trade** pills without an extra client fetch.
+- **Impact**: [`ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx); regenerate **`src/types/database.ts`**; **`RECENT_FEATURES.md`** **v2.433**
+- **Category**: Dashboard / RPC
 
 #### July 16, 2026
 
