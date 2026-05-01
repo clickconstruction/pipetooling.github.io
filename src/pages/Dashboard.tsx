@@ -29,7 +29,7 @@ import {
   shouldResyncJobsAfterUpdateJobStatusFailure,
   toastForUpdateJobStatusFailure,
 } from '../lib/updateJobStatusClientFeedback'
-import { useAuth, type UserRole } from '../hooks/useAuth'
+import { useAuth } from '../hooks/useAuth'
 import { isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import { useSendBackCollectPaymentFlowNotice } from '../hooks/useSendBackCollectPaymentFlowNotice'
 import NewReportModal from '../components/NewReportModal'
@@ -38,6 +38,11 @@ import AdditionalReportModal from '../components/AdditionalReportModal'
 import JobBillDetailsModal from '../components/JobBillDetailsModal'
 import type { DetailJobModalAssignedJobRow } from '../components/jobs/DetailJobModal'
 import CollectPaymentModal from '../components/jobs/CollectPaymentModal'
+import {
+  DASHBOARD_CLOCK_STRIP_SCOPE_KEY,
+  readClockStripScopeFromStorage,
+  stripScopeEligible,
+} from '../lib/dashboardClockStripScopeStorage'
 import DashboardFieldCollectPaymentQueue from '../components/dashboard/DashboardFieldCollectPaymentQueue'
 import ReportEditModal, { type ReportForEdit } from '../components/ReportEditModal'
 import ChecklistItemMuteModal from '../components/ChecklistItemMuteModal'
@@ -136,27 +141,6 @@ import {
 const DashboardMyTeamSection = lazy(() => import('../components/DashboardMyTeamSection'))
 import type { Database } from '../types/database'
 import type { ClockSessionRow, DashboardStripSession } from '../types/clockSessions'
-
-const DASHBOARD_CLOCK_STRIP_SCOPE_KEY = 'dashboard_clock_strip_scope'
-
-function stripScopeEligible(role: UserRole | null): boolean {
-  return role === 'dev' || role === 'master_technician' || role === 'assistant'
-}
-
-/** Explicit stored preference wins; missing key defaults org-wide for dev/master/assistant. */
-function readClockStripScopeFromStorage(role: UserRole | null): 'team' | 'everyone' {
-  try {
-    if (typeof localStorage === 'undefined') {
-      return stripScopeEligible(role) ? 'everyone' : 'team'
-    }
-    const v = localStorage.getItem(DASHBOARD_CLOCK_STRIP_SCOPE_KEY)
-    if (v === 'everyone') return 'everyone'
-    if (v === 'team') return 'team'
-    return stripScopeEligible(role) ? 'everyone' : 'team'
-  } catch {
-    return stripScopeEligible(role) ? 'everyone' : 'team'
-  }
-}
 
 function toDatetimeLocal(iso: string | null): string {
   if (!iso) return ''
@@ -4135,7 +4119,6 @@ export default function Dashboard() {
     }
     setEstimatorRequests((prev) => prev.filter((r) => r.id !== requestId))
     setExpandedEstimatorRequestId((ex) => (ex === requestId ? null : ex))
-    showToast('Dismissed.', 'success')
   }
 
   const showChecklist = checklistLoading || todayChecklist.length > 0

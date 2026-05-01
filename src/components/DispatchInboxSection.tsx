@@ -2,6 +2,7 @@ import { Fragment } from 'react'
 import { ChecklistTitleWithLinks } from './ChecklistTitleWithLinks'
 import { DispatchNoteCombobox } from './DispatchNoteCombobox'
 import { getDispatchNoteDisplayMeta } from '../utils/dispatchNoteDisplay'
+import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 
 export type DispatchInboxRow = {
   id: string
@@ -89,6 +90,7 @@ export function DispatchInboxSection({
   onDismiss,
   onOpenDismissedArchive,
 }: DispatchInboxSectionProps) {
+  const narrow = useNarrowViewport640()
   const body = (
         <div
           style={
@@ -123,6 +125,54 @@ export function DispatchInboxSection({
                 const noteCountLabel =
                   noteCount === 0 ? 'No messages' : noteCount === 1 ? '1 message' : `${noteCount} messages`
                 const lastNoteMeta = req.last_note_at ? getDispatchNoteDisplayMeta(req.last_note_at) : null
+                const statsEl = (
+                  <div
+                    style={{
+                      fontSize: '0.75rem',
+                      color: '#6b7280',
+                      lineHeight: 1.35,
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, color: '#374151' }}>{noteCountLabel}</div>
+                    {lastNoteMeta ? (
+                      narrow ? (
+                        <div
+                          style={{
+                            marginTop: 2,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 2,
+                          }}
+                        >
+                          <span>Last {lastNoteMeta.weekdayTimeChicago}</span>
+                          <span>{lastNoteMeta.daysAgoLabel}</span>
+                        </div>
+                      ) : (
+                        <div style={{ marginTop: 2 }}>
+                          Last {lastNoteMeta.weekdayTimeChicago} · {lastNoteMeta.daysAgoLabel}
+                        </div>
+                      )
+                    ) : null}
+                  </div>
+                )
+                const dismissBtn = (
+                  <button
+                    type="button"
+                    onClick={() => onDismiss(req.id)}
+                    disabled={dispatchRequestDismissingId === req.id}
+                    style={{
+                      padding: '0.35rem 0.75rem',
+                      background: '#e5e7eb',
+                      border: 'none',
+                      borderRadius: 4,
+                      cursor: dispatchRequestDismissingId === req.id ? 'not-allowed' : 'pointer',
+                      fontSize: '0.875rem',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {dispatchRequestDismissingId === req.id ? '…' : 'Dismiss'}
+                  </button>
+                )
                 return (
                   <Fragment key={req.id}>
                     {isFirstClosed ? (
@@ -132,6 +182,7 @@ export function DispatchInboxSection({
                           padding: '0.75rem 0 0',
                           margin: 0,
                           borderBottom: 'none',
+                          textAlign: 'center',
                         }}
                       >
                         <div
@@ -151,17 +202,25 @@ export function DispatchInboxSection({
                       style={{
                         padding: '0.75rem 0',
                         borderBottom: '1px solid #f3f4f6',
-                        opacity: isClosed ? 0.85 : 1,
-                        background: isClosed ? '#f9fafb' : undefined,
+                        background: isClosed ? '#f3f4f6' : undefined,
                       }}
                     >
                     <div
-                      style={{
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        alignItems: 'flex-start',
-                        gap: '0.5rem',
-                      }}
+                      style={
+                        narrow
+                          ? {
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'stretch',
+                              gap: '0.5rem',
+                            }
+                          : {
+                              display: 'flex',
+                              flexWrap: 'wrap',
+                              alignItems: 'flex-start',
+                              gap: '0.5rem',
+                            }
+                      }
                     >
                       <div
                         role="button"
@@ -177,13 +236,24 @@ export function DispatchInboxSection({
                           if ((e.target as HTMLElement).closest('a')) return
                           onToggleExpandRequest(req.id)
                         }}
-                        style={{
-                          flex: 1,
-                          minWidth: 200,
-                          cursor: 'pointer',
-                          textAlign: 'left',
-                          paddingRight: '0.5rem',
-                        }}
+                        style={
+                          narrow
+                            ? {
+                                flex: 'none',
+                                minWidth: 0,
+                                width: '100%',
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                paddingRight: 0,
+                              }
+                            : {
+                                flex: 1,
+                                minWidth: 200,
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                paddingRight: '0.5rem',
+                              }
+                        }
                       >
                         <span style={{ fontSize: '0.75rem', color: '#6b7280', marginRight: 6 }} aria-hidden>
                           {expanded ? '▼' : '▶'}
@@ -218,50 +288,71 @@ export function DispatchInboxSection({
                         ) : null}
                       </div>
                       <div
-                        style={{
-                          flexShrink: 0,
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'flex-end',
-                          gap: 6,
-                          textAlign: 'right',
-                          maxWidth: 'min(220px, 45%)',
-                        }}
+                        style={
+                          narrow
+                            ? {
+                                flexShrink: 0,
+                                width: '100%',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'flex-start',
+                                gap: 6,
+                                textAlign: 'left',
+                              }
+                            : {
+                                flexShrink: 0,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'flex-end',
+                                gap: 6,
+                                textAlign: 'right',
+                                maxWidth: 'min(220px, 45%)',
+                              }
+                        }
                       >
-                        <div
-                          style={{
-                            fontSize: '0.75rem',
-                            color: '#6b7280',
-                            lineHeight: 1.35,
-                          }}
-                        >
-                          <div style={{ fontWeight: 600, color: '#374151' }}>{noteCountLabel}</div>
-                          {lastNoteMeta ? (
-                            <div style={{ marginTop: 2 }}>
-                              Last {lastNoteMeta.weekdayTimeChicago} · {lastNoteMeta.daysAgoLabel}
-                            </div>
-                          ) : null}
-                        </div>
-                        {isClosed ? (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => onDismiss(req.id)}
-                              disabled={dispatchRequestDismissingId === req.id}
+                        {narrow && isClosed ? (
+                          <div
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'row',
+                              alignItems: 'flex-start',
+                              gap: '0.5rem',
+                              width: '100%',
+                            }}
+                          >
+                            <div style={{ flex: 1, minWidth: 0 }}>{statsEl}</div>
+                            <div
                               style={{
-                                padding: '0.35rem 0.75rem',
-                                background: '#e5e7eb',
-                                border: 'none',
-                                borderRadius: 4,
-                                cursor: dispatchRequestDismissingId === req.id ? 'not-allowed' : 'pointer',
-                                fontSize: '0.875rem',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'flex-end',
+                                gap: 4,
+                                flexShrink: 0,
                               }}
                             >
-                              {dispatchRequestDismissingId === req.id ? '…' : 'Dismiss'}
-                            </button>
-                            <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Closed · expand for thread</div>
+                              {dismissBtn}
+                              {noteCount > 0 ? (
+                                <div style={{ fontSize: '0.75rem', color: '#6b7280', textAlign: 'right' }}>
+                                  Expand for thread
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                        ) : narrow && !isClosed ? (
+                          statsEl
+                        ) : (
+                          <>
+                            {statsEl}
+                            {isClosed ? (
+                              <>
+                                <div style={{ display: 'contents' }}>{dismissBtn}</div>
+                                {noteCount > 0 ? (
+                                  <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Expand for thread</div>
+                                ) : null}
+                              </>
+                            ) : null}
                           </>
-                        ) : null}
+                        )}
                       </div>
                     </div>
                     {expanded && (

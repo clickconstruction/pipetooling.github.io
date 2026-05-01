@@ -939,7 +939,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Deploy**: `supabase functions deploy geocode-one`
 
-**Implementation**: [`supabase/functions/geocode-one/index.ts`](supabase/functions/geocode-one/index.ts) + shared [`supabase/functions/_shared/googleGeocode.ts`](supabase/functions/_shared/googleGeocode.ts); client: [`src/hooks/useMapPageData.ts`](src/hooks/useMapPageData.ts) + Map UI: [`src/components/map/MapPageView.tsx`](src/components/map/MapPageView.tsx) (opens **Review geocodes** from the bottom-right **Debug** menu) + [`src/components/map/MapGeocodeReviewModal.tsx`](src/components/map/MapGeocodeReviewModal.tsx), [`src/lib/map/invokeGeocodeOneRefreshGoogleOnly.ts`](src/lib/map/invokeGeocodeOneRefreshGoogleOnly.ts).
+**Implementation**: [`supabase/functions/geocode-one/index.ts`](supabase/functions/geocode-one/index.ts) + shared [`supabase/functions/_shared/googleGeocode.ts`](supabase/functions/_shared/googleGeocode.ts); client: **`Map`** **`refresh_google_only`** [`MapGeocodeReviewModal.tsx`](src/components/map/MapGeocodeReviewModal.tsx), [`invokeGeocodeOneRefreshGoogleOnly.ts`](src/lib/map/invokeGeocodeOneRefreshGoogleOnly.ts); **Settings** default map label lookup [`mapDefaultViewSettings.ts`](src/lib/mapDefaultViewSettings.ts) (bulk **Map** load uses **`geocode-address-batch`** via [`useMapPageData.ts`](src/hooks/useMapPageData.ts)).
 
 ---
 

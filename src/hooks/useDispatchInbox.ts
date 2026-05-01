@@ -430,7 +430,6 @@ export function useDispatchInbox() {
     }
     setDispatchRequests((prev) => prev.filter((r) => r.id !== requestId))
     setExpandedDispatchRequestId((ex) => (ex === requestId ? null : ex))
-    showToast('Dismissed.', 'success')
   }
 
   return {

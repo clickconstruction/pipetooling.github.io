@@ -104,6 +104,7 @@ import { useToastContext } from '../contexts/ToastContext'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { HoursUnassignedModal } from '../components/HoursUnassignedModal'
 import { PeopleHoursDayAuditModal } from '../components/PeopleHoursDayAuditModal'
+import { PeopleHoursDashboardClockStrip } from '../components/people/PeopleHoursDashboardClockStrip'
 import { ClockSessionEditSplitModal } from '../components/ClockSessionEditSplitModal'
 import { DashboardMyTimeDayEditorModal } from '../components/DashboardMyTimeDayEditorModal'
 import { PersonTimeDetailModal } from '../components/PersonTimeDetailModal'
@@ -10040,6 +10041,7 @@ export default function People() {
 
       {activeTab === 'hours' && canAccessHours && (
         <>
+        <PeopleHoursDashboardClockStrip onSessionsChanged={() => loadAllClockSessionsRef.current?.()} />
         <div>
           {hoursTabLoading ? (
             <p style={{ color: '#6b7280' }}>Loading…</p>

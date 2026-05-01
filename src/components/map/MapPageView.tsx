@@ -165,12 +165,35 @@ function GeocodeProgressList({
   const done = rows.filter((r) => r.status === 'ok' || r.status === 'error').length
   const anyActive = rows.some((r) => r.status === 'pending' || r.status === 'in_progress')
   return (
-    <details open={anyActive} style={{ fontSize: '0.875rem', color: '#374151' }}>
-      <summary style={{ cursor: 'pointer', userSelect: 'none' }}>{`Geocoding (${done}/${rows.length})`}</summary>
-      <ul
-        aria-live="polite"
-        style={{ margin: '0.5rem 0 0 0', padding: '0 0 0 1.1rem', listStyle: 'none' }}
+    <div
+      style={{
+        display: 'inline-flex',
+        alignItems: 'flex-start',
+        margin: 0,
+        minWidth: 0,
+        maxWidth: '100%',
+      }}
+    >
+      <details
+        open={anyActive}
+        style={{
+          fontSize: '0.875rem',
+          color: '#374151',
+          margin: 0,
+          minWidth: 'min(18rem, 100%)',
+        }}
       >
+        <summary style={{ cursor: 'pointer', userSelect: 'none' }}>{`Geocoding (${done}/${rows.length})`}</summary>
+        <ul
+          aria-live="polite"
+          style={{
+            margin: '0.5rem 0 0 0',
+            padding: '0 0 0 1.1rem',
+            listStyle: 'none',
+            maxHeight: 'min(40vh, 240px)',
+            overflowY: 'auto',
+          }}
+        >
         {rows.map((r) => {
           const icon = r.status === 'ok' ? '✓' : r.status === 'error' ? '✗' : r.status === 'in_progress' ? '…' : '·'
           const hasEntity = entities.some((e) => e.addressKey === r.address_normalized)
@@ -197,8 +220,9 @@ function GeocodeProgressList({
             </li>
           )
         })}
-      </ul>
-    </details>
+        </ul>
+      </details>
+    </div>
   )
 }
 
@@ -436,7 +460,7 @@ export function MapPageView() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1rem' }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: '0.75rem' }}>
         <h1 style={{ margin: 0, fontSize: '1.25rem' }}>Map</h1>
         <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.875rem' }}>
           <input type="checkbox" checked={showJobs} onChange={() => setShowJobs((s) => !s)} />
@@ -450,6 +474,7 @@ export function MapPageView() {
           <input type="checkbox" checked={showEst} onChange={() => setShowEst((s) => !s)} />
           Estimates
         </label>
+        <GeocodeProgressList rows={geocodeAddressRows} entities={entities} onAddressOpen={onGeocodeAddressOpen} />
         <button
           type="button"
           onClick={() => setClearDraw((c) => c + 1)}
@@ -548,8 +573,6 @@ export function MapPageView() {
       {!loading && geocodeInProgress ? (
         <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>Resolving addresses…</p>
       ) : null}
-
-      <GeocodeProgressList rows={geocodeAddressRows} entities={entities} onAddressOpen={onGeocodeAddressOpen} />
 
       {error ? <p style={{ color: '#b91c1c', margin: 0 }}>{error}</p> : null}
       {loading ? <p style={{ margin: 0, color: '#6b7280' }}>Loading…</p> : null}

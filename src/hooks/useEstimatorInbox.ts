@@ -353,7 +353,6 @@ export function useEstimatorInbox() {
     }
     setEstimatorRequests((prev) => prev.filter((r) => r.id !== requestId))
     setExpandedEstimatorRequestId((ex) => (ex === requestId ? null : ex))
-    showToast('Dismissed.', 'success')
   }
 
   return {

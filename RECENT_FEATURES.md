@@ -12,11 +12,17 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.450 → v2.4"
+version_range: "v2.452 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.452)"
+    line: ~1501
+    description: "Dashboard / Quickfill / Checklist Review — Dispatch & Estimator inbox mobile layout (useNarrowViewport640); Dismiss beside stats; Expand for thread under Dismiss; hint when note_count > 0 only"
+  - name: "Latest Version (v2.451)"
+    line: ~1515
+    description: "Map — estimator route + geocode RLS; batch geocode load + UI (table below, filter on title row, Resolving…); estimator mobile Dashboard in hamburger"
   - name: "Latest Version (v2.450)"
-    line: ~1495
+    line: ~1518
     description: "Header Task Dispatch / Estimator / Task for subcontractor + helpers; checklist Task modal RLS (can_define_task_style_checklist_items); RLS recursion fix (SECURITY DEFINER ownership helpers)"
   - name: "Latest Version (v2.449)"
     line: ~1512
@@ -1493,6 +1499,34 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.452)
+
+**Date**: 2026-05-01
+
+### **Dashboard** / **Quickfill** / **Checklist Review** — **Dispatch inbox** and **Estimator inbox** — **narrow layout** (≤640px)
+
+- **Layout** — **[`useNarrowViewport640`](src/hooks/useNarrowViewport640.ts)** in **[`DispatchInboxSection.tsx`](src/components/DispatchInboxSection.tsx)** and **[`EstimatorInboxSection.tsx`](src/components/EstimatorInboxSection.tsx)** — main row stacks **vertically** (title block full width, then message stats) instead of a squeezed side column.
+- **Closed rows (narrow)** — **Dismiss** sits on the **same row** as message count / last activity (**stats** `flex: 1`, button **right**); muted helper **Expand for thread** appears **under** **Dismiss** (right-aligned with the button column).
+- **Wide** — Unchanged column: stats, **Dismiss**, then **Expand for thread** below.
+- **Hint visibility** — **Expand for thread** only when **`note_count` > 0** (no “expand” line for empty threads). Copy replaces prior **Closed · expand for thread**.
+- **Surfaces** — **Dashboard** (**[`Dashboard.tsx`](src/pages/Dashboard.tsx)**), **Quickfill** dispatch block (**[`Quickfill.tsx`](src/pages/Quickfill.tsx)**), **Checklist → Review** (**[`ChecklistReviewInboxes.tsx`](src/components/checklist/ChecklistReviewInboxes.tsx)**).
+
+---
+
+## Latest Updates (v2.451)
+
+**Date**: 2026-05-01
+
+### **Map** + **Layout** — **estimator** access, quicker geocoding load, desktop layout, estimator **mobile Dashboard**
+
+- **Roles** — **[`layoutRouteAccess.ts`](src/lib/layoutRouteAccess.ts)** **`estimatorAllowedPaths`** includes **`/map`**; **[`Map.tsx`](src/pages/Map.tsx)** and **[`Layout.tsx`](src/components/Layout.tsx)** **`canShowMapNav`** (**pin** desktop / narrow **gear**); Edge **`geocode-one`** / **`geocode-address-batch`** allow **`estimator`** (403 messages aligned).
+- **Database** — **[`20270520120000_address_geocodes_estimator_map_access.sql`](supabase/migrations/20270520120000_address_geocodes_estimator_map_access.sql)** — **`address_geocodes`** SELECT/INSERT/UPDATE/DELETE for **`estimator`** with existing map roles (`MIGRATIONS.md`).
+- **Load** — **[`useMapPageData.ts`](src/hooks/useMapPageData.ts)** — clears **Loading…** after cache merge + **generation** guard on reload; invokes **`geocode-address-batch`** in chunks (≤20) for misses (not sequential **`geocode-one`** bulk); **`MapPageView`** **Resolving addresses…** (+ collapsible address list during resolution).
+- **UI** — **[`MapPageView.tsx`](src/components/map/MapPageView.tsx)** — **scrollable entity table below** Leaflet column; **`MapEntityTable`** **`titleRight`** carries **Filter** beside the heading (**All visible layers** / filtered counts).
+- **Estimator narrow** — **[`Layout.tsx`](src/components/Layout.tsx)** — **Dashboard** is **only** first row in **hamburger** on mobile for **estimator** (not duplicated in strip beside menu); desktop unchanged (`ACCESS_CONTROL.md` **Layout Behavior**).
+
 ---
 
 ## Latest Updates (v2.450)
