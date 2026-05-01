@@ -13,6 +13,7 @@ import {
   formatJobDetailModalDateTitleFromYmd,
 } from '../../lib/formatJobDetailModalDateYmd'
 import { deriveRecordedBillingActivityDetail } from '../../lib/stagesJobReferenceDates'
+import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import {
   canExpandJobDetailMaterials,
   isStaffFullJobLedgerDetailRole,
@@ -678,6 +679,20 @@ export default function DetailJobModal({
     })
   }
 
+  const headerTradePill = useMemo(() => {
+    if (fullJob) return buildServiceTypeTradePill(fullJob.serviceType?.name)
+    if (limitedJob) return buildServiceTypeTradePill(limitedJob.service_type_name)
+    return null
+  }, [fullJob, limitedJob])
+
+  const headerTradePillTitleText = useMemo(() => {
+    if (fullJob?.serviceType?.name?.trim()) return fullJob.serviceType.name.trim()
+    if (!fullJob && limitedJob?.service_type_name?.trim()) return limitedJob.service_type_name.trim()
+    return undefined
+  }, [fullJob, limitedJob])
+
+  const showDetailHeaderRightCluster = headerTradePill != null || showEditJobButton
+
   useBodyScrollLock(open && narrowViewport)
 
   if (!open) return null
@@ -717,7 +732,7 @@ export default function DetailJobModal({
           style={{
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'flex-start',
+            alignItems: 'center',
             gap: '1rem',
             width: '100%',
           }}
@@ -730,62 +745,57 @@ export default function DetailJobModal({
               wordBreak: 'break-word',
               flex: 1,
               minWidth: 0,
-              paddingRight: '0.5rem',
+              paddingRight: showDetailHeaderRightCluster ? '0.5rem' : 0,
             }}
           >
             {modalTitle}
           </h2>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', flexShrink: 0 }}>
-            {showEditJobButton ? (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleEditJobClick()
-                }}
-                title="Edit job"
-                aria-label="Edit job"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '0.35rem',
-                  margin: 0,
-                  border: 'none',
-                  background: 'none',
-                  cursor: 'pointer',
-                  color: '#4b5563',
-                  borderRadius: 4,
-                }}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 640 640"
-                  width={20}
-                  height={20}
-                  fill="currentColor"
-                  aria-hidden="true"
+          {showDetailHeaderRightCluster ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+              {headerTradePill ? (
+                <span
+                  style={{ ...headerTradePill.style, marginTop: 0 }}
+                  title={headerTradePillTitleText}
                 >
-                  <path d="M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 128.4 320C128.4 312.3 128.9 304.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5zM320.3 400C364.5 399.8 400.2 363.9 400 319.7C399.8 275.5 363.9 239.8 319.7 240C275.5 240.2 239.8 276.1 240 320.3C240.2 364.5 276.1 400.2 320.3 400z" />
-                </svg>
-              </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={onClose}
-              style={{
-                padding: '0.35rem 0.65rem',
-                fontSize: '0.875rem',
-                background: '#f3f4f6',
-                border: '1px solid #d1d5db',
-                borderRadius: 4,
-                cursor: 'pointer',
-                flexShrink: 0,
-              }}
-            >
-              Close
-            </button>
-          </div>
+                  {headerTradePill.label}
+                </span>
+              ) : null}
+              {showEditJobButton ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleEditJobClick()
+                  }}
+                  title="Edit job"
+                  aria-label="Edit job"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '0.35rem',
+                    margin: 0,
+                    border: 'none',
+                    background: 'none',
+                    cursor: 'pointer',
+                    color: '#4b5563',
+                    borderRadius: 4,
+                  }}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 640 640"
+                    width={20}
+                    height={20}
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path d="M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 128.4 320C128.4 312.3 128.9 304.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5zM320.3 400C364.5 399.8 400.2 363.9 400 319.7C399.8 275.5 363.9 239.8 319.7 240C275.5 240.2 239.8 276.1 240 320.3C240.2 364.5 276.1 400.2 320.3 400z" />
+                  </svg>
+                </button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
 
         {showTopBand ? (
@@ -1018,11 +1028,6 @@ export default function DetailJobModal({
             <div style={jobDetailStatusRowStyle}>
               <DetailRow label="Status" noBottomMargin centered>
                 <JobLedgerStatusPipeline status={fullJob.status} />
-              </DetailRow>
-            </div>
-            <div style={{ marginTop: '0.5rem' }}>
-              <DetailRow label="Service type" noBottomMargin>
-                {fullJob.serviceType?.name?.trim() || '—'}
               </DetailRow>
             </div>
 
@@ -1276,11 +1281,6 @@ export default function DetailJobModal({
                 <JobLedgerStatusPipeline status={limitedJob.status} />
               </DetailRow>
             </div>
-            <div style={{ marginTop: '0.5rem' }}>
-              <DetailRow label="Service type" noBottomMargin>
-                {limitedJob.service_type_name?.trim() || '—'}
-              </DetailRow>
-            </div>
 
             <DetailJobModalFilesPlansRow googleDriveLink={limitedJob.google_drive_link} jobPlansLink={limitedJob.job_plans_link} />
 
@@ -1301,14 +1301,52 @@ export default function DetailJobModal({
               </div>
             ) : null}
 
-            <p style={{ margin: '1rem 0 0', fontSize: '0.8125rem', color: '#9ca3af' }}>
-              Payments and invoices are not shown in this view.
-            </p>
-            {isSubcontractorLikeRole(authRole as UserRole) ? (
-              <p style={{ margin: '0.5rem 0 0', fontSize: '0.8125rem', color: '#9ca3af' }}>You are assigned on this job.</p>
-            ) : null}
+            <div
+              style={{
+                marginTop: '1rem',
+                width: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                textAlign: 'center',
+              }}
+            >
+              <p style={{ margin: 0, fontSize: '0.8125rem', color: '#9ca3af', maxWidth: '100%' }}>
+                Payments and invoices are not shown in this view.
+              </p>
+              {isSubcontractorLikeRole(authRole as UserRole) ? (
+                <p style={{ margin: '0.5rem 0 0', fontSize: '0.8125rem', color: '#9ca3af', maxWidth: '100%' }}>
+                  You are assigned on this job.
+                </p>
+              ) : null}
+            </div>
           </div>
         ) : null}
+
+        <div
+          style={{
+            marginTop: '1rem',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            width: '100%',
+          }}
+        >
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              padding: '0.35rem 0.65rem',
+              fontSize: '0.875rem',
+              background: '#f3f4f6',
+              border: '1px solid #d1d5db',
+              borderRadius: 4,
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+          >
+            Close
+          </button>
+        </div>
       </div>
     </div>
   )
