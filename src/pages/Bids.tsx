@@ -9938,7 +9938,7 @@ export default function Bids() {
           Account Man<br />Estimator
         </th>
         <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb', fontSize: '0.6875rem', lineHeight: 1.25 }}>Bid</th>
-        <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb', fontSize: '0.6875rem', lineHeight: 1.25 }}>Bid<br />Date</th>
+        <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb', fontSize: '0.6875rem', lineHeight: 1.25 }}>Due<br />Date</th>
         <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb', fontSize: '0.6875rem', lineHeight: 1.25 }}>Distance<br />to Office</th>
         <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb', fontSize: '0.6875rem', lineHeight: 1.25 }}>Last<br />Contact</th>
         <th

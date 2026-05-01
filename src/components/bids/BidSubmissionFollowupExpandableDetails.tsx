@@ -141,6 +141,7 @@ export function BidSubmissionFollowupExpandableDetails({
           fontWeight: 600,
           fontSize: '0.875rem',
           color: '#374151',
+          textAlign: 'center',
         }}
       >
         Full bid details
