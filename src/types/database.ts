@@ -8819,6 +8819,7 @@ export type Database = {
         Args: { step_id_param: string }
         Returns: boolean
       }
+      can_define_task_style_checklist_items: { Args: never; Returns: boolean }
       can_edit_checklist_tech_tree_structure_for_roadmap: {
         Args: { p_roadmap_id: string }
         Returns: boolean

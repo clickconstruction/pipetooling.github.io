@@ -34,6 +34,8 @@ import { useNewCustomerModal } from '../contexts/NewCustomerModalContext'
 import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
 import { OPEN_BID_EDIT_QUERY, useBidPreview } from '../contexts/BidPreviewModalContext'
 import { effectiveSubmissionBidLastNoteIso, isSubmissionBidStaleForThreshold } from '../lib/submissionFollowupStale'
+import { submissionFollowupBidShareUrl } from '../lib/submissionFollowupBidShareUrl'
+import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import { NumericEntryPad } from '../components/NumericEntryPad'
 import { MoneyDecimalAmountInput } from '../components/MoneyDecimalAmountInput'
 import { PartFormModal } from '../components/PartFormModal'
@@ -1360,6 +1362,7 @@ export default function Bids() {
   const newCustomerModal = useNewCustomerModal()
   const bidPreview = useBidPreview()
   const ledgerPrefixMap = useLedgerPrefixMap()
+  const checklistAddModal = useChecklistAddModal()
   const editCustomerModal = useEditCustomerModal()
   const location = useLocation()
   const navigate = useNavigate()
@@ -1592,6 +1595,27 @@ export default function Bids() {
   const bidBoardDeepLinkTimeoutRef = useRef<number | null>(null)
   const bidBoardPendingScrollBidIdRef = useRef<string | null>(null)
   const submissionFollowupPendingDeepLinkBidIdRef = useRef<string | null>(null)
+
+  const canAddChecklistFromSubmission = useMemo(
+    () =>
+      myRole === 'dev' ||
+      myRole === 'master_technician' ||
+      myRole === 'assistant' ||
+      myRole === 'primary' ||
+      myRole === 'estimator',
+    [myRole],
+  )
+
+  const openSubmissionFollowupChecklistTask = useCallback(() => {
+    const bid = selectedBidForSubmission
+    if (!bid?.id || !checklistAddModal || !authUser?.id) return
+    const url = submissionFollowupBidShareUrl(bid.id)
+    const num = bid.bid_number?.trim()
+    const title = num
+      ? `Submission follow-up {{1:${formatBidLedgerNumberLabel(resolveBidLedgerPrefix(bid.service_type_id, ledgerPrefixMap), num)}}}`
+      : `Submission follow-up ${bidDisplayName(bid).trim() || 'Bid'} [1]`
+    checklistAddModal.openAddModal({ preset: { title, links: [url] } })
+  }, [selectedBidForSubmission, checklistAddModal, authUser?.id, ledgerPrefixMap])
 
   const applyBidBoardDeepLinkToBid = useCallback((bid: BidWithBuilder) => {
     bidBoardPendingScrollBidIdRef.current = null
@@ -16757,6 +16781,7 @@ export default function Bids() {
                       →
                     </button>
                   </div>
+                  <span aria-hidden style={{ color: '#d1d5db', flexShrink: 0, userSelect: 'none' }}>|</span>
                   {/* Share copies ?bidId=&tab=submission-followup; superintendent role is redirected off that tab by URL effect */}
                   <button
                     type="button"
@@ -16765,13 +16790,11 @@ export default function Bids() {
                     onClick={() => {
                       void (async () => {
                         try {
-                          const base = typeof window !== 'undefined' ? window.location.origin : ''
-                          const url = `${base}/bids?bidId=${encodeURIComponent(selectedBidForSubmission.id)}&tab=submission-followup`
                           if (!navigator.clipboard?.writeText) {
                             showToast('Could not copy link', 'error')
                             return
                           }
-                          await navigator.clipboard.writeText(url)
+                          await navigator.clipboard.writeText(submissionFollowupBidShareUrl(selectedBidForSubmission.id))
                           showToast('Link copied', 'success')
                         } catch {
                           showToast('Could not copy link', 'error')
@@ -17047,6 +17070,28 @@ export default function Bids() {
                   >
                     Approval PDF
                   </button>
+                  {canAddChecklistFromSubmission ? (
+                    <button
+                      type="button"
+                      onClick={openSubmissionFollowupChecklistTask}
+                      disabled={!selectedBidForSubmission?.id || !authUser?.id}
+                      title="Add a checklist task with a link to this bid on Submission & Followup"
+                      aria-label="Add checklist task with link to this bid on Submission & Followup"
+                      style={{
+                        padding: '0.5rem 1rem',
+                        background: '#ffffff',
+                        color: '#374151',
+                        border: '1px solid #d1d5db',
+                        borderRadius: 4,
+                        cursor:
+                          !selectedBidForSubmission?.id || !authUser?.id ? 'not-allowed' : 'pointer',
+                        fontWeight: 500,
+                        opacity: !selectedBidForSubmission?.id || !authUser?.id ? 0.6 : 1,
+                      }}
+                    >
+                      Add checklist task
+                    </button>
+                  ) : null}
                 </div>
               </div>
               <div style={{ marginBottom: '0.75rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center', width: '100%' }}>

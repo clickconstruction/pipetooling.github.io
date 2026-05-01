@@ -102,7 +102,9 @@ export default function ChecklistAddModal() {
       role === 'master_technician' ||
       role === 'assistant' ||
       role === 'primary' ||
-      role === 'estimator',
+      role === 'estimator' ||
+      role === 'subcontractor' ||
+      role === 'helpers',
     [role],
   )
 
@@ -170,9 +172,11 @@ export default function ChecklistAddModal() {
         users,
         authUser?.id ?? null
       )
+      const preset = modalContext.initialPreset
+      const presetLinks = preset?.links?.filter((u) => u.trim()) ?? []
       setForm({
-        title: '',
-        links: [],
+        title: preset?.title ?? '',
+        links: presetLinks.length ? [...presetLinks] : [],
         assigned_to_user_ids: defaultAssignee ? [defaultAssignee] : [],
         repeat_type: 'once',
         repeat_days_of_week: [],
@@ -186,9 +190,15 @@ export default function ChecklistAddModal() {
         reminder_scope: '',
       })
       setFormError(null)
-      setLinksSectionOpen(false)
+      setLinksSectionOpen(presetLinks.length > 0)
     }
-  }, [modalContext?.isOpen, modalContext?.initialAssigneeUserId, users, authUser?.id])
+  }, [
+    modalContext?.isOpen,
+    modalContext?.initialAssigneeUserId,
+    modalContext?.initialPreset,
+    users,
+    authUser?.id,
+  ])
 
   useLayoutEffect(() => {
     if (!modalContext?.isOpen) return

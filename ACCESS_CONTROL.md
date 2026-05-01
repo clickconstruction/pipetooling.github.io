@@ -529,7 +529,7 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 
 ### Redirection Rules
 
-**Subcontractors**: Any page except Dashboard/Calendar/Checklist/Settings/Tally → `/dashboard`
+**Subcontractors**: Any page except Dashboard/Calendar/Checklist/Settings/Tally → `/dashboard`. On those allowed routes, **Task Dispatch**, **Estimator Inbox**, and **Task** (checklist add) in the header behave like other roles that pass [`headerTaskDispatchEstimatorEligible.ts`](src/lib/headerTaskDispatchEstimatorEligible.ts) (`helpers` matches — see **helpers** section above).
 
 **Estimators**: Any page except Dashboard/Materials/Estimates/Bids/**Customers**/Calendar/Checklist/People/Settings/Tally/Prospects (if enabled) → `/bids`
 
@@ -549,14 +549,18 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 |---------|-----|--------|-----------|-----|-----------|---------|----------------|
 | View dashboard | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Configure dashboard buttons (Job, Job Labor, Bid, Project, Part, Assembly, New Prospect) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Task Dispatch (header: send task + optional reference + links to Dispatch group) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Dispatch inbox (open requests, mark closed) | ✅ | ❌ | If in Dispatch group | ❌ | ❌ | ❌ | ❌ |
+| Task Dispatch (**header**: send `dispatch_requests`; optional job/bid reference — recipients are **Dispatch group** members on Dashboard, not the sender) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Estimator Inbox (**header**: send `estimator_requests`; same “send vs inbox” split as Task Dispatch) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Dispatch inbox (Dashboard: open requests, mark closed; **`dispatch_group_members`**, **dev** bypass in [`useDispatchInbox`](src/hooks/useDispatchInbox.ts)) | ✅ | ❌ | If in Dispatch group | ❌ | ❌ | ❌ | ❌ |
+| Estimator inbox (Dashboard: open requests, mark closed; **`estimator_group_members`**, **dev** bypass in [`useEstimatorInbox`](src/hooks/useEstimatorInbox.ts)) | ✅ | ❌ | If in Estimator group | ❌ | If in Estimator group | ❌ | ❌ |
 | My Team (pending clock sessions for assigned members; approve/reject/assign job) | ✅ if leader | ✅ if leader | ✅ if leader | ✅ if leader | ✅ if leader | ✅ if leader | ✅ if leader |
 | **My Time** **Edit time** (clock strip): leader **split/replace-day** RPCs — **`can_edit_clock_sessions_for_user`** (**`20260401190823`**) treats **master_technician**, **assistant**, and **superintendent** like the dev team-lead path for **any** target user (broad edit capability on those RPCs) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | NCNS from team **My Time** day editor (clock strip): **`record_ncns_and_reject_sessions_for_day`** rejects all **closed** sessions for that **`work_date`** when any exist, inserts **`attendance_incidents`**; if **no** sessions but assignee has **`job_schedule_blocks`** on that date, inserts incident only (**`scheduled_without_clock`** in **`metadata`**); duplicate NCNS same day rejected; **approved** hours removed from **`people_hours`** when sessions exist; **two-step** UI confirm (payroll + trust) when any session was approved; **RPC** also allowed for **team lead** for subject (same as approve/revoke), UI shown for **dev / master / assistant** with clock strip scope only | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **Copy day job mix** on Dashboard **Clocked in today** (**Mix** toggle, **`CopyDayJobMixModal`**, **`leader_replace_clock_session_cluster_mixed`**): same strip roles as **Everyone / Organization** — **dev / master_technician / assistant** only | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **Stale tally staff follow-up** (Dashboard blue banner + modal — same stale/unlinked Mercury rules as personal stale banner; rows limited to users allowed by **`staff_can_view_user_for_tally_followup`**: **dev** any target; **master_technician** self, adopted assistants, or users on **master’s** jobs as team members; **assistant** adopting masters, same-master assistants via **`assistants_share_master`**, or users on **jobs** whose **`master_user_id`** is any master who adopted the assistant; **`list_stale_unlinked_mercury_transactions_for_tally_staff`** / **`replace_mercury_job_splits_for_linked_card_as_staff`** / **`search_jobs_for_tally_mercury_assign_as_user`**) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Rejected clock sessions (org-wide, review/delete) | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+
+**Header vs Dashboard inbox**: **Subcontractor** and **helpers** share the **header** buttons with office roles via [`headerTaskDispatchEstimatorEligible.ts`](src/lib/headerTaskDispatchEstimatorEligible.ts) but they **do not** see Dashboard inbox cards unless they have a row in **`dispatch_group_members`** / **`estimator_group_members`** (unusual). Sending does not imply inbox access.
 
 ### Calendar
 
@@ -574,8 +578,11 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 | **Roadmap**: **create** roadmap, **delete** roadmap | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ |
 | **Roadmap**: **edit graph** (groups/tasks/edges) — `can_edit_checklist_tech_tree_structure_for_roadmap` | ✅ | ✅ | ✅ | ✅ if **editor** | ✅ if **editor** | ✅ | ✅ if **editor** |
 | **Roadmap**: **Members** modal — add/remove, **viewer** / **editor** (`can_manage_checklist_tech_tree_roadmap_members`) | ✅ | ✅ | ✅ | ✅ if **editor** | ✅ if **editor** | ✅ | ✅ if **editor** |
+| Header **Task** (global modal — add checklist item + assignees + instances on allowed routes) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 
 **RLS notes** (v2.408, [`20270427120000_checklist_tech_tree_multi_roadmap.sql`](supabase/migrations/20270427120000_checklist_tech_tree_multi_roadmap.sql)): **Dev**, **master_technician**, **assistant**, and **primary** bypass membership for **select** and **structure** (see all roadmaps). **Subcontractor**, **estimator**, **superintendent** (and anyone not in that bypass set) need a row in **`checklist_tech_tree_roadmap_members`** for each roadmap they can open. Migration backfill adds **viewer** on the **Default** roadmap for all non-archived users, so everyone typically retains access to that graph; additional named roadmaps are visible only to bypass roles or invited members.
+
+**Task modal CHECKLIST RLS** ([`20270519120000_subcontractor_helpers_estimator_checklist_task_definitions.sql`](supabase/migrations/20270519120000_subcontractor_helpers_estimator_checklist_task_definitions.sql)): **`can_define_task_style_checklist_items()`** allows **subcontractor**, **helpers**, and **estimator** to insert/update/delete checklist definitions only when **`created_by_user_id = auth.uid()`** (and related assignee/instance rows for those items); staff paths still use **`is_dev_or_master_or_assistant()`** unchanged.
 
 ### Quickfill (`/quickfill`)
 
@@ -584,7 +591,7 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 | **Schedule** section — read-only per-user day row (**`DispatchAddBlockTimeRange`**, same window as Add schedule block); roster + **`job_schedule_blocks`** for selected **`work_date`**; link to **`/schedule-dispatch`** with **`week`**, optional **`day`** / **`jobId`**; **`quickfill_section_marks.section_id` = `schedule`** (shown only for **dev**, **master_technician**, **assistant**, **superintendent** — same gate as **`sectionWouldRenderOnPage`** in **`Quickfill.tsx`**) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ |
 | **Prospects** — active prospect warmth counts (0–3 and 4+); **Open Prospects** to **`/prospects?tab=prospect-list`**. **Team (last 30 days)** for **dev** / **master_technician** / **assistant** — **line chart** (**`recharts`**, **Y** = **Marked + Updated** per day; same data as **Prospects → Team**, which stays **per-day tables**). Shown when **`canAccessProspects`** in **`Quickfill.tsx`**. **Estimator** only when **Settings** grants **`estimator_prospects_access`** (warmth + CTA; no Team sub-block) | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
 | **Stages: customer link & customer pictures** (`no-customer-stages`) — **[`useQuickfillStagesJobsWithoutCustomer`](src/hooks/useQuickfillStagesJobsWithoutCustomer.ts)**; **Open list** (no linked customer) + **No customer pictures** (**working**, empty **`job_pictures_link`**); **union** metric; same empty–Stages-search rules as **Jobs → Stages** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **Email**, **Texts**, **Physical inbox** — textarea + mark with note history; **mark** / **`quickfill_section_marks`** **UPSERT**: dev / master / assistant only (**RLS**). **Physical inbox** inline Task / Task Dispatch / Estimator buttons (same role gates as [`Layout.tsx`](src/components/Layout.tsx) header) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Email**, **Texts**, **Physical inbox** — textarea + mark with note history; **mark** / **`quickfill_section_marks`** **UPSERT**: dev / master / assistant only (**RLS**). **Physical inbox** inline Task / Task Dispatch / Estimator buttons use the same role gates as [`Layout.tsx`](src/components/Layout.tsx); subcontractor/helpers do not reach this surface because **`/quickfill`** is not an allowed path | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 ### Settings (selected)
 

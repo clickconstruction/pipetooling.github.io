@@ -33,6 +33,11 @@ import { useAppActivityHeartbeat } from '../hooks/useAppActivityHeartbeat'
 import { hardReloadFromRoot } from '../lib/hardReload'
 import { prefetchDashboardPhase1 } from '../lib/dashboardPrefetch'
 import { isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
+import {
+  showEstimatorInboxButton,
+  showHeaderTaskChecklistButton,
+  showTaskDispatchButton,
+} from '../lib/headerTaskDispatchEstimatorEligible'
 import { impersonationExitDisplayLabel, impersonationExitTitle } from '../lib/impersonationUiLabels'
 import { IMPERSONATION_CHROME_BUTTON_STYLE } from '../lib/impersonationSession'
 
@@ -571,7 +576,7 @@ export default function Layout() {
         )}
         <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           {headerSearchEligible && <HeaderGlobalSearchOpenButton placement="toolbar" isMobile={isMobile} />}
-          {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'estimator') && (
+          {showTaskDispatchButton(role) && (
             <button
               type="button"
               onClick={() => dispatchTaskModal?.openDispatchModal()}
@@ -589,7 +594,7 @@ export default function Layout() {
               </svg>
             </button>
           )}
-          {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'estimator') && (
+          {showEstimatorInboxButton(role) && (
             <button
               type="button"
               onClick={() => estimatorTaskModal?.openEstimatorModal()}
@@ -607,7 +612,7 @@ export default function Layout() {
               </svg>
             </button>
           )}
-          {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary' || role === 'estimator') && (
+          {showHeaderTaskChecklistButton(role) && (
             <button
               type="button"
               onClick={() => checklistAddModal?.openAddModal()}
