@@ -49,6 +49,7 @@ import {
 import { BidBoardNotesPanel, type BidBoardNotesTab } from '../components/bids/BidBoardNotesPanel'
 import { BidsWorkingBoard } from '../components/bids/BidsWorkingBoard'
 import { BidFormModal, type BidServiceTypeSwitchSibling } from '../components/bids/BidFormModal'
+import { BidSubmissionFollowupExpandableDetails } from '../components/bids/BidSubmissionFollowupExpandableDetails'
 import { SupplyHouseWebsiteLink } from '../components/SupplyHouseWebsiteLink'
 import { Database } from '../types/database'
 import type { Json } from '../types/database'
@@ -9689,9 +9690,9 @@ export default function Bids() {
     const trimmed = (url ?? '').trim()
     if (!trimmed) {
       return (
-        <p style={{ margin: '0.25rem 0', color: '#9ca3af', fontWeight: 400 }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', margin: 0, color: '#9ca3af', fontWeight: 400 }}>
           {label} —
-        </p>
+        </span>
       )
     }
     return (
@@ -9701,7 +9702,7 @@ export default function Bids() {
           alignItems: 'center',
           gap: '0.35rem',
           flexWrap: 'wrap',
-          margin: '0.25rem 0',
+          margin: 0,
         }}
       >
         <a
@@ -16977,31 +16978,71 @@ export default function Bids() {
                     )}
                   </div>
                 </div>
-                <p style={{ margin: '1.5rem 0' }} />
-                {submissionFollowupUrlRow('Project Folder', selectedBidForSubmission.drive_link)}
-                {submissionFollowupUrlRow('Job Plans', selectedBidForSubmission.plans_link)}
-                {submissionFollowupUrlRow('Marked Up Plans or Cover Page', selectedBidForSubmission.count_tooling_link)}
-                {submissionFollowupUrlRow('Bid Submission', selectedBidForSubmission.bid_submission_link)}
+                <BidSubmissionFollowupExpandableDetails
+                  bid={selectedBidForSubmission}
+                  narrowViewport640={narrowViewport640}
+                  estimatorUsers={estimatorUsers}
+                />
               </div>
-              <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                <button
-                  type="button"
-                  onClick={handleScrollToSelectedBidRow}
-                  title="Go to bid in table"
-                  aria-label="Go to bid in table"
-                  style={{ padding: '0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              <div
+                style={{
+                  marginBottom: '1rem',
+                  marginTop: '1rem',
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '0.75rem',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                    gap: '0.75rem 1rem',
+                    minWidth: 0,
+                    flex: '1 1 auto',
+                    fontSize: '0.875rem',
+                    ...(narrowViewport640 ? { width: '100%' } : {}),
+                  }}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" fill="currentColor" aria-hidden="true">
-                    <path d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM303 441L223 361C213.6 351.6 213.6 336.4 223 327.1C232.4 317.8 247.6 317.7 256.9 327.1L295.9 366.1L295.9 216C295.9 202.7 306.6 192 319.9 192C333.2 192 343.9 202.7 343.9 216L343.9 366.1L382.9 327.1C392.3 317.7 407.5 317.7 416.8 327.1C426.1 336.5 426.2 351.7 416.8 361L336.8 441C327.4 450.4 312.2 450.4 302.9 441z" />
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void downloadApprovalPdf()}
-                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                  {submissionFollowupUrlRow('Project Folder', selectedBidForSubmission.drive_link)}
+                  <span aria-hidden style={{ color: '#d1d5db', flexShrink: 0, userSelect: 'none' }}>|</span>
+                  {submissionFollowupUrlRow('Job Plans', selectedBidForSubmission.plans_link)}
+                  <span aria-hidden style={{ color: '#d1d5db', flexShrink: 0, userSelect: 'none' }}>|</span>
+                  {submissionFollowupUrlRow('Marked Up Plans or Cover Page', selectedBidForSubmission.count_tooling_link)}
+                  <span aria-hidden style={{ color: '#d1d5db', flexShrink: 0, userSelect: 'none' }}>|</span>
+                  {submissionFollowupUrlRow('Bid Submission', selectedBidForSubmission.bid_submission_link)}
+                </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    flexShrink: 0,
+                    ...(narrowViewport640 ? { width: '100%', justifyContent: 'flex-end' } : {}),
+                  }}
                 >
-                  Approval PDF
-                </button>
+                  <button
+                    type="button"
+                    onClick={handleScrollToSelectedBidRow}
+                    title="Go to bid in table"
+                    aria-label="Go to bid in table"
+                    style={{ padding: '0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" fill="currentColor" aria-hidden="true">
+                      <path d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM303 441L223 361C213.6 351.6 213.6 336.4 223 327.1C232.4 317.8 247.6 317.7 256.9 327.1L295.9 366.1L295.9 216C295.9 202.7 306.6 192 319.9 192C333.2 192 343.9 202.7 343.9 216L343.9 366.1L382.9 327.1C392.3 317.7 407.5 317.7 416.8 327.1C426.1 336.5 426.2 351.7 416.8 361L336.8 441C327.4 450.4 312.2 450.4 302.9 441z" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void downloadApprovalPdf()}
+                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                  >
+                    Approval PDF
+                  </button>
+                </div>
               </div>
               <div style={{ marginBottom: '0.75rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center', width: '100%' }}>
                 <button

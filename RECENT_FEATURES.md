@@ -12,17 +12,20 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.446 → v2.4"
+version_range: "v2.448 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.448)"
+    line: ~1495
+    description: "Settings — Most recent push notifications (top): notification_history push/both, limit 5; jump nav Recent push"
   - name: "Latest Version (v2.446)"
-    line: ~1482
+    line: ~1504
     description: "Job activity / notes — Arrived & Leaving stamp buttons Job Detail only (omit jobThreadStampActions on Jobs Stages + Workflow JobThreadNotesPanel)"
   - name: "Latest Version (v2.445)"
-    line: ~1495
+    line: ~1515
     description: "Job activity / notes — merged Dispatch schedule block notes (job_schedule_blocks.note) as read-only Schedule rows; dedupe linked crew; useJobThreadNotes + modal + realtime job_schedule_blocks"
   - name: "Latest Version (v2.444)"
-    line: ~1531
+    line: ~1551
     description: "Job activity / notes — Arrived & Leaving stamp mechanics (jobThreadNoteStampBody; submitStamp / submitJobThreadStamp); composer auto-grow; activity scroll region scroll-to-newest (activityListMaxHeight); Detail modal outer scroll removed"
   - name: "Latest Version (v2.443)"
     line: ~1532
@@ -1165,6 +1168,8 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.448 — **Settings** — **Most recent push notifications** at top (after **Jump to**): last **5** rows from **`notification_history`** with **`channel`** **push** or **both**; **`SettingsRecentPushNotifications`**; **`#settings-recent-push`** jump link **Recent push** — server-logged sends only troubleshooting](#latest-updates-v2448)
+**New:** [v2.447 — **Job Detail** modal — **trade** pill (**PLUM** / **ELEC** / **HVAC**) on the **title** row (**`buildServiceTypeTradePill`**, **`serviceTypeTradePill.ts`**, parity with Jobs Stages subline); **Close** moved to **bottom-right** footer (scrolls with body); **limited** snapshot footnotes **centered**; **Service type** row under **Status** **removed**](#latest-updates-v2447)
 **New:** [v2.446 — **Jobs** / **Workflow** — **Job activity / notes**: **Arrived** / **Leaving** stamp toolbar **Job Detail** only — **`jobThreadStampActions`** omitted on **Jobs** Stages + **Workflow** linked-job **`JobThreadNotesPanel`** ([**`Jobs.tsx`**](src/pages/Jobs.tsx), [**`Workflow.tsx`**](src/pages/Workflow.tsx)); **`DetailJobModal`** unchanged (**`submitStamp`**)](#latest-updates-v2446)
 **New:** [v2.445 — **Jobs** / **Workflow** / **Job Detail** — **Job activity / notes**: Dispatch **schedule block** notes (**`job_schedule_blocks.note`**) merged into the same timeline as thread notes + field reports — read-only **Schedule** rows (**`jobThreadScheduleActivity.ts`**, **`scheduleBlocksToScheduleActivityItems`**); linked **`shared_block_group_id`** legs **deduped**; sort by **`updated_at`** / **`created_at`**; **`fetchJobScheduleBlocksForJob`** in **`useJobThreadNotes`** / **`useJobThreadNotesForModal`**; Realtime **`job_schedule_blocks`** — **Stages Last activity column unchanged** (still **`jobs_ledger_thread_note_stats`** only)](#latest-updates-v2445)
 **New:** [v2.444 — **Jobs** / **Workflow** / **Job Detail** — **Job activity / notes**: **Arrived** / **Leaving** stamp buttons (**`buildJobThreadStampBody`**, **`jobThreadNoteStampBody.ts`**, **`submitJobThreadStamp`** / modal **`submitStamp`**); composer **auto-grow** textarea; activity list **`max-height`** + snap **scroll** to **newest** (**`activityListMaxHeight`**, **`activityScrollRef`**); **Detail** modal — no outer scroll around panel (**[`JobThreadNotesPanel.tsx`](src/components/JobThreadNotesPanel.tsx)**, **`DetailJobModal.tsx`**)](#latest-updates-v2444)
@@ -1481,6 +1486,33 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.448)
+
+**Date**: 2026-05-01
+
+### **Settings** — **Most recent push notifications** (top of page)
+
+- **Placement** — New card **below** **Jump to** and **above** **Your account** (**[`Settings.tsx`](src/pages/Settings.tsx)**). Anchor **`settings-recent-push`**; jump nav label **Recent push** (**[`getSettingsJumpGroups`](src/pages/Settings.tsx)**).
+- **Data** — Query **`notification_history`** for **`recipient_user_id`** = viewer, **`channel`** **`push`** or **`both`**, **`sent_at`** desc, **`limit` 5**; **`withSupabaseRetry`**.
+- **UI** — Heading **Most recent push notifications**; explainer that rows are **server-logged sends** only (not browser delivery proof); loading / error / empty; each row shows time (**`formatNotificationDatetime`**), title, **`template_type`** / **`body_preview`**, channel badge (**Push** or **Push + email**), optional **View →** link (workflow step or checklist) when FKs present.
+- **Code** — [**`SettingsRecentPushNotifications.tsx`](src/components/settings/SettingsRecentPushNotifications.tsx)**.
+
+---
+
+## Latest Updates (v2.447)
+
+**Date**: 2026-05-01
+
+### **Jobs** — **Job Detail** modal — **layout** + **trade** pill
+
+- **Title row** — When the job has a **service type** name (full **`JobWithDetails`** or **limited** snapshot), an uppercase **trade pill** (**PLUM**, **ELEC**, **HVAC**, or gray fallback for unknown types) appears on the **same flex row** as **`Job Detail: …`** — to the **left of** **Edit** when the gear is shown, or alone on the right when the viewer has no Edit (e.g. subcontractor). Styling matches the Jobs **Stages** board job subline pill via [**`buildServiceTypeTradePill`**](src/lib/serviceTypeTradePill.ts) (**`getBidServiceTypeTag`** in [**`unifiedJobBidSearch.ts`**](src/utils/unifiedJobBidSearch.ts)). Optional **`title`** on the pill shows the full type name (e.g. **Plumbing**) on hover.
+- **Service type row** — The separate **Service type** **DetailRow** below **Status** is **removed**; the pill replaces that surface.
+- **Close** — **Close** is no longer in the header; it sits in a **bottom-right** row at the end of the white dialog (**scrolls** with modal content inside the **`maxHeight`** card).
+- **Limited detail** — Muted lines *Payments and invoices are not shown in this view.* and (subcontractor) *You are assigned on this job.* are **centered** (flex column + **`textAlign`**).
+- **Code** — [**`DetailJobModal.tsx`](src/components/jobs/DetailJobModal.tsx)**; shared pill builder [**`serviceTypeTradePill.ts`](src/lib/serviceTypeTradePill.ts)**.
+
 ---
 
 ## Latest Updates (v2.446)

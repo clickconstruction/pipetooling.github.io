@@ -631,12 +631,6 @@ export default function DashboardMyTimeSection({ userId, hoursDaysCorrect, disab
 
   useEffect(() => {
     if (!userId) return
-    const raw = localStorage.getItem(`dashboard_my_time_show_last_week_${userId}`)
-    setShowLastWeek(raw === 'true')
-  }, [userId])
-
-  useEffect(() => {
-    if (!userId) return
     const channel = supabase
       .channel('dashboard-my-time-clock-sessions')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'clock_sessions' }, (payload) => {
@@ -649,26 +643,24 @@ export default function DashboardMyTimeSection({ userId, hoursDaysCorrect, disab
     }
   }, [userId, loadData])
 
-  const handleToggleLastWeek = () => {
-    const next = !showLastWeek
-    setShowLastWeek(next)
-    if (userId) localStorage.setItem(`dashboard_my_time_show_last_week_${userId}`, String(next))
-  }
+  const handleToggleLastWeek = () => setShowLastWeek((prev) => !prev)
 
   if (loading && breakdown.length === 0) {
     return (
-      <div style={{ marginTop: '2rem', marginBottom: '1rem' }}>
-        <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>My Time</h2>
-        <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
+      <div style={{ marginTop: '2rem', marginBottom: '1rem' }} role="region" aria-label="My time summary">
+        <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0, textAlign: 'center' }}>Loading…</p>
       </div>
     )
   }
 
   return (
     <div style={{ marginTop: '2rem', marginBottom: '1rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
-        <h2 style={{ fontSize: '1.125rem', margin: 0 }}>My Time:</h2>
-        <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>
+      <div
+        role="region"
+        aria-label="My time summary"
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem', textAlign: 'center' }}
+      >
+        <span style={{ fontSize: '1rem', fontVariantNumeric: 'tabular-nums', fontWeight: 500, lineHeight: 1.25 }}>
           Today: {formatElapsed(totalSecondsToday)} | Week: {formatElapsed(totalSecondsWeek)}
         </span>
       </div>

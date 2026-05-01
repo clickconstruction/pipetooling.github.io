@@ -33,6 +33,7 @@ import StripeInvoiceFooterDevSettingsBlock from '../components/settings/StripeIn
 import PhysicalInvoiceFooterDevSettingsBlock from '../components/settings/PhysicalInvoiceFooterDevSettingsBlock'
 import BillCustomerMemoDevSettingsBlock from '../components/settings/BillCustomerMemoDevSettingsBlock'
 import MapDefaultViewSettingsBlock from '../components/settings/MapDefaultViewSettingsBlock'
+import SettingsRecentPushNotifications from '../components/settings/SettingsRecentPushNotifications'
 import PhysicalInvoiceIssuerDevSettingsBlock from '../components/settings/PhysicalInvoiceIssuerDevSettingsBlock'
 import JobBookSettingsSection from '../components/settings/JobBookSettingsSection'
 import TeamFeedbackMasterAggregates from '../components/team-feedback/TeamFeedbackMasterAggregates'
@@ -358,6 +359,7 @@ function getSettingsJumpGroups(myRole: UserRole | null): { id: string; label: st
   if (myRole == null) return []
   const r = myRole
   const groups: { id: string; label: string }[] = []
+  groups.push({ id: 'settings-recent-push', label: 'Recent push' })
   groups.push({ id: 'settings-account', label: 'Your account' })
   groups.push({ id: 'settings-dashboard', label: 'Dashboard & alerts' })
   if (r === 'dev' || r === 'master_technician') {
@@ -5461,6 +5463,8 @@ export default function Settings() {
       </div>
 
       <SettingsJumpNav groups={settingsJumpGroups} />
+
+      <SettingsRecentPushNotifications userId={authUser?.id} />
 
       <SettingsGroup
         id="settings-account"
