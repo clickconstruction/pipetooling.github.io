@@ -7,19 +7,37 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-05-01
+last_updated: 2026-04-30
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.436 → v2.4"
+version_range: "v2.442 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.442)"
+    line: ~1462
+    description: "Bids Bid Board — dev-only estimator labor cost table under Weekly bids sent (clock hours × wage / sent count / bid value)"
+  - name: "Latest Version (v2.441)"
+    line: ~1476
+    description: "Bids Bid Board — Weekly bids sent cell drilldown modal + bidIds in stats/pivot"
+  - name: "Latest Version (v2.440)"
+    line: ~1473
+    description: "Bids Bid Board — Weekly bids sent Outcomes row W · L only; H in aria-label"
+  - name: "Latest Version (v2.439)"
+    line: ~1473
+    description: "Bids Bid Board — Weekly bids sent pivot table (weeks as columns); buildBidBoardWeeklySentPivot"
+  - name: "Latest Version (v2.438)"
+    line: ~1484
+    description: "Bids Bid Board — Weekly bids sent $ column as thousands K (formatDollarsAsThousandsK in format.ts)"
+  - name: "Latest Version (v2.437)"
+    line: ~1486
+    description: "Bids Bid Board — Weekly bids sent (Chicago Sunday-start week); per-week Won / Lost / Haven't heard back; estimator Sent count and $ sum; bidBoardWeeklySentStats; BidBoardWeeklySentSection"
   - name: "Latest Version (v2.436)"
-    line: ~1446
+    line: ~1494
     description: "Jobs Edit Billing — remove_jobs_ledger_payment_and_reconcile RPC; Mercury Unlink and remove + persisted non-Stripe payment removal; Stripe-hosted invoice guard"
   - name: "Latest Version (v2.435)"
-    line: ~1458
+    line: ~1490
     description: "Jobs New Job Import: centered header Import + Link to cluster; JobFormImportEstimateOrBidModal (title Import from estimate or bid, minimal chrome); newJobFormHasBlockingContent; search_estimates_for_nav + search_bids_for_clock; prefill bid/estimate"
   - name: "Latest Version (v2.434)"
     line: ~1450
@@ -317,7 +335,7 @@ key_sections:
     description: "Job Detail modal: section heading Team → Assigned Team for read-only team_members list (DetailJobModal.tsx)"
   - name: "Latest Version (v2.336)"
     line: ~1083
-    description: "Jobs Stages Accounts Receivable: button always on (role-only); BankPaymentsModal billedRows from buildJobsStagesBoardLists(jobs,''); Edit Job Mercury Unlink and remove (DELETE payment, payments_made, paid→billed); single-row remove seeds empty line; Ref read-only abbrev+copy; AR modal Memo (optional) label"
+    description: "Jobs Stages Accounts Receivable: button always on (role-only); BankPaymentsModal billedRows from buildJobsStagesBoardLists(jobs,''); Edit Job Mercury Unlink (client DELETE in v2.336 → **`remove_jobs_ledger_payment_and_reconcile`** RPC in v2.436); Ref abbrev+copy; AR Memo (optional)"
   - name: "Latest Version (v2.335)"
     line: ~1094
     description: "AR Bank Payments: mercury_transaction_ar_returned + Mark mode Returned checkbox; p_filter includeHiddenArDeposits (legacy includeFullyApplied fallback) hides fully applied and returned deposits by default; set_mercury_transaction_ar_returned RPC"
@@ -1135,6 +1153,12 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.442 — **Bids** **Bid Board** — **dev only** — **Estimator labor cost** below **Weekly bids sent**: labor **$ / estimate sent** and **¢ / $ bid value** from **`clock_sessions`** (all hours that week) × **`people_pay_config`** vs same pivot **sent** counts and **`bid_value`** sums — **[`bidBoardWeeklyEstimatorLaborCost.ts`](src/lib/bidBoardWeeklyEstimatorLaborCost.ts)**, **[`BidBoardWeeklyEstimatorLaborDevSection.tsx`](src/components/bids/BidBoardWeeklyEstimatorLaborDevSection.tsx)**, **[`Bids.tsx`](src/pages/Bids.tsx)**](#latest-updates-v2442)
+**New:** [v2.441 — **Bids** **Bid Board** — **Weekly bids sent** — **click** non-zero cell → **[`BidBoardWeeklySentCellModal`](src/components/bids/BidBoardWeeklySentCellModal.tsx)** lists bids → **Bid preview**; **`bidIds`** on pivot cells — **[`bidBoardWeeklySentStats.ts`](src/lib/bidBoardWeeklySentStats.ts)**, **[`BidBoardWeeklySentSection.tsx`](src/components/bids/BidBoardWeeklySentSection.tsx)**, **[`Bids.tsx`](src/pages/Bids.tsx)**](#latest-updates-v2441)
+**New:** [v2.440 — **Bids** **Bid Board** — **Weekly bids sent** **Outcomes** row: **W** · **L** only (hide **H** visually); **haven’t heard back** still in **`aria-label`** — **[`BidBoardWeeklySentSection.tsx`](src/components/bids/BidBoardWeeklySentSection.tsx)**](#latest-updates-v2440)
+**New:** [v2.439 — **Bids** **Bid Board** — **Weekly bids sent** **one table**: **columns** = weeks (horizontal scroll, sticky **Estimator** column); **Outcomes** row per week; cells = compact **$K-n** (**$** in **K**, hyphen, **sent** count); **`buildBidBoardWeeklySentPivot`** — **[`bidBoardWeeklySentStats.ts`](src/lib/bidBoardWeeklySentStats.ts)**, **[`BidBoardWeeklySentSection.tsx`](src/components/bids/BidBoardWeeklySentSection.tsx)**](#latest-updates-v2439)
+**New:** [v2.438 — **Bids** **Bid Board** — **Weekly bids sent** **$** column: thousands **`K`** labels (**`formatDollarsAsThousandsK`** in **[`format.ts`](src/lib/format.ts)**; e.g. $625,073 → **$625K**; **Details** copy updated) — **[`BidBoardWeeklySentSection.tsx`](src/components/bids/BidBoardWeeklySentSection.tsx)**](#latest-updates-v2438)
+**New:** [v2.437 — **Bids** **Bid Board** — **Weekly bids sent**: Chicago **Sunday–Saturday** weeks; per-week **Won** / **Lost** / **Haven’t heard back**; per-**estimator** **Sent** count and **$** (**`bid_value`** sum); **Unassigned** when no **`estimator_id`**; same **service type** + board **search** as main table; **[`bidBoardWeeklySentStats.ts`](src/lib/bidBoardWeeklySentStats.ts)**, **[`BidBoardWeeklySentSection.tsx`](src/components/bids/BidBoardWeeklySentSection.tsx)**](#latest-updates-v2437)
 **New:** [v2.436 — **Jobs** **Edit Job** — **Payments received**: **`remove_jobs_ledger_payment_and_reconcile`** RPC (delete row, **`payments_made`**, invoice **`paid`/`billed`**, job **`paid`→`billed`**); Mercury **Unlink and remove** + persisted non-Stripe manual removal; Stripe-hosted invoice guard — **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)**; migration **`20260501030427`**](#latest-updates-v2436)
 **New:** [v2.435 — **Jobs** **New Job** — **Import**: header **Import** centered between title and **Link to: Bid | Project**; **`aria-label`** full phrase; nested **[`JobFormImportEstimateOrBidModal`](src/components/jobs/JobFormImportEstimateOrBidModal.tsx)** — dialog title **Import from estimate or bid**, search + list only; **`search_estimates_for_nav`** + **`search_bids_for_clock`** (debounced, no jobs); **`newJobFormHasBlockingContent`** hides **Import** when form has content; **bid** / **estimate** prefills; **HCP #** never auto — **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)**](#latest-updates-v2435)
 **New:** [v2.434 — **Estimates** — **Email when customer accepts**: **Notify me** + **[`SearchableMultiSelect`](src/components/SearchableMultiSelect.tsx)** **Also notify** (role groups **Master technicians → Assistants → Superintendents → everyone else**, tiny captions on **[`SearchableSelectSeparatorListRow`](src/components/SearchableSelect.tsx)**); draft **`accept_notify_user_ids` `NULL`**: load default **current user + all `master_technician`** (query in detail load; fallback **self only** on error); **`[]`** = explicitly no recipients; group-aware search keeps separator **`label`** via **`splitOptionGroups` / `filterSearchableSelectOptionsByQuery`** — **[`Estimates.tsx`](src/pages/Estimates.tsx)**; migration **`20260430213314`**](#latest-updates-v2434)
@@ -1441,6 +1465,76 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.442)
+
+**Date**: 2026-04-30
+
+### **Bids** — **Bid Board** — **dev only** — **Estimator labor cost** (Weekly bids sent)
+
+- **Audience** — Shown only when **`users.role`** is **`dev`**, directly under **Weekly bids sent** and above **Estimating Health**.
+- **Behavior** — Same **Sunday–Saturday** week columns and assigned **estimator** rows as **Weekly bids sent** (**Unassigned** omitted). **Labor $ / estimate** = (sum of that user’s eligible **`clock_sessions`** duration for **`work_date`** in the week × matched **`people_pay_config.hourly_wage`**) ÷ **sent** count for that cell. **Cents per $ of bid value sent** = same labor cost ÷ **`bid_value`** sum for sent bids in that cell. **Hours** use all clock time that week (not bid-only); open punches extend to load time; **`rejected_at`** / **`revoked_at`** excluded. Wage match: normalized **`users.name`** ↔ **`people_pay_config.person_name`**; missing config or divide-by-zero → **—** in UI.
+- **Code** — **[`bidBoardWeeklyEstimatorLaborCost.ts`](src/lib/bidBoardWeeklyEstimatorLaborCost.ts)** (aggregate + matrix), Vitest **[`bidBoardWeeklyEstimatorLaborCost.test.ts`](src/lib/bidBoardWeeklyEstimatorLaborCost.test.ts)**; **[`BidBoardWeeklyEstimatorLaborDevSection.tsx`](src/components/bids/BidBoardWeeklyEstimatorLaborDevSection.tsx)** (batched **`clock_sessions`** read with range paging, **`users`**, **`people_pay_config`**); **[`Bids.tsx`](src/pages/Bids.tsx)** gate **`myRole === 'dev'`**.
+- **Docs** — **`BIDS_SYSTEM.md`** (Weekly bids sent).
+
+---
+
+## Latest Updates (v2.441)
+
+**Date**: 2026-04-30
+
+### **Bids** — **Bid Board** — **Weekly bids sent** — cell drilldown
+
+- **UI** — **[`BidBoardWeeklySentSection.tsx`](src/components/bids/BidBoardWeeklySentSection.tsx)**: non-zero **$K-n** cells open **[`BidBoardWeeklySentCellModal`](src/components/bids/BidBoardWeeklySentCellModal.tsx)** (week + estimator context); each bid row opens **Bid preview** via **`openBidPreviewFromBid`** (**`BidPreviewModalContext`**). **`Bids.tsx`** passes **`filteredBidsForBidBoard`** for list hydration.
+- **Code** — **`bidIds`** on **`BidBoardWeekEstimatorRow`** / **`BidBoardWeeklySentPivotCell`**; **`buildBidBoardWeeklySentSummaries`** collects ids in input order — **[`bidBoardWeeklySentStats.ts`](src/lib/bidBoardWeeklySentStats.ts)**; Vitest **[`bidBoardWeeklySentStats.test.ts`](src/lib/bidBoardWeeklySentStats.test.ts)**.
+- **Docs** — **`BIDS_SYSTEM.md`** (Weekly bids sent).
+
+---
+
+## Latest Updates (v2.440)
+
+**Date**: 2026-04-30
+
+### **Bids** — **Bid Board** — **Weekly bids sent** — **Outcomes** row **W · L** only
+
+- **UI** — **[`BidBoardWeeklySentSection.tsx`](src/components/bids/BidBoardWeeklySentSection.tsx)**: **Outcomes** cells show **Won** and **Lost** counts only (**W** · **L**). **Haven’t heard back** remains in each cell’s **`aria-label`** with **W** and **L**. **Details** copy updated.
+- **Docs** — **`BIDS_SYSTEM.md`** (Bid Board — Weekly bids sent).
+
+---
+
+## Latest Updates (v2.439)
+
+**Date**: 2026-05-02
+
+### **Bids** — **Bid Board** — **Weekly bids sent** pivot (weeks as columns)
+
+- **UI** — **[`BidBoardWeeklySentSection.tsx`](src/components/bids/BidBoardWeeklySentSection.tsx)**: single horizontally scrollable table; **Estimator** column **sticky** left; each **week** is a column (newest first); second header row **Outcomes** (**W** / **L** / **H**) per week; body cells are one token **$K-n** (**`formatDollarsAsThousandsK`**, hyphen, **sent** count; e.g. **$625K-3**).
+- **Code** — **`buildBidBoardWeeklySentPivot`** in **[`bidBoardWeeklySentStats.ts`](src/lib/bidBoardWeeklySentStats.ts)**; Vitest extended in **[`bidBoardWeeklySentStats.test.ts`](src/lib/bidBoardWeeklySentStats.test.ts)**.
+
+---
+
+## Latest Updates (v2.438)
+
+**Date**: 2026-05-02
+
+### **Bids** — **Bid Board** — **Weekly bids sent** — **$** column in thousands (**K**)
+
+- **UI** — **[`BidBoardWeeklySentSection.tsx`](src/components/bids/BidBoardWeeklySentSection.tsx)**: dollar totals use **`formatDollarsAsThousandsK`** (e.g. **$625,073** → **$625K**; **$0**; one decimal when round thousands would be **$0** but the total is positive, e.g. **$0.4K**). **Details** explains **K** display.
+- **Code** — **[`formatDollarsAsThousandsK`](src/lib/format.ts)**; Vitest **[`format.test.ts`](src/lib/format.test.ts)**.
+
+---
+
+## Latest Updates (v2.437)
+
+**Date**: 2026-05-02
+
+### **Bids** — **Bid Board** — **Weekly bids sent** (by estimator)
+
+- **Behavior** — Below the collapsible board sections and above **Estimating Health**: **Weekly bids sent** groups bids with **`bid_date_sent`** into **Sunday–Saturday** weeks in **`APP_CALENDAR_TZ`**. Each week shows **Won**, **Lost**, and **Haven’t heard back** (same rules as the Scoreboard: Won includes **Started or complete**). Then a table per **estimator** (**Sent** count and **$** sum of **`bid_value`**, null as $0 in the sum). Bids without **`estimator_id`** roll into **Unassigned**. Respects the same **service type** and Bid Board **search** filter as the main table. Up to **26** recent weeks.
+- **Code** — **[`bidBoardWeeklySentStats.ts`](src/lib/bidBoardWeeklySentStats.ts)** (`buildBidBoardWeeklySentSummaries`), **[`BidBoardWeeklySentSection.tsx`](src/components/bids/BidBoardWeeklySentSection.tsx)**, **[`Bids.tsx`](src/pages/Bids.tsx)**; Vitest **[`bidBoardWeeklySentStats.test.ts`](src/lib/bidBoardWeeklySentStats.test.ts)**.
+- **Docs** — **`BIDS_SYSTEM.md`** (Bid Board).
+
 ---
 
 ## Latest Updates (v2.436)
@@ -2670,7 +2764,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 
 ### **Edit Job** — **Payments received** — Mercury **Unlink and remove**; **Ref** copy UX
 
-- **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)** — Mercury-linked rows: **Unlink and remove** confirms, **`DELETE`** **`jobs_ledger_payments`**, **`UPDATE`** **`jobs_ledger.payments_made`** (sum of remaining lines), refresh job; if status stays **paid** but **revenue > payments_made** (tolerance), **`update_job_status`** → **billed**. Invoice-linked and role guards unchanged. Removing the **only** payment line seeds **`[newEmptyPaymentRow()]`** so the grid stays usable.
+- **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)** — Mercury-linked rows: **Unlink and remove** confirms then ran client **`DELETE`** + **`payments_made`** update + **`update_job_status`** when needed (**v2.436** replaces this with RPC **`remove_jobs_ledger_payment_and_reconcile`** — see **Latest Updates (v2.436)**). Removing the **only** payment line still seeds **`[newEmptyPaymentRow()]`** after refresh so the grid stays usable.
 - **[`abbreviatePaymentReference.ts`](src/lib/abbreviatePaymentReference.ts)** — **`abbreviatePaymentReferenceLabel`**: long / UUID-shaped **Ref** read-only text shows **`first3..last3`**; **`ReadOnlyPaymentRefCopy`** button copies full **`reference_number`**, success toast (**clipboard** fallback errors).
 
 ### **Bank Payments** modal — copy

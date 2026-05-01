@@ -55,6 +55,9 @@ import type { Json } from '../types/database'
 import type { BidWithBuilder, EstimatorUser } from '../types/bidWithBuilder'
 import type { BidDateSentAttestationPayload } from '../types/bidDateSentAttestation'
 import { bidAttestationDisplayName, normalizeBidDateInput } from '../lib/bidDateSentDisplay'
+import { buildBidBoardWeeklySentSummaries } from '../lib/bidBoardWeeklySentStats'
+import { BidBoardWeeklySentSection } from '../components/bids/BidBoardWeeklySentSection'
+import { BidBoardWeeklyEstimatorLaborDevSection } from '../components/bids/BidBoardWeeklyEstimatorLaborDevSection'
 
 type GcBuilder = Database['public']['Tables']['bids_gc_builders']['Row']
 type Customer = Database['public']['Tables']['customers']['Row']
@@ -9612,6 +9615,11 @@ export default function Bids() {
     [filteredBidsForBidBoard]
   )
 
+  const bidBoardWeeklySentSummaries = useMemo(
+    () => buildBidBoardWeeklySentSummaries(filteredBidsForBidBoard),
+    [filteredBidsForBidBoard]
+  )
+
   const staffOutcomeDrilldownBids = useMemo(() => {
     if (!staffOutcomeDrilldown) return []
     return sortStaffOutcomeDrilldownBids(
@@ -11096,6 +11104,8 @@ export default function Bids() {
                   </div>
                 )
               })}
+              <BidBoardWeeklySentSection weeks={bidBoardWeeklySentSummaries} bids={filteredBidsForBidBoard} />
+              {myRole === 'dev' && <BidBoardWeeklyEstimatorLaborDevSection weeks={bidBoardWeeklySentSummaries} />}
               <div style={{ marginTop: '1.5rem' }}>
                 <h3
                   id="bid-board-estimating-health-heading"

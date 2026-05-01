@@ -2,6 +2,23 @@ export function formatCurrency(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+/** Thousands-of-dollars label for aggregates (e.g. weekly bid sent totals); not per-line currency precision. */
+export function formatDollarsAsThousandsK(n: number): string {
+  if (!Number.isFinite(n) || n === 0) return '$0'
+
+  const fmt = (value: number): string => {
+    const k = value / 1000
+    const rounded = Math.round(k)
+    if (rounded === 0 && value > 0) return `$${k.toFixed(1)}K`
+    return `$${rounded.toLocaleString('en-US')}K`
+  }
+
+  if (n < 0) {
+    return `-${fmt(-n)}`
+  }
+  return fmt(n)
+}
+
 export function decimalHoursToHhMm(h: number): string {
   const hrs = Math.floor(h)
   const mins = Math.round((h - hrs) * 60)

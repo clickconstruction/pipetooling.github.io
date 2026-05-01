@@ -95,6 +95,11 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 - **Where**: **Hosted Stripe bill** panel (**`HostedStripeBillPanel`**) when the ledger invoice is **Paid** — **Undo out-of-band payment** issues a Stripe **credit note** (no card charge on the invoice) and reverts the ledger row to **Billed**. **v2.363**: optional **`onAfterOobUnwindSuccess`** refreshes **Edit Job** **Payments received** and **Bill Customer** success-screen job snapshots so **`jobs_ledger_payments`** removals match the form without reopening the editor.
 - **Audit**: Staff with job access may **`SELECT`** **`stripe_oob_payment_reverts`**; **`dev`** has full table access.
 
+### Edit Job payment unlink (`remove_jobs_ledger_payment_and_reconcile`, v2.436)
+- **Who**: **`dev`**, **`master_technician`**, **`assistant`**, and **`primary`** — RPC enforces role + the same job-access **`EXISTS`** pattern used by other billing RPCs (e.g. **`mark_invoice_paid`**). **`superintendent`** and other roles do not receive **`EXECUTE`** on this function.
+- **Where**: **Edit Job** → **Billing** → **Payments received** — **Mercury** **Unlink and remove**, and removing persisted **non-Mercury** rows tied to **non-Stripe** **`jobs_ledger_invoices`** (after confirm).
+- **Stripe-hosted invoices**: RPC **rejects** when the payment’s **`invoice_id`** points at an invoice with non-empty **`stripe_invoice_id`**; UI hides **Unlink** in that case. Use Stripe / out-of-band reversal flows for hosted invoice payments.
+
 ---
 
 ## User Roles

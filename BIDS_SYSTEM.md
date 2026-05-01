@@ -5,7 +5,7 @@ file: BIDS_SYSTEM.md
 type: System Documentation
 purpose: Complete documentation of 10-tab Bids system including workflows, book systems, and integrations
 audience: Developers, Estimators, AI Agents
-last_updated: 2026-04-22
+last_updated: 2026-04-30
 estimated_read_time: 30-40 minutes
 difficulty: Intermediate to Advanced
 
@@ -162,6 +162,10 @@ Central hub for viewing and managing all bids. Provides high-level overview of b
 #### Lost Bids
 - **Lost bids are always hidden** on the Bid Board (no toggle)
 - Empty state when all matching bids are lost: "No bids to show (all matching bids are lost)."
+
+#### Weekly bids sent (below board sections)
+- Below the collapsible **Unsent / Working** … **Lost** sections and above **Estimating Health**: **Weekly bids sent** buckets bids with **`bid_date_sent`** into **Sunday–Saturday** weeks in the company calendar (`America/Chicago`). **One table**: each **column** is a week (newest first); **sticky** left column lists **estimators** (union across weeks; **Unassigned** last); **Outcomes** row shows **Won** and **Lost** only per week (**W** · **L**); **haven’t heard back** is still counted and remains on each cell’s **`aria-label`**. Each body cell is one compact **$K-n** string (**$** in **thousands K**, hyphen, **sent** count; see **[`formatDollarsAsThousandsK`](src/lib/format.ts)**). **Click** a non-zero cell to open a list of bids for that week and estimator; choose a row to open **Bid preview**. Uses **`buildBidBoardWeeklySentSummaries`** + **`buildBidBoardWeeklySentPivot`** in **[`bidBoardWeeklySentStats.ts`](src/lib/bidBoardWeeklySentStats.ts)**. Same **service type** filter and Bid Board **search** as the main table; last **26** weeks. **[`BidBoardWeeklySentSection.tsx`](src/components/bids/BidBoardWeeklySentSection.tsx)**, **[`BidBoardWeeklySentCellModal.tsx`](src/components/bids/BidBoardWeeklySentCellModal.tsx)**. See `RECENT_FEATURES.md` **v2.437**–**v2.441**.
+- **Dev only — estimator labor cost** (below **Weekly bids sent**, **`role` `dev` only**): a second bordered section uses the **same weeks and estimator rows** as the weekly-sent pivot (**Unassigned** excluded). Each cell stacks **Labor $ / estimate** (all **`clock_sessions`** hours for that user and company week × **`people_pay_config.hourly_wage`**, keyed by **`trim(users.name)`** ↔ **`person_name`**, divided by **sent count**) and **cents per $ of bid value sent** (same labor cost ÷ sum of **`bid_value`** for sent bids). Open sessions contribute through “now”; rejected/revoked sessions are excluded; missing pay config shows **—**. Internal snapshot only—not payroll or billing. **[`bidBoardWeeklyEstimatorLaborCost.ts`](src/lib/bidBoardWeeklyEstimatorLaborCost.ts)**, **[`BidBoardWeeklyEstimatorLaborDevSection.tsx`](src/components/bids/BidBoardWeeklyEstimatorLaborDevSection.tsx)**; **`RECENT_FEATURES.md`** **v2.442**.
 
 #### Notes (first column, expandable)
 - Expanding a row opens bid and customer notes inline. Tabs (left to right): **All notes** (default when the row opens), **Bid notes**, **Customer notes**. **All notes** shows a single timeline of `bids_submission_entries` and `customer_contacts` (when the bid has a linked customer), with **Add bid note** / **Add customer note**. **Bid notes** and **Customer notes** show only that source. See `RECENT_FEATURES.md` v2.148 and `src/components/bidBoard/UnifiedBidCustomerNotes.tsx`.
