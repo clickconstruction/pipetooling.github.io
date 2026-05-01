@@ -304,6 +304,14 @@ function stripeBillInvoiceForPaymentRow(
   return inv
 }
 
+/** Mercury unlink RPC rejects Stripe-hosted invoices; hide/disable unlink when this applies. */
+function mercuryUnlinkBlockedByStripeHostedInvoice(row: PaymentRow, job: JobWithDetails | null): boolean {
+  if (!job || !paymentRowLinkedToInvoice(row)) return false
+  const inv = (job.invoices ?? []).find((i) => i.id === row.invoice_id)
+  if (!inv) return false
+  return jobsLedgerInvoiceIsStripeLinked(inv)
+}
+
 /** Manual payment lines that may be removed from the form (persist on Save); Stripe/Mercury/invoice-linked excluded. */
 function canRemovePaymentRowFromForm(row: PaymentRow, job: JobWithDetails | null): boolean {
   if (mercuryLinkedPaymentRow(row)) return false
@@ -807,6 +815,7 @@ export default function JobFormModal({
   const [migratingJob, setMigratingJob] = useState(false)
   const [collectPaymentFlowBlocksMigrate, setCollectPaymentFlowBlocksMigrate] = useState(false)
   const [unlinkingMercuryPaymentId, setUnlinkingMercuryPaymentId] = useState<string | null>(null)
+  const [paymentRemoveRpcBusy, setPaymentRemoveRpcBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [materialsAccordionOpen, setMaterialsAccordionOpen] = useState<MaterialsAccordionKey | null>('billed')
   const [jobMaterialsSnapshotLoading, setJobMaterialsSnapshotLoading] = useState(false)
@@ -827,6 +836,11 @@ export default function JobFormModal({
   const visibleJobFormServiceTypes = useMemo(
     () => visibleServiceTypesForJobForm(serviceTypes, meServiceTypeColumns),
     [serviceTypes, meServiceTypeColumns],
+  )
+
+  const persistedLedgerPaymentIds = useMemo(
+    () => new Set((editing?.payments ?? []).map((p) => p.id)),
+    [editing?.payments],
   )
 
   /** Include current job's type when it is not in the role-filtered list (same idea as Bids). */
@@ -994,6 +1008,7 @@ export default function JobFormModal({
     setNewInvoiceAmount('')
     setNewInvoiceAmountInputFocused(false)
     setPaymentRemoveConfirmRowId(null)
+    setPaymentRemoveRpcBusy(false)
     setUnlinkMercuryConfirmRowId(null)
     setDeleteJobConfirmOpen(false)
     setMigrateJobModalOpen(false)
@@ -1009,6 +1024,7 @@ export default function JobFormModal({
 
   function applyEditJob(job: JobWithDetails, billingGate: boolean, fixturesGate: boolean) {
     setPaymentRemoveConfirmRowId(null)
+    setPaymentRemoveRpcBusy(false)
     setUnlinkMercuryConfirmRowId(null)
     setDeleteJobConfirmOpen(false)
     setMigrateJobModalOpen(false)
@@ -1111,6 +1127,7 @@ export default function JobFormModal({
     setNewInvoiceAmount('')
     setNewInvoiceAmountInputFocused(false)
     setPaymentRemoveConfirmRowId(null)
+    setPaymentRemoveRpcBusy(false)
     setUnlinkMercuryConfirmRowId(null)
     setDeleteJobConfirmOpen(false)
     setFormServiceTypeId('')
@@ -1904,6 +1921,17 @@ export default function JobFormModal({
     return { rowAmt, jobTotal: rev, currentRem, newRem }
   }, [paymentRemoveConfirmRowId, payments, jobTotalBidDollars])
 
+  const paymentRemoveConfirmsPersistedRpc = useMemo(() => {
+    if (!paymentRemoveConfirmRowId || !editing) return false
+    const row = payments.find((r) => r.id === paymentRemoveConfirmRowId)
+    if (!row) return false
+    return (
+      persistedLedgerPaymentIds.has(row.id) &&
+      !mercuryLinkedPaymentRow(row) &&
+      !stripeBillInvoiceForPaymentRow(row, editing)
+    )
+  }, [paymentRemoveConfirmRowId, payments, editing, persistedLedgerPaymentIds])
+
   const isSendFullUnallocatedToReadyToBill = useMemo(() => {
     if (!editing || editing.status !== 'working') return false
     const paidSum = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
@@ -2320,23 +2348,76 @@ export default function JobFormModal({
       showToast('This payment is linked to a bank transaction. Remove it from Jobs Stages → Bank Payments workflow if needed.', 'error')
       return
     }
-    if (paymentRowLinkedToInvoice(row)) {
+    if (stripeBillInvoiceForPaymentRow(row, editing)) {
       showToast(
-        'This payment is linked to an invoice and can’t be removed in Edit Job. Change it from Outstanding billing or the mark-paid flow.',
+        'This payment is linked to a Stripe invoice and can’t be removed in Edit Job. Use Stripe reversal flows.',
         'error',
       )
       return
     }
-    if (!canRemovePaymentRowFromForm(row, editing)) {
+    const persisted = Boolean(editing && persistedLedgerPaymentIds.has(row.id))
+    const openConfirm =
+      canRemovePaymentRowFromForm(row, editing) || (persisted && paymentRowLinkedToInvoice(row))
+    if (!openConfirm) {
+      if (paymentRowLinkedToInvoice(row)) {
+        showToast(
+          'This payment is linked to an invoice and can’t be removed in Edit Job. Change it from Outstanding billing or the mark-paid flow.',
+          'error',
+        )
+      }
       return
     }
     setPaymentRemoveConfirmRowId(row.id)
   }
 
-  function confirmRemovePaymentRow() {
-    if (!paymentRemoveConfirmRowId) return
+  async function confirmRemovePaymentRow() {
+    if (!paymentRemoveConfirmRowId || !editing) return
     const row = payments.find((r) => r.id === paymentRemoveConfirmRowId)
-    if (!row || !canRemovePaymentRowFromForm(row, editing)) {
+    if (!row) {
+      setPaymentRemoveConfirmRowId(null)
+      return
+    }
+
+    const persistedRpc =
+      persistedLedgerPaymentIds.has(row.id) &&
+      !mercuryLinkedPaymentRow(row) &&
+      !stripeBillInvoiceForPaymentRow(row, editing)
+
+    if (persistedRpc) {
+      setPaymentRemoveRpcBusy(true)
+      try {
+        const raw = await withSupabaseRetry(
+          async () =>
+            supabase.rpc('remove_jobs_ledger_payment_and_reconcile', { p_payment_id: row.id }),
+          'remove_jobs_ledger_payment_and_reconcile',
+        )
+        const payload = raw as { error?: string; ok?: boolean; warning?: string } | null
+        if (payload && typeof payload === 'object' && typeof payload.error === 'string' && payload.error) {
+          showToast(payload.error, 'error')
+          return
+        }
+        if (payload?.warning) {
+          showToast(payload.warning, 'warning')
+        } else {
+          showToast('Payment removed.', 'success')
+        }
+
+        const found = await fetchJobWithDetailsById(editing.id)
+        if (found) {
+          setEditing(found)
+          setPayments(paymentRowsFromJob(found))
+        }
+        setPaymentRemoveConfirmRowId(null)
+        onSavedRef.current?.()
+      } catch (e: unknown) {
+        showToast(formatPostgrestOrUnknownError(e, 'Failed to remove payment'), 'error')
+      } finally {
+        setPaymentRemoveRpcBusy(false)
+      }
+      return
+    }
+
+    if (!canRemovePaymentRowFromForm(row, editing)) {
       setPaymentRemoveConfirmRowId(null)
       return
     }
@@ -2351,66 +2432,39 @@ export default function JobFormModal({
         setUnlinkMercuryConfirmRowId(null)
         return
       }
-      if (paymentRowLinkedToInvoice(row)) {
+      if (mercuryUnlinkBlockedByStripeHostedInvoice(row, editing)) {
         showToast(
-          'This payment is linked to an invoice and can’t be removed in Edit Job. Change it from Outstanding billing or the mark-paid flow.',
+          'Stripe-hosted invoice payments cannot be removed here; use Stripe reversal flows.',
           'error',
         )
         setUnlinkMercuryConfirmRowId(null)
         return
       }
-      const remaining = payments.filter((r) => r.id !== row.id)
-      const paymentsMadeNum = remaining.reduce((s, p) => s + (Number(p.amount) || 0), 0)
       setUnlinkingMercuryPaymentId(row.id)
       try {
-        await withSupabaseRetry(
+        const raw = await withSupabaseRetry(
           async () =>
-            supabase.from('jobs_ledger_payments').delete().eq('id', row.id).eq('job_id', jobId),
-          'jobs_ledger_payments_delete_mercury_row',
+            supabase.rpc('remove_jobs_ledger_payment_and_reconcile', { p_payment_id: row.id }),
+          'remove_jobs_ledger_payment_and_reconcile',
         )
-        await withSupabaseRetry(
-          async () =>
-            supabase.from('jobs_ledger').update({ payments_made: paymentsMadeNum }).eq('id', jobId),
-          'jobs_ledger_update_payments_made_after_delete',
-        )
-        setPayments(remaining.length > 0 ? remaining : [newEmptyPaymentRow()])
-        let refreshed = await fetchJobWithDetailsById(jobId)
-        if (refreshed) setEditing(refreshed)
-
-        const rev = Number(refreshed?.revenue) || 0
-        const pm = Number(refreshed?.payments_made) || 0
-        const shouldMoveToBilled =
-          normalizeJobsLedgerStatus(refreshed?.status) === 'paid' && rev > pm + 0.01
-
-        if (shouldMoveToBilled) {
-          try {
-            const data = await withSupabaseRetry(
-              async () =>
-                supabase.rpc('update_job_status', { p_job_id: jobId, p_to_status: 'billed' }),
-              'update_job_status_unlink_mercury',
-            )
-            const result = data as { error?: string } | null
-            if (result?.error) {
-              showToast(
-                `Payment removed, but the job could not be moved back to Billed: ${result.error}`,
-                'error',
-              )
-            } else {
-              refreshed = await fetchJobWithDetailsById(jobId)
-              if (refreshed) setEditing(refreshed)
-              showToast('Payment removed from job. Job moved back to Billed.', 'success')
-            }
-          } catch (e: unknown) {
-            showToast(
-              formatPostgrestOrUnknownError(e, 'Payment removed but failed to move job to Billed'),
-              'error',
-            )
-          }
+        const payload = raw as { error?: string; ok?: boolean; warning?: string } | null
+        if (payload && typeof payload === 'object' && typeof payload.error === 'string' && payload.error) {
+          showToast(payload.error, 'error')
+          return
+        }
+        if (payload?.warning) {
+          showToast(payload.warning, 'warning')
         } else {
           showToast(
             'Payment removed from job. The bank deposit is available in Accounts Receivable again.',
             'success',
           )
+        }
+
+        const found = await fetchJobWithDetailsById(jobId)
+        if (found) {
+          setEditing(found)
+          setPayments(paymentRowsFromJob(found))
         }
         onSavedRef.current?.()
       } catch (e: unknown) {
@@ -2420,7 +2474,7 @@ export default function JobFormModal({
         setUnlinkMercuryConfirmRowId(null)
       }
     },
-    [editing?.id, authRole, showToast, payments],
+    [editing, authRole, showToast],
   )
 
   function confirmUnlinkMercuryFromBankRow() {
@@ -4883,7 +4937,14 @@ export default function JobFormModal({
                     return payments.map((row, idx) => {
                     const stripePaymentLocked = Boolean(stripeBillInvoiceForPaymentRow(row, editing))
                     const mercuryPaymentLocked = mercuryLinkedPaymentRow(row)
-                    const payRowCanRemove = canRemovePaymentRowFromForm(row, editing)
+                    const payRowCanRemove =
+                      canRemovePaymentRowFromForm(row, editing) ||
+                      Boolean(
+                        editing &&
+                          persistedLedgerPaymentIds.has(row.id) &&
+                          paymentRowLinkedToInvoice(row) &&
+                          !stripeBillInvoiceForPaymentRow(row, editing),
+                      )
                     const paymentReadOnly = stripePaymentLocked || mercuryPaymentLocked
                     const noteTrim = (row.note ?? '').trim()
                     const ptTrim = (row.payment_type ?? '').trim()
@@ -5079,7 +5140,9 @@ export default function JobFormModal({
                               textAlign: 'right',
                             }}
                           >
-                            {stripePaymentLocked ? null : mercuryPaymentLocked && canUnlinkMercuryPayment(authRole) ? (
+                            {stripePaymentLocked ? null : mercuryPaymentLocked &&
+                              canUnlinkMercuryPayment(authRole) &&
+                              !mercuryUnlinkBlockedByStripeHostedInvoice(row, editing) ? (
                               <button
                                 type="button"
                                 onClick={() => setUnlinkMercuryConfirmRowId(row.id)}
@@ -5755,7 +5818,9 @@ export default function JobFormModal({
             justifyContent: 'center',
             zIndex: JOB_FORM_NESTED_OVERLAY_Z_INDEX,
           }}
-          onClick={() => setPaymentRemoveConfirmRowId(null)}
+          onClick={() => {
+            if (!paymentRemoveRpcBusy) setPaymentRemoveConfirmRowId(null)
+          }}
         >
           <div
             style={{
@@ -5777,7 +5842,15 @@ export default function JobFormModal({
                   <strong style={{ fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(paymentRemovePreview.rowAmt)}</strong> from this job.
                 </p>
                 <p style={{ margin: '0 0 0.75rem', color: '#6b7280' }}>
-                  The payment line is removed from this form now; click <strong>Save</strong> on the job to update the database.
+                  {paymentRemoveConfirmsPersistedRpc ? (
+                    <>
+                      This updates the database immediately (payments recorded on this job and any linked invoice status).
+                    </>
+                  ) : (
+                    <>
+                      The payment line is removed from this form now; click <strong>Save</strong> on the job to update the database.
+                    </>
+                  )}
                 </p>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', marginBottom: '1rem' }}>
                   <tbody>
@@ -5808,13 +5881,15 @@ export default function JobFormModal({
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
               <button
                 type="button"
-                onClick={() => setPaymentRemoveConfirmRowId(null)}
+                onClick={() => {
+                  if (!paymentRemoveRpcBusy) setPaymentRemoveConfirmRowId(null)
+                }}
                 style={{
                   padding: '0.5rem 1rem',
                   background: '#f3f4f6',
                   border: '1px solid #d1d5db',
                   borderRadius: 6,
-                  cursor: 'pointer',
+                  cursor: paymentRemoveRpcBusy ? 'not-allowed' : 'pointer',
                   fontSize: '0.875rem',
                 }}
               >
@@ -5822,20 +5897,20 @@ export default function JobFormModal({
               </button>
               <button
                 type="button"
-                onClick={confirmRemovePaymentRow}
-                disabled={!paymentRemovePreview}
+                onClick={() => void confirmRemovePaymentRow()}
+                disabled={!paymentRemovePreview || paymentRemoveRpcBusy}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: !paymentRemovePreview ? '#9ca3af' : '#b91c1c',
+                  background: !paymentRemovePreview || paymentRemoveRpcBusy ? '#9ca3af' : '#b91c1c',
                   color: 'white',
                   border: 'none',
                   borderRadius: 6,
-                  cursor: !paymentRemovePreview ? 'not-allowed' : 'pointer',
+                  cursor: !paymentRemovePreview || paymentRemoveRpcBusy ? 'not-allowed' : 'pointer',
                   fontSize: '0.875rem',
                   fontWeight: 500,
                 }}
               >
-                Remove payment
+                {paymentRemoveRpcBusy ? 'Removing…' : 'Remove payment'}
               </button>
             </div>
           </div>

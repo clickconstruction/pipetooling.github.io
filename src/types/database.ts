@@ -9717,6 +9717,10 @@ export type Database = {
         Args: { p_job_id: string }
         Returns: undefined
       }
+      remove_jobs_ledger_payment_and_reconcile: {
+        Args: { p_payment_id: string }
+        Returns: Json
+      }
       replace_estimate_catalog_payload: {
         Args: { p_payload: Json }
         Returns: undefined

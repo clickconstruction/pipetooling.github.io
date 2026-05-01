@@ -114,6 +114,19 @@ export interface UpdateContractBookEntryParams {
   p_canonical_document_url: string
 }
 
+/** Parameters for `remove_jobs_ledger_payment_and_reconcile` (Edit Job payment unlink). */
+export interface RemoveJobsLedgerPaymentAndReconcileParams {
+  p_payment_id: string
+}
+
+/** JSON payload from `remove_jobs_ledger_payment_and_reconcile`. */
+export interface RemoveJobsLedgerPaymentAndReconcileResult {
+  ok?: boolean
+  error?: string
+  warning?: string
+  payments_made?: number
+}
+
 /**
  * Helper type to extend Supabase client with RPC function types
  * 
@@ -149,5 +162,9 @@ export interface DatabaseFunctions {
   update_contract_book_entry: {
     Args: UpdateContractBookEntryParams
     Returns: null
+  }
+  remove_jobs_ledger_payment_and_reconcile: {
+    Args: RemoveJobsLedgerPaymentAndReconcileParams
+    Returns: RemoveJobsLedgerPaymentAndReconcileResult
   }
 }

@@ -7,17 +7,20 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-30
+last_updated: 2026-05-01
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.435 → v2.4"
+version_range: "v2.436 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.436)"
+    line: ~1446
+    description: "Jobs Edit Billing — remove_jobs_ledger_payment_and_reconcile RPC; Mercury Unlink and remove + persisted non-Stripe payment removal; Stripe-hosted invoice guard"
   - name: "Latest Version (v2.435)"
-    line: ~1441
-    description: "Jobs New Job — Import from estimate or bid: JobFormImportEstimateOrBidModal; search_estimates_for_nav + search_bids_for_clock; prefill bid/estimate; job_ledger_id guard"
+    line: ~1458
+    description: "Jobs New Job Import: centered header Import + Link to cluster; JobFormImportEstimateOrBidModal (title Import from estimate or bid, minimal chrome); newJobFormHasBlockingContent; search_estimates_for_nav + search_bids_for_clock; prefill bid/estimate"
   - name: "Latest Version (v2.434)"
     line: ~1450
     description: "Estimates — Email when customer accepts: Notify me + SearchableMultiSelect Also notify (role groups + separator labels); accept_notify NULL draft default self + all master_technician; SearchableSelect separator label preserved in search filter"
@@ -1132,7 +1135,8 @@ when_to_read:
 ---
 
 ## Table of Contents
-**New:** [v2.435 — **Jobs** **New Job** — **Import from estimate or bid**: nested **[`JobFormImportEstimateOrBidModal`](src/components/jobs/JobFormImportEstimateOrBidModal.tsx)** — **`search_estimates_for_nav`** + **`search_bids_for_clock`** (debounced, no jobs); **bid** → link + name/address/customer/service type + optional empty drive/plans; **estimate** → title/address/customer + **Specific Work** from snapshot (**`normalizeEstimateLineItemsFromJson`** / **`fixturesPayloadForCreateJobFromEstimate`**), toast if **`job_ledger_id`** set; **HCP #** never auto — **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)**](#latest-updates-v2435)
+**New:** [v2.436 — **Jobs** **Edit Job** — **Payments received**: **`remove_jobs_ledger_payment_and_reconcile`** RPC (delete row, **`payments_made`**, invoice **`paid`/`billed`**, job **`paid`→`billed`**); Mercury **Unlink and remove** + persisted non-Stripe manual removal; Stripe-hosted invoice guard — **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)**; migration **`20260501030427`**](#latest-updates-v2436)
+**New:** [v2.435 — **Jobs** **New Job** — **Import**: header **Import** centered between title and **Link to: Bid | Project**; **`aria-label`** full phrase; nested **[`JobFormImportEstimateOrBidModal`](src/components/jobs/JobFormImportEstimateOrBidModal.tsx)** — dialog title **Import from estimate or bid**, search + list only; **`search_estimates_for_nav`** + **`search_bids_for_clock`** (debounced, no jobs); **`newJobFormHasBlockingContent`** hides **Import** when form has content; **bid** / **estimate** prefills; **HCP #** never auto — **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)**](#latest-updates-v2435)
 **New:** [v2.434 — **Estimates** — **Email when customer accepts**: **Notify me** + **[`SearchableMultiSelect`](src/components/SearchableMultiSelect.tsx)** **Also notify** (role groups **Master technicians → Assistants → Superintendents → everyone else**, tiny captions on **[`SearchableSelectSeparatorListRow`](src/components/SearchableSelect.tsx)**); draft **`accept_notify_user_ids` `NULL`**: load default **current user + all `master_technician`** (query in detail load; fallback **self only** on error); **`[]`** = explicitly no recipients; group-aware search keeps separator **`label`** via **`splitOptionGroups` / `filterSearchableSelectOptionsByQuery`** — **[`Estimates.tsx`](src/pages/Estimates.tsx)**; migration **`20260430213314`**](#latest-updates-v2434)
 **New:** [v2.433 — **Unified job/bid search** — **trade** color pills (**`[plum]`** / **`[elec]`** / **`[hvac]`**) on **job** rows (same mapping as bids: Plumbing / Electrical / HVAC); **`search_jobs_ledger`** + **`list_assigned_jobs_for_dashboard`** return **`service_type_name`**; **`serviceTypeTagForUnifiedRow`** in **[`unifiedJobBidSearch.ts`](src/utils/unifiedJobBidSearch.ts)** — **[`ClockInOutButton`](src/components/ClockInOutButton.tsx)**, **[`HeaderGlobalSearch`](src/components/HeaderGlobalSearch.tsx)**, **[`ClockSessionStripActionsModal`](src/components/ClockSessionStripActionsModal.tsx)**, **[`AssignSessionJobPopover`](src/components/clock-sessions/AssignSessionJobPopover.tsx)**, **[`DispatchTaskModal`](src/components/DispatchTaskModal.tsx)**, **[`EstimatorTaskModal`](src/components/EstimatorTaskModal.tsx)**, **[`PeopleHoursDayAuditModal`](src/components/PeopleHoursDayAuditModal.tsx)**; migrations **`20260430205318`**, **`20270518120000`**](#latest-updates-v2433)
 **New:** [v2.432 — **Ledger display prefixes** — per–**`service_types`** **`ledger_job_prefix`** / **`ledger_bid_prefix`** (dev **Settings** → Service types; backfill **JP/BP**, **JE/BE**, **JH/BH**); null/blank → legacy **`J`**/**`B`**; **`search_jobs_ledger`** / **`search_bids_for_clock`** return **`service_type_id`** and match **J/B** or configured prefix + digits; **[`ledgerDisplayPrefixes.ts`](src/lib/ledgerDisplayPrefixes.ts)** + UI surfaces (Clock In, Jobs, Bids, Documents, My Time, banking alloc search); Edge **`notify-dispatch-request`** / **`notify-estimator-request`** — migrations **`20260430201832`**, **`20260430202750`**, **`20260430203800`**](#latest-updates-v2432)
@@ -1439,15 +1443,28 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
+## Latest Updates (v2.436)
+
+**Date**: 2026-05-01
+
+### **Jobs** — **Edit Job** — **Payments received** server unlink and reconcile
+
+- **Database** — **`remove_jobs_ledger_payment_and_reconcile`** ([**`20260501030427_remove_jobs_ledger_payment_and_reconcile.sql`**](supabase/migrations/20260501030427_remove_jobs_ledger_payment_and_reconcile.sql)): deletes one **`jobs_ledger_payments`** row; **`payments_made`** = sum of remaining rows; invoice **`paid`/`billed`** from remaining amounts for **`invoice_id`** (non-Stripe only); **`paid`→`billed`** job transition when revenue exceeds payments; **rejects** Stripe-hosted **`jobs_ledger_invoices`** (**`stripe_invoice_id`** set).
+- **UI** — **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)**: Mercury **Unlink and remove** calls the RPC (no client-only delete); **Unlink** hidden when linked invoice is Stripe-hosted; persisted non-Mercury payments on non-Stripe invoices remove via the same RPC after confirm; busy/error handling on RPC path.
+- **Docs** — **`MIGRATIONS.md`**, **`src/types/database.ts`** (**`gen-types:linked`** includes **`remove_jobs_ledger_payment_and_reconcile`**).
+
+---
+
 ## Latest Updates (v2.435)
 
 **Date**: 2026-04-30
 
 ### **Jobs** — **New Job** — **Import** from estimate or bid
 
-- **UI** — [`JobFormImportEstimateOrBidModal.tsx`](src/components/jobs/JobFormImportEstimateOrBidModal.tsx): debounced search (≥2 chars, 300ms), **`search_estimates_for_nav`** + **`search_bids_for_clock`** only; **Estimate** / **Bid** rows; nested overlay z-index above migrate overlay ([`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx) **`JOB_FORM_IMPORT_SOURCE_OVERLAY_Z_INDEX`**).
+- **Header** — [`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx): **New Job** title (left), **Import** in a centered flex column (label **Import**; **`aria-label`** describes estimate/bid), **Link to: Bid | Project** (right, `flexShrink: 0`); **`flexWrap`** for narrow `maxWidth`.
+- **Modal** — [`JobFormImportEstimateOrBidModal.tsx`](src/components/jobs/JobFormImportEstimateOrBidModal.tsx): dialog title **Import from estimate or bid**; debounced search (≥2 chars, 300ms), **`search_estimates_for_nav`** + **`search_bids_for_clock`** only; **Estimate** / **Bid** rows; overlay **`JOB_FORM_IMPORT_SOURCE_OVERLAY_Z_INDEX`** (above migrate overlay). No explanatory paragraph above the search field.
 - **Prefill** — **Bid**: link bid, name/address/customer/service type (role-visible types), optional drive/plans when form fields empty. **Estimate**: title/address/customer or **`customer_email`**, **Specific Work** from snapshot; toast block when **`job_ledger_id`** set; clears bid link; **`normalizeEstimateLineItemsFromJson`** + **`fixturesPayloadForCreateJobFromEstimate`**. **HCP #** never auto-filled.
-- **Import visibility** — **Import from estimate or bid** only while the new-job form is still empty: any text/links/associations (including **Linked project**, **bid**, or CRM/customer fields from the project flow), extra fixture/material/payment rows, team picks, or a **trade** change after load hides it. The default auto-picked **trade** on open does not hide Import; sub-modal auto-closes if the sheet becomes non-empty while open.
+- **Import visibility** — **`newJobFormHasBlockingContent`**: **Import** only while the new-job form is still empty (any project/bid/customer/address/HCP/links/fixtures/materials/payments/team content, or a **trade** change after load, hides **Import**; the default auto-picked **trade** on open does not hide **Import** until the user changes it). Sub-modal auto-closes if the sheet becomes non-empty while open.
 - **Docs** — **`PROJECT_DOCUMENTATION.md`** (Jobs), this file.
 
 ---

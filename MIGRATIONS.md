@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-04-30
+last_updated: 2026-05-01
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -89,6 +89,15 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ---
 
 ## Recent Migrations
+
+### May 2026
+
+#### May 1, 2026
+
+**`20260501030427_remove_jobs_ledger_payment_and_reconcile.sql`**
+- **Purpose**: **`remove_jobs_ledger_payment_and_reconcile(p_payment_id uuid)`** — `SECURITY DEFINER` RPC deletes one **`jobs_ledger_payments`** row, recomputes **`jobs_ledger.payments_made`**, reconciles **`jobs_ledger_invoices`** **`paid`/`billed`** from remaining invoice-linked amounts (ε **`0.0001`**), may move **`jobs_ledger`** **`paid`→`billed`** via **`update_job_status`** when revenue exceeds payments; **rejects** payments tied to **Stripe-hosted** invoices (**`stripe_invoice_id`** non-empty). Roles: **`dev`**, **`master_technician`**, **`assistant`**, **`primary`** with same job-access pattern as other billing RPCs. Frees Mercury allocation capacity when the row had **`mercury_transaction_id`**.
+- **Impact**: [`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx) **Unlink and remove** (Mercury) + persisted non-Stripe manual removal path; **`RECENT_FEATURES.md`** **v2.436**; **`npm run gen-types:linked`** picks up **`remove_jobs_ledger_payment_and_reconcile`** in **`src/types/database.ts`** once linked schema includes this migration.
+- **Category**: Jobs / Billing / RPC
 
 ### April 2026
 
