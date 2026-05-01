@@ -17066,23 +17066,49 @@ export default function Bids() {
                   flexWrap: 'wrap',
                   flexDirection: narrowViewport640 ? 'column' : 'row',
                   alignItems: 'center',
-                  justifyContent: narrowViewport640 ? 'center' : 'space-between',
-                  alignContent: narrowViewport640 ? 'center' : undefined,
+                  justifyContent: narrowViewport640 ? 'center' : 'flex-start',
                   gap: '0.75rem',
                   marginBottom: '0.75rem',
                   width: '100%',
                 }}
               >
-                <UnifiedBidCustomerNotesActionButtons
-                  addingKind={submissionFollowupToolbarAddingKind}
-                  onAddingKindChange={handleSubmissionFollowupToolbarAddingKind}
-                  customerId={selectedBidForSubmission.customers?.id ?? null}
-                  customerName={selectedBidForSubmission.customers?.name ?? 'Customer'}
-                />
+                <div style={{ flexShrink: 0 }}>
+                  <UnifiedBidCustomerNotesActionButtons
+                    addingKind={submissionFollowupToolbarAddingKind}
+                    onAddingKindChange={handleSubmissionFollowupToolbarAddingKind}
+                    customerId={selectedBidForSubmission.customers?.id ?? null}
+                    customerName={selectedBidForSubmission.customers?.name ?? 'Customer'}
+                  />
+                </div>
+                <div
+                  aria-live="polite"
+                  style={{
+                    flex: narrowViewport640 ? 'none' : '1 1 auto',
+                    textAlign: 'center',
+                    minWidth: narrowViewport640 ? undefined : '10rem',
+                    maxWidth: '100%',
+                    fontSize: '0.875rem',
+                    ...(narrowViewport640 ? { width: '100%', wordBreak: 'break-word' } : {}),
+                  }}
+                >
+                  <span style={{ color: '#6b7280' }}>Last update: </span>
+                  <span style={{ color: '#111827', fontWeight: 500 }}>
+                    {formatTimeSinceLastContact(
+                      effectiveSubmissionBidLastNoteIso(selectedBidForSubmission, lastContactFromEntries, customerContacts),
+                    )}
+                  </span>
+                </div>
                 <div
                   role="tablist"
                   aria-label="Notes type"
-                  style={{ display: 'inline-flex', border: '1px solid #d1d5db', borderRadius: 4, overflow: 'hidden', flexShrink: 0 }}
+                  style={{
+                    display: 'inline-flex',
+                    border: '1px solid #d1d5db',
+                    borderRadius: 4,
+                    overflow: 'hidden',
+                    flexShrink: 0,
+                    ...(narrowViewport640 ? {} : { marginLeft: 'auto' }),
+                  }}
                 >
                   <button
                     type="button"
