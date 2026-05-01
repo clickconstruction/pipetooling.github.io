@@ -244,7 +244,10 @@ export default function Layout() {
     isSubcontractorLikeRole(role)
 
   const canShowMapNav =
-    role === 'dev' || role === 'master_technician' || role === 'assistant'
+    role === 'dev' ||
+    role === 'master_technician' ||
+    role === 'assistant' ||
+    role === 'estimator'
 
   const dashboardIcon = (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1em" height="1em" fill="currentColor" aria-hidden="true" style={{ verticalAlign: 'middle' }}>
@@ -298,16 +301,18 @@ export default function Layout() {
     })
     return (
       <span style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-        <NavLink
-          to="/dashboard"
-          style={iconLinkStyle}
-          end
-          title="Dashboard"
-          aria-label="Dashboard"
-          onPointerEnter={scheduleDashboardPrefetch}
-        >
-          {dashboardIcon}
-        </NavLink>
+        {role !== 'estimator' ? (
+          <NavLink
+            to="/dashboard"
+            style={iconLinkStyle}
+            end
+            title="Dashboard"
+            aria-label="Dashboard"
+            onPointerEnter={scheduleDashboardPrefetch}
+          >
+            {dashboardIcon}
+          </NavLink>
+        ) : null}
         {(role === 'dev' || role === 'assistant') && (
           <NavLink to="/quickfill" style={iconLinkStyle} title="Quickfill" aria-label="Quickfill">
             {quickfillIcon}
@@ -329,10 +334,37 @@ export default function Layout() {
     if (role === 'estimator') {
       return (
         <>
+          {excludeHeaderLinks && onNavClick ? (
+            <NavLink
+              to="/dashboard"
+              end
+              onClick={onNavClick}
+              onPointerEnter={scheduleDashboardPrefetch}
+              title="Dashboard"
+              aria-label="Dashboard"
+              style={({ isActive }) => ({
+                ...dropdownLinkStyle({ isActive }),
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                padding: '0.5rem 1rem',
+                width: '100%',
+                boxSizing: 'border-box',
+              })}
+            >
+              {dashboardContent}
+              Dashboard
+            </NavLink>
+          ) : null}
           {!excludeHeaderLinks && (
             <NavLink
               to="/dashboard"
-              style={({ isActive }) => ({ ...linkStyle({ isActive }), display: onNavClick ? 'flex' : 'inline-flex', alignItems: 'center', ...(onNavClick && { width: '100%', boxSizing: 'border-box' }) })}
+              style={({ isActive }) => ({
+                ...linkStyle({ isActive }),
+                display: onNavClick ? 'flex' : 'inline-flex',
+                alignItems: 'center',
+                ...(onNavClick && { width: '100%', boxSizing: 'border-box' }),
+              })}
               end
               onClick={onNavClick}
               onPointerEnter={scheduleDashboardPrefetch}

@@ -200,7 +200,7 @@ Column order (left to right; leading **expand** chevron opens inline **Notes** �
 **Edit Bid Modal**:
 - Opened by clicking gear icon in Edit column
 - **Cancel button** in top-right next to modal title
-- **Pickers**: **Estimator**, **Account Man**, **Service Type**, and **Win/Loss** use **`SearchableSelect`** ([`src/components/SearchableSelect.tsx`](src/components/SearchableSelect.tsx)): button trigger, optional search, list in a **portal** above the modal. **Service Type** and **Project Name** are required for save (client-side `bidFormMissingFields`).
+- **Pickers**: **Estimator**, **Account Man**, **Service Type**, and **Win/Loss** use **`SearchableSelect`** ([`src/components/SearchableSelect.tsx`](src/components/SearchableSelect.tsx)): button trigger, optional search, list in a **portal** above the modal. **Service Type** and **Project Name** are required for save (client-side `bidFormMissingFields`). **Estimator** and **Account Man** options come from **`loadEstimatorUsers`** in [`Bids.tsx`](src/pages/Bids.tsx): **non-archived** users (`archived_at` null), **not** the **Helper** role (`helpers`), ordered by name (**`withSupabaseRetry`**); client-side drop if **name** trim equals **`delete`** case-insensitively (**`RECENT_FEATURES.md`** **v2.449**). Rare legacy rows may still reference excluded users until reassigned.
 - **Field order** (see `bidFormOpen` in [`src/pages/Bids.tsx`](src/pages/Bids.tsx)):
   1. **Top grid (desktop)**: Row 1 — Estimator, Account Man, Bid Date; Row 2 — Bid #, Project Name* (Project Name spans two columns). **Mobile**: Row 1 — Estimator | Account Man; Row 2 — Bid # | Bid Date; Row 3 — Project Name* full width.
   2. **Service Type***, Win/Loss, Bid Date Sent (one flex row)

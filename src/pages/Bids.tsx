@@ -2284,12 +2284,24 @@ export default function Bids() {
   }
 
   async function loadEstimatorUsers() {
-    const { data, error } = await supabase
-      .from('users')
-      .select('id, name, email')
-      .order('name', { ascending: true, nullsFirst: false })
-    if (error) return
-    setEstimatorUsers((data as EstimatorUser[]) ?? [])
+    try {
+      const data = await withSupabaseRetry(
+        async () =>
+          supabase
+            .from('users')
+            .select('id, name, email')
+            .is('archived_at', null)
+            .neq('role', 'helpers')
+            .order('name', { ascending: true, nullsFirst: false }),
+        'load estimator users for bids',
+      )
+      const rows = (data as EstimatorUser[]) ?? []
+      setEstimatorUsers(
+        rows.filter((u) => (u.name?.trim().toLowerCase() ?? '') !== 'delete'),
+      )
+    } catch {
+      // Preserve prior silent failure: do not reject Promise.all callers or clear the list.
+    }
   }
 
   async function loadCustomers() {

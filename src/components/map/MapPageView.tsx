@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 // Leaflet / react-leaflet / Geoman: import only from this file so they stay in the lazy Map route chunk.
 import {
@@ -197,18 +205,47 @@ function GeocodeProgressList({
 function MapEntityTable({
   rows,
   title,
+  titleRight,
   emptyHint,
   onOpenJob,
 }: {
   rows: MapPageEntity[]
   title: string
+  /** e.g. filter search — shown to the right of the title on wide viewports. */
+  titleRight?: ReactNode
   emptyHint: string
   /** When set, job rows open Edit Job in place instead of navigating to Jobs. */
   onOpenJob?: (jobId: string) => void
 }) {
   return (
-    <div style={{ marginTop: '0.5rem' }}>
-      <h2 style={{ fontSize: '1rem', margin: '0 0 0.5rem 0' }}>{title}</h2>
+    <div>
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '0.5rem',
+          marginBottom: '0.5rem',
+        }}
+      >
+        <h2 style={{ fontSize: '1rem', margin: 0, flex: '1 1 auto', minWidth: 0 }}>{title}</h2>
+        {titleRight != null ? (
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              gap: '0.5rem',
+              justifyContent: 'flex-end',
+              flex: '1 1 200px',
+              minWidth: 0,
+            }}
+          >
+            {titleRight}
+          </div>
+        ) : null}
+      </div>
       <div
         style={{
           border: '1px solid #e5e7eb',
@@ -270,7 +307,7 @@ function MapEntityTable({
 
 export function MapPageView() {
   const navigate = useNavigate()
-  const { loading, error, entities, geocodeAddressRows, reload } = useMapPageData(true)
+  const { loading, error, entities, geocodeAddressRows, geocodeInProgress, reload } = useMapPageData(true)
   const jobFormModal = useJobFormModal()
   const openJobOnMap = useCallback(
     (jobId: string) => {
@@ -399,72 +436,37 @@ export function MapPageView() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1rem' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem' }}>
-          <h1 style={{ margin: 0, fontSize: '1.25rem' }}>Map</h1>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.875rem' }}>
-            <input type="checkbox" checked={showJobs} onChange={() => setShowJobs((s) => !s)} />
-            Jobs
-          </label>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.875rem' }}>
-            <input type="checkbox" checked={showBids} onChange={() => setShowBids((s) => !s)} />
-            Bids
-          </label>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.875rem' }}>
-            <input type="checkbox" checked={showEst} onChange={() => setShowEst((s) => !s)} />
-            Estimates
-          </label>
-          <button
-            type="button"
-            onClick={() => setClearDraw((c) => c + 1)}
-            style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', cursor: 'pointer' }}
-          >
-            Clear draw
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              void reload()
-              loadMapDefaultView()
-            }}
-            style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', cursor: 'pointer' }}
-          >
-            Reload data
-          </button>
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
-          <label htmlFor="map-page-search" style={{ fontSize: '0.875rem', color: '#374151' }}>
-            Filter
-          </label>
-          <input
-            id="map-page-search"
-            type="search"
-            name="map-page-search"
-            value={mapSearchQuery}
-            onChange={(e) => setMapSearchQuery(e.target.value)}
-            autoComplete="off"
-            placeholder="Filter by name, address, number…"
-            aria-label="Filter map and list"
-            style={{
-              flex: '1 1 200px',
-              minWidth: 0,
-              maxWidth: '100%',
-              padding: '0.35rem 0.5rem',
-              fontSize: '0.875rem',
-              border: '1px solid #d1d5db',
-              borderRadius: 4,
-            }}
-          />
-          {mapSearchTrim ? (
-            <button
-              type="button"
-              onClick={() => setMapSearchQuery('')}
-              style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', cursor: 'pointer' }}
-            >
-              Clear
-            </button>
-          ) : null}
-        </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem' }}>
+        <h1 style={{ margin: 0, fontSize: '1.25rem' }}>Map</h1>
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.875rem' }}>
+          <input type="checkbox" checked={showJobs} onChange={() => setShowJobs((s) => !s)} />
+          Jobs
+        </label>
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.875rem' }}>
+          <input type="checkbox" checked={showBids} onChange={() => setShowBids((s) => !s)} />
+          Bids
+        </label>
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.875rem' }}>
+          <input type="checkbox" checked={showEst} onChange={() => setShowEst((s) => !s)} />
+          Estimates
+        </label>
+        <button
+          type="button"
+          onClick={() => setClearDraw((c) => c + 1)}
+          style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', cursor: 'pointer' }}
+        >
+          Clear draw
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            void reload()
+            loadMapDefaultView()
+          }}
+          style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', cursor: 'pointer' }}
+        >
+          Reload data
+        </button>
       </div>
 
       <MapGeocodeReviewModal
@@ -543,6 +545,10 @@ export function MapPageView() {
         </div>
       ) : null}
 
+      {!loading && geocodeInProgress ? (
+        <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>Resolving addresses…</p>
+      ) : null}
+
       <GeocodeProgressList rows={geocodeAddressRows} entities={entities} onAddressOpen={onGeocodeAddressOpen} />
 
       {error ? <p style={{ color: '#b91c1c', margin: 0 }}>{error}</p> : null}
@@ -551,13 +557,14 @@ export function MapPageView() {
       <div
         style={{
           display: 'flex',
-          flexDirection: narrow ? 'column' : 'row',
+          flexDirection: 'column',
           gap: '0.75rem',
           flex: 1,
           minHeight: 420,
+          minWidth: 0,
         }}
       >
-        <div style={{ flex: '1 1 55%', minHeight: 360, minWidth: 0, border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+        <div style={{ flex: '0 0 auto', minHeight: 360, minWidth: 0, border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
           <MapContainer
             key={`${mapView.lat}-${mapView.lng}-${mapView.zoom}`}
             center={[mapView.lat, mapView.lng] as L.LatLngExpression}
@@ -597,10 +604,45 @@ export function MapPageView() {
             ))}
           </MapContainer>
         </div>
-        <div style={{ flex: '1 1 40%', minWidth: 0, maxWidth: narrow ? '100%' : 520 }}>
+        <div style={{ flex: '1 1 auto', minWidth: 0, width: '100%' }}>
           <MapEntityTable
             rows={tableRows}
             title={tableTitle}
+            titleRight={
+              <>
+                <label htmlFor="map-page-search" style={{ fontSize: '0.875rem', color: '#374151' }}>
+                  Filter
+                </label>
+                <input
+                  id="map-page-search"
+                  type="search"
+                  name="map-page-search"
+                  value={mapSearchQuery}
+                  onChange={(e) => setMapSearchQuery(e.target.value)}
+                  autoComplete="off"
+                  placeholder="Filter by name, address, number…"
+                  aria-label="Filter map and list"
+                  style={{
+                    flex: '1 1 200px',
+                    minWidth: 0,
+                    maxWidth: '100%',
+                    padding: '0.35rem 0.5rem',
+                    fontSize: '0.875rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: 4,
+                  }}
+                />
+                {mapSearchTrim ? (
+                  <button
+                    type="button"
+                    onClick={() => setMapSearchQuery('')}
+                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', cursor: 'pointer' }}
+                  >
+                    Clear
+                  </button>
+                ) : null}
+              </>
+            }
             emptyHint={tableEmptyHint}
             onOpenJob={jobFormModal ? openJobOnMap : undefined}
           />

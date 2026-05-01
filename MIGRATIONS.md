@@ -9,7 +9,7 @@ last_updated: 2026-05-01
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: ~95
+total_migrations: ~97
 date_range: "Through March 24, 2027"
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -93,6 +93,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### May 2026
 
 #### May 1, 2026
+
+**`20260501205038_fix_checklist_items_rls_recursion.sql`**
+- **Purpose**: Eliminate **infinite recursion** between **`checklist_items`** SELECT (assignee **`EXISTS`**) and **`checklist_item_assignees`** / **`checklist_instance_assignees`** policies that subqueried **`checklist_items`** under RLS for **`can_define_task_style_checklist_items()`** callers (e.g. **estimator** saving header **Task** from **Bids**).
+- **Changes**: **`checklist_item_created_by_auth_user(uuid)`**, **`checklist_instance_parent_item_created_by_auth_user(uuid)`** — **`SECURITY DEFINER`**, **`SET row_security = off`**, narrow ownership checks; recreate affected **`checklist_items`** SELECT (creator branch before assignee **`EXISTS`**), junction policies, **`checklist_instances`** SELECT/INSERT creator branches; **`GRANT EXECUTE`** **`authenticated`**, **`service_role`**
+- **Impact**: **[`RECENT_FEATURES.md`](RECENT_FEATURES.md)** **v2.450**; regenerate **`src/types/database.ts`** when linked schema includes this migration
+- **Category**: Checklist / RLS
 
 **`20260501030427_remove_jobs_ledger_payment_and_reconcile.sql`**
 - **Purpose**: **`remove_jobs_ledger_payment_and_reconcile(p_payment_id uuid)`** — `SECURITY DEFINER` RPC deletes one **`jobs_ledger_payments`** row, recomputes **`jobs_ledger.payments_made`**, reconciles **`jobs_ledger_invoices`** **`paid`/`billed`** from remaining invoice-linked amounts (ε **`0.0001`**), may move **`jobs_ledger`** **`paid`→`billed`** via **`update_job_status`** when revenue exceeds payments; **rejects** payments tied to **Stripe-hosted** invoices (**`stripe_invoice_id`** non-empty). Roles: **`dev`**, **`master_technician`**, **`assistant`**, **`primary`** with same job-access pattern as other billing RPCs. Frees Mercury allocation capacity when the row had **`mercury_transaction_id`**.
@@ -551,6 +557,22 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Category**: Estimates / Edge
 
 ### July 2026
+
+#### July 20, 2026
+
+**`20270520120000_address_geocodes_estimator_map_access.sql`**
+- **Purpose**: **`address_geocodes`** SELECT/INSERT/UPDATE/DELETE for **estimator** alongside **dev**, **master_technician**, and **assistant** (Map **`/map`** + Edge **`geocode-one`** / **`geocode-address-batch`** cache writes).
+- **Changes**: Replace four **`address_geocodes`** policies with role allowlist **`IN ('dev', 'master_technician', 'assistant', 'estimator')`**; table **`COMMENT`**.
+- **Impact**: **`ACCESS_CONTROL.md`** Map footnote; **`PROJECT_DOCUMENTATION.md`** §16; **`RECENT_FEATURES.md`** **v2.451**
+- **Category**: Map / RLS
+
+#### July 19, 2026
+
+**`20270519120000_subcontractor_helpers_estimator_checklist_task_definitions.sql`**
+- **Purpose**: Header **Task** modal end-to-end for **subcontractor**, **helpers**, and **estimator** — checklist **`INSERT`** / assignees / instances without widening **`is_dev_or_master_or_assistant()`** globally.
+- **Changes**: **`can_define_task_style_checklist_items()`**; extend **`checklist_items`** (SELECT **`created_by_user_id`**, mutating policies), **`checklist_item_assignees`**, **`checklist_instance_assignees`**, **`checklist_instances`** — field roles scoped to items they created (**superseded in part** by **`20260501205038`** for recursion-safe ownership checks after policies referenced **`checklist_items`** from junction **`EXISTS`**).
+- **Impact**: **[`Layout.tsx`](src/components/Layout.tsx)** + **[`headerTaskDispatchEstimatorEligible.ts`](src/lib/headerTaskDispatchEstimatorEligible.ts)** + **[`ChecklistAddModal.tsx`](src/components/ChecklistAddModal.tsx)**; **`ACCESS_CONTROL.md`**; **`RECENT_FEATURES.md`** **v2.450**
+- **Category**: Checklist / RLS / Field roles
 
 #### July 18, 2026
 

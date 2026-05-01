@@ -8847,6 +8847,14 @@ export type Database = {
         Returns: boolean
       }
       check_out_project: { Args: { p_project_id: string }; Returns: Json }
+      checklist_instance_parent_item_created_by_auth_user: {
+        Args: { p_instance_id: string }
+        Returns: boolean
+      }
+      checklist_item_created_by_auth_user: {
+        Args: { p_item_id: string }
+        Returns: boolean
+      }
       complete_job_collect_payment_flow_for_invoice: {
         Args: { p_stripe_invoice_id: string }
         Returns: Json

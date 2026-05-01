@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
-import { mapGeocodeErrorMessage } from '../lib/map/geocodeErrorMessage'
-import { normalizeAddressForGeocodeKey } from '../lib/map/normalizeAddressForGeocode'
 import type { Database } from '../types/database'
+import { normalizeAddressForGeocodeKey } from '../lib/map/normalizeAddressForGeocode'
 
 type JobRow = Pick<
   Database['public']['Tables']['jobs_ledger']['Row'],
@@ -32,40 +31,10 @@ export type MapPageEntity = {
   meta: string
 }
 
-const NOMINATIM_CLIENT_DELAY_MS = 1100
+/** Matches [`geocode-address-batch`](supabase/functions/geocode-address-batch/index.ts) `MAX_ADDRESSES`. */
+const GEOCODE_BATCH_MAX = 20
 
-function sleep(ms: number) {
-  return new Promise<void>((r) => setTimeout(r, ms))
-}
-
-export type GeocodeAddressRow = {
-  address_normalized: string
-  addressLabel: string
-  status: 'pending' | 'in_progress' | 'ok' | 'error'
-  errorMessage?: string
-}
-
-type GeocodeOneOk = {
-  ok: true
-  address_normalized: string
-  lat: number
-  lng: number
-  fromCache: boolean
-  /** Added with Google fallback; when missing, non-cache successes follow legacy Nominatim pacing. */
-  source?: 'cache' | 'nominatim' | 'google'
-  /** Set by Edge when `refresh_google_only` was used. */
-  refreshed?: true
-}
-type GeocodeOneFail = { ok: false; address_normalized: string; error: string; detail?: string }
-type GeocodeOneResponse = GeocodeOneOk | GeocodeOneFail
-
-function shouldDelayAfterNominatimSuccess(d: GeocodeOneOk) {
-  if (d.fromCache) return false
-  const s = d.source
-  if (s === 'google' || s === 'cache') return false
-  if (s === 'nominatim') return true
-  return true
-}
+type GeocodeBatchResultRow = { address_normalized: string; lat: number; lng: number }
 
 function resolveEstimateAddress(e: EstimateRow): string | null {
   const a = e.for_address?.trim()
@@ -77,17 +46,26 @@ function resolveEstimateAddress(e: EstimateRow): string | null {
   return null
 }
 
+export type GeocodeAddressRow = {
+  address_normalized: string
+  addressLabel: string
+  status: 'pending' | 'in_progress' | 'ok' | 'error'
+  errorMessage?: string
+}
+
 export function useMapPageData(enabled: boolean) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [entities, setEntities] = useState<MapPageEntity[]>([])
   const [geocodeAddressRows, setGeocodeAddressRows] = useState<GeocodeAddressRow[]>([])
+  const loadGenerationRef = useRef(0)
 
   const load = useCallback(async () => {
     if (!enabled) {
       setLoading(false)
       return
     }
+    const gen = ++loadGenerationRef.current
     setLoading(true)
     setError(null)
     setGeocodeAddressRows([])
@@ -112,6 +90,8 @@ export function useMapPageData(enabled: boolean) {
           'map estimates'
         ),
       ])
+
+      if (gen !== loadGenerationRef.current) return
 
       const next: MapPageEntity[] = []
       for (const j of jobRows) {
@@ -182,6 +162,8 @@ export function useMapPageData(enabled: boolean) {
               'map address_geocodes'
             )
 
+      if (gen !== loadGenerationRef.current) return
+
       const byKey = new Map<string, { lat: number; lng: number }>(
         cached.map((c) => [c.address_normalized, { lat: c.lat, lng: c.lng }])
       )
@@ -193,73 +175,86 @@ export function useMapPageData(enabled: boolean) {
         })
 
       const missing = keys.filter((k) => !byKey.has(k))
-      if (missing.length > 0) {
-        const displayByKey = new Map<string, string>()
-        for (const en of next) {
-          if (missing.includes(en.addressKey) && !displayByKey.has(en.addressKey)) {
-            displayByKey.set(en.addressKey, en.addressLabel)
-          }
+      const displayByKey = new Map<string, string>()
+      for (const en of next) {
+        if (missing.includes(en.addressKey) && !displayByKey.has(en.addressKey)) {
+          displayByKey.set(en.addressKey, en.addressLabel)
         }
-        const ordered = missing.map((k) => ({ key: k, display: displayByKey.get(k) ?? k }))
-        setGeocodeAddressRows(ordered.map(({ key, display }) => ({ address_normalized: key, addressLabel: display, status: 'pending' as const })))
-        for (let i = 0; i < ordered.length; i++) {
-          const { key, display } = ordered[i]!
-          setGeocodeAddressRows((prev) =>
-            prev.map((r) => (r.address_normalized === key ? { ...r, status: 'in_progress' } : r))
-          )
-          const { data, error: fnErr } = await supabase.functions.invoke<GeocodeOneResponse>('geocode-one', {
-            body: { address: display },
-          })
-          if (fnErr) {
-            setGeocodeAddressRows((prev) =>
-              prev.map((r) =>
-                r.address_normalized === key ? { ...r, status: 'error', errorMessage: fnErr.message } : r
-              )
-            )
-            if (i < ordered.length - 1) await sleep(NOMINATIM_CLIENT_DELAY_MS)
-            continue
-          }
-          if (data && typeof data === 'object' && 'ok' in data && data.ok) {
-            const d = data as GeocodeOneOk
-            byKey.set(d.address_normalized, { lat: d.lat, lng: d.lng })
-            setGeocodeAddressRows((prev) =>
-              prev.map((r) => (r.address_normalized === key ? { ...r, status: 'ok' } : r))
-            )
-            setEntities(mergeCoords(next, byKey))
-            if (i < ordered.length - 1 && shouldDelayAfterNominatimSuccess(d)) {
-              await sleep(NOMINATIM_CLIENT_DELAY_MS)
-            }
-            continue
-          }
-          if (data && typeof data === 'object' && 'ok' in data && !data.ok) {
-            const d = data as GeocodeOneFail
-            setGeocodeAddressRows((prev) =>
-              prev.map((r) =>
-                r.address_normalized === key
-                  ? { ...r, status: 'error', errorMessage: mapGeocodeErrorMessage(d.error, d.detail) }
-                  : r
-              )
-            )
-            if (i < ordered.length - 1) await sleep(NOMINATIM_CLIENT_DELAY_MS)
-            continue
-          }
-          setGeocodeAddressRows((prev) =>
-            prev.map((r) =>
-              r.address_normalized === key
-                ? { ...r, status: 'error', errorMessage: 'Unexpected geocode response' }
-                : r
-            )
-          )
-          if (i < ordered.length - 1) await sleep(NOMINATIM_CLIENT_DELAY_MS)
-        }
+      }
+      const ordered = missing.map((k) => ({ key: k, display: displayByKey.get(k) ?? k }))
+
+      if (ordered.length > 0) {
+        setGeocodeAddressRows(
+          ordered.map(({ key, display }) => ({ address_normalized: key, addressLabel: display, status: 'pending' as const }))
+        )
       }
 
       setEntities(mergeCoords(next, byKey))
+      setLoading(false)
+
+      if (ordered.length > 0) {
+        for (let offset = 0; offset < ordered.length; offset += GEOCODE_BATCH_MAX) {
+          if (gen !== loadGenerationRef.current) return
+          const chunk = ordered.slice(offset, offset + GEOCODE_BATCH_MAX)
+          const chunkKeys = new Set(chunk.map((c) => c.key))
+          setGeocodeAddressRows((prev) =>
+            prev.map((r) => (chunkKeys.has(r.address_normalized) ? { ...r, status: 'in_progress' as const } : r))
+          )
+
+          const { data, error: fnErr } = await supabase.functions.invoke<{ results?: GeocodeBatchResultRow[] }>(
+            'geocode-address-batch',
+            { body: { addresses: chunk.map((c) => c.display) } }
+          )
+
+          if (gen !== loadGenerationRef.current) return
+
+          if (fnErr) {
+            setGeocodeAddressRows((prev) =>
+              prev.map((r) =>
+                chunkKeys.has(r.address_normalized)
+                  ? { ...r, status: 'error' as const, errorMessage: fnErr.message }
+                  : r
+              )
+            )
+            continue
+          }
+
+          const rawResults =
+            data != null && typeof data === 'object' && Array.isArray(data.results) ? data.results : []
+          const results: GeocodeBatchResultRow[] = rawResults.filter(
+            (r): r is GeocodeBatchResultRow =>
+              r != null &&
+              typeof r === 'object' &&
+              typeof (r as GeocodeBatchResultRow).address_normalized === 'string' &&
+              typeof (r as GeocodeBatchResultRow).lat === 'number' &&
+              typeof (r as GeocodeBatchResultRow).lng === 'number'
+          )
+          const got = new Set(results.map((r) => r.address_normalized))
+          for (const r of results) {
+            byKey.set(r.address_normalized, { lat: r.lat, lng: r.lng })
+          }
+          setGeocodeAddressRows((prev) =>
+            prev.map((row) => {
+              if (!chunkKeys.has(row.address_normalized)) return row
+              if (got.has(row.address_normalized)) return { ...row, status: 'ok' as const }
+              return {
+                ...row,
+                status: 'error' as const,
+                errorMessage: 'Could not geocode address',
+              }
+            })
+          )
+          setEntities(mergeCoords(next, byKey))
+        }
+      }
     } catch (e) {
+      if (gen !== loadGenerationRef.current) return
       setError(formatErrorMessage(e, 'Could not load map data'))
       setEntities([])
     } finally {
-      setLoading(false)
+      if (gen === loadGenerationRef.current) {
+        setLoading(false)
+      }
     }
   }, [enabled])
 

@@ -334,7 +334,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 **Purpose**: Bid estimation and material pricing specialist
 
 **Access**:
-- Dashboard, Materials, Estimates, Bids, Calendar, Checklist, People, Settings, Tally, Prospects (if enabled)
+- Dashboard, Materials, Estimates, Bids, **Map** (`/map`), Calendar, Checklist, People, Settings, Tally, Prospects (if enabled)
 - **Customers** (`/customers`): list, search, notes, create (master required), edit **basic fields** (name, address, contact, customer type, date met). **Advanced** (customer owner), **merge**, and **delete** are not available in the UI; DB blocks changing **owner** (`master_user_id`) and **Stripe** (`stripe_customer_id`) on save.
 - **Blocked**: Projects, People, Jobs, Templates
 
@@ -385,7 +385,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 - Focused interface for bid workflows
 
 **Layout Behavior**:
-- Navigation shows: Dashboard, Materials, Estimates, Bids, **Customers**, Prospects (if enabled), Calendar, Checklist, People (mobile menu / icons per layout)
+- Navigation shows: Dashboard, Materials, Estimates, Bids, **Customers**, Prospects (if enabled), Calendar, Checklist, People (desktop inline nav); **mobile** — **Dashboard** is the **first row inside the hamburger menu** (not the icon strip beside the menu); remaining items and **gear** shortcuts (Documents, Materials, Checklist, **Map**) match [`Layout.tsx`](src/components/Layout.tsx)
 - Attempts to access blocked pages redirect to `/bids`
 
 ---
@@ -523,15 +523,15 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 | **Materials** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited |
 | **Templates** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Settings** | ✅ | ✅ limited | ✅ limited | ❌ | ✅ limited | ✅ limited | ✅ limited |
-| **Map** (`/map`) | ✅ (header **Map** + geocode) | ❌* | ❌* | ❌* | ❌* | ❌* | ❌* |
+| **Map** (`/map`) | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
 
-*\* **Map**: The **header** **Map** (pin) link is **dev**-only. **Edge** geocoding (**`geocode-one`**, **`geocode-address-batch`**) requires **dev**. **Master** and **assistant** are not redirected from `/map` if opened by **URL** ([`layoutRouteAccess.ts`](src/lib/layoutRouteAccess.ts)); **estimator**, **primary**, **superintendent**, and **subcontractor** are redirected away from `/map` by **Layout** when it is not an allowed path.*
+*\* **Map**: **dev**, **master_technician**, **assistant**, and **estimator** — page **`/map`**; **[`layoutRouteAccess.ts`](src/lib/layoutRouteAccess.ts)**, **`Layout.tsx`**: desktop **pin** when `canShowMapNav`; **narrow** hides pin → **Map** under **gear**; **`address_geocodes`** RLS (**`20270520120000_address_geocodes_estimator_map_access.sql`**); Edge **`geocode-address-batch`** (primary load chunks) / **`geocode-one`** (**Review geocodes** Google refresh, Settings default-label). **Subcontractor**, **primary**, and **superintendent** are redirected away from **`/map`** when it is not an allowed route.*
 
 ### Redirection Rules
 
 **Subcontractors**: Any page except Dashboard/Calendar/Checklist/Settings/Tally → `/dashboard`. On those allowed routes, **Task Dispatch**, **Estimator Inbox**, and **Task** (checklist add) in the header behave like other roles that pass [`headerTaskDispatchEstimatorEligible.ts`](src/lib/headerTaskDispatchEstimatorEligible.ts) (`helpers` matches — see **helpers** section above).
 
-**Estimators**: Any page except Dashboard/Materials/Estimates/Bids/**Customers**/Calendar/Checklist/People/Settings/Tally/Prospects (if enabled) → `/bids`
+**Estimators**: Any page except Dashboard/**Map**/Materials/Estimates/Bids/**Customers**/Calendar/Checklist/People/Settings/Tally/Prospects (if enabled) → `/bids`
 
 **Primary**: Any page except Dashboard/Materials/Estimates/Jobs/Bids/Prospects/Calendar/Checklist/Settings → `/dashboard`; Jobs shows Reports and Billing tabs only; Bids full access (all tabs); Projects hidden
 
@@ -582,7 +582,7 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 
 **RLS notes** (v2.408, [`20270427120000_checklist_tech_tree_multi_roadmap.sql`](supabase/migrations/20270427120000_checklist_tech_tree_multi_roadmap.sql)): **Dev**, **master_technician**, **assistant**, and **primary** bypass membership for **select** and **structure** (see all roadmaps). **Subcontractor**, **estimator**, **superintendent** (and anyone not in that bypass set) need a row in **`checklist_tech_tree_roadmap_members`** for each roadmap they can open. Migration backfill adds **viewer** on the **Default** roadmap for all non-archived users, so everyone typically retains access to that graph; additional named roadmaps are visible only to bypass roles or invited members.
 
-**Task modal CHECKLIST RLS** ([`20270519120000_subcontractor_helpers_estimator_checklist_task_definitions.sql`](supabase/migrations/20270519120000_subcontractor_helpers_estimator_checklist_task_definitions.sql)): **`can_define_task_style_checklist_items()`** allows **subcontractor**, **helpers**, and **estimator** to insert/update/delete checklist definitions only when **`created_by_user_id = auth.uid()`** (and related assignee/instance rows for those items); staff paths still use **`is_dev_or_master_or_assistant()`** unchanged.
+**Task modal CHECKLIST RLS** ([`20270519120000_subcontractor_helpers_estimator_checklist_task_definitions.sql`](supabase/migrations/20270519120000_subcontractor_helpers_estimator_checklist_task_definitions.sql)): **`can_define_task_style_checklist_items()`** allows **subcontractor**, **helpers**, and **estimator** to insert/update/delete checklist definitions only when **`created_by_user_id = auth.uid()`** (and related assignee/instance rows for those items); staff paths still use **`is_dev_or_master_or_assistant()`** unchanged. [**`20260501205038_fix_checklist_items_rls_recursion.sql`](supabase/migrations/20260501205038_fix_checklist_items_rls_recursion.sql)** adds **`checklist_item_created_by_auth_user(uuid)`** and **`checklist_instance_parent_item_created_by_auth_user(uuid)`** (**`SECURITY DEFINER`**, **`SET row_security = off`**) so junction/instance policies do not query **`checklist_items`** under RLS recursively (**RECENT_FEATURES.md** v2.450).
 
 ### Quickfill (`/quickfill`)
 

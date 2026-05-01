@@ -12,11 +12,17 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.448 → v2.4"
+version_range: "v2.450 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.448)"
+  - name: "Latest Version (v2.450)"
     line: ~1495
+    description: "Header Task Dispatch / Estimator / Task for subcontractor + helpers; checklist Task modal RLS (can_define_task_style_checklist_items); RLS recursion fix (SECURITY DEFINER ownership helpers)"
+  - name: "Latest Version (v2.449)"
+    line: ~1512
+    description: "Bids New/Edit — Estimator & Account Man pickers (loadEstimatorUsers): non-archived, not helpers, not name delete; withSupabaseRetry"
+  - name: "Latest Version (v2.448)"
+    line: ~1500
     description: "Settings — Most recent push notifications (top): notification_history push/both, limit 5; jump nav Recent push"
   - name: "Latest Version (v2.446)"
     line: ~1504
@@ -1168,6 +1174,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.449 — **Bids** — **New/Edit bid** — **Estimator** and **Account Man** **`SearchableSelect`** options loaded by **`loadEstimatorUsers`**: omit **`helpers`** role, **`users`** with **`archived_at`** set, and users whose **name** is exactly **`delete`** (trim, case-insensitive); **`withSupabaseRetry`**; same list drives attestation name lookup (**[`Bids.tsx`](src/pages/Bids.tsx)**)](#latest-updates-v2449)
 **New:** [v2.448 — **Settings** — **Most recent push notifications** at top (after **Jump to**): last **5** rows from **`notification_history`** with **`channel`** **push** or **both**; **`SettingsRecentPushNotifications`**; **`#settings-recent-push`** jump link **Recent push** — server-logged sends only troubleshooting](#latest-updates-v2448)
 **New:** [v2.447 — **Job Detail** modal — **trade** pill (**PLUM** / **ELEC** / **HVAC**) on the **title** row (**`buildServiceTypeTradePill`**, **`serviceTypeTradePill.ts`**, parity with Jobs Stages subline); **Close** moved to **bottom-right** footer (scrolls with body); **limited** snapshot footnotes **centered**; **Service type** row under **Status** **removed**](#latest-updates-v2447)
 **New:** [v2.446 — **Jobs** / **Workflow** — **Job activity / notes**: **Arrived** / **Leaving** stamp toolbar **Job Detail** only — **`jobThreadStampActions`** omitted on **Jobs** Stages + **Workflow** linked-job **`JobThreadNotesPanel`** ([**`Jobs.tsx`**](src/pages/Jobs.tsx), [**`Workflow.tsx`**](src/pages/Workflow.tsx)); **`DetailJobModal`** unchanged (**`submitStamp`**)](#latest-updates-v2446)
@@ -1486,6 +1493,32 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.450)
+
+**Date**: 2026-05-01
+
+### **Layout** — **Task Dispatch**, **Estimator Inbox**, **Task** — **subcontractor** / **helpers** / **estimator** + checklist **RLS**
+
+- **Header** — **[`headerTaskDispatchEstimatorEligible.ts`](src/lib/headerTaskDispatchEstimatorEligible.ts)** gates **`Layout.tsx`** toolbar buttons: **Task Dispatch** and **Estimator Inbox** include **`isSubcontractorLikeRole`** (**subcontractor**, **helpers**) plus existing staff/estimator; **Task** (checklist add) adds **`primary`** and **`isSubcontractorLikeRole`** (same file).
+- **Modal** — **[`ChecklistAddModal.tsx`](src/components/ChecklistAddModal.tsx)** **`canManage`** includes **subcontractor**, **helpers**, and **estimator** so the header **Task** button is not a no-op for field roles.
+- **Database** — **[`20270519120000_subcontractor_helpers_estimator_checklist_task_definitions.sql`](supabase/migrations/20270519120000_subcontractor_helpers_estimator_checklist_task_definitions.sql)** adds **`can_define_task_style_checklist_items()`** and widens **`checklist_items`** / **`checklist_item_assignees`** / **`checklist_instance_assignees`** / **`checklist_instances`** policies only (ownership: **`created_by_user_id = auth.uid()`** for field roles; **`is_dev_or_master_or_assistant()`** unchanged elsewhere — Quickfill marks, tech tree, etc.).
+- **Regression fix** — **[`20260501205038_fix_checklist_items_rls_recursion.sql`](supabase/migrations/20260501205038_fix_checklist_items_rls_recursion.sql)** — **`checklist_item_created_by_auth_user(uuid)`** and **`checklist_instance_parent_item_created_by_auth_user(uuid)`** (**`SECURITY DEFINER`**, **`SET row_security = off`**) replace in-policy **`EXISTS (SELECT … FROM checklist_items …)`** on junction/instance paths so **estimators** (and other non-staff roles using **`can_define_task_style_checklist_items()`**) do not hit **infinite recursion detected in policy for relation "checklist_items"** when saving a task (e.g. from **Bids**). **`checklist_items`** SELECT policy orders **`created_by_user_id = auth.uid()`** before assignee **`EXISTS`** as a fast path.
+- **Docs** — **`ACCESS_CONTROL.md`** (Dashboard send vs inbox, Checklist RLS notes); **`MIGRATIONS.md`**; **`PROJECT_DOCUMENTATION.md`** / **`AI_CONTEXT.md`** / **`AGENTS.md`** cross-links.
+
+---
+
+## Latest Updates (v2.449)
+
+**Date**: 2026-05-01
+
+### **Bids** — **New/Edit bid** — **Estimator** and **Account Man** user lists
+
+- **Behavior** — Both pickers use the same in-memory list from **`loadEstimatorUsers`** in [**`Bids.tsx`**](src/pages/Bids.tsx). The query selects **`users`** with **`archived_at` IS NULL**, **`role` ≠ `helpers`**, ordered by name; results pass through **`withSupabaseRetry`**. Rows whose **display name** is exactly **`delete`** after trim (case-insensitive) are dropped client-side (guards junk accounts).
+- **Edge case** — If an existing bid still has **`estimator_id`** / **`account_manager_id`** pointing at an excluded user (for example legacy **Helper** or archived row), that UUID may not appear in the dropdown; **`SearchableSelect`** can show the empty placeholder while state still holds the id until the editor changes selection or saves.
+- **Docs** — **`BIDS_SYSTEM.md`** (Edit Bid Modal pickers); **`PROJECT_DOCUMENTATION.md`** (Bids); **`AGENTS.md`**; **`AI_CONTEXT.md`**.
+
 ---
 
 ## Latest Updates (v2.448)
@@ -3206,7 +3239,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 
 - **Section** — **`physical-inbox`** in **`SECTIONS`** (after **Texts**, before **Office Leaving**); same chrome as **Email** / **Texts** (**`omitDefaultMarkButton`**, inner **Mark Physical inbox up to date!**).
 - **Prompts** — Physical inbox clarity + reminder to add tasks for items that cannot be cleared quickly.
-- **Actions** — Inline **Task Dispatch**, **Estimator Inbox**, and **Task** icon buttons (same colors and modal hooks as [`Layout.tsx`](src/components/Layout.tsx): **`useDispatchTaskModal`**, **`useEstimatorTaskModal`**, **`useChecklistAddModal`**); role gates match the header (**Task**: dev / master_technician / assistant / primary / estimator; **Dispatch** + **Estimator**: dev / master_technician / assistant / estimator).
+- **Actions** — Inline **Task Dispatch**, **Estimator Inbox**, and **Task** icon buttons (same colors and modal hooks as [`Layout.tsx`](src/components/Layout.tsx): **`useDispatchTaskModal`**, **`useEstimatorTaskModal`**, **`useChecklistAddModal`**); role gates match the header (**Task**: dev / master_technician / assistant / primary / estimator / subcontractor / helpers when **`headerTaskDispatchEstimatorEligible`** passes — **v2.450** expands header parity; Quickfill page remains unreachable for subcontractor/helpers so they only see header actions on allowed routes). **Dispatch** + **Estimator**: same eligibility helper as header.
 - **Note + mark** — Textarea (**Still in physical inbox**); empty mark → warning toast; **`markSectionUpToDate('physical-inbox', { noteText })`** → **`quickfill_section_marks`** / **`quickfill_section_mark_events`** (no migration; **`section_id`** is free text).
 - **Metric** — **`useReportQuickfillSectionMetric('physical-inbox', …)`** (line count from textarea).
 
