@@ -126,7 +126,9 @@ export function Toast({
 
   const body = (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
-      <span id={messageId}>{message}</span>
+      <span id={messageId} style={{ whiteSpace: 'pre-line' }}>
+        {message}
+      </span>
       <button
         type="button"
         onClick={onClose}

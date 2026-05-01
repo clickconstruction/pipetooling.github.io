@@ -7,16 +7,28 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-30
+last_updated: 2026-05-01
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.442 → v2.4"
+version_range: "v2.446 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.446)"
+    line: ~1482
+    description: "Job activity / notes — Arrived & Leaving stamp buttons Job Detail only (omit jobThreadStampActions on Jobs Stages + Workflow JobThreadNotesPanel)"
+  - name: "Latest Version (v2.445)"
+    line: ~1495
+    description: "Job activity / notes — merged Dispatch schedule block notes (job_schedule_blocks.note) as read-only Schedule rows; dedupe linked crew; useJobThreadNotes + modal + realtime job_schedule_blocks"
+  - name: "Latest Version (v2.444)"
+    line: ~1531
+    description: "Job activity / notes — Arrived & Leaving stamp mechanics (jobThreadNoteStampBody; submitStamp / submitJobThreadStamp); composer auto-grow; activity scroll region scroll-to-newest (activityListMaxHeight); Detail modal outer scroll removed"
+  - name: "Latest Version (v2.443)"
+    line: ~1532
+    description: "People Users tab — search hides empty roster sections; single global No matches when no section has hits (usersTabSectionHasVisibleRows, usersTabSearchShowsNoSections)"
   - name: "Latest Version (v2.442)"
-    line: ~1462
+    line: ~1487
     description: "Bids Bid Board — dev-only estimator labor cost table under Weekly bids sent (clock hours × wage / sent count / bid value)"
   - name: "Latest Version (v2.441)"
     line: ~1476
@@ -1153,6 +1165,10 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.446 — **Jobs** / **Workflow** — **Job activity / notes**: **Arrived** / **Leaving** stamp toolbar **Job Detail** only — **`jobThreadStampActions`** omitted on **Jobs** Stages + **Workflow** linked-job **`JobThreadNotesPanel`** ([**`Jobs.tsx`**](src/pages/Jobs.tsx), [**`Workflow.tsx`**](src/pages/Workflow.tsx)); **`DetailJobModal`** unchanged (**`submitStamp`**)](#latest-updates-v2446)
+**New:** [v2.445 — **Jobs** / **Workflow** / **Job Detail** — **Job activity / notes**: Dispatch **schedule block** notes (**`job_schedule_blocks.note`**) merged into the same timeline as thread notes + field reports — read-only **Schedule** rows (**`jobThreadScheduleActivity.ts`**, **`scheduleBlocksToScheduleActivityItems`**); linked **`shared_block_group_id`** legs **deduped**; sort by **`updated_at`** / **`created_at`**; **`fetchJobScheduleBlocksForJob`** in **`useJobThreadNotes`** / **`useJobThreadNotesForModal`**; Realtime **`job_schedule_blocks`** — **Stages Last activity column unchanged** (still **`jobs_ledger_thread_note_stats`** only)](#latest-updates-v2445)
+**New:** [v2.444 — **Jobs** / **Workflow** / **Job Detail** — **Job activity / notes**: **Arrived** / **Leaving** stamp buttons (**`buildJobThreadStampBody`**, **`jobThreadNoteStampBody.ts`**, **`submitJobThreadStamp`** / modal **`submitStamp`**); composer **auto-grow** textarea; activity list **`max-height`** + snap **scroll** to **newest** (**`activityListMaxHeight`**, **`activityScrollRef`**); **Detail** modal — no outer scroll around panel (**[`JobThreadNotesPanel.tsx`](src/components/JobThreadNotesPanel.tsx)**, **`DetailJobModal.tsx`**)](#latest-updates-v2444)
+**New:** [v2.443 — **People** **Users** tab — **Search**: roster sections (**Master Technicians**, … **Devs**) with **no** matching rows are **hidden** (no per-section **No matches.**); one **`role="status"`** **No matches.** under the search when **every** section is empty — **`usersTabSectionHasVisibleRows`**, **`usersTabSearchShowsNoSections`** in **[`People.tsx`](src/pages/People.tsx)**](#latest-updates-v2443)
 **New:** [v2.442 — **Bids** **Bid Board** — **dev only** — **Estimator labor cost** below **Weekly bids sent**: labor **$ / estimate sent** and **¢ / $ bid value** from **`clock_sessions`** (all hours that week) × **`people_pay_config`** vs same pivot **sent** counts and **`bid_value`** sums — **[`bidBoardWeeklyEstimatorLaborCost.ts`](src/lib/bidBoardWeeklyEstimatorLaborCost.ts)**, **[`BidBoardWeeklyEstimatorLaborDevSection.tsx`](src/components/bids/BidBoardWeeklyEstimatorLaborDevSection.tsx)**, **[`Bids.tsx`](src/pages/Bids.tsx)**](#latest-updates-v2442)
 **New:** [v2.441 — **Bids** **Bid Board** — **Weekly bids sent** — **click** non-zero cell → **[`BidBoardWeeklySentCellModal`](src/components/bids/BidBoardWeeklySentCellModal.tsx)** lists bids → **Bid preview**; **`bidIds`** on pivot cells — **[`bidBoardWeeklySentStats.ts`](src/lib/bidBoardWeeklySentStats.ts)**, **[`BidBoardWeeklySentSection.tsx`](src/components/bids/BidBoardWeeklySentSection.tsx)**, **[`Bids.tsx`](src/pages/Bids.tsx)**](#latest-updates-v2441)
 **New:** [v2.440 — **Bids** **Bid Board** — **Weekly bids sent** **Outcomes** row: **W** · **L** only (hide **H** visually); **haven’t heard back** still in **`aria-label`** — **[`BidBoardWeeklySentSection.tsx`](src/components/bids/BidBoardWeeklySentSection.tsx)**](#latest-updates-v2440)
@@ -1465,6 +1481,59 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.446)
+
+**Date**: 2026-05-01
+
+### **Jobs** / **Workflow** — **Job activity / notes** — **Arrived** / **Leaving** stamps **Job Detail** only
+
+- **Behavior** — **`JobThreadNotesPanel`** shows **Arrived at job** / **Leaving job** only when **`jobThreadStampActions`** is passed. **Jobs** Stages expanded rows and **Workflow** project **linked jobs** thread expand no longer pass it; stamps remain on **Job Detail** via **`useJobThreadNotesForModal`** **`submitStamp`** (**[`DetailJobModal.tsx`](src/components/jobs/DetailJobModal.tsx)**).
+- **Code** — Removed **`jobThreadStampActions`** from three **`JobThreadNotesPanel`** call sites in [**`Jobs.tsx`**](src/pages/Jobs.tsx) and one in [**`Workflow.tsx`**](src/pages/Workflow.tsx); prop JSDoc in [**`JobThreadNotesPanel.tsx`**](src/components/JobThreadNotesPanel.tsx).
+
+---
+
+## Latest Updates (v2.445)
+
+**Date**: 2026-05-01
+
+### **Jobs** / **Workflow** / **Job Detail** — **Dispatch schedule notes** in **Job activity / notes**
+
+- **Behavior** — Non-empty **`job_schedule_blocks.note`** values load with the existing thread (**`jobs_ledger_thread_notes`**) and field-report (**`list_reports_for_job_ledger`**) rows inside **`JobThreadNotesPanel`**. Each block renders as a read-only **Schedule** row (green accent): meta from **`updated_at`** (fallback **`created_at`**) via **`getDispatchNoteDisplayMeta`**, line with calendar date · time window · assignee label(s), then note body (**`pre-wrap`**). Editing stays in Dispatch.
+- **Linked crew** — Rows sharing **`shared_block_group_id`** collapse to **one** timeline row; assignee names are sorted and comma-joined; **`sortAt`** is the latest leg **`updated_at`** / **`created_at`**.
+- **Source cap** — Uses **`fetchJobScheduleBlocksForJob`** (same **101**-row cap as elsewhere); blocks without notes are omitted from the merged activity list.
+- **Realtime** — **`job_schedule_blocks`** **`INSERT`/`UPDATE`/`DELETE`** triggers a quiet reload for the expanded Stages thread and for **Job Detail** when the modal hook is active (**`useJobThreadNotes`** / **`useJobThreadNotesForModal`**).
+- **Stages Last activity column** — Unchanged: preview still comes only from **`jobs_ledger_thread_note_stats`** (thread notes / reports), not schedule notes.
+- **Code** — **`scheduleBlocksToScheduleActivityItems`**, **`blocksWithNotesFromFetch`** — [**`jobThreadScheduleActivity.ts`**](src/lib/jobThreadScheduleActivity.ts); **`sortJobThreadActivity`** / **`activitySortMs`** — [**`jobThreadActivitySort.ts`**](src/lib/jobThreadActivitySort.ts); Vitest [**`jobThreadScheduleActivity.test.ts`**](src/lib/jobThreadScheduleActivity.test.ts); [**`JobThreadNotesPanel.tsx`**](src/components/JobThreadNotesPanel.tsx); [**`useJobThreadNotes.ts`**](src/hooks/useJobThreadNotes.ts); [**`useJobThreadNotesForModal.ts`**](src/hooks/useJobThreadNotesForModal.ts); [**`DetailJobModal.tsx`**](src/components/jobs/DetailJobModal.tsx) (**`activity=`**).
+
+---
+
+## Latest Updates (v2.444)
+
+**Date**: 2026-05-01
+
+### **Jobs** / **Workflow** — **Job activity / notes** (`JobThreadNotesPanel`)
+
+- **Arrived / Leaving stamps** — When **`jobThreadStampActions`** is wired, the header toolbar (left cluster with **Schedule** / **Week dispatch** when present) shows **Arrived** (green) and **Leaving** (amber); they insert normal **`jobs_ledger_thread_notes`** rows: poster name + wall time in **`APP_CALENDAR_TZ`** + fixed phrase (**Arrived at job** / **Leaving job**) via **`buildJobThreadStampBody`** — [**`jobThreadNoteStampBody.ts`**](src/lib/jobThreadNoteStampBody.ts). Disabled gray while submitting. **`submitJobThreadStamp`** in [**`useJobThreadNotes.ts`**](src/hooks/useJobThreadNotes.ts) vs modal **`submitStamp`** in [**`useJobThreadNotesForModal.ts`**](src/hooks/useJobThreadNotesForModal.ts). **v2.446**: only **Job Detail** passes **`jobThreadStampActions`**; **Jobs** Stages and **Workflow** linked-job expand omit it.
+- **Composer** — The **Add a note** field starts ~one line and **auto-grows** as text wraps (**`syncNoteTextareaHeight`**, **`rows={1}`**, **`resize: none`**, capped **`maxHeight`** ~10rem). **Enter** posts; **Shift+Enter** newline (unchanged).
+- **Activity list** — Notes render in an inner scroll region with **`max-height`** (**`activityListMaxHeight`**, default **`min(280px, 45vh)`**). After layout, **`scrollTop`** snaps to **`scrollHeight`** so the **newest** (bottom of chronological order) stays in view (**`activityScrollRef`**, **`useLayoutEffect`** + **`requestAnimationFrame`**).
+- **Job Detail modal** — Removed the outer **`maxHeight` / overflow-y`** wrapper around **`JobThreadNotesPanel`** so long threads scroll **inside** the panel instead of scrolling the whole modal body ([**`DetailJobModal.tsx`**](src/components/jobs/DetailJobModal.tsx)).
+- **Where shown** — **Job Detail** (minimal chrome props): stamps + composer + activity. **Jobs** Stages expanded rows and **Workflow** linked-job expand: composer + activity (stamps **Detail**-only since **v2.446**). Estimates job-linked panel unchanged (no stamps).
+
+---
+
+## Latest Updates (v2.443)
+
+**Date**: 2026-05-01
+
+### **People** — **Users** tab — **Search** hides empty sections
+
+- **Behavior** — With a non-empty **Search by name, email, phone…** query, each roster section in **`USERS_TAB_SECTIONS`** (Master Technicians through Helpers, plus **Devs** for **`dev`**) is omitted entirely when no row in that section matches (same fields as before: name, email, phone, notes). Empty sections no longer show a gray **No matches.** line under their heading. With no query, behavior is unchanged (sections still show **None yet.** when the slice has no people).
+- **Global empty** — When the query matches nobody in **any** visible section, a single muted **No matches.** appears below the search field (**`role="status"`**).
+- **Code** — **[`People.tsx`](src/pages/People.tsx)** — **`usersTabSectionHasVisibleRows`** (`useCallback`), **`usersTabSearchShowsNoSections`** (`useMemo`).
+- **Docs** — **`PROJECT_DOCUMENTATION.md`** §5 People **Users**; **`AGENTS.md`**; **`AI_CONTEXT.md`**.
+
 ---
 
 ## Latest Updates (v2.442)

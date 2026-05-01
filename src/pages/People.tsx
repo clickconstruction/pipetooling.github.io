@@ -1983,6 +1983,38 @@ export default function People() {
     return [...fromUsers, ...fromPeople].sort((a, b) => a.name.localeCompare(b.name))
   }
 
+  const usersTabSectionHasVisibleRows = useCallback(
+    (sec: UsersTabSection): boolean => {
+      if (sec.type === 'dev') {
+        if (!isDev) return false
+        if (!usersTabSearchQ) return true
+        const devUsersAll = users.filter((u) => u.role === 'dev')
+        return devUsersAll.some((u) => usersTabRowMatchesSearch(u, usersTabSearchQ))
+      }
+      const k = sec.kind
+      if (!usersTabSearchQ) return true
+      if (k === 'sub' || k === 'helper') {
+        const items = byKind(k)
+        if (items.length === 0) return false
+        const withAccount = items.filter((i) => i.source === 'user')
+        const external = items.filter((i) => i.source === 'people')
+        const q = usersTabSearchQ
+        const withAccountF = withAccount.filter((i) => usersTabRowMatchesSearch(i, q))
+        const externalF = external.filter((i) => usersTabRowMatchesSearch(i, q))
+        return withAccountF.length > 0 || externalF.length > 0
+      }
+      const kindItems = byKind(k)
+      if (kindItems.length === 0) return false
+      return kindItems.some((i) => usersTabRowMatchesSearch(i, usersTabSearchQ))
+    },
+    [usersTabSearchQ, isDev, users, people],
+  )
+
+  const usersTabSearchShowsNoSections = useMemo(() => {
+    if (!usersTabSearchQ) return false
+    return USERS_TAB_SECTIONS.every((sec) => !usersTabSectionHasVisibleRows(sec))
+  }, [usersTabSearchQ, usersTabSectionHasVisibleRows])
+
   const payConfigRosterSections = useMemo(() => {
     const assigned = new Set<string>()
     const sections: Array<{ label: string; names: string[] }> = []
@@ -7782,9 +7814,15 @@ export default function People() {
               }}
             />
           </div>
+          {usersTabSearchShowsNoSections ? (
+            <p role="status" style={{ color: '#6b7280', fontSize: '0.875rem', margin: '0 0 1rem 0' }}>
+              No matches.
+            </p>
+          ) : null}
           {USERS_TAB_SECTIONS.map((sec) => {
             if (sec.type === 'dev') {
               if (!isDev) return null
+              if (usersTabSearchQ && !usersTabSectionHasVisibleRows(sec)) return null
               return (
             <section key="users-tab-devs" style={{ marginBottom: '2rem' }}>
               <h2 style={{ margin: '0 0 0.5rem 0', fontSize: '1.125rem' }}>Devs</h2>
@@ -7796,9 +7834,6 @@ export default function People() {
                 const devUsersFiltered = usersTabSearchQ
                   ? devUsersAll.filter((u) => usersTabRowMatchesSearch(u, usersTabSearchQ))
                   : devUsersAll
-                if (usersTabSearchQ && devUsersFiltered.length === 0) {
-                  return <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No matches.</p>
-                }
                 return (
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                   {devUsersFiltered
@@ -7921,6 +7956,7 @@ export default function People() {
             }
             if (sec.type === 'personKind') {
               const k = sec.kind
+              if (usersTabSearchQ && !usersTabSectionHasVisibleRows(sec)) return null
               return (
                         <section key={`users-tab-kind-${k}`} style={{ marginBottom: '2rem' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
@@ -7946,9 +7982,6 @@ export default function People() {
                               const externalF = usersTabSearchQ
                                 ? external.filter((i) => usersTabRowMatchesSearch(i, usersTabSearchQ))
                                 : external
-                              if (usersTabSearchQ && withAccountF.length === 0 && externalF.length === 0) {
-                                return <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No matches.</p>
-                              }
                               return (
                                 <>
                                   {withAccountF.length > 0 ? (
@@ -7988,9 +8021,6 @@ export default function People() {
                               const externalF = usersTabSearchQ
                                 ? external.filter((i) => usersTabRowMatchesSearch(i, usersTabSearchQ))
                                 : external
-                              if (usersTabSearchQ && withAccountF.length === 0 && externalF.length === 0) {
-                                return <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No matches.</p>
-                              }
                               return (
                                 <>
                                   {withAccountF.length > 0 ? (
@@ -8024,9 +8054,6 @@ export default function People() {
                             const kindItemsF = usersTabSearchQ
                               ? kindItems.filter((i) => usersTabRowMatchesSearch(i, usersTabSearchQ))
                               : kindItems
-                            if (usersTabSearchQ && kindItemsF.length === 0) {
-                              return <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No matches.</p>
-                            }
                             return (
                               <ul style={usersTabRosterUlStyle}>
                                 {kindItemsF.map((item) => renderUsersTabRosterListItem(k, item))}

@@ -4,6 +4,7 @@ import { useAuth, type UserRole } from '../hooks/useAuth'
 import { fieldRoleServiceTypeIdsForUser, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import { useDailyGoalsGate } from '../contexts/DailyGoalsGateContext'
 import { useToastContext } from '../contexts/ToastContext'
+import { useUpdateFocusOpenerBridge } from '../contexts/UpdateFocusOpenerBridgeContext'
 import {
   formatUnifiedResult,
   formatUnifiedJobSchedulePrimaryLine,
@@ -76,6 +77,9 @@ function dispatchScheduledJobToUnified(d: DispatchScheduledJobForAssign): Extrac
 /** Matches Complete Clock In button and Clock In modal chrome. */
 const CLOCK_IN_ACCENT_ORANGE = '#ff6600'
 
+/** Above DetailJobModal backdrop (1004) when opened from Job Detail after Leaving stamp. */
+const UPDATE_FOCUS_OVERLAY_Z_INDEX = 1020
+
 const clockInSelectionOutlineSelected: CSSProperties = {
   border: `2px solid ${CLOCK_IN_ACCENT_ORANGE}`,
   background: '#fff7ed',
@@ -131,6 +135,7 @@ export default function ClockInOutButton({
   const { prefixMap } = useLedgerDisplayPrefixes()
   const { showToast } = useToastContext()
   const { notifyFirstClockInOfDay } = useDailyGoalsGate()
+  const { registerUpdateFocusOpener } = useUpdateFocusOpenerBridge()
   const [openSession, setOpenSession] = useState<OpenSession | null>(null)
   const [todaySessions, setTodaySessions] = useState<TodaySession[]>([])
   const [totalSecondsToday, setTotalSecondsToday] = useState(0)
@@ -950,12 +955,17 @@ export default function ClockInOutButton({
     }
   }
 
-  function handleOpenUpdateFocusModal() {
+  const handleOpenUpdateFocusModal = useCallback(() => {
     if (!openSession) return
     setUpdateFocusNotes('')
     setUpdateFocusError(null)
     setUpdateFocusModalOpen(true)
-  }
+  }, [openSession])
+
+  useEffect(() => {
+    registerUpdateFocusOpener(handleOpenUpdateFocusModal)
+    return () => registerUpdateFocusOpener(null)
+  }, [registerUpdateFocusOpener, handleOpenUpdateFocusModal])
 
   async function handleUpdateFocus() {
     if (!openSession || !userId || !userName?.trim()) return
@@ -1632,7 +1642,15 @@ export default function ClockInOutButton({
           role="dialog"
           aria-modal="true"
           aria-labelledby="update-focus-modal-title"
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: UPDATE_FOCUS_OVERLAY_Z_INDEX,
+          }}
           onClick={() => !updateFocusLoading && setUpdateFocusModalOpen(false)}
         >
           <div

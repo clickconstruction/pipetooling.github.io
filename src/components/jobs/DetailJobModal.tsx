@@ -27,6 +27,7 @@ import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling
 import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useUpdateFocusOpenerBridge } from '../../contexts/UpdateFocusOpenerBridgeContext'
 import { useAuth, type UserRole } from '../../hooks/useAuth'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
@@ -654,6 +655,7 @@ export default function DetailJobModal({
     showToast,
     authorDisplayName: authUser?.id ? profileName : undefined,
   })
+  const { requestOpenUpdateFocus } = useUpdateFocusOpenerBridge()
 
   const jobFormModal = useJobFormModal()
   const showEditJobButton =
@@ -934,19 +936,28 @@ export default function DetailJobModal({
         ) : null}
 
         <div
-          style={{ marginTop: '0.75rem', maxHeight: 320, overflowY: 'auto' }}
+          style={{ marginTop: '0.75rem' }}
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
           role="presentation"
         >
           <JobThreadNotesPanel
-            notes={threadNotes.notes}
+            activity={threadNotes.activity}
             loading={threadNotes.loading}
             canPost={threadNotes.canPost}
             draft={threadNotes.draft}
             onDraftChange={threadNotes.setDraft}
             onSubmit={() => void threadNotes.submitNote()}
             submitting={threadNotes.submitting}
+            jobThreadStampActions={{
+              onArrived: () => void threadNotes.submitStamp('arrived'),
+              onLeaving: () => {
+                void (async () => {
+                  const ok = await threadNotes.submitStamp('leaving')
+                  if (ok) requestOpenUpdateFocus()
+                })()
+              },
+            }}
             showSectionTitle={false}
             showEmptyPlaceholder={false}
             showComposerLabel={false}

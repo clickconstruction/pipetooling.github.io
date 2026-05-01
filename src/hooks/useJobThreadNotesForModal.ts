@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import type { JobThreadNoteRow } from '../components/JobThreadNotesPanel'
-import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import type { JobThreadActivityItem, JobThreadNoteRow } from '../components/JobThreadNotesPanel'
+import { appendToastRefreshHint, formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import { buildJobThreadStampBody, type JobThreadStampKind } from '../lib/jobThreadNoteStampBody'
+import { fetchJobScheduleBlocksForJob, type JobScheduleBlockWithAssigneeName } from '../lib/jobScheduleBlocks'
+import { scheduleBlocksToScheduleActivityItems } from '../lib/jobThreadScheduleActivity'
+import { sortJobThreadActivity } from '../lib/jobThreadActivitySort'
+
+export type { JobThreadStampKind } from '../lib/jobThreadNoteStampBody'
 
 type ToastFn = (message: string, type: 'success' | 'info' | 'warning' | 'error') => void
 
@@ -16,6 +22,15 @@ function makeOptimisticThreadNote(body: string, authorDisplayName: string | null
   }
 }
 
+function mergeNotesAndScheduleIntoActivity(
+  noteRows: JobThreadNoteRow[],
+  scheduleBlockRows: JobScheduleBlockWithAssigneeName[],
+): JobThreadActivityItem[] {
+  const scheduleItems = scheduleBlocksToScheduleActivityItems(scheduleBlockRows)
+  const noteItems: JobThreadActivityItem[] = noteRows.map((n) => ({ kind: 'note' as const, note: n }))
+  return sortJobThreadActivity([...noteItems, ...scheduleItems])
+}
+
 const SELECT =
   'id, body, created_at, author:users!jobs_ledger_thread_notes_author_user_id_fkey(name)'
 
@@ -26,15 +41,16 @@ async function queryNotesForJob(jobId: string): Promise<JobThreadNoteRow[]> {
         .from('jobs_ledger_thread_notes')
         .select(SELECT)
         .eq('job_id', jobId)
-        .order('created_at', { ascending: true }),
+        .order('created_at', {
+          ascending: true,
+        }),
     'load jobs_ledger_thread_notes modal',
   )
   return (data as JobThreadNoteRow[] | null) ?? []
 }
 
 /**
- * Thread notes for a single job while a modal is open (load + realtime INSERT + post).
- * Same RLS and fields as Jobs Stages useJobThreadNotes.
+ * Thread notes + dispatch schedule notes for a single job while a modal is open (load + realtime + post).
  */
 export function useJobThreadNotesForModal(
   jobId: string | null,
@@ -43,7 +59,7 @@ export function useJobThreadNotesForModal(
 ) {
   const { authUserId, showToast, authorDisplayName } = opts
   const realtimeChannelId = useId()
-  const [notes, setNotes] = useState<JobThreadNoteRow[]>([])
+  const [activity, setActivity] = useState<JobThreadActivityItem[]>([])
   const [loading, setLoading] = useState(false)
   const [draft, setDraft] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -54,21 +70,21 @@ export function useJobThreadNotesForModal(
     openJobIdRef.current = open && jobId ? jobId : null
   }, [open, jobId])
 
-  const reloadNotesQuiet = useCallback(async (id: string) => {
+  const reloadActivityQuiet = useCallback(async (id: string) => {
     try {
-      const rows = await queryNotesForJob(id)
+      const [rows, blocksPack] = await Promise.all([queryNotesForJob(id), fetchJobScheduleBlocksForJob(id)])
       if (openJobIdRef.current !== id) return
-      setNotes((prev) => {
+      const scheduleRows = blocksPack.error ? [] : blocksPack.data
+      setActivity((prev) => {
         const flight = inFlightThreadNoteRef.current
+        let combined = mergeNotesAndScheduleIntoActivity(rows, scheduleRows)
         if (flight) {
-          const opt = prev.find((n) => n.id === flight.optimisticId)
-          if (opt && !rows.some((r) => r.id === opt.id)) {
-            return [...rows, opt].sort(
-              (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
-            )
+          const opt = prev.find((i) => i.kind === 'note' && i.note.id === flight.optimisticId)
+          if (opt && opt.kind === 'note' && !rows.some((r) => r.id === opt.note.id)) {
+            combined = sortJobThreadActivity([...combined, opt])
           }
         }
-        return rows
+        return combined
       })
     } catch {
       /* optional refresh; avoid toast spam */
@@ -78,7 +94,7 @@ export function useJobThreadNotesForModal(
   useEffect(() => {
     if (!open || !jobId) {
       inFlightThreadNoteRef.current = null
-      setNotes([])
+      setActivity([])
       setDraft('')
       setLoading(false)
       setSubmitting(false)
@@ -90,11 +106,13 @@ export function useJobThreadNotesForModal(
     setLoading(true)
     ;(async () => {
       try {
-        const rows = await queryNotesForJob(jobId)
+        const [rows, blocksPack] = await Promise.all([queryNotesForJob(jobId), fetchJobScheduleBlocksForJob(jobId)])
         if (cancelled) return
-        setNotes(rows)
+        const scheduleRows = blocksPack.error ? [] : blocksPack.data
+        setActivity(mergeNotesAndScheduleIntoActivity(rows, scheduleRows))
       } catch (e: unknown) {
-        if (!cancelled) showToast(formatErrorMessage(e, 'Failed to load job notes'), 'error')
+        if (!cancelled)
+          showToast(appendToastRefreshHint(formatErrorMessage(e, 'Failed to load job notes')), 'error')
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -115,7 +133,17 @@ export function useJobThreadNotesForModal(
         { event: 'INSERT', schema: 'public', table: 'jobs_ledger_thread_notes' },
         (payload) => {
           const jid = (payload.new as { job_id?: string } | null)?.job_id
-          if (jid === jobId) void reloadNotesQuiet(jobId)
+          if (jid === jobId) void reloadActivityQuiet(jobId)
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'job_schedule_blocks' },
+        (payload) => {
+          const jid =
+            (payload.new as { job_id?: string } | null)?.job_id ??
+            (payload.old as { job_id?: string } | null)?.job_id
+          if (jid === jobId) void reloadActivityQuiet(jobId)
         },
       )
       .subscribe()
@@ -123,52 +151,77 @@ export function useJobThreadNotesForModal(
     return () => {
       void supabase.removeChannel(channel)
     }
-  }, [open, jobId, authUserId, realtimeChannelId, reloadNotesQuiet])
+  }, [open, jobId, authUserId, realtimeChannelId, reloadActivityQuiet])
+
+  const submitNoteWithBody = useCallback(
+    async (body: string, source: 'draft' | 'stamp'): Promise<boolean> => {
+      const id = openJobIdRef.current
+      const trimmed = body.trim()
+      if (!authUserId || !id || !trimmed) return false
+      const optimistic = makeOptimisticThreadNote(trimmed, authorDisplayName ?? null)
+      inFlightThreadNoteRef.current = { optimisticId: optimistic.id }
+      const optimisticItem: JobThreadActivityItem = { kind: 'note', note: optimistic }
+      setActivity((prev) => sortJobThreadActivity([...prev, optimisticItem]))
+      if (source === 'draft') {
+        setDraft('')
+      }
+      setSubmitting(true)
+      try {
+        const inserted = await withSupabaseRetry(
+          async () =>
+            await supabase
+              .from('jobs_ledger_thread_notes')
+              .insert({
+                job_id: id,
+                author_user_id: authUserId,
+                body: trimmed,
+              })
+              .select(SELECT)
+              .single(),
+          'insert jobs_ledger_thread_note modal',
+        )
+        if (inserted == null) throw new Error('No note row returned')
+        const row = inserted as unknown as JobThreadNoteRow
+        setActivity((prev) => {
+          const idx = prev.findIndex((i) => i.kind === 'note' && i.note.id === optimistic.id)
+          if (idx < 0) return sortJobThreadActivity([...prev, { kind: 'note', note: row }])
+          const next = [...prev]
+          next[idx] = { kind: 'note', note: row }
+          return sortJobThreadActivity(next)
+        })
+        inFlightThreadNoteRef.current = null
+        return true
+      } catch (e: unknown) {
+        inFlightThreadNoteRef.current = null
+        setActivity((prev) => prev.filter((i) => !(i.kind === 'note' && i.note.id === optimistic.id)))
+        if (source === 'draft') {
+          setDraft(trimmed)
+        }
+        showToast(formatErrorMessage(e, 'Failed to post note'), 'error')
+        return false
+      } finally {
+        setSubmitting(false)
+      }
+    },
+    [authUserId, authorDisplayName, showToast],
+  )
 
   const submitNote = useCallback(async () => {
-    const id = openJobIdRef.current
     const body = draft.trim()
-    if (!authUserId || !id || !body) return
-    const optimistic = makeOptimisticThreadNote(body, authorDisplayName ?? null)
-    inFlightThreadNoteRef.current = { optimisticId: optimistic.id }
-    setNotes((prev) => [...prev, optimistic])
-    setDraft('')
-    setSubmitting(true)
-    try {
-      const inserted = await withSupabaseRetry(
-        async () =>
-          await supabase
-            .from('jobs_ledger_thread_notes')
-            .insert({
-              job_id: id,
-              author_user_id: authUserId,
-              body,
-            })
-            .select(SELECT)
-            .single(),
-        'insert jobs_ledger_thread_note modal',
-      )
-      if (inserted == null) throw new Error('No note row returned')
-      const row = inserted as unknown as JobThreadNoteRow
-      setNotes((prev) => {
-        const idx = prev.findIndex((n) => n.id === optimistic.id)
-        if (idx < 0) return [...prev, row]
-        const next = [...prev]
-        next[idx] = row
-        return next
-      })
-      inFlightThreadNoteRef.current = null
-    } catch (e: unknown) {
-      inFlightThreadNoteRef.current = null
-      setNotes((prev) => prev.filter((n) => n.id !== optimistic.id))
-      setDraft(body)
-      showToast(formatErrorMessage(e, 'Failed to post note'), 'error')
-    } finally {
-      setSubmitting(false)
-    }
-  }, [authUserId, authorDisplayName, draft, showToast])
+    if (!body) return
+    await submitNoteWithBody(body, 'draft')
+  }, [draft, submitNoteWithBody])
+
+  const submitStamp = useCallback(
+    async (kind: JobThreadStampKind): Promise<boolean> => {
+      if (!authUserId) return false
+      const body = buildJobThreadStampBody(authorDisplayName ?? null, kind, new Date())
+      return submitNoteWithBody(body, 'stamp')
+    },
+    [authUserId, authorDisplayName, submitNoteWithBody],
+  )
 
   const canPost = Boolean(authUserId)
 
-  return { notes, loading, draft, setDraft, submitting, submitNote, canPost }
+  return { activity, loading, draft, setDraft, submitting, submitNote, submitStamp, canPost }
 }

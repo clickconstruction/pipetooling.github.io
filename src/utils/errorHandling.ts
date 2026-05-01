@@ -233,6 +233,15 @@ export function formatErrorMessage(error: unknown, fallbackMessage = 'An unexpec
   return fallbackMessage
 }
 
+/** Appended to error toasts when a full page refresh may recover (e.g. transient DB timeouts). */
+export const TOAST_TRY_REFRESH_APP_HINT = 'Try refreshing the app'
+
+export function appendToastRefreshHint(message: string): string {
+  const trimmed = message.trimEnd()
+  if (trimmed.endsWith(TOAST_TRY_REFRESH_APP_HINT)) return trimmed
+  return `${trimmed}\n${TOAST_TRY_REFRESH_APP_HINT}`
+}
+
 function isPlainObject(v: unknown): v is Record<string, unknown> {
   return v != null && typeof v === 'object' && !Array.isArray(v)
 }

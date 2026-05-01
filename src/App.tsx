@@ -53,6 +53,7 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { DailyGoalsGateProvider } from './contexts/DailyGoalsGateContext'
 import { JobsListCacheProvider } from './contexts/JobsListCacheContext'
 import { JobDetailModalProvider } from './contexts/JobDetailModalContext'
+import { UpdateFocusOpenerBridgeProvider } from './contexts/UpdateFocusOpenerBridgeContext'
 import { UserDayScheduleModalProvider } from './contexts/UserDayScheduleModalContext'
 
 // Easter egg:
@@ -175,11 +176,13 @@ function AppContent() {
                                 <BidPreviewModalProvider>
                                   <DailyGoalsGateProvider>
                                     <JobsListCacheProvider>
-                                      <JobDetailModalProvider>
-                                      <UserDayScheduleModalProvider>
-                                        <Layout />
-                                      </UserDayScheduleModalProvider>
-                                    </JobDetailModalProvider>
+                                      <UpdateFocusOpenerBridgeProvider>
+                                        <JobDetailModalProvider>
+                                          <UserDayScheduleModalProvider>
+                                            <Layout />
+                                          </UserDayScheduleModalProvider>
+                                        </JobDetailModalProvider>
+                                      </UpdateFocusOpenerBridgeProvider>
                                     </JobsListCacheProvider>
                                   </DailyGoalsGateProvider>
                                 </BidPreviewModalProvider>

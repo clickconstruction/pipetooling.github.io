@@ -1,11 +1,20 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { JobThreadActivityItem, JobThreadNoteRow } from '../components/JobThreadNotesPanel'
-import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import { appendToastRefreshHint, formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import {
   reportForViewFromJobLedgerRow,
   type ReportForJobLedgerRow,
 } from '../lib/reportForViewFromJobLedgerRow'
+import {
+  buildJobThreadStampBody,
+  type JobThreadStampKind,
+} from '../lib/jobThreadNoteStampBody'
+import { fetchJobScheduleBlocksForJob, type JobScheduleBlockWithAssigneeName } from '../lib/jobScheduleBlocks'
+import { scheduleBlocksToScheduleActivityItems } from '../lib/jobThreadScheduleActivity'
+import { sortJobThreadActivity } from '../lib/jobThreadActivitySort'
+
+export type { JobThreadStampKind } from '../lib/jobThreadNoteStampBody'
 
 type ToastFn = (message: string, type: 'success' | 'info' | 'warning' | 'error') => void
 
@@ -85,33 +94,27 @@ function makeOptimisticThreadNote(body: string, authorDisplayName: string | null
   }
 }
 
-function sortActivityByTime(items: JobThreadActivityItem[]): JobThreadActivityItem[] {
-  return [...items].sort((a, b) => {
-    const ta = a.kind === 'note' ? a.note.created_at : a.report.created_at
-    const tb = b.kind === 'note' ? b.note.created_at : b.report.created_at
-    return new Date(ta).getTime() - new Date(tb).getTime()
-  })
-}
-
 function buildActivityFromServer(
   rowsRaw: JobThreadNoteRow[],
   reportRows: ReportForJobLedgerRow[],
+  scheduleBlockRows: JobScheduleBlockWithAssigneeName[],
   prevActivity: JobThreadActivityItem[] | undefined,
   quiet: boolean,
   flight: { jobId: string; optimisticId: string } | null,
   jobId: string,
 ): JobThreadActivityItem[] {
+  const scheduleItems = scheduleBlocksToScheduleActivityItems(scheduleBlockRows)
   const noteItems: JobThreadActivityItem[] = rowsRaw.map((n) => ({ kind: 'note' as const, note: n }))
   const reportItems: JobThreadActivityItem[] = reportRows.map((r) => ({
     kind: 'report' as const,
     report: reportForViewFromJobLedgerRow(r),
   }))
-  let combined = sortActivityByTime([...noteItems, ...reportItems])
+  let combined = sortJobThreadActivity([...noteItems, ...reportItems, ...scheduleItems])
 
   if (quiet && flight?.jobId === jobId) {
     const opt = (prevActivity ?? []).find((i) => i.kind === 'note' && i.note.id === flight.optimisticId)
     if (opt && opt.kind === 'note' && !rowsRaw.some((r) => r.id === opt.note.id)) {
-      combined = sortActivityByTime([...combined, opt])
+      combined = sortJobThreadActivity([...combined, opt])
     }
   }
   return combined
@@ -146,7 +149,7 @@ export function useJobThreadNotes(
       const quiet = opts?.quiet === true
       if (!quiet) setJobThreadNotesLoadingId(jobId)
       try {
-        const [notesData, reportData] = await Promise.all([
+        const [notesData, reportData, blocksPack] = await Promise.all([
           withSupabaseRetry(
             async () =>
               supabase.from('jobs_ledger_thread_notes').select(THREAD_NOTE_SELECT).eq('job_id', jobId).order('created_at', {
@@ -158,14 +161,17 @@ export function useJobThreadNotes(
             async () => supabase.rpc('list_reports_for_job_ledger', { p_job_id: jobId }),
             'list_reports_for_job_ledger',
           ),
+          fetchJobScheduleBlocksForJob(jobId),
         ])
         const rowsRaw = (notesData as JobThreadNoteRow[] | null) ?? []
         const reportRows = (reportData as ReportForJobLedgerRow[] | null) ?? []
+        const scheduleBlockRows: JobScheduleBlockWithAssigneeName[] = blocksPack.error ? [] : blocksPack.data
 
         setJobThreadActivityByJobId((prev) => {
           const merged = buildActivityFromServer(
             rowsRaw,
             reportRows,
+            scheduleBlockRows,
             prev[jobId],
             quiet,
             inFlightThreadNoteRef.current,
@@ -197,7 +203,7 @@ export function useJobThreadNotes(
           return { ...prev, [jobId]: merged }
         })
       } catch (e: unknown) {
-        showToast(formatErrorMessage(e, 'Failed to load job notes'), 'error')
+        showToast(appendToastRefreshHint(formatErrorMessage(e, 'Failed to load job notes')), 'error')
       } finally {
         if (!quiet) setJobThreadNotesLoadingId(null)
       }
@@ -297,22 +303,34 @@ export function useJobThreadNotes(
           }
         },
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'job_schedule_blocks' },
+        (payload) => {
+          const jid =
+            (payload.new as { job_id?: string } | null)?.job_id ??
+            (payload.old as { job_id?: string } | null)?.job_id
+          if (jid && expandedJobThreadIdRef.current === jid) {
+            void loadJobThreadNotesForJob(jid, { quiet: true })
+          }
+        },
+      )
       .subscribe()
     return () => {
       void supabase.removeChannel(channel)
     }
   }, [authUserId, loadJobThreadNotesForJob, mergeJobThreadStatsForJobIds, realtimeChannelId])
 
-  const submitJobThreadNote = useCallback(
-    async (jobId: string) => {
-      const body = jobThreadDraft.trim()
-      if (!authUserId || !body) return
-      const optimistic = makeOptimisticThreadNote(body, authorDisplayName ?? null)
+  const submitJobThreadNoteWithBody = useCallback(
+    async (jobId: string, body: string, source: 'draft' | 'stamp') => {
+      const trimmed = body.trim()
+      if (!authUserId || !trimmed) return
+      const optimistic = makeOptimisticThreadNote(trimmed, authorDisplayName ?? null)
       inFlightThreadNoteRef.current = { jobId, optimisticId: optimistic.id }
       const optimisticItem: JobThreadActivityItem = { kind: 'note', note: optimistic }
       setJobThreadActivityByJobId((prev) => ({
         ...prev,
-        [jobId]: sortActivityByTime([...(prev[jobId] ?? []), optimisticItem]),
+        [jobId]: sortJobThreadActivity([...(prev[jobId] ?? []), optimisticItem]),
       }))
       setJobThreadStatsByJobId((prev) => {
         const cur = prev[jobId]
@@ -323,13 +341,15 @@ export function useJobThreadNotes(
             ...cur,
             note_count: (cur?.note_count ?? 0) + 1,
             last_note_at: optimistic.created_at,
-            last_note_body: body,
+            last_note_body: trimmed,
             last_note_author_name:
               optimistic.author?.name?.trim() ?? cur?.last_note_author_name ?? null,
           },
         }
       })
-      setJobThreadDraft('')
+      if (source === 'draft') {
+        setJobThreadDraft('')
+      }
       setJobThreadSubmittingId(jobId)
       try {
         const inserted = await withSupabaseRetry(
@@ -339,7 +359,7 @@ export function useJobThreadNotes(
               .insert({
                 job_id: jobId,
                 author_user_id: authUserId,
-                body,
+                body: trimmed,
               })
               .select(THREAD_NOTE_SELECT)
               .single(),
@@ -350,10 +370,10 @@ export function useJobThreadNotes(
         setJobThreadActivityByJobId((prev) => {
           const list = prev[jobId] ?? []
           const idx = list.findIndex((i) => i.kind === 'note' && i.note.id === optimistic.id)
-          if (idx < 0) return { ...prev, [jobId]: sortActivityByTime([...list, { kind: 'note', note: row }]) }
+          if (idx < 0) return { ...prev, [jobId]: sortJobThreadActivity([...list, { kind: 'note', note: row }]) }
           const next = [...list]
           next[idx] = { kind: 'note', note: row }
-          return { ...prev, [jobId]: sortActivityByTime(next) }
+          return { ...prev, [jobId]: sortJobThreadActivity(next) }
         })
         inFlightThreadNoteRef.current = null
         const stats = await withSupabaseRetry(
@@ -376,13 +396,33 @@ export function useJobThreadNotes(
           ),
         }))
         void mergeJobThreadStatsForJobIds([jobId])
-        setJobThreadDraft(body)
+        if (source === 'draft') {
+          setJobThreadDraft(trimmed)
+        }
         showToast(formatErrorMessage(e, 'Failed to post note'), 'error')
       } finally {
         setJobThreadSubmittingId(null)
       }
     },
-    [authUserId, authorDisplayName, jobThreadDraft, mergeJobThreadStatsForJobIds, showToast],
+    [authUserId, authorDisplayName, mergeJobThreadStatsForJobIds, showToast],
+  )
+
+  const submitJobThreadNote = useCallback(
+    async (jobId: string) => {
+      const body = jobThreadDraft.trim()
+      if (!authUserId || !body) return
+      await submitJobThreadNoteWithBody(jobId, body, 'draft')
+    },
+    [authUserId, jobThreadDraft, submitJobThreadNoteWithBody],
+  )
+
+  const submitJobThreadStamp = useCallback(
+    async (jobId: string, kind: JobThreadStampKind) => {
+      if (!authUserId) return
+      const body = buildJobThreadStampBody(authorDisplayName ?? null, kind, new Date())
+      await submitJobThreadNoteWithBody(jobId, body, 'stamp')
+    },
+    [authUserId, authorDisplayName, submitJobThreadNoteWithBody],
   )
 
   return {
@@ -395,6 +435,7 @@ export function useJobThreadNotes(
     setJobThreadDraft,
     loadJobThreadNotesForJob,
     submitJobThreadNote,
+    submitJobThreadStamp,
     jobThreadStatsByJobId,
     refreshJobThreadStatsForJobIds,
   }
