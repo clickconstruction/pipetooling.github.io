@@ -16569,7 +16569,7 @@ export default function Bids() {
       {/* Submission & Followup Tab */}
       {activeTab === 'submission-followup' && (
         <div>
-          {/* Print Followup Sheet UI + list nav when a bid summary is open */}
+          {/* Print Followup Sheet UI + stale highlight */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem', width: '100%', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0, flexShrink: 0, flexWrap: 'wrap' }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
@@ -16595,62 +16595,6 @@ export default function Bids() {
                 />
                 <span style={{ fontSize: '0.875rem', color: '#374151' }}>days</span>
               </span>
-              {selectedBidForSubmission && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => navigateSubmissionFollowup(-1)}
-                    disabled={!submissionFollowupNav.canPrev}
-                    aria-label="Previous bid in this submission list"
-                    title="Previous bid in this list"
-                    style={{
-                      padding: '0.35rem 0.6rem',
-                      background: submissionFollowupNav.canPrev ? '#f3f4f6' : '#f9fafb',
-                      border: '1px solid #d1d5db',
-                      borderRadius: 4,
-                      cursor: submissionFollowupNav.canPrev ? 'pointer' : 'not-allowed',
-                      fontSize: '1rem',
-                      lineHeight: 1,
-                      color: submissionFollowupNav.canPrev ? '#111827' : '#9ca3af',
-                    }}
-                  >
-                    ←
-                  </button>
-                  <span
-                    aria-live="polite"
-                    style={{
-                      fontSize: '0.875rem',
-                      fontWeight: 600,
-                      color: submissionFollowupNav.inList ? '#374151' : '#9ca3af',
-                      minWidth: '3.5rem',
-                      textAlign: 'center',
-                    }}
-                  >
-                    {submissionFollowupNav.inList
-                      ? `[${submissionFollowupNav.currentIndex + 1}/${submissionFollowupNav.total}]`
-                      : '—'}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => navigateSubmissionFollowup(1)}
-                    disabled={!submissionFollowupNav.canNext}
-                    aria-label="Next bid in this submission list"
-                    title="Next bid in this list"
-                    style={{
-                      padding: '0.35rem 0.6rem',
-                      background: submissionFollowupNav.canNext ? '#f3f4f6' : '#f9fafb',
-                      border: '1px solid #d1d5db',
-                      borderRadius: 4,
-                      cursor: submissionFollowupNav.canNext ? 'pointer' : 'not-allowed',
-                      fontSize: '1rem',
-                      lineHeight: 1,
-                      color: submissionFollowupNav.canNext ? '#111827' : '#9ca3af',
-                    }}
-                  >
-                    →
-                  </button>
-                </>
-              )}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
               <label htmlFor="account-manager-print" style={{ fontWeight: 500 }}>
@@ -16752,6 +16696,67 @@ export default function Bids() {
                     ...(narrowViewport640 ? { justifyContent: 'flex-end', flexWrap: 'wrap' } : {}),
                   }}
                 >
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => navigateSubmissionFollowup(-1)}
+                      disabled={!submissionFollowupNav.canPrev}
+                      aria-label="Previous bid in this submission list"
+                      title="Previous bid in this list"
+                      style={{
+                        padding: '0.35rem 0.6rem',
+                        background: submissionFollowupNav.canPrev ? '#f3f4f6' : '#f9fafb',
+                        border: '1px solid #d1d5db',
+                        borderRadius: 4,
+                        cursor: submissionFollowupNav.canPrev ? 'pointer' : 'not-allowed',
+                        fontSize: '1rem',
+                        lineHeight: 1,
+                        color: submissionFollowupNav.canPrev ? '#111827' : '#9ca3af',
+                      }}
+                    >
+                      ←
+                    </button>
+                    <span
+                      aria-live="polite"
+                      style={{
+                        fontSize: '0.875rem',
+                        fontWeight: 600,
+                        color: submissionFollowupNav.inList ? '#374151' : '#9ca3af',
+                        minWidth: '3.5rem',
+                        textAlign: 'center',
+                      }}
+                    >
+                      {submissionFollowupNav.inList
+                        ? `[${submissionFollowupNav.currentIndex + 1}/${submissionFollowupNav.total}]`
+                        : '—'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => navigateSubmissionFollowup(1)}
+                      disabled={!submissionFollowupNav.canNext}
+                      aria-label="Next bid in this submission list"
+                      title="Next bid in this list"
+                      style={{
+                        padding: '0.35rem 0.6rem',
+                        background: submissionFollowupNav.canNext ? '#f3f4f6' : '#f9fafb',
+                        border: '1px solid #d1d5db',
+                        borderRadius: 4,
+                        cursor: submissionFollowupNav.canNext ? 'pointer' : 'not-allowed',
+                        fontSize: '1rem',
+                        lineHeight: 1,
+                        color: submissionFollowupNav.canNext ? '#111827' : '#9ca3af',
+                      }}
+                    >
+                      →
+                    </button>
+                  </div>
                   {/* Share copies ?bidId=&tab=submission-followup; superintendent role is redirected off that tab by URL effect */}
                   <button
                     type="button"

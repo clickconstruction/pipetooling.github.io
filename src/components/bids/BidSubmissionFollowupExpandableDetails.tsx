@@ -143,8 +143,7 @@ export function BidSubmissionFollowupExpandableDetails({
           color: '#374151',
         }}
       >
-        Full bid details{' '}
-        <span style={{ fontWeight: 400, color: '#6b7280' }}>(read-only — use Edit to change)</span>
+        Full bid details
       </summary>
       <div style={gridStyle}>
         <SectionTitle>Trade &amp; lifecycle</SectionTitle>

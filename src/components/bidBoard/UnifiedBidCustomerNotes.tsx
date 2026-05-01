@@ -10,6 +10,7 @@ import {
   NOTE_CARD_BODY_PADDING_RIGHT_FOR_FLOATING_EDIT,
   NoteCardFloatingEditButton,
 } from '../shared/NoteCardFloatingEditButton'
+import { submitNoteOnEnterKeyDown } from '../../lib/noteComposerTextareaKeyDown'
 import type { Database } from '../../types/database'
 
 export type BidSubmissionEntry = Database['public']['Tables']['bids_submission_entries']['Row']
@@ -578,6 +579,10 @@ function UnifiedNewBidRow({
       <textarea
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
+        onKeyDown={(e) =>
+          submitNoteOnEnterKeyDown(e, { saving, onSubmit: () => void submit() })
+        }
+        title="Shift+Enter new line, Enter add"
         placeholder="Notes"
         rows={4}
         style={{
@@ -706,6 +711,10 @@ function UnifiedNewCustomerRow({
       <textarea
         value={details}
         onChange={(e) => setDetails(e.target.value)}
+        onKeyDown={(e) =>
+          submitNoteOnEnterKeyDown(e, { saving, onSubmit: () => void submit() })
+        }
+        title="Shift+Enter new line, Enter add"
         placeholder="Notes"
         rows={4}
         style={{
