@@ -68,6 +68,14 @@ Options: wait for it to finish, or temporarily upgrade compute to speed it up.
 
 ---
 
+## Cursor agents: “Supabase crashed” / outage triage
+
+In this repo, **Cursor** loads **[`.cursor/rules/supabase-incident-triage.mdc`](.cursor/rules/supabase-incident-triage.mdc)** (**always-on** for this project). Say things like **Help me figure out why Supabase crashed** or **Postgres was unhealthy** and the agent should run **`./scripts/capture-supabase-incident.sh`** (or equivalent **`supabase inspect db … --linked`**) and follow **`docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md`**. You still need **`supabase link`** (or MCP) on the machine running commands, and **Dashboard → Logs** export for the same UTC window when gateway/API errors dominate.
+
+**Related:** **`RECENT_FEATURES.md`** **v2.454** — app-side Realtime/refetch mitigation (**`useDocumentVisibility`**, debounced financial pins, narrower **`clock_sessions`** subscriptions on Dashboard / People / Banking).
+
+---
+
 ## Duplicate key error when pinning
 
 **Error**: `duplicate key value violates unique constraint "user_pinned_tabs_user_path_tab_key"`

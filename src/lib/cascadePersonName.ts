@@ -25,7 +25,7 @@ export async function getPersonNamesForUser(
 }
 
 /**
- * Cascade a person name change to all Pay-related tables so /people Pay tab shows updated names.
+ * Cascade a person name change to all Pay-related tables so People → Hours (pay config / matrix) shows updated names.
  * Call this when updating users.name or people.name in Settings or People.
  */
 export async function cascadePersonNameInPayTables(oldName: string, newName: string): Promise<void> {

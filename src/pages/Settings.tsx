@@ -1584,7 +1584,7 @@ export default function Settings() {
 
   async function loadCostMatrixPinnedUsers() {
     if (myRole !== 'dev') return
-    const rows = await getUsersWithPin('/people', 'pay')
+    const rows = await getUsersWithPin('/people', 'hours')
     setPinCostMatrixMasterIds(new Set(rows.map((r) => r.user_id)))
   }
 
@@ -5098,7 +5098,9 @@ export default function Settings() {
     setMergeDuplicatesModalOpen(true)
     setMergeDuplicatesLoading(true)
     try {
-      const { data } = await supabase.from('people_pay_config').select('person_name, hourly_wage, is_salary, show_in_hours, show_in_cost_matrix, record_hours_but_salary')
+      const { data } = await supabase
+        .from('people_pay_config')
+        .select('person_name, person_id, hourly_wage, is_salary, show_in_hours, show_in_cost_matrix, record_hours_but_salary')
       const payConfig: Record<string, PayConfigRowForMerge> = {}
       for (const r of (data ?? []) as PayConfigRowForMerge[]) {
         payConfig[r.person_name] = r
@@ -5132,12 +5134,20 @@ export default function Settings() {
       userId = users.find((u) => u.name?.trim() === dup.personName)?.id ?? users.find((u) => u.name?.trim() === dup.userDisplayName)?.id
     }
     try {
-      const { data } = await supabase.from('people_pay_config').select('person_name, hourly_wage, is_salary, show_in_hours, show_in_cost_matrix, record_hours_but_salary')
+      const { data } = await supabase
+        .from('people_pay_config')
+        .select('person_name, person_id, hourly_wage, is_salary, show_in_hours, show_in_cost_matrix, record_hours_but_salary')
       const payConfig: Record<string, PayConfigRowForMerge> = {}
       for (const r of (data ?? []) as PayConfigRowForMerge[]) {
         payConfig[r.person_name] = r
       }
-      await mergePersonIntoUser(dup.personName, dup.userDisplayName, payConfig, userId)
+      const mergePeople = [...myPeople, ...nonUserPeople].map((p) => ({
+        id: p.id,
+        name: p.name,
+        email: p.email,
+        archived_at: 'archived_at' in p ? (p as { archived_at?: string | null }).archived_at : null,
+      }))
+      await mergePersonIntoUser(dup.personName, dup.userDisplayName, payConfig, userId, mergePeople)
       await loadData()
       setMergeDuplicates((prev) => prev.filter((x) => x.personName !== dup.personName))
     } catch (err) {
@@ -6381,7 +6391,7 @@ export default function Settings() {
                 setPinCostMatrixSaving(true)
                 setPinCostMatrixMessage(null)
                 const total = costMatrixTotal ?? 0
-                const item = { path: '/people', label: `Internal Team: $${Math.round(total).toLocaleString('en-US')}`, tab: 'pay' as const }
+                const item = { path: '/people', label: `Internal Team: $${Math.round(total).toLocaleString('en-US')}`, tab: 'hours' as const }
                 const ids = Array.from(pinCostMatrixMasterIds)
                 let ok = 0
                 let errMsg: string | null = null
@@ -6417,7 +6427,7 @@ export default function Settings() {
               onClick={async () => {
                 setPinCostMatrixUnpinSaving(true)
                 setPinCostMatrixMessage(null)
-                const { count, error } = await deletePinForPathAndTab('/people', 'pay')
+                const { count, error } = await deletePinForPathAndTab('/people', 'hours')
                 setPinCostMatrixUnpinSaving(false)
                 if (error) setPinCostMatrixMessage({ type: 'error', text: error.message })
                 else {

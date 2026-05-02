@@ -330,7 +330,7 @@ export function DraftPayrollModal({
           ) : null}
           {peopleNames.length === 0 ? (
             <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>
-              No people with Show in Hours selected. Go to Pay tab and check Show in Hours for people to track.
+              No people with Show in Hours selected. In Hours, open People pay config and check Show in Hours for people to track.
             </p>
           ) : (
             <>

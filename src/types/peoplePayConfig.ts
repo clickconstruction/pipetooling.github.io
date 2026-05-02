@@ -1,5 +1,7 @@
 export type PayConfigRow = {
   person_name: string
+  /** Canonical roster id; preferred for writes and joins. */
+  person_id?: string | null
   hourly_wage: number | null
   is_salary: boolean
   show_in_hours: boolean

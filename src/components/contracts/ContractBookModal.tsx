@@ -29,6 +29,8 @@ type ContractBookModalProps = {
   onSaved: () => void
   /** When set (e.g. from People “Add document”), rows offer “Load into form” to copy library body into the parent form. */
   onPickEntry?: (entry: ContractBookTemplateDocument) => void
+  /** When false, library entry Delete is hidden (e.g. People Contracts assistants). Default true. */
+  canDeleteLibraryEntries?: boolean
 }
 
 const badgeStyle: CSSProperties = {
@@ -95,6 +97,7 @@ export function ContractBookModal({
   templateDocuments,
   onSaved,
   onPickEntry,
+  canDeleteLibraryEntries = true,
 }: ContractBookModalProps) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [viewingId, setViewingId] = useState<string | null>(null)
@@ -242,6 +245,7 @@ export function ContractBookModal({
   }
 
   async function deleteBookEntry() {
+    if (!canDeleteLibraryEntries) return
     if (!editingId) return
     setDeleting(true)
     setError(null)
@@ -852,22 +856,24 @@ export function ContractBookModal({
                           </button>
                         </div>
                         <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-                          <button
-                            type="button"
-                            onClick={() => setBookEntryDeleteConfirmOpen(true)}
-                            disabled={saving || deleting}
-                            style={{
-                              padding: '0.4rem 0.85rem',
-                              fontWeight: 600,
-                              border: '1px solid #fecaca',
-                              borderRadius: 6,
-                              background: '#fef2f2',
-                              color: '#b91c1c',
-                              cursor: saving || deleting ? 'not-allowed' : 'pointer',
-                            }}
-                          >
-                            Delete
-                          </button>
+                          {canDeleteLibraryEntries ? (
+                            <button
+                              type="button"
+                              onClick={() => setBookEntryDeleteConfirmOpen(true)}
+                              disabled={saving || deleting}
+                              style={{
+                                padding: '0.4rem 0.85rem',
+                                fontWeight: 600,
+                                border: '1px solid #fecaca',
+                                borderRadius: 6,
+                                background: '#fef2f2',
+                                color: '#b91c1c',
+                                cursor: saving || deleting ? 'not-allowed' : 'pointer',
+                              }}
+                            >
+                              Delete
+                            </button>
+                          ) : null}
                         </div>
                         <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
                           <button
@@ -897,7 +903,7 @@ export function ContractBookModal({
         )}
       </div>
 
-      {bookEntryDeleteConfirmOpen && editingId ? (
+      {bookEntryDeleteConfirmOpen && editingId && canDeleteLibraryEntries ? (
         <div
           role="presentation"
           style={{

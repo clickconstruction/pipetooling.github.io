@@ -123,7 +123,7 @@ export function CustomPayReportsModal({
         }}
       >
         <div style={{ fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.875rem' }}>
-          Pay tab payments for {personTrim} ({periodStart} to {periodEnd})
+          People pay config payments for {personTrim} ({periodStart} to {periodEnd})
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', fontSize: '0.8125rem', borderCollapse: 'collapse' }}>
@@ -288,7 +288,7 @@ export function CustomPayReportsModal({
         </div>
         {peopleNames.length === 0 && (
           <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: '0 0 0.75rem 0' }}>
-            No people with Show in Hours selected. Go to Pay tab and check Show in Hours for people to track.
+            No people with Show in Hours selected. In Hours, open People pay config and check Show in Hours for people to track.
           </p>
         )}
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -333,7 +333,7 @@ export function CustomPayReportsModal({
               title={
                 !personTrim
                   ? peopleNames.length === 0
-                    ? 'Go to Pay tab and check Show in Hours for people to track'
+                    ? 'In Hours, open People pay config and check Show in Hours for people to track'
                     : 'Select a person to generate a pay report'
                   : undefined
               }
@@ -353,7 +353,7 @@ export function CustomPayReportsModal({
             {!personTrim && (
               <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
                 {peopleNames.length === 0
-                  ? 'Go to Pay tab and check Show in Hours for people to track'
+                  ? 'In Hours, open People pay config and check Show in Hours for people to track'
                   : 'Select a person to generate a pay report'}
               </span>
             )}

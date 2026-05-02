@@ -30,6 +30,7 @@ import {
   toastForUpdateJobStatusFailure,
 } from '../lib/updateJobStatusClientFeedback'
 import { useAuth } from '../hooks/useAuth'
+import { useDocumentVisibility } from '../hooks/useDocumentVisibility'
 import { isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import { useSendBackCollectPaymentFlowNotice } from '../hooks/useSendBackCollectPaymentFlowNotice'
 import NewReportModal from '../components/NewReportModal'
@@ -840,6 +841,7 @@ export default function Dashboard() {
   const bidPreview = useBidPreview()
   const jobDetailModal = useJobDetailModal()
   const { user: authUser, role, estimatorProspectsAccess } = useAuth()
+  const isDocVisible = useDocumentVisibility()
   const { showToast } = useToastContext()
   const jobFormModal = useJobFormModal()
   const showClockStripScopeToggle =
@@ -1420,11 +1422,23 @@ export default function Dashboard() {
   const pinsToShow = visiblePins
     .filter((p) => p.path !== '/dashboard' && p.path !== '/')
     .filter((p) => !(p.path === '/materials' && p.tab === 'external-team'))
-  const hasCostMatrixPin = visiblePins.some((p) => p.path === '/people' && p.tab === 'pay')
+  const hasCostMatrixPin = visiblePins.some((p) => p.path === '/people' && p.tab === 'hours')
   const hasBilledPin = visiblePins.some((p) => p.path === '/jobs' && p.tab === 'billed')
   const hasSupplyHousesAPPin = visiblePins.some((p) => p.path === '/materials' && p.tab === 'supply-houses')
   const hasSubLaborDuePin = visiblePins.some((p) => p.path === '/jobs' && p.tab === 'sub_sheet_ledger')
   const [financialRefreshKey, setFinancialRefreshKey] = useState(0)
+  /** Coalesce WAL bursts from financial-pin tables into one REST refresh (see dashboard-financial-pins channel). */
+  const FINANCIAL_PINS_REALTIME_DEBOUNCE_MS = 1200
+  const financialPinsRealtimeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const scheduleFinancialPinsRefreshFromRealtime = useCallback(() => {
+    if (!isDocVisible) return
+    if (financialPinsRealtimeTimerRef.current) clearTimeout(financialPinsRealtimeTimerRef.current)
+    financialPinsRealtimeTimerRef.current = setTimeout(() => {
+      financialPinsRealtimeTimerRef.current = null
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
+      setFinancialRefreshKey((k) => k + 1)
+    }, FINANCIAL_PINS_REALTIME_DEBOUNCE_MS)
+  }, [isDocVisible])
   const [tallyUnlinkedCount, setTallyUnlinkedCount] = useState<number | null>(null)
   const [tallyStaleUnlinkedCount, setTallyStaleUnlinkedCount] = useState<number | null>(null)
   const [tallyStaffFollowUpModalOpen, setTallyStaffFollowUpModalOpen] = useState(false)
@@ -1830,6 +1844,15 @@ export default function Dashboard() {
   }, [authUser?.id, role])
 
   useEffect(() => {
+    return () => {
+      if (financialPinsRealtimeTimerRef.current) {
+        clearTimeout(financialPinsRealtimeTimerRef.current)
+        financialPinsRealtimeTimerRef.current = null
+      }
+    }
+  }, [])
+
+  useEffect(() => {
     const onPinsChanged = () => {
       refreshPinned()
       setFinancialRefreshKey((k) => k + 1)
@@ -1869,15 +1892,23 @@ export default function Dashboard() {
     if (!authUser?.id || (!hasBilledPin && !hasSupplyHousesAPPin && !hasSubLaborDuePin)) return
     const channel = supabase
       .channel('dashboard-financial-pins')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs_ledger' }, () => setFinancialRefreshKey((k) => k + 1))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs_ledger_invoices' }, () => setFinancialRefreshKey((k) => k + 1))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'supply_house_invoices' }, () => setFinancialRefreshKey((k) => k + 1))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'people_labor_jobs' }, () => setFinancialRefreshKey((k) => k + 1))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'people_labor_job_payments' }, () => setFinancialRefreshKey((k) => k + 1))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'people_labor_job_items' }, () => setFinancialRefreshKey((k) => k + 1))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs_ledger' }, scheduleFinancialPinsRefreshFromRealtime)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs_ledger_invoices' }, scheduleFinancialPinsRefreshFromRealtime)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'supply_house_invoices' }, scheduleFinancialPinsRefreshFromRealtime)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'people_labor_jobs' }, scheduleFinancialPinsRefreshFromRealtime)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'people_labor_job_payments' }, scheduleFinancialPinsRefreshFromRealtime)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'people_labor_job_items' }, scheduleFinancialPinsRefreshFromRealtime)
       .subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [authUser?.id, hasBilledPin, hasSupplyHousesAPPin, hasSubLaborDuePin])
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [
+    authUser?.id,
+    hasBilledPin,
+    hasSupplyHousesAPPin,
+    hasSubLaborDuePin,
+    scheduleFinancialPinsRefreshFromRealtime,
+  ])
 
   useEffect(() => {
     if (!authUser?.id) return
@@ -4328,7 +4359,7 @@ export default function Dashboard() {
                 </Link>
               ))}
             {pinsToShow.map((item) => {
-              const isCostMatrix = item.path === '/people' && item.tab === 'pay'
+              const isCostMatrix = item.path === '/people' && item.tab === 'hours'
               const isSupplyHouseAP = item.path === '/materials' && item.tab === 'supply-houses'
               const isBilled = item.path === '/jobs' && item.tab === 'billed'
               const isSubLaborDue = item.path === '/jobs' && item.tab === 'sub_sheet_ledger'

@@ -1,11 +1,13 @@
 import { supabase } from './supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { cascadePersonNameInPayTables } from './cascadePersonName'
+import { resolvePersonIdFromRosterName } from './payPersonSubject'
 
-export type PersonForMerge = { id: string; name: string; email: string | null }
+export type PersonForMerge = { id: string; name: string; email: string | null; archived_at?: string | null }
 export type UserRowForMerge = { id: string; name: string; email: string | null }
 export type PayConfigRowForMerge = {
   person_name: string
+  person_id?: string | null
   hourly_wage: number | null
   is_salary: boolean
   show_in_hours: boolean
@@ -127,7 +129,8 @@ export async function mergePersonIntoUser(
   personName: string,
   userDisplayName: string,
   payConfig: Record<string, PayConfigRowForMerge>,
-  userId?: string
+  userId?: string,
+  peopleRoster?: PersonForMerge[],
 ): Promise<void> {
   const trimmedPerson = personName.trim()
   const trimmedUser = userDisplayName.trim()
@@ -136,8 +139,12 @@ export async function mergePersonIntoUser(
   const personConfig = payConfig[trimmedPerson]
   const userConfig = payConfig[trimmedUser]
 
+  const targetPid = peopleRoster ? resolvePersonIdFromRosterName(peopleRoster, trimmedUser) : null
+  const sourcePid = peopleRoster ? resolvePersonIdFromRosterName(peopleRoster, trimmedPerson) : null
+
   const merged: PayConfigRowForMerge = {
     person_name: trimmedUser,
+    person_id: targetPid,
     hourly_wage: userConfig?.hourly_wage ?? personConfig?.hourly_wage ?? null,
     is_salary: userConfig?.is_salary ?? personConfig?.is_salary ?? false,
     show_in_hours: userConfig?.show_in_hours ?? personConfig?.show_in_hours ?? false,
@@ -155,10 +162,16 @@ export async function mergePersonIntoUser(
 
   await withSupabaseRetry(
     async () => {
-      const result = await supabase.from('people_pay_config').delete().eq('person_name', trimmedPerson)
+      let q = supabase.from('people_pay_config').delete()
+      if (sourcePid) {
+        q = q.eq('person_id', sourcePid)
+      } else {
+        q = q.eq('person_name', trimmedPerson)
+      }
+      const result = await q
       return result
     },
-    'delete person pay config'
+    'delete person pay config',
   )
 
   await cascadePersonNameInPayTables(trimmedPerson, trimmedUser)

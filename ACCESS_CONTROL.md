@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-04-29
+last_updated: 2026-05-02
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -173,10 +173,10 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 - Jobs page — Labor tab: Add labor jobs per person (fixture rows, job #, date, labor rate)
 - Jobs page — Sub Sheet Ledger tab: View all labor jobs; Edit and Delete (own jobs); shared jobs show "Created by [name]"
 - Jobs page — **Reports tab** — **Recurring Email Reports**: same as dev (schedules, recipients, optional **include costs** in digest emails)
-- Pay tab (dev, Pay Approved Masters, or shared by dev): Due by Trade, Due by Team, Cost matrix, Teams; People pay config, Share Cost Matrix and Teams (**Settings → People & accounts** → Sharing and Adoption), Tag colors at bottom. Cost matrix date headers on two lines (Mon / 2/16) on mobile. Dev can share Cost matrix and Teams (view-only) with selected masters or assistants from that Settings section
+- **Hours** tab (dev, Pay Approved Masters, and their assistants): Shared **week / date range**; **section jump** row; **Dashboard**-style clock strip; pending / approved / rejected sessions; timesheet grid; **Review Hours & pay config** (modal + **Hours reviewed** ledger + pay settings for dev and Pay Approved Masters); **Due by Trade / Team**; **Cost matrix** and **Teams**; **Share Cost Matrix and Teams** and **Tag colors** at bottom (dev, **Settings → People & accounts** → Sharing and Adoption — dev can grant view-only matrix/Teams to selected masters or assistants). Legacy **`?tab=pay`** opens **Hours**. Cost matrix date headers on two lines (Mon / 2/16) on mobile.
 - Pay History tab (dev, Pay Approved Masters, and their assistants): Ledger of generated pay stubs with **Search** by person name; **Paid to date** / **Balance** from **`pay_stub_payments`**; **Record payment** (partial installments); **Generate Pay Reports** bulk modal (includes **Partial** / fully paid counts) and single-person generator; **Print** from ledger row; **View** (HTML preview) from bulk modal only; dev-only delete via red trash icon
-- Hours tab (dev, Pay Approved Masters, and their assistants): Timesheet entry
 - **People → Teams** (`?tab=teams`): manage **`team_leader_assignments`** (leader→member links for Dashboard **My Team**); same capabilities as Settings **Team Hours Sharing**; per-link **Leader dashboard** visibility (**full** vs **strip only**) — **dev-only**
+- **People → Overhead** (`?tab=overhead`): daily **approved, closed** clock labor $ on the configured **office** job (**`app_settings`**) + **bid** time; dev sets office **`jobs_ledger`** id
 
 **Bids**:
 - Full access to all bids features
@@ -244,9 +244,8 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 - Jobs page — Stages tab: Billed Awaiting Payment, Total by Name modal
 - Jobs page — Labor tab: Add labor jobs per person
 - Jobs page — Sub Sheet Ledger tab: View labor jobs (own and shared); Edit/Delete own jobs; shared jobs show "Created by [name]"
-- Pay tab (if shared by dev): View-only Cost matrix and Teams (no People pay config, no Add team or edit teams)
+- **Hours** tab (if master is Pay Approved): Timesheet, sessions, and grid; **Review Hours** / **Hours reviewed** when applicable; when dev shared Cost matrix: view-only **Cost matrix** and **Teams** — no **People** pay config, no add/edit teams
 - Pay History tab (if master is Pay Approved): Ledger (with name search), generators, **Print**; **View** from bulk **Generate Pay Reports** modal; dev-only stub delete icon
-- Hours tab (if master is Pay Approved): Timesheet entry for people in roster
 - **People → Teams** (`?tab=teams`): manage **`team_leader_assignments`** (same as Settings **Team Hours Sharing**); per-link **Leader dashboard** — **dev-only**
 
 **Bids**:
@@ -632,9 +631,8 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 | Jobs — Labor tab: Add jobs | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Jobs — Sub Sheet Ledger: View jobs | ✅ | ✅ Own + shared | ✅ Own + shared | ❌ | ❌ | ❌ | ✅ Adopted |
 | Jobs — Sub Sheet Ledger: Edit/delete jobs | ✅ | ✅ Own | ✅ Own | ❌ | ❌ | ❌ | ❌ |
-| Pay tab (config, cost matrix, teams) | ✅ | ✅ If Pay Approved or shared | ✅ If shared by dev (view-only) | ❌ | ❌ | ❌ | ❌ |
+| Hours tab (timesheet; Review Hours, pay config, Due summaries, cost matrix, teams, sharing — former Pay merged — see `PROJECT_DOCUMENTATION.md` §5) | ✅ | ✅ If Pay Approved or shared (matrix/teams view-only when shared) | ✅ If master Pay Approved (timesheet); view-only matrix/teams if dev shared | ❌ | ❌ | ❌ | ❌ |
 | Pay History tab (ledger, generators, print; view in bulk modal) | ✅ | ✅ If Pay Approved | ✅ If master Pay Approved | ❌ | ❌ | ❌ | ❌ |
-| Hours tab (timesheet) | ✅ | ✅ If Pay Approved | ✅ If master Pay Approved | ❌ | ❌ | ❌ | ❌ |
 | Vehicles tab (fleet CRUD, odometer, possessions) | ✅ | ✅ If Pay Approved | ✅ If master Pay Approved | ❌ | ❌ | ❌ | ❌ |
 | Housing tab (units CRUD, weekly rent/utilities/insurance, possessions) | ✅ | ✅ If Pay Approved | ✅ If master Pay Approved | ❌ | ❌ | ❌ | ❌ |
 | Offsets tab (backcharges, damages, apply to pay stub) | ✅ | ✅ If Pay Approved | ✅ If master Pay Approved | ❌ | ❌ | ❌ | ❌ |
@@ -643,6 +641,9 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 | Writeups tab (`?tab=writeups`): custom form templates, writeups about a subject user, Discussed vs Withheld disclosure; submitted rows immutable; dev-only delete submitted; **unified list** also shows **read-only** NCNS rows from **`attendance_incidents`** (same RLS as incidents); legacy `?tab=contracts&contracts_sub=writeups` redirects to `tab=writeups` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Activity tab (first-party app usage: org-wide UTC table; dev grants assistant / master / primary) | ✅ + manage grants | ✅ if granted | ✅ if granted | ❌ | ❌ | ✅ if granted | ❌ |
 | **Teams** tab (`?tab=teams`): manage **`team_leader_assignments`** (add/remove leader→member links; leader-centric tree; search); **Leader dashboard** visibility **dev-only** (same RLS as Settings **Team Hours Sharing**) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Overhead** tab (`?tab=overhead`): daily **approved, closed** clock labor $ — **office** job from **`app_settings`** **`overhead_office_job_ledger_id_v1`** (dev configures) + **bid** time; hours × **`people_pay_config.hourly_wage`** | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+
+**Contracts (assistants):** **assistant** may use the tab but **cannot delete** person documents, templates, Contract Book library entries, or remove template checklist lines on save (**`canDeletePeopleContracts`** in **`People.tsx`** — **dev** and **master_technician** only). **Unassign template** is limited the same way (DB **DELETE** on contract tables excludes plain **assistant** — migration **`20260502070926_contract_tables_assistant_no_delete.sql`**).
 
 ### Workflow Management
 

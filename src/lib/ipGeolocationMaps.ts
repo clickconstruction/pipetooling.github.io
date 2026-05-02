@@ -59,6 +59,12 @@ export function googleMapsUrlForLatLng(lat: number, lng: number): string {
   return `https://www.google.com/maps?q=${encodeURIComponent(`${lat},${lng}`)}`
 }
 
+/** Opens Google Maps in a new tab (same URL shape as pin links in `ClockSessionLocationCell`). */
+export function openGoogleMapsAt(lat: number, lng: number): void {
+  if (typeof window === 'undefined') return
+  window.open(googleMapsUrlForLatLng(lat, lng), '_blank', 'noopener,noreferrer')
+}
+
 function readCache(ip: string): { lat: number; lng: number } | null {
   try {
     const raw = sessionStorage.getItem(CACHE_PREFIX + ip)

@@ -27,6 +27,7 @@ import {
   AssignSessionJobPopover,
   type AssignSessionJobSavedPatch,
 } from './clock-sessions/AssignSessionJobPopover'
+import { StripClockTimeMapButton } from './clock-sessions/StripClockTimeMapButton'
 import {
   ClockSessionStripActionsModal,
   type ClockSessionStripActionsPayload,
@@ -425,6 +426,27 @@ const clockedInTodayDetailCell: CSSProperties = {
   verticalAlign: 'top',
 }
 
+/** Typography for clocked-in-today session time range (matches `clockedInTodayDetailCell`). */
+const clockedInTodaySessionTimeText: CSSProperties = {
+  fontFamily: 'inherit',
+  fontSize: '0.68rem',
+  fontWeight: 400,
+  color: '#6b7280',
+  WebkitTextSizeAdjust: '100%',
+  whiteSpace: 'nowrap' as const,
+  flexShrink: 0,
+}
+
+/** Jobs worked today expanded sessions — matches parent `td` (0.7rem grey). */
+const jobsWorkedTodaySessionTimeText: CSSProperties = {
+  fontFamily: 'inherit',
+  fontSize: '0.7rem',
+  fontWeight: 400,
+  color: '#6b7280',
+  whiteSpace: 'nowrap' as const,
+  flexShrink: 0,
+}
+
 /** Content-width bottom rule under time + job + memo (not full inner table width). */
 const clockedInTodaySessionBlock: CSSProperties = {
   display: 'inline-block',
@@ -441,7 +463,7 @@ const stripSessionActionsRowChromeNoSelect: CSSProperties = {
   WebkitTouchCallout: 'none',
 }
 
-/** Jobs worked today: one flex row per session; underline width matches that row’s content. */
+/** Jobs worked today: one flex row per session (person, times, duration, memo); underline matches content width. */
 const jobsWorkedTodaySessionRowShell: CSSProperties = {
   display: 'flex',
   flexWrap: 'wrap',
@@ -821,8 +843,8 @@ export function DashboardTeamActiveClockStrip({
       const tIn = new Date(s.clocked_in_at).toLocaleTimeString(undefined, timeOpts)
       const openS = s.clocked_out_at == null
       const timeRangeLabel = openS
-        ? `${tIn} – Open`
-        : `${tIn} – ${new Date(s.clocked_out_at!).toLocaleTimeString(undefined, timeOpts)}`
+        ? `${tIn} - Open`
+        : `${tIn} - ${new Date(s.clocked_out_at!).toLocaleTimeString(undefined, timeOpts)}`
       return stripActionsPayloadFromSession(
         s,
         stripClockedInTodayDisplayLabel(row, authUserId),
@@ -1399,10 +1421,20 @@ export function DashboardTeamActiveClockStrip({
               const titleText = synthetic ? 'On schedule; session sync may follow' : fullJobBid ?? linkText ?? undefined
               const elapsedStr = formatElapsedOpen(s.clocked_in_at, nowMs)
               const inStr = inDate.toLocaleTimeString(undefined, timeOpts)
+              const cr = s as ClockSessionRow
               const sessionInCell = (
                 <>
                   <span style={stripClockStripSummaryPipeTime}>{elapsedStr}</span>
-                  <span style={stripClockStripSummaryPipeTime}>{' | '}{inStr}</span>
+                  <span style={stripClockStripSummaryPipeTime}>{' | '}</span>
+                  <StripClockTimeMapButton
+                    kind="in"
+                    lat={synthetic ? null : cr.clock_in_lat ?? null}
+                    lng={synthetic ? null : cr.clock_in_lng ?? null}
+                    locationSource={synthetic ? null : cr.clock_in_location_source ?? null}
+                    baseStyle={stripClockStripSummaryPipeTime}
+                  >
+                    {inStr}
+                  </StripClockTimeMapButton>
                 </>
               )
               const memo = (s.notes ?? '').trim()
@@ -1802,8 +1834,8 @@ export function DashboardTeamActiveClockStrip({
                                         optimisticStripApprovedIds,
                                       )
                                       const timeRangeLabel = open
-                                        ? `${tIn} – Open`
-                                        : `${tIn} – ${new Date(s.clocked_out_at!).toLocaleTimeString(undefined, timeOpts)}`
+                                        ? `${tIn} - Open`
+                                        : `${tIn} - ${new Date(s.clocked_out_at!).toLocaleTimeString(undefined, timeOpts)}`
                                       return (
                                         <tr key={s.id || `${s.user_id}-${s.clocked_in_at}-${idx}`}>
                                           <td style={clockedInTodayDetailCell}>
@@ -1852,18 +1884,59 @@ export function DashboardTeamActiveClockStrip({
                                                     onReject={async () => {}}
                                                   />
                                                 ) : null}
-                                                <span style={{ whiteSpace: 'nowrap' as const, flexShrink: 0 }}>
+                                                <span
+                                                  style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    flexWrap: 'nowrap',
+                                                    gap: '0.35rem',
+                                                    minWidth: 0,
+                                                  }}
+                                                >
                                                   {open ? (
                                                     <>
-                                                      {tIn} – <span style={{ fontWeight: 600, color: '#374151' }}>Open</span>
-                                                      {' · '}
-                                                      {formatElapsedOpen(s.clocked_in_at, nowMs)}
+                                                      <StripClockTimeMapButton
+                                                        kind="in"
+                                                        lat={s.clock_in_lat ?? null}
+                                                        lng={s.clock_in_lng ?? null}
+                                                        locationSource={s.clock_in_location_source ?? null}
+                                                        baseStyle={clockedInTodaySessionTimeText}
+                                                      >
+                                                        {tIn}
+                                                      </StripClockTimeMapButton>
+                                                      {'-'}
+                                                      <span style={{ fontWeight: 600, color: '#374151' }}>Open</span>
+                                                      {'•'}
+                                                      <span style={clockedInTodaySessionTimeText}>
+                                                        {formatElapsedOpen(s.clocked_in_at, nowMs)}
+                                                      </span>
                                                     </>
                                                   ) : (
                                                     <>
-                                                      {tIn} – {new Date(s.clocked_out_at!).toLocaleTimeString(undefined, timeOpts)}
-                                                      {' · '}
-                                                      {dur}
+                                                      <StripClockTimeMapButton
+                                                        kind="in"
+                                                        lat={s.clock_in_lat ?? null}
+                                                        lng={s.clock_in_lng ?? null}
+                                                        locationSource={s.clock_in_location_source ?? null}
+                                                        baseStyle={clockedInTodaySessionTimeText}
+                                                      >
+                                                        {tIn}
+                                                      </StripClockTimeMapButton>
+                                                      {'-'}
+                                                      <StripClockTimeMapButton
+                                                        kind="out"
+                                                        lat={s.clock_out_lat ?? null}
+                                                        lng={s.clock_out_lng ?? null}
+                                                        locationSource={s.clock_out_location_source ?? null}
+                                                        baseStyle={clockedInTodaySessionTimeText}
+                                                      >
+                                                        {new Date(s.clocked_out_at!).toLocaleTimeString(
+                                                          undefined,
+                                                          timeOpts,
+                                                        )}
+                                                      </StripClockTimeMapButton>
+                                                      {'•'}
+                                                      <span style={clockedInTodaySessionTimeText}>{dur}</span>
                                                     </>
                                                   )}
                                                 </span>
@@ -2326,17 +2399,15 @@ export function DashboardTeamActiveClockStrip({
                                         nowMs,
                                       )
                                       const dur = formatDurationFromSeconds(sec)
-                                      const range = open
-                                        ? `${tIn} – Open`
-                                        : `${tIn} – ${new Date(s.clocked_out_at!).toLocaleTimeString(undefined, timeOpts)}`
                                       const stripApproveStatus = stripApproveStatusForSession(
                                         s,
                                         optimisticStripApprovedIds,
                                       )
                                       const timeRangeLabel = open
-                                        ? `${tIn} – Open`
-                                        : `${tIn} – ${new Date(s.clocked_out_at!).toLocaleTimeString(undefined, timeOpts)}`
+                                        ? `${tIn} - Open`
+                                        : `${tIn} - ${new Date(s.clocked_out_at!).toLocaleTimeString(undefined, timeOpts)}`
                                       const personName = stripPersonDisplayName(s)
+                                      const memo = (s.notes ?? '').trim()
                                       return (
                                         <div
                                           key={s.id || `${s.user_id}-${idx}`}
@@ -2423,7 +2494,56 @@ export function DashboardTeamActiveClockStrip({
                                               ) : null}
                                             </span>
                                           </div>
-                                          <span style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>{range}</span>
+                                          <span
+                                            style={{
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              flexWrap: 'nowrap',
+                                              gap: '0.35rem',
+                                              minWidth: 0,
+                                            }}
+                                          >
+                                            {open ? (
+                                              <>
+                                                <StripClockTimeMapButton
+                                                  kind="in"
+                                                  lat={s.clock_in_lat ?? null}
+                                                  lng={s.clock_in_lng ?? null}
+                                                  locationSource={s.clock_in_location_source ?? null}
+                                                  baseStyle={jobsWorkedTodaySessionTimeText}
+                                                >
+                                                  {tIn}
+                                                </StripClockTimeMapButton>
+                                                {'-'}
+                                                <span style={{ fontWeight: 600, color: '#374151' }}>Open</span>
+                                              </>
+                                            ) : (
+                                              <>
+                                                <StripClockTimeMapButton
+                                                  kind="in"
+                                                  lat={s.clock_in_lat ?? null}
+                                                  lng={s.clock_in_lng ?? null}
+                                                  locationSource={s.clock_in_location_source ?? null}
+                                                  baseStyle={jobsWorkedTodaySessionTimeText}
+                                                >
+                                                  {tIn}
+                                                </StripClockTimeMapButton>
+                                                {'-'}
+                                                <StripClockTimeMapButton
+                                                  kind="out"
+                                                  lat={s.clock_out_lat ?? null}
+                                                  lng={s.clock_out_lng ?? null}
+                                                  locationSource={s.clock_out_location_source ?? null}
+                                                  baseStyle={jobsWorkedTodaySessionTimeText}
+                                                >
+                                                  {new Date(s.clocked_out_at!).toLocaleTimeString(
+                                                    undefined,
+                                                    timeOpts,
+                                                  )}
+                                                </StripClockTimeMapButton>
+                                              </>
+                                            )}
+                                          </span>
                                           {onOpenStripMyTimeEditor ? (
                                             <button
                                               type="button"
@@ -2463,6 +2583,9 @@ export function DashboardTeamActiveClockStrip({
                                               {dur}
                                             </span>
                                           )}
+                                          <span style={stripSessionMemoCellStyle} title={memo || undefined}>
+                                            {memo || '—'}
+                                          </span>
                                         </div>
                                       )
                                     })}

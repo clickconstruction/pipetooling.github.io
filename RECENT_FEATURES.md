@@ -12,11 +12,53 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.452 → v2.4"
+version_range: "v2.466 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.466)"
+    line: ~1549
+    description: "People Overhead — Detail column removed; per-day session lines via breakdown modals only; colSpan 4/7"
+  - name: "Latest Version (v2.465)"
+    line: ~1562
+    description: "People Overhead — Simple vs Advanced table (hide Bid/Office labor/Office parts); overheadTableViewStorage"
+  - name: "Latest Version (v2.464)"
+    line: ~1574
+    description: "People Contracts — assistants no delete (UI + RLS); ContractBookModal canDeleteLibraryEntries; unassign gated"
+  - name: "Latest Version (v2.463)"
+    line: ~1588
+    description: "People Overhead tab — dev + master_technician only (canAccessOverheadTab); assistant retains Teams"
+  - name: "Latest Version (v2.462)"
+    line: ~1598
+    description: "People Overhead — Overhead factor column (Office Total ($) ÷ Field Total ($)); overheadFactorTotalOverOtherJobs, table + intro; Vitest"
+  - name: "Latest Version (v2.461)"
+    line: ~1610
+    description: "People Overhead — Field Total ($) / Hours (dollars unchanged + jobs-ledger labor hours); buildOtherJobsLaborByDay.laborHoursByDay, OverheadDayMergedRow.otherJobsLaborHours, mergeOverheadDayTableRows"
+  - name: "Latest Version (v2.460)"
+    line: ~1622
+    description: "People Overhead — Office Total ($) / Hours column (dollars unchanged + office+bid labor hours); OverheadDayAggregate.laborHours, OverheadDayMergedRow.totalLaborHours"
+  - name: "Latest Version (v2.459)"
+    line: ~1532
+    description: "People Overhead — Field Total ($) column (non-office jobs ledger labor + materials; not in office total); fetchOtherJobsPartsByDay, mergeOverheadDayTableRows, otherJobs breakdown modal"
+  - name: "Latest Version (v2.458)"
+    line: ~1532
+    description: "People Overhead — Office parts ($) column (Mercury + supply + tally on office job by day); Total ($) includes materials; fetchOverheadOfficePartsByDay, mergeOfficePartsIntoOverheadDays + modal"
+  - name: "Latest Version (v2.457)"
+    line: ~1532
+    description: "People Overhead — clickable Office/Bid/Total $ cells open breakdown modal (per-person hours + $, session detail); overheadDailyLabor aggregation helpers + tests"
+  - name: "Latest Version (v2.456)"
+    line: ~1539
+    description: "People Overhead tab — office job app_settings + daily bid/office approved clock labor $; overheadDailyLabor, overheadOfficeJobSettings"
+  - name: "Latest Version (v2.455)"
+    line: ~1513
+    description: "People Hours — merged former Pay tab into Hours; section jump row + collapsible cards; ?tab=pay / team_costs → hours; #cost-matrix and ?section=rejected deep links; PROJECT_DOCUMENTATION / ACCESS_CONTROL"
+  - name: "Latest Version (v2.454)"
+    line: ~1535
+    description: "Supabase load reduction — Realtime debounce + document visibility + narrower clock_sessions filters (Dashboard financial pins, team strip, People Hours, Banking Mercury); Cursor rule supabase-incident-triage.mdc"
+  - name: "Latest Version (v2.453)"
+    line: ~1555
+    description: "People Hours — Dashboard-style clock strip above Pending; dashboard_clock_strip_scope parity; selectable calendar day (+ Quickfill-aligned nav); live open sessions when selected day is today Denver; shared peopleHoursClockStripSelectedDay; dashboardClockStripScopeStorage"
   - name: "Latest Version (v2.452)"
-    line: ~1501
+    line: ~1520
     description: "Dashboard / Quickfill / Checklist Review — Dispatch & Estimator inbox mobile layout (useNarrowViewport640); Dismiss beside stats; Expand for thread under Dismiss; hint when note_count > 0 only"
   - name: "Latest Version (v2.451)"
     line: ~1515
@@ -1180,6 +1222,10 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.466 — **People → Overhead** — **Detail** column removed; per-day session lines only in **$** breakdown modals; **`overheadTableColCount`** **4** / **7** — **[`People.tsx`](src/pages/People.tsx)**](#latest-updates-v2466)
+**New:** [v2.455 — **People → Hours** — merged **Pay** into **Hours** (**`?tab=hours`**; **`?tab=pay`** / **`team_costs`** rewrite); **section jump** row + collapsible cards (**`HoursTabSectionId`**, **`jumpToHoursTabSection`**); **`#cost-matrix`**, **`?tab=hours&section=rejected`** → **`people-hours-rejected`**; shared week range + stack spacing — **[`People.tsx`](src/pages/People.tsx)**](#latest-updates-v2455)
+**New:** [v2.454 — **Supabase load reduction** — **`useDocumentVisibility`** + debounced **Dashboard** financial-pin Realtime (**`financialRefreshKey`** ~1200ms); **team strip** **`clock_sessions`** **`user_id=in.(…)`** (≤80) / org-wide debounce; **People** Hours **`clock_sessions`** debounce + optional **`user_id`** filter (≤150 **`users`**); **Banking** Mercury visibility gate; **Cursor** **[`.cursor/rules/supabase-incident-triage.mdc`](.cursor/rules/supabase-incident-triage.mdc)** natural-language outage triage](#latest-updates-v2454)
+**New:** [v2.453 — **People → Hours** — **Dashboard-style active clock strip** above **Pending** (**[`PeopleHoursDashboardClockStrip.tsx`](src/components/people/PeopleHoursDashboardClockStrip.tsx)** → **`DashboardTeamActiveClockStrip`**); **`stripWorkDateYmd`** / **`clockStripWorkDateYmd`** for selected **Denver** calendar day; **live open-session rows** only when **`selectedYmd`** is **today**; **`Everyone`/`Organization`** via shared **`dashboard_clock_strip_scope`** (**[`dashboardClockStripScopeStorage.ts`](src/lib/dashboardClockStripScopeStorage.ts)**); **Previous \| Next \| Today** day nav (narrow **`useNarrowViewport640`** aligns with **[`QuickfillPeopleHoursNewSection.tsx`](src/components/quickfill/QuickfillPeopleHoursNewSection.tsx)**); shared **`shiftWorkDateYmd`**, **`enCaWeekRangeContainingYmd`** — **[`peopleHoursClockStripSelectedDay.ts`](src/lib/peopleHoursClockStripSelectedDay.ts)**; **`onSessionsChanged`** → **`People.tsx`** **`loadAllClockSessionsRef`** refresh](#latest-updates-v2453)
 **New:** [v2.449 — **Bids** — **New/Edit bid** — **Estimator** and **Account Man** **`SearchableSelect`** options loaded by **`loadEstimatorUsers`**: omit **`helpers`** role, **`users`** with **`archived_at`** set, and users whose **name** is exactly **`delete`** (trim, case-insensitive); **`withSupabaseRetry`**; same list drives attestation name lookup (**[`Bids.tsx`](src/pages/Bids.tsx)**)](#latest-updates-v2449)
 **New:** [v2.448 — **Settings** — **Most recent push notifications** at top (after **Jump to**): last **5** rows from **`notification_history`** with **`channel`** **push** or **both**; **`SettingsRecentPushNotifications`**; **`#settings-recent-push`** jump link **Recent push** — server-logged sends only troubleshooting](#latest-updates-v2448)
 **New:** [v2.447 — **Job Detail** modal — **trade** pill (**PLUM** / **ELEC** / **HVAC**) on the **title** row (**`buildServiceTypeTradePill`**, **`serviceTypeTradePill.ts`**, parity with Jobs Stages subline); **Close** moved to **bottom-right** footer (scrolls with body); **limited** snapshot footnotes **centered**; **Service type** row under **Status** **removed**](#latest-updates-v2447)
@@ -1499,6 +1545,179 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.466)
+
+**Date**: 2026-05-01
+
+### **People → Overhead** — no **Detail** column (inline expand removed)
+
+- **Table** — The **Detail** / **Hide** column and the second table row that listed per-session lines under a date are removed (**[`People.tsx`](src/pages/People.tsx)**).
+- **Session detail** — Same **by-person** and **session** content remains in the **breakdown modals** opened from the clickable **$** cells (**Bid** / **Office** / **Office parts** / **Office Total** / **Field Total** scopes — see v2.457).
+- **Layout** — **`overheadTableColCount`**: **4** columns in **Simple** view, **7** in **Advanced** (empty state `colSpan` matches).
+
+---
+
+## Latest Updates (v2.465)
+
+**Date**: 2026-05-02
+
+### **People → Overhead** — **Simple** vs **Advanced** table
+
+- **Toolbar** — Segmented **View: Advanced | Simple** next to week navigation (**[`People.tsx`](src/pages/People.tsx)**).
+- **Simple** — Hides **Bid labor ($)**, **Office labor ($)**, **Office parts ($)**. **Office Total ($) / Hours**, **Field Total ($) / Hours**, and **Overhead factor** are unchanged (same merged row data from **`mergeOverheadDayTableRows`**).
+- **Persistence** — [`overheadTableViewStorage.ts`](src/lib/overheadTableViewStorage.ts) (`localStorage` **`people_overhead_table_simple_view_v1`**: `1` = Simple, `0` = Advanced; default Advanced).
+
+---
+
+## Latest Updates (v2.464)
+
+**Date**: 2026-05-02
+
+### **People → Contracts** — **assistant** cannot delete
+
+- **Product** — **`canDeletePeopleContracts`** (**[`People.tsx`](src/pages/People.tsx)**): **`dev`** and **`master_technician`** only. **Assistant** keeps tab access but **no** row **Delete**, template **Delete**, edit-modal **Delete**, **Unassign** (assign modal), or **Manage templates** save that **removes** checklist lines (**`toRemove`** guard).
+- **Contract Book** — **`canDeleteLibraryEntries`** (**[`ContractBookModal.tsx`](src/components/contracts/ContractBookModal.tsx)**); **`People.tsx`** passes the same flag as delete rights.
+- **RLS** — Migration **`20260502070926_contract_tables_assistant_no_delete.sql`**: splits **`FOR ALL`** on **`contract_templates`**, **`contract_template_documents`**, **`person_contract_assignments`**, **`person_contract_documents`** into **SELECT/INSERT/UPDATE** (unchanged, includes **`is_assistant()`**) vs **DELETE** (excludes plain **`assistant`**).
+- **Docs** — **`ACCESS_CONTROL.md`**, **`PROJECT_DOCUMENTATION.md`**, **`MIGRATIONS.md`**.
+
+---
+
+## Latest Updates (v2.463)
+
+**Date**: 2026-05-02
+
+### **People → Overhead** — **dev** and **master_technician** only
+
+- **Access** — **`canAccessOverheadTab`** (**[`People.tsx`](src/pages/People.tsx)**): **`dev`** and **`master_technician`** only; **`assistant`** no longer sees **Overhead** (still **Teams**). **`?tab=overhead`** redirects to **`users`** when ineligible.
+- **Docs** — **`ACCESS_CONTROL.md`** matrix + assistant role bullets; **`PROJECT_DOCUMENTATION.md`** Overhead tab line.
+
+---
+
+## Latest Updates (v2.462)
+
+**Date**: 2026-05-02
+
+### **People → Overhead** — **Overhead factor** (Office Total ($) ÷ Field Total ($))
+
+- **Column** — Right of **Field Total ($) / Hours**: **`totalUsd / otherJobsUsd`** as **`N.NN×`**; **—** when **field total** dollars are not positive (not margin—overhead dollars per $1 of field-total activity). Header **`title`** explains the ratio.
+- **Lib** — **`overheadFactorTotalOverOtherJobs`** in **[`overheadDailyLabor.ts`](src/lib/overheadDailyLabor.ts)** (+ **Vitest**). **UI** — **[`People.tsx`](src/pages/People.tsx)** (`colSpan` **7** Advanced / **4** Simple after v2.466; was **8** / **5** with **Detail**).
+
+---
+
+## Latest Updates (v2.461)
+
+**Date**: 2026-05-02
+
+### **People → Overhead** — **Field Total ($) / Hours** (dollars + jobs-ledger labor hours)
+
+- **Layout** — **Field Total ($) / Hours** follows **Office Total ($) / Hours** with a left border (vertical rule) separating field totals from office totals ([`People.tsx`](src/pages/People.tsx); **Detail** column removed in v2.466).
+- **Column** — Cell shows **`formatCurrency(otherJobsUsd)` · `N.NNh`**. **Dollars** remain field jobs ledger labor + materials; **hours** are approved, closed **jobs-ledger** (non–bid-only) labor only—materials add no hours (parts-only days **0.00h**).
+- **Lib** — **`buildOtherJobsLaborByDay`** returns **`laborHoursByDay`**; **`mergeOverheadDayTableRows`** takes **`otherJobsLaborHoursByDay`**; **`OverheadDayMergedRow.otherJobsLaborHours`** (+ **Vitest**).
+
+---
+
+## Latest Updates (v2.460)
+
+**Date**: 2026-05-02
+
+### **People → Overhead** — **Office Total ($) / Hours** (dollars + office/bid labor hours)
+
+- **Column** — Renamed from **Total ($)**; cell shows **`formatCurrency(total)` · `N.NNh`** (materials-only days show **0.00h**). Hours are approved, closed **office + bid** overhead clock time only (same basis as the **Total** modal labor line).
+- **Lib** — **[`overheadDailyLabor.ts`](src/lib/overheadDailyLabor.ts)** — **`OverheadDayAggregate.laborHours`**, **`OverheadDayMergedRow.totalLaborHours`** in **`mergeOverheadDayTableRows`** (+ **Vitest**).
+
+---
+
+## Latest Updates (v2.459)
+
+**Date**: 2026-05-02
+
+### **People → Overhead** — **Field Total ($) / Hours** column (labor + materials, excluded from overhead **Office Total ($)**)
+
+- **Column** — Separated from overhead totals by a left border (after **Office Total ($) / Hours**): approved, closed **jobs ledger** labor (not bid-only) excluding the configured office overhead job when set, plus **Mercury** / **supply** / **tally** materials on those jobs (same date rules as office parts). **Total ($)** (dollar part of that column) remains office labor + bid labor + office parts only.
+- **Load** — Separate **`clock_sessions`** query for non-office **`job_ledger_id`** rows; **`fetchOtherJobsPartsByDay`** for parts. Table merge via **`mergeOverheadDayTableRows`**. Cell opens a **breakdown modal** (by-person labor, session list, materials).
+
+---
+
+## Latest Updates (v2.458)
+
+**Date**: 2026-05-02
+
+### **People → Overhead** — **Office parts ($)** column + **Total ($)** includes materials
+
+- **Column** — **Office parts ($)** sums **Mercury** job allocations (|amount| by transaction **posted** date, company TZ), **supply** **`supply_house_invoice_job_allocations`** shares (by **invoice** date), and **tally** **`list_tally_parts_with_po`** lines (by **`created_at`**, company TZ), all scoped to the configured **office** **`jobs_ledger`**. **Total ($)** = office labor + bid labor + office parts.
+- **Loading** — Fetched with **`fetchOverheadOfficePartsByDay`**; merged via **`mergeOfficePartsIntoOverheadDays`** (union of labor and parts days). **Office parts** cell opens a **line-item modal**; **Total** modal summarizes labor + materials + grand total with **Materials (office job)** detail.
+
+---
+
+## Latest Updates (v2.457)
+
+**Date**: 2026-05-02
+
+### **People → Overhead** — **click-through breakdown modal** (per person + sessions)
+
+- **Table** — **Office labor ($)**, **Bid labor ($)**, and **Total** values are **buttons** (underlined); each opens a modal for that **date** and **scope** with **summary hours + $**, a **by-person** table (**Total** scope: **Office ($)** / **Bid ($)** / **Total ($)** per person), and collapsible **Session detail**.
+- **Lib** — **[`overheadDailyLabor.ts`](src/lib/overheadDailyLabor.ts)** — **`filterOverheadDetailLines`**, **`aggregateOverheadDetailByPerson`**, **`aggregateOverheadDetailByPersonTotalScope`** (+ **Vitest**).
+
+---
+
+## Latest Updates (v2.456)
+
+**Date**: 2026-05-02
+
+### **People → Overhead** — daily office + bid clock labor $
+
+- **Tab** — **`?tab=overhead`** (access **dev** / **master_technician** only since **v2.463**; was also **assistant** when this shipped). **Office job** UUID stored in **`app_settings`** **`overhead_office_job_ledger_id_v1`** (**[`overheadOfficeJobSettings.ts`](src/lib/overheadOfficeJobSettings.ts)**); dev **Overhead office job** modal — **Choose / Change / Clear** via job search.
+- **Totals** — **Approved, closed** **`clock_sessions`** only; **office** bucket = linked office **`jobs_ledger`**; **bid** bucket = **`bid_id`** set; office wins if both match. **$** = session hours × **`people_pay_config.hourly_wage`** (user display name). Detail rows show **no hourly wage** when pay config is missing.
+- **Lib** — **[`overheadDailyLabor.ts`](src/lib/overheadDailyLabor.ts)** (pure aggregation + **Vitest**); key constant in **[`appSettingsKeys.ts`](src/lib/appSettingsKeys.ts)**.
+
+---
+
+## Latest Updates (v2.455)
+
+**Date**: 2026-05-02
+
+### **People → Hours** — **Pay** merged into **Hours**; **section navigation**; collapsible layout
+
+- **Single tab** — Former **Pay** tools and **Hours** timesheet live under **`?tab=hours`**. **`?tab=pay`** and **`?tab=team_costs`** replace to **`hours`** (**[`People.tsx`](src/pages/People.tsx)** query sync).
+- **Jump row** — Buttons (**Week**, **Clock strip**, **Sessions**, **Grid**, **Pay tools**, **Due**, **Cost matrix**, **Teams**, **Sharing**) call **`jumpToHoursTabSection`**: expand the target block, smooth-scroll to **`people-hours-*`** / **`cost-matrix`** anchors; **`scroll-margin-top`** keeps content clear of the sticky header.
+- **Deep links** — **`#cost-matrix`**: open the cost matrix card, then scroll. **`?tab=hours&section=rejected`**: expand **Sessions**, open **Rejected**, scroll to **`people-hours-rejected`**, then drop **`section`** from the URL.
+- **UX** — Shared **`HOURS_TAB_SECTION_SHELL`** / toggle styling; **`HOURS_TAB_SECTIONS_STACK`** spacing between lower blocks.
+- **Docs** — **`PROJECT_DOCUMENTATION.md`** §5 People; **`ACCESS_CONTROL.md`** People Management + role bullets.
+
+---
+
+## Latest Updates (v2.454)
+
+**Date**: 2026-05-02
+
+### **Supabase load reduction** — **Realtime debounce**, **tab visibility**, **narrower `clock_sessions` filters** + **Cursor incident triage rule**
+
+- **Goal** — Cut Postgres/API pressure from broad **`postgres_changes`** listeners firing rapid full-table REST refetches (stalls, timeouts, unhealthy DB symptoms under load).
+- **`useDocumentVisibility`** — **[`src/hooks/useDocumentVisibility.ts`](src/hooks/useDocumentVisibility.ts)** — `document.visibilityState` + **`visibilitychange`**; used to skip scheduling refetches while the tab is hidden and to re-check visibility inside debounced callbacks where applicable.
+- **Dashboard — financial pins** — **`dashboard-financial-pins`** channel handlers coalesce WAL bursts into one **`financialRefreshKey`** bump (**~1200ms** trailing debounce). Focus / pins-changed / tab-visible paths still refresh pin totals immediately — **[`Dashboard.tsx`](src/pages/Dashboard.tsx)**.
+- **Dashboard — team clock strip** — **`my-team-clock-sessions-*`**: when **not** org-wide and team UUID count **≤80**, subscribe with **`user_id=in.(uuid,…)`** on **`clock_sessions`**; org-wide mode uses **650ms** debounce vs **280ms** when filtered; **`loadPending`** gated when document not visible — **[`useDashboardMyTeamSectionState.ts`](src/hooks/useDashboardMyTeamSectionState.ts)**.
+- **People — Hours / Pay / pay_stubs** — **`people-hours-changes`**: **`clock_sessions`** reloads (pending + approved + rejected + draft payroll pending count path) debounced (**~450ms**); optional **`user_id=in.(…)`** when **1–150** loaded roster **`users`** IDs (else full table subscription under RLS); **`people_hours`** row still triggers immediate **`loadPeopleHours`** — **[`People.tsx`](src/pages/People.tsx)**.
+- **Banking — Mercury** — Realtime **`mercury_transactions`** refetch not scheduled while tab hidden; **`loadRows`** skipped if still hidden when debounce fires — **[`Banking.tsx`](src/pages/Banking.tsx)**.
+- **Incident triage for Cursor agents** — **[`.cursor/rules/supabase-incident-triage.mdc`](.cursor/rules/supabase-incident-triage.mdc)** (**`alwaysApply: true`**) instructs agents to run **`./scripts/capture-supabase-incident.sh`** / **`supabase inspect db … --linked`** and follow **`docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md`** when users report outages in natural language (**Supabase crashed**, **503**, **Postgres slow**, etc.). **`AGENTS.md`** table row links this rule with the runbooks.
+- **Docs** — This section; **`AI_CONTEXT.md`**, **`TROUBLESHOOTING.md`**, **`README.md`**, **`PROJECT_DOCUMENTATION.md`** (Performance), **`docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md`** (See also).
+
+---
+
+## Latest Updates (v2.453)
+
+**Date**: 2026-05-01
+
+### **People** — **Hours** tab — **Dashboard-style clock strip** + **selectable strip day**
+
+- **Placement** — **[`PeopleHoursDashboardClockStrip.tsx`](src/components/people/PeopleHoursDashboardClockStrip.tsx)** renders above **Pending clock sessions** on **People → Hours** (**[`People.tsx`](src/pages/People.tsx)**). It wraps **`DashboardTeamActiveClockStrip`** with **`useDashboardMyTeamSectionState`** so parity with Dashboard **currently clocked in** / **My Time** tooling (**[**`Dashboard.tsx`](src/pages/Dashboard.tsx)** uses the same scope helpers module).
+- **Scope** — **Everyone** / **Organization** (**`stripScopeEligible`**: dev / master_technician / assistant) persists in **`dashboard_clock_strip_scope`** via **`readClockStripScopeFromStorage`** + **`dashboardClockStripScopeStorage.ts`** (**shared extraction** from Dashboard so one **localStorage** key applies to both surfaces).
+- **Strip day** — **`selectedYmd`** (**`denverCalendarDayKey`**) is passed into the hook as **`stripWorkDateYmd`** and into the strip as **`clockStripWorkDateYmd`**. **`pendingWorkDateRange`**, **`sessionsForPeopleStrip`**, and **`hideCurrentlyInTable`** keep **currently open** / **today-summary** semantics aligned with Dashboard only when the selected day equals **today** in company calendar mode; browsing another day shows that day’s **closed-session** snapshot without implying live clocks.
+- **Day navigation** — **Previous day \| Next day \| Today** (narrow **≤640px** stacks like **Quickfill** **People Hours (new)**). Helpers **`shiftWorkDateYmd`** and **`enCaWeekRangeContainingYmd`** live in **`peopleHoursClockStripSelectedDay.ts`** and are imported by **[`QuickfillPeopleHoursNewSection.tsx`](src/components/quickfill/QuickfillPeopleHoursNewSection.tsx)** (**no duplicated date math**).
+- **Reload Hours grids** — Optional **`onSessionsChanged`** notifies **`People.tsx`** (**`loadAllClockSessionsRef`**) after strip-driven changes (e.g. approve flow, salary sync hooks, **NCNS** paths) so **Pending / Approved Sessions** lists stay current.
+- **Superintendent** — **`showStripSubjectMyTimeEditor`** extends **My Time** / **Edit time** eligibility on the strip to superintendent where the wrapping component allows (scope toggles remain staff-only).
+
 ---
 
 ## Latest Updates (v2.452)
@@ -7337,7 +7556,7 @@ Fix app page for white-screen recovery, Cost matrix Pin To Dashboard with total 
 - **Use case**: User had phone open during deploy; app showed white screen. Navigate to `https://yoursite.com/fix-cache.html`, click "Fix app", app reloads fresh.
 
 **Cost matrix Pin To Dashboard**:
-- **Display**: Pins now show "Total | $12,354" (current week total) on Dashboard instead of "People – Cost matrix · pay". Link goes to `/people?tab=pay#cost-matrix` and scrolls to Cost matrix.
+- **Display**: Pins now show "Total | $12,354" (current week total) on Dashboard instead of "People – Cost matrix · pay". Link goes to `/people?tab=hours#cost-matrix` (legacy `tab=pay` rewrites to **Hours**) and scrolls to Cost matrix.
 - **Unpin All**: Button next to "Pin To Dashboard" removes Cost matrix pin from all users. Requires dev RLS policy (`allow_devs_delete_user_pinned_tabs`).
 - **Duplicate handling**: `addPinForUser` treats duplicate key (23505 or message containing constraint name) as success; no error shown when re-pinning.
 

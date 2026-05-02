@@ -2749,6 +2749,7 @@ export type Database = {
         Row: {
           end_date: string
           id: string
+          person_id: string | null
           person_name: string
           reviewed_at: string
           reviewed_by: string
@@ -2757,6 +2758,7 @@ export type Database = {
         Insert: {
           end_date: string
           id?: string
+          person_id?: string | null
           person_name: string
           reviewed_at?: string
           reviewed_by: string
@@ -2765,12 +2767,21 @@ export type Database = {
         Update: {
           end_date?: string
           id?: string
+          person_id?: string | null
           person_name?: string
           reviewed_at?: string
           reviewed_by?: string
           start_date?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "hours_reviewed_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       housing_possessions: {
         Row: {
@@ -4799,6 +4810,7 @@ export type Database = {
           id: string
           paid_amount: number
           pay_stub_id: string
+          person_id: string | null
           person_name: string
           rate_at_time: number
           work_date: string
@@ -4809,6 +4821,7 @@ export type Database = {
           id?: string
           paid_amount: number
           pay_stub_id: string
+          person_id?: string | null
           person_name: string
           rate_at_time: number
           work_date: string
@@ -4819,6 +4832,7 @@ export type Database = {
           id?: string
           paid_amount?: number
           pay_stub_id?: string
+          person_id?: string | null
           person_name?: string
           rate_at_time?: number
           work_date?: string
@@ -4829,6 +4843,13 @@ export type Database = {
             columns: ["pay_stub_id"]
             isOneToOne: false
             referencedRelation: "pay_stubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pay_stub_days_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
             referencedColumns: ["id"]
           },
         ]
@@ -4945,6 +4966,7 @@ export type Database = {
           paid_note: string | null
           period_end: string
           period_start: string
+          person_id: string | null
           person_name: string
         }
         Insert: {
@@ -4958,6 +4980,7 @@ export type Database = {
           paid_note?: string | null
           period_end: string
           period_start: string
+          person_id?: string | null
           person_name: string
         }
         Update: {
@@ -4971,6 +4994,7 @@ export type Database = {
           paid_note?: string | null
           period_end?: string
           period_start?: string
+          person_id?: string | null
           person_name?: string
         }
         Relationships: [
@@ -4988,10 +5012,18 @@ export type Database = {
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "pay_stubs_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
         ]
       }
       people: {
         Row: {
+          account_user_id: string | null
           archived_at: string | null
           created_at: string | null
           email: string | null
@@ -5004,6 +5036,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          account_user_id?: string | null
           archived_at?: string | null
           created_at?: string | null
           email?: string | null
@@ -5016,6 +5049,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          account_user_id?: string | null
           archived_at?: string | null
           created_at?: string | null
           email?: string | null
@@ -5029,6 +5063,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "people_account_user_id_fkey"
+            columns: ["account_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "people_master_user_id_fkey"
             columns: ["master_user_id"]
             isOneToOne: false
@@ -5039,60 +5080,93 @@ export type Database = {
       }
       people_cost_matrix_tags: {
         Row: {
+          person_id: string | null
           person_name: string
           tags: string
         }
         Insert: {
+          person_id?: string | null
           person_name: string
           tags?: string
         }
         Update: {
+          person_id?: string | null
           person_name?: string
           tags?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "people_cost_matrix_tags_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       people_crew_bids: {
         Row: {
           bid_assignments: Json
           crew_lead_person_name: string | null
+          person_id: string | null
           person_name: string
           work_date: string
         }
         Insert: {
           bid_assignments?: Json
           crew_lead_person_name?: string | null
+          person_id?: string | null
           person_name: string
           work_date: string
         }
         Update: {
           bid_assignments?: Json
           crew_lead_person_name?: string | null
+          person_id?: string | null
           person_name?: string
           work_date?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "people_crew_bids_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       people_crew_jobs: {
         Row: {
           crew_lead_person_name: string | null
           job_assignments: Json
+          person_id: string | null
           person_name: string
           work_date: string
         }
         Insert: {
           crew_lead_person_name?: string | null
           job_assignments?: Json
+          person_id?: string | null
           person_name: string
           work_date: string
         }
         Update: {
           crew_lead_person_name?: string | null
           job_assignments?: Json
+          person_id?: string | null
           person_name?: string
           work_date?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "people_crew_jobs_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       people_hours: {
         Row: {
@@ -5100,6 +5174,7 @@ export type Database = {
           entered_by: string | null
           hours: number
           id: string
+          person_id: string | null
           person_name: string
           work_date: string
         }
@@ -5108,6 +5183,7 @@ export type Database = {
           entered_by?: string | null
           hours?: number
           id?: string
+          person_id?: string | null
           person_name: string
           work_date: string
         }
@@ -5116,6 +5192,7 @@ export type Database = {
           entered_by?: string | null
           hours?: number
           id?: string
+          person_id?: string | null
           person_name?: string
           work_date?: string
         }
@@ -5127,22 +5204,40 @@ export type Database = {
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "people_hours_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
         ]
       }
       people_hours_display_order: {
         Row: {
+          person_id: string | null
           person_name: string
           sequence_order: number
         }
         Insert: {
+          person_id?: string | null
           person_name: string
           sequence_order?: number
         }
         Update: {
+          person_id?: string | null
           person_name?: string
           sequence_order?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "people_hours_display_order_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       people_labels: {
         Row: {
@@ -5307,6 +5402,7 @@ export type Database = {
         Row: {
           hourly_wage: number | null
           is_salary: boolean
+          person_id: string | null
           person_name: string
           record_hours_but_salary: boolean
           show_in_cost_matrix: boolean
@@ -5315,6 +5411,7 @@ export type Database = {
         Insert: {
           hourly_wage?: number | null
           is_salary?: boolean
+          person_id?: string | null
           person_name: string
           record_hours_but_salary?: boolean
           show_in_cost_matrix?: boolean
@@ -5323,27 +5420,46 @@ export type Database = {
         Update: {
           hourly_wage?: number | null
           is_salary?: boolean
+          person_id?: string | null
           person_name?: string
           record_hours_but_salary?: boolean
           show_in_cost_matrix?: boolean
           show_in_hours?: boolean
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "people_pay_config_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       people_team_members: {
         Row: {
+          person_id: string | null
           person_name: string
           team_id: string
         }
         Insert: {
+          person_id?: string | null
           person_name: string
           team_id: string
         }
         Update: {
+          person_id?: string | null
           person_name?: string
           team_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "people_team_members_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "people_team_members_team_id_fkey"
             columns: ["team_id"]
@@ -5575,6 +5691,7 @@ export type Database = {
           id: string
           occurred_date: string
           pay_stub_id: string | null
+          person_id: string | null
           person_name: string
           type: string
         }
@@ -5585,6 +5702,7 @@ export type Database = {
           id?: string
           occurred_date: string
           pay_stub_id?: string | null
+          person_id?: string | null
           person_name: string
           type: string
         }
@@ -5595,6 +5713,7 @@ export type Database = {
           id?: string
           occurred_date?: string
           pay_stub_id?: string | null
+          person_id?: string | null
           person_name?: string
           type?: string
         }
@@ -5604,6 +5723,13 @@ export type Database = {
             columns: ["pay_stub_id"]
             isOneToOne: false
             referencedRelation: "pay_stubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_offsets_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
             referencedColumns: ["id"]
           },
         ]
@@ -9698,6 +9824,16 @@ export type Database = {
         Args: { p_person_name: string }
         Returns: Json
       }
+      people_hours_subtract_approved_hours: {
+        Args: {
+          p_entered_by: string
+          p_hours: number
+          p_person_name: string
+          p_user_id: string
+          p_work_date: string
+        }
+        Returns: undefined
+      }
       preview_merge_customers: {
         Args: { p_survivor: string; p_victim: string }
         Returns: Json
@@ -9795,6 +9931,10 @@ export type Database = {
           window_end_utc: string
           window_start_utc: string
         }[]
+      }
+      resolve_pay_person_id_from_clock_user: {
+        Args: { p_display_name: string; p_user_id: string }
+        Returns: string
       }
       restore_rejected_clock_sessions: {
         Args: { p_session_ids: string[] }

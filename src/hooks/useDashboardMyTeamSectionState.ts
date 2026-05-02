@@ -20,6 +20,10 @@ import {
 } from '../lib/salaryPayConfigGate'
 import { hasPairwiseClockIntervalOverlap } from '../lib/myTimeDayTimeline'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
+import { useDocumentVisibility } from './useDocumentVisibility'
+
+/** Max UUIDs in Realtime `user_id=in.(...)` filter (avoid oversized filter strings). */
+const CLOCK_SESSIONS_REALTIME_IN_FILTER_MAX_IDS = 80
 
 function optimisticPatchClockSessionRow(row: ClockSessionRow, patch: AssignSessionJobSavedPatch): ClockSessionRow {
   if (row.id !== patch.sessionId) return row
@@ -115,6 +119,12 @@ export type TodaySessionStripRow = {
   /** Present for dashboard today strip (split salary gap visibility). */
   origin?: string | null
   salary_segment_index?: number | null
+  clock_in_lat?: number | null
+  clock_in_lng?: number | null
+  clock_out_lat?: number | null
+  clock_out_lng?: number | null
+  clock_in_location_source?: string | null
+  clock_out_location_source?: string | null
   notes: string | null
   job_ledger_id: string | null
   bid_id: string | null
@@ -302,6 +312,7 @@ export function useDashboardMyTeamSectionState(
     () => [...new Set([...memberUserIds, ...(authUserId ? [authUserId] : [])])],
     [memberUserIds, authUserId],
   )
+  const isDocVisible = useDocumentVisibility()
 
   const loadAssignments = useCallback(async () => {
     if (!authUserId) {
@@ -766,26 +777,39 @@ export function useDashboardMyTeamSectionState(
   /** Live refresh when sessions change elsewhere (e.g. Schedule/Dispatch assign). */
   useEffect(() => {
     if (!authUserId) return
-    const debounceMs = 280
+    const debounceMs = orgWideStripEnabled ? 650 : 280
     let debounceTimer: ReturnType<typeof setTimeout> | null = null
     const scheduleReload = () => {
+      if (!isDocVisible) return
       if (debounceTimer != null) clearTimeout(debounceTimer)
       debounceTimer = setTimeout(() => {
         debounceTimer = null
+        if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
         void loadPending({ silent: true })
       }, debounceMs)
     }
-    const channel = supabase
-      .channel(`my-team-clock-sessions-${authUserId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'clock_sessions' }, () => {
-        scheduleReload()
-      })
-      .subscribe()
+    const channel = supabase.channel(`my-team-clock-sessions-${authUserId}`)
+    const idsSorted = [...stripTeamUserIds].filter(Boolean).sort()
+    const useInFilter =
+      !orgWideStripEnabled &&
+      idsSorted.length > 0 &&
+      idsSorted.length <= CLOCK_SESSIONS_REALTIME_IN_FILTER_MAX_IDS
+    if (useInFilter) {
+      channel.on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'clock_sessions',
+        filter: `user_id=in.(${idsSorted.join(',')})`,
+      }, scheduleReload)
+    } else {
+      channel.on('postgres_changes', { event: '*', schema: 'public', table: 'clock_sessions' }, scheduleReload)
+    }
+    channel.subscribe()
     return () => {
       if (debounceTimer != null) clearTimeout(debounceTimer)
       supabase.removeChannel(channel)
     }
-  }, [authUserId, loadPending])
+  }, [authUserId, loadPending, orgWideStripEnabled, stripTeamUserIds, isDocVisible])
 
   useEffect(() => {
     if (!authUserId) {

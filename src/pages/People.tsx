@@ -29,7 +29,18 @@ import { normalizeCustomerAttachmentUrl } from '../lib/estimateCustomerAttachmen
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { buildCrewMapFromJobsAndBidRows, type MergedCrewMapRow } from '../utils/crewAssignments'
 import { formatDateRangeLabel } from '../utils/dateRangeLabel'
-import { APP_CALENDAR_TZ } from '../utils/dateUtils'
+import { APP_CALENDAR_TZ, referenceDateForWorkDateYmd } from '../utils/dateUtils'
+
+function formatOverheadTabWorkDateLabel(workDateYmd: string): string {
+  const d = referenceDateForWorkDateYmd(workDateYmd)
+  return new Intl.DateTimeFormat('en-US', {
+    weekday: 'short',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    timeZone: APP_CALENDAR_TZ,
+  }).format(d)
+}
 
 function formatContractBookLastEditedCalendarDate(iso: string): string {
   const d = new Date(iso)
@@ -45,6 +56,7 @@ import { CLOCK_SESSION_LIST_SELECT } from '../lib/clockSessionSelect'
 import { approveClockSessions } from '../lib/approveClockSessions'
 import { clockSessionMatchesSearch } from '../lib/clockSessionSearch'
 import { cascadePersonNameInPayTables } from '../lib/cascadePersonName'
+import { resolvePersonIdFromRosterName } from '../lib/payPersonSubject'
 import { denverWorkDateToday, syncSalaryClockSessionsForUserDay } from '../lib/salaryScheduleSync'
 import {
   isPayStubFullyPaid,
@@ -97,6 +109,7 @@ import {
 import { resolveManagerUserIdForFeedback } from '../lib/teamFeedback'
 import { loginAsUser } from '../lib/loginAsUser'
 import { useAuth } from '../hooks/useAuth'
+import { useDocumentVisibility } from '../hooks/useDocumentVisibility'
 import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
 import { useHoursGridFirstColWidthPx } from '../hooks/useHoursGridFirstColWidthPx'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
@@ -134,6 +147,33 @@ import { PayStubDeleteIcon } from '../components/pay/PayStubDeleteIcon'
 import { PayStubPaidNoteIcon } from '../components/pay/PayStubPaidNoteIcon'
 import type { ClockSessionRow } from '../types/clockSessions'
 import type { PayConfigRow } from '../types/peoplePayConfig'
+import {
+  aggregateOtherJobsLaborByPerson,
+  aggregateOverheadDetailByPerson,
+  aggregateOverheadDetailByPersonTotalScope,
+  buildOtherJobsLaborByDay,
+  buildOverheadDailyLabor,
+  buildOverheadWageLookup,
+  filterOverheadDetailLines,
+  mergeOverheadDayTableRows,
+  overheadFactorTotalOverOtherJobs,
+  type OverheadClockSessionRow,
+  type OverheadDetailScope,
+} from '../lib/overheadDailyLabor'
+import {
+  fetchOtherJobsPartsByDay,
+  fetchOverheadOfficePartsByDay,
+  type OverheadPartsDetailLine,
+} from '../lib/fetchOverheadOfficePartsByDay'
+import {
+  deleteOverheadOfficeJobLedgerIdSetting,
+  fetchOverheadOfficeJobLedgerIdFromAppSettings,
+  upsertOverheadOfficeJobLedgerId,
+} from '../lib/overheadOfficeJobSettings'
+import {
+  readOverheadTableSimpleViewFromStorage,
+  writeOverheadTableSimpleViewToStorage,
+} from '../lib/overheadTableViewStorage'
 
 type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
 type UserRow = { id: string; email: string | null; name: string; role: string; notes: string | null; phone: string | null }
@@ -239,6 +279,93 @@ const USERS_TAB_SECTIONS: UsersTabSection[] = [
   { type: 'dev' },
 ]
 
+/** People → Hours tab: collapsible section keys + DOM ids for in-page navigation. */
+type HoursTabSectionId =
+  | 'week'
+  | 'clockStrip'
+  | 'sessions'
+  | 'grid'
+  | 'payTools'
+  | 'dueSummaries'
+  | 'costMatrix'
+  | 'teams'
+  | 'sharing'
+
+/** Sections with chevron open/close state (`payTools` is a fixed top toolbar, not collapsible). */
+type HoursTabCollapsibleSectionId = Exclude<HoursTabSectionId, 'payTools'>
+
+const HOURS_TAB_SECTION_SCROLL_ID: Record<HoursTabSectionId, string> = {
+  week: 'people-hours-week',
+  clockStrip: 'people-hours-clock-strip',
+  sessions: 'people-hours-sessions',
+  grid: 'people-hours-grid',
+  payTools: 'people-hours-pay-tools',
+  dueSummaries: 'people-hours-due-summaries',
+  costMatrix: 'cost-matrix',
+  teams: 'people-hours-teams',
+  sharing: 'people-hours-sharing',
+}
+
+const INITIAL_HOURS_TAB_SECTIONS_OPEN: Record<HoursTabCollapsibleSectionId, boolean> = {
+  week: true,
+  clockStrip: true,
+  sessions: true,
+  grid: true,
+  dueSummaries: false,
+  costMatrix: true,
+  teams: false,
+  sharing: false,
+}
+
+const HOURS_TAB_SECTION_ANCHOR_STYLE: CSSProperties = { scrollMarginTop: '3.5rem' }
+
+const HOURS_TAB_SECTIONS_STACK_GAP = '0.75rem'
+
+const HOURS_TAB_SECTIONS_STACK: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: HOURS_TAB_SECTIONS_STACK_GAP,
+}
+
+/** Uniform card shell for People → Hours collapsible sections */
+const HOURS_TAB_SECTION_SHELL: CSSProperties = {
+  ...HOURS_TAB_SECTION_ANCHOR_STYLE,
+  border: '1px solid #e5e7eb',
+  borderRadius: 8,
+  padding: '0.65rem 0.85rem',
+  background: '#fafafa',
+  boxSizing: 'border-box',
+}
+
+/** Primary section header control (chevron + label) */
+const HOURS_TAB_SECTION_TOGGLE_BTN: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '0.4rem',
+  padding: '0.35rem 0.55rem',
+  border: '1px solid #d1d5db',
+  borderRadius: 6,
+  background: '#ffffff',
+  cursor: 'pointer',
+  fontSize: '0.875rem',
+  fontWeight: 600,
+  color: '#111827',
+  fontFamily: 'inherit',
+  lineHeight: 1.25,
+  textAlign: 'left',
+}
+
+const HOURS_TAB_SECTION_CHEVRON: CSSProperties = {
+  fontSize: '0.65rem',
+  color: '#6b7280',
+  flexShrink: 0,
+  lineHeight: 1,
+}
+
+function hoursTabSectionHeaderGap(open: boolean): CSSProperties {
+  return { marginBottom: open ? '0.75rem' : 0 }
+}
+
 const tabStyle = (active: boolean) => ({
   padding: '0.75rem 1.5rem',
   border: 'none',
@@ -253,18 +380,18 @@ const tabStyle = (active: boolean) => ({
 type PersonActiveProject = { id: string; name: string }
 
 type PeopleTab =
+  | 'review'
   | 'users'
   | 'teams'
+  | 'overhead'
   | 'pay_stubs'
-  | 'pay'
   | 'hours'
+  | 'offsets'
   | 'vehicles'
   | 'housing'
-  | 'offsets'
   | 'licenses'
   | 'contracts'
   | 'writeups'
-  | 'review'
   | 'feedback'
   | 'activity'
 
@@ -319,9 +446,15 @@ function usersTabContactRowStyle(narrow: boolean): CSSProperties {
       }
 }
 
+/** Debounced clock-session reload on People Hours/Pay Realtime (coalesce WAL bursts). */
+const PEOPLE_HOURS_CLOCK_REALTIME_DEBOUNCE_MS = 450
+/** Max UUIDs in Realtime `user_id=in.(...)` for People Hours (avoid oversized filters). */
+const PEOPLE_HOURS_CLOCK_REALTIME_MAX_USER_IDS = 150
+
 export default function People() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { user: authUser, role: authRole } = useAuth()
+  const isDocVisible = useDocumentVisibility()
   const { showToast } = useToastContext()
   const prefixMap = useLedgerPrefixMap()
   const narrowViewport = useNarrowViewport640()
@@ -330,7 +463,14 @@ export default function People() {
   const [users, setUsers] = useState<UserRow[]>([])
   const usersRef = useRef<UserRow[]>([])
   usersRef.current = users
+  const peopleHoursClockRealtimeInFilter = useMemo(() => {
+    const ids = [...new Set(users.map((u) => u.id).filter(Boolean))].sort()
+    if (ids.length === 0 || ids.length > PEOPLE_HOURS_CLOCK_REALTIME_MAX_USER_IDS) return null
+    return `user_id=in.(${ids.join(',')})`
+  }, [users])
   const [people, setPeople] = useState<Person[]>([])
+  const peopleRosterRef = useRef<Person[]>([])
+  peopleRosterRef.current = people
   const offsetPersonNameOptions = useMemo(
     () =>
       [...new Set([...people.map((p) => p.name), ...users.map((u) => u.name)])]
@@ -362,7 +502,6 @@ export default function People() {
   const [activeTab, setActiveTab] = useState<PeopleTab>('users')
 
   // Pay/Hours tab state
-  const [payTabLoading, setPayTabLoading] = useState(false)
   const [hoursTabLoading, setHoursTabLoading] = useState(false)
   /** True once the Hours tab load effect has entered its first loading cycle (past the 80ms delay). Used so deep-link scroll runs after content is stable, not during the pre-load gap that is followed by a loading spinner that unmounts the anchor. */
   const hoursTabFirstLoadCycleStartedRef = useRef(false)
@@ -373,6 +512,7 @@ export default function People() {
   const [canAccessLicenses, setCanAccessLicenses] = useState(false)
   const [canAccessContracts, setCanAccessContracts] = useState(false)
   const [canViewCostMatrixShared, setCanViewCostMatrixShared] = useState(false)
+  const canOpenHoursTab = canAccessPay || canAccessHours || canViewCostMatrixShared
   const [isDev, setIsDev] = useState(false)
   const [showUsersTabTags, setShowUsersTabTags] = useState(() =>
     typeof localStorage !== 'undefined' && localStorage.getItem(SHOW_USERS_TAB_TAGS_KEY) === '1',
@@ -440,7 +580,7 @@ export default function People() {
   }, [activeTab])
 
   useEffect(() => {
-    if (activeTab !== 'pay') {
+    if (activeTab !== 'hours') {
       setPayConfigModalOpen(false)
     }
   }, [activeTab])
@@ -464,7 +604,7 @@ export default function People() {
   const [costMatrixShareSaving, setCostMatrixShareSaving] = useState(false)
   const [costMatrixShareError, setCostMatrixShareError] = useState<string | null>(null)
   const [archivedUserNames, setArchivedUserNames] = useState<Set<string>>(new Set())
-  type HoursRow = { person_name: string; work_date: string; hours: number }
+  type HoursRow = { person_name: string; person_id?: string | null; work_date: string; hours: number }
   const [peopleHours, setPeopleHours] = useState<HoursRow[]>([])
   const [pendingClockSessions, setPendingClockSessions] = useState<ClockSessionRow[]>([])
   const activeClockSessions = useMemo(
@@ -503,6 +643,19 @@ export default function People() {
     approvedClockSessionsFiltered.length === 0 &&
     rejectedClockSessionsFiltered.length === 0
   const [rejectedSectionOpen, setRejectedSectionOpen] = useState(false)
+  const [hoursTabSectionsOpen, setHoursTabSectionsOpen] = useState<Record<HoursTabCollapsibleSectionId, boolean>>(
+    () => ({ ...INITIAL_HOURS_TAB_SECTIONS_OPEN }),
+  )
+
+  const jumpToHoursTabSection = useCallback((id: HoursTabSectionId) => {
+    if (id !== 'payTools') {
+      setHoursTabSectionsOpen((prev) => ({ ...prev, [id]: true }))
+    }
+    const domId = HOURS_TAB_SECTION_SCROLL_ID[id]
+    requestAnimationFrame(() => {
+      document.getElementById(domId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }, [])
   type HoursGridJobHighlightPick = { id: string; hcp_number: string; job_name: string }
   const [hoursGridJobHighlightSearch, setHoursGridJobHighlightSearch] = useState('')
   const [hoursGridJobHighlightResults, setHoursGridJobHighlightResults] = useState<
@@ -527,20 +680,6 @@ export default function People() {
     bidLabels?: Record<string, string>
   } | null>(null)
   const [hoursDaysCorrect, setHoursDaysCorrect] = useState<Set<string>>(new Set())
-  const [matrixStartDate, setMatrixStartDate] = useState(() => {
-    const d = new Date()
-    const day = d.getDay()
-    const start = new Date(d)
-    start.setDate(d.getDate() - day)
-    return start.toLocaleDateString('en-CA')
-  })
-  const [matrixEndDate, setMatrixEndDate] = useState(() => {
-    const d = new Date()
-    const day = d.getDay()
-    const start = new Date(d)
-    start.setDate(d.getDate() - day + 6)
-    return start.toLocaleDateString('en-CA')
-  })
   type PeopleTeam = { id: string; name: string; members: string[] }
   const [teams, setTeams] = useState<PeopleTeam[]>([])
   const [hoursDisplayOrder, setHoursDisplayOrder] = useState<Record<string, number>>({})
@@ -558,6 +697,8 @@ export default function People() {
   const [costMatrixTagColors, setCostMatrixTagColors] = useState<Record<string, string>>({})
   const [matrixSortBy, setMatrixSortBy] = useState<'cost' | 'tag' | 'name'>('cost')
   const [showMaxHoursTeams, setShowMaxHoursTeams] = useState(false)
+  const [teamToDelete, setTeamToDelete] = useState<{ id: string; name: string } | null>(null)
+  const [teamDeletingId, setTeamDeletingId] = useState<string | null>(null)
   const [hoursDateStart, setHoursDateStart] = useState(() => {
     const d = new Date()
     const day = d.getDay()
@@ -652,6 +793,60 @@ export default function People() {
   const [authUserRole, setAuthUserRole] = useState<string | null>(null)
   const canAccessTeamsTab =
     authRole !== null && ['dev', 'master_technician', 'assistant'].includes(authRole)
+  const canAccessOverheadTab =
+    authRole !== null && ['dev', 'master_technician'].includes(authRole)
+  const canDeletePeopleContracts =
+    authRole !== null && ['dev', 'master_technician'].includes(authRole)
+
+  const [overheadDateStart, setOverheadDateStart] = useState(() => {
+    const d = new Date()
+    const day = d.getDay()
+    const start = new Date(d)
+    start.setDate(d.getDate() - day)
+    return start.toLocaleDateString('en-CA')
+  })
+  const [overheadDateEnd, setOverheadDateEnd] = useState(() => {
+    const d = new Date()
+    const day = d.getDay()
+    const start = new Date(d)
+    start.setDate(d.getDate() - day + 6)
+    return start.toLocaleDateString('en-CA')
+  })
+  const [overheadOfficeJobLedgerId, setOverheadOfficeJobLedgerId] = useState<string | null>(null)
+  const [overheadOfficeJobLabel, setOverheadOfficeJobLabel] = useState<{
+    hcp_number: string | null
+    job_name: string | null
+  } | null>(null)
+  const [overheadSettingsLoading, setOverheadSettingsLoading] = useState(false)
+  const [overheadSessions, setOverheadSessions] = useState<OverheadClockSessionRow[]>([])
+  const [overheadSessionsLoading, setOverheadSessionsLoading] = useState(false)
+  const [overheadTableSimpleView, setOverheadTableSimpleView] = useState(() =>
+    readOverheadTableSimpleViewFromStorage(),
+  )
+  const [overheadJobPickerOpen, setOverheadJobPickerOpen] = useState(false)
+  const [overheadOfficeJobModalOpen, setOverheadOfficeJobModalOpen] = useState(false)
+  const [overheadJobSearch, setOverheadJobSearch] = useState('')
+  const [overheadJobResults, setOverheadJobResults] = useState<
+    Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>
+  >([])
+  const [overheadJobSaving, setOverheadJobSaving] = useState(false)
+  const [overheadOfficePartsUsdByDay, setOverheadOfficePartsUsdByDay] = useState<Map<string, number>>(() => new Map())
+  const [overheadOfficePartsDetailByDay, setOverheadOfficePartsDetailByDay] = useState<
+    Map<string, OverheadPartsDetailLine[]>
+  >(() => new Map())
+  const [overheadOfficePartsLoading, setOverheadOfficePartsLoading] = useState(false)
+  const [overheadOtherJobsSessions, setOverheadOtherJobsSessions] = useState<OverheadClockSessionRow[]>([])
+  const [overheadOtherJobsSessionsLoading, setOverheadOtherJobsSessionsLoading] = useState(false)
+  const [overheadOtherJobsPartsUsdByDay, setOverheadOtherJobsPartsUsdByDay] = useState<Map<string, number>>(
+    () => new Map(),
+  )
+  const [overheadOtherJobsPartsDetailByDay, setOverheadOtherJobsPartsDetailByDay] = useState<
+    Map<string, OverheadPartsDetailLine[]>
+  >(() => new Map())
+  const [overheadOtherJobsPartsLoading, setOverheadOtherJobsPartsLoading] = useState(false)
+  const [overheadBreakdownModal, setOverheadBreakdownModal] = useState<null | { workDate: string; scope: OverheadDetailScope }>(
+    null,
+  )
 
   // Hours tab state (unassigned hours modal, crew jobs by date)
   type CrewJobAssignment = { job_id: string; pct: number }
@@ -1187,10 +1382,12 @@ export default function People() {
   const loadCrewJobsRef = useRef<() => void>()
   const loadPeopleHoursRef = useRef<() => void>()
   loadPeopleHoursRef.current = () => {
-    if (activeTab === 'pay' && (canAccessPay || canViewCostMatrixShared))
-      loadPeopleHours(matrixStartDate, matrixEndDate)
-    else if (activeTab === 'hours' && canAccessHours)
+    if (
+      activeTab === 'hours' &&
+      (canAccessHours || canAccessPay || canViewCostMatrixShared)
+    ) {
       loadPeopleHours(hoursDateStart, hoursDateEnd)
+    }
   }
 
   async function loadPeople() {
@@ -1326,11 +1523,18 @@ export default function People() {
         return next
       }, { replace: true })
       setActiveTab('hours')
+    } else if (tab === 'pay') {
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', 'hours')
+        return next
+      }, { replace: true })
+      setActiveTab('hours')
     } else if (
       tab === 'users' ||
       tab === 'teams' ||
+      tab === 'overhead' ||
       tab === 'pay_stubs' ||
-      tab === 'pay' ||
       tab === 'hours' ||
       tab === 'vehicles' ||
       tab === 'housing' ||
@@ -1343,6 +1547,15 @@ export default function People() {
       tab === 'activity'
     ) {
       if (tab === 'teams' && !canAccessTeamsTab) {
+        setSearchParams((p) => {
+          const next = new URLSearchParams(p)
+          next.set('tab', 'users')
+          return next
+        }, { replace: true })
+        setActiveTab('users')
+        return
+      }
+      if (tab === 'overhead' && !canAccessOverheadTab) {
         setSearchParams((p) => {
           const next = new URLSearchParams(p)
           next.set('tab', 'users')
@@ -1377,7 +1590,7 @@ export default function People() {
         return next
       }, { replace: true })
     }
-  }, [searchParams, activityAccessResolved, canSeeActivityTab, canAccessContracts, canAccessTeamsTab, setSearchParams])
+  }, [searchParams, activityAccessResolved, canSeeActivityTab, canAccessContracts, canAccessTeamsTab, canAccessOverheadTab, setSearchParams])
 
   useEffect(() => {
     if (searchParams.get('tab') !== 'contracts') return
@@ -1392,11 +1605,18 @@ export default function People() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    if (window.location.hash === '#cost-matrix' && activeTab === 'pay') {
-      const el = document.getElementById('cost-matrix')
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    if (activeTab !== 'hours') return
+    const syncCostMatrixHash = () => {
+      if (window.location.hash !== '#cost-matrix') return
+      setHoursTabSectionsOpen((prev) => ({ ...prev, costMatrix: true }))
+      requestAnimationFrame(() => {
+        document.getElementById('cost-matrix')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
     }
-  }, [activeTab, searchParams])
+    syncCostMatrixHash()
+    window.addEventListener('hashchange', syncCostMatrixHash)
+    return () => window.removeEventListener('hashchange', syncCostMatrixHash)
+  }, [activeTab])
 
   useEffect(() => {
     const section = searchParams.get('section')
@@ -1416,6 +1636,7 @@ export default function People() {
     if (section !== 'rejected' || activeTab !== 'hours' || !canAccessHours) return
     if (hoursTabLoading) return
     if (!hoursTabFirstLoadCycleStartedRef.current) return
+    setHoursTabSectionsOpen((prev) => ({ ...prev, sessions: true }))
     setRejectedSectionOpen(true)
     const el = document.getElementById('people-hours-rejected')
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -1915,7 +2136,13 @@ export default function People() {
     if (invitedDup) {
       const userId = usersAfterInvite.find((u) => u.email?.toLowerCase() === invitedDup.email?.toLowerCase())?.id
       try {
-        await mergePersonIntoUser(invitedDup.personName, invitedDup.userDisplayName, payConfig, userId)
+        await mergePersonIntoUser(
+          invitedDup.personName,
+          invitedDup.userDisplayName,
+          payConfig,
+          userId,
+          people.map((p) => ({ id: p.id, name: p.name, email: p.email })),
+        )
         await loadPayConfig()
         setMergeDuplicates((prev) => prev.filter((x) => x.personName !== invitedDup.personName))
       } catch (mergeErr) {
@@ -1941,14 +2168,17 @@ export default function People() {
       userId = users.find((u) => u.name?.trim() === dup.personName)?.id ?? users.find((u) => u.name?.trim() === dup.userDisplayName)?.id
     }
     try {
-      await mergePersonIntoUser(dup.personName, dup.userDisplayName, payConfig, userId)
+      await mergePersonIntoUser(
+        dup.personName,
+        dup.userDisplayName,
+        payConfig,
+        userId,
+        people.map((p) => ({ id: p.id, name: p.name, email: p.email })),
+      )
       await loadPayConfig()
       setMergeDuplicates((prev) => prev.filter((x) => x.personName !== dup.personName))
       if (activeTab === 'hours') {
         loadPeopleHours(hoursDateStart, hoursDateEnd)
-      }
-      if (activeTab === 'pay') {
-        loadPeopleHours(matrixStartDate, matrixEndDate)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Merge failed')
@@ -2877,7 +3107,9 @@ export default function People() {
 
   async function loadPayConfig() {
     if (!canAccessPay && !canAccessHours && !canViewCostMatrixShared) return
-    const { data, error } = await supabase.from('people_pay_config').select('person_name, hourly_wage, is_salary, show_in_hours, show_in_cost_matrix, record_hours_but_salary')
+    const { data, error } = await supabase
+      .from('people_pay_config')
+      .select('person_name, person_id, hourly_wage, is_salary, show_in_hours, show_in_cost_matrix, record_hours_but_salary')
     if (error) {
       setError(error.message)
       return
@@ -2911,7 +3143,7 @@ export default function People() {
     const { data } = await supabase
       .from('hours_reviewed')
       .select('person_name')
-      .eq('start_date', matrixStartDate)
+      .eq('start_date', hoursDateStart)
     const set = new Set((data ?? []).map((r: { person_name: string }) => r.person_name))
     setHoursReviewedSet(set)
   }
@@ -2920,7 +3152,7 @@ export default function People() {
     if (!canAccessHours && !canAccessPay && !canViewCostMatrixShared) return
     const { data, error } = await supabase
       .from('people_hours')
-      .select('person_name, work_date, hours')
+      .select('person_name, person_id, work_date, hours')
       .gte('work_date', start)
       .lte('work_date', end)
     if (error) {
@@ -4123,26 +4355,7 @@ export default function People() {
   }
 
   useEffect(() => {
-    if (activeTab === 'pay' && (canAccessPay || canViewCostMatrixShared)) {
-      const t = setTimeout(() => {
-        setPayTabLoading(true)
-        Promise.all([
-          loadPayConfig(),
-          loadPeopleHours(matrixStartDate, matrixEndDate),
-          loadTeams(),
-          loadHoursDisplayOrder(),
-          loadCostMatrixTags(),
-          loadCostMatrixTagColors(),
-          loadArchivedUserNames(),
-          loadHoursReviewed(),
-        ]).finally(() => setPayTabLoading(false))
-      }, 80)
-      return () => clearTimeout(t)
-    }
-  }, [activeTab, canAccessPay, canViewCostMatrixShared, matrixStartDate, matrixEndDate])
-
-  useEffect(() => {
-    if (activeTab === 'pay' && Object.keys(payConfig).length > 0) {
+    if (activeTab === 'hours' && canAccessPay && Object.keys(payConfig).length > 0) {
       const dups = findPersonUserDuplicates(people, users, payConfig)
       setMergeDuplicates(dups)
     } else {
@@ -4151,11 +4364,11 @@ export default function People() {
   }, [activeTab, payConfig, people, users])
 
   useEffect(() => {
-    if (activeTab === 'pay' && isDev) {
+    if (activeTab === 'hours' && isDev && (canAccessPay || canViewCostMatrixShared)) {
       const t = setTimeout(() => loadCostMatrixShares(), 80)
       return () => clearTimeout(t)
     }
-  }, [activeTab, isDev])
+  }, [activeTab, isDev, canAccessPay, canViewCostMatrixShared])
 
   useEffect(() => {
     return () => {
@@ -4165,7 +4378,7 @@ export default function People() {
   }, [])
 
   async function loadHoursDisplayOrder() {
-    if (!canAccessHours && !canAccessPay) return
+    if (!canAccessHours && !canAccessPay && !canViewCostMatrixShared) return
     const { data } = await supabase.from('people_hours_display_order').select('person_name, sequence_order')
     const map: Record<string, number> = {}
     for (const r of (data ?? []) as { person_name: string; sequence_order: number }[]) {
@@ -4236,25 +4449,40 @@ export default function People() {
   }
 
   useEffect(() => {
-    if (activeTab !== 'hours' || !canAccessHours) {
+    if (activeTab !== 'hours' || !canOpenHoursTab) {
       hoursTabFirstLoadCycleStartedRef.current = false
       return
     }
     const t = setTimeout(() => {
       hoursTabFirstLoadCycleStartedRef.current = true
       setHoursTabLoading(true)
-      Promise.all([
+      const matrixOrPay = canAccessPay || canViewCostMatrixShared
+      const loads: Promise<unknown>[] = [
         loadPayConfig(),
         loadPeopleHours(hoursDateStart, hoursDateEnd),
-        loadHoursDaysCorrect(hoursDateStart, hoursDateEnd),
         loadHoursDisplayOrder(),
-        loadPendingClockSessions(hoursDateStart, hoursDateEnd),
-        loadApprovedClockSessions(hoursDateStart, hoursDateEnd),
-        loadRejectedClockSessions(hoursDateStart, hoursDateEnd),
-      ]).finally(() => setHoursTabLoading(false))
+      ]
+      if (canAccessHours) {
+        loads.push(
+          loadHoursDaysCorrect(hoursDateStart, hoursDateEnd),
+          loadPendingClockSessions(hoursDateStart, hoursDateEnd),
+          loadApprovedClockSessions(hoursDateStart, hoursDateEnd),
+          loadRejectedClockSessions(hoursDateStart, hoursDateEnd),
+        )
+      }
+      if (matrixOrPay) {
+        loads.push(
+          loadTeams(),
+          loadCostMatrixTags(),
+          loadCostMatrixTagColors(),
+          loadArchivedUserNames(),
+          loadHoursReviewed(),
+        )
+      }
+      void Promise.all(loads).finally(() => setHoursTabLoading(false))
     }, 80)
     return () => clearTimeout(t)
-  }, [activeTab, canAccessHours, hoursDateStart, hoursDateEnd])
+  }, [activeTab, canOpenHoursTab, canAccessHours, canAccessPay, canViewCostMatrixShared, hoursDateStart, hoursDateEnd])
 
   useEffect(() => {
     if (activeTab === 'pay_stubs' && canAccessPay) {
@@ -5275,6 +5503,7 @@ export default function People() {
   }
 
   async function deleteContractDocument() {
+    if (!canDeletePeopleContracts) return
     if (!contractDocumentDeleteTarget || !isDeletablePersonContractStatus(contractDocumentDeleteTarget.status)) return
     const deletedId = contractDocumentDeleteTarget.id
     setContractDocumentDeleting(true)
@@ -5497,11 +5726,15 @@ export default function People() {
           setContractsError(bookErrEdit)
           return
         }
+        const toRemove = existing.filter((n) => !templateFormDocumentNames.includes(n))
+        if (!canDeletePeopleContracts && toRemove.length > 0) {
+          setContractsError('Removing documents from a template requires a Dev or Master Technician.')
+          return
+        }
         await withSupabaseRetry(
           async () => supabase.from('contract_templates').update({ name }).eq('id', templateId),
           'update contract template'
         )
-        const toRemove = existing.filter((n) => !templateFormDocumentNames.includes(n))
         const assignees = personContractAssignments.filter((a) => a.template_id === templateId)
         for (const docName of toRemove) {
           for (const a of assignees) {
@@ -5620,6 +5853,7 @@ export default function People() {
   }
 
   async function deleteContractTemplate(template: ContractTemplate) {
+    if (!canDeletePeopleContracts) return
     if (!confirm(`Delete template "${template.name}"? This will remove the template and its document list.`)) return
     try {
       await withSupabaseRetry(
@@ -5729,6 +5963,7 @@ export default function People() {
   }
 
   async function unassignTemplateFromPerson(templateId: string) {
+    if (!canDeletePeopleContracts) return
     const personName = selectedContractsPersonName
     if (!personName) return
     const assignment = personContractAssignments.find((a) => a.person_name === personName && a.template_id === templateId)
@@ -5984,6 +6219,226 @@ export default function People() {
   }, [activeTab, isDev])
 
   useEffect(() => {
+    if (activeTab !== 'overhead' || !canAccessOverheadTab) return
+    let cancelled = false
+    setOverheadSettingsLoading(true)
+    void (async () => {
+      try {
+        const id = await fetchOverheadOfficeJobLedgerIdFromAppSettings()
+        if (cancelled) return
+        setOverheadOfficeJobLedgerId(id)
+        if (id) {
+          const jobRow = (await withSupabaseRetry(
+            async () =>
+              supabase.from('jobs_ledger').select('hcp_number, job_name').eq('id', id).maybeSingle(),
+            'fetch overhead office job label',
+          )) as { hcp_number: string | null; job_name: string | null } | null
+          if (cancelled) return
+          if (jobRow) {
+            setOverheadOfficeJobLabel({
+              hcp_number: jobRow.hcp_number ?? null,
+              job_name: jobRow.job_name ?? null,
+            })
+          } else {
+            setOverheadOfficeJobLabel(null)
+          }
+        } else {
+          setOverheadOfficeJobLabel(null)
+        }
+      } catch {
+        if (!cancelled) {
+          setOverheadOfficeJobLedgerId(null)
+          setOverheadOfficeJobLabel(null)
+        }
+      } finally {
+        if (!cancelled) setOverheadSettingsLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [activeTab, canAccessOverheadTab, authUser?.id])
+
+  useEffect(() => {
+    if (activeTab !== 'overhead' || !canAccessOverheadTab) return
+    void loadPayConfig()
+  }, [activeTab, canAccessOverheadTab])
+
+  useEffect(() => {
+    if (activeTab !== 'overhead' || !canAccessOverheadTab || !authUser?.id) return
+    let cancelled = false
+    setOverheadSessionsLoading(true)
+    void (async () => {
+      try {
+        let q = supabase
+          .from('clock_sessions')
+          .select(
+            'id, user_id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, approved_at, rejected_at, revoked_at, users!clock_sessions_user_id_fkey(name)',
+          )
+          .gte('work_date', overheadDateStart)
+          .lte('work_date', overheadDateEnd)
+        if (overheadOfficeJobLedgerId) {
+          q = q.or(`job_ledger_id.eq.${overheadOfficeJobLedgerId},bid_id.not.is.null`)
+        } else {
+          q = q.not('bid_id', 'is', null)
+        }
+        const data = await withSupabaseRetry(async () => q, 'load overhead clock sessions')
+        if (cancelled) return
+        setOverheadSessions((data ?? []) as OverheadClockSessionRow[])
+      } catch {
+        if (!cancelled) setOverheadSessions([])
+      } finally {
+        if (!cancelled) setOverheadSessionsLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [
+    activeTab,
+    canAccessOverheadTab,
+    authUser?.id,
+    overheadDateStart,
+    overheadDateEnd,
+    overheadOfficeJobLedgerId,
+  ])
+
+  useEffect(() => {
+    if (activeTab !== 'overhead' || !canAccessOverheadTab || !authUser?.id) return
+    let cancelled = false
+    setOverheadOtherJobsSessionsLoading(true)
+    void (async () => {
+      try {
+        let q = supabase
+          .from('clock_sessions')
+          .select(
+            'id, user_id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, approved_at, rejected_at, revoked_at, users!clock_sessions_user_id_fkey(name)',
+          )
+          .gte('work_date', overheadDateStart)
+          .lte('work_date', overheadDateEnd)
+          .not('job_ledger_id', 'is', null)
+        if (overheadOfficeJobLedgerId) {
+          q = q.neq('job_ledger_id', overheadOfficeJobLedgerId)
+        }
+        const data = await withSupabaseRetry(async () => q, 'load overhead other jobs clock sessions')
+        if (cancelled) return
+        setOverheadOtherJobsSessions((data ?? []) as OverheadClockSessionRow[])
+      } catch {
+        if (!cancelled) setOverheadOtherJobsSessions([])
+      } finally {
+        if (!cancelled) setOverheadOtherJobsSessionsLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [
+    activeTab,
+    canAccessOverheadTab,
+    authUser?.id,
+    overheadDateStart,
+    overheadDateEnd,
+    overheadOfficeJobLedgerId,
+  ])
+
+  useEffect(() => {
+    if (activeTab !== 'overhead' || !canAccessOverheadTab || !authUser?.id) return
+    if (!overheadOfficeJobLedgerId) {
+      setOverheadOfficePartsUsdByDay(new Map())
+      setOverheadOfficePartsDetailByDay(new Map())
+      setOverheadOfficePartsLoading(false)
+      return
+    }
+    let cancelled = false
+    setOverheadOfficePartsLoading(true)
+    void (async () => {
+      try {
+        const r = await fetchOverheadOfficePartsByDay({
+          officeJobLedgerId: overheadOfficeJobLedgerId,
+          startYmd: overheadDateStart,
+          endYmd: overheadDateEnd,
+        })
+        if (cancelled) return
+        setOverheadOfficePartsUsdByDay(r.partsUsdByDay)
+        setOverheadOfficePartsDetailByDay(r.partsDetailByDay)
+      } catch {
+        if (!cancelled) {
+          setOverheadOfficePartsUsdByDay(new Map())
+          setOverheadOfficePartsDetailByDay(new Map())
+        }
+      } finally {
+        if (!cancelled) setOverheadOfficePartsLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [
+    activeTab,
+    canAccessOverheadTab,
+    authUser?.id,
+    overheadOfficeJobLedgerId,
+    overheadDateStart,
+    overheadDateEnd,
+  ])
+
+  useEffect(() => {
+    if (activeTab !== 'overhead' || !canAccessOverheadTab || !authUser?.id) return
+    let cancelled = false
+    setOverheadOtherJobsPartsLoading(true)
+    void (async () => {
+      try {
+        const r = await fetchOtherJobsPartsByDay({
+          officeJobLedgerId: overheadOfficeJobLedgerId,
+          startYmd: overheadDateStart,
+          endYmd: overheadDateEnd,
+        })
+        if (cancelled) return
+        setOverheadOtherJobsPartsUsdByDay(r.partsUsdByDay)
+        setOverheadOtherJobsPartsDetailByDay(r.partsDetailByDay)
+      } catch {
+        if (!cancelled) {
+          setOverheadOtherJobsPartsUsdByDay(new Map())
+          setOverheadOtherJobsPartsDetailByDay(new Map())
+        }
+      } finally {
+        if (!cancelled) setOverheadOtherJobsPartsLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [
+    activeTab,
+    canAccessOverheadTab,
+    authUser?.id,
+    overheadOfficeJobLedgerId,
+    overheadDateStart,
+    overheadDateEnd,
+  ])
+
+  useEffect(() => {
+    if (!overheadJobPickerOpen) {
+      setOverheadJobSearch('')
+      setOverheadJobResults([])
+      return
+    }
+    const t = setTimeout(() => {
+      const q = overheadJobSearch.trim()
+      if (!q) {
+        setOverheadJobResults([])
+        return
+      }
+      void supabase.rpc('search_jobs_ledger', { search_text: q }).then(({ data }) => {
+        setOverheadJobResults(
+          (data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>,
+        )
+      })
+    }, 300)
+    return () => clearTimeout(t)
+  }, [overheadJobSearch, overheadJobPickerOpen])
+
+  useEffect(() => {
     if (selectedVehicleId) {
       loadOdometerEntries(selectedVehicleId)
       loadReplacementValueEntries(selectedVehicleId)
@@ -6097,37 +6552,96 @@ export default function People() {
     loadRejectedClockSessions(hoursDateStart, hoursDateEnd)
   }
 
+  const peopleHoursClockRealtimeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   useEffect(() => {
     const hasAccess = canAccessHours || canAccessPay || canViewCostMatrixShared
-    const isRelevantTab = activeTab === 'pay' || activeTab === 'hours' || activeTab === 'pay_stubs'
+    const isRelevantTab = activeTab === 'hours' || activeTab === 'pay_stubs'
     if (!hasAccess || !isRelevantTab) return
-    const channel = supabase
-      .channel('people-hours-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'people_hours' }, () => {
-        loadPeopleHoursRef.current?.()
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'clock_sessions' }, () => {
-        loadAllClockSessionsRef.current?.()
-        const snap = draftPayrollRealtimeSnapRef.current
-        if (
-          snap.draftOpen &&
-          snap.activeTab === 'pay_stubs' &&
-          snap.canAccessPay &&
-          snap.periodStart <= snap.periodEnd
-        ) {
-          void loadDraftPayrollPendingApprovalsRef.current(snap.periodStart, snap.periodEnd)
-        }
-      })
-      .subscribe()
+
+    const runClockDerivedReloads = () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
+      loadAllClockSessionsRef.current?.()
+      const snap = draftPayrollRealtimeSnapRef.current
+      if (
+        snap.draftOpen &&
+        snap.activeTab === 'pay_stubs' &&
+        snap.canAccessPay &&
+        snap.periodStart <= snap.periodEnd
+      ) {
+        void loadDraftPayrollPendingApprovalsRef.current(snap.periodStart, snap.periodEnd)
+      }
+    }
+
+    const scheduleClockDerivedReloads = () => {
+      if (!isDocVisible) return
+      if (peopleHoursClockRealtimeTimerRef.current) clearTimeout(peopleHoursClockRealtimeTimerRef.current)
+      peopleHoursClockRealtimeTimerRef.current = setTimeout(() => {
+        peopleHoursClockRealtimeTimerRef.current = null
+        runClockDerivedReloads()
+      }, PEOPLE_HOURS_CLOCK_REALTIME_DEBOUNCE_MS)
+    }
+
+    const channel = supabase.channel('people-hours-changes')
+    channel.on('postgres_changes', { event: '*', schema: 'public', table: 'people_hours' }, () => {
+      loadPeopleHoursRef.current?.()
+    })
+    if (peopleHoursClockRealtimeInFilter) {
+      channel.on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'clock_sessions',
+          filter: peopleHoursClockRealtimeInFilter,
+        },
+        scheduleClockDerivedReloads,
+      )
+    } else {
+      channel.on('postgres_changes', { event: '*', schema: 'public', table: 'clock_sessions' }, scheduleClockDerivedReloads)
+    }
+    channel.subscribe()
     return () => {
+      if (peopleHoursClockRealtimeTimerRef.current) {
+        clearTimeout(peopleHoursClockRealtimeTimerRef.current)
+        peopleHoursClockRealtimeTimerRef.current = null
+      }
       supabase.removeChannel(channel)
     }
-  }, [activeTab, canAccessHours, canAccessPay, canViewCostMatrixShared, hoursDateStart, hoursDateEnd])
+  }, [
+    activeTab,
+    canAccessHours,
+    canAccessPay,
+    canViewCostMatrixShared,
+    hoursDateStart,
+    hoursDateEnd,
+    isDocVisible,
+    peopleHoursClockRealtimeInFilter,
+  ])
 
   function upsertPayConfig(personName: string, row: Partial<PayConfigRow>) {
     if (!canAccessPay) return
-    const cur = payConfig[personName] ?? { person_name: personName, hourly_wage: null, is_salary: false, show_in_hours: false, show_in_cost_matrix: false, record_hours_but_salary: false }
-    const full = { person_name: personName, hourly_wage: row.hourly_wage ?? cur.hourly_wage, is_salary: row.is_salary ?? cur.is_salary, show_in_hours: row.show_in_hours ?? cur.show_in_hours, show_in_cost_matrix: row.show_in_cost_matrix ?? cur.show_in_cost_matrix, record_hours_but_salary: row.record_hours_but_salary ?? cur.record_hours_but_salary }
+    const roster = peopleRosterRef.current
+    const resolvedPid = resolvePersonIdFromRosterName(roster, personName)
+    const cur =
+      payConfig[personName] ?? {
+        person_name: personName,
+        person_id: resolvedPid,
+        hourly_wage: null,
+        is_salary: false,
+        show_in_hours: false,
+        show_in_cost_matrix: false,
+        record_hours_but_salary: false,
+      }
+    const full = {
+      person_name: personName,
+      person_id: row.person_id ?? resolvedPid ?? cur.person_id ?? null,
+      hourly_wage: row.hourly_wage ?? cur.hourly_wage,
+      is_salary: row.is_salary ?? cur.is_salary,
+      show_in_hours: row.show_in_hours ?? cur.show_in_hours,
+      show_in_cost_matrix: row.show_in_cost_matrix ?? cur.show_in_cost_matrix,
+      record_hours_but_salary: row.record_hours_but_salary ?? cur.record_hours_but_salary,
+    }
     setPayConfig((prev) => ({ ...prev, [personName]: full }))
     const prevTimeout = payConfigDebounceRef.current[personName]
     if (prevTimeout) clearTimeout(prevTimeout)
@@ -6187,7 +6701,18 @@ export default function People() {
   function updatePayConfigHourlyWage(personName: string, rawValue: string) {
     if (!canAccessPay) return
     setPayConfigDraft((prev) => ({ ...prev, [personName]: rawValue }))
-    const cur = payConfig[personName] ?? { person_name: personName, hourly_wage: null, is_salary: false, show_in_hours: false, show_in_cost_matrix: false, record_hours_but_salary: false }
+    const roster = peopleRosterRef.current
+    const resolvedPid = resolvePersonIdFromRosterName(roster, personName)
+    const cur =
+      payConfig[personName] ?? {
+        person_name: personName,
+        person_id: resolvedPid,
+        hourly_wage: null,
+        is_salary: false,
+        show_in_hours: false,
+        show_in_cost_matrix: false,
+        record_hours_but_salary: false,
+      }
     const parsed = rawValue === '' ? null : parseFloat(rawValue) || null
     const full = { ...cur, hourly_wage: parsed }
     setPayConfig((prev) => ({ ...prev, [personName]: full }))
@@ -6216,13 +6741,15 @@ export default function People() {
   async function saveHours(personName: string, workDate: string, hours: number) {
     if (!canAccessHours && !canAccessPay) return
     if (hoursDaysCorrect.has(workDate)) return
+    const roster = peopleRosterRef.current
+    const person_id = resolvePersonIdFromRosterName(roster, personName)
     // Optimistic update: show new value immediately
     setPeopleHours((prev) => {
       const rest = prev.filter((h) => !(h.person_name === personName && h.work_date === workDate))
-      return [...rest, { person_name: personName, work_date: workDate, hours }]
+      return [...rest, { person_name: personName, person_id: person_id ?? null, work_date: workDate, hours }]
     })
     const { error } = await supabase.from('people_hours').upsert(
-      { person_name: personName, work_date: workDate, hours, entered_by: authUser?.id ?? null },
+      { person_name: personName, person_id, work_date: workDate, hours, entered_by: authUser?.id ?? null },
       { onConflict: 'person_name,work_date' }
     )
     if (error) setError(error.message)
@@ -6317,6 +6844,21 @@ export default function People() {
     const { error } = await supabase.from('people_team_members').delete().eq('team_id', teamId).eq('person_name', personName)
     if (error) setError(error.message)
     else setTeams((prev) => prev.map((t) => (t.id === teamId ? { ...t, members: t.members.filter((m) => m !== personName) } : t)))
+  }
+
+  async function deleteTeam(teamId: string) {
+    if (!canAccessPay) return
+    setTeamDeletingId(teamId)
+    setError(null)
+    const { error } = await supabase.from('people_teams').delete().eq('id', teamId)
+    if (error) {
+      setError(error.message)
+      setTeamDeletingId(null)
+      return
+    }
+    setTeams((prev) => prev.filter((t) => t.id !== teamId))
+    setTeamToDelete(null)
+    setTeamDeletingId(null)
   }
 
   function getHoursForPersonDate(personName: string, workDate: string): number {
@@ -6461,7 +7003,7 @@ export default function People() {
   const showPeopleForMatrix =
     matrixSortBy === 'cost'
       ? [...showPeopleForMatrixBase].sort((a, b) => {
-          const days = getDaysInRange(matrixStartDate, matrixEndDate)
+          const days = getDaysInRange(hoursDateStart, hoursDateEnd)
           const totalA = days.reduce((s, d) => s + getCostForPersonDateMatrix(a, d), 0)
           const totalB = days.reduce((s, d) => s + getCostForPersonDateMatrix(b, d), 0)
           return totalB - totalA
@@ -7353,7 +7895,7 @@ export default function People() {
 
   function openTeamSummaryWindow() {
     if (showPeopleForReview.length === 0) {
-      showToast('No people in pay config. Add people in Pay tab first.', 'warning')
+      showToast('No people in pay config. Add people in People pay config (Hours tab) first.', 'warning')
       return
     }
     const win = window.open('', '_blank')
@@ -7419,15 +7961,6 @@ export default function People() {
       })
   }
 
-  function shiftMatrixWeek(delta: number) {
-    const dStart = new Date(matrixStartDate + 'T12:00:00')
-    const dEnd = new Date(matrixEndDate + 'T12:00:00')
-    dStart.setDate(dStart.getDate() + delta * 7)
-    dEnd.setDate(dEnd.getDate() + delta * 7)
-    setMatrixStartDate(dStart.toLocaleDateString('en-CA'))
-    setMatrixEndDate(dEnd.toLocaleDateString('en-CA'))
-  }
-
   function shiftHoursWeek(delta: number) {
     const dStart = new Date(hoursDateStart + 'T12:00:00')
     const dEnd = new Date(hoursDateEnd + 'T12:00:00')
@@ -7489,8 +8022,8 @@ export default function People() {
     })
   }
 
-  const matrixDays = getDaysInRange(matrixStartDate, matrixEndDate)
   const hoursDays = getDaysInRange(hoursDateStart, hoursDateEnd)
+  const matrixDays = hoursDays
 
   const { jobHighlightPeople, jobHighlightCells } = useMemo(() => {
     const people = new Set<string>()
@@ -7560,6 +8093,154 @@ export default function People() {
     [users]
   )
 
+  const overheadLabor = useMemo(() => {
+    const wageMap = buildOverheadWageLookup(
+      Object.values(payConfig).map((r) => ({ person_name: r.person_name, hourly_wage: r.hourly_wage ?? null })),
+    )
+    return buildOverheadDailyLabor({
+      sessions: overheadSessions,
+      officeJobLedgerId: overheadOfficeJobLedgerId,
+      wageByNormalizedName: wageMap,
+    })
+  }, [payConfig, overheadSessions, overheadOfficeJobLedgerId])
+
+  const overheadOtherJobsLabor = useMemo(() => {
+    const wageMap = buildOverheadWageLookup(
+      Object.values(payConfig).map((r) => ({ person_name: r.person_name, hourly_wage: r.hourly_wage ?? null })),
+    )
+    return buildOtherJobsLaborByDay({
+      sessions: overheadOtherJobsSessions,
+      officeJobLedgerId: overheadOfficeJobLedgerId,
+      wageByNormalizedName: wageMap,
+    })
+  }, [payConfig, overheadOtherJobsSessions, overheadOfficeJobLedgerId])
+
+  const overheadMergedByDay = useMemo(
+    () =>
+      mergeOverheadDayTableRows(
+        overheadLabor.byDay,
+        overheadOfficePartsUsdByDay,
+        overheadOtherJobsLabor.laborUsdByDay,
+        overheadOtherJobsLabor.laborHoursByDay,
+        overheadOtherJobsPartsUsdByDay,
+      ),
+    [
+      overheadLabor.byDay,
+      overheadOfficePartsUsdByDay,
+      overheadOtherJobsLabor.laborUsdByDay,
+      overheadOtherJobsLabor.laborHoursByDay,
+      overheadOtherJobsPartsUsdByDay,
+    ],
+  )
+
+  const overheadTableColCount = overheadTableSimpleView ? 4 : 7
+
+  const overheadBreakdownModalModel = useMemo(() => {
+    if (!overheadBreakdownModal) return null
+    const { workDate, scope } = overheadBreakdownModal
+    const dayLines = overheadLabor.detailByDay.get(workDate) ?? []
+    const totalPartsUsd = overheadOfficePartsUsdByDay.get(workDate) ?? 0
+    const sortedPartLines = [...(overheadOfficePartsDetailByDay.get(workDate) ?? [])].sort((a, b) =>
+      `${a.source} ${a.sortKey}`.localeCompare(`${b.source} ${b.sortKey}`),
+    )
+
+    if (scope === 'officeParts') {
+      return {
+        workDate,
+        scope,
+        title: 'Office parts ($)',
+        totalPartsUsd,
+        sortedPartLines,
+      } as const
+    }
+
+    if (scope === 'otherJobs') {
+      const laborLines = overheadOtherJobsLabor.detailByDay.get(workDate) ?? []
+      const totalLaborUsdOj = laborLines.reduce((s, l) => s + l.laborUsd, 0)
+      const totalHoursOj = laborLines.reduce((s, l) => s + l.hours, 0)
+      const sortedSessionsOj = [...laborLines].sort((a, b) =>
+        `${a.userName} ${a.sessionId}`.localeCompare(`${b.userName} ${b.sessionId}`),
+      )
+      const totalPartsUsdOj = overheadOtherJobsPartsUsdByDay.get(workDate) ?? 0
+      const sortedPartLinesOj = [...(overheadOtherJobsPartsDetailByDay.get(workDate) ?? [])].sort((a, b) =>
+        `${a.source} ${a.sortKey}`.localeCompare(`${b.source} ${b.sortKey}`),
+      )
+      const grandTotalUsdOj = totalLaborUsdOj + totalPartsUsdOj
+      return {
+        workDate,
+        scope,
+        title: 'Field Total ($) / Hours',
+        totalHours: totalHoursOj,
+        totalLaborUsd: totalLaborUsdOj,
+        totalPartsUsd: totalPartsUsdOj,
+        grandTotalUsd: grandTotalUsdOj,
+        personRows: aggregateOtherJobsLaborByPerson(laborLines),
+        sortedSessions: sortedSessionsOj,
+        sortedPartLines: sortedPartLinesOj,
+      } as const
+    }
+
+    const filtered = filterOverheadDetailLines(dayLines, scope)
+    const totalHours = filtered.reduce((s, l) => s + l.hours, 0)
+    const totalLaborUsd = filtered.reduce((s, l) => s + l.laborUsd, 0)
+    const sortedSessions = [...filtered].sort((a, b) =>
+      `${a.userName} ${a.sessionId}`.localeCompare(`${b.userName} ${b.sessionId}`),
+    )
+
+    if (scope === 'total') {
+      const grandTotalUsd = totalLaborUsd + totalPartsUsd
+      return {
+        workDate,
+        scope,
+        title: 'Office total ($) / Hours',
+        totalHours,
+        totalLaborUsd,
+        totalPartsUsd,
+        grandTotalUsd,
+        personTotal: aggregateOverheadDetailByPersonTotalScope(dayLines),
+        sortedSessions,
+        sortedPartLines,
+      } as const
+    }
+    return {
+      workDate,
+      scope,
+      title: scope === 'office' ? 'Office labor ($)' : 'Bid labor ($)',
+      totalHours,
+      totalLaborUsd,
+      personRows: aggregateOverheadDetailByPerson(filtered),
+      sortedSessions,
+    } as const
+  }, [
+    overheadBreakdownModal,
+    overheadLabor,
+    overheadOfficePartsUsdByDay,
+    overheadOfficePartsDetailByDay,
+    overheadOtherJobsLabor,
+    overheadOtherJobsPartsUsdByDay,
+    overheadOtherJobsPartsDetailByDay,
+  ])
+
+  const overheadValueCellButtonStyle: CSSProperties = {
+    border: 'none',
+    background: 'none',
+    cursor: 'pointer',
+    color: '#2563eb',
+    textDecoration: 'underline',
+    padding: 0,
+    font: 'inherit',
+    textAlign: 'center',
+  }
+
+  function shiftOverheadWeek(deltaWeeks: number) {
+    const s = new Date(overheadDateStart + 'T12:00:00')
+    const e = new Date(overheadDateEnd + 'T12:00:00')
+    s.setDate(s.getDate() + deltaWeeks * 7)
+    e.setDate(e.getDate() + deltaWeeks * 7)
+    setOverheadDateStart(s.toLocaleDateString('en-CA'))
+    setOverheadDateEnd(e.toLocaleDateString('en-CA'))
+  }
+
   if (loading) return <p>Loading...</p>
 
   return (
@@ -7568,6 +8249,22 @@ export default function People() {
       <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #e5e7eb', marginBottom: '1.5rem', overflow: 'hidden' }}>
         <div style={{ flex: 1, minWidth: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 0, width: 'max-content' }}>
+        {isDev && (
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('review')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'review')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'review')}
+          >
+            Review
+          </button>
+        )}
         <button
           type="button"
           onClick={() => {
@@ -7598,7 +8295,37 @@ export default function People() {
             Teams
           </button>
         )}
-        {(canAccessPay || canAccessHours) && (
+        {canAccessOverheadTab && (
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('overhead')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'overhead')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'overhead')}
+          >
+            Overhead
+          </button>
+        )}
+        {(canAccessTeamsTab || canAccessOverheadTab) && canOpenHoursTab ? (
+          <span
+            aria-hidden
+            style={{
+              flexShrink: 0,
+              color: '#d1d5db',
+              fontWeight: 400,
+              padding: '0 0.35rem',
+              userSelect: 'none',
+            }}
+          >
+            |
+          </span>
+        ) : null}
+        {canOpenHoursTab && (
           <button
             type="button"
             onClick={() => {
@@ -7630,20 +8357,20 @@ export default function People() {
             Pay History
           </button>
         )}
-        {(canAccessPay || canViewCostMatrixShared) && (
+        {canAccessPay && (
           <button
             type="button"
             onClick={() => {
-              setActiveTab('pay')
+              setActiveTab('offsets')
               setSearchParams((p) => {
                 const next = new URLSearchParams(p)
-                next.set('tab', 'pay')
+                next.set('tab', 'offsets')
                 return next
               })
             }}
-            style={tabStyle(activeTab === 'pay')}
+            style={tabStyle(activeTab === 'offsets')}
           >
-            Pay
+            Offsets
           </button>
         )}
         {canAccessPay && (
@@ -7678,22 +8405,20 @@ export default function People() {
             Housing
           </button>
         )}
-        {canAccessPay && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('offsets')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'offsets')
-                return next
-              })
+        {canAccessPay && canAccessLicenses ? (
+          <span
+            aria-hidden
+            style={{
+              flexShrink: 0,
+              color: '#d1d5db',
+              fontWeight: 400,
+              padding: '0 0.35rem',
+              userSelect: 'none',
             }}
-            style={tabStyle(activeTab === 'offsets')}
           >
-            Offsets
-          </button>
-        )}
+            |
+          </span>
+        ) : null}
         {canAccessLicenses && (
           <button
             type="button"
@@ -7740,22 +8465,6 @@ export default function People() {
             style={tabStyle(activeTab === 'writeups')}
           >
             Writeups
-          </button>
-        )}
-        {isDev && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('review')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'review')
-                return next
-              })
-            }}
-            style={tabStyle(activeTab === 'review')}
-          >
-            Review
           </button>
         )}
         {isDev && (
@@ -8312,6 +9021,870 @@ export default function People() {
         <PeopleTeamsTab authUserId={authUser.id} authUserRole={authRole ?? authUserRole} />
       ) : null}
 
+      {activeTab === 'overhead' && canAccessOverheadTab ? (
+        <div style={{ marginBottom: '2rem' }}>
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              gap: '0.75rem',
+              marginBottom: '1rem',
+            }}
+          >
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem', flex: '1 1 auto' }}>
+            <button
+              type="button"
+              onClick={() => shiftOverheadWeek(-1)}
+              style={{ padding: '0.35rem 0.65rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer' }}
+            >
+              Previous week
+            </button>
+            <button
+              type="button"
+              onClick={() => shiftOverheadWeek(1)}
+              style={{ padding: '0.35rem 0.65rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer' }}
+            >
+              Next week
+            </button>
+            <span style={{ fontSize: '0.8125rem', color: '#6b7280', alignSelf: 'center' }}>View:</span>
+            <div style={{ display: 'inline-flex', alignItems: 'stretch' }}>
+              <button
+                type="button"
+                aria-pressed={!overheadTableSimpleView}
+                aria-label="Advanced table view: show Bid, Office labor, and Office parts columns"
+                onClick={() => {
+                  setOverheadTableSimpleView(false)
+                  writeOverheadTableSimpleViewToStorage(false)
+                }}
+                style={{
+                  padding: '0.35rem 0.65rem',
+                  fontSize: '0.8125rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '4px 0 0 4px',
+                  borderRight: 'none',
+                  background: !overheadTableSimpleView ? '#2563eb' : 'white',
+                  color: !overheadTableSimpleView ? 'white' : '#111827',
+                  cursor: 'pointer',
+                  fontWeight: !overheadTableSimpleView ? 600 : 400,
+                }}
+              >
+                Advanced
+              </button>
+              <button
+                type="button"
+                aria-pressed={overheadTableSimpleView}
+                aria-label="Simple table view: hide labor and parts detail columns; totals unchanged"
+                onClick={() => {
+                  setOverheadTableSimpleView(true)
+                  writeOverheadTableSimpleViewToStorage(true)
+                }}
+                style={{
+                  padding: '0.35rem 0.65rem',
+                  fontSize: '0.8125rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '0 4px 4px 0',
+                  background: overheadTableSimpleView ? '#2563eb' : 'white',
+                  color: overheadTableSimpleView ? 'white' : '#111827',
+                  cursor: 'pointer',
+                  fontWeight: overheadTableSimpleView ? 600 : 400,
+                }}
+              >
+                Simple
+              </button>
+            </div>
+            <label style={{ fontSize: '0.875rem' }}>
+              <span style={{ marginRight: '0.35rem' }}>Start</span>
+              <input
+                type="date"
+                value={overheadDateStart}
+                onChange={(e) => setOverheadDateStart(e.target.value)}
+                style={{ padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              />
+            </label>
+            <label style={{ fontSize: '0.875rem' }}>
+              <span style={{ marginRight: '0.35rem' }}>End</span>
+              <input
+                type="date"
+                value={overheadDateEnd}
+                onChange={(e) => setOverheadDateEnd(e.target.value)}
+                style={{ padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              />
+            </label>
+            </div>
+            <button
+              type="button"
+              onClick={() => setOverheadOfficeJobModalOpen(true)}
+              style={{
+                marginLeft: 'auto',
+                padding: '0.45rem 0.75rem',
+                fontSize: '0.8125rem',
+                fontWeight: 600,
+                border: '1px solid #d1d5db',
+                borderRadius: 6,
+                background: '#fafafa',
+                cursor: 'pointer',
+                textAlign: 'left',
+                maxWidth: 'min(100%, 280px)',
+              }}
+            >
+              <span style={{ display: 'block' }}>Overhead office job</span>
+              {overheadSettingsLoading ? (
+                <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 400, color: '#6b7280', marginTop: '0.15rem' }}>
+                  Loading…
+                </span>
+              ) : overheadOfficeJobLedgerId && overheadOfficeJobLabel ? (
+                <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 400, color: '#4b5563', marginTop: '0.15rem' }}>
+                  {String(overheadOfficeJobLabel.hcp_number ?? '—')} — {overheadOfficeJobLabel.job_name ?? 'Job'}
+                </span>
+              ) : overheadOfficeJobLedgerId ? (
+                <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 400, color: '#b91c1c', marginTop: '0.15rem' }}>
+                  Saved job not found
+                </span>
+              ) : (
+                <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 400, color: '#6b7280', marginTop: '0.15rem' }}>
+                  Not configured
+                </span>
+              )}
+            </button>
+          </div>
+
+          {overheadSessionsLoading ||
+          overheadOfficePartsLoading ||
+          overheadOtherJobsSessionsLoading ||
+          overheadOtherJobsPartsLoading ? (
+            <p style={{ color: '#6b7280' }}>Loading overhead (sessions, office materials, field totals)…</p>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', textAlign: 'center' }}>
+                <thead>
+                  <tr style={{ background: '#f3f4f6' }}>
+                    <th style={{ padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>Date</th>
+                    {!overheadTableSimpleView ? (
+                      <>
+                        <th style={{ padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>Bid labor ($)</th>
+                        <th style={{ padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>Office labor ($)</th>
+                        <th style={{ padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>Office parts ($)</th>
+                      </>
+                    ) : null}
+                    <th style={{ padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>Office Total ($) / Hours</th>
+                    <th
+                      style={{
+                        padding: '0.5rem',
+                        borderBottom: '1px solid #e5e7eb',
+                        borderLeft: '1px solid #d1d5db',
+                      }}
+                    >
+                      Field Total ($) / Hours
+                    </th>
+                    <th
+                      style={{ padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}
+                      title="Office Total ($) ÷ Field Total ($); — when field total is $0"
+                    >
+                      Overhead factor
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {overheadMergedByDay.length === 0 ? (
+                    <tr>
+                      <td colSpan={overheadTableColCount} style={{ padding: '0.75rem', color: '#6b7280' }}>
+                        No rows in this range (no qualifying overhead or field-total activity for these dates).
+                      </td>
+                    </tr>
+                  ) : (
+                    overheadMergedByDay.map((row) => {
+                      const overheadFactor = overheadFactorTotalOverOtherJobs(row.totalUsd, row.otherJobsUsd)
+                      return (
+                        <tr key={row.work_date}>
+                            <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6' }}>
+                              {formatOverheadTabWorkDateLabel(row.work_date)}
+                            </td>
+                            {!overheadTableSimpleView ? (
+                              <>
+                                <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6' }}>
+                                  <button
+                                    type="button"
+                                    aria-label={`Bid labor breakdown for ${row.work_date}`}
+                                    onClick={() => setOverheadBreakdownModal({ workDate: row.work_date, scope: 'bid' })}
+                                    style={overheadValueCellButtonStyle}
+                                  >
+                                    {formatCurrency(row.bidLaborUsd)}
+                                  </button>
+                                </td>
+                                <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6' }}>
+                                  <button
+                                    type="button"
+                                    aria-label={`Office labor breakdown for ${row.work_date}`}
+                                    onClick={() => setOverheadBreakdownModal({ workDate: row.work_date, scope: 'office' })}
+                                    style={overheadValueCellButtonStyle}
+                                  >
+                                    {formatCurrency(row.officeLaborUsd)}
+                                  </button>
+                                </td>
+                                <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6' }}>
+                                  <button
+                                    type="button"
+                                    aria-label={`Office parts breakdown for ${row.work_date}`}
+                                    onClick={() => setOverheadBreakdownModal({ workDate: row.work_date, scope: 'officeParts' })}
+                                    style={overheadValueCellButtonStyle}
+                                  >
+                                    {formatCurrency(row.officePartsUsd)}
+                                  </button>
+                                </td>
+                              </>
+                            ) : null}
+                            <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6' }}>
+                              <button
+                                type="button"
+                                aria-label={`Office total for ${row.work_date}: ${formatCurrency(row.totalUsd)}, ${row.totalLaborHours.toFixed(2)} hours office and bid labor`}
+                                onClick={() => setOverheadBreakdownModal({ workDate: row.work_date, scope: 'total' })}
+                                style={{ ...overheadValueCellButtonStyle, fontWeight: 600 }}
+                              >
+                                {formatCurrency(row.totalUsd)}
+                                <span style={{ fontWeight: 400 }}> · {row.totalLaborHours.toFixed(2)}h</span>
+                              </button>
+                            </td>
+                            <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6', borderLeft: '1px solid #d1d5db' }}>
+                              <button
+                                type="button"
+                                aria-label={`Field total for ${row.work_date}: ${formatCurrency(row.otherJobsUsd)}, ${row.otherJobsLaborHours.toFixed(2)} hours jobs-ledger labor`}
+                                onClick={() => setOverheadBreakdownModal({ workDate: row.work_date, scope: 'otherJobs' })}
+                                style={overheadValueCellButtonStyle}
+                              >
+                                {formatCurrency(row.otherJobsUsd)}
+                                <span style={{ fontWeight: 400 }}> · {row.otherJobsLaborHours.toFixed(2)}h</span>
+                              </button>
+                            </td>
+                            <td
+                              style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6' }}
+                              aria-label={
+                                overheadFactor == null
+                                  ? `Overhead factor for ${row.work_date}: not available (field total dollars is zero)`
+                                  : `Overhead factor for ${row.work_date}: ${overheadFactor.toFixed(2)} times, office total divided by field total dollars`
+                              }
+                            >
+                              {overheadFactor == null ? '—' : `${overheadFactor.toFixed(2)}×`}
+                            </td>
+                          </tr>
+                      )
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {overheadBreakdownModalModel ? (
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="overhead-breakdown-title"
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0,0,0,0.35)',
+                zIndex: 2000,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '1rem',
+              }}
+              onMouseDown={(e) => {
+                if (e.target === e.currentTarget) setOverheadBreakdownModal(null)
+              }}
+            >
+              <div
+                style={{
+                  background: 'white',
+                  borderRadius: 8,
+                  maxWidth: 560,
+                  width: '100%',
+                  maxHeight: '85vh',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
+                }}
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb' }}>
+                  <h2 id="overhead-breakdown-title" style={{ margin: 0, fontSize: '1.125rem' }}>
+                    {overheadBreakdownModalModel.title} — {overheadBreakdownModalModel.workDate}
+                  </h2>
+                  {overheadBreakdownModalModel.scope === 'officeParts' ? (
+                    <>
+                      <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.875rem', color: '#4b5563' }}>
+                        Mercury allocations by <strong>posted date</strong> (company time zone), supply invoice shares by{' '}
+                        <strong>invoice date</strong>, tally parts by <strong>entry date</strong>. Separate from labor; no dedupe across
+                        sources.
+                      </p>
+                      <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.875rem', fontWeight: 600 }}>
+                        Total: {formatCurrency(overheadBreakdownModalModel.totalPartsUsd)}
+                      </p>
+                    </>
+                  ) : overheadBreakdownModalModel.scope === 'total' ? (
+                    <>
+                      <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.875rem', color: '#4b5563' }}>
+                        <strong>Labor:</strong> approved, closed sessions — hours × pay config wage. <strong>Materials:</strong> office
+                        job parts (same rules as <strong>Office parts ($)</strong> column).
+                      </p>
+                      <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem' }}>
+                        Labor: {overheadBreakdownModalModel.totalHours.toFixed(2)}h —{' '}
+                        {formatCurrency(overheadBreakdownModalModel.totalLaborUsd)}
+                      </p>
+                      <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem' }}>
+                        Office materials: {formatCurrency(overheadBreakdownModalModel.totalPartsUsd)}
+                      </p>
+                      <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.875rem', fontWeight: 600 }}>
+                        Total: {formatCurrency(overheadBreakdownModalModel.grandTotalUsd)}
+                      </p>
+                    </>
+                  ) : overheadBreakdownModalModel.scope === 'otherJobs' ? (
+                    <>
+                      <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.875rem', color: '#4b5563' }}>
+                        Not included in overhead <strong>Office Total ($)</strong>. <strong>Labor:</strong> approved, closed clock time on{' '}
+                        <strong>jobs ledger</strong> work other than the office overhead job when one is configured (bid-only
+                        time remains in <strong>Bid labor ($)</strong> only). <strong>Materials:</strong> Mercury, supply, and
+                        tally on those jobs — same dating rules as the office parts column.
+                      </p>
+                      <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem' }}>
+                        Labor: {overheadBreakdownModalModel.totalHours.toFixed(2)}h —{' '}
+                        {formatCurrency(overheadBreakdownModalModel.totalLaborUsd)}
+                      </p>
+                      <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem' }}>
+                        Materials: {formatCurrency(overheadBreakdownModalModel.totalPartsUsd)}
+                      </p>
+                      <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.875rem', fontWeight: 600 }}>
+                        Combined: {formatCurrency(overheadBreakdownModalModel.grandTotalUsd)}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.875rem', color: '#4b5563' }}>
+                        Approved, closed sessions in this category. Labor $ = hours × hourly wage from pay config.
+                      </p>
+                      <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.875rem', fontWeight: 600 }}>
+                        Totals: {overheadBreakdownModalModel.totalHours.toFixed(2)}h —{' '}
+                        {formatCurrency(overheadBreakdownModalModel.totalLaborUsd)}
+                      </p>
+                    </>
+                  )}
+                </div>
+                <div style={{ padding: '0.75rem 1rem', overflowY: 'auto', flex: 1 }}>
+                  {overheadBreakdownModalModel.scope === 'officeParts' ? (
+                    overheadBreakdownModalModel.sortedPartLines.length === 0 ? (
+                      <p style={{ margin: 0, color: '#6b7280' }}>No materials lines for this date.</p>
+                    ) : (
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                        <thead>
+                          <tr style={{ background: '#f3f4f6' }}>
+                            <th style={{ textAlign: 'left', padding: '0.45rem' }}>Source</th>
+                            <th style={{ textAlign: 'left', padding: '0.45rem' }}>Description</th>
+                            <th style={{ textAlign: 'right', padding: '0.45rem' }}>Amount ($)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {overheadBreakdownModalModel.sortedPartLines.map((ln) => (
+                            <tr key={ln.sortKey} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                              <td style={{ padding: '0.45rem' }}>
+                                {ln.source === 'mercury' ? 'Mercury' : ln.source === 'supply' ? 'Supply' : 'Tally'}
+                              </td>
+                              <td style={{ padding: '0.45rem' }}>{ln.label}</td>
+                              <td style={{ padding: '0.45rem', textAlign: 'right' }}>{formatCurrency(ln.amountUsd)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )
+                  ) : overheadBreakdownModalModel.scope === 'total' ? (
+                    <>
+                      {overheadBreakdownModalModel.personTotal.length === 0 ? (
+                        <p style={{ margin: '0 0 0.75rem 0', color: '#6b7280' }}>No labor sessions for this date.</p>
+                      ) : (
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                          <thead>
+                            <tr style={{ background: '#f3f4f6' }}>
+                              <th style={{ textAlign: 'left', padding: '0.45rem' }}>Person</th>
+                              <th style={{ textAlign: 'right', padding: '0.45rem' }}>Hours</th>
+                              <th style={{ textAlign: 'right', padding: '0.45rem' }}>Office ($)</th>
+                              <th style={{ textAlign: 'right', padding: '0.45rem' }}>Bid ($)</th>
+                              <th style={{ textAlign: 'right', padding: '0.45rem' }}>Labor total ($)</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {overheadBreakdownModalModel.personTotal.map((r) => (
+                              <tr key={r.userName} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                                <td style={{ padding: '0.45rem' }}>
+                                  {r.userName}
+                                  {r.missingWage ? (
+                                    <span style={{ color: '#b45309', fontSize: '0.75rem' }}>
+                                      {' '}
+                                      (no hourly wage for some sessions)
+                                    </span>
+                                  ) : null}
+                                </td>
+                                <td style={{ padding: '0.45rem', textAlign: 'right' }}>{r.hours.toFixed(2)}</td>
+                                <td style={{ padding: '0.45rem', textAlign: 'right' }}>{formatCurrency(r.officeLaborUsd)}</td>
+                                <td style={{ padding: '0.45rem', textAlign: 'right' }}>{formatCurrency(r.bidLaborUsd)}</td>
+                                <td style={{ padding: '0.45rem', textAlign: 'right', fontWeight: 600 }}>
+                                  {formatCurrency(r.totalLaborUsd)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+
+                      <details style={{ marginTop: '1rem', fontSize: '0.8125rem', color: '#4b5563' }}>
+                        <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Session detail (labor)</summary>
+                        {overheadBreakdownModalModel.sortedSessions.length === 0 ? (
+                          <p style={{ margin: '0.5rem 0 0 0' }}>No sessions.</p>
+                        ) : (
+                          <ul style={{ margin: '0.5rem 0 0 0', paddingLeft: '1.1rem' }}>
+                            {overheadBreakdownModalModel.sortedSessions.map((ln) => (
+                              <li key={ln.sessionId} style={{ marginBottom: '0.25rem' }}>
+                                {ln.userName} — {ln.bucket === 'office' ? 'Office' : 'Bid'} — {ln.hours.toFixed(2)}h —{' '}
+                                {formatCurrency(ln.laborUsd)}
+                                {ln.missingWage ? <span style={{ color: '#b45309' }}> (no hourly wage)</span> : null}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </details>
+
+                      <details style={{ marginTop: '1rem', fontSize: '0.8125rem', color: '#4b5563' }}>
+                        <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Materials (office job)</summary>
+                        {overheadBreakdownModalModel.sortedPartLines.length === 0 ? (
+                          <p style={{ margin: '0.5rem 0 0 0' }}>No materials lines for this date.</p>
+                        ) : (
+                          <ul style={{ margin: '0.5rem 0 0 0', paddingLeft: '1.1rem' }}>
+                            {overheadBreakdownModalModel.sortedPartLines.map((ln) => (
+                              <li key={ln.sortKey} style={{ marginBottom: '0.25rem' }}>
+                                {ln.source === 'mercury' ? 'Mercury' : ln.source === 'supply' ? 'Supply' : 'Tally'} — {ln.label} —{' '}
+                                {formatCurrency(ln.amountUsd)}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </details>
+                    </>
+                  ) : overheadBreakdownModalModel.scope === 'otherJobs' ? (
+                    <>
+                      {overheadBreakdownModalModel.personRows.length === 0 ? (
+                        <p style={{ margin: '0 0 0.75rem 0', color: '#6b7280' }}>No labor sessions for this date.</p>
+                      ) : (
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                          <thead>
+                            <tr style={{ background: '#f3f4f6' }}>
+                              <th style={{ textAlign: 'left', padding: '0.45rem' }}>Person</th>
+                              <th style={{ textAlign: 'right', padding: '0.45rem' }}>Hours</th>
+                              <th style={{ textAlign: 'right', padding: '0.45rem' }}>Labor ($)</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {overheadBreakdownModalModel.personRows.map((r) => (
+                              <tr key={r.userName} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                                <td style={{ padding: '0.45rem' }}>
+                                  {r.userName}
+                                  {r.missingWage ? (
+                                    <span style={{ color: '#b45309', fontSize: '0.75rem' }}>
+                                      {' '}
+                                      (no hourly wage for some sessions)
+                                    </span>
+                                  ) : null}
+                                </td>
+                                <td style={{ padding: '0.45rem', textAlign: 'right' }}>{r.hours.toFixed(2)}</td>
+                                <td style={{ padding: '0.45rem', textAlign: 'right', fontWeight: 600 }}>
+                                  {formatCurrency(r.laborUsd)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+
+                      <details style={{ marginTop: '1rem', fontSize: '0.8125rem', color: '#4b5563' }}>
+                        <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Session detail (labor)</summary>
+                        {overheadBreakdownModalModel.sortedSessions.length === 0 ? (
+                          <p style={{ margin: '0.5rem 0 0 0' }}>No sessions.</p>
+                        ) : (
+                          <ul style={{ margin: '0.5rem 0 0 0', paddingLeft: '1.1rem' }}>
+                            {overheadBreakdownModalModel.sortedSessions.map((ln) => (
+                              <li key={ln.sessionId} style={{ marginBottom: '0.25rem' }}>
+                                {ln.userName} — {ln.hours.toFixed(2)}h — {formatCurrency(ln.laborUsd)}
+                                {ln.missingWage ? <span style={{ color: '#b45309' }}> (no hourly wage)</span> : null}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </details>
+
+                      <details style={{ marginTop: '1rem', fontSize: '0.8125rem', color: '#4b5563' }}>
+                        <summary style={{ cursor: 'pointer', fontWeight: 600 }}>
+                          {overheadOfficeJobLedgerId ? 'Materials (field / non-office jobs)' : 'Materials (all jobs)'}
+                        </summary>
+                        {overheadBreakdownModalModel.sortedPartLines.length === 0 ? (
+                          <p style={{ margin: '0.5rem 0 0 0' }}>No materials lines for this date.</p>
+                        ) : (
+                          <ul style={{ margin: '0.5rem 0 0 0', paddingLeft: '1.1rem' }}>
+                            {overheadBreakdownModalModel.sortedPartLines.map((ln) => (
+                              <li key={ln.sortKey} style={{ marginBottom: '0.25rem' }}>
+                                {ln.source === 'mercury' ? 'Mercury' : ln.source === 'supply' ? 'Supply' : 'Tally'} — {ln.label} —{' '}
+                                {formatCurrency(ln.amountUsd)}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </details>
+                    </>
+                  ) : overheadBreakdownModalModel.personRows.length === 0 ? (
+                    <p style={{ margin: 0, color: '#6b7280' }}>No sessions in this category for this date.</p>
+                  ) : (
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                      <thead>
+                        <tr style={{ background: '#f3f4f6' }}>
+                          <th style={{ textAlign: 'left', padding: '0.45rem' }}>Person</th>
+                          <th style={{ textAlign: 'right', padding: '0.45rem' }}>Hours</th>
+                          <th style={{ textAlign: 'right', padding: '0.45rem' }}>Labor ($)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {overheadBreakdownModalModel.personRows.map((r) => (
+                          <tr key={r.userName} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                            <td style={{ padding: '0.45rem' }}>
+                              {r.userName}
+                              {r.missingWage ? (
+                                <span style={{ color: '#b45309', fontSize: '0.75rem' }}> (no hourly wage)</span>
+                              ) : null}
+                            </td>
+                            <td style={{ padding: '0.45rem', textAlign: 'right' }}>{r.hours.toFixed(2)}</td>
+                            <td style={{ padding: '0.45rem', textAlign: 'right' }}>{formatCurrency(r.laborUsd)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+
+                  {overheadBreakdownModalModel.scope !== 'officeParts' &&
+                  overheadBreakdownModalModel.scope !== 'total' &&
+                  overheadBreakdownModalModel.scope !== 'otherJobs' ? (
+                    <details style={{ marginTop: '1rem', fontSize: '0.8125rem', color: '#4b5563' }}>
+                      <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Session detail</summary>
+                      {overheadBreakdownModalModel.sortedSessions.length === 0 ? (
+                        <p style={{ margin: '0.5rem 0 0 0' }}>No sessions.</p>
+                      ) : (
+                        <ul style={{ margin: '0.5rem 0 0 0', paddingLeft: '1.1rem' }}>
+                          {overheadBreakdownModalModel.sortedSessions.map((ln) => (
+                            <li key={ln.sessionId} style={{ marginBottom: '0.25rem' }}>
+                              {ln.userName} — {ln.bucket === 'office' ? 'Office' : 'Bid'} — {ln.hours.toFixed(2)}h —{' '}
+                              {formatCurrency(ln.laborUsd)}
+                              {ln.missingWage ? <span style={{ color: '#b45309' }}> (no hourly wage)</span> : null}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </details>
+                  ) : null}
+                </div>
+                <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end' }}>
+                  <button
+                    type="button"
+                    onClick={() => setOverheadBreakdownModal(null)}
+                    style={{
+                      padding: '0.4rem 0.9rem',
+                      borderRadius: 6,
+                      border: '1px solid #d1d5db',
+                      background: 'white',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {overheadOfficeJobModalOpen ? (
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="overhead-office-job-modal-title"
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0,0,0,0.35)',
+                zIndex: 2000,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '1rem',
+              }}
+              onMouseDown={(e) => {
+                if (e.target === e.currentTarget) setOverheadOfficeJobModalOpen(false)
+              }}
+            >
+              <div
+                style={{
+                  background: 'white',
+                  borderRadius: 8,
+                  maxWidth: 560,
+                  width: '100%',
+                  maxHeight: '85vh',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
+                }}
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb' }}>
+                  <h2 id="overhead-office-job-modal-title" style={{ margin: 0, fontSize: '1.125rem' }}>
+                    Overhead office job
+                  </h2>
+                  <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+                    Which job counts as office overhead for clock time and materials in this table.
+                  </p>
+                </div>
+                <div style={{ padding: '1rem', overflowY: 'auto', flex: 1 }}>
+                  <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#4b5563', lineHeight: 1.45 }}>
+                    Daily labor overhead from <strong>approved, closed</strong> clock sessions: time on the office job below,
+                    and time on <strong>bids</strong>. If both job and bid are set on a session, the <strong>office job</strong>{' '}
+                    wins. Amounts use session hours × <strong>hourly wage</strong> from People pay config (same name as clock
+                    user). <strong>Office parts ($)</strong> sums materials on the office job (Mercury allocations by posted
+                    date, supply invoice shares by invoice date, tally parts by entry date); these are separate from labor—no
+                    automatic dedupe across sources.                     <strong>Office Total ($) / Hours</strong> shows overhead <strong>dollars</strong>{' '}
+                    (labor plus office parts) and <strong>office + bid labor hours</strong> that day (materials add no hours).{' '}
+                    <strong>Field Total ($) / Hours</strong> is separate: same column shows <strong>dollars</strong>{' '}
+                    (jobs-ledger labor plus materials on those jobs) and <strong>jobs-ledger labor hours</strong> only (not
+                    bid-only time; materials add no hours). Rules: Mercury / supply / tally as above. It is{' '}
+                    <strong>not</strong> included in overhead <strong>Total ($)</strong>. <strong>Overhead factor</strong> is{' '}
+                    <strong>Office Total ($) ÷ Field Total ($)</strong> that day (overhead dollars per dollar of field-total
+                    activity)—not margin; <strong>—</strong> when field total is $0.
+                  </p>
+                  {overheadSettingsLoading ? (
+                    <p style={{ margin: 0, color: '#6b7280' }}>Loading setting…</p>
+                  ) : overheadOfficeJobLedgerId ? (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
+                      {overheadOfficeJobLabel ? (
+                        <Link
+                          to={`/jobs?edit=${encodeURIComponent(overheadOfficeJobLedgerId)}`}
+                          style={{ fontWeight: 600, color: '#2563eb' }}
+                        >
+                          {String(overheadOfficeJobLabel.hcp_number ?? '—')} — {overheadOfficeJobLabel.job_name ?? 'Job'}
+                        </Link>
+                      ) : (
+                        <span style={{ color: '#b91c1c' }}>Saved job id not found — pick another.</span>
+                      )}
+                      {isDev ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => setOverheadJobPickerOpen(true)}
+                            style={{
+                              padding: '0.25rem 0.6rem',
+                              fontSize: '0.8125rem',
+                              borderRadius: 4,
+                              border: '1px solid #d1d5db',
+                              background: 'white',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Change
+                          </button>
+                          <button
+                            type="button"
+                            disabled={overheadJobSaving}
+                            onClick={() => {
+                              void (async () => {
+                                setOverheadJobSaving(true)
+                                try {
+                                  await deleteOverheadOfficeJobLedgerIdSetting()
+                                  setOverheadOfficeJobLedgerId(null)
+                                  setOverheadOfficeJobLabel(null)
+                                  showToast('Office job cleared', 'success')
+                                } catch (e) {
+                                  showToast(formatErrorMessage(e, 'Could not clear'), 'error')
+                                } finally {
+                                  setOverheadJobSaving(false)
+                                }
+                              })()
+                            }}
+                            style={{
+                              padding: '0.25rem 0.6rem',
+                              fontSize: '0.8125rem',
+                              borderRadius: 4,
+                              border: '1px solid #fecaca',
+                              background: '#fef2f2',
+                              cursor: 'pointer',
+                              color: '#b91c1c',
+                            }}
+                          >
+                            Clear
+                          </button>
+                        </>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <p style={{ margin: 0, fontSize: '0.875rem' }}>
+                      <span style={{ color: '#6b7280' }}>No office job configured — bid overhead still shows.</span>{' '}
+                      {isDev ? (
+                        <button
+                          type="button"
+                          onClick={() => setOverheadJobPickerOpen(true)}
+                          style={{
+                            padding: '0.25rem 0.6rem',
+                            fontSize: '0.8125rem',
+                            borderRadius: 4,
+                            border: '1px solid #d1d5db',
+                            background: 'white',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Choose office job
+                        </button>
+                      ) : (
+                        <span style={{ color: '#6b7280' }}> Ask a dev to configure the office job.</span>
+                      )}
+                    </p>
+                  )}
+                </div>
+                <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end' }}>
+                  <button
+                    type="button"
+                    onClick={() => setOverheadOfficeJobModalOpen(false)}
+                    style={{
+                      padding: '0.4rem 0.9rem',
+                      borderRadius: 6,
+                      border: '1px solid #d1d5db',
+                      background: 'white',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {overheadJobPickerOpen ? (
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="overhead-job-picker-title"
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0,0,0,0.35)',
+                zIndex: 2010,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '1rem',
+              }}
+              onMouseDown={(e) => {
+                if (e.target === e.currentTarget) setOverheadJobPickerOpen(false)
+              }}
+            >
+              <div
+                style={{
+                  background: 'white',
+                  borderRadius: 8,
+                  maxWidth: 480,
+                  width: '100%',
+                  maxHeight: '85vh',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
+                }}
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb' }}>
+                  <h2 id="overhead-job-picker-title" style={{ margin: 0, fontSize: '1.125rem' }}>
+                    Choose office job
+                  </h2>
+                  <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+                    Search and select one job to attribute office overhead clock time.
+                  </p>
+                </div>
+                <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #e5e7eb' }}>
+                  <input
+                    type="search"
+                    value={overheadJobSearch}
+                    onChange={(e) => setOverheadJobSearch(e.target.value)}
+                    placeholder="Search jobs…"
+                    aria-label="Search jobs"
+                    autoFocus
+                    style={{ width: '100%', padding: '0.45rem 0.6rem', borderRadius: 6, border: '1px solid #d1d5db', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div style={{ overflowY: 'auto', flex: 1, padding: '0.5rem 0' }}>
+                  {overheadJobResults.length === 0 ? (
+                    <p style={{ margin: '0 1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+                      {overheadJobSearch.trim() ? 'No matches.' : 'Type to search.'}
+                    </p>
+                  ) : (
+                    <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                      {overheadJobResults.map((j) => (
+                        <li key={j.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                          <button
+                            type="button"
+                            disabled={overheadJobSaving}
+                            onClick={() => {
+                              void (async () => {
+                                setOverheadJobSaving(true)
+                                try {
+                                  await upsertOverheadOfficeJobLedgerId(j.id)
+                                  setOverheadOfficeJobLedgerId(j.id)
+                                  setOverheadOfficeJobLabel({
+                                    hcp_number: j.hcp_number ?? null,
+                                    job_name: j.job_name ?? null,
+                                  })
+                                  setOverheadJobPickerOpen(false)
+                                  showToast('Office job saved', 'success')
+                                } catch (e) {
+                                  showToast(formatErrorMessage(e, 'Could not save'), 'error')
+                                } finally {
+                                  setOverheadJobSaving(false)
+                                }
+                              })()
+                            }}
+                            style={{
+                              width: '100%',
+                              textAlign: 'left',
+                              padding: '0.65rem 1rem',
+                              border: 'none',
+                              background: 'none',
+                              cursor: overheadJobSaving ? 'wait' : 'pointer',
+                              fontSize: '0.875rem',
+                            }}
+                          >
+                            <span style={{ fontWeight: 600 }}>{j.hcp_number ?? '—'}</span>
+                            <span style={{ color: '#6b7280' }}> — {j.job_name}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end' }}>
+                  <button
+                    type="button"
+                    onClick={() => setOverheadJobPickerOpen(false)}
+                    style={{ padding: '0.4rem 0.85rem', borderRadius: 6, border: '1px solid #d1d5db', background: 'white', cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       {activeTab === 'pay_stubs' && canAccessPay && (
         <div>
           {payStubsLoading ? (
@@ -8334,7 +9907,7 @@ export default function People() {
                     type="button"
                     onClick={() => setCustomPayReportsModalOpen(true)}
                     disabled={showPeopleForHours.length === 0}
-                    title={showPeopleForHours.length === 0 ? 'Go to Pay tab and check Show in Hours for people to track' : undefined}
+                    title={showPeopleForHours.length === 0 ? 'In Hours, open People pay config and check Show in Hours for people to track' : undefined}
                     style={{
                       padding: '0.5rem 1rem',
                       fontSize: '0.9375rem',
@@ -8357,7 +9930,7 @@ export default function People() {
                       setDraftPayrollModalOpen(true)
                     }}
                     disabled={showPeopleForHours.length === 0}
-                    title={showPeopleForHours.length === 0 ? 'Go to Pay tab and check Show in Hours for people to track' : undefined}
+                    title={showPeopleForHours.length === 0 ? 'In Hours, open People pay config and check Show in Hours for people to track' : undefined}
                     style={{
                       marginLeft: 'auto',
                       padding: '0.5rem 1rem',
@@ -9047,56 +10620,66 @@ export default function People() {
         />
       )}
 
-            {activeTab === 'pay' && (canAccessPay || canViewCostMatrixShared) && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          {payTabLoading ? (
+
+      {activeTab === 'hours' && canOpenHoursTab && (
+        <>
+        <div>
+          {hoursTabLoading ? (
             <p style={{ color: '#6b7280' }}>Loading…</p>
           ) : (
           <>
-          {canAccessPay && (
+          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+          {canAccessPay ? (
             <>
               <div
+                id="people-hours-pay-tools"
                 style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  flexWrap: 'wrap',
-                  gap: '0.5rem',
-                  marginBottom: '1rem',
+                  ...HOURS_TAB_SECTION_ANCHOR_STYLE,
+                  marginBottom: HOURS_TAB_SECTIONS_STACK_GAP,
                 }}
               >
-                <button
-                  type="button"
-                  onClick={() => setReviewHoursModalOpen(true)}
+                <div
                   style={{
-                    padding: '0.35rem 0.75rem',
-                    border: '1px solid #d1d5db',
-                    borderRadius: 4,
-                    background: 'white',
-                    cursor: 'pointer',
-                    fontSize: '0.875rem',
-                    fontWeight: 500,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '0.5rem',
                   }}
                 >
-                  Review Hours <span style={{ color: '#059669' }}>✓</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPayConfigModalOpen(true)}
-                  style={{
-                    padding: '0.45rem 0.85rem',
-                    margin: 0,
-                    marginLeft: 'auto',
-                    border: '1px solid #d1d5db',
-                    borderRadius: 4,
-                    background: '#f9fafb',
-                    cursor: 'pointer',
-                    fontSize: '0.9375rem',
-                    fontWeight: 600,
-                  }}
-                >
-                  People pay config
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => setReviewHoursModalOpen(true)}
+                    style={{
+                      padding: '0.35rem 0.75rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: 4,
+                      background: 'white',
+                      cursor: 'pointer',
+                      fontSize: '0.875rem',
+                      fontWeight: 500,
+                    }}
+                  >
+                    Review Hours <span style={{ color: '#059669' }}>✓</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPayConfigModalOpen(true)}
+                    style={{
+                      padding: '0.45rem 0.85rem',
+                      margin: 0,
+                      marginLeft: 'auto',
+                      border: '1px solid #d1d5db',
+                      borderRadius: 4,
+                      background: '#f9fafb',
+                      cursor: 'pointer',
+                      fontSize: '0.9375rem',
+                      fontWeight: 600,
+                    }}
+                  >
+                    People pay config
+                  </button>
+                </div>
               </div>
               <PeoplePayConfigModal
                 open={payConfigModalOpen}
@@ -9110,945 +10693,54 @@ export default function People() {
                 onUpsertPayConfig={upsertPayConfig}
                 onHourlyWageChange={updatePayConfigHourlyWage}
               />
-            </>
-          )}
-          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
-          {(() => {
-            const matrixTotal = matrixDays.reduce(
-              (daySum, d) => daySum + showPeopleForMatrix.reduce((s, p) => s + getCostForPersonDateMatrix(p, d), 0),
-              0
-            )
-            const tagTotals = new Map<string, number>()
-            const tagHours = new Map<string, number>()
-            for (const personName of showPeopleForMatrix) {
-              const periodCost = matrixDays.reduce((s, d) => s + getCostForPersonDateMatrix(personName, d), 0)
-              const periodHrs = matrixDays.reduce((s, d) => s + getEffectiveHours(personName, d), 0)
-              const tags = (costMatrixTags[personName] ?? '').split(',').map((t) => t.trim()).filter(Boolean)
-              for (const tag of tags) {
-                tagTotals.set(tag, (tagTotals.get(tag) ?? 0) + periodCost)
-                tagHours.set(tag, (tagHours.get(tag) ?? 0) + periodHrs)
-              }
-            }
-            const sortedTags = [...tagTotals.entries()].sort((a, b) => b[1] - a[1])
-            if (sortedTags.length === 0) return null
-            return (
-              <section style={{ marginBottom: '1rem' }}>
-                <div style={{ fontWeight: 600, marginBottom: '0.35rem', fontSize: '0.9375rem' }}>Due by Trade</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.875rem' }}>
-                  {sortedTags.map(([tag, total]) => {
-                    const pct = matrixTotal > 0 ? Math.round((total / matrixTotal) * 100) : 0
-                    const hrs = tagHours.get(tag) ?? 0
-                    const costPerHr = hrs > 0 ? `$${(total / hrs).toFixed(1)}/hr` : '—'
-                    return (
-                      <span
-                        key={tag}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => setTagLedgerModalTag(tag)}
-                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setTagLedgerModalTag(tag) } }}
-                        style={{ fontWeight: 500, cursor: 'pointer' }}
-                        title="Click to view ledger"
-                      >
-                        {tag} ${Math.round(total).toLocaleString('en-US')} | {pct}% | {costPerHr}
-                      </span>
-                    )
-                  })}
-                </div>
-              </section>
-            )
-          })()}
-          {teamsFiltered.length > 0 && (
-            <section style={{ marginBottom: '1rem' }}>
-              <div style={{ fontWeight: 600, marginBottom: '0.35rem', fontSize: '0.9375rem' }}>Due by Team:</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.875rem' }}>
-                {teamsFiltered.map((team) => {
-                  const costForRange = (start: string, end: string) =>
-                    team.members.reduce((sum, p) => sum + getDaysInRange(start, end).reduce((s, d) => s + getCostForPersonDateTeams(p, d), 0), 0)
-                  const periodCost = costForRange(teamPeriodStart, teamPeriodEnd)
-                  return (
-                    <span
-                      key={team.id}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => setTeamLedgerModalTeam(team)}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setTeamLedgerModalTeam(team) } }}
-                      style={{ fontWeight: 500, cursor: 'pointer' }}
-                      title="Click to view ledger"
-                    >
-                      {team.name}: ${Math.round(periodCost).toLocaleString('en-US')}
-                    </span>
-                  )
-                })}
-              </div>
-            </section>
-          )}
-          {tagLedgerModalTag && (() => {
-            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-            const peopleWithTag = showPeopleForMatrix.filter((p) =>
-              (costMatrixTags[p] ?? '').split(',').map((t) => t.trim()).filter(Boolean).includes(tagLedgerModalTag)
-            )
-            const daysInRange = getDaysInRange(matrixStartDate, matrixEndDate)
-            const memberCostByWeekday = peopleWithTag.map((personName) => {
-              const byDay = dayNames.map((_, dayOfWeek) => {
-                const matchingDays = daysInRange.filter((d) => new Date(d + 'T12:00:00').getDay() === dayOfWeek)
-                return matchingDays.reduce((sum, d) => sum + getCostForPersonDateMatrix(personName, d), 0)
-              })
-              const total = byDay.reduce((s, v) => s + v, 0)
-              return { personName, byDay, total }
-            })
-            const costByWeekday = dayNames.map((_, dayOfWeek) =>
-              memberCostByWeekday.reduce((s, r) => s + (r.byDay[dayOfWeek] ?? 0), 0)
-            )
-            const periodTotal = costByWeekday.reduce((s, v) => s + v, 0)
-            return (
-              <div
-                style={{
-                  position: 'fixed',
-                  inset: 0,
-                  background: 'rgba(0,0,0,0.5)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  zIndex: 1000,
-                }}
-                onClick={() => setTagLedgerModalTag(null)}
-              >
-                <div
-                  style={{
-                    background: 'white',
-                    borderRadius: 8,
-                    padding: '1rem 1.25rem',
-                    maxWidth: '90vw',
-                    maxHeight: '85vh',
-                    overflow: 'auto',
-                    boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                    <h3 style={{ margin: 0, fontSize: '1.125rem' }}>
-                      {tagLedgerModalTag} — Week of {matrixStartDate} to {matrixEndDate}
-                    </h3>
-                    <button
-                      type="button"
-                      onClick={() => setTagLedgerModalTag(null)}
-                      style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
-                    >
-                      Close
-                    </button>
-                  </div>
-                  <table style={{ width: '100%', fontSize: '0.8125rem', borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                        <th style={{ padding: '0.25rem 0.5rem', textAlign: 'left' }}>Person</th>
-                        {dayNames.map((name) => (
-                          <th key={name} style={{ padding: '0.25rem 0.35rem', textAlign: 'right', minWidth: 50 }}>{name}</th>
-                        ))}
-                        <th style={{ padding: '0.25rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {memberCostByWeekday.map(({ personName, byDay, total }) => (
-                        <tr key={personName} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                          <td style={{ padding: '0.2rem 0.5rem' }}>{personName}</td>
-                          {byDay.map((val, i) => (
-                            <td key={dayNames[i]} style={{ padding: '0.2rem 0.35rem', textAlign: 'right' }}>${Math.round(val).toLocaleString('en-US')}</td>
-                          ))}
-                          <td style={{ padding: '0.2rem 0.5rem', textAlign: 'right', fontWeight: 500 }}>${Math.round(total).toLocaleString('en-US')}</td>
-                        </tr>
-                      ))}
-                      <tr style={{ borderTop: '1px solid #e5e7eb', fontWeight: 600 }}>
-                        <td style={{ padding: '0.25rem 0.5rem' }}>Total</td>
-                        {costByWeekday.map((val, i) => (
-                          <td key={dayNames[i]} style={{ padding: '0.25rem 0.35rem', textAlign: 'right' }}>${Math.round(val).toLocaleString('en-US')}</td>
-                        ))}
-                        <td style={{ padding: '0.25rem 0.5rem', textAlign: 'right' }}>${Math.round(periodTotal).toLocaleString('en-US')}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )
-          })()}
-          {teamLedgerModalTeam && (() => {
-            const team = teamLedgerModalTeam
-            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-            const daysInRange = getDaysInRange(teamPeriodStart, teamPeriodEnd)
-            const memberCostByWeekday = team.members.map((personName) => {
-              const byDay = dayNames.map((_, dayOfWeek) => {
-                const matchingDays = daysInRange.filter((d) => new Date(d + 'T12:00:00').getDay() === dayOfWeek)
-                return matchingDays.reduce((sum, d) => sum + getCostForPersonDateTeams(personName, d), 0)
-              })
-              const total = byDay.reduce((s, v) => s + v, 0)
-              return { personName, byDay, total }
-            })
-            const costByWeekday = dayNames.map((_, dayOfWeek) =>
-              memberCostByWeekday.reduce((s, r) => s + (r.byDay[dayOfWeek] ?? 0), 0)
-            )
-            const periodTotal = costByWeekday.reduce((s, v) => s + v, 0)
-            return (
-              <div
-                style={{
-                  position: 'fixed',
-                  inset: 0,
-                  background: 'rgba(0,0,0,0.5)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  zIndex: 1000,
-                }}
-                onClick={() => setTeamLedgerModalTeam(null)}
-              >
-                <div
-                  style={{
-                    background: 'white',
-                    borderRadius: 8,
-                    padding: '1rem 1.25rem',
-                    maxWidth: '90vw',
-                    maxHeight: '85vh',
-                    overflow: 'auto',
-                    boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                    <h3 style={{ margin: 0, fontSize: '1.125rem' }}>
-                      {team.name} — {teamPeriodStart} to {teamPeriodEnd}
-                    </h3>
-                    <button
-                      type="button"
-                      onClick={() => setTeamLedgerModalTeam(null)}
-                      style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
-                    >
-                      Close
-                    </button>
-                  </div>
-                  <table style={{ width: '100%', fontSize: '0.8125rem', borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                        <th style={{ padding: '0.25rem 0.5rem', textAlign: 'left' }}>Person</th>
-                        {dayNames.map((name) => (
-                          <th key={name} style={{ padding: '0.25rem 0.35rem', textAlign: 'right', minWidth: 50 }}>{name}</th>
-                        ))}
-                        <th style={{ padding: '0.25rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {memberCostByWeekday.map(({ personName, byDay, total }) => (
-                        <tr key={personName} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                          <td style={{ padding: '0.2rem 0.5rem' }}>{personName}</td>
-                          {byDay.map((val, i) => (
-                            <td key={dayNames[i]} style={{ padding: '0.2rem 0.35rem', textAlign: 'right' }}>${Math.round(val).toLocaleString('en-US')}</td>
-                          ))}
-                          <td style={{ padding: '0.2rem 0.5rem', textAlign: 'right', fontWeight: 500 }}>${Math.round(total).toLocaleString('en-US')}</td>
-                        </tr>
-                      ))}
-                      <tr style={{ borderTop: '1px solid #e5e7eb', fontWeight: 600 }}>
-                        <td style={{ padding: '0.25rem 0.5rem' }}>Total</td>
-                        {costByWeekday.map((val, i) => (
-                          <td key={dayNames[i]} style={{ padding: '0.25rem 0.35rem', textAlign: 'right' }}>${Math.round(val).toLocaleString('en-US')}</td>
-                        ))}
-                        <td style={{ padding: '0.25rem 0.5rem', textAlign: 'right' }}>${Math.round(periodTotal).toLocaleString('en-US')}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )
-          })()}
-          {personTimeDetailModalPerson && (
-            <PersonTimeDetailModal
-              personName={personTimeDetailModalPerson}
-              startDate={matrixStartDate}
-              endDate={matrixEndDate}
-              hoursRows={peopleHours.filter((h) => h.person_name === personTimeDetailModalPerson).map((h) => ({ work_date: h.work_date, hours: h.hours }))}
-              onClose={() => setPersonTimeDetailModalPerson(null)}
-            />
-          )}
-          {reviewHoursModalOpen && (
-            <ReviewHoursModal
-              people={showPeopleForMatrix}
-              initialPersonIndex={0}
-              initialStartDate={matrixStartDate}
-              initialEndDate={matrixEndDate}
-              hoursRowsForPerson={(p) =>
-                peopleHours.filter((h) => h.person_name === p).map((h) => ({ work_date: h.work_date, hours: h.hours }))
-              }
-              canAddToJob={canAccessPay}
-              canMarkReviewed={canAccessPay}
-              onReviewedChange={() => void loadHoursReviewed()}
-              onClose={() => setReviewHoursModalOpen(false)}
-            />
-          )}
-          <section id="cost-matrix">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
-              <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Cost matrix</h2>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={showMaxHours}
-                  onChange={(e) => setShowMaxHours(e.target.checked)}
+              {reviewHoursModalOpen ? (
+                <ReviewHoursModal
+                  people={showPeopleForMatrix}
+                  initialPersonIndex={0}
+                  initialStartDate={hoursDateStart}
+                  initialEndDate={hoursDateEnd}
+                  hoursRowsForPerson={(p) =>
+                    peopleHours.filter((h) => h.person_name === p).map((h) => ({ work_date: h.work_date, hours: h.hours }))
+                  }
+                  canAddToJob={canAccessPay}
+                  canMarkReviewed={canAccessPay}
+                  onReviewedChange={() => void loadHoursReviewed()}
+                  onClose={() => setReviewHoursModalOpen(false)}
                 />
-                show max hours
-              </label>
-              {canAccessPay && (
-                <>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={payEditArrangement}
-                      onChange={(e) => setPayEditArrangement(e.target.checked)}
-                    />
-                    edit arrangement
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={payEditTags}
-                      onChange={(e) => setPayEditTags(e.target.checked)}
-                    />
-                    edit tags
-                  </label>
-                </>
-              )}
-            </div>
-            {narrowViewport ? (
-              <div style={{ marginBottom: '0.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'space-between' }}>
-                  <button
-                    type="button"
-                    aria-label="Previous week"
-                    onClick={() => shiftMatrixWeek(-1)}
-                    style={{ padding: '0.35rem 0.65rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '1.125rem', lineHeight: 1 }}
-                  >
-                    ‹
-                  </button>
-                  <span style={{ fontSize: '0.875rem', textAlign: 'center', flex: 1, minWidth: 0 }}>
-                    {formatDateRangeLabel(matrixStartDate, matrixEndDate)}
-                  </span>
-                  <button
-                    type="button"
-                    aria-label="Next week"
-                    onClick={() => shiftMatrixWeek(1)}
-                    style={{ padding: '0.35rem 0.65rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '1.125rem', lineHeight: 1 }}
-                  >
-                    ›
-                  </button>
-                </div>
-                <details style={{ marginTop: '0.35rem' }}>
-                  <summary style={{ fontSize: '0.8125rem', cursor: 'pointer', color: '#374151' }}>Custom dates</summary>
-                  <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.5rem', alignItems: 'center' }}>
-                    <label>
-                      <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Start</span>
-                      <input type="date" value={matrixStartDate} onChange={(e) => setMatrixStartDate(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-                    </label>
-                    <label>
-                      <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>End</span>
-                      <input type="date" value={matrixEndDate} onChange={(e) => setMatrixEndDate(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-                    </label>
-                  </div>
-                </details>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-                <label>
-                  <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Start</span>
-                  <input type="date" value={matrixStartDate} onChange={(e) => setMatrixStartDate(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-                </label>
-                <label>
-                  <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>End</span>
-                  <input type="date" value={matrixEndDate} onChange={(e) => setMatrixEndDate(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-                </label>
-                <button
-                  type="button"
-                  onClick={() => shiftMatrixWeek(-1)}
-                  style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
-                >
-                  ← last week
-                </button>
-                <button
-                  type="button"
-                  onClick={() => shiftMatrixWeek(1)}
-                  style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
-                >
-                  next week →
-                </button>
-              </div>
-            )}
-            <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
-                <thead style={{ background: '#f9fafb' }}>
-                  <tr>
-                    {canAccessPay && (
-                      <th style={{ padding: '0.5rem 0.35rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb', position: 'sticky', left: 0, background: '#f9fafb', minWidth: 36 }} title="Hours reviewed (use Review Hours to mark)">
-                        ✓
-                      </th>
-                    )}
-                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', position: 'sticky', left: canAccessPay ? 36 : 0, background: '#f9fafb' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                        Person
-                        <button
-                          type="button"
-                          onClick={() => setMatrixSortBy('cost')}
-                          title="Sort by cost (most expensive first)"
-                          style={{
-                            padding: '0.15rem 0.35rem',
-                            border: '1px solid #d1d5db',
-                            borderRadius: 4,
-                            background: matrixSortBy === 'cost' ? '#e5e7eb' : 'white',
-                            cursor: 'pointer',
-                            fontSize: '0.75rem',
-                            fontWeight: matrixSortBy === 'cost' ? 600 : 400,
-                          }}
-                        >
-                          $
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setMatrixSortBy('tag')}
-                          title="Sort by first tag (A-Z)"
-                          style={{
-                            padding: '0.15rem 0.35rem',
-                            border: '1px solid #d1d5db',
-                            borderRadius: 4,
-                            background: matrixSortBy === 'tag' ? '#e5e7eb' : 'white',
-                            cursor: 'pointer',
-                            fontSize: '0.75rem',
-                            fontWeight: matrixSortBy === 'tag' ? 600 : 400,
-                          }}
-                        >
-                          tag
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setMatrixSortBy('name')}
-                          title="Sort by name (A-Z)"
-                          style={{
-                            padding: '0.15rem 0.35rem',
-                            border: '1px solid #d1d5db',
-                            borderRadius: 4,
-                            background: matrixSortBy === 'name' ? '#e5e7eb' : 'white',
-                            cursor: 'pointer',
-                            fontSize: '0.75rem',
-                            fontWeight: matrixSortBy === 'name' ? 600 : 400,
-                          }}
-                        >
-                          name
-                        </button>
-                      </span>
-                    </th>
-                    {matrixDays.map((d) => {
-                      const dt = new Date(d + 'T12:00:00')
-                      const weekday = dt.toLocaleDateString(undefined, { weekday: 'short' })
-                      const monthDay = dt.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })
-                      return (
-                        <th key={d} style={{ padding: '0.5rem 0.35rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', minWidth: 70 }}>
-                          <span className="cost-matrix-date-header">
-                            <span>{weekday}</span>
-                            <span> {monthDay}</span>
-                          </span>
-                        </th>
-                      )
-                    })}
-                  </tr>
-                </thead>
-                <tbody>
-                  {showPeopleForMatrix.map((personName, idx) => {
-                    const cfg = payConfig[personName]
-                    const wage = cfg?.hourly_wage ?? 0
-                    const periodTotal = matrixDays.reduce((s, d) => s + getCostForPersonDateMatrix(personName, d), 0)
-                    return (
-                      <tr key={personName} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                        {canAccessPay && (
-                          <td style={{ padding: '0.5rem 0.35rem', textAlign: 'center', position: 'sticky', left: 0, background: 'white', minWidth: 36 }}>
-                            {hoursReviewedSet.has(personName) ? (
-                              <span style={{ color: '#059669' }}>✓</span>
-                            ) : (
-                              <span style={{ color: '#d1d5db' }}>—</span>
-                            )}
-                          </td>
-                        )}
-                        <td style={{ padding: '0.5rem 0.75rem', position: 'sticky', left: canAccessPay ? 36 : 0, background: 'white', minWidth: 200 }}>
-                          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.2rem', flexWrap: 'wrap' }}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                              {payEditArrangement && canAccessPay ? (
-                                <span style={{ display: 'flex', flexDirection: 'column', gap: 0, marginRight: '0.25rem' }}>
-                                  <button
-                                    type="button"
-                                    onClick={() => moveMatrixRow(personName, 'up')}
-                                    disabled={idx === 0}
-                                    title="Move up"
-                                    style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === 0 ? 'not-allowed' : 'pointer', color: idx === 0 ? '#d1d5db' : '#6b7280', lineHeight: 1 }}
-                                  >
-                                    ▲
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => moveMatrixRow(personName, 'down')}
-                                    disabled={idx === showPeopleForMatrix.length - 1}
-                                    title="Move down"
-                                    style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === showPeopleForMatrix.length - 1 ? 'not-allowed' : 'pointer', color: idx === showPeopleForMatrix.length - 1 ? '#d1d5db' : '#6b7280', lineHeight: 1 }}
-                                  >
-                                    ▼
-                                  </button>
-                                </span>
-                              ) : null}
-                              <span
-                                role="button"
-                                tabIndex={0}
-                                onClick={() => setPersonTimeDetailModalPerson(personName)}
-                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setPersonTimeDetailModalPerson(personName) } }}
-                                title="View hours detail"
-                                style={{ cursor: 'pointer' }}
-                              >
-                                {wage > 0 ? `$${Math.round(periodTotal).toLocaleString('en-US')}` : '—'} | {personName}{cfg?.is_salary && <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.35rem' }}>(salary)</span>}
-                              </span>
-                            </span>
-                            {payEditTags && canAccessPay ? (
-                              <input
-                                type="text"
-                                value={costMatrixTags[personName] ?? ''}
-                                onChange={(e) => setCostMatrixTags((prev) => ({ ...prev, [personName]: e.target.value }))}
-                                onBlur={(e) => saveCostMatrixTags(personName, e.target.value)}
-                                placeholder="Tags (comma-separated)"
-                                style={{ padding: '0.2rem 0.4rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.75rem', minWidth: 120, marginLeft: 'auto' }}
-                              />
-                            ) : (costMatrixTags[personName] ?? '').trim() ? (
-                              <span style={{ display: 'flex', gap: '0.15rem', flexWrap: 'wrap', marginLeft: 'auto', justifyContent: 'flex-end' }}>
-                                {(costMatrixTags[personName] ?? '')
-                                  .split(',')
-                                  .map((t) => t.trim())
-                                  .filter(Boolean)
-                                  .map((tag) => (
-                                    <span
-                                      key={tag}
-                                      style={{
-                                        padding: '0.1rem 0.35rem',
-                                        background: costMatrixTagColors[tag] ?? '#e5e7eb',
-                                        borderRadius: 4,
-                                        fontSize: '0.7rem',
-                                        color: textColorForBackground(costMatrixTagColors[tag] ?? '#e5e7eb'),
-                                      }}
-                                    >
-                                      {tag}
-                                    </span>
-                                  ))}
-                              </span>
-                            ) : null}
-                          </span>
-                        </td>
-                        {matrixDays.map((d) => {
-                          const cost = getCostForPersonDateMatrix(personName, d)
-                          return (
-                            <td key={d} style={{ padding: '0.5rem 0.35rem', textAlign: 'right' }}>
-                              {wage > 0 ? `$${Math.round(cost).toLocaleString('en-US')}` : '—'}
-                            </td>
-                          )
-                        })}
-                      </tr>
-                    )
-                  })}
-                  <tr style={{ background: '#f9fafb', fontWeight: 600 }}>
-                    {canAccessPay && (
-                      <td style={{ padding: '0.5rem 0.35rem', textAlign: 'center', position: 'sticky', left: 0, background: '#f9fafb', minWidth: 36 }}>
-                        {hoursReviewedSet.size} of {showPeopleForMatrix.length}
-                      </td>
-                    )}
-                    <td style={{ padding: '0.5rem 0.75rem', position: 'sticky', left: canAccessPay ? 36 : 0, background: '#f9fafb' }}>
-                      Internal Team: ${Math.round(
-                        matrixDays.reduce(
-                          (daySum, d) => daySum + showPeopleForMatrix.reduce((s, p) => s + getCostForPersonDateMatrix(p, d), 0),
-                          0
-                        )
-                      ).toLocaleString('en-US')}
-                    </td>
-                    {matrixDays.map((d) => {
-                      const dayTotal = showPeopleForMatrix.reduce((s, p) => s + getCostForPersonDateMatrix(p, d), 0)
-                      return (
-                        <td key={d} style={{ padding: '0.5rem 0.35rem', textAlign: 'right' }}>
-                          ${Math.round(dayTotal).toLocaleString('en-US')}
-                        </td>
-                      )
-                    })}
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
-          <section>
-            <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.125rem' }}>Teams</h2>
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-              <label>
-                <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Start</span>
-                <input type="date" value={teamPeriodStart} onChange={(e) => setTeamPeriodStart(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-              </label>
-              <label>
-                <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>End</span>
-                <input type="date" value={teamPeriodEnd} onChange={(e) => setTeamPeriodEnd(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-              </label>
-              {canAccessPay && (
-              <button type="button" onClick={addTeam} style={{ padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}>
-                Add team
+              ) : null}
+            </>
+          ) : null}
+          <div style={HOURS_TAB_SECTIONS_STACK}>
+          {canAccessHours ? (
+          <section id="people-hours-clock-strip" style={HOURS_TAB_SECTION_SHELL}>
+            <div style={hoursTabSectionHeaderGap(hoursTabSectionsOpen.clockStrip)}>
+              <button
+                type="button"
+                aria-expanded={hoursTabSectionsOpen.clockStrip}
+                onClick={() => setHoursTabSectionsOpen((p) => ({ ...p, clockStrip: !p.clockStrip }))}
+                style={HOURS_TAB_SECTION_TOGGLE_BTN}
+              >
+                <span aria-hidden style={HOURS_TAB_SECTION_CHEVRON}>{hoursTabSectionsOpen.clockStrip ? '▼' : '▶'}</span>
+                Currently clocked in
               </button>
-              )}
             </div>
-            <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.35rem' }}>
-              {canViewCostMatrixShared && !canAccessPay ? 'Teams and combined cost for a date range.' : 'Add people to teams to see combined cost for a date range (default: last 7 days).'}
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {teamsFiltered.map((team) => {
-                const teamsReadOnly = canViewCostMatrixShared && !canAccessPay
-                const costForRange = (start: string, end: string) =>
-                  team.members.reduce((sum, p) => sum + getDaysInRange(start, end).reduce((s, d) => s + getCostForPersonDateTeams(p, d), 0), 0)
-                const today = new Date().toLocaleDateString('en-CA')
-                const yesterday = (() => {
-                  const d = new Date()
-                  d.setDate(d.getDate() - 1)
-                  return d.toLocaleDateString('en-CA')
-                })()
-                const last7Start = (() => {
-                  const d = new Date()
-                  d.setDate(d.getDate() - 6)
-                  return d.toLocaleDateString('en-CA')
-                })()
-                const last3Start = (() => {
-                  const d = new Date()
-                  d.setDate(d.getDate() - 2)
-                  return d.toLocaleDateString('en-CA')
-                })()
-                const periodCost = costForRange(teamPeriodStart, teamPeriodEnd)
-                const last7Cost = costForRange(last7Start, today)
-                const last3Cost = costForRange(last3Start, today)
-                const yesterdayCost = costForRange(yesterday, yesterday)
-                const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-                const daysInRange = getDaysInRange(teamPeriodStart, teamPeriodEnd)
-                const memberCostByWeekday = team.members.map((m) => {
-                  const byDay = dayNames.map((_, dayOfWeek) => {
-                    const matchingDays = daysInRange.filter((d) => new Date(d + 'T12:00:00').getDay() === dayOfWeek)
-                    return matchingDays.reduce((sum, d) => sum + getCostForPersonDateTeams(m, d), 0)
-                  })
-                  const total = byDay.reduce((s, v) => s + v, 0)
-                  return { member: m, byDay, total }
-                })
-                const costByWeekday = dayNames.map((_, dayOfWeek) =>
-                  memberCostByWeekday.reduce((s, r) => s + (r.byDay[dayOfWeek] ?? 0), 0)
-                )
-                const periodTotal = costByWeekday.reduce((s, v) => s + v, 0)
-                return (
-                  <div key={team.id} style={{ border: '1px solid #e5e7eb', borderRadius: 6, padding: '0.5rem 0.75rem', background: 'white' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                      {teamsReadOnly ? (
-                        <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{team.name}</span>
-                      ) : (
-                        <input
-                          type="text"
-                          value={team.name}
-                          onChange={(e) => setTeams((prev) => prev.map((t) => (t.id === team.id ? { ...t, name: e.target.value } : t)))}
-                          onBlur={(e) => updateTeamName(team.id, e.target.value.trim() || 'New Team')}
-                          style={{ padding: '0.2rem 0.4rem', border: '1px solid #d1d5db', borderRadius: 4, fontWeight: 600, minWidth: 100, fontSize: '0.875rem' }}
-                        />
-                      )}
-                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem 0.75rem', fontSize: '0.8125rem' }}>
-                        <span style={{ fontWeight: 600 }}>Period: ${Math.round(periodCost).toLocaleString('en-US')}</span>
-                        <span style={{ color: '#6b7280' }}>7d: ${Math.round(last7Cost).toLocaleString('en-US')}</span>
-                        <span style={{ color: '#6b7280' }}>3d: ${Math.round(last3Cost).toLocaleString('en-US')}</span>
-                        <span style={{ color: '#6b7280' }}>Yesterday: ${Math.round(yesterdayCost).toLocaleString('en-US')}</span>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
-                      {team.members.map((m) => (
-                        <span key={m} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', padding: '0.15rem 0.35rem', background: '#e5e7eb', borderRadius: 4, fontSize: '0.75rem' }}>
-                          {m}
-                          {!teamsReadOnly && (
-                            <button type="button" onClick={() => removeTeamMember(team.id, m)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '0.875rem' }}>×</button>
-                          )}
-                        </span>
-                      ))}
-                      {!teamsReadOnly && (
-                      <select
-                        value=""
-                        onChange={(e) => {
-                          const v = e.target.value
-                          if (v) { addTeamMember(team.id, v); e.target.value = '' }
-                        }}
-                        style={{ padding: '0.15rem 0.35rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.75rem' }}
-                      >
-                        <option value="">+ Add person</option>
-                        {showPeopleForMatrix.filter((p) => !team.members.includes(p)).map((p) => (
-                          <option key={p} value={p}>{p}</option>
-                        ))}
-                      </select>
-                      )}
-                    </div>
-                    <table style={{ width: '100%', marginTop: '0.5rem', fontSize: '0.75rem', borderCollapse: 'collapse' }}>
-                      <thead>
-                        <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                          <th style={{ padding: '0.25rem 0.5rem', textAlign: 'left' }}>Person</th>
-                          {dayNames.map((name) => (
-                            <th key={name} style={{ padding: '0.25rem 0.35rem', textAlign: 'right', minWidth: 50 }}>{name}</th>
-                          ))}
-                          <th style={{ padding: '0.25rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {memberCostByWeekday.map(({ member, byDay, total }) => (
-                          <tr key={member} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                            <td style={{ padding: '0.2rem 0.5rem' }}>{member}</td>
-                            {byDay.map((val, i) => (
-                              <td key={dayNames[i]} style={{ padding: '0.2rem 0.35rem', textAlign: 'right' }}>${Math.round(val).toLocaleString('en-US')}</td>
-                            ))}
-                            <td style={{ padding: '0.2rem 0.5rem', textAlign: 'right', fontWeight: 500 }}>${Math.round(total).toLocaleString('en-US')}</td>
-                          </tr>
-                        ))}
-                        <tr style={{ borderTop: '1px solid #e5e7eb', fontWeight: 600 }}>
-                          <td style={{ padding: '0.25rem 0.5rem' }}>Total</td>
-                          {costByWeekday.map((val, i) => (
-                            <td key={dayNames[i]} style={{ padding: '0.25rem 0.35rem', textAlign: 'right' }}>${Math.round(val).toLocaleString('en-US')}</td>
-                          ))}
-                          <td style={{ padding: '0.25rem 0.5rem', textAlign: 'right' }}>${Math.round(periodTotal).toLocaleString('en-US')}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                )
-              })}
+            {hoursTabSectionsOpen.clockStrip ? <PeopleHoursDashboardClockStrip onSessionsChanged={() => loadAllClockSessionsRef.current?.()} /> : null}
+          </section>
+          ) : null}
+          <section id="people-hours-week" style={HOURS_TAB_SECTION_SHELL}>
+            <div style={hoursTabSectionHeaderGap(hoursTabSectionsOpen.week)}>
+              <button
+                type="button"
+                aria-expanded={hoursTabSectionsOpen.week}
+                onClick={() => setHoursTabSectionsOpen((p) => ({ ...p, week: !p.week }))}
+                style={HOURS_TAB_SECTION_TOGGLE_BTN}
+              >
+                <span aria-hidden style={HOURS_TAB_SECTION_CHEVRON}>{hoursTabSectionsOpen.week ? '▼' : '▶'}</span>
+                Week range
+              </button>
             </div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.75rem', fontSize: '0.875rem', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={showMaxHoursTeams}
-                onChange={(e) => setShowMaxHoursTeams(e.target.checked)}
-              />
-              show max hours
-            </label>
-          </section>
-          {canAccessPay && mergeDuplicates.length > 0 && (
-          <section style={{ marginBottom: '1rem', padding: '0.75rem', background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: 4 }}>
-            <p style={{ margin: '0 0 0.5rem 0', fontWeight: 600, color: '#92400e' }}>
-              Found {mergeDuplicates.length} duplicate{mergeDuplicates.length !== 1 ? 's' : ''}: person name vs user. Merge to consolidate.
-            </p>
-            <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
-              {mergeDuplicates.map((dup) => (
-                <li key={dup.personName} style={{ marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span>{dup.personName} → {dup.userDisplayName}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleMergeDuplicate(dup)}
-                    disabled={mergingPersonName === dup.personName}
-                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', cursor: mergingPersonName === dup.personName ? 'not-allowed' : 'pointer' }}
-                  >
-                    {mergingPersonName === dup.personName ? 'Merging…' : 'Merge'}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
-          )}
-          {isDev && (
-          <section>
-            <button
-              type="button"
-              onClick={() => setCostMatrixShareSectionOpen((prev) => !prev)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                margin: 0,
-                marginBottom: costMatrixShareSectionOpen ? '0.75rem' : 0,
-                padding: 0,
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '1.125rem',
-                fontWeight: 600,
-                textAlign: 'left',
-              }}
-            >
-              <span style={{ fontSize: '0.75rem' }}>{costMatrixShareSectionOpen ? '▼' : '▶'}</span>
-              Share Cost Matrix and Teams
-            </button>
-            {costMatrixShareSectionOpen && (
-              <div style={{ marginBottom: '0.75rem' }}>
-                <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
-                  Select Masters or assistants to grant view-only access to Cost matrix and Teams.
-                </p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
-                  {costMatrixShareCandidates.map((u) => (
-                    <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem' }}>
-                      <input
-                        type="checkbox"
-                        checked={costMatrixSharedUserIds.has(u.id)}
-                        onChange={(e) => toggleCostMatrixShare(u.id, e.target.checked)}
-                        disabled={costMatrixShareSaving}
-                      />
-                      {u.name || u.email || 'Unknown'} ({u.role === 'master_technician' ? 'Master' : 'Assistant'})
-                    </label>
-                  ))}
-                </div>
-                {costMatrixShareError && <p style={{ color: '#b91c1c', fontSize: '0.875rem', marginTop: '0.5rem' }}>{costMatrixShareError}</p>}
-              </div>
-            )}
-          </section>
-          )}
-          {canAccessPay && (
-          <section>
-            <button
-              type="button"
-              onClick={() => setCostMatrixTagColorsSectionOpen((prev) => !prev)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                margin: 0,
-                marginBottom: costMatrixTagColorsSectionOpen ? '0.75rem' : 0,
-                padding: 0,
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '1.125rem',
-                fontWeight: 600,
-                textAlign: 'left',
-              }}
-            >
-              <span style={{ fontSize: '0.75rem' }}>{costMatrixTagColorsSectionOpen ? '▼' : '▶'}</span>
-              Tag colors
-            </button>
-            {costMatrixTagColorsSectionOpen && (
-              <div style={{ marginBottom: '0.75rem' }}>
-                <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
-                  Click a tag to change its color.
-                </p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
-                  {(() => {
-                    const tagsInUse = new Set<string>()
-                    for (const tags of Object.values(costMatrixTags)) {
-                      for (const t of (tags ?? '').split(',').map((x) => x.trim()).filter(Boolean)) {
-                        tagsInUse.add(t)
-                      }
-                    }
-                    const tagsWithColors = new Set(Object.keys(costMatrixTagColors))
-                    const allTags = [...new Set([...tagsInUse, ...tagsWithColors])].sort()
-                    return (
-                      <>
-                        {allTags.map((tag) => {
-                          const bg = costMatrixTagColors[tag] ?? '#e5e7eb'
-                          return (
-                            <label
-                              key={tag}
-                              style={{ cursor: 'pointer', display: 'inline-block', position: 'relative' }}
-                              title="Click to change color"
-                            >
-                              <input
-                                type="color"
-                                value={bg}
-                                onChange={(e) => saveTagColor(tag, e.target.value)}
-                                style={{
-                                  position: 'absolute',
-                                  inset: 0,
-                                  opacity: 0,
-                                  cursor: 'pointer',
-                                  width: '100%',
-                                  height: '100%',
-                                }}
-                              />
-                              <span
-                                style={{
-                                  display: 'inline-block',
-                                  padding: '0.1rem 0.35rem',
-                                  background: bg,
-                                  borderRadius: 4,
-                                  fontSize: '0.7rem',
-                                  color: textColorForBackground(bg),
-                                }}
-                              >
-                                {tag}
-                              </span>
-                            </label>
-                          )
-                        })}
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', marginLeft: '0.25rem' }}>
-                          <input
-                            type="text"
-                            placeholder="Add tag"
-                            value={newTagName}
-                            onChange={(e) => setNewTagName(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                const t = newTagName.trim()
-                                if (t) {
-                                  saveTagColor(t, newTagColor)
-                                  setNewTagName('')
-                                  setNewTagColor('#e5e7eb')
-                                }
-                              }
-                            }}
-                            style={{ width: 80, padding: '0.1rem 0.35rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.7rem' }}
-                          />
-                          <label style={{ cursor: 'pointer', display: 'inline-block', position: 'relative' }} title="Color for new tag">
-                            <input
-                              type="color"
-                              value={newTagColor}
-                              onChange={(e) => setNewTagColor(e.target.value)}
-                              style={{
-                                position: 'absolute',
-                                inset: 0,
-                                opacity: 0,
-                                cursor: 'pointer',
-                                width: '100%',
-                                height: '100%',
-                              }}
-                            />
-                            <span
-                              style={{
-                                display: 'inline-block',
-                                padding: '0.1rem 0.35rem',
-                                background: newTagColor,
-                                borderRadius: 4,
-                                fontSize: '0.7rem',
-                                color: textColorForBackground(newTagColor),
-                              }}
-                            >
-                              +
-                            </span>
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const t = newTagName.trim()
-                              if (t) {
-                                saveTagColor(t, newTagColor)
-                                setNewTagName('')
-                                setNewTagColor('#e5e7eb')
-                              }
-                            }}
-                            style={{ padding: '0.1rem 0.35rem', fontSize: '0.7rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer' }}
-                          >
-                            Add
-                          </button>
-                        </span>
-                      </>
-                    )
-                  })()}
-                </div>
-              </div>
-            )}
-          </section>
-          )}
-          </>
-          )}
-        </div>
-      )}
-
-      {activeTab === 'hours' && canAccessHours && (
-        <>
-        <PeopleHoursDashboardClockStrip onSessionsChanged={() => loadAllClockSessionsRef.current?.()} />
-        <div>
-          {hoursTabLoading ? (
-            <p style={{ color: '#6b7280' }}>Loading…</p>
-          ) : (
-          <>
-          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
-          {narrowViewport ? (
+            {hoursTabSectionsOpen.week ? (
+            narrowViewport ? (
             <div style={{ marginBottom: '0.5rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'space-between' }}>
                 <button
@@ -10110,7 +10802,73 @@ export default function People() {
                 next week →
               </button>
             </div>
-          )}
+            )
+            ) : null}
+          </section>
+          <div
+            role="navigation"
+            aria-label="Hours sections"
+            style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}
+          >
+            {canAccessHours ? (
+              <button type="button" onClick={() => jumpToHoursTabSection('clockStrip')} style={{ padding: '0.25rem 0.55rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#f3f4f6', cursor: 'pointer', fontSize: '0.8125rem' }}>
+                Clock strip
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => jumpToHoursTabSection('week')}
+              style={{ padding: '0.25rem 0.55rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#f3f4f6', cursor: 'pointer', fontSize: '0.8125rem' }}
+            >
+              Week
+            </button>
+            {canAccessHours ? (
+              <button type="button" onClick={() => jumpToHoursTabSection('sessions')} style={{ padding: '0.25rem 0.55rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#f3f4f6', cursor: 'pointer', fontSize: '0.8125rem' }}>
+                Sessions
+              </button>
+            ) : null}
+            {canAccessHours ? (
+              <button type="button" onClick={() => jumpToHoursTabSection('grid')} style={{ padding: '0.25rem 0.55rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#f3f4f6', cursor: 'pointer', fontSize: '0.8125rem' }}>
+                Hours grid
+              </button>
+            ) : null}
+            {canAccessPay || canViewCostMatrixShared ? (
+              <button type="button" onClick={() => jumpToHoursTabSection('dueSummaries')} style={{ padding: '0.25rem 0.55rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#f3f4f6', cursor: 'pointer', fontSize: '0.8125rem' }}>
+                Due totals
+              </button>
+            ) : null}
+            {canAccessPay || canViewCostMatrixShared ? (
+              <button type="button" onClick={() => jumpToHoursTabSection('costMatrix')} style={{ padding: '0.25rem 0.55rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#f3f4f6', cursor: 'pointer', fontSize: '0.8125rem' }}>
+                Cost matrix
+              </button>
+            ) : null}
+            {canAccessPay || canViewCostMatrixShared ? (
+              <button type="button" onClick={() => jumpToHoursTabSection('teams')} style={{ padding: '0.25rem 0.55rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#f3f4f6', cursor: 'pointer', fontSize: '0.8125rem' }}>
+                Teams
+              </button>
+            ) : null}
+            {isDev || canAccessPay ? (
+              <button type="button" onClick={() => jumpToHoursTabSection('sharing')} style={{ padding: '0.25rem 0.55rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#f3f4f6', cursor: 'pointer', fontSize: '0.8125rem' }}>
+                Sharing / tags
+              </button>
+            ) : null}
+          </div>
+          {canAccessHours && (
+          <>
+          <section id="people-hours-sessions" style={HOURS_TAB_SECTION_SHELL}>
+            <div style={hoursTabSectionHeaderGap(hoursTabSectionsOpen.sessions)}>
+              <button
+                type="button"
+                aria-expanded={hoursTabSectionsOpen.sessions}
+                onClick={() => setHoursTabSectionsOpen((p) => ({ ...p, sessions: !p.sessions }))}
+                style={HOURS_TAB_SECTION_TOGGLE_BTN}
+              >
+                <span aria-hidden style={HOURS_TAB_SECTION_CHEVRON}>{hoursTabSectionsOpen.sessions ? '▼' : '▶'}</span>
+                Clock sessions
+              </button>
+            </div>
+            {hoursTabSectionsOpen.sessions ? (
+            <>
           <div style={{ marginBottom: '0.75rem', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
             <input
               type="search"
@@ -10360,8 +11118,25 @@ export default function People() {
               }}
             />
           </div>
+            </>
+            ) : null}
+          </section>
+          <section id="people-hours-grid" style={HOURS_TAB_SECTION_SHELL}>
+            <div style={hoursTabSectionHeaderGap(hoursTabSectionsOpen.grid)}>
+              <button
+                type="button"
+                aria-expanded={hoursTabSectionsOpen.grid}
+                onClick={() => setHoursTabSectionsOpen((p) => ({ ...p, grid: !p.grid }))}
+                style={HOURS_TAB_SECTION_TOGGLE_BTN}
+              >
+                <span aria-hidden style={HOURS_TAB_SECTION_CHEVRON}>{hoursTabSectionsOpen.grid ? '▼' : '▶'}</span>
+                Hours grid
+              </button>
+            </div>
+            {hoursTabSectionsOpen.grid ? (
+            <>
           {showPeopleForHours.length === 0 ? (
-            <p style={{ color: '#6b7280' }}>No people with Show in Hours selected. Go to Pay tab and check Show in Hours for people to track.</p>
+            <p style={{ color: '#6b7280' }}>No people with Show in Hours selected. In Hours, open People pay config and check Show in Hours for people to track.</p>
           ) : (
             <>
               <div
@@ -10890,15 +11665,1008 @@ export default function People() {
             </div>
             </>
           )}
+            </>
+            ) : null}
+          </section>
+          </>
+          )}
+          {(canAccessPay || canViewCostMatrixShared) && (
+          <div style={HOURS_TAB_SECTIONS_STACK}>
+            <>
+            {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+            <section id="people-hours-due-summaries" style={HOURS_TAB_SECTION_SHELL}>
+              <div style={hoursTabSectionHeaderGap(hoursTabSectionsOpen.dueSummaries)}>
+                <button
+                  type="button"
+                  aria-expanded={hoursTabSectionsOpen.dueSummaries}
+                  onClick={() => setHoursTabSectionsOpen((p) => ({ ...p, dueSummaries: !p.dueSummaries }))}
+                  style={HOURS_TAB_SECTION_TOGGLE_BTN}
+                >
+                  <span aria-hidden style={HOURS_TAB_SECTION_CHEVRON}>{hoursTabSectionsOpen.dueSummaries ? '▼' : '▶'}</span>
+                  Due by Trade / Team
+                </button>
+              </div>
+              {hoursTabSectionsOpen.dueSummaries ? (
+              <>
+            {(() => {
+              const matrixTotal = matrixDays.reduce(
+                (daySum, d) => daySum + showPeopleForMatrix.reduce((s, p) => s + getCostForPersonDateMatrix(p, d), 0),
+                0
+              )
+              const tagTotals = new Map<string, number>()
+              const tagHours = new Map<string, number>()
+              for (const personName of showPeopleForMatrix) {
+                const periodCost = matrixDays.reduce((s, d) => s + getCostForPersonDateMatrix(personName, d), 0)
+                const periodHrs = matrixDays.reduce((s, d) => s + getEffectiveHours(personName, d), 0)
+                const tags = (costMatrixTags[personName] ?? '').split(',').map((t) => t.trim()).filter(Boolean)
+                for (const tag of tags) {
+                  tagTotals.set(tag, (tagTotals.get(tag) ?? 0) + periodCost)
+                  tagHours.set(tag, (tagHours.get(tag) ?? 0) + periodHrs)
+                }
+              }
+              const sortedTags = [...tagTotals.entries()].sort((a, b) => b[1] - a[1])
+              if (sortedTags.length === 0) return null
+              return (
+                <section style={{ marginBottom: '1rem' }}>
+                  <div style={{ fontWeight: 600, marginBottom: '0.35rem', fontSize: '0.9375rem' }}>Due by Trade</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.875rem' }}>
+                    {sortedTags.map(([tag, total]) => {
+                      const pct = matrixTotal > 0 ? Math.round((total / matrixTotal) * 100) : 0
+                      const hrs = tagHours.get(tag) ?? 0
+                      const costPerHr = hrs > 0 ? `$${(total / hrs).toFixed(1)}/hr` : '—'
+                      return (
+                        <span
+                          key={tag}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => setTagLedgerModalTag(tag)}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setTagLedgerModalTag(tag) } }}
+                          style={{ fontWeight: 500, cursor: 'pointer' }}
+                          title="Click to view ledger"
+                        >
+                          {tag} ${Math.round(total).toLocaleString('en-US')} | {pct}% | {costPerHr}
+                        </span>
+                      )
+                    })}
+                  </div>
+                </section>
+              )
+            })()}
+            {teamsFiltered.length > 0 && (
+              <section style={{ marginBottom: '1rem' }}>
+                <div style={{ fontWeight: 600, marginBottom: '0.35rem', fontSize: '0.9375rem' }}>Due by Team:</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.875rem' }}>
+                  {teamsFiltered.map((team) => {
+                    const costForRange = (start: string, end: string) =>
+                      team.members.reduce((sum, p) => sum + getDaysInRange(start, end).reduce((s, d) => s + getCostForPersonDateTeams(p, d), 0), 0)
+                    const periodCost = costForRange(teamPeriodStart, teamPeriodEnd)
+                    return (
+                      <span
+                        key={team.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setTeamLedgerModalTeam(team)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setTeamLedgerModalTeam(team) } }}
+                        style={{ fontWeight: 500, cursor: 'pointer' }}
+                        title="Click to view ledger"
+                      >
+                        {team.name}: ${Math.round(periodCost).toLocaleString('en-US')}
+                      </span>
+                    )
+                  })}
+                </div>
+              </section>
+            )}
+              </>
+              ) : null}
+            </section>
+            {tagLedgerModalTag && (() => {
+              const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+              const peopleWithTag = showPeopleForMatrix.filter((p) =>
+                (costMatrixTags[p] ?? '').split(',').map((t) => t.trim()).filter(Boolean).includes(tagLedgerModalTag)
+              )
+              const daysInRange = getDaysInRange(hoursDateStart, hoursDateEnd)
+              const memberCostByWeekday = peopleWithTag.map((personName) => {
+                const byDay = dayNames.map((_, dayOfWeek) => {
+                  const matchingDays = daysInRange.filter((d) => new Date(d + 'T12:00:00').getDay() === dayOfWeek)
+                  return matchingDays.reduce((sum, d) => sum + getCostForPersonDateMatrix(personName, d), 0)
+                })
+                const total = byDay.reduce((s, v) => s + v, 0)
+                return { personName, byDay, total }
+              })
+              const costByWeekday = dayNames.map((_, dayOfWeek) =>
+                memberCostByWeekday.reduce((s, r) => s + (r.byDay[dayOfWeek] ?? 0), 0)
+              )
+              const periodTotal = costByWeekday.reduce((s, v) => s + v, 0)
+              return (
+                <div
+                  style={{
+                    position: 'fixed',
+                    inset: 0,
+                    background: 'rgba(0,0,0,0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000,
+                  }}
+                  onClick={() => setTagLedgerModalTag(null)}
+                >
+                  <div
+                    style={{
+                      background: 'white',
+                      borderRadius: 8,
+                      padding: '1rem 1.25rem',
+                      maxWidth: '90vw',
+                      maxHeight: '85vh',
+                      overflow: 'auto',
+                      boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                      <h3 style={{ margin: 0, fontSize: '1.125rem' }}>
+                        {tagLedgerModalTag} — Week of {hoursDateStart} to {hoursDateEnd}
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={() => setTagLedgerModalTag(null)}
+                        style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
+                      >
+                        Close
+                      </button>
+                    </div>
+                    <table style={{ width: '100%', fontSize: '0.8125rem', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <th style={{ padding: '0.25rem 0.5rem', textAlign: 'left' }}>Person</th>
+                          {dayNames.map((name) => (
+                            <th key={name} style={{ padding: '0.25rem 0.35rem', textAlign: 'right', minWidth: 50 }}>{name}</th>
+                          ))}
+                          <th style={{ padding: '0.25rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {memberCostByWeekday.map(({ personName, byDay, total }) => (
+                          <tr key={personName} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                            <td style={{ padding: '0.2rem 0.5rem' }}>{personName}</td>
+                            {byDay.map((val, i) => (
+                              <td key={dayNames[i]} style={{ padding: '0.2rem 0.35rem', textAlign: 'right' }}>${Math.round(val).toLocaleString('en-US')}</td>
+                            ))}
+                            <td style={{ padding: '0.2rem 0.5rem', textAlign: 'right', fontWeight: 500 }}>${Math.round(total).toLocaleString('en-US')}</td>
+                          </tr>
+                        ))}
+                        <tr style={{ borderTop: '1px solid #e5e7eb', fontWeight: 600 }}>
+                          <td style={{ padding: '0.25rem 0.5rem' }}>Total</td>
+                          {costByWeekday.map((val, i) => (
+                            <td key={dayNames[i]} style={{ padding: '0.25rem 0.35rem', textAlign: 'right' }}>${Math.round(val).toLocaleString('en-US')}</td>
+                          ))}
+                          <td style={{ padding: '0.25rem 0.5rem', textAlign: 'right' }}>${Math.round(periodTotal).toLocaleString('en-US')}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )
+            })()}
+            {teamLedgerModalTeam && (() => {
+              const team = teamLedgerModalTeam
+              const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+              const daysInRange = getDaysInRange(teamPeriodStart, teamPeriodEnd)
+              const memberCostByWeekday = team.members.map((personName) => {
+                const byDay = dayNames.map((_, dayOfWeek) => {
+                  const matchingDays = daysInRange.filter((d) => new Date(d + 'T12:00:00').getDay() === dayOfWeek)
+                  return matchingDays.reduce((sum, d) => sum + getCostForPersonDateTeams(personName, d), 0)
+                })
+                const total = byDay.reduce((s, v) => s + v, 0)
+                return { personName, byDay, total }
+              })
+              const costByWeekday = dayNames.map((_, dayOfWeek) =>
+                memberCostByWeekday.reduce((s, r) => s + (r.byDay[dayOfWeek] ?? 0), 0)
+              )
+              const periodTotal = costByWeekday.reduce((s, v) => s + v, 0)
+              return (
+                <div
+                  style={{
+                    position: 'fixed',
+                    inset: 0,
+                    background: 'rgba(0,0,0,0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000,
+                  }}
+                  onClick={() => setTeamLedgerModalTeam(null)}
+                >
+                  <div
+                    style={{
+                      background: 'white',
+                      borderRadius: 8,
+                      padding: '1rem 1.25rem',
+                      maxWidth: '90vw',
+                      maxHeight: '85vh',
+                      overflow: 'auto',
+                      boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                      <h3 style={{ margin: 0, fontSize: '1.125rem' }}>
+                        {team.name} — {teamPeriodStart} to {teamPeriodEnd}
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={() => setTeamLedgerModalTeam(null)}
+                        style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
+                      >
+                        Close
+                      </button>
+                    </div>
+                    <table style={{ width: '100%', fontSize: '0.8125rem', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <th style={{ padding: '0.25rem 0.5rem', textAlign: 'left' }}>Person</th>
+                          {dayNames.map((name) => (
+                            <th key={name} style={{ padding: '0.25rem 0.35rem', textAlign: 'right', minWidth: 50 }}>{name}</th>
+                          ))}
+                          <th style={{ padding: '0.25rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {memberCostByWeekday.map(({ personName, byDay, total }) => (
+                          <tr key={personName} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                            <td style={{ padding: '0.2rem 0.5rem' }}>{personName}</td>
+                            {byDay.map((val, i) => (
+                              <td key={dayNames[i]} style={{ padding: '0.2rem 0.35rem', textAlign: 'right' }}>${Math.round(val).toLocaleString('en-US')}</td>
+                            ))}
+                            <td style={{ padding: '0.2rem 0.5rem', textAlign: 'right', fontWeight: 500 }}>${Math.round(total).toLocaleString('en-US')}</td>
+                          </tr>
+                        ))}
+                        <tr style={{ borderTop: '1px solid #e5e7eb', fontWeight: 600 }}>
+                          <td style={{ padding: '0.25rem 0.5rem' }}>Total</td>
+                          {costByWeekday.map((val, i) => (
+                            <td key={dayNames[i]} style={{ padding: '0.25rem 0.35rem', textAlign: 'right' }}>${Math.round(val).toLocaleString('en-US')}</td>
+                          ))}
+                          <td style={{ padding: '0.25rem 0.5rem', textAlign: 'right' }}>${Math.round(periodTotal).toLocaleString('en-US')}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )
+            })()}
+            {personTimeDetailModalPerson && (
+              <PersonTimeDetailModal
+                personName={personTimeDetailModalPerson}
+                startDate={hoursDateStart}
+                endDate={hoursDateEnd}
+                hoursRows={peopleHours.filter((h) => h.person_name === personTimeDetailModalPerson).map((h) => ({ work_date: h.work_date, hours: h.hours }))}
+                onClose={() => setPersonTimeDetailModalPerson(null)}
+              />
+            )}
+            <section id="cost-matrix" style={HOURS_TAB_SECTION_SHELL}>
+              <div style={hoursTabSectionHeaderGap(hoursTabSectionsOpen.costMatrix)}>
+                <button
+                  type="button"
+                  aria-expanded={hoursTabSectionsOpen.costMatrix}
+                  onClick={() => setHoursTabSectionsOpen((p) => ({ ...p, costMatrix: !p.costMatrix }))}
+                  style={HOURS_TAB_SECTION_TOGGLE_BTN}
+                >
+                  <span aria-hidden style={HOURS_TAB_SECTION_CHEVRON}>{hoursTabSectionsOpen.costMatrix ? '▼' : '▶'}</span>
+                  Cost matrix
+                </button>
+              </div>
+              {hoursTabSectionsOpen.costMatrix ? (
+              <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={showMaxHours}
+                    onChange={(e) => setShowMaxHours(e.target.checked)}
+                  />
+                  show max hours
+                </label>
+                {canAccessPay && (
+                  <>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={payEditArrangement}
+                        onChange={(e) => setPayEditArrangement(e.target.checked)}
+                      />
+                      edit arrangement
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={payEditTags}
+                        onChange={(e) => setPayEditTags(e.target.checked)}
+                      />
+                      edit tags
+                    </label>
+                  </>
+                )}
+              </div>
+              <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                  <thead style={{ background: '#f9fafb' }}>
+                    <tr>
+                      {canAccessPay && (
+                        <th style={{ padding: '0.5rem 0.35rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb', position: 'sticky', left: 0, background: '#f9fafb', minWidth: 36 }} title="Hours reviewed (use Review Hours to mark)">
+                          ✓
+                        </th>
+                      )}
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', position: 'sticky', left: canAccessPay ? 36 : 0, background: '#f9fafb' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          Person
+                          <button
+                            type="button"
+                            onClick={() => setMatrixSortBy('cost')}
+                            title="Sort by cost (most expensive first)"
+                            style={{
+                              padding: '0.15rem 0.35rem',
+                              border: '1px solid #d1d5db',
+                              borderRadius: 4,
+                              background: matrixSortBy === 'cost' ? '#e5e7eb' : 'white',
+                              cursor: 'pointer',
+                              fontSize: '0.75rem',
+                              fontWeight: matrixSortBy === 'cost' ? 600 : 400,
+                            }}
+                          >
+                            $
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setMatrixSortBy('tag')}
+                            title="Sort by first tag (A-Z)"
+                            style={{
+                              padding: '0.15rem 0.35rem',
+                              border: '1px solid #d1d5db',
+                              borderRadius: 4,
+                              background: matrixSortBy === 'tag' ? '#e5e7eb' : 'white',
+                              cursor: 'pointer',
+                              fontSize: '0.75rem',
+                              fontWeight: matrixSortBy === 'tag' ? 600 : 400,
+                            }}
+                          >
+                            tag
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setMatrixSortBy('name')}
+                            title="Sort by name (A-Z)"
+                            style={{
+                              padding: '0.15rem 0.35rem',
+                              border: '1px solid #d1d5db',
+                              borderRadius: 4,
+                              background: matrixSortBy === 'name' ? '#e5e7eb' : 'white',
+                              cursor: 'pointer',
+                              fontSize: '0.75rem',
+                              fontWeight: matrixSortBy === 'name' ? 600 : 400,
+                            }}
+                          >
+                            name
+                          </button>
+                        </span>
+                      </th>
+                      {matrixDays.map((d) => {
+                        const dt = new Date(d + 'T12:00:00')
+                        const weekday = dt.toLocaleDateString(undefined, { weekday: 'short' })
+                        const monthDay = dt.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })
+                        return (
+                          <th key={d} style={{ padding: '0.5rem 0.35rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', minWidth: 70 }}>
+                            <span className="cost-matrix-date-header">
+                              <span>{weekday}</span>
+                              <span> {monthDay}</span>
+                            </span>
+                          </th>
+                        )
+                      })}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {showPeopleForMatrix.map((personName, idx) => {
+                      const cfg = payConfig[personName]
+                      const wage = cfg?.hourly_wage ?? 0
+                      const periodTotal = matrixDays.reduce((s, d) => s + getCostForPersonDateMatrix(personName, d), 0)
+                      return (
+                        <tr key={personName} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          {canAccessPay && (
+                            <td style={{ padding: '0.5rem 0.35rem', textAlign: 'center', position: 'sticky', left: 0, background: 'white', minWidth: 36 }}>
+                              {hoursReviewedSet.has(personName) ? (
+                                <span style={{ color: '#059669' }}>✓</span>
+                              ) : (
+                                <span style={{ color: '#d1d5db' }}>—</span>
+                              )}
+                            </td>
+                          )}
+                          <td style={{ padding: '0.5rem 0.75rem', position: 'sticky', left: canAccessPay ? 36 : 0, background: 'white', minWidth: 200 }}>
+                            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.2rem', flexWrap: 'wrap' }}>
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                                {payEditArrangement && canAccessPay ? (
+                                  <span style={{ display: 'flex', flexDirection: 'column', gap: 0, marginRight: '0.25rem' }}>
+                                    <button
+                                      type="button"
+                                      onClick={() => moveMatrixRow(personName, 'up')}
+                                      disabled={idx === 0}
+                                      title="Move up"
+                                      style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === 0 ? 'not-allowed' : 'pointer', color: idx === 0 ? '#d1d5db' : '#6b7280', lineHeight: 1 }}
+                                    >
+                                      ▲
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => moveMatrixRow(personName, 'down')}
+                                      disabled={idx === showPeopleForMatrix.length - 1}
+                                      title="Move down"
+                                      style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === showPeopleForMatrix.length - 1 ? 'not-allowed' : 'pointer', color: idx === showPeopleForMatrix.length - 1 ? '#d1d5db' : '#6b7280', lineHeight: 1 }}
+                                    >
+                                      ▼
+                                    </button>
+                                  </span>
+                                ) : null}
+                                <span
+                                  role="button"
+                                  tabIndex={0}
+                                  onClick={() => setPersonTimeDetailModalPerson(personName)}
+                                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setPersonTimeDetailModalPerson(personName) } }}
+                                  title="View hours detail"
+                                  style={{ cursor: 'pointer' }}
+                                >
+                                  {wage > 0 ? `$${Math.round(periodTotal).toLocaleString('en-US')}` : '—'} | {personName}{cfg?.is_salary && <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.35rem' }}>(salary)</span>}
+                                </span>
+                              </span>
+                              {payEditTags && canAccessPay ? (
+                                <input
+                                  type="text"
+                                  value={costMatrixTags[personName] ?? ''}
+                                  onChange={(e) => setCostMatrixTags((prev) => ({ ...prev, [personName]: e.target.value }))}
+                                  onBlur={(e) => saveCostMatrixTags(personName, e.target.value)}
+                                  placeholder="Tags (comma-separated)"
+                                  style={{ padding: '0.2rem 0.4rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.75rem', minWidth: 120, marginLeft: 'auto' }}
+                                />
+                              ) : (costMatrixTags[personName] ?? '').trim() ? (
+                                <span style={{ display: 'flex', gap: '0.15rem', flexWrap: 'wrap', marginLeft: 'auto', justifyContent: 'flex-end' }}>
+                                  {(costMatrixTags[personName] ?? '')
+                                    .split(',')
+                                    .map((t) => t.trim())
+                                    .filter(Boolean)
+                                    .map((tag) => (
+                                      <span
+                                        key={tag}
+                                        style={{
+                                          padding: '0.1rem 0.35rem',
+                                          background: costMatrixTagColors[tag] ?? '#e5e7eb',
+                                          borderRadius: 4,
+                                          fontSize: '0.7rem',
+                                          color: textColorForBackground(costMatrixTagColors[tag] ?? '#e5e7eb'),
+                                        }}
+                                      >
+                                        {tag}
+                                      </span>
+                                    ))}
+                                </span>
+                              ) : null}
+                            </span>
+                          </td>
+                          {matrixDays.map((d) => {
+                            const cost = getCostForPersonDateMatrix(personName, d)
+                            return (
+                              <td key={d} style={{ padding: '0.5rem 0.35rem', textAlign: 'right' }}>
+                                {wage > 0 ? `$${Math.round(cost).toLocaleString('en-US')}` : '—'}
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      )
+                    })}
+                    <tr style={{ background: '#f9fafb', fontWeight: 600 }}>
+                      {canAccessPay && (
+                        <td style={{ padding: '0.5rem 0.35rem', textAlign: 'center', position: 'sticky', left: 0, background: '#f9fafb', minWidth: 36 }}>
+                          {hoursReviewedSet.size} of {showPeopleForMatrix.length}
+                        </td>
+                      )}
+                      <td style={{ padding: '0.5rem 0.75rem', position: 'sticky', left: canAccessPay ? 36 : 0, background: '#f9fafb' }}>
+                        Internal Team: ${Math.round(
+                          matrixDays.reduce(
+                            (daySum, d) => daySum + showPeopleForMatrix.reduce((s, p) => s + getCostForPersonDateMatrix(p, d), 0),
+                            0
+                          )
+                        ).toLocaleString('en-US')}
+                      </td>
+                      {matrixDays.map((d) => {
+                        const dayTotal = showPeopleForMatrix.reduce((s, p) => s + getCostForPersonDateMatrix(p, d), 0)
+                        return (
+                          <td key={d} style={{ padding: '0.5rem 0.35rem', textAlign: 'right' }}>
+                            ${Math.round(dayTotal).toLocaleString('en-US')}
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              </>
+              ) : null}
+            </section>
+            <section id="people-hours-teams" style={HOURS_TAB_SECTION_SHELL}>
+              <div style={hoursTabSectionHeaderGap(hoursTabSectionsOpen.teams)}>
+                <button
+                  type="button"
+                  aria-expanded={hoursTabSectionsOpen.teams}
+                  onClick={() => setHoursTabSectionsOpen((p) => ({ ...p, teams: !p.teams }))}
+                  style={HOURS_TAB_SECTION_TOGGLE_BTN}
+                >
+                  <span aria-hidden style={HOURS_TAB_SECTION_CHEVRON}>{hoursTabSectionsOpen.teams ? '▼' : '▶'}</span>
+                  Teams
+                </button>
+              </div>
+              {hoursTabSectionsOpen.teams ? (
+              <>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+                <label>
+                  <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Start</span>
+                  <input type="date" value={teamPeriodStart} onChange={(e) => setTeamPeriodStart(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                </label>
+                <label>
+                  <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>End</span>
+                  <input type="date" value={teamPeriodEnd} onChange={(e) => setTeamPeriodEnd(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                </label>
+                {canAccessPay && (
+                <button type="button" onClick={addTeam} style={{ padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}>
+                  Add team
+                </button>
+                )}
+              </div>
+              <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.35rem' }}>
+                {canViewCostMatrixShared && !canAccessPay ? 'Teams and combined cost for a date range.' : 'Add people to teams to see combined cost for a date range (default: last 7 days).'}
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {teamsFiltered.map((team) => {
+                  const teamsReadOnly = canViewCostMatrixShared && !canAccessPay
+                  const costForRange = (start: string, end: string) =>
+                    team.members.reduce((sum, p) => sum + getDaysInRange(start, end).reduce((s, d) => s + getCostForPersonDateTeams(p, d), 0), 0)
+                  const today = new Date().toLocaleDateString('en-CA')
+                  const yesterday = (() => {
+                    const d = new Date()
+                    d.setDate(d.getDate() - 1)
+                    return d.toLocaleDateString('en-CA')
+                  })()
+                  const last7Start = (() => {
+                    const d = new Date()
+                    d.setDate(d.getDate() - 6)
+                    return d.toLocaleDateString('en-CA')
+                  })()
+                  const last3Start = (() => {
+                    const d = new Date()
+                    d.setDate(d.getDate() - 2)
+                    return d.toLocaleDateString('en-CA')
+                  })()
+                  const periodCost = costForRange(teamPeriodStart, teamPeriodEnd)
+                  const last7Cost = costForRange(last7Start, today)
+                  const last3Cost = costForRange(last3Start, today)
+                  const yesterdayCost = costForRange(yesterday, yesterday)
+                  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+                  const daysInRange = getDaysInRange(teamPeriodStart, teamPeriodEnd)
+                  const memberCostByWeekday = team.members.map((m) => {
+                    const byDay = dayNames.map((_, dayOfWeek) => {
+                      const matchingDays = daysInRange.filter((d) => new Date(d + 'T12:00:00').getDay() === dayOfWeek)
+                      return matchingDays.reduce((sum, d) => sum + getCostForPersonDateTeams(m, d), 0)
+                    })
+                    const total = byDay.reduce((s, v) => s + v, 0)
+                    return { member: m, byDay, total }
+                  })
+                  const costByWeekday = dayNames.map((_, dayOfWeek) =>
+                    memberCostByWeekday.reduce((s, r) => s + (r.byDay[dayOfWeek] ?? 0), 0)
+                  )
+                  const periodTotal = costByWeekday.reduce((s, v) => s + v, 0)
+                  return (
+                    <div key={team.id} style={{ border: '1px solid #e5e7eb', borderRadius: 6, padding: '0.5rem 0.75rem', background: 'white' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                        {teamsReadOnly ? (
+                          <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{team.name}</span>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
+                            <input
+                              type="text"
+                              value={team.name}
+                              onChange={(e) => setTeams((prev) => prev.map((t) => (t.id === team.id ? { ...t, name: e.target.value } : t)))}
+                              onBlur={(e) => updateTeamName(team.id, e.target.value.trim() || 'New Team')}
+                              style={{ padding: '0.2rem 0.4rem', border: '1px solid #d1d5db', borderRadius: 4, fontWeight: 600, minWidth: 100, fontSize: '0.875rem' }}
+                            />
+                            <button
+                              type="button"
+                              aria-label={`Delete team ${team.name}`}
+                              title="Delete team"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => setTeamToDelete({ id: team.id, name: team.name })}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                padding: '0.15rem 0.35rem',
+                                fontSize: '1rem',
+                                lineHeight: 1,
+                                color: '#6b7280',
+                              }}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        )}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem 0.75rem', fontSize: '0.8125rem' }}>
+                          <span style={{ fontWeight: 600 }}>Period: ${Math.round(periodCost).toLocaleString('en-US')}</span>
+                          <span style={{ color: '#6b7280' }}>7d: ${Math.round(last7Cost).toLocaleString('en-US')}</span>
+                          <span style={{ color: '#6b7280' }}>3d: ${Math.round(last3Cost).toLocaleString('en-US')}</span>
+                          <span style={{ color: '#6b7280' }}>Yesterday: ${Math.round(yesterdayCost).toLocaleString('en-US')}</span>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
+                        {team.members.map((m) => (
+                          <span key={m} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', padding: '0.15rem 0.35rem', background: '#e5e7eb', borderRadius: 4, fontSize: '0.75rem' }}>
+                            {m}
+                            {!teamsReadOnly && (
+                              <button type="button" onClick={() => removeTeamMember(team.id, m)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '0.875rem' }}>×</button>
+                            )}
+                          </span>
+                        ))}
+                        {!teamsReadOnly && (
+                        <select
+                          value=""
+                          onChange={(e) => {
+                            const v = e.target.value
+                            if (v) { addTeamMember(team.id, v); e.target.value = '' }
+                          }}
+                          style={{ padding: '0.15rem 0.35rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.75rem' }}
+                        >
+                          <option value="">+ Add person</option>
+                          {showPeopleForMatrix.filter((p) => !team.members.includes(p)).map((p) => (
+                            <option key={p} value={p}>{p}</option>
+                          ))}
+                        </select>
+                        )}
+                      </div>
+                      <table style={{ width: '100%', marginTop: '0.5rem', fontSize: '0.75rem', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                            <th style={{ padding: '0.25rem 0.5rem', textAlign: 'left' }}>Person</th>
+                            {dayNames.map((name) => (
+                              <th key={name} style={{ padding: '0.25rem 0.35rem', textAlign: 'right', minWidth: 50 }}>{name}</th>
+                            ))}
+                            <th style={{ padding: '0.25rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {memberCostByWeekday.map(({ member, byDay, total }) => (
+                            <tr key={member} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                              <td style={{ padding: '0.2rem 0.5rem' }}>{member}</td>
+                              {byDay.map((val, i) => (
+                                <td key={dayNames[i]} style={{ padding: '0.2rem 0.35rem', textAlign: 'right' }}>${Math.round(val).toLocaleString('en-US')}</td>
+                              ))}
+                              <td style={{ padding: '0.2rem 0.5rem', textAlign: 'right', fontWeight: 500 }}>${Math.round(total).toLocaleString('en-US')}</td>
+                            </tr>
+                          ))}
+                          <tr style={{ borderTop: '1px solid #e5e7eb', fontWeight: 600 }}>
+                            <td style={{ padding: '0.25rem 0.5rem' }}>Total</td>
+                            {costByWeekday.map((val, i) => (
+                              <td key={dayNames[i]} style={{ padding: '0.25rem 0.35rem', textAlign: 'right' }}>${Math.round(val).toLocaleString('en-US')}</td>
+                            ))}
+                            <td style={{ padding: '0.25rem 0.5rem', textAlign: 'right' }}>${Math.round(periodTotal).toLocaleString('en-US')}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  )
+                })}
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.75rem', fontSize: '0.875rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={showMaxHoursTeams}
+                  onChange={(e) => setShowMaxHoursTeams(e.target.checked)}
+                />
+                show max hours
+              </label>
+              </>
+              ) : null}
+            </section>
+            {teamToDelete ? (
+              <div
+                style={{
+                  position: 'fixed',
+                  inset: 0,
+                  background: 'rgba(0,0,0,0.45)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 12,
+                }}
+                onClick={() => {
+                  if (!teamDeletingId) setTeamToDelete(null)
+                }}
+              >
+                <div
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="people-delete-team-title"
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    background: 'white',
+                    padding: '1.5rem',
+                    borderRadius: 8,
+                    minWidth: 320,
+                    maxWidth: 'min(92vw, 420px)',
+                  }}
+                >
+                  <h3 id="people-delete-team-title" style={{ margin: '0 0 0.75rem', fontSize: '1.125rem' }}>
+                    Delete team?
+                  </h3>
+                  <p style={{ fontSize: '0.875rem', color: '#4b5563', margin: '0 0 1rem', lineHeight: 1.45 }}>
+                    Delete <strong>{teamToDelete.name}</strong>? All people on this team will be removed from it. This cannot be undone.
+                  </p>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      disabled={!!teamDeletingId}
+                      onClick={() => setTeamToDelete(null)}
+                      style={{
+                        padding: '0.45rem 0.85rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: 4,
+                        background: 'white',
+                        cursor: teamDeletingId ? 'not-allowed' : 'pointer',
+                        fontSize: '0.875rem',
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!!teamDeletingId}
+                      onClick={() => void deleteTeam(teamToDelete.id)}
+                      style={{
+                        padding: '0.45rem 0.85rem',
+                        border: '1px solid #b91c1c',
+                        borderRadius: 4,
+                        background: '#b91c1c',
+                        color: 'white',
+                        cursor: teamDeletingId ? 'not-allowed' : 'pointer',
+                        fontSize: '0.875rem',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {teamDeletingId ? 'Deleting…' : 'Delete'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+            {canAccessPay && mergeDuplicates.length > 0 && (
+            <section style={{ marginBottom: '1rem', padding: '0.75rem', background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: 4 }}>
+              <p style={{ margin: '0 0 0.5rem 0', fontWeight: 600, color: '#92400e' }}>
+                Found {mergeDuplicates.length} duplicate{mergeDuplicates.length !== 1 ? 's' : ''}: person name vs user. Merge to consolidate.
+              </p>
+              <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
+                {mergeDuplicates.map((dup) => (
+                  <li key={dup.personName} style={{ marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span>{dup.personName} → {dup.userDisplayName}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleMergeDuplicate(dup)}
+                      disabled={mergingPersonName === dup.personName}
+                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', cursor: mergingPersonName === dup.personName ? 'not-allowed' : 'pointer' }}
+                    >
+                      {mergingPersonName === dup.personName ? 'Merging…' : 'Merge'}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+            )}
+            {(isDev || canAccessPay) && (
+            <section id="people-hours-sharing" style={HOURS_TAB_SECTION_SHELL}>
+              <div style={hoursTabSectionHeaderGap(hoursTabSectionsOpen.sharing)}>
+                <button
+                  type="button"
+                  aria-expanded={hoursTabSectionsOpen.sharing}
+                  onClick={() => setHoursTabSectionsOpen((p) => ({ ...p, sharing: !p.sharing }))}
+                  style={HOURS_TAB_SECTION_TOGGLE_BTN}
+                >
+                  <span aria-hidden style={HOURS_TAB_SECTION_CHEVRON}>{hoursTabSectionsOpen.sharing ? '▼' : '▶'}</span>
+                  Sharing & tag colors
+                </button>
+              </div>
+              {hoursTabSectionsOpen.sharing ? (
+              <>
+            {isDev && (
+            <div style={{ marginBottom: '1rem' }}>
+              <button
+                type="button"
+                onClick={() => setCostMatrixShareSectionOpen((prev) => !prev)}
+                style={{
+                  ...HOURS_TAB_SECTION_TOGGLE_BTN,
+                  marginBottom: costMatrixShareSectionOpen ? '0.75rem' : 0,
+                }}
+              >
+                <span aria-hidden style={HOURS_TAB_SECTION_CHEVRON}>{costMatrixShareSectionOpen ? '▼' : '▶'}</span>
+                Share Cost Matrix and Teams
+              </button>
+              {costMatrixShareSectionOpen && (
+                <div style={{ marginBottom: '0.75rem' }}>
+                  <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                    Select Masters or assistants to grant view-only access to Cost matrix and Teams.
+                  </p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
+                    {costMatrixShareCandidates.map((u) => (
+                      <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                        <input
+                          type="checkbox"
+                          checked={costMatrixSharedUserIds.has(u.id)}
+                          onChange={(e) => toggleCostMatrixShare(u.id, e.target.checked)}
+                          disabled={costMatrixShareSaving}
+                        />
+                        {u.name || u.email || 'Unknown'} ({u.role === 'master_technician' ? 'Master' : 'Assistant'})
+                      </label>
+                    ))}
+                  </div>
+                  {costMatrixShareError && <p style={{ color: '#b91c1c', fontSize: '0.875rem', marginTop: '0.5rem' }}>{costMatrixShareError}</p>}
+                </div>
+              )}
+            </div>
+            )}
+            {canAccessPay && (
+            <div>
+              <button
+                type="button"
+                onClick={() => setCostMatrixTagColorsSectionOpen((prev) => !prev)}
+                style={{
+                  ...HOURS_TAB_SECTION_TOGGLE_BTN,
+                  marginBottom: costMatrixTagColorsSectionOpen ? '0.75rem' : 0,
+                }}
+              >
+                <span aria-hidden style={HOURS_TAB_SECTION_CHEVRON}>{costMatrixTagColorsSectionOpen ? '▼' : '▶'}</span>
+                Tag colors
+              </button>
+              {costMatrixTagColorsSectionOpen && (
+                <div style={{ marginBottom: '0.75rem' }}>
+                  <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                    Click a tag to change its color.
+                  </p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
+                    {(() => {
+                      const tagsInUse = new Set<string>()
+                      for (const tags of Object.values(costMatrixTags)) {
+                        for (const t of (tags ?? '').split(',').map((x) => x.trim()).filter(Boolean)) {
+                          tagsInUse.add(t)
+                        }
+                      }
+                      const tagsWithColors = new Set(Object.keys(costMatrixTagColors))
+                      const allTags = [...new Set([...tagsInUse, ...tagsWithColors])].sort()
+                      return (
+                        <>
+                          {allTags.map((tag) => {
+                            const bg = costMatrixTagColors[tag] ?? '#e5e7eb'
+                            return (
+                              <label
+                                key={tag}
+                                style={{ cursor: 'pointer', display: 'inline-block', position: 'relative' }}
+                                title="Click to change color"
+                              >
+                                <input
+                                  type="color"
+                                  value={bg}
+                                  onChange={(e) => saveTagColor(tag, e.target.value)}
+                                  style={{
+                                    position: 'absolute',
+                                    inset: 0,
+                                    opacity: 0,
+                                    cursor: 'pointer',
+                                    width: '100%',
+                                    height: '100%',
+                                  }}
+                                />
+                                <span
+                                  style={{
+                                    display: 'inline-block',
+                                    padding: '0.1rem 0.35rem',
+                                    background: bg,
+                                    borderRadius: 4,
+                                    fontSize: '0.7rem',
+                                    color: textColorForBackground(bg),
+                                  }}
+                                >
+                                  {tag}
+                                </span>
+                              </label>
+                            )
+                          })}
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', marginLeft: '0.25rem' }}>
+                            <input
+                              type="text"
+                              placeholder="Add tag"
+                              value={newTagName}
+                              onChange={(e) => setNewTagName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  const t = newTagName.trim()
+                                  if (t) {
+                                    saveTagColor(t, newTagColor)
+                                    setNewTagName('')
+                                    setNewTagColor('#e5e7eb')
+                                  }
+                                }
+                              }}
+                              style={{ width: 80, padding: '0.1rem 0.35rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.7rem' }}
+                            />
+                            <label style={{ cursor: 'pointer', display: 'inline-block', position: 'relative' }} title="Color for new tag">
+                              <input
+                                type="color"
+                                value={newTagColor}
+                                onChange={(e) => setNewTagColor(e.target.value)}
+                                style={{
+                                  position: 'absolute',
+                                  inset: 0,
+                                  opacity: 0,
+                                  cursor: 'pointer',
+                                  width: '100%',
+                                  height: '100%',
+                                }}
+                              />
+                              <span
+                                style={{
+                                  display: 'inline-block',
+                                  padding: '0.1rem 0.35rem',
+                                  background: newTagColor,
+                                  borderRadius: 4,
+                                  fontSize: '0.7rem',
+                                  color: textColorForBackground(newTagColor),
+                                }}
+                              >
+                                +
+                              </span>
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const t = newTagName.trim()
+                                if (t) {
+                                  saveTagColor(t, newTagColor)
+                                  setNewTagName('')
+                                  setNewTagColor('#e5e7eb')
+                                }
+                              }}
+                              style={{ padding: '0.1rem 0.35rem', fontSize: '0.7rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer' }}
+                            >
+                              Add
+                            </button>
+                          </span>
+                        </>
+                      )
+                    })()}
+                  </div>
+                </div>
+              )}
+            </div>
+            )}
+              </>
+              ) : null}
+            </section>
+            )}
+            </>
+          </div>
+          )}
+          </div>
           </>
           )}
         </div>
-        <SalariedWorkdaysBulkModal
-          open={salariedWorkdaysModalOpen}
-          onClose={() => setSalariedWorkdaysModalOpen(false)}
-          payConfig={payConfig}
-          users={users}
-        />
+        {canAccessHours ? (
+          <SalariedWorkdaysBulkModal
+            open={salariedWorkdaysModalOpen}
+            onClose={() => setSalariedWorkdaysModalOpen(false)}
+            payConfig={payConfig}
+            users={users}
+          />
+        ) : null}
         </>
       )}
 
@@ -12001,43 +13769,45 @@ export default function People() {
                                                           >
                                                             Edit
                                                           </button>
-                                                          <button
-                                                            type="button"
-                                                            role="menuitem"
-                                                            onClick={(e) => {
-                                                              e.stopPropagation()
-                                                              setContractsDocumentActionsMenuOpenId(null)
-                                                              setContractDocumentDeleteTarget(doc)
-                                                              setContractDocumentDeleteConfirmOpen(true)
-                                                            }}
-                                                            style={{
-                                                              display: 'flex',
-                                                              alignItems: 'center',
-                                                              gap: '0.35rem',
-                                                              width: '100%',
-                                                              padding: '0.35rem 0.65rem',
-                                                              fontSize: '0.8125rem',
-                                                              border: 'none',
-                                                              background: 'transparent',
-                                                              cursor: 'pointer',
-                                                              color: '#b91c1c',
-                                                              textAlign: 'left',
-                                                            }}
-                                                          >
-                                                            <svg
-                                                              xmlns="http://www.w3.org/2000/svg"
-                                                              width={14}
-                                                              height={14}
-                                                              viewBox="0 0 24 24"
-                                                              fill="none"
-                                                              stroke="currentColor"
-                                                              strokeWidth={2}
-                                                              aria-hidden
+                                                          {canDeletePeopleContracts ? (
+                                                            <button
+                                                              type="button"
+                                                              role="menuitem"
+                                                              onClick={(e) => {
+                                                                e.stopPropagation()
+                                                                setContractsDocumentActionsMenuOpenId(null)
+                                                                setContractDocumentDeleteTarget(doc)
+                                                                setContractDocumentDeleteConfirmOpen(true)
+                                                              }}
+                                                              style={{
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '0.35rem',
+                                                                width: '100%',
+                                                                padding: '0.35rem 0.65rem',
+                                                                fontSize: '0.8125rem',
+                                                                border: 'none',
+                                                                background: 'transparent',
+                                                                cursor: 'pointer',
+                                                                color: '#b91c1c',
+                                                                textAlign: 'left',
+                                                              }}
                                                             >
-                                                              <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M10 11v6M14 11v6" />
-                                                            </svg>
-                                                            Delete
-                                                          </button>
+                                                              <svg
+                                                                xmlns="http://www.w3.org/2000/svg"
+                                                                width={14}
+                                                                height={14}
+                                                                viewBox="0 0 24 24"
+                                                                fill="none"
+                                                                stroke="currentColor"
+                                                                strokeWidth={2}
+                                                                aria-hidden
+                                                              >
+                                                                <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M10 11v6M14 11v6" />
+                                                              </svg>
+                                                              Delete
+                                                            </button>
+                                                          ) : null}
                                                         </div>
                                                       ) : null}
                                                     </div>
@@ -12252,13 +14022,15 @@ export default function People() {
                           >
                             Edit
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => deleteContractTemplate(t)}
-                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: 4, background: '#fff', cursor: 'pointer' }}
-                          >
-                            Delete
-                          </button>
+                          {canDeletePeopleContracts ? (
+                            <button
+                              type="button"
+                              onClick={() => deleteContractTemplate(t)}
+                              style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: 4, background: '#fff', cursor: 'pointer' }}
+                            >
+                              Delete
+                            </button>
+                          ) : null}
                         </div>
                       </li>
                     )
@@ -12313,30 +14085,32 @@ export default function People() {
                             <span style={{ fontWeight: 600 }}>{t?.name ?? '—'}</span>
                             {docLabel}
                           </span>
-                          <button
-                            type="button"
-                            onClick={() => void unassignTemplateFromPerson(a.template_id)}
-                            disabled={
-                              assignTemplateSaving ||
-                              assignTemplateUnassigningTemplateId !== null
-                            }
-                            style={{
-                              padding: '0.25rem 0.55rem',
-                              fontSize: '0.8125rem',
-                              fontWeight: 600,
-                              border: '1px solid #fecaca',
-                              borderRadius: 6,
-                              background: '#fef2f2',
-                              color: '#b91c1c',
-                              cursor:
-                                assignTemplateSaving || assignTemplateUnassigningTemplateId !== null
-                                  ? 'not-allowed'
-                                  : 'pointer',
-                              flexShrink: 0,
-                            }}
-                          >
-                            {busyUnassign ? 'Unassigning…' : 'Unassign'}
-                          </button>
+                          {canDeletePeopleContracts ? (
+                            <button
+                              type="button"
+                              onClick={() => void unassignTemplateFromPerson(a.template_id)}
+                              disabled={
+                                assignTemplateSaving ||
+                                assignTemplateUnassigningTemplateId !== null
+                              }
+                              style={{
+                                padding: '0.25rem 0.55rem',
+                                fontSize: '0.8125rem',
+                                fontWeight: 600,
+                                border: '1px solid #fecaca',
+                                borderRadius: 6,
+                                background: '#fef2f2',
+                                color: '#b91c1c',
+                                cursor:
+                                  assignTemplateSaving || assignTemplateUnassigningTemplateId !== null
+                                    ? 'not-allowed'
+                                    : 'pointer',
+                                flexShrink: 0,
+                              }}
+                            >
+                              {busyUnassign ? 'Unassigning…' : 'Unassign'}
+                            </button>
+                          ) : null}
                         </li>
                       )
                     })}
@@ -12854,6 +14628,7 @@ export default function People() {
                   Cancel
                 </button>
                 {editingContractDocument &&
+                canDeletePeopleContracts &&
                 isDeletablePersonContractStatus(String(editingContractDocument.status)) ? (
                   <button
                     type="button"
@@ -12912,6 +14687,7 @@ export default function People() {
       {contractDocumentDeleteConfirmOpen &&
         activeTab === 'contracts' &&
         canAccessContracts &&
+        canDeletePeopleContracts &&
         contractDocumentDeleteTarget &&
         isDeletablePersonContractStatus(contractDocumentDeleteTarget.status) && (
           <div
@@ -13012,6 +14788,7 @@ export default function People() {
           templateDocuments={contractTemplateDocuments}
           onSaved={() => void loadContracts()}
           onPickEntry={contractBookPickFromDocumentModal ? handlePickContractFromBook : undefined}
+          canDeleteLibraryEntries={canDeletePeopleContracts}
         />
       )}
 
@@ -13203,7 +14980,7 @@ export default function People() {
           </div>
 
           {showPeopleForReview.length === 0 ? (
-            <p style={{ color: '#6b7280', padding: '1rem', margin: 0 }}>No people in pay config. Add people in Pay tab first.</p>
+            <p style={{ color: '#6b7280', padding: '1rem', margin: 0 }}>No people in pay config. Add people in People pay config (Hours tab) first.</p>
           ) : reviewLoading ? (
             <p style={{ color: '#6b7280', padding: '1rem', margin: 0 }}>Loading…</p>
           ) : (

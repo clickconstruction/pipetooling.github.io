@@ -582,7 +582,7 @@ export function HoursSection() {
             )}
           />
           {showPeopleForHours.length === 0 ? (
-            <p style={{ color: '#6b7280' }}>No people with Show in Hours selected. Go to People &gt; Pay tab and check Show in Hours for people to track.</p>
+            <p style={{ color: '#6b7280' }}>No people with Show in Hours selected. Go to People → Hours and open People pay config; check Show in Hours for people to track.</p>
           ) : (
             <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>

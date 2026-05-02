@@ -1378,3 +1378,16 @@ body.my-time-boundary-dragging {
   outline-offset: 2px;
   border-radius: 2px;
 }
+
+/* Clock strip: session time → Google Maps — match surrounding text (no link hover color) */
+.stripClockTimeMapButton:hover {
+  color: inherit;
+}
+.stripClockTimeMapButton:focus:not(:focus-visible) {
+  outline: none;
+}
+.stripClockTimeMapButton:focus-visible {
+  outline: 2px solid #94a3b8;
+  outline-offset: 1px;
+  border-radius: 2px;
+}

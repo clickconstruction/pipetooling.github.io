@@ -1,0 +1,48 @@
+---
+description: >-
+  When the user reports Supabase/Postgres/API outages, crashes, unhealthy DB, 503/504/502 timeouts,
+  "database slow", load spikes, or asks to figure out why Supabase failed — run this triage playbook.
+alwaysApply: true
+---
+
+# Supabase / Postgres incident triage (natural language)
+
+If the user says things like **Supabase crashed**, **database unhealthy**, **why Postgres**, **503/timeouts**, **app stuck loading**, **find why DB failed** — treat it as an incident and **do the work** (read runbooks, run CLI, correlate). Do not only suggest commands unless execution is impossible.
+
+## 1. Read (in order)
+
+- [`docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md`](docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md) — short checklist
+- [`docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md`](docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md) — Phase A–E, Postgres ↔ app correlation (**Phase D**: `clock_sessions`, `jobs_ledger`, crew triggers)
+
+## 2. Ask only if missing (keep minimal)
+
+- **UTC** window when symptoms occurred (approximate is OK)
+- Optional: failing **Network** path + **HTTP status** (no `Authorization` / JWT)
+
+## 3. Execute from repo root (linked project)
+
+Prefer bundled capture:
+
+```bash
+./scripts/capture-supabase-incident.sh
+```
+
+Or the same commands manually: `supabase inspect db blocking --linked`, `locks`, `long-running-queries`, `outliers`, `calls`, then `supabase inspect report --linked --output-dir …` per runbook.
+
+If `inspect` fails with DB password errors: user must fix **`supabase link`** / `SUPABASE_DB_PASSWORD` — tell them briefly; do not echo secrets.
+
+## 4. Deliverable
+
+Short verdict: **lock contention** vs **hot/slow query** vs **pool/API/gateway** vs **Realtime/subscription load** vs **client/SW** — cite query/table names from output when possible. Next concrete step (e.g. Dashboard logs export, index migration **only** with evidence, client Realtime scope — append-only migrations per `AGENTS.md`).
+
+## 5. Dashboard logs
+
+CLI does **not** download hosted Logs Explorer. Tell the user to export **Dashboard → Logs** (Postgres + API) for the **same UTC window** when 5xx/gateway is suspected or `inspect` looks healthy.
+
+## 6. MCP
+
+If **Supabase MCP** is enabled: read tool descriptors under `.cursor/.../mcps/` before calling `execute_sql` / log tools.
+
+## 7. Safety
+
+Never paste or store JWTs, magic links, or DB passwords in chat or commits.

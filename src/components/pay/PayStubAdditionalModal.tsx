@@ -634,7 +634,7 @@ export function PayStubAdditionalModal({
           </p>
           {baseHourlyWage <= 0 ? (
             <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: '#b45309', fontWeight: 600 }}>
-              Base hourly rate is $0 — set hourly wage on Pay tab before using prevailing top-ups.
+              Base hourly rate is $0 — set hourly wage in People pay config (Hours tab) before using prevailing top-ups.
             </p>
           ) : null}
           {!subjectUserId?.trim() ? (

@@ -92,6 +92,13 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### May 2026
 
+#### May 2, 2026
+
+**`20260502070926_contract_tables_assistant_no_delete.sql`**
+- **Purpose**: **People → Contracts** — plain **`assistant`** must not **DELETE** from **`contract_templates`**, **`contract_template_documents`**, **`person_contract_assignments`**, or **`person_contract_documents`**. Replaces legacy **`FOR ALL`** policies (**`20260322140000_contracts_rls_all_masters.sql`**) with separate **SELECT** / **INSERT** / **UPDATE** / **DELETE** policies: **DELETE** uses the same role bundle **without** **`is_assistant()`** (**`is_dev()`**, **`is_pay_approved_master()`**, **`is_master_or_dev()`**, **`is_assistant_of_pay_approved_master()`** only).
+- **Impact**: **[`RECENT_FEATURES.md`](RECENT_FEATURES.md)** **v2.464**; client **`canDeletePeopleContracts`** + **`ContractBookModal`** **`canDeleteLibraryEntries`**; **`ACCESS_CONTROL.md`** / **`PROJECT_DOCUMENTATION.md`**. Regenerate **`src/types/database.ts`** only if introspection policies matter for your workflow (usually unchanged).
+- **Category**: People / Contracts / RLS
+
 #### May 1, 2026
 
 **`20260501205038_fix_checklist_items_rls_recursion.sql`**
@@ -648,9 +655,9 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 #### July 1, 2026
 
 **`20260701000000_create_hours_reviewed.sql`**
-- **Purpose**: Add `hours_reviewed` table for Pay tab "hours reviewed" workflow
+- **Purpose**: Add `hours_reviewed` table for **People → Hours** **Review Hours** / hours-reviewed workflow
 - **Changes**: Create `hours_reviewed` (person_name, start_date, end_date, reviewed_by, reviewed_at); UNIQUE(person_name, start_date); RLS for dev, pay-approved masters, assistants
-- **Impact**: Review Hours modal "Mark as reviewed" checkbox; Hours reviewed ledger on Pay tab
+- **Impact**: Review Hours modal "Mark as reviewed" checkbox; **Hours reviewed** ledger on **People → Hours**
 - **Category**: People / Pay
 
 ### April 2027
@@ -2358,9 +2365,9 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 #### February 18, 2026
 
 **`20260218000002_add_people_hours_to_realtime.sql`**
-- **Purpose**: Enable Realtime for people_hours so Pay/Hours tabs update when any user changes hours
+- **Purpose**: Enable Realtime for people_hours so **People → Hours** updates when any user changes hours
 - **Changes**: Adds `people_hours` to `supabase_realtime` publication (idempotent via pg_publication_tables check)
-- **Impact**: When Dev, Master, or Assistant updates hours in Hours tab, all users viewing Pay tab see the Cost matrix update automatically without refresh
+- **Impact**: When Dev, Master, or Assistant updates hours in **Hours**, all viewers of the **cost matrix** on **People → Hours** see updates automatically without refresh
 - **Category**: People / Pay / Realtime
 
 **`20260218000001_schedule_reminder_cron.sql`**
@@ -2449,7 +2456,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260213000003_create_people_teams.sql`**
 - **Purpose**: Create teams for combined cost tracking
 - **Changes**: Created `people_teams` (id, name) and `people_team_members` (team_id, person_name); RLS for pay-access users
-- **Impact**: Pay tab Teams section; add teams, assign people, view combined cost for date range
+- **Impact**: **People → Hours** **Teams** section; add teams, assign people, view combined cost for date range
 - **Category**: People / Pay
 
 **`20260213000002_create_people_hours.sql`**
@@ -2473,7 +2480,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260213000001_create_people_pay_config.sql`**
 - **Purpose**: Per-person pay configuration
 - **Changes**: Created `people_pay_config` (person_name, hourly_wage, is_salary, show_in_hours); RLS for dev and approved masters
-- **Impact**: Pay tab People pay config; wage, salary flag, Show in Hours toggle
+- **Impact**: **People → Hours** **Review Hours & pay config** block; wage, salary flag, Show in Hours toggle
 - **Category**: People / Pay
 
 **`20260213000000_create_pay_approved_masters.sql`**

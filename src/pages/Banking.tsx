@@ -12,6 +12,7 @@ import {
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { useDocumentVisibility } from '../hooks/useDocumentVisibility'
 import { useToastContext } from '../contexts/ToastContext'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import type { Database } from '../types/database'
@@ -715,6 +716,7 @@ function BankingMercuryTable({
 
 export default function Banking() {
   const { user } = useAuth()
+  const isDocVisible = useDocumentVisibility()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { showToast } = useToastContext()
@@ -949,9 +951,11 @@ export default function Banking() {
     if (!canAccessBanking || !user?.id) return
 
     const scheduleRefetch = () => {
+      if (!isDocVisible) return
       if (bankingMercuryDebounceRef.current) clearTimeout(bankingMercuryDebounceRef.current)
       bankingMercuryDebounceRef.current = setTimeout(() => {
         bankingMercuryDebounceRef.current = null
+        if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
         void loadRows({ silent: true })
       }, 800)
     }
@@ -972,7 +976,7 @@ export default function Banking() {
       }
       void supabase.removeChannel(channel)
     }
-  }, [canAccessBanking, user?.id, loadRows])
+  }, [canAccessBanking, user?.id, loadRows, isDocVisible])
 
   const loadMercuryAllocations = useCallback(async () => {
     if (!canAccessBanking || rows.length === 0) {

@@ -47,3 +47,5 @@ Writes under `docs/runbooks/supabase-inspect-snapshot/incident-<UTC>/` (gitignor
 |-----|------|
 | [`SUPABASE_INCIDENT_RUNBOOK.md`](./SUPABASE_INCIDENT_RUNBOOK.md) | Full procedure, Phase A checklist, Dashboard export |
 | [`TROUBLESHOOTING.md`](../../TROUBLESHOOTING.md) | Disk I/O, long-query SQL, runbook link |
+| [`.cursor/rules/supabase-incident-triage.mdc`](../../.cursor/rules/supabase-incident-triage.mdc) | Cursor: natural-language outage prompts → this playbook + inspect / capture script |
+| [`RECENT_FEATURES.md`](../../RECENT_FEATURES.md) **v2.454** | Client Realtime debounce / visibility / narrower subscriptions |
