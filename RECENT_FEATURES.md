@@ -7,16 +7,70 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-05-01
+last_updated: 2026-05-03
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.466 → v2.4"
+version_range: "v2.484 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.484)"
+    line: ~1612
+    description: "Banking Drag Sort Quick label — modal layout polish (preview row, grid title stats, progress+search, tighter chrome)"
+  - name: "Latest Version (v2.483)"
+    line: ~1628
+    description: "Banking Drag Sort Quick label — Undo (2 steps); applyDragSortAssignment revert; stack clears on close"
+  - name: "Latest Version (v2.482)"
+    line: ~1654
+    description: "Banking Drag Sort Quick label — label tiles match sidebar LabelDropZone + shared Collapse/Expand; dragSortLabelBucketCard"
+  - name: "Latest Version (v2.481)"
+    line: ~1672
+    description: "Banking Drag Sort — Quick label full-screen modal beside search; one-at-a-time assign + slide-off; applyDragSortAssignment"
+  - name: "Latest Version (v2.480)"
+    line: ~1687
+    description: "Banking Mercury team notes preview/editor row aligned to Counterparty column (split colspan); symmetric inner padding"
+  - name: "Latest Version (v2.479)"
+    line: ~1615
+    description: "Banking Mercury team notes — divider under bank/note band, tight summary-to-band spacing, Drag Sort pipe preview (bank | note)"
+  - name: "Latest Version (v2.478)"
+    line: ~1606
+    description: "Banking Mercury team notes — preview band polish; editor focus, auto-grow, Save closes, Close when empty, right-aligned actions"
+  - name: "Latest Version (v2.477)"
+    line: ~1603
+    description: "Banking Mercury preview — org Transaction note single-line indented ellipsis"
+  - name: "Latest Version (v2.476)"
+    line: ~1613
+    description: "Banking Mercury — default read-only note preview row; Edit note / Hide edit toggles org editor only"
+  - name: "Latest Version (v2.475)"
+    line: ~1625
+    description: "Banking Mercury — Team Notes toggle under Amount (Ledger, User Sort, Drag Sort); no Notes column"
+  - name: "Latest Version (v2.474)"
+    line: ~1637
+    description: "Banking Drag Sort — Accounting Label / Accounting Labels copy; section Collapse-Expand for label cards; ledger column name-only + tooltip"
+  - name: "Latest Version (v2.473)"
+    line: ~1595
+    description: "Banking Drag Sort — built-in rent_lease_20a/20b renamed Equipment Lease / Property Lease; migration 20260502202929"
+  - name: "Latest Version (v2.472)"
+    line: ~1608
+    description: "Banking Drag Sort — optimistic bucket stats + memo rows; pointerWithin/overlay; label cards [C] footer; fire-and-forget save"
+  - name: "Latest Version (v2.471)"
+    line: ~1595
+    description: "Banking Drag Sort — built-in Schedule C default labels; is_system_default; 20260502193138"
+  - name: "Latest Version (v2.470)"
+    line: ~1612
+    description: "Banking Drag Sort labels — schedule_c_line + description; migration 20260502191955"
+  - name: "Latest Version (v2.469)"
+    line: ~1573
+    description: "Banking Drag Sort — DragOverlay preview; PointerSensor distance 4; dim handle while dragging"
+  - name: "Latest Version (v2.468)"
+    line: ~1570
+    description: "Banking Drag Sort — Hide labeled transactions checkbox; bankingDragSortStorage; bucket stats unchanged"
+  - name: "Latest Version (v2.467)"
+    line: ~1562
+    description: "Banking Mercury Drag Sort tab; mercury_drag_sort_labels; assignments"
   - name: "Latest Version (v2.466)"
-    line: ~1549
+    line: ~1578
     description: "People Overhead — Detail column removed; per-day session lines via breakdown modals only; colSpan 4/7"
   - name: "Latest Version (v2.465)"
     line: ~1562
@@ -1222,6 +1276,16 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.484 — **Banking** **Drag Sort** — **Quick label** modal **layout polish**: **`FocusTransactionCard`** amount + date·kind header; counterparty + bank **flex-wrap** line; **`DragSortLabelBucketCard`** **`variant="grid"`** inlines **`N tx · $`** **`[C…]`** on label **title**; **Remaining…** + **Search labels…** toolbar row; tighter card **`padding`** / **`margin`** — **[`BankingMercuryDragSortFocusModal.tsx`](src/components/banking/BankingMercuryDragSortFocusModal.tsx)**, **[`dragSortLabelBucketCard.tsx`](src/components/banking/dragSortLabelBucketCard.tsx)**](#latest-updates-v2484)
+**New:** [v2.483 — **Banking** **Drag Sort** — **Quick label** **Undo** beside **Close** (**max 2** modal-only assignments); **`applyDragSortAssignment`** restore; disabled during **slide-out**; stack clears when modal closes (**`BankingMercuryDragSortTab`**, **`BankingMercuryDragSortFocusModal`**)](#latest-updates-v2483)
+**New:** [v2.482 — **Banking** **Drag Sort** — **Quick label** modal tiles match sidebar **`LabelDropZone`** (**dashed**, **`[C]`**, **`N tx · $`** footer); **`DragSortLabelBucketCard`** (**[`dragSortLabelBucketCard.tsx`](src/components/banking/dragSortLabelBucketCard.tsx)**); modal **Collapse** / **Expand** syncs **`labelsCardsExpanded`** with **Accounting Labels** sidebar](#latest-updates-v2482)
+**New:** [v2.481 — **Banking** **Drag Sort** — **Quick label** full-screen **dialog** beside **Search** (**`ListOrdered`**); one unlabeled row at a time (same **filters** as **Hide labeled** / ledger list); **Accounting Label** grid + **label filter**; optimistic assign + **slide-right** exit (**`BankingMercuryDragSortFocusModal`**, **`applyDragSortAssignment`**)](#latest-updates-v2481)
+**New:** [v2.480 — **Banking** **Mercury** — **Team notes** preview/editor **aligned** to **Counterparty** (**split **`colSpan`** spacer + content**); **`bankingMercuryNotesSubRowColSpans`** (**[`bankingMercuryNotesSubRowColSpan.ts`](src/lib/bankingMercuryNotesSubRowColSpan.ts)**); **Drag Sort** **Posted \| Amount \| …** spacer — **[`Banking.tsx`](src/pages/Banking.tsx)**, **[`BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx)**, **`MercuryTxNotesDisclosure`**](#latest-updates-v2480)
+**New:** [v2.479 — **Banking** **Mercury** — **Team notes** **band grouping** (**divider under** bank/note row; **minimal gap** from summary row); **Drag Sort** read-only **bank \| note** line (**`mercuryBankDescriptionFromRaw`**, **`dragSortPipe`**) — **[`MercuryTxNotesDisclosure.tsx`](src/components/banking/MercuryTxNotesDisclosure.tsx)**, **[`Banking.tsx`](src/pages/Banking.tsx)**, **[`BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx)**](#latest-updates-v2479)
+**New:** [v2.478 — **Banking** **Mercury** — **Team notes** **preview** band + **editor** polish (**Save** closes, **Close** when draft empty, **focus** + auto-grow **textarea**, actions **right**) — **[`MercuryTxNotesDisclosure.tsx`](src/components/banking/MercuryTxNotesDisclosure.tsx)**](#latest-updates-v2478)
+**New:** [v2.477 — **Banking** **Mercury** — preview **Transaction note** (org) as one **indented** muted line, **ellipsis** + **`title`** full text — **[`MercuryTxNotesReadOnlyPreview`](src/components/banking/MercuryTxNotesDisclosure.tsx)**](#latest-updates-v2477)
+**New:** [v2.476 — **Banking** **Mercury** — **read-only** transaction note **preview** row when Mercury memo / external memo / org note exists; **Edit note** / **Hide edit** opens **org** editor only (**`MercuryTxNotesReadOnlyPreview`**, **`MercuryTxNotesEditorPanel`**) — **[`MercuryTxNotesDisclosure.tsx`](src/components/banking/MercuryTxNotesDisclosure.tsx)**](#latest-updates-v2476)
+**New:** [v2.475 — **Banking** **Mercury** — **Notes** / **Hide notes** under **Amount** (**Ledger**, **User Sort**, **Drag Sort**); no separate **Notes** column; grey underlined toggle; row expand unchanged from amount cell — **[`Banking.tsx`](src/pages/Banking.tsx)**, **[`BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx)**](#latest-updates-v2475)
 **New:** [v2.466 — **People → Overhead** — **Detail** column removed; per-day session lines only in **$** breakdown modals; **`overheadTableColCount`** **4** / **7** — **[`People.tsx`](src/pages/People.tsx)**](#latest-updates-v2466)
 **New:** [v2.455 — **People → Hours** — merged **Pay** into **Hours** (**`?tab=hours`**; **`?tab=pay`** / **`team_costs`** rewrite); **section jump** row + collapsible cards (**`HoursTabSectionId`**, **`jumpToHoursTabSection`**); **`#cost-matrix`**, **`?tab=hours&section=rejected`** → **`people-hours-rejected`**; shared week range + stack spacing — **[`People.tsx`](src/pages/People.tsx)**](#latest-updates-v2455)
 **New:** [v2.454 — **Supabase load reduction** — **`useDocumentVisibility`** + debounced **Dashboard** financial-pin Realtime (**`financialRefreshKey`** ~1200ms); **team strip** **`clock_sessions`** **`user_id=in.(…)`** (≤80) / org-wide debounce; **People** Hours **`clock_sessions`** debounce + optional **`user_id`** filter (≤150 **`users`**); **Banking** Mercury visibility gate; **Cursor** **[`.cursor/rules/supabase-incident-triage.mdc`](.cursor/rules/supabase-incident-triage.mdc)** natural-language outage triage](#latest-updates-v2454)
@@ -1267,7 +1331,7 @@ when_to_read:
 **New:** [v2.405 — **Jobs** **Job Summary** — **Cost breakdown** — single **Invoices from supply** UI (**Parts Cost** only) + print supply lines under **Parts Cost** (not before **Team Labor**); **`printJobSummaryCostBreakdown`** order](#latest-updates-v2405)
 **New:** [v2.404 — **Jobs** **Job Summary** — **Person summary** **Cost breakdown** — per-cell **drilldown** modals (**`JobSummaryCostCellDrilldownModal`**, **Print** / **Export CSV** in header, **`domTableToCsv`**, **Unassigned** + **Total** row; link affordance **`.jobSummaryBreakdownInteractive`**; **not clickable** for empty/`—` cells, person **Supply** column, **zero hours**)](#latest-updates-v2404)
 **New:** [v2.403 — **Jobs** **Job Summary** — **Cost breakdown** **print** — **`printJobSummaryCostBreakdown`**, **Print / Save as PDF**, **Preparing…**, **`aria-busy`**, **`printCostBreakdownJobId`** (section order updated in v2.405)](#latest-updates-v2403)
-**New:** [v2.401 — **Banking** **Mercury** **Sorting**: fixed **top-right** cluster (**Configuration**, **User Card Link**, **Nicknames**); **sorting** toolbar — **search** flexes between **Show unsplit** / **Show unlinked** and **Refresh from Mercury** / **Reload table**; no visible **Search transactions** label (**`aria-label`** on input); **`mercury_debit_card_user_links.auto_assign_user_id`** (same roster as Tally) + trigger/backfill — **`BankingUserCardLinkModal`**; **Jobs** → **Parts**: **Unattributed** right of search row; **Cost by person** omits redundant **Job (no per-person split)** line (**`partsPerPersonCostSummary`**, **`buildPartsPerPersonCostRows`**)](#latest-updates-v2401)
+**New:** [v2.401 — **Banking** **Mercury** **Sorting**: **top-right** header cluster (**Configuration**, **User Card Link**, **Nicknames**; in-page, scrolls with content); **sorting** toolbar — **search** flexes between **Show unsplit** / **Show unlinked** and **Refresh from Mercury** / **Reload table**; no visible **Search transactions** label (**`aria-label`** on input); **`mercury_debit_card_user_links.auto_assign_user_id`** (same roster as Tally) + trigger/backfill — **`BankingUserCardLinkModal`**; **Jobs** → **Parts**: **Unattributed** right of search row; **Cost by person** omits redundant **Job (no per-person split)** line (**`partsPerPersonCostSummary`**, **`buildPartsPerPersonCostRows`**)](#latest-updates-v2401)
 **New:** [v2.400 — **Dashboard** **Currently In** (clock strip): first column **min-width** from full **name + (s)**; **`<colgroup>`** + **`stripCurrentlyInFirstCol`**; **`stripCurrentlyInNameWithSuffix`** + nowrap (**[`DashboardTeamActiveClockStrip`](src/components/DashboardTeamActiveClockStrip.tsx)**)](#latest-updates-v2400)
 **New:** [v2.399 — **Dashboard** **User day schedule** modal (**clock strip** **name**); **`UserDayScheduleModal`**, responsive **date** header, day **chevrons** on **8 / 12 / 4** row, footer **Dispatch** + **+** + **Close**](#latest-updates-v2399)
 **New:** [v2.398 — **AIA G702-G703**: **`showAiaG702G703`** ([`aiaG702G703Eligibility.ts`](src/lib/aiaG702G703Eligibility.ts)) — **Stages** job + standalone invoice rows + **View bill** **`BilledBillViewModal`**; **[`AiaG702G703Modal`](src/components/jobs/AiaG702G703Modal.tsx)** **Change Orders** **`<details>`** (collapsed; centered summary + chevron) — **`detailsGroupId`** on **[`aiaG702G703Template.ts`](src/lib/aiaG702G703Template.ts)**](#latest-updates-v2398)
@@ -1545,6 +1609,224 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.484)
+
+**Date**: 2026-05-03
+
+### **Banking** — **Drag Sort** — **Quick label** modal layout polish
+
+- **Focus transaction preview** (**`FocusTransactionCard`**) — **Amount** and **posted date** · **`formatMercuryKind`** share the header row; **counterparty** and **`mercuryBankDescriptionFromRaw`** bank line share a **`flex-wrap`** row when they fit (**[`BankingMercuryDragSortFocusModal.tsx`](src/components/banking/BankingMercuryDragSortFocusModal.tsx)**).
+- **Modal Accounting Label tiles** (**`DragSortLabelBucketCard`**, **`variant="grid"`**, **expanded**) — **`N tx · $`** plus **`[C…]`** move inline with the **label name**; **`variant="sidebar"`** (**`LabelDropZone`**) keeps title → optional description → footer stats (**[`dragSortLabelBucketCard.tsx`](src/components/banking/dragSortLabelBucketCard.tsx)**).
+- **Toolbar** — **`Remaining unlabeled in this view`** and **`Search labels…`** use one **`flex`** row (**wrap** when narrow).
+- **Vertical spacing** — card region no longer uses a blanket **`min-height: 200px`** (small **`minHeight`** only while **slide-off** runs and the modal queue has just emptied); lighter scroll-area **`padding`** and margins above the tile grid (**[`BankingMercuryDragSortFocusModal.tsx`](src/components/banking/BankingMercuryDragSortFocusModal.tsx)**).
+
+**Related**: **Undo** (**v2.483**) — **`BankingMercuryDragSortTab`** **`quickLabelUndoStack`**.
+
+---
+
+## Latest Updates (v2.483)
+
+**Date**: 2026-05-03
+
+### **Banking** — **Drag Sort** — **Quick label** **Undo** (two steps)
+
+- **Undo** — Header **Undo** then **Close**; reverts the last **Quick label** pick only (not ledger drag-and-drop), up to **two** steps (**FIFO** cap: a third pick drops the oldest undo entry).
+- **Implementation** — Before each modal assign, parent records **`prevLabelId`** from **`assignmentLabelByTxId`**; **Undo** pops the stack and calls **`applyDragSortAssignment(txId, prevLabelId)`** (same optimistic path as assign). **Disabled** when the stack is empty or while the **slide-right** exit layer is active; stack **clears** when the modal closes.
+
+---
+
+## Latest Updates (v2.482)
+
+**Date**: 2026-05-03
+
+### **Banking** — **Drag Sort** — **Quick label** tiles parity with sidebar buckets
+
+- **Shared presentational **`DragSortLabelBucketCard`** (**[`dragSortLabelBucketCard.tsx`](src/components/banking/dragSortLabelBucketCard.tsx)**) powers **`LabelDropZone`** (**`variant="sidebar"`**, **`forwardRef`** for **`useDroppable`**) and the modal pick grid (**`variant="grid"`**).
+- **Modal header** — **Collapse** / **Expand** toggles **`labelCardsExpanded`** with the same **`writeDragSortLabelsCardsExpanded`** (**`bankingDragSortStorage`**) as **Accounting Labels** (sidebar stays in sync).
+- **Modal grid** — Live **`bucketStats.byLabel`** per tile (`tx` counts + **`$`** sum); **`clickableHover`** border/background parity with sidebar drag-hover.
+
+---
+
+## Latest Updates (v2.481)
+
+**Date**: 2026-05-03
+
+### **Banking** — **Mercury** **Drag Sort** — **Quick label** (one-at-a-time)
+
+- **Open** — Toolbar **Search** row: **Open one-at-a-time labeling** (**`ListOrdered`**, title **Quick label…**). Full-viewport **`aria-modal`** dialog (**`z-index` ~1120**); **Close** + **Escape** (backdrop does not dismiss).
+- **Queue** — **`displayTransactions`** order, rows with **no** drag-sort assignment (`mercury_transaction_drag_sort_assignments`); respects **Hide labeled transactions** + account / kind / search (**same slice** as the ledger).
+- **Assign** — Tap an **Accounting Label** → same **`mercury_transaction_drag_sort_assignments`** **upsert** as DnD (**`applyDragSortAssignment`**, shared with **`handleDragEnd`**); **slide-right** exit layer on the departing card; **`aria-live`** progress for remaining count; **Search labels…** filters the button grid.
+- **Files** — [`BankingMercuryDragSortFocusModal.tsx`](src/components/banking/BankingMercuryDragSortFocusModal.tsx), [`BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx).
+
+---
+
+## Latest Updates (v2.480)
+
+**Date**: 2026-05-03
+
+### **Banking** — **Mercury** — **Team notes** **Counterparty-aligned** grid
+
+- **Split sub-row** — Preview and editor use **two **`td`**s**: **`aria-hidden`** spacer **`colSpan`** = columns before **Counterparty** (`Expand` \| `Posted` \| `Amount` \| optional **Kind**, optional early **Debit** / **Account**), content cell **`colSpan`** = remainder through row end — **[`bankingMercuryNotesSubRowColSpans`](src/lib/bankingMercuryNotesSubRowColSpan.ts)** keyed to **`BankingMercuryTable`** thead; Vitest **`bankingMercuryNotesSubRowColSpan.test.ts`**. **Ledger** vs **User Sort** slice differ by **`hideKindColumn`**, **`debitAndAccountAfterAmount`**, **`counterpartyNoteCombined`**.
+- **Drag Sort** — Spacer **`colSpan`** = **2** (**Posted**, **Amount**); content **`colSpan`** = **`DRAG_SORT_LEDGER_COL_COUNT` − 2** ([`BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx), **`DRAG_SORT_NOTES_BEFORE_COUNTERPARTY_COLS`**).
+- **Inner chrome** — Removed fixed **`3rem`** left gutter from **`mercuryTxNotesSubRowInnerStyle`**; horizontal padding **`0.75rem`** matches body cells (**[`MercuryTxNotesDisclosure.tsx`](src/components/banking/MercuryTxNotesDisclosure.tsx)**).
+
+---
+
+## Latest Updates (v2.479)
+
+**Date**: 2026-05-03
+
+### **Banking** — **Mercury** — **Team notes** band layout + **Drag Sort** bank line
+
+- **One visual band** — The read-only preview row and the org **editor** row use a **transparent** full-width **`td`** (**`mercuryTxNotesSubRowTdStyle`**): **no** **`border-top`** between the summary row and the child row; the **horizontal rule** is **`border-bottom`** **`#e5e7eb`** on that cell (**after** the bank/note content, before the next table row). **[`BankingMercuryTable`](src/pages/Banking.tsx)** (**`notesContinuationBelow`**) and **[`DragSortLedgerRow`](src/components/banking/BankingMercuryDragSortTab.tsx)** (**`suppressBottomDivider`**) omit the summary row’s **cell bottom borders** and use **no extra bottom padding** on those cells when the notes band follows so the line does not appear *between* summary and child.
+- **Tighter vertical rhythm** — **`mercuryTxNotesSubRowInnerStyle`** uses **no top padding** and **`0.125rem`** below the text so the band sits close under the **Amount** row (see **v2.478** editor / preview behavior unchanged).
+- **Drag Sort** — When a **bank description** parsed from sync **raw** (**[`mercuryBankDescriptionFromRaw`](src/lib/mercuryBankDescriptionFromRaw.ts)**) and/or Mercury + org note content should show, the preview can render a **single pipe line** (**`notePreviewVariant="dragSortPipe"`**, **`MercuryTxNotesPipeLineBox`**) instead of separate boxes. **Ledger** and **User Sort** keep the stacked Mercury / external / org read-only layout.
+
+---
+
+## Latest Updates (v2.478)
+
+**Date**: 2026-05-03
+
+### **Banking** — **Mercury** — **Team notes** preview + editor polish
+
+- **Preview layout** — Full-width read-only sub-row styles (**`mercuryTxNotesSubRowTdStyle`**, **`mercuryTxNotesSubRowInnerStyle`**) so preview height tracks content; tighter preview stack (**[`MercuryTxNotesReadOnlyPreview`](src/components/banking/MercuryTxNotesDisclosure.tsx)**). (**Subsequent v2.479** refines chrome: transparent **`td`**, rule under the notes band only, less gap from the summary row.)
+- **Editor** (**[`MercuryTxNotesEditorPanel`](src/components/banking/MercuryTxNotesDisclosure.tsx)**) — **Edit note** opens with **focus** in the org field and caret at **end**; org **`textarea`** starts **one line** tall, **grows** with wrapped text (**`syncOrgNoteTextareaHeight`**), **`max-height`** **`12rem`** then scrolls; **Save** and **Clear** / **Close** are **right-aligned** under the field; **Save** **collapses** the editor after success (**`onSaveSuccess`**).
+- **Close** — When the org draft is **empty**, the secondary control is **Close** and dismisses the editor **without** **`upsert_mercury_org_transaction_note`** (**`onCloseRequest`**); when non-empty it stays **Clear** (clears stored org note).
+- **Parity** — **[`Banking.tsx`](src/pages/Banking.tsx)** **`BankingMercuryTable`**, **[`BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx)**.
+
+---
+
+## Latest Updates (v2.477)
+
+**Date**: 2026-05-03
+
+### **Banking** — **Mercury** — compact **Transaction note** in preview
+
+- **Org note** in the read-only preview ([`MercuryTxNotesReadOnlyPreview`](src/components/banking/MercuryTxNotesDisclosure.tsx)) is a **single indented line** (body text only, no boxed label): muted small type, **ellipsis** when long, **`title`** / hover for full text (newlines collapsed for display). Mercury / external memo blocks unchanged.
+
+---
+
+## Latest Updates (v2.476)
+
+**Date**: 2026-05-03
+
+### **Banking** — **Mercury** — default **note preview** + **Edit note**
+
+- **Preview row** — When **`mercuryTxHasNotePreview`** (non-empty Mercury **`note`**, **`external_memo`**, or org **`mercury_transaction_org_notes`** body), a full-width read-only sub-row appears under the transaction without opening an editor ([`MercuryTxNotesReadOnlyPreview`](src/components/banking/MercuryTxNotesDisclosure.tsx)).
+- **Toggle** — Under **Amount**, **Edit note** / **Hide edit** only toggles the **editor** sub-row (`MercuryTxNotesEditorPanel`: sync read-only blocks + org textarea / Save / Clear). **`aria-expanded`** / **`aria-controls`** reference the editor **`id`** (`mercuryTxNotesPanelDomId`). Preview uses **`mercuryTxNotesPreviewDomId`** when present.
+- **Parity** — **`BankingMercuryTable`** ([`Banking.tsx`](src/pages/Banking.tsx)) and **Drag Sort** ([`BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx)).
+
+---
+
+## Latest Updates (v2.475)
+
+**Date**: 2026-05-03
+
+### **Banking** — **Mercury** — **Team notes** toggle under **Amount**
+
+- **Ledger** (`BankingMercuryTable`), **User Sort**, and **Drag Sort** — Removed the dedicated **Notes** table column. **Notes** / **Hide notes** (organization scratch note panel — [`MercuryTxNotesDisclosure.tsx`](src/components/banking/MercuryTxNotesDisclosure.tsx)) is a **second line** under the formatted **Amount** (muted grey, small type, underlined text button).
+- **Interaction** — Toggle button **`stopPropagation`** so **clicking the dollar amount** still expands/collapses the transaction detail row like other body cells; **clicking Notes** only opens/closes the notes panel.
+- **`colSpan`** — Full-width notes sub-row and **`TransactionDetailPanel`** sub-row use the reduced column count (no `+1` for a Notes column in [`Banking.tsx`](src/pages/Banking.tsx); Drag Sort **`DRAG_SORT_LEDGER_COL_COUNT`** = **6** in [`BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx)).
+
+---
+
+## Latest Updates (v2.474)
+
+**Date**: 2026-05-03
+
+### **Banking** — **Mercury** **Drag Sort** — **Accounting Label** naming + section collapse
+
+- **Names** — Ledger column **Accounting Label**; right sidebar heading **Accounting Labels** (tab strip stays **Drag Sort**). User-facing toasts, confirm, **`aria-label`**s, and helper copy use **Accounting Label(s)** ([`BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx)).
+- **Ledger cell** — Column shows assigned label **name** only; **`title`** tooltip still includes **Schedule C** line + **description** when set.
+- **Sidebar** — **Collapse** / **Expand** next to **Accounting Labels** hides or shows **description**, **tx · $**, **`[C…]`**, and **Delete** on **all** label cards at once; **Unlabeled** and the add-label form stay full height. Per-card expand/collapse removed in favor of this control.
+
+---
+
+## Latest Updates (v2.473)
+
+**Date**: 2026-05-03
+
+### **Banking** — **Mercury** **Drag Sort** — distinguish **20a** / **20b** rent-or-lease built-ins
+
+- **Names** — **`rent_lease_20a`** → **Equipment Lease**; **`rent_lease_20b`** → **Property Lease** ([`dragSortDefaultLabels.ts`](src/lib/dragSortDefaultLabels.ts)). **`default_key`** and **`schedule_c_line`** unchanged.
+- **Existing rows** — Migration **`20260502202929_rename_drag_sort_rent_lease_builtin_names.sql`** updates **`mercury_drag_sort_labels`** (trigger disabled for this **UPDATE** only).
+
+---
+
+## Latest Updates (v2.472)
+
+**Date**: 2026-05-03
+
+### **Banking** — **Mercury** **Drag Sort** — faster drops + label card layout
+
+- **Optimistic UI** — Sidebar **Unlabeled** / per-label **tx · $** totals update on drag or **Remove** via **incremental** **`applyAssignmentDelta`**; **`buildBucketStats`** on assignment reload and on API **revert** after failure ([`BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx)).
+- **Ledger rows** — **`DragSortLedgerRow`** **`memo`** so assignment changes re-render targeted rows instead of the whole table body.
+- **Network** — **`upsert` / delete** assignment run **fire-and-forget** (`.catch` restores map + stats + toast) so the gesture is not blocked on **`await`**.
+- **DnD feel** — **`collisionDetection={pointerWithin}`** (lighter with many label drop zones); drag handle **hidden** during drag (**`opacity: 0`**) so only **`DragOverlay`** moves; **`DragOverlay`** **`dropAnimation={{ duration: 0, easing: 'linear' }}`** so the source list does not animate a “snap back.”
+- **Label cards** — Card title is **name** only; **Schedule C** shown as **`[C{line}]`** on the **bottom-right** of the card row with **tx · $** (left); no separate **Built-in** pill on the card (system labels still omit **Delete**).
+
+---
+
+## Latest Updates (v2.471)
+
+**Date**: 2026-05-02
+
+### **Banking** — **Mercury** **Drag Sort** — **built-in** **Schedule C** default labels
+
+- **Catalog** — Org-wide seed from [`dragSortDefaultLabels.ts`](src/lib/dragSortDefaultLabels.ts) (~26 labels: Advertising through Income / Cost of Goods Sold); **`ensureDragSortDefaultLabels`** on tab load ([`BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx)).
+- **Schema** — **`mercury_drag_sort_labels`**: **`is_system_default`**, **`default_key`**; partial unique **`(default_key)`** where **`default_key IS NOT NULL`** for idempotent built-in inserts (org-wide — **`20260502224616_mercury_drag_sort_org_wide_labels.sql`**; previously **`(user_id, default_key)`**); **BEFORE UPDATE** trigger blocks changing **name** / **schedule_c_line** / **description** / identity columns on system rows (**`sort_order`** still editable). Migration **`20260502193138_mercury_drag_sort_label_system_defaults.sql`**.
+- **UI** — **Delete** hidden for system labels (toast if invoked). Label card chrome for built-ins updated in **v2.472** (**`[C{n}]`** footer + no separate **Built-in** pill).
+
+---
+
+## Latest Updates (v2.470)
+
+**Date**: 2026-05-02
+
+### **Banking** — **Mercury** **Drag Sort** — label **Schedule C** + **description**
+
+- **Schema** — **`mercury_drag_sort_labels`**: optional **`schedule_c_line`** (text, max **32**) and **`description`** (max **2000**); migration **`20260502191955_mercury_drag_sort_labels_schedule_c.sql`**.
+- **UI** — Add label form: **Name** (required), **Schedule C line**, **Description**; label cards show line + truncated description; table **Accounting Label** column shows name only; **`title`** includes description when set ([`BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx)).
+
+---
+
+## Latest Updates (v2.469)
+
+**Date**: 2026-05-02
+
+### **Banking** — **Mercury** **Drag Sort** — snappier drag
+
+- **`DragOverlay`** — Cursor follows a compact card (**amount**, **counterparty**, **kind**, **posted**) while dragging from **⋮⋮** ([`BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx)); first use of **`DragOverlay`** in the app.
+- **Activation** — **`PointerSensor`** distance **8 → 4** so drag starts sooner.
+- **Handle** — Opacity **~0.35** while dragging so the overlay reads as the primary preview.
+
+---
+
+## Latest Updates (v2.468)
+
+**Date**: 2026-05-02
+
+### **Banking** — **Mercury** **Drag Sort** — **Hide labeled transactions**
+
+- **Checkbox** — **`Hide labeled transactions`** in the filter row; the table lists only rows **without** an Accounting Label. **Unlabeled** and per-label counts on the right still reflect **all** transactions matching the current filters (assignment batch load unchanged).
+- **Persistence** — Per-user **`localStorage`** ([`bankingDragSortStorage.ts`](src/lib/bankingDragSortStorage.ts), key **`banking_drag_sort_hide_labeled_v1_{userId}`**).
+- **Empty state** — When every filtered row is labeled and hide is on, shows a short message to turn the option off.
+
+---
+
+## Latest Updates (v2.467)
+
+**Date**: 2026-05-02
+
+### **Banking** — **Mercury** **Drag Sort** tab
+
+- **Tab** — **Drag Sort** (after **User Sort**); URL **`?tab=drag_sort`**. **Dev** opens from tab strip; **master_technician** / **assistant** may bookmark or navigate with **`tab=drag_sort`** (same URL normalization as **User Sort** when **`product`** is missing).
+- **UI** — [`BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx): left = **Ledger-style filters** (account, kind, search) + table with **⋮⋮** drag handle; right = **Unlabeled** drop zone, **Accounting Labels** (user + built-in cards), **Add** / **Delete** (custom only); drag onto a card **upserts** assignment, onto **Unlabeled** **deletes** assignment (**`@dnd-kit/core`**).
+- **Data** — Org-wide **`mercury_drag_sort_labels`** and **`mercury_transaction_drag_sort_assignments`** (**`20260502224616_mercury_drag_sort_org_wide_labels.sql`** merges prior per-user data); originally per-user in **`20260502183057_mercury_drag_sort_labels.sql`**.
+
 ---
 
 ## Latest Updates (v2.466)
@@ -2362,7 +2644,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 
 ### **Banking** — **Mercury** — **Sorting** layout and **User Card Link** (auto-assign by **user**)
 
-- **Fixed top-right cluster** (only on **Mercury** → **Sorting**): **Configuration**, **User Card Link**, and **Ledger** nicknames (**Nicknames**) sit in a floating top-right block (`BANKING_SORTING_FLOAT_TOP` / `BANKING_SORTING_FLOAT_Z` in [`Banking.tsx`](src/pages/Banking.tsx)) so they stay accessible while scrolling the transaction list.
+- **Top-right header cluster** (only on **Mercury** → **Sorting**): **Configuration**, **User Card Link**, and **Ledger** nicknames (**Nicknames**) sit in the Banking page header row (aligned end), in normal document flow — they scroll away with the header, not pinned to the viewport ([`Banking.tsx`](src/pages/Banking.tsx)).
 - **Toolbar row**: **Show unsplit only** and **Show unlinked only** stay on the left; the **search** field grows to fill space between the left group and **Refresh from Mercury** and **Reload table** on the right. There is no visible **Search transactions** label — the input uses **`aria-label="Search transactions"`** (same a11y pattern as Tally **Transactions**).
 - **User Card Link** modal: links a Mercury card to a Tally user and optional **Auto-assign to user** — stored as **`mercury_debit_card_user_links.auto_assign_user_id`** (FK to **`public.users`**, same roster as Tally). New and backfilled card transactions fill **`mercury_transaction_attributions.user_id`** when still unattributed. Migration: [`20260424161028_mercury_debit_card_auto_assign_user.sql`](supabase/migrations/20260424161028_mercury_debit_card_auto_assign_user.sql) (replaces removed **`auto_assign_person_id`**). UI: [`BankingUserCardLinkModal.tsx`](src/components/BankingUserCardLinkModal.tsx).
 

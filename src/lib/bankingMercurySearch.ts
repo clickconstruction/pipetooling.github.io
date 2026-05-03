@@ -65,6 +65,45 @@ export function buildMercuryTxSearchHaystack(
   return parts.join(' ').toLowerCase()
 }
 
+/** Job splits + banking person/user attribution (same resolution as Drag Sort person subline). */
+export type BankingMercuryJobPersonSearchEnrichment = {
+  allocationsByTxId: Map<string, ReadonlyArray<{ job_id: string }>>
+  jobLabelById: Record<string, string>
+  personIdByTxId: Map<string, string | null>
+  userIdByTxId: Map<string, string | null>
+  personNameById: Record<string, string>
+  userNameById: Record<string, string>
+}
+
+export function buildMercuryTxSearchHaystackWithJobPerson(
+  row: MercuryTxRow,
+  ctx: BankingMercurySearchNicknames,
+  enrich: BankingMercuryJobPersonSearchEnrichment,
+): string {
+  const base = buildMercuryTxSearchHaystack(row, ctx)
+  const extraParts: string[] = []
+  const allocs = enrich.allocationsByTxId.get(row.id) ?? []
+  for (const a of allocs) {
+    const id = a.job_id
+    const lbl = enrich.jobLabelById[id]?.trim() ?? ''
+    if (lbl !== '') extraParts.push(lbl)
+    extraParts.push(shortUuidPrefix(id))
+  }
+  const uid = enrich.userIdByTxId.get(row.id) ?? null
+  const pid = enrich.personIdByTxId.get(row.id) ?? null
+  if (uid) {
+    const n = enrich.userNameById[uid]?.trim() ?? ''
+    if (n !== '') extraParts.push(n)
+    extraParts.push(shortUuidPrefix(uid))
+  } else if (pid) {
+    const n = enrich.personNameById[pid]?.trim() ?? ''
+    if (n !== '') extraParts.push(n)
+    extraParts.push(shortUuidPrefix(pid))
+  }
+  const extra = extraParts.join(' ').toLowerCase()
+  return extra === '' ? base : `${base} ${extra}`
+}
+
 /** Whitespace tokens; every token must appear as a substring of haystack (AND). Empty query matches. */
 export function mercuryTxMatchesSearchQuery(haystackLower: string, query: string): boolean {
   const q = query.trim().toLowerCase()

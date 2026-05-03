@@ -13,6 +13,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useDocumentVisibility } from '../hooks/useDocumentVisibility'
+import { useMercuryOrgNotesByTxId } from '../hooks/useMercuryOrgNotesByTxId'
 import { useToastContext } from '../contexts/ToastContext'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import type { Database } from '../types/database'
@@ -23,6 +24,18 @@ import { BankingDebitCardNicknamesModal } from '../components/BankingDebitCardNi
 import { BankingDebitCardRecentTxModal } from '../components/BankingDebitCardRecentTxModal'
 import { BankingSortingConfigModal } from '../components/BankingSortingConfigModal'
 import { BankingUserCardLinkModal } from '../components/BankingUserCardLinkModal'
+import { BankingMercuryDragSortTab } from '../components/banking/BankingMercuryDragSortTab'
+import {
+  mercuryTxHasNotePreview,
+  MercuryTxNotesEditorPanel,
+  MercuryTxNotesReadOnlyPreview,
+  mercuryTxNotesPanelDomId,
+  mercuryTxNotesPreviewDomId,
+  mercuryTxNotesSubRowInnerStyle,
+  mercuryTxNotesSubRowTdStyle,
+  mercuryTxNotesToggleDomId,
+} from '../components/banking/MercuryTxNotesDisclosure'
+import { bankingMercuryNotesSubRowColSpans } from '../lib/bankingMercuryNotesSubRowColSpan'
 import { formatMercuryKind } from '../lib/mercuryKindLabels'
 import { formatMercuryDebitCardIdCompact, mercuryDebitCardIdFromRaw } from '../lib/mercuryRawDebitCard'
 import {
@@ -42,19 +55,25 @@ import {
 } from '../components/MercuryTransactionAllocationsModal'
 import type { SearchableSelectOption } from '../components/SearchableSelect'
 import {
-  buildMercuryTxSearchHaystack,
+  buildMercuryTxSearchHaystackWithJobPerson,
   mercuryTxMatchesSearchQuery,
 } from '../lib/bankingMercurySearch'
+import {
+  applyMercuryRawPatch,
+  fetchMercuryTransactionRawById,
+  fetchMercuryTransactionRawsByIds,
+  mercuryRowNeedsRawHydration,
+  MERCURY_TRANSACTIONS_BANKING_LIST_COLUMNS,
+} from '../lib/fetchMercuryTransactionRaws'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
+/** Stable empty list for org-note fetch ids when not on Mercury Banking (avoid spurious refetches). */
+const NO_MERCURY_TX_IDS_FOR_BANKING_NOTES: readonly string[] = []
 const DEBIT_CARD_RECENT_TX_CAP = 50
-/** Fixed cluster below global nav; tune if it overlaps the header strip. */
-const BANKING_SORTING_FLOAT_TOP = '3.75rem'
-const BANKING_SORTING_FLOAT_Z = 50
 type SortKey = 'posted_at' | 'mercury_account_id' | 'mercury_id'
 
 type BankingProduct = 'mercury' | 'stripe'
-type MercuryBankingTab = 'ledger' | 'sorting'
+type MercuryBankingTab = 'ledger' | 'sorting' | 'drag_sort'
 type StripeBankingTab = 'invoices' | 'data'
 
 type BankingView = {
@@ -76,7 +95,9 @@ type BankingPageRole =
 
 function parseBankingView(params: URLSearchParams, role: BankingPageRole): BankingView {
   if (role === 'assistant' || role === 'master_technician') {
-    return { product: 'mercury', mercuryTab: 'sorting', stripeTab: 'invoices' }
+    const tabRaw = params.get('tab')
+    const mercuryTab: MercuryBankingTab = tabRaw === 'drag_sort' ? 'drag_sort' : 'sorting'
+    return { product: 'mercury', mercuryTab, stripeTab: 'invoices' }
   }
   if (role !== 'dev') {
     return { product: 'mercury', mercuryTab: 'ledger', stripeTab: 'invoices' }
@@ -95,6 +116,7 @@ function parseBankingView(params: URLSearchParams, role: BankingPageRole): Banki
 
   let mercuryTab: MercuryBankingTab = 'ledger'
   if (tabRaw === 'sorting') mercuryTab = 'sorting'
+  else if (tabRaw === 'drag_sort') mercuryTab = 'drag_sort'
   else if (tabRaw === 'ledger') mercuryTab = 'ledger'
   else if (tabRaw === 'invoices' || tabRaw === 'data') mercuryTab = 'ledger'
 
@@ -217,6 +239,137 @@ function BankingNicknamesMenu({
               Debit card nicknames
             </button>
           ) : null}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+type BankingLedgerAdvancedMenuProps = {
+  menuOpen: boolean
+  onMenuOpenChange: (open: boolean) => void
+  syncing: boolean
+  loading: boolean
+  onRefreshFromMercury: () => void
+  onReloadTable: () => void
+}
+
+function BankingLedgerAdvancedMenu({
+  menuOpen,
+  onMenuOpenChange,
+  syncing,
+  loading,
+  onRefreshFromMercury,
+  onReloadTable,
+}: BankingLedgerAdvancedMenuProps) {
+  const wrapRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!menuOpen) return
+    function onMouseDown(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        onMenuOpenChange(false)
+      }
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onMenuOpenChange(false)
+    }
+    document.addEventListener('mousedown', onMouseDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', onMouseDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [menuOpen, onMenuOpenChange])
+
+  const menuId = 'banking-ledger-advanced-menu'
+  const itemStyle: CSSProperties = {
+    display: 'block',
+    width: '100%',
+    padding: '0.5rem 0.75rem',
+    textAlign: 'left',
+    border: 'none',
+    borderBottom: '1px solid #e5e7eb',
+    background: 'white',
+    cursor: 'pointer',
+    fontSize: '0.875rem',
+    color: '#111827',
+  }
+
+  return (
+    <div ref={wrapRef} style={{ position: 'relative' }}>
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={menuOpen}
+        aria-controls={menuId}
+        onClick={() => onMenuOpenChange(!menuOpen)}
+        style={{
+          padding: '0.5rem 1rem',
+          borderRadius: 4,
+          border: '1px solid #d1d5db',
+          background: 'white',
+          cursor: 'pointer',
+          fontSize: '0.875rem',
+          fontWeight: 500,
+        }}
+      >
+        Advanced <span aria-hidden>▾</span>
+      </button>
+      {menuOpen ? (
+        <div
+          id={menuId}
+          role="menu"
+          aria-label="Advanced Mercury actions"
+          style={{
+            position: 'absolute',
+            top: '100%',
+            left: 0,
+            marginTop: 4,
+            minWidth: '14rem',
+            background: 'white',
+            border: '1px solid #e5e7eb',
+            borderRadius: 4,
+            boxShadow: '0 4px 6px rgba(0,0,0,0.08)',
+            zIndex: 40,
+            overflow: 'hidden',
+          }}
+        >
+          <button
+            type="button"
+            role="menuitem"
+            disabled={syncing}
+            onClick={() => {
+              onMenuOpenChange(false)
+              onRefreshFromMercury()
+            }}
+            style={{
+              ...itemStyle,
+              background: syncing ? '#f3f4f6' : '#2563eb',
+              color: syncing ? '#9ca3af' : 'white',
+              fontWeight: 600,
+              cursor: syncing ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {syncing ? 'Syncing from Mercury…' : 'Refresh from Mercury'}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            disabled={loading}
+            onClick={() => {
+              onMenuOpenChange(false)
+              onReloadTable()
+            }}
+            style={{
+              ...itemStyle,
+              borderBottom: 'none',
+              cursor: loading ? 'wait' : 'pointer',
+              opacity: loading ? 0.7 : 1,
+            }}
+          >
+            Reload table
+          </button>
         </div>
       ) : null}
     </div>
@@ -469,6 +622,9 @@ type BankingMercuryTableProps = {
   debitAndAccountAfterAmount?: boolean
   /** When true (Sorting tab), merge Note into Counterparty column (second line when note present). */
   counterpartyNoteCombined?: boolean
+  /** Organization team notes for visible rows (from `useMercuryOrgNotesByTxId`). */
+  orgNotesByTxId: Map<string, string>
+  onOrgNoteUpdated: (txId: string, body: string) => void
 }
 
 function BankingMercuryTable({
@@ -491,10 +647,22 @@ function BankingMercuryTable({
   hideKindColumn = false,
   debitAndAccountAfterAmount = false,
   counterpartyNoteCombined = false,
+  orgNotesByTxId,
+  onOrgNoteUpdated,
 }: BankingMercuryTableProps) {
-  const tableColSpan = (hideKindColumn ? 7 : 8) + (showAllocations ? 2 : 0) - (counterpartyNoteCombined ? 1 : 0)
+  const [notesExpandedTxId, setNotesExpandedTxId] = useState<string | null>(null)
+  const tableColSpan =
+    (hideKindColumn ? 7 : 8) + (showAllocations ? 2 : 0) - (counterpartyNoteCombined ? 1 : 0)
+  const notesSubRowSpans = bankingMercuryNotesSubRowColSpans({
+    hideKindColumn,
+    debitAndAccountAfterAmount,
+    showAllocations,
+    counterpartyNoteCombined,
+  })
 
-  function allocationCells(r: MercuryTxRow) {
+  function allocationCells(r: MercuryTxRow, notesContinuationBelow: boolean) {
+    const mainBb = notesContinuationBelow ? 'none' : '1px solid #f3f4f6'
+    const pad = notesContinuationBelow ? '0.5rem 0.75rem 0 0.75rem' : '0.5rem 0.75rem'
     const uid = userIdByTxId.get(r.id) ?? null
     const pid = personIdByTxId.get(r.id) ?? null
     const personLabel =
@@ -502,7 +670,7 @@ function BankingMercuryTable({
 
     return (
       <>
-        <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #f3f4f6', fontSize: '0.8125rem', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <td style={{ padding: pad, borderBottom: mainBb, fontSize: '0.8125rem', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {personLabel ? (
             <span style={{ fontWeight: 500, color: '#0f172a' }} title={personLabel}>
               {personLabel}
@@ -511,7 +679,7 @@ function BankingMercuryTable({
             <span style={bankingAllocMuted}>Unassigned</span>
           )}
         </td>
-        <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #f3f4f6', fontSize: '0.8125rem', verticalAlign: 'middle' }}>
+        <td style={{ padding: pad, borderBottom: mainBb, fontSize: '0.8125rem', verticalAlign: 'middle' }}>
           {(() => {
             const allocs = allocationsByTxId.get(r.id) ?? []
             const hasJobs = allocs.length > 0
@@ -588,6 +756,13 @@ function BankingMercuryTable({
           {displayRows.map((r) => {
             const debitCardId = mercuryDebitCardIdFromRaw(r.raw)
             const expanded = expandedRowId === r.id
+            const orgNoteBody = orgNotesByTxId.get(r.id) ?? ''
+            const editorOpen = notesExpandedTxId === r.id
+            const hasNotePreview = mercuryTxHasNotePreview(r, orgNoteBody)
+            const notesContinuationBelow = (hasNotePreview && !editorOpen) || editorOpen
+            const mainRowBb = notesContinuationBelow ? 'none' : '1px solid #f3f4f6'
+            const padMain = notesContinuationBelow ? '0.5rem 0.75rem 0 0.75rem' : '0.5rem 0.75rem'
+            const padExpand = notesContinuationBelow ? '0.5rem 0.35rem 0 0.35rem' : '0.5rem 0.35rem'
             function toggleExpand() {
               setExpandedRowId((cur) => (cur === r.id ? null : r.id))
             }
@@ -596,12 +771,12 @@ function BankingMercuryTable({
                 <tr
                   onClick={toggleExpand}
                   style={{
-                    borderBottom: '1px solid #f3f4f6',
+                    borderBottom: mainRowBb,
                     cursor: 'pointer',
                   }}
                 >
                   <td
-                    style={{ padding: '0.5rem 0.35rem', borderBottom: '1px solid #f3f4f6', verticalAlign: 'middle' }}
+                    style={{ padding: padExpand, borderBottom: mainRowBb, verticalAlign: 'middle' }}
                     onClick={(e) => e.stopPropagation()}
                   >
                     <button
@@ -629,17 +804,51 @@ function BankingMercuryTable({
                       <span aria-hidden style={{ fontSize: '0.65rem' }}>{expanded ? '▼' : '▶'}</span>
                     </button>
                   </td>
-                  <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #f3f4f6' }}>{formatDate(r.posted_at)}</td>
-                  <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #f3f4f6' }}>{formatCurrency(Number(r.amount))}</td>
+                  <td style={{ padding: padMain, borderBottom: mainRowBb }}>{formatDate(r.posted_at)}</td>
+                  <td
+                    style={{
+                      padding: padMain,
+                      borderBottom: mainRowBb,
+                      verticalAlign: 'top',
+                    }}
+                  >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                      <span>{formatCurrency(Number(r.amount))}</span>
+                      <button
+                        type="button"
+                        id={mercuryTxNotesToggleDomId(r.id)}
+                        aria-expanded={editorOpen}
+                        aria-controls={mercuryTxNotesPanelDomId(r.id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setNotesExpandedTxId((cur) => (cur === r.id ? null : r.id))
+                        }}
+                        style={{
+                          padding: '2px 0',
+                          margin: 0,
+                          fontSize: '0.72rem',
+                          fontWeight: 600,
+                          color: '#94a3b8',
+                          border: 'none',
+                          background: 'transparent',
+                          cursor: 'pointer',
+                          textDecoration: 'underline',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {editorOpen ? 'Hide edit' : 'Edit note'}
+                      </button>
+                    </div>
+                  </td>
                   {hideKindColumn ? null : (
-                    <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #f3f4f6' }}>{formatMercuryKind(r.kind)}</td>
+                    <td style={{ padding: padMain, borderBottom: mainRowBb }}>{formatMercuryKind(r.kind)}</td>
                   )}
                   {debitAndAccountAfterAmount ? (
                     <>
-                      <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #f3f4f6', fontSize: '0.8125rem' }}>
+                      <td style={{ padding: padMain, borderBottom: mainRowBb, fontSize: '0.8125rem' }}>
                         {debitCardId ? nicknameByDebitCard[debitCardId] ?? formatMercuryDebitCardIdCompact(debitCardId) : '—'}
                       </td>
-                      <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #f3f4f6', fontSize: '0.8125rem' }}>
+                      <td style={{ padding: padMain, borderBottom: mainRowBb, fontSize: '0.8125rem' }}>
                         {nicknameByAccount[r.mercury_account_id] ?? shortUuidPrefix(r.mercury_account_id)}
                       </td>
                     </>
@@ -647,8 +856,8 @@ function BankingMercuryTable({
                   {counterpartyNoteCombined ? (
                     <td
                       style={{
-                        padding: '0.5rem 0.75rem',
-                        borderBottom: '1px solid #f3f4f6',
+                        padding: padMain,
+                        borderBottom: mainRowBb,
                         maxWidth: 280,
                         verticalAlign: 'top',
                       }}
@@ -677,26 +886,80 @@ function BankingMercuryTable({
                       </div>
                     </td>
                   ) : (
-                    <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #f3f4f6' }}>{r.counterparty_name ?? '—'}</td>
+                    <td style={{ padding: padMain, borderBottom: mainRowBb }}>{r.counterparty_name ?? '—'}</td>
                   )}
-                  {showAllocations && allocationsAfterCounterparty ? allocationCells(r) : null}
+                  {showAllocations && allocationsAfterCounterparty ? allocationCells(r, notesContinuationBelow) : null}
                   {counterpartyNoteCombined ? null : (
-                    <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #f3f4f6', maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <td style={{ padding: padMain, borderBottom: mainRowBb, maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {r.note ?? '—'}
                     </td>
                   )}
                   {debitAndAccountAfterAmount ? null : (
                     <>
-                      <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #f3f4f6', fontSize: '0.8125rem' }}>
+                      <td style={{ padding: padMain, borderBottom: mainRowBb, fontSize: '0.8125rem' }}>
                         {debitCardId ? nicknameByDebitCard[debitCardId] ?? formatMercuryDebitCardIdCompact(debitCardId) : '—'}
                       </td>
-                      <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #f3f4f6', fontSize: '0.8125rem' }}>
+                      <td style={{ padding: padMain, borderBottom: mainRowBb, fontSize: '0.8125rem' }}>
                         {nicknameByAccount[r.mercury_account_id] ?? shortUuidPrefix(r.mercury_account_id)}
                       </td>
                     </>
                   )}
-                  {showAllocations && !allocationsAfterCounterparty ? allocationCells(r) : null}
+                  {showAllocations && !allocationsAfterCounterparty ? allocationCells(r, notesContinuationBelow) : null}
                 </tr>
+                {hasNotePreview && !editorOpen ? (
+                  <tr>
+                    {notesSubRowSpans.colsBeforeCounterparty > 0 ? (
+                      <td
+                        colSpan={notesSubRowSpans.colsBeforeCounterparty}
+                        aria-hidden
+                        style={mercuryTxNotesSubRowTdStyle}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    ) : null}
+                    <td
+                      colSpan={notesSubRowSpans.colsFromCounterparty}
+                      id={mercuryTxNotesPreviewDomId(r.id)}
+                      role="region"
+                      aria-label="Transaction notes"
+                      style={mercuryTxNotesSubRowTdStyle}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div style={mercuryTxNotesSubRowInnerStyle}>
+                        <MercuryTxNotesReadOnlyPreview row={r} orgBody={orgNoteBody} />
+                      </div>
+                    </td>
+                  </tr>
+                ) : null}
+                {editorOpen ? (
+                  <tr>
+                    {notesSubRowSpans.colsBeforeCounterparty > 0 ? (
+                      <td
+                        colSpan={notesSubRowSpans.colsBeforeCounterparty}
+                        aria-hidden
+                        style={mercuryTxNotesSubRowTdStyle}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    ) : null}
+                    <td
+                      colSpan={notesSubRowSpans.colsFromCounterparty}
+                      id={mercuryTxNotesPanelDomId(r.id)}
+                      role="region"
+                      aria-labelledby={mercuryTxNotesToggleDomId(r.id)}
+                      style={mercuryTxNotesSubRowTdStyle}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div style={mercuryTxNotesSubRowInnerStyle}>
+                        <MercuryTxNotesEditorPanel
+                          row={r}
+                          orgBody={orgNoteBody}
+                          onOrgNoteUpdated={onOrgNoteUpdated}
+                          onSaveSuccess={() => setNotesExpandedTxId(null)}
+                          onCloseRequest={() => setNotesExpandedTxId(null)}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ) : null}
                 {expanded && (
                   <tr>
                     <td colSpan={tableColSpan} style={{ padding: 0, borderBottom: '1px solid #f3f4f6' }} onClick={(e) => e.stopPropagation()}>
@@ -739,6 +1002,7 @@ export default function Banking() {
   const [savingDebitCardNicknameId, setSavingDebitCardNicknameId] = useState<string | null>(null)
   const [debitCardNicknamesModalOpen, setDebitCardNicknamesModalOpen] = useState(false)
   const [nicknamesMenuOpen, setNicknamesMenuOpen] = useState(false)
+  const [ledgerAdvancedMenuOpen, setLedgerAdvancedMenuOpen] = useState(false)
   const [recentTxDebitCardId, setRecentTxDebitCardId] = useState<string | null>(null)
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'posted_at', dir: 'desc' })
   const [sortingConfig, setSortingConfig] = useState<BankingSortingConfigV1>(defaultBankingSortingConfig)
@@ -798,7 +1062,7 @@ export default function Banking() {
           if (product === 'mercury') {
             p.set('product', 'mercury')
             const t = prev.get('tab')
-            if (t === 'sorting' || t === 'ledger') p.set('tab', t)
+            if (t === 'sorting' || t === 'ledger' || t === 'drag_sort') p.set('tab', t)
             else p.set('tab', 'ledger')
           } else {
             p.set('product', 'stripe')
@@ -816,6 +1080,7 @@ export default function Banking() {
 
   useEffect(() => {
     setNicknamesMenuOpen(false)
+    setLedgerAdvancedMenuOpen(false)
   }, [bankingView.product, bankingView.mercuryTab, bankingView.stripeTab])
 
   useEffect(() => {
@@ -856,13 +1121,13 @@ export default function Banking() {
     if (myRole !== 'master_technician' && myRole !== 'assistant') return
     const product = searchParams.get('product')
     const tab = searchParams.get('tab')
-    if (tab === 'sorting' && product !== 'stripe' && (product === null || product === 'mercury')) {
+    if ((tab === 'sorting' || tab === 'drag_sort') && product !== 'stripe' && (product === null || product === 'mercury')) {
       if (product === null) {
         setSearchParams(
           (prev) => {
             const p = new URLSearchParams(prev)
             p.set('product', 'mercury')
-            p.set('tab', 'sorting')
+            p.set('tab', tab === 'drag_sort' ? 'drag_sort' : 'sorting')
             return p
           },
           { replace: true },
@@ -892,7 +1157,7 @@ export default function Banking() {
       const data = await withSupabaseRetry(async () => {
         return supabase
           .from('mercury_transactions')
-          .select('*')
+          .select(MERCURY_TRANSACTIONS_BANKING_LIST_COLUMNS)
           .order('posted_at', { ascending: false, nullsFirst: false })
           .limit(5000)
       }, 'load mercury_transactions')
@@ -942,6 +1207,25 @@ export default function Banking() {
     }
   }, [myRole, showToast])
 
+  const openAllocModalForMercuryRow = useCallback(
+    async (r: MercuryTxRow) => {
+      if (!mercuryRowNeedsRawHydration(r)) {
+        setAllocModalTx(r)
+        return
+      }
+      try {
+        const raw = await fetchMercuryTransactionRawById(r.id, 'banking alloc modal mercury raw')
+        const merged: MercuryTxRow = { ...r, raw: raw ?? null }
+        setRows((prev) => prev.map((x) => (x.id === r.id ? merged : x)))
+        setAllocModalTx(merged)
+      } catch (e) {
+        showToast(e instanceof Error ? e.message : 'Could not load transaction details', 'error')
+        setAllocModalTx(r)
+      }
+    },
+    [showToast],
+  )
+
   useEffect(() => {
     if (myRole !== 'dev' && myRole !== 'assistant' && myRole !== 'master_technician') return
     void Promise.all([loadRows(), loadNicknames(), loadDebitCardNicknames()])
@@ -977,6 +1261,73 @@ export default function Banking() {
       void supabase.removeChannel(channel)
     }
   }, [canAccessBanking, user?.id, loadRows, isDocVisible])
+
+  useEffect(() => {
+    if (!canAccessBanking) return
+    if (bankingView.product !== 'mercury' || bankingView.mercuryTab !== 'drag_sort') return
+    if (rows.length === 0) return
+    const needs = rows.filter((r) => mercuryRowNeedsRawHydration(r)).map((r) => r.id)
+    if (needs.length === 0) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const patch = await fetchMercuryTransactionRawsByIds(needs, 'banking drag_sort hydrate mercury raw')
+        if (cancelled) return
+        setRows((prev) => applyMercuryRawPatch(prev, patch))
+      } catch (e) {
+        if (!cancelled) {
+          showToast(e instanceof Error ? e.message : 'Could not load card details for Drag Sort', 'error')
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [bankingView.product, bankingView.mercuryTab, rows, canAccessBanking, showToast])
+
+  useEffect(() => {
+    if (recentTxDebitCardId === null || rows.length === 0) return
+    const needs = rows.filter((r) => mercuryRowNeedsRawHydration(r)).map((r) => r.id)
+    if (needs.length === 0) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const patch = await fetchMercuryTransactionRawsByIds(needs, 'banking debit card recent tx hydrate raw')
+        if (cancelled) return
+        setRows((prev) => applyMercuryRawPatch(prev, patch))
+      } catch (e) {
+        if (!cancelled) {
+          showToast(e instanceof Error ? e.message : 'Could not load transactions for this card', 'error')
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [recentTxDebitCardId, rows, showToast])
+
+  useEffect(() => {
+    if (!expandedRowId || rows.length === 0) return
+    const row = rows.find((r) => r.id === expandedRowId)
+    if (!row || !mercuryRowNeedsRawHydration(row)) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const raw = await fetchMercuryTransactionRawById(expandedRowId, 'banking expanded row mercury raw')
+        if (cancelled) return
+        setRows((prev) =>
+          prev.map((r) => (r.id === expandedRowId ? { ...r, raw: raw ?? null } : r)),
+        )
+      } catch (e) {
+        if (!cancelled) {
+          showToast(e instanceof Error ? e.message : 'Could not load raw transaction details', 'error')
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [expandedRowId, rows, showToast])
 
   const loadMercuryAllocations = useCallback(async () => {
     if (!canAccessBanking || rows.length === 0) {
@@ -1121,18 +1472,45 @@ export default function Banking() {
     [nicknameByAccount, nicknameByDebitCard],
   )
 
+  const bankingMercurySearchJobPersonEnrich = useMemo(
+    () => ({
+      allocationsByTxId,
+      jobLabelById: jobLabelByIdBanking,
+      personIdByTxId,
+      userIdByTxId,
+      personNameById,
+      userNameById,
+    }),
+    [
+      allocationsByTxId,
+      jobLabelByIdBanking,
+      personIdByTxId,
+      userIdByTxId,
+      personNameById,
+      userNameById,
+    ],
+  )
+
   const filteredSorted = useMemo(() => {
     const list = rows.filter((r) => {
       if (accountFilter && r.mercury_account_id !== accountFilter) return false
       if (kindFilter && r.kind !== kindFilter) return false
       if (searchQueryNorm !== '') {
-        const haystack = buildMercuryTxSearchHaystack(r, nicknameCtx)
+        const haystack = buildMercuryTxSearchHaystackWithJobPerson(r, nicknameCtx, bankingMercurySearchJobPersonEnrich)
         if (!mercuryTxMatchesSearchQuery(haystack, searchQueryNorm)) return false
       }
       return true
     })
     return sortMercuryRowsStable(list, sort)
-  }, [rows, accountFilter, kindFilter, sort, searchQueryNorm, nicknameCtx])
+  }, [
+    rows,
+    accountFilter,
+    kindFilter,
+    sort,
+    searchQueryNorm,
+    nicknameCtx,
+    bankingMercurySearchJobPersonEnrich,
+  ])
 
   const nicknameManageIds = useMemo(() => {
     const ids = new Set<string>([...accountOptions, ...Object.keys(nicknameByAccount)])
@@ -1164,14 +1542,30 @@ export default function Banking() {
   const sortingAfterSearch = useMemo(() => {
     if (searchQueryNorm === '') return sortingFiltered
     return sortingFiltered.filter((r) => {
-      const haystack = buildMercuryTxSearchHaystack(r, nicknameCtx)
+      const haystack = buildMercuryTxSearchHaystackWithJobPerson(r, nicknameCtx, bankingMercurySearchJobPersonEnrich)
       return mercuryTxMatchesSearchQuery(haystack, searchQueryNorm)
     })
-  }, [sortingFiltered, searchQueryNorm, nicknameCtx])
+  }, [sortingFiltered, searchQueryNorm, nicknameCtx, bankingMercurySearchJobPersonEnrich])
 
   const sortingFilteredSorted = useMemo(
     () => sortMercuryRowsStable(sortingAfterSearch, sortingSort),
     [sortingAfterSearch, sortingSort],
+  )
+
+  const bankingOrgNoteFetchIds = useMemo(() => {
+    if (bankingView.product !== 'mercury') return NO_MERCURY_TX_IDS_FOR_BANKING_NOTES
+    if (bankingView.mercuryTab === 'sorting') return sortingFilteredSorted.map((r) => r.id)
+    if (bankingView.mercuryTab === 'ledger' || bankingView.mercuryTab === 'drag_sort') return filteredSorted.map((r) => r.id)
+    return NO_MERCURY_TX_IDS_FOR_BANKING_NOTES
+  }, [bankingView.product, bankingView.mercuryTab, filteredSorted, sortingFilteredSorted])
+
+  const { orgNotesByTxId, updateOrgNoteLocal } = useMercuryOrgNotesByTxId(bankingOrgNoteFetchIds)
+
+  const onOrgNoteUpdated = useCallback(
+    (txId: string, body: string) => {
+      updateOrgNoteLocal(txId, body)
+    },
+    [updateOrgNoteLocal],
   )
 
   const totalAmount = useMemo(() => filteredSorted.reduce((s, r) => s + Number(r.amount), 0), [filteredSorted])
@@ -1431,7 +1825,17 @@ export default function Banking() {
                       onClick={() => setMercurySubTab('sorting')}
                       style={pageUnderlineTabStyle(bankingView.mercuryTab === 'sorting')}
                     >
-                      Sorting
+                      User Sort
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={bankingView.mercuryTab === 'drag_sort'}
+                      id="banking-tab-drag-sort"
+                      onClick={() => setMercurySubTab('drag_sort')}
+                      style={pageUnderlineTabStyle(bankingView.mercuryTab === 'drag_sort')}
+                    >
+                      Drag Sort
                     </button>
                   </>
                 ) : (
@@ -1461,20 +1865,12 @@ export default function Banking() {
               </div>
             </div>
           </div>
-        </div>
-      </div>
-
-      {bankingView.product === 'mercury' && bankingView.mercuryTab === 'sorting' && (
-        <div role="tabpanel" id="banking-panel-mercury-sorting" aria-labelledby="banking-tab-sorting">
-          {(isDevBanking || canAccessBanking) && (
+          {bankingView.product === 'mercury' && bankingView.mercuryTab === 'sorting' && (isDevBanking || canAccessBanking) ? (
             <div
               role="region"
-              aria-label="Banking Sorting tools"
+              aria-label="Banking User Sort tools"
               style={{
-                position: 'fixed',
-                top: `max(${BANKING_SORTING_FLOAT_TOP}, env(safe-area-inset-top, 0px))`,
-                right: 'max(1rem, env(safe-area-inset-right, 0px))',
-                zIndex: BANKING_SORTING_FLOAT_Z,
+                alignSelf: 'flex-end',
                 display: 'flex',
                 flexWrap: 'wrap',
                 alignItems: 'center',
@@ -1537,7 +1933,12 @@ export default function Banking() {
                 </>
               ) : null}
             </div>
-          )}
+          ) : null}
+        </div>
+      </div>
+
+      {bankingView.product === 'mercury' && bankingView.mercuryTab === 'sorting' && (
+        <div role="tabpanel" id="banking-panel-mercury-sorting" aria-labelledby="banking-tab-sorting">
           {!isDevBanking ? (
             <p
               style={{
@@ -1575,7 +1976,7 @@ export default function Banking() {
                   value={bankingSearchText}
                   onChange={(e) => setBankingSearchText(e.target.value)}
                   autoComplete="off"
-                  placeholder="Counterparty, id, memo…"
+                  placeholder="Counterparty, memo, id, job, person…"
                   aria-label="Search transactions"
                   style={{ width: '100%', minWidth: 0, padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
                 />
@@ -1690,15 +2091,47 @@ export default function Banking() {
               userIdByTxId={userIdByTxId}
               personNameById={personNameById}
               userNameById={userNameById}
-              onEditAllocations={(r) => setAllocModalTx(r)}
+              onEditAllocations={(r) => void openAllocModalForMercuryRow(r)}
               allocationsAfterCounterparty
               hideKindColumn
               debitAndAccountAfterAmount
               counterpartyNoteCombined
+              orgNotesByTxId={orgNotesByTxId}
+              onOrgNoteUpdated={onOrgNoteUpdated}
             />
           )}
         </div>
       )}
+
+      {bankingView.product === 'mercury' && bankingView.mercuryTab === 'drag_sort' && canAccessBanking && user?.id ? (
+        <div role="tabpanel" id="banking-panel-mercury-drag-sort" aria-labelledby="banking-tab-drag-sort">
+          <BankingMercuryDragSortTab
+            userId={user.id}
+            filteredTransactions={filteredSorted}
+            loading={loading}
+            accountFilter={accountFilter}
+            setAccountFilter={setAccountFilter}
+            kindFilter={kindFilter}
+            setKindFilter={setKindFilter}
+            bankingSearchText={bankingSearchText}
+            setBankingSearchText={setBankingSearchText}
+            accountOptions={accountOptions}
+            kindOptions={kindOptions}
+            nicknameByAccount={nicknameByAccount}
+            nicknameByDebitCard={nicknameByDebitCard}
+            loadError={error}
+            allocationsByTxId={allocationsByTxId}
+            personIdByTxId={personIdByTxId}
+            userIdByTxId={userIdByTxId}
+            personNameById={personNameById}
+            userNameById={userNameById}
+            jobLabelById={jobLabelByIdBanking}
+            onEditAllocations={(r) => void openAllocModalForMercuryRow(r)}
+            orgNotesByTxId={orgNotesByTxId}
+            onOrgNoteUpdated={onOrgNoteUpdated}
+          />
+        </div>
+      ) : null}
 
       {bankingView.product === 'mercury' && bankingView.mercuryTab === 'ledger' && isDevBanking && (
         <div role="tabpanel" id="banking-panel-mercury-ledger" aria-labelledby="banking-tab-ledger">
@@ -1712,39 +2145,17 @@ export default function Banking() {
               marginBottom: '1.5rem',
             }}
           >
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '1rem' }}>
-              <button
-                type="button"
-                onClick={() => void handleSync()}
-                disabled={syncing}
-                style={{
-                  padding: '0.5rem 1rem',
-                  borderRadius: 4,
-                  border: '1px solid #1d4ed8',
-                  background: '#2563eb',
-                  color: 'white',
-                  cursor: syncing ? 'wait' : 'pointer',
-                }}
-              >
-                {syncing ? 'Syncing from Mercury…' : 'Refresh from Mercury'}
-              </button>
-              <button
-                type="button"
-                onClick={() => void Promise.all([loadRows(), loadNicknames(), loadDebitCardNicknames()])}
-                disabled={loading}
-                style={{
-                  padding: '0.5rem 1rem',
-                  borderRadius: 4,
-                  border: '1px solid #d1d5db',
-                  background: 'white',
-                  cursor: loading ? 'wait' : 'pointer',
-                }}
-              >
-                Reload table
-              </button>
-            </div>
-            {canAccessBanking ? (
-              <div style={{ marginLeft: 'auto', flexShrink: 0 }}>
+            <div
+              style={{
+                marginLeft: 'auto',
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                gap: '1rem',
+                flexShrink: 0,
+              }}
+            >
+              {canAccessBanking ? (
                 <BankingNicknamesMenu
                   menuOpen={nicknamesMenuOpen}
                   onMenuOpenChange={setNicknamesMenuOpen}
@@ -1753,8 +2164,16 @@ export default function Banking() {
                   onOpenAccount={() => setNicknamesModalOpen(true)}
                   onOpenDebit={() => setDebitCardNicknamesModalOpen(true)}
                 />
-              </div>
-            ) : null}
+              ) : null}
+              <BankingLedgerAdvancedMenu
+                menuOpen={ledgerAdvancedMenuOpen}
+                onMenuOpenChange={setLedgerAdvancedMenuOpen}
+                syncing={syncing}
+                loading={loading}
+                onRefreshFromMercury={() => void handleSync()}
+                onReloadTable={() => void Promise.all([loadRows(), loadNicknames(), loadDebitCardNicknames()])}
+              />
+            </div>
           </div>
 
           {error && (
@@ -1772,33 +2191,51 @@ export default function Banking() {
             </div>
           )}
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem', alignItems: 'center' }}>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Account ID</span>
-              <select
-                value={accountFilter}
-                onChange={(e) => setAccountFilter(e.target.value)}
-                style={{ minWidth: 280, padding: '6px 8px' }}
-              >
-                <option value="">All accounts</option>
-                {accountOptions.map((id) => (
-                  <option key={id} value={id}>
-                    {nicknameByAccount[id] ? `${nicknameByAccount[id]} (${shortUuidPrefix(id)})` : id}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Kind</span>
-              <select value={kindFilter} onChange={(e) => setKindFilter(e.target.value)} style={{ minWidth: 200, padding: '6px 8px' }}>
-                <option value="">All kinds</option>
-                {kindOptions.map((k) => (
-                  <option key={k} value={k}>
-                    {formatMercuryKind(k)}
-                  </option>
-                ))}
-              </select>
-            </label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.65rem', marginBottom: '1rem', alignItems: 'center' }}>
+            <select
+              value={accountFilter}
+              onChange={(e) => setAccountFilter(e.target.value)}
+              aria-label="Filter by account ID"
+              style={{
+                minWidth: 144,
+                maxWidth: 220,
+                padding: '3px 6px',
+                fontSize: '0.8125rem',
+                color: '#64748b',
+                backgroundColor: '#f9fafb',
+                border: '1px solid #e5e7eb',
+                borderRadius: 4,
+              }}
+            >
+              <option value="">Filter by Account ID</option>
+              {accountOptions.map((id) => (
+                <option key={id} value={id}>
+                  {nicknameByAccount[id] ? `${nicknameByAccount[id]} (${shortUuidPrefix(id)})` : id}
+                </option>
+              ))}
+            </select>
+            <select
+              value={kindFilter}
+              onChange={(e) => setKindFilter(e.target.value)}
+              aria-label="Filter by kind"
+              style={{
+                minWidth: 108,
+                maxWidth: 168,
+                padding: '3px 6px',
+                fontSize: '0.8125rem',
+                color: '#64748b',
+                backgroundColor: '#f9fafb',
+                border: '1px solid #e5e7eb',
+                borderRadius: 4,
+              }}
+            >
+              <option value="">Filter by kind</option>
+              {kindOptions.map((k) => (
+                <option key={k} value={k}>
+                  {formatMercuryKind(k)}
+                </option>
+              ))}
+            </select>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Search transactions</span>
               <input
@@ -1806,7 +2243,7 @@ export default function Banking() {
                 value={bankingSearchText}
                 onChange={(e) => setBankingSearchText(e.target.value)}
                 autoComplete="off"
-                placeholder="Counterparty, id, memo…"
+                placeholder="Counterparty, memo, id, job, person…"
                 aria-label="Search transactions"
                 style={{ minWidth: 280, padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 4 }}
               />
@@ -1838,7 +2275,9 @@ export default function Banking() {
               userIdByTxId={userIdByTxId}
               personNameById={personNameById}
               userNameById={userNameById}
-              onEditAllocations={(r) => setAllocModalTx(r)}
+              onEditAllocations={(r) => void openAllocModalForMercuryRow(r)}
+              orgNotesByTxId={orgNotesByTxId}
+              onOrgNoteUpdated={onOrgNoteUpdated}
             />
           )}
         </div>

@@ -94,6 +94,46 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### May 2, 2026
 
+**`20260502232908_mercury_transaction_org_notes.sql`**
+- **Purpose**: Banking **Notes** panel — **organization-wide** scratch note per **`mercury_transactions`** row (**`mercury_transaction_org_notes`**, PK **`mercury_transaction_id`**, **`body`** ≤ **2000**, **`updated_by`**). **RLS** **SELECT** for **`dev`**, **`master_technician`**, **`assistant`**; **INSERT/UPDATE/DELETE** policies defined but **revoked** from **`authenticated`** on the table (writes via **`upsert_mercury_org_transaction_note`** **`SECURITY DEFINER`**, same role gate; empty body deletes).
+- **Impact**: [`MercuryTxNotesDisclosure.tsx`](src/components/banking/MercuryTxNotesDisclosure.tsx) (**Team note**); [`Banking.tsx`](src/pages/Banking.tsx); [`BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx); [`useMercuryOrgNotesByTxId.ts`](src/hooks/useMercuryOrgNotesByTxId.ts); **`npm run gen-types:linked`** after **`db push`**. **UI** (`RECENT_FEATURES.md` → **v2.475**–**v2.479**): **Edit note** under **Amount**; default **read-only preview** (**v2.476**–**v2.477**); editor polish (**v2.478**); **notes-band grouping** + tight spacing + optional **Drag Sort** **bank \| note** preview (**v2.479**); no **Notes** column (**v2.475**).
+- **Category**: Banking / Mercury / RLS / RPC
+
+**`20260502224616_mercury_drag_sort_org_wide_labels.sql`**
+- **Purpose**: Banking **Drag Sort** — **org-wide** labels and assignments: merge duplicate **`mercury_drag_sort_labels`** (by **`default_key`** for built-ins, by **`lower(trim(name))`** for custom) and duplicate **`mercury_transaction_drag_sort_assignments`** (latest **`assigned_at`** wins per transaction); drop **`user_id`** from labels and assignments; PK **`mercury_transaction_id`** only on assignments; partial **UNIQUE** **`(default_key)`** on labels; RLS for banking staff **without** per-row **`auth.uid()`** ownership; update built-in guard trigger (no **`user_id`**).
+- **Impact**: [`BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx), [`dragSortDefaultLabels.ts`](src/lib/dragSortDefaultLabels.ts), [`src/types/database.ts`](src/types/database.ts); **`ACCESS_CONTROL.md`**, **`GLOSSARY.md`**, **`PROJECT_DOCUMENTATION.md`**, **`AI_CONTEXT.md`**. Drops index **`20260502205309_mercury_drag_sort_assignments_user_tx_idx`** (obsolete).
+- **Category**: Banking / Mercury / RLS
+
+**`20260502225320_mercury_drag_sort_default_key_unique_not_partial.sql`**
+- **Purpose**: Replace **partial** **`UNIQUE (default_key) WHERE default_key IS NOT NULL`** on **`mercury_drag_sort_labels`** with a **full** unique index on **`default_key`**. PostgREST **upsert** emits **`ON CONFLICT (default_key)`** without the partial predicate, so Postgres could not use **`20260502224616`**’s index — client **`ensureDragSortDefaultLabels`** failed and **`BankingMercuryDragSortTab`** cleared the list. Non-null duplicates still forbidden; multiple **`NULL`** **`default_key`** (custom labels) remain valid. Idempotent **INSERT** of built-in rows **`ON CONFLICT (default_key) DO NOTHING`** for orgs that ended up empty.
+- **Impact**: [`dragSortDefaultLabels.ts`](src/lib/dragSortDefaultLabels.ts) (still **`onConflict: 'default_key'`**); [`BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx). **`src/types/database.ts`** usually unchanged.
+- **Category**: Banking / Mercury (index + seed)
+
+**`20260502202929_rename_drag_sort_rent_lease_builtin_names.sql`**
+- **Purpose**: Banking **Drag Sort** — rename two built-in **`default_key`** rows that shared **"Rent or Lease"**: **`rent_lease_20a`** → **Equipment Lease**, **`rent_lease_20b`** → **Property Lease**. Temporarily disables **`mercury_drag_sort_labels_guard_system_fields_trg`** for the **UPDATE** only.
+- **Impact**: [`dragSortDefaultLabels.ts`](src/lib/dragSortDefaultLabels.ts) (seed catalog match); **`RECENT_FEATURES.md`** **v2.473**
+- **Category**: Banking / Mercury (data)
+
+**`20260502205309_mercury_drag_sort_assignments_user_tx_idx.sql`**
+- **Purpose**: Index **`mercury_transaction_drag_sort_assignments (user_id, mercury_transaction_id)`** for faster per-user assignment scans (Drag Sort single-query load).
+- **Impact**: Performance only; no **`database.ts`** change required.
+- **Category**: Banking / Mercury (index)
+
+**`20260502193138_mercury_drag_sort_label_system_defaults.sql`**
+- **Purpose**: Banking **Drag Sort** — **`is_system_default`** + **`default_key`** on **`mercury_drag_sort_labels`**; **UNIQUE** **`(user_id, default_key)`** for idempotent built-in labels; **trigger** blocks edits to name / line / description on built-ins. App seeds **Schedule C–style** defaults per user via [`dragSortDefaultLabels.ts`](src/lib/dragSortDefaultLabels.ts).
+- **Impact**: [`BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx); **`npm run gen-types:linked`** after **`db push`**
+- **Category**: Banking / Mercury
+
+**`20260502191955_mercury_drag_sort_labels_schedule_c.sql`**
+- **Purpose**: Banking **Drag Sort** — add **`schedule_c_line`** (optional short text, max **32**) and **`description`** (optional, max **2000**) on **`mercury_drag_sort_labels`**. **RLS** unchanged.
+- **Impact**: [`BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx); **`npm run gen-types:linked`** after **`db push`**
+- **Category**: Banking / Mercury
+
+**`20260502183057_mercury_drag_sort_labels.sql`**
+- **Purpose**: Banking **Mercury** **Drag Sort** tab — **`mercury_drag_sort_labels`** (per-user label names + **`sort_order`**) and **`mercury_transaction_drag_sort_assignments`** (composite PK **`(mercury_transaction_id, user_id)`**, FK to label; **ON DELETE CASCADE** from **`mercury_transactions`** and labels). **RLS**: **SELECT/INSERT/UPDATE/DELETE** for **`authenticated`** when **`user_id = auth.uid()`** and **`users.role`** ∈ **`dev`**, **`master_technician`**, **`assistant`** (same gate as other Banking staff mutations).
+- **Impact**: [`BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx); [`Banking.tsx`](src/pages/Banking.tsx) **`?tab=drag_sort`**; **`RECENT_FEATURES.md`** **v2.467**; **`PROJECT_DOCUMENTATION.md`** §15; **`ACCESS_CONTROL.md`** Banking row; **`npm run gen-types:linked`** after **`db push`**
+- **Category**: Banking / Mercury / RLS
+
 **`20260502070926_contract_tables_assistant_no_delete.sql`**
 - **Purpose**: **People → Contracts** — plain **`assistant`** must not **DELETE** from **`contract_templates`**, **`contract_template_documents`**, **`person_contract_assignments`**, or **`person_contract_documents`**. Replaces legacy **`FOR ALL`** policies (**`20260322140000_contracts_rls_all_masters.sql`**) with separate **SELECT** / **INSERT** / **UPDATE** / **DELETE** policies: **DELETE** uses the same role bundle **without** **`is_assistant()`** (**`is_dev()`**, **`is_pay_approved_master()`**, **`is_master_or_dev()`**, **`is_assistant_of_pay_approved_master()`** only).
 - **Impact**: **[`RECENT_FEATURES.md`](RECENT_FEATURES.md)** **v2.464**; client **`canDeletePeopleContracts`** + **`ContractBookModal`** **`canDeleteLibraryEntries`**; **`ACCESS_CONTROL.md`** / **`PROJECT_DOCUMENTATION.md`**. Regenerate **`src/types/database.ts`** only if introspection policies matter for your workflow (usually unchanged).

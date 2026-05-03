@@ -4383,6 +4383,39 @@ export type Database = {
           },
         ]
       }
+      mercury_drag_sort_labels: {
+        Row: {
+          created_at: string
+          default_key: string | null
+          description: string | null
+          id: string
+          is_system_default: boolean
+          name: string
+          schedule_c_line: string | null
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          default_key?: string | null
+          description?: string | null
+          id?: string
+          is_system_default?: boolean
+          name: string
+          schedule_c_line?: string | null
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          default_key?: string | null
+          description?: string | null
+          id?: string
+          is_system_default?: boolean
+          name?: string
+          schedule_c_line?: string | null
+          sort_order?: number
+        }
+        Relationships: []
+      }
       mercury_tally_transaction_notes: {
         Row: {
           body: string
@@ -4484,6 +4517,39 @@ export type Database = {
           },
         ]
       }
+      mercury_transaction_drag_sort_assignments: {
+        Row: {
+          assigned_at: string
+          label_id: string
+          mercury_transaction_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          label_id: string
+          mercury_transaction_id: string
+        }
+        Update: {
+          assigned_at?: string
+          label_id?: string
+          mercury_transaction_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mercury_transaction_drag_sort_assig_mercury_transaction_id_fkey"
+            columns: ["mercury_transaction_id"]
+            isOneToOne: true
+            referencedRelation: "mercury_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mercury_transaction_drag_sort_assignments_label_id_fkey"
+            columns: ["label_id"]
+            isOneToOne: false
+            referencedRelation: "mercury_drag_sort_labels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mercury_transaction_job_allocations: {
         Row: {
           amount: number
@@ -4524,6 +4590,35 @@ export type Database = {
             foreignKeyName: "mercury_transaction_job_allocations_mercury_transaction_id_fkey"
             columns: ["mercury_transaction_id"]
             isOneToOne: false
+            referencedRelation: "mercury_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mercury_transaction_org_notes: {
+        Row: {
+          body: string
+          mercury_transaction_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          body?: string
+          mercury_transaction_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          body?: string
+          mercury_transaction_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mercury_transaction_org_notes_mercury_transaction_id_fkey"
+            columns: ["mercury_transaction_id"]
+            isOneToOne: true
             referencedRelation: "mercury_transactions"
             referencedColumns: ["id"]
           },
@@ -10152,6 +10247,10 @@ export type Database = {
       }
       update_step_private_notes: {
         Args: { p_private_notes: string; p_step_id: string }
+        Returns: undefined
+      }
+      upsert_mercury_org_transaction_note: {
+        Args: { p_body: string; p_mercury_transaction_id: string }
         Returns: undefined
       }
       upsert_mercury_tally_transaction_note: {

@@ -620,7 +620,7 @@ export function BankingSortingSnapshotSection() {
                 fontWeight: 500,
               }}
             >
-              Open Banking sorting
+              Open Banking User Sort
             </Link>
           </div>
         </>
