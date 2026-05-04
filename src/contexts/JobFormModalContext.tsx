@@ -17,6 +17,8 @@ export type OpenNewJobOptions = {
   /** Fires after insert succeeds, before the form closes (use for routing / follow-up by job id). */
   onCreatedJobId?: (jobId: string) => void
   projectId?: string | null
+  /** After New Job init, run the same prefill as Import → bid (links bid, customer, name, address, links). */
+  prefillBidId?: string | null
 }
 
 type JobFormModalContextValue = {
@@ -40,6 +42,7 @@ type InternalOpenState =
   | {
       kind: 'new'
       projectId: string | null
+      prefillBidId: string | null
       onSaved: (() => void) | null
       onCreatedJobId: ((jobId: string) => void) | null
     }
@@ -73,6 +76,7 @@ export function JobFormModalProvider({ children }: { children: React.ReactNode }
     setOpenState({
       kind: 'new',
       projectId: options?.projectId ?? null,
+      prefillBidId: options?.prefillBidId?.trim() ? options.prefillBidId.trim() : null,
       onSaved: options?.onSaved ?? null,
       onCreatedJobId: options?.onCreatedJobId ?? null,
     })
@@ -111,6 +115,7 @@ export function JobFormModalProvider({ children }: { children: React.ReactNode }
           editJobId={null}
           initialJob={null}
           newJobProjectId={openState.projectId}
+          newJobPrefillBidId={openState.prefillBidId}
           billingCustomerHighlightInitial={false}
           fixturesSectionHighlightInitial={false}
           alsoOpenCreateCustomerModal={false}

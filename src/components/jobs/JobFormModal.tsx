@@ -560,6 +560,8 @@ export type JobFormModalProps = {
   editJobId: string | null
   initialJob: JobWithDetails | null
   newJobProjectId?: string | null
+  /** When set on a new job, prefill runs after init (same as Import → bid). */
+  newJobPrefillBidId?: string | null
   billingCustomerHighlightInitial: boolean
   fixturesSectionHighlightInitial: boolean
   alsoOpenCreateCustomerModal: boolean
@@ -574,6 +576,7 @@ export default function JobFormModal({
   editJobId,
   initialJob,
   newJobProjectId = null,
+  newJobPrefillBidId = null,
   billingCustomerHighlightInitial,
   fixturesSectionHighlightInitial,
   alsoOpenCreateCustomerModal,
@@ -685,6 +688,8 @@ export default function JobFormModal({
   const [jobImportSourceOpen, setJobImportSourceOpen] = useState(false)
   /** Auto-picked trade on new-job load; changing away from this counts as “content” for hiding Import. */
   const initialNewJobServiceTypeIdRef = useRef('')
+  /** Avoid duplicate applyPrefillFromBid before bidId state updates (e.g. Strict Mode). */
+  const newJobPrefillBidAppliedRef = useRef<string | null>(null)
   const [customers, setCustomers] = useState<CustomerRow[]>([])
   const [users, setUsers] = useState<UserRow[]>([])
   const [customerSearch, setCustomerSearch] = useState('')
@@ -1451,6 +1456,16 @@ export default function JobFormModal({
       cancelled = true
     }
   }, [authUser?.id])
+
+  useEffect(() => {
+    if (!initDone || mode !== 'new') return
+    const pid = (newJobPrefillBidId ?? '').trim()
+    if (!pid) return
+    if (bidId === pid) return
+    if (newJobPrefillBidAppliedRef.current === pid) return
+    newJobPrefillBidAppliedRef.current = pid
+    void applyPrefillFromBid(pid)
+  }, [initDone, mode, newJobPrefillBidId, applyPrefillFromBid, bidId])
 
   useEffect(() => {
     if (!bidId) return

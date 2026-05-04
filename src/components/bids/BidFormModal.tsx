@@ -11,6 +11,7 @@ import {
   wholeCalendarDaysSinceSentDate,
 } from '../../lib/bidDateSentDisplay'
 import { getBidServiceTypeTag } from '../../utils/unifiedJobBidSearch'
+import { useJobFormModal } from '../../contexts/JobFormModalContext'
 
 type Bid = Database['public']['Tables']['bids']['Row']
 type Customer = Database['public']['Tables']['customers']['Row']
@@ -128,6 +129,7 @@ function serviceTypePillStyle(st: { name: string; color: string | null }): CSSPr
 }
 
 export function BidFormModal(props: BidFormModalProps) {
+  const jobFormModal = useJobFormModal()
   const [serviceTypeSwitchOpen, setServiceTypeSwitchOpen] = useState(false)
   const [duplicatingToServiceTypeId, setDuplicatingToServiceTypeId] = useState<string | null>(null)
 
@@ -946,7 +948,7 @@ export function BidFormModal(props: BidFormModalProps) {
               >
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.75rem' }}>
                   <h2 id="bid-service-type-switch-title" style={{ margin: 0, fontSize: '1.05rem' }}>
-                    Other trades for this job
+                    Copy Bid
                   </h2>
                   <button
                     type="button"
@@ -1064,6 +1066,45 @@ export function BidFormModal(props: BidFormModalProps) {
                     })}
                   </ul>
                 )}
+                <div
+                  style={{
+                    marginTop: '1.25rem',
+                    paddingTop: '1.25rem',
+                    borderTop: '1px solid #e5e7eb',
+                  }}
+                >
+                  <h3 style={{ margin: '0 0 0.35rem 0', fontSize: '0.9375rem', fontWeight: 600 }}>Job</h3>
+                  <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.8125rem', color: '#6b7280', lineHeight: 1.45 }}>
+                    Create a new job from this bid with customer and links filled in, and the bid linked on the job.
+                  </p>
+                  {!editingBid ? (
+                    <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.8125rem', color: '#b45309' }}>
+                      Save the bid first to enable <strong>Open Job</strong>.
+                    </p>
+                  ) : null}
+                  <button
+                    type="button"
+                    disabled={!editingBid || !jobFormModal}
+                    title={!editingBid ? 'Save this bid first' : !jobFormModal ? 'Job form unavailable' : undefined}
+                    onClick={() => {
+                      if (!jobFormModal || !editingBid) return
+                      setServiceTypeSwitchOpen(false)
+                      jobFormModal.openNewJob({ prefillBidId: editingBid.id })
+                    }}
+                    style={{
+                      padding: '0.5rem 0.85rem',
+                      fontSize: '0.875rem',
+                      fontWeight: 500,
+                      background: !editingBid || !jobFormModal ? '#e5e7eb' : '#3b82f6',
+                      color: !editingBid || !jobFormModal ? '#6b7280' : 'white',
+                      border: 'none',
+                      borderRadius: 6,
+                      cursor: !editingBid || !jobFormModal ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    Open Job
+                  </button>
+                </div>
               </div>
             </div>
           ) : null}
