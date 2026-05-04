@@ -92,11 +92,23 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### May 2026
 
+#### May 4, 2026
+
+**`20260504040116_bulk_accounting_label_suggestions_rpcs.sql`**
+- **Purpose**: Banking **Mercury** **Accounting** — **`bulk_approve_accounting_label_suggestions(p_items jsonb)`** (atomic upsert **`mercury_transaction_drag_sort_assignments`** + approve rows in **`mercury_accounting_label_suggestions`**, max **500** per call, banking-staff guard); **`bulk_insert_accounting_label_suggestions(p_rows jsonb)`** (bulk **`pending`** inserts with **`ON CONFLICT … WHERE (status = 'pending') DO NOTHING`**, max **2000** per call). **`SECURITY DEFINER`**, **`SET search_path = public`**, **`GRANT EXECUTE`** **`authenticated`** + **`service_role`**.
+- **Impact**: [`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx) **Apply rules** / **Approve all** use RPCs + **`withSupabaseRetry`**; chunking on client when over cap. **`src/types/database.ts`** RPC typings after apply (**`npm run gen-types:linked`** preferred).
+- **Category**: Banking / Mercury / RPC
+
+**`20260504011219_mercury_accounting_label_rules_and_suggestions.sql`**
+- **Purpose**: Banking **Mercury** **Accounting** tab — **`mercury_accounting_label_rules`** (named rules, **`label_id`** → **`mercury_drag_sort_labels`**, **`enabled`**, **`sort_order`**, **`criteria` jsonb** default **`{"v":1}`**, **`created_by`**); **`mercury_accounting_label_suggestions`** (queue: **`mercury_transaction_id`**, **`rule_id`**, **`suggested_label_id`**, **`status`** **`pending`/`approved`/`rejected`**, **`final_label_id`**, **`resolved_at`**, **`resolved_by`**). **Partial UNIQUE** one **`pending`** row per transaction; **`updated_at`** trigger on rules. **RLS**: banking staff **`dev`**, **`master_technician`**, **`assistant`** (same EXISTS pattern as Drag Sort org-wide tables).
+- **Impact**: [`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx); [`accountingLabelRuleMatch.ts`](src/lib/accountingLabelRuleMatch.ts) (**`resolveAccountingRuleAmountBounds`** — inclusive amount interval, **Min**/**Max** order normalization for **Test** / **Apply**; `accountingLabelRuleMatch.test.ts`; **`RECENT_FEATURES.md`** **v2.486**); [`Banking.tsx`](src/pages/Banking.tsx) **`?tab=accounting`**; [`bankingDragSortStorage.ts`](src/lib/bankingDragSortStorage.ts) per-tab hide-labeled key; shared ledger [`bankingMercuryDragSortLedger.tsx`](src/components/banking/bankingMercuryDragSortLedger.tsx). **`npm run gen-types:linked`** after **`db push`**.
+- **Category**: Banking / Mercury / RLS
+
 #### May 2, 2026
 
 **`20260502232908_mercury_transaction_org_notes.sql`**
 - **Purpose**: Banking **Notes** panel — **organization-wide** scratch note per **`mercury_transactions`** row (**`mercury_transaction_org_notes`**, PK **`mercury_transaction_id`**, **`body`** ≤ **2000**, **`updated_by`**). **RLS** **SELECT** for **`dev`**, **`master_technician`**, **`assistant`**; **INSERT/UPDATE/DELETE** policies defined but **revoked** from **`authenticated`** on the table (writes via **`upsert_mercury_org_transaction_note`** **`SECURITY DEFINER`**, same role gate; empty body deletes).
-- **Impact**: [`MercuryTxNotesDisclosure.tsx`](src/components/banking/MercuryTxNotesDisclosure.tsx) (**Team note**); [`Banking.tsx`](src/pages/Banking.tsx); [`BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx); [`useMercuryOrgNotesByTxId.ts`](src/hooks/useMercuryOrgNotesByTxId.ts); **`npm run gen-types:linked`** after **`db push`**. **UI** (`RECENT_FEATURES.md` → **v2.475**–**v2.479**): **Edit note** under **Amount**; default **read-only preview** (**v2.476**–**v2.477**); editor polish (**v2.478**); **notes-band grouping** + tight spacing + optional **Drag Sort** **bank \| note** preview (**v2.479**); no **Notes** column (**v2.475**).
+- **Impact**: [`MercuryTxNotesDisclosure.tsx`](src/components/banking/MercuryTxNotesDisclosure.tsx) (**Team note**); [`Banking.tsx`](src/pages/Banking.tsx); [`BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx); [`useMercuryOrgNotesByTxId.ts`](src/hooks/useMercuryOrgNotesByTxId.ts); [`bankingMercuryNotesSubRowColSpan.ts`](src/lib/bankingMercuryNotesSubRowColSpan.ts) (`bankingMercuryNotesSubRowColSpan.test.ts`); **`npm run gen-types:linked`** after **`db push`**. **UI** (`RECENT_FEATURES.md` → **v2.475**–**v2.480**): **Edit note** under **Amount**; default **read-only preview** (**v2.476**–**v2.477**); editor polish (**v2.478**); **notes-band grouping** + tight spacing + optional **Drag Sort** **bank \| note** preview (**v2.479**); **Counterparty**-aligned notes sub-row (**spacer `colSpan`** + content cell, symmetric inner padding — **v2.480**); no **Notes** column (**v2.475**).
 - **Category**: Banking / Mercury / RLS / RPC
 
 **`20260502224616_mercury_drag_sort_org_wide_labels.sql`**

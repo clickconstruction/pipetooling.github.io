@@ -9,17 +9,13 @@ import {
   type DragStartEvent,
   pointerWithin,
 } from '@dnd-kit/core'
-import { useDraggable, useDroppable } from '@dnd-kit/core'
+import { useDroppable } from '@dnd-kit/core'
 import type { Database } from '../../types/database'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatMercuryKind } from '../../lib/mercuryKindLabels'
 import { shortUuidPrefix } from '../../lib/shortUuidPrefix'
-import {
-  formatMercuryDebitCardIdCompact,
-  mercuryDebitCardIdFromRaw,
-} from '../../lib/mercuryRawDebitCard'
 import { mercuryBankDescriptionFromRaw } from '../../lib/mercuryBankDescriptionFromRaw'
 import {
   readDragSortHideLabeledTransactions,
@@ -29,26 +25,26 @@ import {
 } from '../../lib/bankingDragSortStorage'
 import { ensureDragSortDefaultLabels } from '../../lib/dragSortDefaultLabels'
 import type { MercuryJobSplit } from '../MercuryTransactionAllocationsModal'
-import {
-  MercuryTxNotesEditorPanel,
-  MercuryTxNotesReadOnlyPreview,
-  mercuryTxDragSortBankNoteRowVisible,
-  mercuryTxNotesPanelDomId,
-  mercuryTxNotesPreviewDomId,
-  mercuryTxNotesSubRowInnerStyle,
-  mercuryTxNotesSubRowTdStyle,
-  mercuryTxNotesToggleDomId,
-  mercuryTxPipeLineAriaLabel,
-  mercuryTxCombinedNoteInlineText,
-} from './MercuryTxNotesDisclosure'
+import { mercuryTxDragSortBankNoteRowVisible } from './MercuryTxNotesDisclosure'
 import { ListOrdered } from 'lucide-react'
 import BankingMercuryDragSortFocusModal from './BankingMercuryDragSortFocusModal'
 import { DragSortLabelBucketCard } from './dragSortLabelBucketCard'
-
-const DRAG_SORT_LEDGER_COL_COUNT = 6
-/** Posted + Amount columns before Counterparty — notes sub-row content aligns with Counterparty */
-const DRAG_SORT_NOTES_BEFORE_COUNTERPARTY_COLS = 2
-const DRAG_SORT_NOTES_SUB_ROW_CONTENT_COLSPAN = DRAG_SORT_LEDGER_COL_COUNT - DRAG_SORT_NOTES_BEFORE_COUNTERPARTY_COLS
+import {
+  BANKING_DRAG_SORT_HANDLE_BORDER,
+  BANKING_DRAG_SORT_HANDLE_DOTS,
+  BANKING_DRAG_SORT_HANDLE_GRIP_FONT_WEIGHT,
+  BANKING_DRAG_SORT_HANDLE_YELLOW,
+  BankingMercuryDragSortLedgerNotesEditorRow,
+  BankingMercuryDragSortLedgerNotesPreviewRow,
+  BankingMercuryDragSortLedgerRow,
+  BankingMercuryDragSortLedgerThead,
+  dragSortJobPrimaryLine,
+  dragSortPersonSubline,
+  formatBankingDate,
+  formatUsd,
+  mercuryTxCombinedNoteInlineText,
+  mercuryTxPipeLineAriaLabel,
+} from './bankingMercuryDragSortLedger'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 type DragLabelRow = Database['public']['Tables']['mercury_drag_sort_labels']['Row']
@@ -58,15 +54,6 @@ const DRAG_SORT_LABEL_NAME_MAX = 120
 const DRAG_SORT_SCHEDULE_C_LINE_MAX = 32
 const DRAG_SORT_DESCRIPTION_MAX = 2000
 const DRAG_SORT_ADD_LABEL_DIALOG_ID = 'drag-sort-add-label-dialog'
-
-/** Drag Sort row handle: yellow field, black ⋮⋮ (matches instructional chip). */
-const DRAG_SORT_HANDLE_YELLOW = '#fde047'
-const DRAG_SORT_HANDLE_YELLOW_DRAGGING = '#facc15'
-const DRAG_SORT_HANDLE_BORDER = '#ca8a04'
-const DRAG_SORT_HANDLE_DOTS = '#0f172a'
-/** Larger ⋮⋮ for visibility in the ledger handle. */
-const DRAG_SORT_HANDLE_GRIP_FONT_SIZE = '1.2rem'
-const DRAG_SORT_HANDLE_GRIP_FONT_WEIGHT = 900
 
 type DragSortBucketStats = {
   byLabel: Map<string, { count: number; sum: number }>
@@ -155,108 +142,6 @@ function applyAssignmentDelta(
   }
 }
 
-function formatBankingDate(iso: string | null): string {
-  if (!iso) return '—'
-  try {
-    const d = new Date(iso)
-    if (Number.isNaN(d.getTime())) return iso
-    return d.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    })
-  } catch {
-    return iso
-  }
-}
-
-function formatUsd(n: number): string {
-  return n.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-}
-
-function dragSortJobPrimaryLine(
-  allocs: MercuryJobSplit[],
-  jobLabelById: Record<string, string>,
-): { text: string; muted: boolean; detailTitle?: string } {
-  if (allocs.length === 0) return { text: '-', muted: true }
-  if (allocs.length === 1) {
-    const one = allocs[0]
-    if (one == null) return { text: '-', muted: true }
-    const id = one.job_id
-    return { text: jobLabelById[id] ?? shortUuidPrefix(id), muted: false }
-  }
-  const total = allocs.reduce((s, a) => s + Math.abs(Number(a.amount)), 0)
-  const detailTitle = allocs.map((a) => jobLabelById[a.job_id] ?? shortUuidPrefix(a.job_id)).join('; ')
-  return {
-    text: `${allocs.length} jobs · ${formatUsd(total)}`,
-    muted: false,
-    detailTitle,
-  }
-}
-
-function dragSortPersonSubline(
-  txId: string,
-  personIdByTxId: Map<string, string | null>,
-  userIdByTxId: Map<string, string | null>,
-  personNameById: Record<string, string>,
-  userNameById: Record<string, string>,
-): { text: string; unassigned: boolean } {
-  const uid = userIdByTxId.get(txId) ?? null
-  const pid = personIdByTxId.get(txId) ?? null
-  if (uid) {
-    return { text: userNameById[uid] ?? shortUuidPrefix(uid), unassigned: false }
-  }
-  if (pid) {
-    return { text: personNameById[pid] ?? shortUuidPrefix(pid), unassigned: false }
-  }
-  return { text: '-', unassigned: true }
-}
-
-function DragHandle({ txId }: { txId: string }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: txId })
-  return (
-    <button
-      type="button"
-      ref={setNodeRef}
-      {...listeners}
-      {...attributes}
-      aria-label="Drag to assign an Accounting Label"
-      onClick={(e) => e.stopPropagation()}
-      style={{
-        display: 'inline-grid',
-        placeItems: 'center',
-        boxSizing: 'border-box',
-        lineHeight: 0,
-        padding: '2px 4px',
-        minWidth: 0,
-        border: `1px solid ${DRAG_SORT_HANDLE_BORDER}`,
-        background: isDragging ? DRAG_SORT_HANDLE_YELLOW_DRAGGING : DRAG_SORT_HANDLE_YELLOW,
-        cursor: isDragging ? 'grabbing' : 'grab',
-        borderRadius: 3,
-        touchAction: 'none',
-        opacity: isDragging ? 0 : 1,
-        position: 'relative' as const,
-      }}
-    >
-      <span
-        aria-hidden
-        style={{
-          display: 'block',
-          color: DRAG_SORT_HANDLE_DOTS,
-          lineHeight: 1,
-          fontSize: DRAG_SORT_HANDLE_GRIP_FONT_SIZE,
-          fontWeight: DRAG_SORT_HANDLE_GRIP_FONT_WEIGHT,
-          letterSpacing: '-0.03em',
-          textAlign: 'center',
-          transform: 'translate(-0.03em, -0.02em)',
-        }}
-      >
-        ⋮⋮
-      </span>
-    </button>
-  )
-}
-
 const DragSortTransactionPreview = memo(function DragSortTransactionPreview({ row }: { row: MercuryTxRow }) {
   const party = row.counterparty_name?.trim() ?? '—'
   const partyDisplay = party.length > 42 ? `${party.slice(0, 40)}…` : party
@@ -294,235 +179,6 @@ const DragSortTransactionPreview = memo(function DragSortTransactionPreview({ ro
         <span style={{ fontSize: '0.72rem', color: '#64748b' }}>{formatMercuryKind(row.kind)}</span>
       </div>
     </div>
-  )
-})
-
-const DragSortLedgerRow = memo(function DragSortLedgerRow({
-  row,
-  jobLineText,
-  jobLineMuted,
-  jobLineTitle,
-  jobLineIsNotSplit,
-  personLineText,
-  personUnassigned,
-  assignId,
-  assignName,
-  labelDetailTitle,
-  nicknameByDebitCard,
-  onRemoveLabel,
-  onEditAllocations,
-  notesOpen,
-  onNotesToggle,
-  suppressBottomDivider,
-}: {
-  row: MercuryTxRow
-  jobLineText: string
-  jobLineMuted: boolean
-  jobLineTitle?: string
-  jobLineIsNotSplit: boolean
-  personLineText: string
-  personUnassigned: boolean
-  assignId: string | undefined
-  assignName: string
-  labelDetailTitle: string | undefined
-  nicknameByDebitCard: Record<string, string>
-  onRemoveLabel: (txId: string) => void
-  onEditAllocations?: (r: MercuryTxRow) => void
-  notesOpen: boolean
-  onNotesToggle: () => void
-  suppressBottomDivider: boolean
-}) {
-  const debitCardId = mercuryDebitCardIdFromRaw(row.raw)
-  const ledgerPad = suppressBottomDivider ? '0.5rem 0.75rem 0 0.75rem' : '0.5rem 0.75rem'
-  const ledgerHandlePad = suppressBottomDivider ? '0.35rem 0.2rem 0 0.2rem' : '0.35rem 0.2rem'
-  return (
-    <tr style={{ borderBottom: suppressBottomDivider ? 'none' : '1px solid #e5e7eb' }}>
-      <td style={{ padding: ledgerPad }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <span>{formatBankingDate(row.posted_at)}</span>
-          <span style={{ fontSize: '0.72rem', color: '#64748b' }}>{formatMercuryKind(row.kind)}</span>
-        </div>
-      </td>
-      <td style={{ padding: ledgerPad, verticalAlign: 'top' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
-          <span>{formatUsd(Number(row.amount))}</span>
-          <button
-            type="button"
-            id={mercuryTxNotesToggleDomId(row.id)}
-            aria-expanded={notesOpen}
-            aria-controls={mercuryTxNotesPanelDomId(row.id)}
-            onClick={(e) => {
-              e.stopPropagation()
-              onNotesToggle()
-            }}
-            style={{
-              padding: '2px 0',
-              margin: 0,
-              fontSize: '0.72rem',
-              fontWeight: 600,
-              color: '#94a3b8',
-              border: 'none',
-              background: 'transparent',
-              cursor: 'pointer',
-              textDecoration: 'underline',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {notesOpen ? 'Hide edit' : 'Edit note'}
-          </button>
-        </div>
-      </td>
-      <td style={{ padding: ledgerPad, maxWidth: 200 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <span>{row.counterparty_name ?? '—'}</span>
-          {debitCardId ? (
-            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
-              Card: {nicknameByDebitCard[debitCardId] ?? formatMercuryDebitCardIdCompact(debitCardId)}
-            </span>
-          ) : null}
-        </div>
-      </td>
-      <td style={{ padding: ledgerPad, maxWidth: 220, verticalAlign: 'middle' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-          {jobLineIsNotSplit && onEditAllocations ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                onEditAllocations(row)
-              }}
-              aria-label="Link jobs to this transaction"
-              title="Link jobs to this transaction"
-              style={{
-                alignSelf: 'stretch',
-                maxWidth: '100%',
-                margin: 0,
-                padding: 0,
-                border: 'none',
-                background: 'transparent',
-                cursor: 'pointer',
-                font: 'inherit',
-                textAlign: 'left',
-                color: '#9ca3af',
-                fontWeight: 400,
-                textDecoration: 'none',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {jobLineText}
-            </button>
-          ) : (
-            <span
-              style={{
-                color: jobLineMuted ? '#9ca3af' : '#0f172a',
-                fontWeight: jobLineMuted ? 400 : 500,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-              title={jobLineTitle ?? (jobLineMuted ? undefined : jobLineText)}
-            >
-              {jobLineText}
-            </span>
-          )}
-          {personUnassigned && onEditAllocations ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                onEditAllocations(row)
-              }}
-              aria-label="Link person and jobs to this transaction"
-              title="Link person and jobs to this transaction"
-              style={{
-                alignSelf: 'stretch',
-                maxWidth: '100%',
-                margin: 0,
-                padding: 0,
-                border: 'none',
-                background: 'transparent',
-                cursor: 'pointer',
-                font: 'inherit',
-                textAlign: 'left',
-                fontSize: '0.72rem',
-                color: '#94a3b8',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {personLineText}
-            </button>
-          ) : (
-            <span
-              style={{
-                fontSize: '0.72rem',
-                color: personUnassigned ? '#94a3b8' : '#64748b',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-              title={personLineText}
-            >
-              {personLineText}
-            </span>
-          )}
-        </div>
-      </td>
-      <td style={{ padding: ledgerPad, verticalAlign: 'middle' }}>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'flex-start',
-            gap: 8,
-            minWidth: 0,
-          }}
-        >
-          {assignId ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                onRemoveLabel(row.id)
-              }}
-              aria-label="Remove Accounting Label from this transaction"
-              title="Remove Accounting Label"
-              style={{
-                flexShrink: 0,
-                padding: '2px 4px',
-                fontSize: '0.85rem',
-                lineHeight: 1,
-                fontWeight: 600,
-                color: '#b91c1c',
-                border: 'none',
-                background: 'transparent',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              <span aria-hidden>×</span>
-            </button>
-          ) : null}
-          <span
-            style={{
-              flex: '1 1 auto',
-              minWidth: 0,
-              fontSize: '0.8125rem',
-              color: assignId ? '#0f172a' : '#9ca3af',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-            title={labelDetailTitle}
-          >
-            {assignName}
-          </span>
-        </div>
-      </td>
-      <td style={{ padding: ledgerHandlePad, verticalAlign: 'middle', textAlign: 'center' }}>
-        <DragHandle txId={row.id} />
-      </td>
-    </tr>
   )
 })
 
@@ -1195,11 +851,11 @@ export function BankingMercuryDragSortTab({
                     margin: '0 0.05rem',
                     verticalAlign: 'middle',
                     borderRadius: 3,
-                    border: `1px solid ${DRAG_SORT_HANDLE_BORDER}`,
-                    background: DRAG_SORT_HANDLE_YELLOW,
-                    color: DRAG_SORT_HANDLE_DOTS,
+                    border: `1px solid ${BANKING_DRAG_SORT_HANDLE_BORDER}`,
+                    background: BANKING_DRAG_SORT_HANDLE_YELLOW,
+                    color: BANKING_DRAG_SORT_HANDLE_DOTS,
                     fontSize: '1rem',
-                    fontWeight: DRAG_SORT_HANDLE_GRIP_FONT_WEIGHT,
+                    fontWeight: BANKING_DRAG_SORT_HANDLE_GRIP_FONT_WEIGHT,
                     letterSpacing: '-0.03em',
                     textAlign: 'center',
                   }}
@@ -1226,31 +882,7 @@ export function BankingMercuryDragSortTab({
           ) : (
             <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 8 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                <thead>
-                  <tr style={{ background: '#f9fafb' }}>
-                    <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>Posted</th>
-                    <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>Amount</th>
-                    <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>Counterparty</th>
-                    <th
-                      style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}
-                      title="Job allocations and linked person"
-                    >
-                      Job
-                    </th>
-                    <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>
-                      Accounting Label
-                    </th>
-                    <th
-                      style={{
-                        width: '1%',
-                        whiteSpace: 'nowrap',
-                        padding: '0.5rem 0.2rem',
-                        borderBottom: '1px solid #e5e7eb',
-                      }}
-                      aria-label="Drag"
-                    />
-                  </tr>
-                </thead>
+                <BankingMercuryDragSortLedgerThead showDragHandle />
                 <tbody>
                   {displayTransactions.map((r) => {
                     const assignId = assignmentLabelByTxId.get(r.id)
@@ -1279,9 +911,10 @@ export function BankingMercuryDragSortTab({
                       mercuryTxPipeLineAriaLabel(bankDescriptionTrimForPipe, dragSortCombinedNoteAria) || 'Bank and note preview'
                     const showDragSortBankNoteBand = mercuryTxDragSortBankNoteRowVisible(r, orgNoteBody, bankDescriptionText)
                     const notesStripeBelow = showDragSortBankNoteBand || editorOpen
+                    const ledgerShowDrag = true
                     return (
                       <Fragment key={r.id}>
-                        <DragSortLedgerRow
+                        <BankingMercuryDragSortLedgerRow
                           row={r}
                           jobLineText={jobLine.text}
                           jobLineMuted={jobLine.muted}
@@ -1300,63 +933,27 @@ export function BankingMercuryDragSortTab({
                             setNotesExpandedTxId((cur) => (cur === r.id ? null : r.id))
                           }}
                           suppressBottomDivider={notesStripeBelow}
+                          showDragHandle={ledgerShowDrag}
                         />
                         {showDragSortBankNoteBand && !editorOpen ? (
-                          <tr>
-                            <td
-                              colSpan={DRAG_SORT_NOTES_BEFORE_COUNTERPARTY_COLS}
-                              aria-hidden
-                              style={mercuryTxNotesSubRowTdStyle}
-                              onClick={(e) => e.stopPropagation()}
-                            />
-                            <td
-                              colSpan={DRAG_SORT_NOTES_SUB_ROW_CONTENT_COLSPAN}
-                              id={mercuryTxNotesPreviewDomId(r.id)}
-                              role="region"
-                              aria-label={dragSortPipeAriaLabel}
-                              style={mercuryTxNotesSubRowTdStyle}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <div style={mercuryTxNotesSubRowInnerStyle}>
-                                <MercuryTxNotesReadOnlyPreview
-                                  row={r}
-                                  orgBody={orgNoteBody}
-                                  notePreviewVariant="dragSortPipe"
-                                  dragSortBankDescription={bankDescriptionText}
-                                />
-                              </div>
-                            </td>
-                          </tr>
+                          <BankingMercuryDragSortLedgerNotesPreviewRow
+                            row={r}
+                            orgNoteBody={orgNoteBody}
+                            bankDescriptionText={bankDescriptionText}
+                            dragSortPipeAriaLabel={dragSortPipeAriaLabel}
+                            showDragHandle={ledgerShowDrag}
+                          />
                         ) : null}
                         {editorOpen ? (
-                          <tr>
-                            <td
-                              colSpan={DRAG_SORT_NOTES_BEFORE_COUNTERPARTY_COLS}
-                              aria-hidden
-                              style={mercuryTxNotesSubRowTdStyle}
-                              onClick={(e) => e.stopPropagation()}
-                            />
-                            <td
-                              colSpan={DRAG_SORT_NOTES_SUB_ROW_CONTENT_COLSPAN}
-                              id={mercuryTxNotesPanelDomId(r.id)}
-                              role="region"
-                              aria-labelledby={mercuryTxNotesToggleDomId(r.id)}
-                              style={mercuryTxNotesSubRowTdStyle}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <div style={mercuryTxNotesSubRowInnerStyle}>
-                                <MercuryTxNotesEditorPanel
-                                  row={r}
-                                  orgBody={orgNoteBody}
-                                  onOrgNoteUpdated={onOrgNoteUpdated}
-                                  onSaveSuccess={() => setNotesExpandedTxId(null)}
-                                  onCloseRequest={() => setNotesExpandedTxId(null)}
-                                  notePanelVariant="dragSortPipe"
-                                  dragSortBankDescription={bankDescriptionText}
-                                />
-                              </div>
-                            </td>
-                          </tr>
+                          <BankingMercuryDragSortLedgerNotesEditorRow
+                            row={r}
+                            orgNoteBody={orgNoteBody}
+                            onOrgNoteUpdated={onOrgNoteUpdated}
+                            onSaveSuccess={() => setNotesExpandedTxId(null)}
+                            onCloseRequest={() => setNotesExpandedTxId(null)}
+                            bankDescriptionText={bankDescriptionText}
+                            showDragHandle={ledgerShowDrag}
+                          />
                         ) : null}
                       </Fragment>
                     )

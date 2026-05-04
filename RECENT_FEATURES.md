@@ -12,11 +12,35 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.484 → v2.4"
+version_range: "v2.492 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.492)"
+    line: ~1635
+    description: "Banking Accounting More filters — exclude counterparty list (case-insensitive contains); cap 50 phrases; same v1 localStorage JSON"
+  - name: "Latest Version (v2.491)"
+    line: ~1647
+    description: "Banking Accounting Rules section — collapsible body (table/loading); New rule + Apply stay visible; localStorage like labels cards expanded"
+  - name: "Latest Version (v2.490)"
+    line: ~1659
+    description: "Banking Accounting More filters — transaction type (mercury_transactions.kind) multi-select; all-selected clears badge; same localStorage v1 JSON"
+  - name: "Latest Version (v2.489)"
+    line: ~1643
+    description: "Banking Accounting ledger — More filters modal (date, amount, job split, person); localStorage; Apply rules / Test still Banking slice only"
+  - name: "Latest Version (v2.488)"
+    line: ~1638
+    description: "Banking Accounting — Hide labeled default on (localStorage invert); legacy no-key users see hide until they uncheck once"
+  - name: "Latest Version (v2.487)"
+    line: ~1640
+    description: "Banking Accounting Approvals — Approve all button (bulk confirm pending suggestions)"
+  - name: "Latest Version (v2.486)"
+    line: ~1650
+    description: "Banking Accounting rules — amount Min/Max normalized to inclusive interval (swap when reversed); same matcher for Test/Apply"
+  - name: "Latest Version (v2.485)"
+    line: ~1661
+    description: "Banking Mercury Accounting tab — rules, approvals queue, ledger without drag; migration 20260504011219"
   - name: "Latest Version (v2.484)"
-    line: ~1612
+    line: ~1674
     description: "Banking Drag Sort Quick label — modal layout polish (preview row, grid title stats, progress+search, tighter chrome)"
   - name: "Latest Version (v2.483)"
     line: ~1628
@@ -1276,6 +1300,11 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.492 — **Banking** **Mercury** **Accounting** — **More filters** — **Exclude counterparty** (**`excludeCounterpartyContains`**, case-insensitive **contains** on **`counterparty_name`**, max **50** phrases; same **`v:1`** **`localStorage`** JSON) — **[`bankingAccountingLedgerFilters.ts`](src/lib/bankingAccountingLedgerFilters.ts)**, **[`BankingMercuryAccountingLedgerFilterModal.tsx`](src/components/banking/BankingMercuryAccountingLedgerFilterModal.tsx)**](#latest-updates-v2492)
+**New:** [v2.491 — **Banking** **Mercury** **Accounting** — **Rules** section **collapse** (chevron toggles table/loading only); **New rule** / **Apply rules** stay on the header row; **`readAccountingRulesSectionExpanded`** / **`writeAccountingRulesSectionExpanded`** in **[`bankingDragSortStorage.ts`](src/lib/bankingDragSortStorage.ts)** (default expanded, **`'0'`** = collapsed) — **[`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx)**](#latest-updates-v2491)
+**New:** [v2.490 — **Banking** **Mercury** **Accounting** — **More filters** — **Transaction type** (`mercury_transactions`.`kind`) **multi-select** from current Banking-filtered list; **`formatMercuryKind`** labels; **Apply** clears **`kinds`** when every type is selected (no redundant badge); persisted in same **`v:1`** JSON — **[`bankingAccountingLedgerFilters.ts`](src/lib/bankingAccountingLedgerFilters.ts)**, **[`BankingMercuryAccountingLedgerFilterModal.tsx`](src/components/banking/BankingMercuryAccountingLedgerFilterModal.tsx)**](#latest-updates-v2490)
+**New:** [v2.489 — **Banking** **Mercury** **Accounting** — **More filters** modal on **Ledger** (**posted date**, **amount** min/max, **job split**, **Person unassigned only**); **`localStorage`**; pipeline after Accounting search, before **Hide labeled** — **[`BankingMercuryAccountingLedgerFilterModal.tsx`](src/components/banking/BankingMercuryAccountingLedgerFilterModal.tsx)**, **[`bankingAccountingLedgerFilters.ts`](src/lib/bankingAccountingLedgerFilters.ts)**](#latest-updates-v2489)
+**New:** [v2.488 — **Banking** **Mercury** **Accounting** — **Hide labeled** defaults **on** (`localStorage` **unset** = hide; **`'0'`** = show all labeled); legacy **`'1'`** unchanged; **breaking** for users who left hide **off** with **no** stored key — **[`bankingDragSortStorage.ts`](src/lib/bankingDragSortStorage.ts)**, **[`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx)**](#latest-updates-v2488)
 **New:** [v2.484 — **Banking** **Drag Sort** — **Quick label** modal **layout polish**: **`FocusTransactionCard`** amount + date·kind header; counterparty + bank **flex-wrap** line; **`DragSortLabelBucketCard`** **`variant="grid"`** inlines **`N tx · $`** **`[C…]`** on label **title**; **Remaining…** + **Search labels…** toolbar row; tighter card **`padding`** / **`margin`** — **[`BankingMercuryDragSortFocusModal.tsx`](src/components/banking/BankingMercuryDragSortFocusModal.tsx)**, **[`dragSortLabelBucketCard.tsx`](src/components/banking/dragSortLabelBucketCard.tsx)**](#latest-updates-v2484)
 **New:** [v2.483 — **Banking** **Drag Sort** — **Quick label** **Undo** beside **Close** (**max 2** modal-only assignments); **`applyDragSortAssignment`** restore; disabled during **slide-out**; stack clears when modal closes (**`BankingMercuryDragSortTab`**, **`BankingMercuryDragSortFocusModal`**)](#latest-updates-v2483)
 **New:** [v2.482 — **Banking** **Drag Sort** — **Quick label** modal tiles match sidebar **`LabelDropZone`** (**dashed**, **`[C]`**, **`N tx · $`** footer); **`DragSortLabelBucketCard`** (**[`dragSortLabelBucketCard.tsx`](src/components/banking/dragSortLabelBucketCard.tsx)**); modal **Collapse** / **Expand** syncs **`labelsCardsExpanded`** with **Accounting Labels** sidebar](#latest-updates-v2482)
@@ -1609,6 +1638,99 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.492)
+
+**Date**: 2026-05-03
+
+### **Banking** — **Mercury** — **Accounting** — **More filters** — **Exclude counterparty**
+
+- **[`bankingAccountingLedgerFilters.ts`](src/lib/bankingAccountingLedgerFilters.ts)** — Ledger filters gain **`excludeCounterpartyContains`**: rows are dropped when **`counterparty_name`** contains any phrase (**case-insensitive**); **`null`**/empty counterparties are not excluded by non-empty phrases; **`LEDGER_FILTER_EXCLUDE_COUNTERPARTY_PHRASES_MAX`** (**50**); parse/sort/dedupe like **`kinds`**; missing key in stored JSON → **`[]`**; one badge **dimension** when the list is non-empty.
+- **[`BankingMercuryAccountingLedgerFilterModal.tsx`](src/components/banking/BankingMercuryAccountingLedgerFilterModal.tsx)** — **Exclude counterparty** multiline field + short helper copy.
+
+---
+
+## Latest Updates (v2.491)
+
+**Date**: 2026-05-04
+
+### **Banking** — **Mercury** — **Accounting** — **Rules** section collapse
+
+- **[`bankingDragSortStorage.ts`](src/lib/bankingDragSortStorage.ts)** — **`readAccountingRulesSectionExpanded`** / **`writeAccountingRulesSectionExpanded`** (**`'0'`** = collapsed body; default expanded, same pattern as **`readDragSortLabelsCardsExpanded`**).
+- **[`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx)** — Disclosure control (**`aria-expanded`**, **`aria-controls`**) beside **Rules** title; collapsed state hides loading / empty / rules table only.
+
+---
+
+## Latest Updates (v2.490)
+
+**Date**: 2026-05-04
+
+### **Banking** — **Mercury** — **Accounting** — **More filters** — **Transaction type**
+
+- **[`bankingAccountingLedgerFilters.ts`](src/lib/bankingAccountingLedgerFilters.ts)** — Filter state gains **`kinds`** (API `kind` strings); **`applyBankingAccountingLedgerFilters`** rejects rows outside the set; **`withLedgerFilterKindsNormalizedIfAllSelected`** drops **`kinds`** when the user selects every type in the current list (**`accountingKindOptions`** from **`filteredTransactions`**). Missing **`kinds`** in stored JSON parses as **`[]`**.
+- **[`BankingMercuryAccountingLedgerFilterModal.tsx`](src/components/banking/BankingMercuryAccountingLedgerFilterModal.tsx)** — **Transaction type** checkboxes (**[`formatMercuryKind`](src/lib/mercuryKindLabels.ts)**); empty list copy when no rows in scope.
+- **[`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx)** — **`accountingKindOptions`** **`useMemo`** + pass-through to modal; **Apply** runs normalization before persist.
+
+---
+
+## Latest Updates (v2.489)
+
+**Date**: 2026-05-04
+
+### **Banking** — **Mercury** — **Accounting** — **More filters** (ledger)
+
+- **[`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx)** — **More filters** beside **Hide labeled** opens a modal: **posted date** range (company calendar, **`APP_CALENDAR_TZ`** wall dates via [`calendarYmdInAppTzFromIso`](src/utils/dateUtils.ts)), **amount** min/max (same **reversed min/max** normalization as rules via [`bankingAccountingLedgerFilters.ts`](src/lib/bankingAccountingLedgerFilters.ts)), **job split** (any / has / none), **Person unassigned only**. Active filter **count** badge on the button. **Apply** persists JSON in [`bankingDragSortStorage.ts`](src/lib/bankingDragSortStorage.ts) (`readAccountingLedgerFiltersRaw` / `writeAccountingLedgerFiltersRaw`); **Clear all** removes storage. Pipeline: Banking list → Accounting search → **modal filters** → **Hide labeled** → table.
+- **[`BankingMercuryAccountingLedgerFilterModal.tsx`](src/components/banking/BankingMercuryAccountingLedgerFilterModal.tsx)** — dialog + **Escape** / backdrop cancel.
+- **Apply rules** / rule **Test** still scan **`filteredTransactions`** only (main Banking table slice), not Accounting search or modal filters — see comments in [`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx).
+
+---
+
+## Latest Updates (v2.488)
+
+**Date**: 2026-05-03
+
+### **Banking** — **Mercury** — **Accounting** — **Hide labeled** default **on**
+
+- **[`bankingDragSortStorage.ts`](src/lib/bankingDragSortStorage.ts)** — **`readAccountingHideLabeledTransactions`** / **`writeAccountingHideLabeledTransactions`**: **unset** key ⇒ **hide** labeled rows (canonical **on** removes the key; **off** persists **`'0'`**, same idea as **`readDragSortLabelsCardsExpanded`**). Legacy **`'1'`** still evaluates as hide **on** (**`!== '0'`**). SSR / no-**`window`**: default **on** (**`true`**).
+- **[`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx)** — **`useState(() => readAccountingHideLabeledTransactions(userId))`** so the first client paint matches storage; existing **`useEffect`** on **`userId`** unchanged (impersonation / account switch).
+
+**Breaking (preference migration):** Under the old convention, **Hide labeled** **off** left **no** `localStorage` key. Those users now get **hide on** until they **uncheck** once (writes **`'0'`**). Users who had explicitly chosen hide **on** (**`'1'`**) behave the same.
+
+---
+
+## Latest Updates (v2.487)
+
+**Date**: 2026-05-05
+
+### **Banking** — **Mercury** — **Accounting** — **Approvals** **Approve all**
+
+- Header **[`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx)** — **Approve all** beside **Approvals** approves every pending suggestion in one pass (each row’s **Accounting Label** dropdown value); same **`mercury_transaction_drag_sort_assignments`** upsert + suggestion **`approved`** update as single **Approve**. **Approving…** / disabled state; per-row **Approve**/**Reject**/dropdown off while running. On failure: revert local assignment map, reload pending + assignments.
+
+---
+
+## Latest Updates (v2.486)
+
+**Date**: 2026-05-04
+
+### **Banking** — **Mercury** — **Accounting** — rule **amount** bounds
+
+- **Inclusive interval** — When both **Min** and **Max** are set, matching uses the inclusive range on the number line. If the two fields are **reversed** (e.g. **Min** `-20` and **Max** `-120` for a band **-120 … -20**), **`resolveAccountingRuleAmountBounds`** in [`accountingLabelRuleMatch.ts`](src/lib/accountingLabelRuleMatch.ts) swaps them so **Test** and **Apply rules** behave as intended (`accountingLabelRuleMatch.test.ts`).
+- **Docs** — **Test** / **Apply** still use the same Mercury row list as the main Banking table (**account** / **kind** / **toolbar search**); they do not use the Accounting tab’s separate ledger search (**`GLOSSARY.md`** — **Accounting rules**).
+
+---
+
+## Latest Updates (v2.485)
+
+**Date**: 2026-05-04
+
+### **Banking** — **Mercury** — **Accounting** tab (`?tab=accounting`)
+
+- **Approvals** — Pending rows from **`mercury_accounting_label_suggestions`** (rule name, editable **Accounting Label** dropdown, **Approve** / header **Approve all** (**v2.487**) write **`mercury_transaction_drag_sort_assignments`** + mark suggestion **approved**; **Reject** deletes the pending row).
+- **Rules** — **`mercury_accounting_label_rules`**: name, enabled, target label, criteria (**amount** min/max, **counterparty** contains/equals, **bank description** from **`raw`** — [`accountingLabelRuleMatch.ts`](src/lib/accountingLabelRuleMatch.ts)); clauses combine with **AND**. **Test** previews matches on the **loaded Banking Mercury list** (same filters as the main table — not the Accounting ledger’s own search); **Apply rules** enqueues unlabeled, non-pending transactions (first matching rule wins by **`sort_order`**). List shows **Approved uses** count.
+- **Ledger** — Shared Drag Sort table [**`bankingMercuryDragSortLedger.tsx`**](src/components/banking/bankingMercuryDragSortLedger.tsx) **without** the drag column; local **search** + **Hide labeled** (separate **`localStorage`** from Drag Sort via [`bankingDragSortStorage.ts`](src/lib/bankingDragSortStorage.ts)).
+- **DB**: **`20260504011219_mercury_accounting_label_rules_and_suggestions.sql`** — see [`MIGRATIONS.md`](MIGRATIONS.md).
+
 ---
 
 ## Latest Updates (v2.484)

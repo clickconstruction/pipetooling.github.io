@@ -4323,6 +4323,129 @@ export type Database = {
         }
         Relationships: []
       }
+      mercury_accounting_label_rules: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          criteria: Json
+          enabled: boolean
+          id: string
+          label_id: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          criteria?: Json
+          enabled?: boolean
+          id?: string
+          label_id: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          criteria?: Json
+          enabled?: boolean
+          id?: string
+          label_id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mercury_accounting_label_rules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mercury_accounting_label_rules_label_id_fkey"
+            columns: ["label_id"]
+            isOneToOne: false
+            referencedRelation: "mercury_drag_sort_labels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mercury_accounting_label_suggestions: {
+        Row: {
+          created_at: string
+          final_label_id: string | null
+          id: string
+          mercury_transaction_id: string
+          resolved_at: string | null
+          resolved_by: string | null
+          rule_id: string
+          status: string
+          suggested_label_id: string
+        }
+        Insert: {
+          created_at?: string
+          final_label_id?: string | null
+          id?: string
+          mercury_transaction_id: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          rule_id: string
+          status: string
+          suggested_label_id: string
+        }
+        Update: {
+          created_at?: string
+          final_label_id?: string | null
+          id?: string
+          mercury_transaction_id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          rule_id?: string
+          status?: string
+          suggested_label_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mercury_accounting_label_suggestion_mercury_transaction_id_fkey"
+            columns: ["mercury_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "mercury_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mercury_accounting_label_suggestions_final_label_id_fkey"
+            columns: ["final_label_id"]
+            isOneToOne: false
+            referencedRelation: "mercury_drag_sort_labels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mercury_accounting_label_suggestions_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mercury_accounting_label_suggestions_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "mercury_accounting_label_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mercury_accounting_label_suggestions_suggested_label_id_fkey"
+            columns: ["suggested_label_id"]
+            isOneToOne: false
+            referencedRelation: "mercury_drag_sort_labels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mercury_debit_card_nicknames: {
         Row: {
           mercury_debit_card_id: string
@@ -9004,6 +9127,14 @@ export type Database = {
       auto_clock_out_open_sessions_eod: { Args: never; Returns: undefined }
       backfill_mercury_auto_attributions_for_debit_card: {
         Args: { p_mercury_debit_card_id: string }
+        Returns: number
+      }
+      bulk_approve_accounting_label_suggestions: {
+        Args: { p_items: Json }
+        Returns: number
+      }
+      bulk_insert_accounting_label_suggestions: {
+        Args: { p_rows: Json }
         Returns: number
       }
       bump_user_app_activity: {

@@ -25,6 +25,7 @@ import { BankingDebitCardRecentTxModal } from '../components/BankingDebitCardRec
 import { BankingSortingConfigModal } from '../components/BankingSortingConfigModal'
 import { BankingUserCardLinkModal } from '../components/BankingUserCardLinkModal'
 import { BankingMercuryDragSortTab } from '../components/banking/BankingMercuryDragSortTab'
+import { BankingMercuryAccountingTab } from '../components/banking/BankingMercuryAccountingTab'
 import {
   mercuryTxHasNotePreview,
   MercuryTxNotesEditorPanel,
@@ -73,7 +74,7 @@ const DEBIT_CARD_RECENT_TX_CAP = 50
 type SortKey = 'posted_at' | 'mercury_account_id' | 'mercury_id'
 
 type BankingProduct = 'mercury' | 'stripe'
-type MercuryBankingTab = 'ledger' | 'sorting' | 'drag_sort'
+type MercuryBankingTab = 'ledger' | 'sorting' | 'drag_sort' | 'accounting'
 type StripeBankingTab = 'invoices' | 'data'
 
 type BankingView = {
@@ -96,7 +97,8 @@ type BankingPageRole =
 function parseBankingView(params: URLSearchParams, role: BankingPageRole): BankingView {
   if (role === 'assistant' || role === 'master_technician') {
     const tabRaw = params.get('tab')
-    const mercuryTab: MercuryBankingTab = tabRaw === 'drag_sort' ? 'drag_sort' : 'sorting'
+    const mercuryTab: MercuryBankingTab =
+      tabRaw === 'drag_sort' ? 'drag_sort' : tabRaw === 'accounting' ? 'accounting' : 'sorting'
     return { product: 'mercury', mercuryTab, stripeTab: 'invoices' }
   }
   if (role !== 'dev') {
@@ -117,6 +119,7 @@ function parseBankingView(params: URLSearchParams, role: BankingPageRole): Banki
   let mercuryTab: MercuryBankingTab = 'ledger'
   if (tabRaw === 'sorting') mercuryTab = 'sorting'
   else if (tabRaw === 'drag_sort') mercuryTab = 'drag_sort'
+  else if (tabRaw === 'accounting') mercuryTab = 'accounting'
   else if (tabRaw === 'ledger') mercuryTab = 'ledger'
   else if (tabRaw === 'invoices' || tabRaw === 'data') mercuryTab = 'ledger'
 
@@ -1062,7 +1065,7 @@ export default function Banking() {
           if (product === 'mercury') {
             p.set('product', 'mercury')
             const t = prev.get('tab')
-            if (t === 'sorting' || t === 'ledger' || t === 'drag_sort') p.set('tab', t)
+            if (t === 'sorting' || t === 'ledger' || t === 'drag_sort' || t === 'accounting') p.set('tab', t)
             else p.set('tab', 'ledger')
           } else {
             p.set('product', 'stripe')
@@ -1121,13 +1124,13 @@ export default function Banking() {
     if (myRole !== 'master_technician' && myRole !== 'assistant') return
     const product = searchParams.get('product')
     const tab = searchParams.get('tab')
-    if ((tab === 'sorting' || tab === 'drag_sort') && product !== 'stripe' && (product === null || product === 'mercury')) {
+    if ((tab === 'sorting' || tab === 'drag_sort' || tab === 'accounting') && product !== 'stripe' && (product === null || product === 'mercury')) {
       if (product === null) {
         setSearchParams(
           (prev) => {
             const p = new URLSearchParams(prev)
             p.set('product', 'mercury')
-            p.set('tab', tab === 'drag_sort' ? 'drag_sort' : 'sorting')
+            p.set('tab', tab === 'drag_sort' ? 'drag_sort' : tab === 'accounting' ? 'accounting' : 'sorting')
             return p
           },
           { replace: true },
@@ -1264,7 +1267,7 @@ export default function Banking() {
 
   useEffect(() => {
     if (!canAccessBanking) return
-    if (bankingView.product !== 'mercury' || bankingView.mercuryTab !== 'drag_sort') return
+    if (bankingView.product !== 'mercury' || (bankingView.mercuryTab !== 'drag_sort' && bankingView.mercuryTab !== 'accounting')) return
     if (rows.length === 0) return
     const needs = rows.filter((r) => mercuryRowNeedsRawHydration(r)).map((r) => r.id)
     if (needs.length === 0) return
@@ -1555,7 +1558,8 @@ export default function Banking() {
   const bankingOrgNoteFetchIds = useMemo(() => {
     if (bankingView.product !== 'mercury') return NO_MERCURY_TX_IDS_FOR_BANKING_NOTES
     if (bankingView.mercuryTab === 'sorting') return sortingFilteredSorted.map((r) => r.id)
-    if (bankingView.mercuryTab === 'ledger' || bankingView.mercuryTab === 'drag_sort') return filteredSorted.map((r) => r.id)
+    if (bankingView.mercuryTab === 'ledger' || bankingView.mercuryTab === 'drag_sort' || bankingView.mercuryTab === 'accounting')
+      return filteredSorted.map((r) => r.id)
     return NO_MERCURY_TX_IDS_FOR_BANKING_NOTES
   }, [bankingView.product, bankingView.mercuryTab, filteredSorted, sortingFilteredSorted])
 
@@ -1836,6 +1840,16 @@ export default function Banking() {
                       style={pageUnderlineTabStyle(bankingView.mercuryTab === 'drag_sort')}
                     >
                       Drag Sort
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={bankingView.mercuryTab === 'accounting'}
+                      id="banking-tab-accounting"
+                      onClick={() => setMercurySubTab('accounting')}
+                      style={pageUnderlineTabStyle(bankingView.mercuryTab === 'accounting')}
+                    >
+                      Accounting
                     </button>
                   </>
                 ) : (
@@ -2126,6 +2140,29 @@ export default function Banking() {
             personNameById={personNameById}
             userNameById={userNameById}
             jobLabelById={jobLabelByIdBanking}
+            onEditAllocations={(r) => void openAllocModalForMercuryRow(r)}
+            orgNotesByTxId={orgNotesByTxId}
+            onOrgNoteUpdated={onOrgNoteUpdated}
+          />
+        </div>
+      ) : null}
+
+      {bankingView.product === 'mercury' && bankingView.mercuryTab === 'accounting' && canAccessBanking && user?.id ? (
+        <div role="tabpanel" id="banking-panel-mercury-accounting" aria-labelledby="banking-tab-accounting">
+          <BankingMercuryAccountingTab
+            userId={user.id}
+            filteredTransactions={filteredSorted}
+            loading={loading}
+            loadError={error}
+            mercurySearchNicknameCtx={nicknameCtx}
+            mercurySearchEnrich={bankingMercurySearchJobPersonEnrich}
+            allocationsByTxId={allocationsByTxId}
+            personIdByTxId={personIdByTxId}
+            userIdByTxId={userIdByTxId}
+            personNameById={personNameById}
+            userNameById={userNameById}
+            jobLabelById={jobLabelByIdBanking}
+            nicknameByDebitCard={nicknameByDebitCard}
             onEditAllocations={(r) => void openAllocModalForMercuryRow(r)}
             orgNotesByTxId={orgNotesByTxId}
             onOrgNoteUpdated={onOrgNoteUpdated}
