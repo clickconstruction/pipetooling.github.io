@@ -7,16 +7,19 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-05-03
+last_updated: 2026-05-04
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.492 → v2.4"
+version_range: "v2.493 → v2.4"
 
 key_sections:
+  - name: "Latest Version (v2.493)"
+    line: ~1643
+    description: "Bids Edit/New — Copy Bid dialog (was Other trades); Open Job from bid uses JobFormModalContext prefillBidId + applyPrefillFromBid after init"
   - name: "Latest Version (v2.492)"
-    line: ~1635
+    line: ~1653
     description: "Banking Accounting More filters — exclude counterparty list (case-insensitive contains); cap 50 phrases; same v1 localStorage JSON"
   - name: "Latest Version (v2.491)"
     line: ~1647
@@ -1300,6 +1303,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.493 — **Bids** — **Copy Bid** dialog (title **Copy Bid**; service-type control in **Edit/New Bid** modal): **other trades** list (open sibling bid, **Copy to new … bid**) unchanged; bottom **Job** section — **Open Job** opens global **New Job** with **`openNewJob({ prefillBidId })`** (**[`JobFormModalContext`](src/contexts/JobFormModalContext.tsx)** **`prefillBidId`** → **`newJobPrefillBidId`** on **`JobFormModal`**) — after **`initDone`**, **`applyPrefillFromBid`** (same as **Import → bid**); **Save the bid first** when unsaved — **[`BidFormModal.tsx`](src/components/bids/BidFormModal.tsx)**, **`JobFormModal.tsx`**](#latest-updates-v2493)
 **New:** [v2.492 — **Banking** **Mercury** **Accounting** — **More filters** — **Exclude counterparty** (**`excludeCounterpartyContains`**, case-insensitive **contains** on **`counterparty_name`**, max **50** phrases; same **`v:1`** **`localStorage`** JSON) — **[`bankingAccountingLedgerFilters.ts`](src/lib/bankingAccountingLedgerFilters.ts)**, **[`BankingMercuryAccountingLedgerFilterModal.tsx`](src/components/banking/BankingMercuryAccountingLedgerFilterModal.tsx)**](#latest-updates-v2492)
 **New:** [v2.491 — **Banking** **Mercury** **Accounting** — **Rules** section **collapse** (chevron toggles table/loading only); **New rule** / **Apply rules** stay on the header row; **`readAccountingRulesSectionExpanded`** / **`writeAccountingRulesSectionExpanded`** in **[`bankingDragSortStorage.ts`](src/lib/bankingDragSortStorage.ts)** (default expanded, **`'0'`** = collapsed) — **[`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx)**](#latest-updates-v2491)
 **New:** [v2.490 — **Banking** **Mercury** **Accounting** — **More filters** — **Transaction type** (`mercury_transactions`.`kind`) **multi-select** from current Banking-filtered list; **`formatMercuryKind`** labels; **Apply** clears **`kinds`** when every type is selected (no redundant badge); persisted in same **`v:1`** JSON — **[`bankingAccountingLedgerFilters.ts`](src/lib/bankingAccountingLedgerFilters.ts)**, **[`BankingMercuryAccountingLedgerFilterModal.tsx`](src/components/banking/BankingMercuryAccountingLedgerFilterModal.tsx)**](#latest-updates-v2490)
@@ -1638,6 +1642,18 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.493)
+
+**Date**: 2026-05-04
+
+### **Bids** — **Copy Bid** dialog — **Open Job** from bid
+
+- **[`BidFormModal.tsx`](src/components/bids/BidFormModal.tsx)** — The overlay opened from the **Service Type** chip in **Edit Bid** / **New Bid** is titled **Copy Bid** (replacing *Other trades for this job*). Top content: helper copy; per–other-trade **Open B…** / **Copy to new … bid** (saved bid required for copy). New bottom **Job** section: **Open Job** closes the overlay and calls **`useJobFormModal().openNewJob({ prefillBidId })`** when the bid is saved; disabled with *Save the bid first* when there is no **`editingBid`** id.
+- **[`JobFormModalContext.tsx`](src/contexts/JobFormModalContext.tsx)** — **`OpenNewJobOptions.prefillBidId`** stored on **`new`** open state; passed as **`newJobPrefillBidId`**.
+- **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)** — **`useEffect`** when **`initDone`** and **`mode === 'new'`** runs **`applyPrefillFromBid`** once (ref guard + **`bidId`** match) so customer / catalog state is ready — same prefill path as header **Import** → bid; works alongside optional **`newJobProjectId`**.
+
 ---
 
 ## Latest Updates (v2.492)
