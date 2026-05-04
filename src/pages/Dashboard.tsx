@@ -1369,6 +1369,11 @@ export default function Dashboard() {
     })
   }, [])
 
+  const myBidsVisibleCount = useMemo(
+    () => myBids.reduce((acc, b) => acc + (hiddenBidIds.has(b.id) ? 0 : 1), 0),
+    [myBids, hiddenBidIds],
+  )
+
   const isDev = role === 'dev'
   const {
     dispatchInboxEligible,
@@ -5683,12 +5688,19 @@ export default function Dashboard() {
             }}
           >
             {isMobile ? (
-              <h2 style={{ fontSize: '1.125rem', margin: 0 }}>My Bids</h2>
+              <h2 style={{ fontSize: '1.125rem', margin: 0 }}>
+                {myBidsLoading ? 'My Bids' : `My Bids (${myBidsVisibleCount})`}
+              </h2>
             ) : (
               <button
                 type="button"
                 onClick={() => setMyBidsSectionExpanded((prev) => !prev)}
                 aria-expanded={myBidsSectionExpanded}
+                aria-label={
+                  myBidsLoading
+                    ? 'My Bids, loading'
+                    : `My Bids, ${myBidsVisibleCount} ${myBidsVisibleCount === 1 ? 'bid' : 'bids'}`
+                }
                 style={{
                   margin: 0,
                   padding: 0,
@@ -5701,7 +5713,9 @@ export default function Dashboard() {
                 }}
               >
                 <span aria-hidden>{myBidsSectionExpanded ? '\u25BC' : '\u25B6'}</span>
-                <h2 style={{ fontSize: '1.125rem', margin: 0 }}>My Bids</h2>
+                <h2 style={{ fontSize: '1.125rem', margin: 0 }}>
+                  {myBidsLoading ? 'My Bids' : `My Bids (${myBidsVisibleCount})`}
+                </h2>
               </button>
             )}
             {(isMobile || myBidsSectionExpanded) && (

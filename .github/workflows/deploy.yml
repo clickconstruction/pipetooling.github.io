@@ -13,7 +13,7 @@ permissions:
 
 concurrency:
   group: "pages"
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -100,6 +100,5 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
         with:
-          # Default is 10m; GitHub can sit in updating_pages longer (load, CDN, first deploy).
-          timeout: 1800000
+          # deploy-pages max wait is 600000 ms (10m); omit timeout to use default.
           reporting_interval: 10000
