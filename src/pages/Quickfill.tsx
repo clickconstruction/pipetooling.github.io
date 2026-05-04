@@ -38,7 +38,10 @@ import { useAuth } from '../hooks/useAuth'
 import { useDispatchInbox } from '../hooks/useDispatchInbox'
 import { useQuickfillStagesJobsWithoutCustomer } from '../hooks/useQuickfillStagesJobsWithoutCustomer'
 import { useUnpricedFixturesCount } from '../hooks/useUnpricedFixturesCount'
-import { canRoleUseArBankCount, useArBankUnallocatedCount } from '../hooks/useArBankUnallocatedCount'
+import {
+  canRoleSeeArBankUnallocatedOrgNudge,
+  useArBankUnallocatedCount,
+} from '../hooks/useArBankUnallocatedCount'
 import { useStaleTallyStaffFollowUp } from '../hooks/useStaleTallyStaffFollowUp'
 import { TALLY_STALE_MIN_AGE_DAYS } from '../lib/tallyStaleMinAgeDays'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
@@ -416,7 +419,7 @@ function QuickfillPage() {
     transactionCount: staleTallyStaffTxCount,
     refetch: refetchStaleTallyStaffFollowUp,
   } = useStaleTallyStaffFollowUp(TALLY_STALE_MIN_AGE_DAYS)
-  const arBankCountEnabled = Boolean(authUser?.id) && canRoleUseArBankCount(role)
+  const arBankCountEnabled = Boolean(authUser?.id) && canRoleSeeArBankUnallocatedOrgNudge(role)
   const { count: arBankUnallocatedCount } = useArBankUnallocatedCount({
     enabled: arBankCountEnabled,
     authUserId: authUser?.id,

@@ -99,3 +99,7 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          # Default is 10m; GitHub can sit in updating_pages longer (load, CDN, first deploy).
+          timeout: 1800000
+          reporting_interval: 10000

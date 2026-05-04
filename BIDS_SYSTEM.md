@@ -207,6 +207,7 @@ Column order (left to right; leading **expand** chevron opens inline **Notes** �
   3. Loss reason (when Lost); Start Date (when Won)
   4. Project Address (full width), then **Distance to Office (miles)** | **Plan Pages** (two-column row; map link by distance)
   5. Project Folder, Job Plans / Design Drawing Plan Date, Count Tooling / Bid Submission, GC/Builder (customer), Project Contact fields, Submitted to, financial fields, Last Contact, Notes, actions
+- **Copy Bid** (**Service Type** chip — **`RECENT_FEATURES.md`** **v2.493**): Opens a nested dialog titled **Copy Bid** (other-trade bids for the same address: **Open B…** on a saved sibling bid, **Copy to new … bid**). Bottom **Job** section: **Open Job** closes the overlay and opens the app-wide **New Job** form via **[`JobFormModalContext`](src/contexts/JobFormModalContext.tsx)** **`openNewJob({ prefillBidId })`**; **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)** runs **`applyPrefillFromBid`** after **`initDone`** (same outcome as **Jobs → New Job → Import** when a bid is chosen). **Open Job** stays disabled with *Save the bid first* until the current bid has an id.
 
 **Confirm bid sent (Bid Date Sent attestation)**:
 - When **Bid Date Sent** is changed to a **new** calendar date (different from the value last saved on the bid), a **Confirm bid sent** modal opens before the change can be saved: three required acknowledgments (email, phone follow-up, honesty) and **Confirm sent date**.

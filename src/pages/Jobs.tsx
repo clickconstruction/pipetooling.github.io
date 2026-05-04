@@ -32,7 +32,10 @@ import AddInspectionModal from '../components/AddInspectionModal'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { jobBillingContextFromJob } from '../lib/jobBillingContext'
 import { useBillCustomerModal } from '../contexts/BillCustomerModalContext'
-import { canRoleUseArBankCount, useArBankUnallocatedCount } from '../hooks/useArBankUnallocatedCount'
+import {
+  canRoleSeeArBankUnallocatedOrgNudge,
+  useArBankUnallocatedCount,
+} from '../hooks/useArBankUnallocatedCount'
 import BankPaymentsModal from '../components/jobs/BankPaymentsModal'
 import JobBookModal from '../components/jobs/JobBookModal'
 import StagesNoCustomerJobsModal from '../components/jobs/StagesNoCustomerJobsModal'
@@ -4086,7 +4089,7 @@ ${totalsHtml}
     }
     // When openBankPayments is present, force Stages tab so AR deep link can open the modal
     const openBankPaymentsWant = searchParams.get('openBankPayments') === 'true' || searchParams.get('openBankPayments') === '1'
-    if (openBankPaymentsWant && canRoleUseArBankCount(authRole) && !isPrimary) {
+    if (openBankPaymentsWant && canRoleSeeArBankUnallocatedOrgNudge(authRole)) {
       setActiveTab('stages')
       if (tab !== 'stages') {
         setSearchParams((p) => {
@@ -4300,12 +4303,7 @@ ${totalsHtml}
       )
     }
 
-    if (!canRoleUseArBankCount(authRole)) {
-      stripOpenBankPaymentsParam()
-      return
-    }
-    const isPrimary = authRole === 'primary' || myRole === 'primary'
-    if (isPrimary) {
+    if (!canRoleSeeArBankUnallocatedOrgNudge(authRole)) {
       stripOpenBankPaymentsParam()
       return
     }
@@ -4315,7 +4313,7 @@ ${totalsHtml}
     }
     setBankPaymentsModalOpen(true)
     stripOpenBankPaymentsParam()
-  }, [openBankPaymentsParam, authRole, myRole, activeTab, setSearchParams])
+  }, [openBankPaymentsParam, authRole, activeTab, setSearchParams])
 
   // When editLabor=hcp is in URL and labor jobs are loaded, open edit or new labor modal
   const editLaborHcp = searchParams.get('editLabor')

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { canRoleUseArBankCount } from '../hooks/useArBankUnallocatedCount'
+import { canRoleSeeArBankUnallocatedOrgNudge } from '../hooks/useArBankUnallocatedCount'
 import { useJobsListCache } from '../contexts/JobsListCacheContext'
 import BankPaymentsModal from '../components/jobs/BankPaymentsModal'
 import { useJobFormModal } from '../contexts/JobFormModalContext'
@@ -38,12 +38,8 @@ export default function JobsAccountsReceivable() {
     return <Navigate to="/sign-in" replace />
   }
 
-  if (!canRoleUseArBankCount(authRole)) {
+  if (!canRoleSeeArBankUnallocatedOrgNudge(authRole)) {
     return <Navigate to="/dashboard" replace />
-  }
-
-  if (authRole === 'primary') {
-    return <Navigate to="/jobs?tab=reports" replace />
   }
 
   return (

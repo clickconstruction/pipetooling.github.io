@@ -74,7 +74,10 @@ import DashboardArBankUnallocatedBanner from '../components/DashboardArBankUnall
 import DashboardTallyStaleBanner from '../components/DashboardTallyStaleBanner'
 import DashboardTallyStaleStaffBanner from '../components/DashboardTallyStaleStaffBanner'
 import { DashboardStaleTallyStaffFollowUpModal } from '../components/DashboardStaleTallyStaffFollowUpModal'
-import { canRoleUseArBankCount, useArBankUnallocatedCount } from '../hooks/useArBankUnallocatedCount'
+import {
+  canRoleSeeArBankUnallocatedOrgNudge,
+  useArBankUnallocatedCount,
+} from '../hooks/useArBankUnallocatedCount'
 import { useStaleTallyStaffFollowUp } from '../hooks/useStaleTallyStaffFollowUp'
 import { TALLY_STALE_MIN_AGE_DAYS } from '../lib/tallyStaleMinAgeDays'
 import { DashboardTeamActiveClockStrip } from '../components/DashboardTeamActiveClockStrip'
@@ -1453,7 +1456,7 @@ export default function Dashboard() {
   const { total: supplyHousesAPTotal } = useSupplyHousesAPTotal(hasSupplyHousesAPPin, financialRefreshKey)
   const { total: subLaborDueTotal } = useSubLaborDueTotal(hasSubLaborDuePin, financialRefreshKey)
 
-  const arBankCountEnabled = Boolean(authUser?.id) && canRoleUseArBankCount(role)
+  const arBankCountEnabled = Boolean(authUser?.id) && canRoleSeeArBankUnallocatedOrgNudge(role)
   const { count: arBankUnallocatedCount } = useArBankUnallocatedCount({
     enabled: arBankCountEnabled,
     authUserId: authUser?.id,

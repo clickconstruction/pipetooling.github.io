@@ -9,6 +9,11 @@ export function canRoleUseArBankCount(role: string | null): boolean {
   )
 }
 
+/** Dashboard / Quickfill unallocated-deposits banner, `/accounts-receivable` — staff only; `primary` uses Jobs Stages modal + count via {@link canRoleUseArBankCount}. */
+export function canRoleSeeArBankUnallocatedOrgNudge(role: string | null): boolean {
+  return role === 'dev' || role === 'master_technician' || role === 'assistant'
+}
+
 /**
  * Count of Mercury transactions with allocatable AR balance (same filter as Jobs Accounts Receivable modal).
  * Pass `bankPaymentsModalOpen` only from Jobs so count refetches when the modal closes.
