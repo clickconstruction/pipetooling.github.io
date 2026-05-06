@@ -11,13 +11,14 @@ import { recordNotComingInForUserAsStaff } from '../../lib/notComingInTimeOff'
 import { fetchSalariedUserIdSetFromUserIds } from '../../lib/salaryPayConfigGate'
 import { fetchHoursDaysCorrectWorkDates } from '../../lib/fetchHoursDaysCorrectWorkDates'
 import {
+  APP_CALENDAR_TZ,
   denverCalendarDayKey,
   formatDenverCalendarDayWithWeekdayAndYear,
   getDefaultWeekRange,
   getLastWeekRange,
   referenceDateForWorkDateYmd,
 } from '../../utils/dateUtils'
-import { enCaWeekRangeContainingYmd, shiftWorkDateYmd } from '../../lib/peopleHoursClockStripSelectedDay'
+import { shiftWorkDateYmd } from '../../lib/peopleHoursClockStripSelectedDay'
 import type { AssignSessionJobSavedPatch } from '../clock-sessions/AssignSessionJobPopover'
 import {
   DASHBOARD_CLOCK_STRIP_SCOPE_KEY,
@@ -42,6 +43,78 @@ const navMobileSepStyle: CSSProperties = {
   userSelect: 'none',
   fontSize: '0.875rem',
   padding: '0 0.15rem',
+}
+
+function miniCalendarCellLabels(ymd: string): { mdLine: string; weekdayLine: string; ariaFull: string } {
+  const d = referenceDateForWorkDateYmd(ymd)
+  const mdLine = d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' })
+  const weekdayLine = d.toLocaleDateString('en-US', { weekday: 'short' })
+  const ariaFull = d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+  return { mdLine, weekdayLine, ariaFull }
+}
+
+function isWeekendWallYmd(ymd: string): boolean {
+  const d = referenceDateForWorkDateYmd(ymd)
+  const short = new Intl.DateTimeFormat('en-US', {
+    timeZone: APP_CALENDAR_TZ,
+    weekday: 'short',
+  }).format(d)
+  const norm = short.trim().slice(0, 3).toUpperCase()
+  return norm.startsWith('SAT') || norm.startsWith('SUN')
+}
+
+function miniDayPickerButtonStyle(isToday: boolean, isSelected: boolean, isWeekend: boolean): CSSProperties {
+  const base: CSSProperties = {
+    flexShrink: 0,
+    minWidth: '3rem',
+    padding: '0.35rem 0.45rem',
+    borderRadius: 6,
+    border: '1px solid #d1d5db',
+    background: '#fff',
+    cursor: 'pointer',
+    fontSize: '0.72rem',
+    lineHeight: 1.22,
+    textAlign: 'center',
+    fontFamily: 'inherit',
+    color: '#111827',
+  }
+
+  const neutralWeekend: CSSProperties =
+    !isWeekend
+      ? {}
+      : {
+          borderColor: '#e5e7eb',
+          background: '#faf5ff',
+        }
+
+  if (isToday && isSelected) {
+    return {
+      ...base,
+      border: '2px solid #1d4ed8',
+      background: '#dbeafe',
+      fontWeight: 700,
+      boxShadow: 'inset 0 0 0 1px #93c5fd',
+    }
+  }
+  if (isToday) {
+    return {
+      ...base,
+      borderColor: '#93c5fd',
+      background: isWeekend ? '#eef2ff' : '#eff6ff',
+    }
+  }
+  if (isSelected) {
+    return {
+      ...base,
+      border: '2px solid #2563eb',
+      background: '#bfdbfe',
+      fontWeight: 600,
+    }
+  }
+  return {
+    ...base,
+    ...neutralWeekend,
+  }
 }
 
 type Props = {
@@ -85,7 +158,22 @@ export function PeopleHoursDashboardClockStrip({ onSessionsChanged }: Props) {
 
   const orgWideStripEnabled = showClockStripScopeToggle && clockStripScope === 'everyone'
 
-  const pendingWorkDateRange = useMemo(() => enCaWeekRangeContainingYmd(selectedYmd), [selectedYmd])
+  const todayDenver = denverCalendarDayKey(Date.now())
+  const miniCalendarYmds = useMemo(() => {
+    const cols: string[] = []
+    for (let i = -10; i <= 0; i += 1) {
+      cols.push(shiftWorkDateYmd(todayDenver, i))
+    }
+    return cols
+  }, [todayDenver])
+
+  /** Cover all 11 mini-calendar pills so counts load for every visible day (not only the ISO week containing `selectedYmd`). */
+  const pendingWorkDateRange = useMemo(() => {
+    const start = miniCalendarYmds[0]
+    const end = miniCalendarYmds[miniCalendarYmds.length - 1]
+    if (!start || !end) return { start: todayDenver, end: todayDenver }
+    return start <= end ? { start, end } : { start: end, end: start }
+  }, [miniCalendarYmds, todayDenver])
 
   const myTeam = useDashboardMyTeamSectionState(authUser?.id, {
     orgWideStripEnabled,
@@ -93,7 +181,19 @@ export function PeopleHoursDashboardClockStrip({ onSessionsChanged }: Props) {
     pendingWorkDateRange,
   })
 
-  const todayDenver = denverCalendarDayKey(Date.now())
+  const pendingUnapprovedCountByWorkDate = useMemo(() => {
+    const base = orgWideStripEnabled ? myTeam.orgWidePendingSessions : myTeam.pendingSessions
+    const counts: Record<string, number> = {}
+    for (const s of base) {
+      const wd = s.work_date
+      if (!wd) continue
+      counts[wd] = (counts[wd] ?? 0) + 1
+    }
+    return counts
+  }, [orgWideStripEnabled, myTeam.orgWidePendingSessions, myTeam.pendingSessions])
+
+  const stripUnapprovedMiniCalendarLoading = myTeam.loadingSessions
+
   const showLiveCurrentlyIn = selectedYmd === todayDenver
 
   const sessionsForStrip = useMemo((): DashboardStripSession[] => {
@@ -286,6 +386,92 @@ export function PeopleHoursDashboardClockStrip({ onSessionsChanged }: Props) {
 
   return (
     <section style={{ marginBottom: '1rem' }}>
+      <div
+        style={{
+          marginBottom: '0.65rem',
+          overflowX: narrowViewport640 ? 'auto' : 'visible',
+          WebkitOverflowScrolling: narrowViewport640 ? 'touch' : undefined,
+          paddingBottom: narrowViewport640 ? '2px' : undefined,
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'row',
+            flexWrap: 'nowrap',
+            gap: '0.35rem',
+            justifyContent: narrowViewport640 ? 'flex-start' : 'center',
+            alignItems: 'stretch',
+          }}
+          role="group"
+          aria-label="Jump to day in last 11 days"
+        >
+          {miniCalendarYmds.map((ymd) => {
+            const isToday = ymd === todayDenver
+            const isSelected = ymd === selectedYmd
+            const isWeekend = isWeekendWallYmd(ymd)
+            const { mdLine, weekdayLine, ariaFull } = miniCalendarCellLabels(ymd)
+            const mutedWeekendWeekday = isWeekend && !isToday && !isSelected
+            const n = pendingUnapprovedCountByWorkDate[ymd] ?? 0
+            const countPhrase =
+              n === 1 ? `${n} unapproved session` : `${n} unapproved sessions`
+            return (
+              <button
+                key={ymd}
+                type="button"
+                style={miniDayPickerButtonStyle(isToday, isSelected, isWeekend)}
+                aria-label={
+                  stripUnapprovedMiniCalendarLoading
+                    ? `Select ${ariaFull}. Loading counts.`
+                    : `Select ${ariaFull}. ${countPhrase}.`
+                }
+                aria-pressed={isSelected}
+                aria-current={isToday ? 'date' : undefined}
+                onClick={() => setSelectedYmd(ymd)}
+              >
+                <div style={{ fontWeight: isSelected ? 600 : isToday ? 600 : 500 }}>{mdLine}</div>
+                <div style={{ color: mutedWeekendWeekday ? '#6b7280' : '#4b5563', fontWeight: 500 }}>{weekdayLine}</div>
+              </button>
+            )
+          })}
+        </div>
+        <div
+          role="group"
+          style={{
+            display: 'flex',
+            flexDirection: 'row',
+            flexWrap: 'nowrap',
+            gap: '0.35rem',
+            justifyContent: narrowViewport640 ? 'flex-start' : 'center',
+            alignItems: 'center',
+            marginTop: '0.28rem',
+          }}
+          aria-label="Unapproved session counts per day for strip scope"
+        >
+          {miniCalendarYmds.map((ymd) => {
+            const n = pendingUnapprovedCountByWorkDate[ymd] ?? 0
+            const loading = stripUnapprovedMiniCalendarLoading
+            return (
+              <div
+                key={`unapproved-count-${ymd}`}
+                style={{
+                  flexShrink: 0,
+                  minWidth: '3rem',
+                  textAlign: 'center',
+                  fontSize: '0.72rem',
+                  fontWeight: loading ? 500 : n > 0 ? 700 : 600,
+                  color: loading ? '#9ca3af' : n > 0 ? '#b45309' : '#374151',
+                  lineHeight: 1.2,
+                  fontFamily: 'inherit',
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                {loading ? '…' : String(n)}
+              </div>
+            )
+          })}
+        </div>
+      </div>
       {narrowViewport640 ? (
         <div style={{ marginBottom: '0.65rem' }}>
           <div

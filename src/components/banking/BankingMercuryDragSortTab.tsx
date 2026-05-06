@@ -23,11 +23,13 @@ import {
   writeDragSortHideLabeledTransactions,
   writeDragSortLabelsCardsExpanded,
 } from '../../lib/bankingDragSortStorage'
+import { counterpartyFrequenciesAboveMin } from '../../lib/bankingMercuryCounterpartyFrequency'
 import { ensureDragSortDefaultLabels } from '../../lib/dragSortDefaultLabels'
 import type { MercuryJobSplit } from '../MercuryTransactionAllocationsModal'
 import { mercuryTxDragSortBankNoteRowVisible } from './MercuryTxNotesDisclosure'
 import { ListOrdered } from 'lucide-react'
 import BankingMercuryDragSortFocusModal from './BankingMercuryDragSortFocusModal'
+import { MercuryCounterpartyFrequencyModal } from './MercuryCounterpartyFrequencyModal'
 import { DragSortLabelBucketCard } from './dragSortLabelBucketCard'
 import {
   BANKING_DRAG_SORT_HANDLE_BORDER,
@@ -305,6 +307,7 @@ export function BankingMercuryDragSortTab({
   const [labelsCardsExpanded, setLabelsCardsExpanded] = useState(true)
   const [activeDragTxId, setActiveDragTxId] = useState<string | null>(null)
   const [addLabelModalOpen, setAddLabelModalOpen] = useState(false)
+  const [counterpartyFrequencyModalOpen, setCounterpartyFrequencyModalOpen] = useState(false)
   const [dragSortHelpOpen, setDragSortHelpOpen] = useState(false)
   const [quickLabelModalOpen, setQuickLabelModalOpen] = useState(false)
   const [quickLabelUndoStack, setQuickLabelUndoStack] = useState<Array<{ txId: string; prevLabelId: string | null }>>(
@@ -416,6 +419,11 @@ export function BankingMercuryDragSortTab({
     if (!hideLabeledTransactions) return filteredTransactions
     return filteredTransactions.filter((tx) => !assignmentLabelByTxId.has(tx.id))
   }, [hideLabeledTransactions, filteredTransactions, assignmentLabelByTxId])
+
+  const counterpartyFrequencyRows = useMemo(
+    () => counterpartyFrequenciesAboveMin(displayTransactions),
+    [displayTransactions],
+  )
 
   /** Unlabeled rows in ledger order — used by Quick label focus modal (`displayTransactions`, same hide/search slice). */
   const dragSortQuickLabelQueue = useMemo(
@@ -882,7 +890,10 @@ export function BankingMercuryDragSortTab({
           ) : (
             <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 8 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                <BankingMercuryDragSortLedgerThead showDragHandle />
+                <BankingMercuryDragSortLedgerThead
+                  showDragHandle
+                  onCounterpartyHeaderClick={() => setCounterpartyFrequencyModalOpen(true)}
+                />
                 <tbody>
                   {displayTransactions.map((r) => {
                     const assignId = assignmentLabelByTxId.get(r.id)
@@ -1243,6 +1254,18 @@ export function BankingMercuryDragSortTab({
           </div>
         </div>
       ) : null}
+
+      <MercuryCounterpartyFrequencyModal
+        open={counterpartyFrequencyModalOpen}
+        onClose={() => setCounterpartyFrequencyModalOpen(false)}
+        rows={counterpartyFrequencyRows}
+        scopeDescription={
+          <>
+            Counterparties with more than two transactions in the current table (after filters and{' '}
+            <strong>Hide labeled transactions</strong>).
+          </>
+        }
+      />
 
       <DragOverlay dropAnimation={{ duration: 0, easing: 'linear' }}>
         {activeOverlayRow ? <DragSortTransactionPreview row={activeOverlayRow} /> : null}

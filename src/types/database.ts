@@ -216,6 +216,49 @@ export type Database = {
           },
         ]
       }
+      bid_count_row_submission_hides: {
+        Row: {
+          bid_id: string
+          count_row_id: string
+          created_at: string
+          price_book_version_id: string
+        }
+        Insert: {
+          bid_id: string
+          count_row_id: string
+          created_at?: string
+          price_book_version_id: string
+        }
+        Update: {
+          bid_id?: string
+          count_row_id?: string
+          created_at?: string
+          price_book_version_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_count_row_submission_hides_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_count_row_submission_hides_count_row_id_fkey"
+            columns: ["count_row_id"]
+            isOneToOne: false
+            referencedRelation: "bids_count_rows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_count_row_submission_hides_price_book_version_id_fkey"
+            columns: ["price_book_version_id"]
+            isOneToOne: false
+            referencedRelation: "price_book_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_pricing_assignments: {
         Row: {
           bid_id: string
@@ -9717,6 +9760,13 @@ export type Database = {
           id: string
           job_address: string
           job_name: string
+        }[]
+      }
+      list_mercury_drag_sort_label_assignment_counts: {
+        Args: never
+        Returns: {
+          assignment_count: number
+          label_id: string
         }[]
       }
       list_mercury_transactions_for_bank_payments: {

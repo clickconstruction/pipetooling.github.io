@@ -5,7 +5,7 @@ file: BIDS_SYSTEM.md
 type: System Documentation
 purpose: Complete documentation of 10-tab Bids system including workflows, book systems, and integrations
 audience: Developers, Estimators, AI Agents
-last_updated: 2026-04-30
+last_updated: 2026-05-06
 estimated_read_time: 30-40 minutes
 difficulty: Intermediate to Advanced
 
@@ -176,7 +176,7 @@ Column order (left to right; leading **expand** chevron opens inline **Notes** �
 1. **Project Folder** - Folder icon linking to drive folder (or dash if none)
 2. **Job Plans** - Document icon linking to plans (or dash if none)
 3. **GC/Builder** - Customer name (clickable for details)
-4. **Bid #** - Auto-generated for new bids; displayed with **trade-specific prefix** + number (e.g. **`BP456`**, **`B456`** when **`service_types.ledger_bid_prefix`** is blank — **v2.432**) on the board and in Clock In search. **When set, prefix+`{n}` is clickable on the Bid Board** and opens **Bid preview** (same as the Preview column). Editable only by dev, master, assistant (read-only for estimator, primary)
+4. **Bid #** - Auto-generated for new bids; displayed with **trade-specific prefix** + number (e.g. **`BP456`**, **`B456`** when **`service_types.ledger_bid_prefix`** is blank — **v2.432**) on the board and in Clock In search. On the **Bid Board** table, **`BidBoardBidNumberMark`** (**[`Bids.tsx`](src/pages/Bids.tsx)**) scales the **entire** prefix at **`0.7em`** and the numeric **`bid_number`** at inherited size so multi-letter prefixes (e.g. **BP**) stay uniform (**`RECENT_FEATURES`** **v2.498**). **When set, prefix+`{n}` is clickable on the Bid Board** and opens **Bid preview** (same as the Preview column). Editable only by dev, master, assistant (read-only for estimator, primary)
 5. **Project Name** - Bid identifier
 6. **Address** - Project location; line break after first comma (street on line 1, city/state on line 2)
 7. **Account Man** - Account manager or estimator name
@@ -933,6 +933,8 @@ UNIQUE (version_id, fixture_type_id)
 - **Our Cost** - Calculated from cost estimate
 - **Revenue** - From assigned price book entry (respects fixed price flag)
 - **Margin %** - `(Revenue - Cost) / Revenue × 100`
+- **% of bid revenue** - Share of priced revenue; click the percentage to **omit this fixture line** from Cover Letter combined output and Submission **Margins** (**Approval**) pricing tables. **Totals still include** the row. **Eye** icon appears **only while hidden** (**`bid_count_row_submission_hides`**, keyed by selected price-book version — **RECENT_FEATURES** **v2.499**).
+- **Unit cost** / override - Editable **`unit_price_override`** (stored on `bid_pricing_assignments` when an entry is assigned, else `bid_count_row_custom_prices`). When the unit field is empty and not saving, a **borderless** trigger opens **Generate unit selling price**: **Line share of total (%)** vs **current bid total** (**[`unitPriceFromTargetPctOfTotal`](src/lib/unitPriceFromTargetPctOfTotal.ts)**); **Apply** uses **`updateUnitPriceOverride`** — **v2.499**; preview **New row total** / redundant-line suppression / bold count — **v2.500** (**`RECENT_FEATURES.md`**).
 - **Flag** - Color-coded indicator
 
 **Fixed Price Feature**:
@@ -995,10 +997,21 @@ bid_pricing_assignments:
   price_book_entry_id (uuid, FK → price_book_entries ON DELETE CASCADE)
   price_book_version_id (uuid, FK → price_book_versions ON DELETE CASCADE)
   is_fixed_price (boolean, default: false) -- When true, revenue = price (ignores count)
+  unit_price_override (numeric, nullable)
   UNIQUE (bid_id, count_row_id)
+
+bid_count_row_submission_hides:
+  bid_id (uuid, FK → bids ON DELETE CASCADE)
+  count_row_id (uuid, FK → bids_count_rows ON DELETE CASCADE)
+  price_book_version_id (uuid, FK → price_book_versions ON DELETE CASCADE)
+  created_at (timestamptz)
+  PRIMARY KEY (bid_id, count_row_id, price_book_version_id)
+  -- Row exists => omit fixture from Cover Letter + Approval fixture lists for this version only; totals unchanged (v2.499)
 ```
 
-**RLS**: Access controlled via bid access policies
+**RLS**: Access controlled via bid access policies (assignments); **`bid_count_row_submission_hides`** uses **`can_access_bid_for_pricing`** (see migrations **`20270521120000`**, **`20270521120100`**).
+
+**Historical note**: **`omit_from_submission_documents`** on assignments was superseded by **`bid_count_row_submission_hides`** and dropped from **`bid_pricing_assignments`**.
 
 ### Print Price Book
 
@@ -1008,6 +1021,7 @@ bid_pricing_assignments:
 - Print single selected price book or all price books
 - Shows comparison table with cost breakdown
 - **Unit cost overrides**: Printed output uses user-entered unit costs (from the editable Unit Cost column) when present, not just the price book value. Same resolution as on-screen: `unit_price_override` or `bid_count_row_custom_prices` takes precedence over the price book entry.
+- **Submission hides**: Fixture lists in **Cover Letter** and **Margins** (**Approval**) respect **`bid_count_row_submission_hides`** for the active price-book version; omitted lines do not reduce printed revenue totals (**v2.499**).
 
 **Table Columns**:
 - **Fixture**: From count rows
@@ -1228,6 +1242,8 @@ Each section has clickable header with:
 **Criteria**: `outcome = 'lost'`
 
 **Reason tracking**: Shows `loss_reason` when provided
+
+**Dashboard**: Users with Bids access see an amber **Lost bids need a reason** banner on the Dashboard when they have **lost** bids as **estimator** or **account manager** with a blank **`loss_reason`**; it deep-links to **Bid board**, expands **Lost**, and opens **Bid Tabs on Lost** with their staff tab when valid (**`RECENT_FEATURES`** **v2.496**; **`lostSummary`**, **`lostSummaryTab`** query params on **`Bids.tsx`**).
 
 ### Date Formatting
 

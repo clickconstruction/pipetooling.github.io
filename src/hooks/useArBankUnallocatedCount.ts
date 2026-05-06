@@ -14,6 +14,11 @@ export function canRoleSeeArBankUnallocatedOrgNudge(role: string | null): boolea
   return role === 'dev' || role === 'master_technician' || role === 'assistant'
 }
 
+/** Dashboard tally-row Unallocated bank deposits banner only. Quickfill, `/accounts-receivable`, and Jobs deep links use {@link canRoleSeeArBankUnallocatedOrgNudge}. */
+export function canRoleSeeArBankUnallocatedDashboardBanner(role: string | null): boolean {
+  return role === 'dev' || role === 'assistant'
+}
+
 /**
  * Count of Mercury transactions with allocatable AR balance (same filter as Jobs Accounts Receivable modal).
  * Pass `bankPaymentsModalOpen` only from Jobs so count refetches when the modal closes.

@@ -7,16 +7,55 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-05-04
+last_updated: 2026-05-15
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.493 → v2.4"
+version_range: "v2.506+ (reverse chronological)"
 
 key_sections:
+  - name: "Latest Version (v2.506)"
+    line: ~1695
+    description: "Banking Mercury — shared Counterparty frequency modal (MercuryCounterpartyFrequencyModal, counterpartyFrequenciesAboveMin); Accounting + Drag Sort ledger headers"
+  - name: "Latest Version (v2.505)"
+    line: ~1710
+    description: "Banking Accounting Rules — Name/Label column header sort (aria-sort, sortAccountingRulesForTable); AccountingRuleFormModal SearchableSelect + list_mercury_drag_sort_label_assignment_counts"
+  - name: "Latest Version (v2.504)"
+    line: ~1722
+    description: "Banking Accounting Rules section — search rules table by name or label (in-memory)"
+  - name: "Latest Version (v2.503)"
+    line: ~1732
+    description: "Banking Accounting Sorting Ledger — Counterparty (Name (n)); section title Sorting Ledger (visible count); trimmed grouping"
+  - name: "Latest Version (v2.502)"
+    line: ~1744
+    description: "People Overhead — Advanced column order (Office Total before Overhead %); no border between Office parts and Office Total in Advanced"
+  - name: "Latest Version (v2.501)"
+    line: ~1695
+    description: "People Overhead — Overhead % column (rounded ratio×100); header tooltip, aria-labels, Overhead office job modal"
+  - name: "Latest Version (v2.500)"
+    line: ~1705
+    description: "Bids Pricing — GenerateUnitCostModal: New row total label; hide redundant unit preview when non-fixed count is 1; bold count digit in multi-count preview"
+  - name: "Latest Version (v2.499)"
+    line: ~1685
+    description: "Bids Pricing — bid_count_row_submission_hides (Cover Letter / Approval omit); % of bid revenue click-toggle + hidden-only eye; GenerateUnitCostModal line share % × bid total (unitPriceFromTargetPctOfTotal) → updateUnitPriceOverride"
+  - name: "Latest Version (v2.498)"
+    line: ~1698
+    description: "Bids Bid Board Bid # — BidBoardBidNumberMark scales full ledger_bid_prefix at 0.7em vs digits (BP multi-letter prefix uniform)"
+  - name: "Latest Version (v2.497)"
+    line: ~1708
+    description: "Dashboard Unallocated bank deposits banner — dev + assistant only (canRoleSeeArBankUnallocatedDashboardBanner); master_technician omits Dashboard banner; Quickfill /accounts-receivable unchanged (OrgNudge)"
+  - name: "Latest Version (v2.496)"
+    line: ~1720
+    description: "Dashboard — Lost bids need a reason banner (lost + estimator/account manager + blank loss_reason); deep link to Bids bid-board opens Bid Tabs on Lost with staff tab; BidBoardLostSummaryModal initialStaffTabUserId"
+  - name: "Latest Version (v2.495)"
+    line: ~1734
+    description: "People Hours — section chips first below pay tools (#people-hours-sections-nav); Week range non-collapsible, flat shell, layout polish; Dashboard strip jobs-worked-today report icon flicker fix (stable reports lookup key)"
+  - name: "Latest Version (v2.494)"
+    line: ~1747
+    description: "Dashboard My Bids (n) title; primary — My Bids + Recent Reports collapsed by default; unallocated-deposits org banner staff-only (primary keeps Jobs Stages AR count/modal)"
   - name: "Latest Version (v2.493)"
-    line: ~1643
+    line: ~1760
     description: "Bids Edit/New — Copy Bid dialog (was Other trades); Open Job from bid uses JobFormModalContext prefillBidId + applyPrefillFromBid after init"
   - name: "Latest Version (v2.492)"
     line: ~1653
@@ -29,7 +68,7 @@ key_sections:
     description: "Banking Accounting More filters — transaction type (mercury_transactions.kind) multi-select; all-selected clears badge; same localStorage v1 JSON"
   - name: "Latest Version (v2.489)"
     line: ~1643
-    description: "Banking Accounting ledger — More filters modal (date, amount, job split, person); localStorage; Apply rules / Test still Banking slice only"
+    description: "Banking Accounting Sorting Ledger — More filters modal (date, amount, job split, person); localStorage; Apply rules / Test still Banking slice only"
   - name: "Latest Version (v2.488)"
     line: ~1638
     description: "Banking Accounting — Hide labeled default on (localStorage invert); legacy no-key users see hide until they uncheck once"
@@ -110,7 +149,7 @@ key_sections:
     description: "People Overhead tab — dev + master_technician only (canAccessOverheadTab); assistant retains Teams"
   - name: "Latest Version (v2.462)"
     line: ~1598
-    description: "People Overhead — Overhead factor column (Office Total ($) ÷ Field Total ($)); overheadFactorTotalOverOtherJobs, table + intro; Vitest"
+    description: "People Overhead — Overhead ratio column (overheadFactorTotalOverOtherJobs; UI **Overhead %** since v2.501); table + intro; Vitest"
   - name: "Latest Version (v2.461)"
     line: ~1610
     description: "People Overhead — Field Total ($) / Hours (dollars unchanged + jobs-ledger labor hours); buildOtherJobsLaborByDay.laborHoursByDay, OverheadDayMergedRow.otherJobsLaborHours, mergeOverheadDayTableRows"
@@ -1303,6 +1342,19 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.506 — **Banking** **Mercury** — **Counterparty frequency** modal — shared **[`MercuryCounterpartyFrequencyModal.tsx`](src/components/banking/MercuryCounterpartyFrequencyModal.tsx)** (**`counterpartyFrequenciesAboveMin`** in **[`bankingMercuryCounterpartyFrequency.ts`](src/lib/bankingMercuryCounterpartyFrequency.ts)** — **3+** transactions per trimmed name in the current ledger view, sorted by count **desc**); **Accounting** **Sorting Ledger** + **Drag Sort** **Counterparty** header (**[`BankingMercuryDragSortLedgerThead`](src/components/banking/bankingMercuryDragSortLedger.tsx)** **`onCounterpartyHeaderClick`**) — **[`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx)**, **[`BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx)**](#latest-updates-v2506)
+**New:** [v2.505 — **Banking** **Mercury** **Accounting** — **Rules** **Name** / **Label** headers toggle **asc**/**desc** sort (**`aria-sort`**, **`sortAccountingRulesForTable`**); **New/Edit rule** **`SearchableSelect`** + **`list_mercury_drag_sort_label_assignment_counts`** (**`MIGRATIONS.md`** **`20260505231245`**) — **[`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx)**, **[`AccountingRuleFormModal.tsx`](src/components/banking/AccountingRuleFormModal.tsx)**, **[`accountingRulesTableSearch.ts`](src/lib/accountingRulesTableSearch.ts)**](#latest-updates-v2505)
+**New:** [v2.504 — **Banking** **Mercury** **Accounting** — **Rules** — **Search rules…** filters the rules **table** by **Name** or **Label** (in-memory) — **[`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx)**, **[`accountingRulesTableSearch.ts`](src/lib/accountingRulesTableSearch.ts)**](#latest-updates-v2504)
+**New:** [v2.503 — **Banking** **Mercury** **Accounting** — **Sorting Ledger** — **`Sorting Ledger (n)`** visible-row section title; **Counterparty** **`Name (n)`** counts same trimmed name in the visible list — **[`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx)**, **[`bankingMercuryCounterpartyFrequency.ts`](src/lib/bankingMercuryCounterpartyFrequency.ts)**](#latest-updates-v2503)
+**New:** [v2.502 — **People → Overhead** — **Advanced** — **Office Total ($) / Hours** before **Overhead %**; **no** vertical rule between **Office parts ($)** and **Office Total** ( **`borderLeft`** only on **Overhead %** + **Field Total** in Advanced); **Simple** unchanged — [`People.tsx`](src/pages/People.tsx)](#latest-updates-v2502)
+**New:** [v2.501 — **People → Overhead** — **Overhead %** column — whole-number percent (**`Math.round(ratio × 100)`**); **`<th title>`** + row **`aria-label`** + **Overhead office job** modal copy; ratio from **`overheadFactorTotalOverOtherJobs`** unchanged — [`People.tsx`](src/pages/People.tsx)](#latest-updates-v2501)
+**New:** [v2.500 — **Bids** — **Pricing** — **`GenerateUnitCostModal`** — preview **New row total**; omit second preview line (**unit amount**) when row is **non–fixed-price** and **count** floors to **1**; **bold** quantity in **N count(s), unit amount** — [`GenerateUnitCostModal.tsx`](src/components/bids/GenerateUnitCostModal.tsx)](#latest-updates-v2500)
+**New:** [v2.499 — **Bids** — **Pricing** — **`bid_count_row_submission_hides`** ( **`bid_id`**, **`count_row_id`**, **`price_book_version_id`** ) persists **omit from Cover Letter / Approval** lists; migrations **`20270521120000`** / **`20270521120100`** (**`duplicate_bid_to_service_type`** copies hides). **`% of bid revenue`**: click percent to toggle (**eye** only when hidden). **Unit cost**: empty editable unit → **`GenerateUnitCostModal`** (**Line share of total (%)** × **current bid total** → **[`unitPriceFromTargetPctOfTotal`](src/lib/unitPriceFromTargetPctOfTotal.ts)** → **`updateUnitPriceOverride`**) — [`GenerateUnitCostModal.tsx`](src/components/bids/GenerateUnitCostModal.tsx), [`bidPricingRowCalculations.ts`](src/lib/bidPricingRowCalculations.ts) (**`hiddenSubmissionCountRowIds`**)](#latest-updates-v2499)
+**New:** [v2.498 — **Bids** — **Bid Board** **Bid #** cell — full **`ledger_bid_prefix`** (e.g. **BP**) at **`0.7em`** together; **`bid_number`** at inherited size (**`BidBoardBidNumberMark`** in **[`Bids.tsx`](src/pages/Bids.tsx)**) — fixes multi-letter prefix second letter matching digit size](#latest-updates-v2498)
+**New:** [v2.497 — **Dashboard** — **Unallocated bank deposits** banner **dev** + **assistant** only (**`canRoleSeeArBankUnallocatedDashboardBanner`**); **`master_technician`** omits **Dashboard** banner (**`useArBankUnallocatedCount`** **disabled** there); **Quickfill** **Warnings** / **`/accounts-receivable`** / Jobs **`openBankPayments`** still **`canRoleSeeArBankUnallocatedOrgNudge`**; **`canRoleUseArBankCount`** on Jobs **Stages** unchanged — **[`useArBankUnallocatedCount.ts`](src/hooks/useArBankUnallocatedCount.ts)**, **[`Dashboard.tsx`](src/pages/Dashboard.tsx)**, **`ACCESS_CONTROL.md`, `PROJECT_DOCUMENTATION.md`**](#latest-updates-v2497)
+**New:** [v2.496 — **Dashboard** — **Lost bids need a reason** amber banner when **lost** bids assign you as **estimator** / **account manager** and **`loss_reason`** is blank (≤500 row count); opens **Bids → Bid board** (**`lostSummary=1`**, **`lostSummaryTab=`** stripped on open), **Lost** section expanded, **Bid Tabs on Lost** with your staff tab when valid (**[`DashboardLostBidsMissingReasonBanner.tsx`](src/components/DashboardLostBidsMissingReasonBanner.tsx)**, **[`Dashboard.tsx`](src/pages/Dashboard.tsx)**, **`initialStaffTabUserId`** on **[`BidBoardLostSummaryModal.tsx`](src/components/bids/BidBoardLostSummaryModal.tsx)** / **[`Bids.tsx`](src/pages/Bids.tsx)**)](#latest-updates-v2496)
+**New:** [v2.495 — **People → Hours** — section chips **first** in stack (**`people-hours-sections-nav`**, below **`people-hours-pay-tools`** when shown); **Week range** always visible (not collapsible, no card shell); **Start**/**End** above date inputs; wide **← last week** before dates; centered chip row. **Dashboard** / **People strip** — **jobs worked today** missing-report icon less flicker (**`useDashboardMyTeamSectionState`**)](#latest-updates-v2495)
+**New:** [v2.494 — **Dashboard** — **My Bids** **`My Bids (n)`** after load (**`myBidsVisibleCount`**, hidden bids excluded; plain **My Bids** while loading; desktop **`aria-label`**) — **primary**: **My Bids** + **Recent Reports** **collapsed** by default (**`myBidsPrimaryCollapseAppliedRef`**, no auto-expand reports on unread); **Unallocated bank deposits** org nudge (**Quickfill** / **`/accounts-receivable`** / Jobs — **`canRoleSeeArBankUnallocatedOrgNudge`**); **Dashboard** tally banner narrowed to **`canRoleSeeArBankUnallocatedDashboardBanner`** in **v2.497**; **`primary`** keeps **`canRoleUseArBankCount`** on **Jobs** **Stages** (**[`useArBankUnallocatedCount.ts`](src/hooks/useArBankUnallocatedCount.ts)**, **[`Dashboard.tsx`](src/pages/Dashboard.tsx)**, **[`Quickfill.tsx`](src/pages/Quickfill.tsx)**, **[`JobsAccountsReceivable.tsx`](src/pages/JobsAccountsReceivable.tsx)**, **`Jobs.tsx`**)](#latest-updates-v2494)
 **New:** [v2.493 — **Bids** — **Copy Bid** dialog (title **Copy Bid**; service-type control in **Edit/New Bid** modal): **other trades** list (open sibling bid, **Copy to new … bid**) unchanged; bottom **Job** section — **Open Job** opens global **New Job** with **`openNewJob({ prefillBidId })`** (**[`JobFormModalContext`](src/contexts/JobFormModalContext.tsx)** **`prefillBidId`** → **`newJobPrefillBidId`** on **`JobFormModal`**) — after **`initDone`**, **`applyPrefillFromBid`** (same as **Import → bid**); **Save the bid first** when unsaved — **[`BidFormModal.tsx`](src/components/bids/BidFormModal.tsx)**, **`JobFormModal.tsx`**](#latest-updates-v2493)
 **New:** [v2.492 — **Banking** **Mercury** **Accounting** — **More filters** — **Exclude counterparty** (**`excludeCounterpartyContains`**, case-insensitive **contains** on **`counterparty_name`**, max **50** phrases; same **`v:1`** **`localStorage`** JSON) — **[`bankingAccountingLedgerFilters.ts`](src/lib/bankingAccountingLedgerFilters.ts)**, **[`BankingMercuryAccountingLedgerFilterModal.tsx`](src/components/banking/BankingMercuryAccountingLedgerFilterModal.tsx)**](#latest-updates-v2492)
 **New:** [v2.491 — **Banking** **Mercury** **Accounting** — **Rules** section **collapse** (chevron toggles table/loading only); **New rule** / **Apply rules** stay on the header row; **`readAccountingRulesSectionExpanded`** / **`writeAccountingRulesSectionExpanded`** in **[`bankingDragSortStorage.ts`](src/lib/bankingDragSortStorage.ts)** (default expanded, **`'0'`** = collapsed) — **[`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx)**](#latest-updates-v2491)
@@ -1644,6 +1696,150 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
+## Latest Updates (v2.506)
+
+**Date**: 2026-05-15
+
+### **Banking** — **Mercury** — **Drag Sort** + **Accounting** — **Counterparty frequency** dialog
+
+- **[`MercuryCounterpartyFrequencyModal.tsx`](src/components/banking/MercuryCounterpartyFrequencyModal.tsx)** — Shared **Counterparty frequency** dialog: lists distinct trimmed **`counterparty_name`** values that appear **more than twice** (**`counterpartyFrequenciesAboveMin`**, default **`minCountExclusive`** = **2** → **3+** rows) in the **same transaction slice** as the visible ledger, sorted by count **descending** then label. **Close**, backdrop click, and **Escape**. Empty state: *No counterparty appears more than twice in this view.*
+- **[`BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx)** — Replaced inline modal with **`MercuryCounterpartyFrequencyModal`**; **`scopeDescription`** unchanged in meaning: current table after filters and **Hide labeled transactions**.
+- **[`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx)** — **Sorting Ledger** **`BankingMercuryDragSortLedgerThead`** passes **`onCounterpartyHeaderClick`**; modal **`scopeDescription`** matches **`displayTransactions`**: **Search**, **More filters**, and **Hide labeled transactions** when that option is on. Same **`counterpartyFrequencyRows`** derivation as Drag Sort (**`displayTransactions`**).
+
+---
+
+## Latest Updates (v2.505)
+
+**Date**: 2026-05-14
+
+### **Banking** — **Mercury** — **Accounting** — **Rules** table sort + label picker RPC
+
+- **[`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx)** — **Rules** table **Name** and **Label** column headers are full-width **`button`** controls (**Sort by name** / **Sort by label** **`aria-label`**). **`aria-sort`** on each **`th`** is **`ascending`**, **`descending`**, or **`none`**. First click on a column sorts **asc** by that column; clicking the **same** column toggles **asc** ↔ **desc**; switching columns selects the new column at **asc**. **`sortAccountingRulesForTable`** in **[`accountingRulesTableSearch.ts`](src/lib/accountingRulesTableSearch.ts)** applies after **`Search rules…`** (tie-break **`sort_order`**, then **`id`**). Unicode **▲** / **▼** beside the active header.
+- **[`AccountingRuleFormModal.tsx`](src/components/banking/AccountingRuleFormModal.tsx)** — **Accounting Label** uses **`SearchableSelect`**; options ordered by **`list_mercury_drag_sort_label_assignment_counts`** (assignment-frequency RPC — **`MIGRATIONS.md`** **`20260505231245_list_mercury_drag_sort_label_assignment_counts.sql`**).
+
+---
+
+## Latest Updates (v2.504)
+
+**Date**: 2026-05-13
+
+### **Banking** — **Mercury** — **Accounting** — **Rules** table search
+
+- **[`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx)** — Expanded **Rules** section: **`Search rules…`** (`type="search"`, **`aria-label="Search rules"`**) above the table; filters rows by case-insensitive substring on **Name** or **Label** (same label fallback as the table). **No rules match this search.** when the query filters everything out; query kept in-memory only. Helpers **[`accountingRulesTableSearch.ts`](src/lib/accountingRulesTableSearch.ts)** (**`accountingRuleRowMatchesSearch`**, **`accountingRuleLabelDisplayText`**).
+
+---
+
+## Latest Updates (v2.503)
+
+**Date**: 2026-05-12
+
+### **Banking** — **Mercury** — **Accounting** — **Sorting Ledger** counterparty counts
+
+- **[`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx)** — Each visible row’s **Counterparty** shows **`Name (n)`** where **`n`** counts rows sharing the same **trimmed** `counterparty_name` within the **Sorting Ledger** list (**search**, **More filters**, **Hide labeled** included — same as `displayTransactions`). Blank counterparties share one bucket (**—**). **`BankingMercuryDragSortLedgerRow`** optional **`counterpartyOccurrenceCount`** ([**`bankingMercuryDragSortLedger.tsx`](src/components/banking/bankingMercuryDragSortLedger.tsx)); **Drag Sort** unchanged. Helpers [**`bankingMercuryCounterpartyFrequency.ts`**](src/lib/bankingMercuryCounterpartyFrequency.ts). Section heading **`Sorting Ledger (n)`** shows **`n`** = **`displayTransactions.length`** (**`aria-label`**: “Sorting Ledger, **n** transactions”).
+
+---
+
+## Latest Updates (v2.502)
+
+**Date**: 2026-05-11
+
+### **People → Overhead** — **Advanced** table column order + borders
+
+- **[`People.tsx`](src/pages/People.tsx)** — **Advanced** column order: **Bid labor ($) | Office labor ($) | Office parts ($) | Office Total ($) / Hours | Overhead % | Field Total ($) / Hours** (office **Total** immediately after the parts breakdown; **Overhead %** sits between office and field totals). **No** `border-left` on **Office Total ($) / Hours** in **Advanced** (no vertical line between **Office parts ($)** and **Office Total**). **Overhead %** and **Field Total ($) / Hours** keep **`1px #d1d5db`** left borders. **Simple** unchanged: **Date | Overhead % | Office Total ($) / Hours | Field Total ($) / Hours** with a rule before **Overhead %** after **Date**.
+
+---
+
+## Latest Updates (v2.501)
+
+**Date**: 2026-05-10
+
+### **People → Overhead** — **Overhead %** (Office Total ÷ Field Total as a whole-number percent)
+
+- **[`People.tsx`](src/pages/People.tsx)** — Column label **Overhead %**; cell **`Math.round((Office Total $ ÷ Field Total $) × 100)%`** (**—** when field total dollars are not positive). **`<th title>`** and factor **`aria-label`** describe a **percent** of field-total dollars; **Overhead office job** modal explains **Office Total ($) ÷ Field Total ($) × 100**. **[`overheadFactorTotalOverOtherJobs`](src/lib/overheadDailyLabor.ts)** unchanged (still returns the ratio). For **Advanced** column order and table borders, see **v2.502**.
+
+---
+
+## Latest Updates (v2.500)
+
+**Date**: 2026-05-08
+
+### **Bids** — **Pricing** — **`GenerateUnitCostModal`** preview polish
+
+- **[`GenerateUnitCostModal.tsx`](src/components/bids/GenerateUnitCostModal.tsx)** — Revenue preview labeled **New row total** (was *Implied row revenue*). For **non–fixed-price** rows whose **count** floors to **1**, the **unit amount** preview line is omitted (same value as the row total). When **multi-count**, the quantity in **N count(s), unit amount** is **bold**. **Fixed-price** rows still show **Fixed amount to apply** as the second preview line.
+
+---
+
+## Latest Updates (v2.499)
+
+**Date**: 2026-05-07
+
+### **Bids** — **Pricing** — **Submission hides**, **revenue-%** omit UX, **Generate unit selling price**
+
+- **Schema** — **`bid_count_row_submission_hides`** (**`bid_id`**, **`count_row_id`**, **`price_book_version_id`**, PK composite): row present ⇒ fixture line omitted from **Cover Letter** and **Approval** pricing fixture lists; **revenue totals** still include the row. **RLS** via **`can_access_bid_for_pricing`**. Prior **`bid_pricing_assignments.omit_from_submission_documents`** values backfilled into this table, then cleared on assignments; column removed in a follow-up migration. **`duplicate_bid_to_service_type`** copies hides to the duplicated bid’s mapped count rows / same version scope (**`20270521120100_drop_bid_pricing_assignments_omit_from_submission_documents.sql`**).
+- **[`Bids.tsx`](src/pages/Bids.tsx)** — Loads hides for the selected price-book version; toggle **INSERT**/**DELETE** on **`bid_count_row_submission_hides`**; PDF / print paths load hides where needed. **`computeBidPricingRows`** receives **`hiddenSubmissionCountRowIds`** (**[`bidPricingRowCalculations.ts`](src/lib/bidPricingRowCalculations.ts)**).
+- **`% of bid revenue`** — When a version is selected and the row is not mid-save: **click the percentage** to toggle omit; **hover underline** affordance; **eye** SVG **only when hidden** (no separate boxed control).
+- **Unit cost field** — When the editable unit string is **empty** (and not saving), a **borderless** left **FA-style** button (**[`GenerateUnitCostTriggerIcon`](src/components/bids/GenerateUnitCostModal.tsx)**) opens **`GenerateUnitCostModal`**: **Line share of total (%)** applies to **current priced bid total** → row revenue, then **[`unitPriceFromTargetPctOfTotal`](src/lib/unitPriceFromTargetPctOfTotal.ts)** derives **unit price** (non-fixed) or uses row revenue as the **fixed** lump; **Apply** calls **`updateUnitPriceOverride`**. Invalid total or count disables **Apply**. Tests: **`unitPriceFromTargetPctOfTotal.test.ts`**. Preview copy/layout tweaks: **v2.500**.
+
+---
+
+## Latest Updates (v2.498)
+
+**Date**: 2026-05-06
+
+### **Bids** — **Bid Board** — **Bid #** multi-letter **prefix** sizing
+
+- **[`Bids.tsx`](src/pages/Bids.tsx)** — **`BidBoardBidNumberMark`**: entire **`ledger_bid_prefix`** (via **`resolveBidLedgerPrefix`**) renders in one **`0.7em`** / semibold span; **`bid_number`** only in the second span at inherited size — so **B** and **P** match for **`BP`**+**`233`** (previously only the first prefix glyph was scaled and the rest shared the digit size).
+
+---
+
+## Latest Updates (v2.497)
+
+**Date**: 2026-05-06
+
+### **Dashboard** — **Unallocated bank deposits** banner — **dev** + **assistant** only
+
+- **[`useArBankUnallocatedCount.ts`](src/hooks/useArBankUnallocatedCount.ts)** — **`canRoleSeeArBankUnallocatedDashboardBanner`** (**`dev`**, **`assistant`**); **`canRoleSeeArBankUnallocatedOrgNudge`** unchanged (**`dev`**, **`master_technician`**, **`assistant`**) for **Quickfill**, **`/accounts-receivable`**, Jobs **`openBankPayments`** deep link. **`canRoleUseArBankCount`** unchanged (Jobs **Stages** AR badge / modal includes **master_technician** and **primary**).
+- **[`Dashboard.tsx`](src/pages/Dashboard.tsx)** — **`arBankCountEnabled`** uses **`canRoleSeeArBankUnallocatedDashboardBanner`** instead of **OrgNudge**.
+- **[`ACCESS_CONTROL.md`](ACCESS_CONTROL.md)** / **[`PROJECT_DOCUMENTATION.md`](PROJECT_DOCUMENTATION.md)** — Dashboard vs Quickfill / route matrix and Dashboard §8 copy.
+
+---
+
+## Latest Updates (v2.496)
+
+**Date**: 2026-05-06
+
+### **Dashboard** — **Lost bids need a reason** → **Bids** **Bid Tabs on Lost**
+
+- **[`Dashboard.tsx`](src/pages/Dashboard.tsx)** — Same **`hasBidsAccess`** gate as **My Bids**; **`withSupabaseRetry`** loads up to **500** **`bids`** with **`outcome === 'lost'`** and **`estimator_id`** or **`account_manager_id`** = viewer; client counts rows where **`loss_reason`** is null/empty/whitespace. **[`DashboardLostBidsMissingReasonBanner.tsx`](src/components/DashboardLostBidsMissingReasonBanner.tsx)** (amber/orange styling, count pill, **`aria-label`**) renders in the tally block when count &gt; **0**; click **`navigate`** to **`/bids?tab=bid-board&lostSummary=1&lostSummaryTab=<user id>`**.
+- **[`Bids.tsx`](src/pages/Bids.tsx)** — **`useEffect`** on **`location.search`**: when **`lostSummary=1`**, sets **`lostSummaryInitialStaffTab`** from **`lostSummaryTab`**, expands bid-board **Lost** section, opens **`BidBoardLostSummaryModal`**, switches tab to **`bid-board`**, then **`setSearchParams`** removes **`lostSummary`** / **`lostSummaryTab`** (**`replace: true`**). **`closeLostSummaryModal`** clears **`lostSummaryInitialStaffTab`** so a manual reopen defaults to **All**.
+- **[`BidBoardLostSummaryModal.tsx`](src/components/bids/BidBoardLostSummaryModal.tsx)** — Optional **`initialStaffTabUserId`**; when **`open`**, if the id appears on any lost row as **estimator** or **account manager**, **`setActiveTab`** to that id; else **`'all'`** (stale/invalid deep link tab falls back).
+
+---
+
+## Latest Updates (v2.495)
+
+**Date**: 2026-05-06
+
+### **People → Hours** layout + **Dashboard**/**People** strip **jobs worked today** report chips
+
+- **[`People.tsx`](src/pages/People.tsx)** — **Hours sections** navigation (**Clock strip**, **Week**, **Sessions**, **Hours grid**, **Due totals**, **Cost matrix**, **Teams**, **Sharing / tags**) renders **first** inside **`HOURS_TAB_SECTIONS_STACK`** (still **below** **`people-hours-pay-tools`** when **`canAccessPay`**). Wrapper **`id="people-hours-sections-nav"`**, **`role="navigation"`**, **`justifyContent: center`**. **`Week range`** (**`people-hours-week`**): **not** collapsible (**`Exclude<…, 'week'>`** **`HoursTabCollapsibleSectionId`**); **`jumpToHoursTabSection('week')`** scrolls only; left-aligned **`h3`** heading; **no** **`HOURS_TAB_SECTION_SHELL`** (anchor **`scroll-margin-top`** only). Wide week row: **← last week** before **Start**/**End**; labels **above** **`type="date"`** inputs (centered stacks); narrow **Custom dates** matches. Chips row order matches scrolling order for the main blocks.
+- **[`useDashboardMyTeamSectionState.ts`](src/hooks/useDashboardMyTeamSectionState.ts)** — **`loadReportsForStrip`**: **`jobLedgerIdsForReportsLookupKey`** (sorted join primitive) avoids refetch when session lists refresh without job-ID set changes; **`prevStripDayForReportsEffectRef`** clears **`jobsWorkedTodayJobLedgerIdsWithReport`** **`null`** only on **strip calendar day** change — reduces **Jobs worked today** red **missing report** icon **flicker** after **approve** (Dashboard **[`DashboardTeamActiveClockStrip`](src/components/DashboardTeamActiveClockStrip.tsx)** / People Hours strip).
+
+---
+
+## Latest Updates (v2.494)
+
+**Date**: 2026-05-05
+
+### **Dashboard** — **My Bids (n)**; **primary** section defaults; unallocated-deposits **org** banner **staff-only**
+
+- **[`Dashboard.tsx`](src/pages/Dashboard.tsx)** — **My Bids** heading: **`My Bids (n)`** after **`myBids`** load (**`myBidsVisibleCount`** = visible rows, not in **`hiddenBidIds`**); **`My Bids`** only (no parenthetical) while **`myBidsLoading`**; desktop collapse button **`aria-label`** (**My Bids, loading** / **My Bids, N bid(s)**). **Primary** (**`role === 'primary'`**): **My Bids** subsection defaults **collapsed** (**`useState(role === 'primary' ? false : true)`** + **`myBidsPrimaryCollapseAppliedRef`** **`useEffect`** when **`role`** hydrates). **Recent Reports**: auto-**open** when any loaded report is unread is **skipped** for **primary** (other roles unchanged).
+- **[`useArBankUnallocatedCount.ts`](src/hooks/useArBankUnallocatedCount.ts)** — **`canRoleSeeArBankUnallocatedOrgNudge`** (**dev** / **master_technician** / **assistant**) for Dashboard / Quickfill **Unallocated bank deposits** banner and RPC **`enabled`**; **`canRoleUseArBankCount`** unchanged (includes **`primary`**) for **Jobs** **Stages** orange badge + **`count_mercury_transactions_for_bank_payments`**. **[`Dashboard.tsx`](src/pages/Dashboard.tsx)** / **[`Quickfill.tsx`](src/pages/Quickfill.tsx)** — **`arBankCountEnabled`** uses **OrgNudge** only. *Superseded for **Dashboard** tally banner:* **v2.497** **`canRoleSeeArBankUnallocatedDashboardBanner`** (**dev** + **assistant**); **Quickfill** unchanged.
+- **[`JobsAccountsReceivable.tsx`](src/pages/JobsAccountsReceivable.tsx)** — route guard uses **`canRoleSeeArBankUnallocatedOrgNudge`** (was misleading for **primary** who were redirected).
+- **[`Jobs.tsx`](src/pages/Jobs.tsx)** — **`openBankPayments`** deep-link tab force + modal opener use **`canRoleSeeArBankUnallocatedOrgNudge`** (drop redundant **`isPrimary`** branch).
+
+---
+
 ## Latest Updates (v2.493)
 
 **Date**: 2026-05-04
@@ -1743,8 +1939,8 @@ when_to_read:
 ### **Banking** — **Mercury** — **Accounting** tab (`?tab=accounting`)
 
 - **Approvals** — Pending rows from **`mercury_accounting_label_suggestions`** (rule name, editable **Accounting Label** dropdown, **Approve** / header **Approve all** (**v2.487**) write **`mercury_transaction_drag_sort_assignments`** + mark suggestion **approved**; **Reject** deletes the pending row).
-- **Rules** — **`mercury_accounting_label_rules`**: name, enabled, target label, criteria (**amount** min/max, **counterparty** contains/equals, **bank description** from **`raw`** — [`accountingLabelRuleMatch.ts`](src/lib/accountingLabelRuleMatch.ts)); clauses combine with **AND**. **Test** previews matches on the **loaded Banking Mercury list** (same filters as the main table — not the Accounting ledger’s own search); **Apply rules** enqueues unlabeled, non-pending transactions (first matching rule wins by **`sort_order`**). List shows **Approved uses** count.
-- **Ledger** — Shared Drag Sort table [**`bankingMercuryDragSortLedger.tsx`**](src/components/banking/bankingMercuryDragSortLedger.tsx) **without** the drag column; local **search** + **Hide labeled** (separate **`localStorage`** from Drag Sort via [`bankingDragSortStorage.ts`](src/lib/bankingDragSortStorage.ts)).
+- **Rules** — **`mercury_accounting_label_rules`**: name, enabled, target label, criteria (**amount** min/max, **counterparty** contains/equals, **bank description** from **`raw`** — [`accountingLabelRuleMatch.ts`](src/lib/accountingLabelRuleMatch.ts)); clauses combine with **AND**. **Test** previews matches on the **loaded Banking Mercury list** (same filters as the main table — not the Sorting Ledger’s own search); **Apply rules** enqueues unlabeled, non-pending transactions (first matching rule wins by **`sort_order`**). List shows **Approved uses** count. Later UX (**v2.504**–**v2.506**): **`Search rules…`** on **Name**/**Label**; **Name**/**Label** header sort (**`sortAccountingRulesForTable`**); **New/Edit rule** **`SearchableSelect`** + **`list_mercury_drag_sort_label_assignment_counts`**. **Sorting Ledger** visible count + counterparty **`(n)`** suffixes — **v2.503** (**`bankingMercuryCounterpartyFrequency.ts`**). **v2.506** — **Counterparty** column header opens the shared **Counterparty frequency** modal ([**`MercuryCounterpartyFrequencyModal.tsx`**](src/components/banking/MercuryCounterpartyFrequencyModal.tsx); **`counterpartyFrequenciesAboveMin`**) on **Accounting** Sorting Ledger and **Drag Sort** (lists counterparties with **3+** rows in the current view).
+- **Sorting Ledger** — Shared Drag Sort table [**`bankingMercuryDragSortLedger.tsx`**](src/components/banking/bankingMercuryDragSortLedger.tsx) **without** the drag column; local **search** + **Hide labeled** (separate **`localStorage`** from Drag Sort via [`bankingDragSortStorage.ts`](src/lib/bankingDragSortStorage.ts)).
 - **DB**: **`20260504011219_mercury_accounting_label_rules_and_suggestions.sql`** — see [`MIGRATIONS.md`](MIGRATIONS.md).
 
 ---
@@ -1986,7 +2182,7 @@ when_to_read:
 ### **People → Overhead** — **Simple** vs **Advanced** table
 
 - **Toolbar** — Segmented **View: Advanced | Simple** next to week navigation (**[`People.tsx`](src/pages/People.tsx)**).
-- **Simple** — Hides **Bid labor ($)**, **Office labor ($)**, **Office parts ($)**. **Office Total ($) / Hours**, **Field Total ($) / Hours**, and **Overhead factor** are unchanged (same merged row data from **`mergeOverheadDayTableRows`**).
+- **Simple** — Hides **Bid labor ($)**, **Office labor ($)**, **Office parts ($)**. **Office Total ($) / Hours**, **Field Total ($) / Hours**, and **Overhead %** are unchanged (same merged row data from **`mergeOverheadDayTableRows`**).
 - **Persistence** — [`overheadTableViewStorage.ts`](src/lib/overheadTableViewStorage.ts) (`localStorage` **`people_overhead_table_simple_view_v1`**: `1` = Simple, `0` = Advanced; default Advanced).
 
 ---
@@ -2019,9 +2215,9 @@ when_to_read:
 
 **Date**: 2026-05-02
 
-### **People → Overhead** — **Overhead factor** (Office Total ($) ÷ Field Total ($))
+### **People → Overhead** — **Overhead factor** column (Office Total ($) ÷ Field Total ($)) — UI **Overhead %** since **v2.501**
 
-- **Column** — Right of **Field Total ($) / Hours**: **`totalUsd / otherJobsUsd`** as **`N.NN×`**; **—** when **field total** dollars are not positive (not margin—overhead dollars per $1 of field-total activity). Header **`title`** explains the ratio.
+- **Column** — Right of **Field Total ($) / Hours** (column order updated in later releases; see **v2.501**): **`totalUsd / otherJobsUsd`** displayed as **`N.NN×`** (superseded by **Overhead %** in **v2.501**); **—** when **field total** dollars are not positive (not margin—overhead dollars per $1 of field-total activity). Header **`title`** explains the ratio.
 - **Lib** — **`overheadFactorTotalOverOtherJobs`** in **[`overheadDailyLabor.ts`](src/lib/overheadDailyLabor.ts)** (+ **Vitest**). **UI** — **[`People.tsx`](src/pages/People.tsx)** (`colSpan` **7** Advanced / **4** Simple after v2.466; was **8** / **5** with **Detail**).
 
 ---

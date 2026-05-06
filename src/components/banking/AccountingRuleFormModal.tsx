@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { Database } from '../../types/database'
 import { useToastContext } from '../../contexts/ToastContext'
+import { SearchableSelect, type SearchableSelectSelectableOption } from '../SearchableSelect'
 import {
   type AccountingLabelRuleCriteriaV1,
   accountingRuleEffectiveClauseCount,
@@ -21,6 +22,35 @@ export type AccountingRuleFormState = {
 }
 
 export const RULE_NAME_MAX = 200
+
+/** Derives default rule name from counterparty criterion (`"{trimmed} -"`). Empty input yields empty name. */
+export function suggestedRuleNameFromCounterparty(value: string): string {
+  const t = value.trim()
+  if (t === '') return ''
+  const base = `${t} -`
+  return base.length <= RULE_NAME_MAX ? base : base.slice(0, RULE_NAME_MAX)
+}
+
+function stripTrailingLabelSuffix(name: string, labelDisplayName: string): string {
+  const t = labelDisplayName.trim()
+  if (t === '') return name
+  const suffix = ` ${t}`
+  if (name.endsWith(suffix)) return name.slice(0, name.length - suffix.length).trimEnd()
+  return name
+}
+
+function appendLabelSuffixToRuleName(name: string, labelDisplayName: string): string {
+  const t = labelDisplayName.trim()
+  if (t === '') return name.trimEnd()
+  return `${name.trimEnd()} ${t}`.slice(0, RULE_NAME_MAX)
+}
+
+function ruleNameWithLabelSuffix(baseName: string, labelId: string, labels: DragLabelRow[]): string {
+  const L = labels.find((x) => x.id === labelId)
+  const ln = L?.name?.trim()
+  if (!ln) return baseName.trimEnd()
+  return appendLabelSuffixToRuleName(baseName, ln)
+}
 
 export function emptyRuleForm(): AccountingRuleFormState {
   return {
@@ -73,23 +103,81 @@ export type AccountingRuleFormModalProps = {
   editingRuleId: string | null
   initialForm: AccountingRuleFormState
   labels: DragLabelRow[]
+  /** Count of mercury_transaction_drag_sort_assignments per label (missing ids treated as 0 for sort). */
+  labelAssignmentCountById: Record<string, number>
+  labelsLoading?: boolean
   onClose: () => void
   onRunTest: (criteria: AccountingLabelRuleCriteriaV1) => void
   onSave: (draft: AccountingRuleSaveDraft) => Promise<void>
+  /** When set, shows Save and apply (persist + run apply-rules scan). */
+  onSaveAndApply?: (draft: AccountingRuleSaveDraft) => Promise<void>
+  /** Disables actions while parent apply-rules is running (toolbar). */
+  applyRulesBusy?: boolean
 }
 
 export function AccountingRuleFormModal({
   editingRuleId,
   initialForm,
   labels,
+  labelAssignmentCountById,
+  labelsLoading = false,
   onClose,
   onRunTest,
   onSave,
+  onSaveAndApply,
+  applyRulesBusy = false,
 }: AccountingRuleFormModalProps) {
   const { showToast } = useToastContext()
+  const accountingLabelFieldId = useId()
   const [form, setForm] = useState<AccountingRuleFormState>(() => initialForm)
+  const [nameManuallyEdited, setNameManuallyEdited] = useState(false)
+  const [submitBusy, setSubmitBusy] = useState(false)
+  const [saveActionKind, setSaveActionKind] = useState<'save' | 'saveApply' | null>(null)
+  const labelSuffixSeededRef = useRef(false)
+
+  const controlsDisabled = submitBusy || applyRulesBusy
+
+  const sortedLabelSelectOptions = useMemo((): SearchableSelectSelectableOption[] => {
+    const rows = [...labels]
+    rows.sort((a, b) => {
+      const ca = labelAssignmentCountById[a.id] ?? 0
+      const cb = labelAssignmentCountById[b.id] ?? 0
+      if (cb !== ca) return cb - ca
+      if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order
+      const nm = a.name.localeCompare(b.name)
+      if (nm !== 0) return nm
+      return a.id.localeCompare(b.id)
+    })
+    return rows.map((L) => ({ value: L.id, label: L.name }))
+  }, [labels, labelAssignmentCountById])
+
+  useEffect(() => {
+    if (editingRuleId === null) {
+      setNameManuallyEdited(false)
+      labelSuffixSeededRef.current = false
+    }
+  }, [editingRuleId])
+
+  useEffect(() => {
+    if (editingRuleId !== null || labelSuffixSeededRef.current) return
+    if (labels.length === 0 || !form.labelId || !form.name.trim()) return
+    const L = labels.find((x) => x.id === form.labelId)
+    const ln = L?.name?.trim()
+    if (!ln) return
+    const base = form.name.trimEnd()
+    if (base.endsWith(` ${ln}`)) {
+      labelSuffixSeededRef.current = true
+      return
+    }
+    labelSuffixSeededRef.current = true
+    setForm((f) => ({
+      ...f,
+      name: appendLabelSuffixToRuleName(f.name, ln),
+    }))
+  }, [editingRuleId, form.labelId, form.name, labels])
 
   const handleTest = () => {
+    if (controlsDisabled) return
     const c = formToCriteria(form)
     if (accountingRuleEffectiveClauseCount(c) === 0) {
       showToast('Add at least one criterion to test.', 'error')
@@ -98,26 +186,53 @@ export function AccountingRuleFormModal({
     onRunTest(c)
   }
 
-  const handleSave = async () => {
+  const buildValidatedDraft = (): AccountingRuleSaveDraft | null => {
     const name = form.name.trim()
     if (name.length === 0) {
       showToast('Enter a rule name.', 'error')
-      return
+      return null
     }
     if (name.length > RULE_NAME_MAX) {
       showToast(`Rule name must be at most ${RULE_NAME_MAX} characters.`, 'error')
-      return
+      return null
     }
     if (!form.labelId) {
       showToast('Choose an Accounting Label.', 'error')
-      return
+      return null
     }
     const c = formToCriteria(form)
     if (accountingRuleEffectiveClauseCount(c) === 0) {
       showToast('Add at least one criterion (amount, counterparty, or bank description).', 'error')
-      return
+      return null
     }
-    await onSave({ name, enabled: form.enabled, labelId: form.labelId, criteria: c })
+    return { name, enabled: form.enabled, labelId: form.labelId, criteria: c }
+  }
+
+  const handleSave = async () => {
+    const draft = buildValidatedDraft()
+    if (!draft) return
+    setSaveActionKind('save')
+    setSubmitBusy(true)
+    try {
+      await onSave(draft)
+    } finally {
+      setSubmitBusy(false)
+      setSaveActionKind(null)
+    }
+  }
+
+  const handleSaveAndApply = async () => {
+    if (!onSaveAndApply || controlsDisabled) return
+    const draft = buildValidatedDraft()
+    if (!draft) return
+    setSaveActionKind('saveApply')
+    setSubmitBusy(true)
+    try {
+      await onSaveAndApply(draft)
+    } finally {
+      setSubmitBusy(false)
+      setSaveActionKind(null)
+    }
   }
 
   return (
@@ -161,7 +276,10 @@ export function AccountingRuleFormModal({
             Name
             <input
               value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              onChange={(e) => {
+                setNameManuallyEdited(true)
+                setForm((f) => ({ ...f, name: e.target.value }))
+              }}
               maxLength={RULE_NAME_MAX}
               style={{ padding: '0.4rem 0.55rem' }}
             />
@@ -175,18 +293,35 @@ export function AccountingRuleFormModal({
             Enabled
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.875rem' }}>
-            Accounting Label
-            <select
+            <span>Accounting Label</span>
+            <SearchableSelect
+              id={accountingLabelFieldId}
               value={form.labelId}
-              onChange={(e) => setForm((f) => ({ ...f, labelId: e.target.value }))}
-              style={{ padding: '0.4rem 0.55rem' }}
-            >
-              {labels.map((L) => (
-                <option key={L.id} value={L.id}>
-                  {L.name}
-                </option>
-              ))}
-            </select>
+              onChange={(nextId) => {
+                if (editingRuleId !== null) {
+                  setForm((f) => ({ ...f, labelId: nextId }))
+                  return
+                }
+                const prevLabel = labels.find((L) => L.id === form.labelId)
+                const nextLabel = labels.find((L) => L.id === nextId)
+                let n = form.name
+                const prevNm = prevLabel?.name?.trim()
+                if (prevNm) n = stripTrailingLabelSuffix(n, prevNm)
+                const nextNm = nextLabel?.name?.trim()
+                n = nextNm ? appendLabelSuffixToRuleName(n, nextNm) : n.trimEnd()
+                setForm((f) => ({ ...f, labelId: nextId, name: n }))
+              }}
+              options={sortedLabelSelectOptions}
+              emptyOption={{ value: '', label: ' - select label - ' }}
+              hideEmptyOptionInListWhenUnset
+              searchReplacesTrigger
+              listMaxHeightPx={320}
+              listOptionPadding="0.35rem 0.5rem"
+              listOptionFontSize="0.8125rem"
+              disabled={labelsLoading || labels.length === 0}
+              listAriaLabel="Accounting labels"
+              portalZIndex={1250}
+            />
           </label>
           <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '0.75rem' }}>
             <legend style={{ fontSize: '0.85rem', fontWeight: 600 }}>Amount (USD)</legend>
@@ -228,7 +363,20 @@ export function AccountingRuleFormModal({
               </select>
               <input
                 value={form.counterpartyValue}
-                onChange={(e) => setForm((f) => ({ ...f, counterpartyValue: e.target.value }))}
+                onChange={(e) => {
+                  const next = e.target.value
+                  setForm((f) => {
+                    if (editingRuleId !== null || nameManuallyEdited) {
+                      return { ...f, counterpartyValue: next }
+                    }
+                    const base = suggestedRuleNameFromCounterparty(next)
+                    return {
+                      ...f,
+                      counterpartyValue: next,
+                      name: ruleNameWithLabelSuffix(base, f.labelId, labels),
+                    }
+                  })
+                }}
                 placeholder="text"
                 style={{ flex: '1 1 12rem', padding: '0.4rem 0.55rem' }}
               />
@@ -253,50 +401,94 @@ export function AccountingRuleFormModal({
               />
             </div>
           </fieldset>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              gap: '0.5rem',
+              justifyContent: 'space-between',
+            }}
+          >
             <button
               type="button"
               onClick={handleTest}
+              disabled={controlsDisabled}
               style={{
                 padding: '0.45rem 0.85rem',
                 fontWeight: 600,
-                background: '#f1f5f9',
+                background: controlsDisabled ? '#e5e7eb' : '#f1f5f9',
                 border: '1px solid #e2e8f0',
                 borderRadius: 6,
-                cursor: 'pointer',
+                cursor: controlsDisabled ? 'not-allowed' : 'pointer',
+                color: controlsDisabled ? '#64748b' : '#0f172a',
               }}
             >
               Test
             </button>
-            <button
-              type="button"
-              onClick={() => void handleSave()}
+            <div
               style={{
-                padding: '0.45rem 0.85rem',
-                fontWeight: 600,
-                background: '#2563eb',
-                color: '#fff',
-                border: 'none',
-                borderRadius: 6,
-                cursor: 'pointer',
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '0.5rem',
+                marginLeft: 'auto',
+                justifyContent: 'flex-end',
               }}
             >
-              Save
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              style={{
-                padding: '0.45rem 0.85rem',
-                fontWeight: 600,
-                background: '#fff',
-                border: '1px solid #e5e7eb',
-                borderRadius: 6,
-                cursor: 'pointer',
-              }}
-            >
-              Cancel
-            </button>
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={submitBusy}
+                style={{
+                  padding: '0.45rem 0.85rem',
+                  fontWeight: 600,
+                  background: '#fff',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 6,
+                  cursor: submitBusy ? 'not-allowed' : 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleSave()}
+                disabled={controlsDisabled}
+                style={{
+                  padding: '0.45rem 0.85rem',
+                  fontWeight: 600,
+                  background: controlsDisabled ? '#e5e7eb' : '#fff',
+                  color: controlsDisabled ? '#64748b' : '#0f172a',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 6,
+                  cursor: controlsDisabled ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {saveActionKind === 'save' ? 'Saving…' : 'Save'}
+              </button>
+              {onSaveAndApply ? (
+                <button
+                  type="button"
+                  onClick={() => void handleSaveAndApply()}
+                  disabled={controlsDisabled}
+                  style={{
+                    padding: '0.45rem 0.85rem',
+                    fontWeight: 600,
+                    background: controlsDisabled ? '#94a3b8' : '#2563eb',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 6,
+                    cursor: controlsDisabled ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {saveActionKind === 'saveApply'
+                    ? applyRulesBusy
+                      ? 'Applying…'
+                      : 'Saving…'
+                    : 'Save and apply'}
+                </button>
+              ) : null}
+            </div>
           </div>
         </div>
       </div>

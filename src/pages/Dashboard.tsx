@@ -71,11 +71,12 @@ import { DashboardMyTimeDayEditorModal } from '../components/DashboardMyTimeDayE
 import DashboardDevRejectedNotification from '../components/DashboardDevRejectedNotification'
 import DashboardMyTeamPendingBanner from '../components/DashboardMyTeamPendingBanner'
 import DashboardArBankUnallocatedBanner from '../components/DashboardArBankUnallocatedBanner'
+import DashboardLostBidsMissingReasonBanner from '../components/DashboardLostBidsMissingReasonBanner'
 import DashboardTallyStaleBanner from '../components/DashboardTallyStaleBanner'
 import DashboardTallyStaleStaffBanner from '../components/DashboardTallyStaleStaffBanner'
 import { DashboardStaleTallyStaffFollowUpModal } from '../components/DashboardStaleTallyStaffFollowUpModal'
 import {
-  canRoleSeeArBankUnallocatedOrgNudge,
+  canRoleSeeArBankUnallocatedDashboardBanner,
   useArBankUnallocatedCount,
 } from '../hooks/useArBankUnallocatedCount'
 import { useStaleTallyStaffFollowUp } from '../hooks/useStaleTallyStaffFollowUp'
@@ -1351,10 +1352,13 @@ export default function Dashboard() {
   }
   const [myBids, setMyBids] = useState<MyBidRow[]>([])
   const [myBidsLoading, setMyBidsLoading] = useState(false)
+  const [lostMissingLossReasonCount, setLostMissingLossReasonCount] = useState(0)
+  const [lostMissingLossReasonLoading, setLostMissingLossReasonLoading] = useState(true)
   const [hiddenBidIds, setHiddenBidIds] = useState<Set<string>>(new Set())
   const [hiddenBidsExpanded, setHiddenBidsExpanded] = useState(false)
   const [sentBidsExpanded, setSentBidsExpanded] = useState(false)
-  const [myBidsSectionExpanded, setMyBidsSectionExpanded] = useState(true)
+  const myBidsPrimaryCollapseAppliedRef = useRef(false)
+  const [myBidsSectionExpanded, setMyBidsSectionExpanded] = useState(role === 'primary' ? false : true)
   const [myBidOthersVisibleLimits, setMyBidOthersVisibleLimits] = useState<
     Record<string, { bid: number; customer: number }>
   >({})
@@ -1373,6 +1377,12 @@ export default function Dashboard() {
     () => myBids.reduce((acc, b) => acc + (hiddenBidIds.has(b.id) ? 0 : 1), 0),
     [myBids, hiddenBidIds],
   )
+
+  useEffect(() => {
+    if (role !== 'primary' || myBidsPrimaryCollapseAppliedRef.current) return
+    setMyBidsSectionExpanded(false)
+    myBidsPrimaryCollapseAppliedRef.current = true
+  }, [role])
 
   const isDev = role === 'dev'
   const {
@@ -1461,7 +1471,7 @@ export default function Dashboard() {
   const { total: supplyHousesAPTotal } = useSupplyHousesAPTotal(hasSupplyHousesAPPin, financialRefreshKey)
   const { total: subLaborDueTotal } = useSubLaborDueTotal(hasSubLaborDuePin, financialRefreshKey)
 
-  const arBankCountEnabled = Boolean(authUser?.id) && canRoleSeeArBankUnallocatedOrgNudge(role)
+  const arBankCountEnabled = Boolean(authUser?.id) && canRoleSeeArBankUnallocatedDashboardBanner(role)
   const { count: arBankUnallocatedCount } = useArBankUnallocatedCount({
     enabled: arBankCountEnabled,
     authUserId: authUser?.id,
@@ -1957,7 +1967,7 @@ export default function Dashboard() {
           }
         }
         setReadReportIds(readIds)
-        if (list.some((r) => !readIds.has(r.id))) {
+        if (role !== 'primary' && list.some((r) => !readIds.has(r.id))) {
           setRecentReportsExpanded(true)
         }
       } finally {
@@ -2237,6 +2247,49 @@ export default function Dashboard() {
         if (!cancelled) setMyBids([])
       } finally {
         if (!cancelled) setMyBidsLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [authUser?.id, role])
+
+  useEffect(() => {
+    const hasBidsAccess =
+      role === 'dev' ||
+      role === 'master_technician' ||
+      role === 'assistant' ||
+      role === 'estimator' ||
+      role === 'primary' ||
+      role === 'superintendent'
+    if (!authUser?.id || !hasBidsAccess) {
+      setLostMissingLossReasonCount(0)
+      setLostMissingLossReasonLoading(false)
+      return
+    }
+    let cancelled = false
+    setLostMissingLossReasonLoading(true)
+    const uidForFilter = authUser.id
+    void (async () => {
+      try {
+        const rawRows = await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('bids')
+              .select('loss_reason')
+              .eq('outcome', 'lost')
+              .or(`estimator_id.eq.${uidForFilter},account_manager_id.eq.${uidForFilter}`)
+              .limit(500),
+          'dashboard lost bids missing loss reason',
+        )
+        if (cancelled) return
+        const rows = (rawRows ?? []) as Array<{ loss_reason: string | null }>
+        const n = rows.filter((r) => !String(r.loss_reason ?? '').trim()).length
+        if (!cancelled) setLostMissingLossReasonCount(n)
+      } catch {
+        if (!cancelled) setLostMissingLossReasonCount(0)
+      } finally {
+        if (!cancelled) setLostMissingLossReasonLoading(false)
       }
     })()
     return () => {
@@ -4255,6 +4308,16 @@ export default function Dashboard() {
           onGoToTally={() => navigate('/tally?tab=transactions')}
         />
       )}
+      <DashboardLostBidsMissingReasonBanner
+        count={lostMissingLossReasonCount}
+        loading={lostMissingLossReasonLoading}
+        onGoToLostSummary={() => {
+          if (!authUser?.id) return
+          navigate(
+            `/bids?tab=bid-board&lostSummary=1&lostSummaryTab=${encodeURIComponent(authUser.id)}`,
+          )
+        }}
+      />
       {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
         <DashboardTallyStaleStaffBanner
           peopleCount={typeof tallyStaffStalePeopleCount === 'number' ? tallyStaffStalePeopleCount : 0}

@@ -102,10 +102,10 @@ export function BankingMercuryAccountingLedgerFilterModal({
           id="banking-accounting-ledger-filter-title"
           style={{ margin: '0 0 0.75rem', fontSize: '1.1rem', fontWeight: 700 }}
         >
-          Ledger filters
+          Sorting Ledger filters
         </h2>
         <p style={{ margin: '0 0 1rem', fontSize: '0.8rem', color: '#64748b' }}>
-          Narrow the Accounting ledger (after search). Posted dates use {APP_CALENDAR_TZ} (company calendar).
+          Narrow the Sorting Ledger (after search). Posted dates use {APP_CALENDAR_TZ} (company calendar).
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>

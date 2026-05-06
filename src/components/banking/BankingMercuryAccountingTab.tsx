@@ -29,6 +29,16 @@ import {
   withLedgerFilterKindsNormalizedIfAllSelected,
   type BankingAccountingLedgerFiltersV1,
 } from '../../lib/bankingAccountingLedgerFilters'
+import {
+  counterpartyFrequenciesAboveMin,
+  counterpartyFrequencyCountMap,
+  counterpartyNameFrequencyKey,
+} from '../../lib/bankingMercuryCounterpartyFrequency'
+import {
+  accountingRuleLabelDisplayText,
+  accountingRuleRowMatchesSearch,
+  sortAccountingRulesForTable,
+} from '../../lib/accountingRulesTableSearch'
 import { mercuryTxDragSortBankNoteRowVisible } from './MercuryTxNotesDisclosure'
 import {
   type AccountingLabelRuleCriteriaV1,
@@ -53,10 +63,12 @@ import { MERCURY_TRANSACTIONS_BANKING_LIST_COLUMNS } from '../../lib/fetchMercur
 import {
   AccountingRuleFormModal,
   emptyRuleForm,
+  suggestedRuleNameFromCounterparty,
   type AccountingRuleFormState,
   type AccountingRuleSaveDraft,
 } from './AccountingRuleFormModal'
 import { BankingMercuryAccountingLedgerFilterModal } from './BankingMercuryAccountingLedgerFilterModal'
+import { MercuryCounterpartyFrequencyModal } from './MercuryCounterpartyFrequencyModal'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 type DragLabelRow = Database['public']['Tables']['mercury_drag_sort_labels']['Row']
@@ -150,6 +162,7 @@ export function BankingMercuryAccountingTab({
   const [hideLabeledTransactions, setHideLabeledTransactions] = useState(() => readAccountingHideLabeledTransactions(userId))
   const [labels, setLabels] = useState<DragLabelRow[]>([])
   const [labelsLoading, setLabelsLoading] = useState(true)
+  const [labelAssignmentCountById, setLabelAssignmentCountById] = useState<Record<string, number>>({})
   const [assignmentLabelByTxId, setAssignmentLabelByTxId] = useState<Map<string, string>>(() => new Map())
   const [assignmentsLoading, setAssignmentsLoading] = useState(false)
   const [rules, setRules] = useState<RuleRow[]>([])
@@ -165,6 +178,7 @@ export function BankingMercuryAccountingTab({
     defaultBankingAccountingLedgerFilters(),
   )
   const [ledgerFilterModalOpen, setLedgerFilterModalOpen] = useState(false)
+  const [counterpartyFrequencyModalOpen, setCounterpartyFrequencyModalOpen] = useState(false)
   const [ledgerFilterDraft, setLedgerFilterDraft] = useState<BankingAccountingLedgerFiltersV1>(() =>
     defaultBankingAccountingLedgerFilters(),
   )
@@ -177,6 +191,11 @@ export function BankingMercuryAccountingTab({
   const [testRows, setTestRows] = useState<MercuryTxRow[]>([])
   const [testTotal, setTestTotal] = useState(0)
   const [rulesSectionExpanded, setRulesSectionExpanded] = useState(() => readAccountingRulesSectionExpanded(userId))
+  const [rulesTableSearchText, setRulesTableSearchText] = useState('')
+  const [rulesTableSort, setRulesTableSort] = useState<{
+    column: 'none' | 'name' | 'label'
+    direction: 'asc' | 'desc'
+  }>({ column: 'none', direction: 'asc' })
 
   useEffect(() => {
     setHideLabeledTransactions(readAccountingHideLabeledTransactions(userId))
@@ -232,10 +251,30 @@ export function BankingMercuryAccountingTab({
       const data = await withSupabaseRetry(async () => {
         return supabase.from('mercury_drag_sort_labels').select('*').order('sort_order').order('id')
       }, 'accounting load labels')
-      setLabels((data as DragLabelRow[]) ?? [])
+      const labelRows = (data as DragLabelRow[]) ?? []
+      setLabels(labelRows)
+
+      try {
+        const countRows = await withSupabaseRetry(async () => {
+          return supabase.rpc('list_mercury_drag_sort_label_assignment_counts')
+        }, 'accounting label assignment counts')
+        const next: Record<string, number> = {}
+        for (const row of countRows ?? []) {
+          const id = row.label_id
+          if (id) next[id] = Number(row.assignment_count) || 0
+        }
+        setLabelAssignmentCountById(next)
+      } catch (countErr) {
+        showToast(
+          countErr instanceof Error ? countErr.message : 'Could not load label usage counts',
+          'error',
+        )
+        setLabelAssignmentCountById({})
+      }
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not load labels', 'error')
       setLabels([])
+      setLabelAssignmentCountById({})
     } finally {
       setLabelsLoading(false)
     }
@@ -283,7 +322,7 @@ export function BankingMercuryAccountingTab({
     void loadAssignmentsForList()
   }, [loadAssignmentsForList])
 
-  const loadRulesAndUsage = useCallback(async () => {
+  const loadRulesAndUsage = useCallback(async (): Promise<RuleRow[] | null> => {
     setRulesLoading(true)
     try {
       const [rulesData, usageData] = await Promise.all([
@@ -294,16 +333,19 @@ export function BankingMercuryAccountingTab({
           return supabase.from('mercury_accounting_label_suggestions').select('rule_id').eq('status', 'approved')
         }, 'accounting rule usage'),
       ])
-      setRules((rulesData as RuleRow[]) ?? [])
+      const list = (rulesData as RuleRow[]) ?? []
+      setRules(list)
       const usage: Record<string, number> = {}
       for (const r of (usageData ?? []) as { rule_id: string }[]) {
         usage[r.rule_id] = (usage[r.rule_id] ?? 0) + 1
       }
       setRuleUsageApproved(usage)
+      return list
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not load rules', 'error')
       setRules([])
       setRuleUsageApproved({})
+      return null
     } finally {
       setRulesLoading(false)
     }
@@ -375,10 +417,49 @@ export function BankingMercuryAccountingTab({
     return m
   }, [labels])
 
+  const rulesSearchNorm = useMemo(() => rulesTableSearchText.trim().toLowerCase(), [rulesTableSearchText])
+
+  const rulesFilteredForTable = useMemo(() => {
+    if (rulesSearchNorm === '') return rules
+    return rules.filter((r) => {
+      const labelText = accountingRuleLabelDisplayText(r.label_id, labelById.get(r.label_id)?.name)
+      return accountingRuleRowMatchesSearch(r.name, labelText, rulesSearchNorm)
+    })
+  }, [rules, labelById, rulesSearchNorm])
+
+  const rulesSortedForTable = useMemo(() => {
+    if (rulesTableSort.column === 'none') return rulesFilteredForTable
+    return sortAccountingRulesForTable(
+      rulesFilteredForTable,
+      rulesTableSort.column,
+      rulesTableSort.direction,
+      (r) => accountingRuleLabelDisplayText(r.label_id, labelById.get(r.label_id)?.name),
+    )
+  }, [rulesFilteredForTable, rulesTableSort.column, rulesTableSort.direction, labelById])
+
+  const onRulesSortHeaderClick = useCallback((col: 'name' | 'label') => {
+    setRulesTableSort((prev) => {
+      if (prev.column === col) {
+        return { column: col, direction: prev.direction === 'asc' ? 'desc' : 'asc' }
+      }
+      return { column: col, direction: 'asc' }
+    })
+  }, [])
+
   const displayTransactions = useMemo(() => {
     if (!hideLabeledTransactions) return afterLedgerFilters
     return afterLedgerFilters.filter((tx) => !assignmentLabelByTxId.has(tx.id))
   }, [hideLabeledTransactions, afterLedgerFilters, assignmentLabelByTxId])
+
+  const counterpartyFrequencyByKey = useMemo(
+    () => counterpartyFrequencyCountMap(displayTransactions),
+    [displayTransactions],
+  )
+
+  const counterpartyFrequencyRows = useMemo(
+    () => counterpartyFrequenciesAboveMin(displayTransactions),
+    [displayTransactions],
+  )
 
   const upsertDragAssignment = useCallback(async (txId: string, labelId: string) => {
     await withSupabaseRetry(async () => {
@@ -532,80 +613,110 @@ export function BankingMercuryAccountingTab({
     setLedgerFilterModalOpen(false)
   }, [userId])
 
-  const applyRules = useCallback(async () => {
-    if (rules.length === 0) {
-      showToast('No rules defined.', 'info')
-      return
-    }
-    setApplyRulesBusy(true)
-    try {
-      const enabled = rules.filter((r) => r.enabled).sort((a, b) => a.sort_order - b.sort_order || a.id.localeCompare(b.id))
-      if (enabled.length === 0) {
-        showToast('No enabled rules.', 'info')
+  const applyRulesWithSnapshot = useCallback(
+    async (ruleRows: RuleRow[]) => {
+      if (ruleRows.length === 0) {
+        showToast('No rules defined.', 'info')
         return
       }
-      const pendingTx = new Set(
-        (
-          (await withSupabaseRetry(async () => {
-            return supabase.from('mercury_accounting_label_suggestions').select('mercury_transaction_id').eq('status', 'pending')
-          }, 'accounting apply pending ids')) ?? []
-        ).map((r: { mercury_transaction_id: string }) => r.mercury_transaction_id),
-      )
-      const assigned = new Set(assignmentLabelByTxId.keys())
-      const criteriaParsed = new Map<string, AccountingLabelRuleCriteriaV1 | null>()
-      for (const r of enabled) {
-        criteriaParsed.set(r.id, parseAccountingLabelRuleCriteria(r.criteria))
-      }
-      const toInsert: { mercury_transaction_id: string; rule_id: string; suggested_label_id: string }[] = []
-      // Apply rules scans Banking-filtered rows only (not Accounting search / ledger modal filters / hide labeled).
-      for (const tx of filteredTransactions) {
-        if (assigned.has(tx.id) || pendingTx.has(tx.id)) continue
-        let matchedRule: RuleRow | null = null
-        for (const rule of enabled) {
-          const crit = criteriaParsed.get(rule.id)
-          if (crit == null || accountingRuleEffectiveClauseCount(crit) === 0) continue
-          if (matchAccountingLabelRuleCriteria(tx, crit)) {
-            matchedRule = rule
-            break
-          }
+      setApplyRulesBusy(true)
+      try {
+        const enabled = ruleRows
+          .filter((r) => r.enabled)
+          .sort((a, b) => a.sort_order - b.sort_order || a.id.localeCompare(b.id))
+        if (enabled.length === 0) {
+          showToast('No enabled rules.', 'info')
+          return
         }
-        if (!matchedRule) continue
-        toInsert.push({
-          mercury_transaction_id: tx.id,
-          rule_id: matchedRule.id,
-          suggested_label_id: matchedRule.label_id,
-        })
-        pendingTx.add(tx.id)
+        const pendingTx = new Set(
+          (
+            (await withSupabaseRetry(async () => {
+              return supabase.from('mercury_accounting_label_suggestions').select('mercury_transaction_id').eq('status', 'pending')
+            }, 'accounting apply pending ids')) ?? []
+          ).map((r: { mercury_transaction_id: string }) => r.mercury_transaction_id),
+        )
+        const assigned = new Set(assignmentLabelByTxId.keys())
+        const criteriaParsed = new Map<string, AccountingLabelRuleCriteriaV1 | null>()
+        for (const r of enabled) {
+          criteriaParsed.set(r.id, parseAccountingLabelRuleCriteria(r.criteria))
+        }
+        const toInsert: { mercury_transaction_id: string; rule_id: string; suggested_label_id: string }[] = []
+        // Apply rules scans Banking-filtered rows only (not Accounting search / ledger modal filters / hide labeled).
+        for (const tx of filteredTransactions) {
+          if (assigned.has(tx.id) || pendingTx.has(tx.id)) continue
+          let matchedRule: RuleRow | null = null
+          for (const rule of enabled) {
+            const crit = criteriaParsed.get(rule.id)
+            if (crit == null || accountingRuleEffectiveClauseCount(crit) === 0) continue
+            if (matchAccountingLabelRuleCriteria(tx, crit)) {
+              matchedRule = rule
+              break
+            }
+          }
+          if (!matchedRule) continue
+          toInsert.push({
+            mercury_transaction_id: tx.id,
+            rule_id: matchedRule.id,
+            suggested_label_id: matchedRule.label_id,
+          })
+          pendingTx.add(tx.id)
+        }
+        if (toInsert.length === 0) {
+          showToast('No new suggestions (all matched txs already labeled or pending).', 'success')
+          return
+        }
+        const INSERT_CHUNK = 2000
+        let created = 0
+        for (let i = 0; i < toInsert.length; i += INSERT_CHUNK) {
+          const slice = toInsert.slice(i, i + INSERT_CHUNK)
+          const insertedBatch = await withSupabaseRetry(async () => {
+            return supabase.rpc('bulk_insert_accounting_label_suggestions', { p_rows: slice })
+          }, 'accounting bulk insert suggestions')
+          created += insertedBatch ?? 0
+        }
+        showToast(
+          created === 0
+            ? 'No new suggestions (all matched txs already labeled or pending).'
+            : `Created ${created} pending suggestion(s).`,
+          'success',
+        )
+        void loadPending()
+      } catch (e) {
+        showToast(e instanceof Error ? e.message : 'Apply rules failed', 'error')
+      } finally {
+        setApplyRulesBusy(false)
       }
-      if (toInsert.length === 0) {
-        showToast('No new suggestions (all matched txs already labeled or pending).', 'success')
-        return
-      }
-      const INSERT_CHUNK = 2000
-      let created = 0
-      for (let i = 0; i < toInsert.length; i += INSERT_CHUNK) {
-        const slice = toInsert.slice(i, i + INSERT_CHUNK)
-        const insertedBatch = await withSupabaseRetry(async () => {
-          return supabase.rpc('bulk_insert_accounting_label_suggestions', { p_rows: slice })
-        }, 'accounting bulk insert suggestions')
-        created += insertedBatch ?? 0
-      }
-      showToast(created === 0 ? 'No new suggestions (all matched txs already labeled or pending).' : `Created ${created} pending suggestion(s).`, 'success')
-      void loadPending()
-    } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Apply rules failed', 'error')
-    } finally {
-      setApplyRulesBusy(false)
-    }
-  }, [assignmentLabelByTxId, filteredTransactions, rules, showToast, loadPending])
+    },
+    [assignmentLabelByTxId, filteredTransactions, showToast, loadPending],
+  )
+
+  const applyRules = useCallback(async () => {
+    await applyRulesWithSnapshot(rules)
+  }, [applyRulesWithSnapshot, rules])
 
   const openNewRuleModal = () => {
-    const first = labels[0]?.id ?? ''
-    setRuleModalInitial({ ...emptyRuleForm(), labelId: first })
+    setRuleModalInitial(emptyRuleForm())
     setEditingRuleId(null)
     setRuleModalMountKey((k) => k + 1)
     setRuleModalOpen(true)
   }
+
+  const openNewRuleFromCounterparty = useCallback(
+    (counterparty: string) => {
+      const t = counterparty.trim()
+      if (t === '') return
+      setRuleModalInitial({
+        ...emptyRuleForm(),
+        name: suggestedRuleNameFromCounterparty(counterparty),
+        counterpartyValue: t,
+        counterpartyOp: 'contains',
+      })
+      setEditingRuleId(null)
+      setRuleModalMountKey((k) => k + 1)
+      setRuleModalOpen(true)
+    },
+    [],
+  )
 
   const openEditRuleModal = (rule: RuleRow) => {
     setRuleModalInitial(ruleRowToForm(rule, labels[0]?.id ?? rule.label_id))
@@ -665,6 +776,48 @@ export function BankingMercuryAccountingTab({
       }
     },
     [editingRuleId, loadRulesAndUsage, rules, showToast, userId],
+  )
+
+  const saveRuleDraftAndApply = useCallback(
+    async (draft: AccountingRuleSaveDraft) => {
+      try {
+        if (editingRuleId) {
+          await withSupabaseRetry(async () => {
+            return supabase
+              .from('mercury_accounting_label_rules')
+              .update({
+                name: draft.name,
+                enabled: draft.enabled,
+                label_id: draft.labelId,
+                criteria: criteriaToJson(draft.criteria),
+              })
+              .eq('id', editingRuleId)
+          }, 'accounting update rule')
+          showToast('Rule updated.', 'success')
+        } else {
+          const nextOrder = rules.length === 0 ? 0 : Math.max(...rules.map((r) => r.sort_order)) + 1
+          await withSupabaseRetry(async () => {
+            return supabase.from('mercury_accounting_label_rules').insert({
+              name: draft.name,
+              enabled: draft.enabled,
+              label_id: draft.labelId,
+              sort_order: nextOrder,
+              criteria: criteriaToJson(draft.criteria),
+              created_by: userId,
+            })
+          }, 'accounting insert rule')
+          showToast('Rule saved.', 'success')
+        }
+        const fresh = await loadRulesAndUsage()
+        if (fresh != null) {
+          await applyRulesWithSnapshot(fresh)
+        }
+        setRuleModalOpen(false)
+      } catch (e) {
+        showToast(e instanceof Error ? e.message : 'Could not save rule', 'error')
+      }
+    },
+    [applyRulesWithSnapshot, editingRuleId, loadRulesAndUsage, rules, showToast, userId],
   )
 
   const closeRuleModal = useCallback(() => setRuleModalOpen(false), [])
@@ -917,72 +1070,189 @@ export function BankingMercuryAccountingTab({
             ) : rules.length === 0 ? (
               <div style={{ color: '#64748b' }}>No rules yet.</div>
             ) : (
-              <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 8 }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                  <thead>
-                    <tr style={{ background: '#f9fafb' }}>
-                      <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>Name</th>
-                      <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>Label</th>
-                      <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>Enabled</th>
-                      <th style={{ textAlign: 'right', padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>Approved uses</th>
-                      <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }} />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rules.map((r) => {
-                      const lbl = labelById.get(r.label_id)
-                      return (
-                        <tr key={r.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                          <td style={{ padding: '0.5rem 0.75rem' }}>{r.name}</td>
-                          <td style={{ padding: '0.5rem 0.75rem' }}>{lbl?.name ?? r.label_id.slice(0, 8)}</td>
-                          <td style={{ padding: '0.5rem 0.75rem' }}>{r.enabled ? 'Yes' : 'No'}</td>
-                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{ruleUsageApproved[r.id] ?? 0}</td>
-                          <td style={{ padding: '0.5rem 0.75rem' }}>
+              <>
+                <label
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 4,
+                    fontSize: '0.85rem',
+                    marginBottom: '0.75rem',
+                    width: '100%',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <input
+                    type="search"
+                    aria-label="Search rules"
+                    placeholder="Search rules…"
+                    value={rulesTableSearchText}
+                    onChange={(e) => setRulesTableSearchText(e.target.value)}
+                    style={{
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      padding: '0.45rem 0.65rem',
+                      borderRadius: 6,
+                      border: '1px solid #e5e7eb',
+                    }}
+                  />
+                </label>
+                {rulesFilteredForTable.length === 0 && rulesSearchNorm !== '' ? (
+                  <div style={{ color: '#64748b' }}>No rules match this search.</div>
+                ) : (
+                  <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                      <thead>
+                        <tr style={{ background: '#f9fafb' }}>
+                          <th
+                            scope="col"
+                            aria-sort={
+                              rulesTableSort.column === 'name'
+                                ? rulesTableSort.direction === 'asc'
+                                  ? 'ascending'
+                                  : 'descending'
+                                : 'none'
+                            }
+                            style={{ textAlign: 'left', padding: 0, borderBottom: '1px solid #e5e7eb' }}
+                          >
                             <button
                               type="button"
-                              onClick={() => openEditRuleModal(r)}
+                              onClick={() => onRulesSortHeaderClick('name')}
+                              aria-label="Sort by name"
                               style={{
-                                marginRight: 8,
-                                padding: '2px 8px',
-                                fontSize: '0.8rem',
+                                width: '100%',
+                                boxSizing: 'border-box',
+                                textAlign: 'left',
+                                padding: '0.5rem 0.75rem',
                                 border: 'none',
                                 background: 'transparent',
-                                color: '#2563eb',
                                 cursor: 'pointer',
-                                textDecoration: 'underline',
+                                font: 'inherit',
+                                color: 'inherit',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
                               }}
                             >
-                              Edit
+                              Name
+                              {rulesTableSort.column === 'name'
+                                ? rulesTableSort.direction === 'asc'
+                                  ? '\u00a0▲'
+                                  : '\u00a0▼'
+                                : null}
                             </button>
+                          </th>
+                          <th
+                            scope="col"
+                            aria-sort={
+                              rulesTableSort.column === 'label'
+                                ? rulesTableSort.direction === 'asc'
+                                  ? 'ascending'
+                                  : 'descending'
+                                : 'none'
+                            }
+                            style={{ textAlign: 'left', padding: 0, borderBottom: '1px solid #e5e7eb' }}
+                          >
                             <button
                               type="button"
-                              onClick={() => void deleteRule(r)}
+                              onClick={() => onRulesSortHeaderClick('label')}
+                              aria-label="Sort by label"
                               style={{
-                                padding: '2px 8px',
-                                fontSize: '0.8rem',
+                                width: '100%',
+                                boxSizing: 'border-box',
+                                textAlign: 'left',
+                                padding: '0.5rem 0.75rem',
                                 border: 'none',
                                 background: 'transparent',
-                                color: '#b91c1c',
                                 cursor: 'pointer',
-                                textDecoration: 'underline',
+                                font: 'inherit',
+                                color: 'inherit',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
                               }}
                             >
-                              Delete
+                              Label
+                              {rulesTableSort.column === 'label'
+                                ? rulesTableSort.direction === 'asc'
+                                  ? '\u00a0▲'
+                                  : '\u00a0▼'
+                                : null}
                             </button>
-                          </td>
+                          </th>
+                          <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>
+                            Enabled
+                          </th>
+                          <th style={{ textAlign: 'right', padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>
+                            Approved uses
+                          </th>
+                          <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }} />
                         </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                      </thead>
+                      <tbody>
+                        {rulesSortedForTable.map((r) => {
+                          const lbl = labelById.get(r.label_id)
+                          return (
+                            <tr key={r.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                              <td style={{ padding: '0.5rem 0.75rem' }}>{r.name}</td>
+                              <td style={{ padding: '0.5rem 0.75rem' }}>{lbl?.name ?? r.label_id.slice(0, 8)}</td>
+                              <td style={{ padding: '0.5rem 0.75rem' }}>{r.enabled ? 'Yes' : 'No'}</td>
+                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>
+                                {ruleUsageApproved[r.id] ?? 0}
+                              </td>
+                              <td style={{ padding: '0.5rem 0.75rem' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => openEditRuleModal(r)}
+                                  style={{
+                                    marginRight: 8,
+                                    padding: '2px 8px',
+                                    fontSize: '0.8rem',
+                                    border: 'none',
+                                    background: 'transparent',
+                                    color: '#2563eb',
+                                    cursor: 'pointer',
+                                    textDecoration: 'underline',
+                                  }}
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => void deleteRule(r)}
+                                  style={{
+                                    padding: '2px 8px',
+                                    fontSize: '0.8rem',
+                                    border: 'none',
+                                    background: 'transparent',
+                                    color: '#b91c1c',
+                                    cursor: 'pointer',
+                                    textDecoration: 'underline',
+                                  }}
+                                >
+                                  Delete
+                                </button>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
             )}
           </div>
         ) : null}
       </section>
 
       <section style={{ marginBottom: '1rem' }}>
-        <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: '0 0 0.75rem' }}>Ledger</h2>
+        <h2
+          style={{ fontSize: '1.1rem', fontWeight: 700, margin: '0 0 0.75rem' }}
+          aria-label={`Sorting Ledger, ${displayTransactions.length} transactions`}
+        >
+          Sorting Ledger ({displayTransactions.length})
+        </h2>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', marginBottom: '0.75rem' }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.85rem', flex: '1 1 14rem' }}>
             <input
@@ -1045,7 +1315,11 @@ export function BankingMercuryAccountingTab({
         ) : (
           <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 8 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-              <BankingMercuryDragSortLedgerThead showDragHandle={ledgerShowDrag} />
+              <BankingMercuryDragSortLedgerThead
+                showDragHandle={ledgerShowDrag}
+                showRuleShortcutColumn
+                onCounterpartyHeaderClick={() => setCounterpartyFrequencyModalOpen(true)}
+              />
               <tbody>
                 {displayTransactions.map((r) => {
                   const assignId = assignmentLabelByTxId.get(r.id)
@@ -1075,6 +1349,8 @@ export function BankingMercuryAccountingTab({
                     mercuryTxPipeLineAriaLabel(bankDescriptionTrimForPipe, dragSortCombinedNoteAria) || 'Bank and note preview'
                   const showDragSortBankNoteBand = mercuryTxDragSortBankNoteRowVisible(r, orgNoteBody, bankDescriptionText)
                   const notesStripeBelow = showDragSortBankNoteBand || editorOpen
+                  const cpCount =
+                    counterpartyFrequencyByKey.get(counterpartyNameFrequencyKey(r.counterparty_name)) ?? 0
                   return (
                     <Fragment key={r.id}>
                       <BankingMercuryDragSortLedgerRow
@@ -1095,6 +1371,12 @@ export function BankingMercuryAccountingTab({
                         onNotesToggle={() => setNotesExpandedTxId((cur) => (cur === r.id ? null : r.id))}
                         suppressBottomDivider={notesStripeBelow}
                         showDragHandle={ledgerShowDrag}
+                        showRuleShortcutColumn
+                        counterpartyOccurrenceCount={cpCount}
+                        ruleShortcutDisabled={
+                          labelsLoading || labels.length === 0 || !(r.counterparty_name ?? '').trim()
+                        }
+                        onRuleShortcut={() => openNewRuleFromCounterparty(r.counterparty_name ?? '')}
                       />
                       {showDragSortBankNoteBand && !editorOpen ? (
                         <BankingMercuryDragSortLedgerNotesPreviewRow
@@ -1103,6 +1385,7 @@ export function BankingMercuryAccountingTab({
                           bankDescriptionText={bankDescriptionText}
                           dragSortPipeAriaLabel={dragSortPipeAriaLabel}
                           showDragHandle={ledgerShowDrag}
+                          showRuleShortcutColumn
                         />
                       ) : null}
                       {editorOpen ? (
@@ -1114,6 +1397,7 @@ export function BankingMercuryAccountingTab({
                           onCloseRequest={() => setNotesExpandedTxId(null)}
                           bankDescriptionText={bankDescriptionText}
                           showDragHandle={ledgerShowDrag}
+                          showRuleShortcutColumn
                         />
                       ) : null}
                     </Fragment>
@@ -1166,15 +1450,31 @@ export function BankingMercuryAccountingTab({
         />
       ) : null}
 
+      <MercuryCounterpartyFrequencyModal
+        open={counterpartyFrequencyModalOpen}
+        onClose={() => setCounterpartyFrequencyModalOpen(false)}
+        rows={counterpartyFrequencyRows}
+        scopeDescription={
+          <>
+            Counterparties with more than two transactions in the current table (after <strong>Search</strong>,{' '}
+            <strong>More filters</strong>, and <strong>Hide labeled transactions</strong> when that option is on).
+          </>
+        }
+      />
+
       {ruleModalOpen ? (
         <AccountingRuleFormModal
           key={ruleModalMountKey}
           editingRuleId={editingRuleId}
           initialForm={ruleModalInitial}
           labels={labels}
+          labelsLoading={labelsLoading}
+          labelAssignmentCountById={labelAssignmentCountById}
           onClose={closeRuleModal}
           onRunTest={runTestFromCriteria}
           onSave={saveRuleDraft}
+          onSaveAndApply={saveRuleDraftAndApply}
+          applyRulesBusy={applyRulesBusy}
         />
       ) : null}
 

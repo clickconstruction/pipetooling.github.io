@@ -27,12 +27,23 @@ export type MercuryTxRowBankingLedger = Database['public']['Tables']['mercury_tr
 /** Posted + Amount columns before Counterparty — notes sub-row content aligns with Counterparty */
 export const BANKING_DRAG_SORT_NOTES_BEFORE_COUNTERPARTY_COLS = 2
 
-export function bankingMercuryDragSortLedgerColCount(showDragHandle: boolean): number {
-  return showDragHandle ? 6 : 5
+export function bankingMercuryDragSortLedgerColCount(
+  showDragHandle: boolean,
+  showRuleShortcutColumn?: boolean,
+): number {
+  let n = showDragHandle ? 6 : 5
+  if (showRuleShortcutColumn) n += 1
+  return n
 }
 
-export function bankingMercuryDragSortLedgerNotesContentColspan(showDragHandle: boolean): number {
-  return bankingMercuryDragSortLedgerColCount(showDragHandle) - BANKING_DRAG_SORT_NOTES_BEFORE_COUNTERPARTY_COLS
+export function bankingMercuryDragSortLedgerNotesContentColspan(
+  showDragHandle: boolean,
+  showRuleShortcutColumn?: boolean,
+): number {
+  return (
+    bankingMercuryDragSortLedgerColCount(showDragHandle, showRuleShortcutColumn) -
+    BANKING_DRAG_SORT_NOTES_BEFORE_COUNTERPARTY_COLS
+  )
 }
 
 /** Drag Sort row handle: yellow field, black ⋮⋮ (matches instructional chip). */
@@ -163,6 +174,10 @@ export const BankingMercuryDragSortLedgerRow = memo(function BankingMercuryDragS
   onNotesToggle,
   suppressBottomDivider,
   showDragHandle,
+  showRuleShortcutColumn,
+  ruleShortcutDisabled,
+  onRuleShortcut,
+  counterpartyOccurrenceCount,
 }: {
   row: MercuryTxRowBankingLedger
   jobLineText: string
@@ -181,6 +196,11 @@ export const BankingMercuryDragSortLedgerRow = memo(function BankingMercuryDragS
   onNotesToggle: () => void
   suppressBottomDivider: boolean
   showDragHandle: boolean
+  showRuleShortcutColumn?: boolean
+  ruleShortcutDisabled?: boolean
+  onRuleShortcut?: () => void
+  /** When set (e.g. Accounting Sorting Ledger), append ` (n)` for occurrences in the visible list. */
+  counterpartyOccurrenceCount?: number
 }) {
   const debitCardId = mercuryDebitCardIdFromRaw(row.raw)
   const ledgerPad = suppressBottomDivider ? '0.5rem 0.75rem 0 0.75rem' : '0.5rem 0.75rem'
@@ -224,7 +244,12 @@ export const BankingMercuryDragSortLedgerRow = memo(function BankingMercuryDragS
       </td>
       <td style={{ padding: ledgerPad, maxWidth: 200 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <span>{row.counterparty_name ?? '—'}</span>
+          <span>
+            {row.counterparty_name ?? '—'}
+            {counterpartyOccurrenceCount !== undefined ? (
+              <span style={{ color: '#64748b', fontSize: '0.92em' }}>{` (${counterpartyOccurrenceCount})`}</span>
+            ) : null}
+          </span>
           {debitCardId ? (
             <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
               Card: {nicknameByDebitCard[debitCardId] ?? formatMercuryDebitCardIdCompact(debitCardId)}
@@ -369,6 +394,38 @@ export const BankingMercuryDragSortLedgerRow = memo(function BankingMercuryDragS
           </span>
         </div>
       </td>
+      {showRuleShortcutColumn ? (
+        <td style={{ padding: ledgerPad, verticalAlign: 'middle', whiteSpace: 'nowrap', width: '1%' }}>
+          <button
+            type="button"
+            disabled={ruleShortcutDisabled === true}
+            onClick={(e) => {
+              e.stopPropagation()
+              onRuleShortcut?.()
+            }}
+            aria-label="Create rule from this counterparty"
+            title={
+              ruleShortcutDisabled === true
+                ? !(row.counterparty_name ?? '').trim()
+                  ? 'No counterparty on this transaction'
+                  : 'Accounting labels not ready yet'
+                : 'New rule prefilled from this counterparty'
+            }
+            style={{
+              padding: '4px 8px',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              color: ruleShortcutDisabled === true ? '#94a3b8' : '#2563eb',
+              background: '#fff',
+              border: `1px solid ${ruleShortcutDisabled === true ? '#e5e7eb' : '#bfdbfe'}`,
+              borderRadius: 6,
+              cursor: ruleShortcutDisabled === true ? 'not-allowed' : 'pointer',
+            }}
+          >
+            Rule
+          </button>
+        </td>
+      ) : null}
       {showDragHandle ? (
         <td style={{ padding: ledgerHandlePad, verticalAlign: 'middle', textAlign: 'center' }}>
           <BankingMercuryDragSortDragHandle txId={row.id} />
@@ -378,13 +435,49 @@ export const BankingMercuryDragSortLedgerRow = memo(function BankingMercuryDragS
   )
 })
 
-export function BankingMercuryDragSortLedgerThead({ showDragHandle }: { showDragHandle: boolean }) {
+export function BankingMercuryDragSortLedgerThead({
+  showDragHandle,
+  showRuleShortcutColumn,
+  onCounterpartyHeaderClick,
+}: {
+  showDragHandle: boolean
+  showRuleShortcutColumn?: boolean
+  /** When set, Counterparty header opens e.g. frequency modal (Drag Sort). */
+  onCounterpartyHeaderClick?: () => void
+}) {
   return (
     <thead>
       <tr style={{ background: '#f9fafb' }}>
         <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>Posted</th>
         <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>Amount</th>
-        <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>Counterparty</th>
+        <th style={{ textAlign: 'left', padding: 0, borderBottom: '1px solid #e5e7eb' }}>
+          {onCounterpartyHeaderClick ? (
+            <button
+              type="button"
+              onClick={onCounterpartyHeaderClick}
+              title="Counterparties with more than two transactions in this view"
+              aria-label="Counterparty: show frequent counterparties in this view"
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                textAlign: 'left',
+                padding: '0.5rem 0.75rem',
+                font: 'inherit',
+                fontWeight: 600,
+                color: '#2563eb',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                display: 'block',
+              }}
+            >
+              Counterparty
+            </button>
+          ) : (
+            <span style={{ display: 'block', padding: '0.5rem 0.75rem' }}>Counterparty</span>
+          )}
+        </th>
         <th
           style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}
           title="Job allocations and linked person"
@@ -394,6 +487,19 @@ export function BankingMercuryDragSortLedgerThead({ showDragHandle }: { showDrag
         <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>
           Accounting Label
         </th>
+        {showRuleShortcutColumn ? (
+          <th
+            style={{
+              textAlign: 'left',
+              padding: '0.5rem 0.5rem',
+              borderBottom: '1px solid #e5e7eb',
+              width: '1%',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Rule
+          </th>
+        ) : null}
         {showDragHandle ? (
           <th
             style={{
@@ -418,14 +524,16 @@ export function BankingMercuryDragSortLedgerNotesPreviewRow({
   bankDescriptionText,
   dragSortPipeAriaLabel,
   showDragHandle,
+  showRuleShortcutColumn,
 }: {
   row: MercuryTxNotesBankingRow
   orgNoteBody: string
   bankDescriptionText: string | null
   dragSortPipeAriaLabel: string
   showDragHandle: boolean
+  showRuleShortcutColumn?: boolean
 }) {
-  const subColspan = bankingMercuryDragSortLedgerNotesContentColspan(showDragHandle)
+  const subColspan = bankingMercuryDragSortLedgerNotesContentColspan(showDragHandle, showRuleShortcutColumn)
   return (
     <tr>
       <td
@@ -463,6 +571,7 @@ export function BankingMercuryDragSortLedgerNotesEditorRow({
   onCloseRequest,
   bankDescriptionText,
   showDragHandle,
+  showRuleShortcutColumn,
 }: {
   row: MercuryTxNotesBankingRow
   orgNoteBody: string
@@ -471,8 +580,9 @@ export function BankingMercuryDragSortLedgerNotesEditorRow({
   onCloseRequest: () => void
   bankDescriptionText: string | null
   showDragHandle: boolean
+  showRuleShortcutColumn?: boolean
 }) {
-  const subColspan = bankingMercuryDragSortLedgerNotesContentColspan(showDragHandle)
+  const subColspan = bankingMercuryDragSortLedgerNotesContentColspan(showDragHandle, showRuleShortcutColumn)
   return (
     <tr>
       <td

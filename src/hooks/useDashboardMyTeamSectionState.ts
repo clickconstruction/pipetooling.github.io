@@ -304,6 +304,8 @@ export function useDashboardMyTeamSectionState(
   const [loadingSessions, setLoadingSessions] = useState(false)
   /** Latest-wins for overlapping `loadPending` runs (unstable effect deps / fast re-snapshot). */
   const loadPendingGenerationRef = useRef(0)
+  /** Bump when `stripWorkDateYmd` changes so stale strip-day queries do not overwrite state. */
+  const stripDayGenerationRef = useRef(0)
   const [error, setError] = useState<string | null>(null)
   const [myTeamExpanded, setMyTeamExpanded] = useState(false)
 
@@ -313,6 +315,10 @@ export function useDashboardMyTeamSectionState(
     [memberUserIds, authUserId],
   )
   const isDocVisible = useDocumentVisibility()
+
+  useEffect(() => {
+    stripDayGenerationRef.current += 1
+  }, [stripWorkDateYmd])
 
   const loadAssignments = useCallback(async () => {
     if (!authUserId) {
@@ -392,7 +398,7 @@ export function useDashboardMyTeamSectionState(
     }
   }, [authUserId])
 
-  const loadTodayClockSessions = useCallback(async () => {
+  const loadTodayClockSessions = useCallback(async (stripGenerationSnapshot?: number) => {
     if (!authUserId) {
       setTodaySessionsRows([])
       return
@@ -408,13 +414,25 @@ export function useDashboardMyTeamSectionState(
             .eq('work_date', workDate),
         'load team today clock sessions',
       )
+      if (
+        stripGenerationSnapshot !== undefined &&
+        stripGenerationSnapshot !== stripDayGenerationRef.current
+      ) {
+        return
+      }
       setTodaySessionsRows((data ?? []) as TodaySessionStripRow[])
     } catch {
+      if (
+        stripGenerationSnapshot !== undefined &&
+        stripGenerationSnapshot !== stripDayGenerationRef.current
+      ) {
+        return
+      }
       setTodaySessionsRows([])
     }
   }, [authUserId, stripTeamUserIds, stripWorkDateYmd])
 
-  const loadTodayClockSessionsOrg = useCallback(async () => {
+  const loadTodayClockSessionsOrg = useCallback(async (stripGenerationSnapshot?: number) => {
     if (!authUserId) {
       setTodaySessionsRowsOrg([])
       return
@@ -429,23 +447,40 @@ export function useDashboardMyTeamSectionState(
             .eq('work_date', workDate),
         'load org today clock sessions',
       )
+      if (
+        stripGenerationSnapshot !== undefined &&
+        stripGenerationSnapshot !== stripDayGenerationRef.current
+      ) {
+        return
+      }
       setTodaySessionsRowsOrg((data ?? []) as TodaySessionStripRow[])
     } catch {
+      if (
+        stripGenerationSnapshot !== undefined &&
+        stripGenerationSnapshot !== stripDayGenerationRef.current
+      ) {
+        return
+      }
       setTodaySessionsRowsOrg([])
     }
   }, [authUserId, stripWorkDateYmd])
 
-  const loadSalaryStripContext = useCallback(async () => {
+  const loadSalaryStripContext = useCallback(async (stripGenerationSnapshot?: number) => {
     if (!authUserId) {
       setSalaryStripMeta(null)
       return
     }
     const todayYmd = stripWorkDateYmd ?? denverCalendarDayKey(Date.now())
+    const staleStrip = (): boolean =>
+      stripGenerationSnapshot !== undefined &&
+      stripGenerationSnapshot !== stripDayGenerationRef.current
     try {
       let tmplQuery = supabase.from('salary_work_schedule_templates').select('*')
       if (!orgWideStripEnabled) {
         if (stripTeamUserIds.length === 0) {
-          setSalaryStripMeta({ todayYmd, templates: [], overrides: [], timeOff: [], displayNameByUserId: {} })
+          if (!staleStrip()) {
+            setSalaryStripMeta({ todayYmd, templates: [], overrides: [], timeOff: [], displayNameByUserId: {} })
+          }
           return
         }
         tmplQuery = tmplQuery.in('user_id', stripTeamUserIds)
@@ -458,7 +493,9 @@ export function useDashboardMyTeamSectionState(
       const tlist = tlistRaw.filter((t) => salariedTemplateOwners.has(t.user_id))
       const ids = [...new Set(tlist.map((t) => t.user_id))]
       if (ids.length === 0) {
-        setSalaryStripMeta({ todayYmd, templates: [], overrides: [], timeOff: [], displayNameByUserId: {} })
+        if (!staleStrip()) {
+          setSalaryStripMeta({ todayYmd, templates: [], overrides: [], timeOff: [], displayNameByUserId: {} })
+        }
         return
       }
       const userRows = await withSupabaseRetry(
@@ -492,6 +529,7 @@ export function useDashboardMyTeamSectionState(
           'salary strip time off',
         ),
       ])
+      if (staleStrip()) return
       setSalaryStripMeta({
         todayYmd,
         templates: tlist,
@@ -500,7 +538,9 @@ export function useDashboardMyTeamSectionState(
         displayNameByUserId,
       })
     } catch {
-      setSalaryStripMeta(null)
+      if (!staleStrip()) {
+        setSalaryStripMeta(null)
+      }
     }
   }, [authUserId, orgWideStripEnabled, stripTeamUserIds, stripWorkDateYmd])
 
@@ -551,12 +591,10 @@ export function useDashboardMyTeamSectionState(
         ...new Set(merged.map((s) => s.user_id)),
       ])
       setOrgWidePendingSessions(filterSessionsToSalariedSalaryOrigin(merged, salariedForPending))
-      await Promise.all([loadTodayClockSessionsOrg(), loadSalaryStripContext()])
     } catch {
       setOrgWidePendingSessions([])
-      setTodaySessionsRowsOrg([])
     }
-  }, [authUserId, pendingQueryStart, pendingQueryEnd, loadTodayClockSessionsOrg, loadSalaryStripContext])
+  }, [authUserId, pendingQueryStart, pendingQueryEnd])
 
   const loadTeamHoursSummary = useCallback(async () => {
     const fullDetailIds = teamMemberRoster
@@ -684,7 +722,8 @@ export function useDashboardMyTeamSectionState(
     }
     setError(null)
     try {
-      const [unapprovedRes, salaryOpenRes] = await Promise.all([
+      const stripSnap = stripDayGenerationRef.current
+      const wave1: Promise<unknown>[] = [
         withSupabaseRetry(
           async () =>
             supabase
@@ -716,7 +755,18 @@ export function useDashboardMyTeamSectionState(
               .order('clocked_in_at', { ascending: false }),
           'load team open approved salary clock sessions',
         ),
-      ])
+        loadTodayClockSessions(stripSnap),
+      ]
+      if (orgWideStripEnabled) {
+        wave1.push(loadTodayClockSessionsOrg(stripSnap))
+        wave1.push(loadSalaryStripContext(stripSnap))
+      } else {
+        wave1.push(loadSalaryStripContext(stripSnap))
+      }
+      const wave1Results = await Promise.all(wave1)
+      const unapprovedRes = wave1Results[0]
+      const salaryOpenRes = wave1Results[1]
+
       const merged = mergePendingWithOpenSalarySchedule(
         (unapprovedRes ?? []) as ClockSessionRow[],
         (salaryOpenRes ?? []) as ClockSessionRow[],
@@ -726,11 +776,16 @@ export function useDashboardMyTeamSectionState(
       ])
       if (!silent && generation !== loadPendingGenerationRef.current) return
       setPendingSessions(filterSessionsToSalariedSalaryOrigin(merged, salariedForPending))
-      await Promise.all([
-        loadTeamHoursSummary(),
-        loadTodayClockSessions(),
-        orgWideStripEnabled ? loadOrgWidePending() : loadSalaryStripContext(),
-      ])
+
+      if (!silent && generation !== loadPendingGenerationRef.current) return
+
+      if (orgWideStripEnabled) {
+        await loadOrgWidePending()
+      }
+
+      if (!silent && generation !== loadPendingGenerationRef.current) return
+
+      void loadTeamHoursSummary()
     } catch (e) {
       setError(formatErrorMessage(e))
       if (!silent && generation === loadPendingGenerationRef.current) {
@@ -750,6 +805,7 @@ export function useDashboardMyTeamSectionState(
     pendingQueryEnd,
     loadTeamHoursSummary,
     loadTodayClockSessions,
+    loadTodayClockSessionsOrg,
     orgWideStripEnabled,
     loadOrgWidePending,
     loadSalaryStripContext,
@@ -823,8 +879,17 @@ export function useDashboardMyTeamSectionState(
       setTodaySessionsRowsOrg([])
       return
     }
+    const snap = stripDayGenerationRef.current
     void loadOrgWidePending()
-  }, [orgWideStripEnabled, authUserId, loadOrgWidePending])
+    void loadTodayClockSessionsOrg(snap)
+    void loadSalaryStripContext(snap)
+  }, [
+    orgWideStripEnabled,
+    authUserId,
+    loadOrgWidePending,
+    loadTodayClockSessionsOrg,
+    loadSalaryStripContext,
+  ])
 
   const loadLedger = useCallback(async () => {
     const fullDetailIds = teamMemberRoster
@@ -1252,13 +1317,17 @@ export function useDashboardMyTeamSectionState(
     [stripWorkDateYmd],
   )
 
-  const jobLedgerIdsForReportsLookup = useMemo(() => {
+  /** Stable primitive — session refetches with unchanged job-ID set preserve this value and skip reports reload. */
+  const jobLedgerIdsForReportsLookupKey = useMemo(() => {
     const ids = new Set<string>()
     for (const row of todaySessionsForStripScope) {
       if (row.job_ledger_id) ids.add(row.job_ledger_id)
     }
-    return [...ids].sort()
+    return [...ids].sort().join('|')
   }, [todaySessionsForStripScope])
+
+  /** Tracks last strip calendar day when the reports-fetch effect ran (for day-change clearing only). */
+  const prevStripDayForReportsEffectRef = useRef<string | null>(null)
 
   const [jobsWorkedTodayReportKeys, setJobsWorkedTodayReportKeys] = useState<ReadonlySet<string>>(
     () => new Set(),
@@ -1271,14 +1340,26 @@ export function useDashboardMyTeamSectionState(
 
   useEffect(() => {
     let cancelled = false
+    const stripDayChangedVersusLastEffect =
+      prevStripDayForReportsEffectRef.current !== null &&
+      prevStripDayForReportsEffectRef.current !== clockStripWorkDateYmd
+    prevStripDayForReportsEffectRef.current = clockStripWorkDateYmd
+
     async function loadReportsForStrip() {
+      const jobLedgerIdsForReportsLookup =
+        jobLedgerIdsForReportsLookupKey.length === 0
+          ? []
+          : jobLedgerIdsForReportsLookupKey.split('|')
+
       if (jobLedgerIdsForReportsLookup.length === 0) {
         setJobsWorkedTodayReportKeys(new Set())
         setJobsWorkedTodayJobLedgerIdsWithReport(new Set())
         setJobsWorkedTodayReportIdByKey(new Map())
         return
       }
-      setJobsWorkedTodayJobLedgerIdsWithReport(null)
+      if (stripDayChangedVersusLastEffect) {
+        setJobsWorkedTodayJobLedgerIdsWithReport(null)
+      }
       try {
         const rows = await withSupabaseRetry(
           async () =>
@@ -1326,7 +1407,7 @@ export function useDashboardMyTeamSectionState(
     return () => {
       cancelled = true
     }
-  }, [clockStripWorkDateYmd, jobLedgerIdsForReportsLookup])
+  }, [clockStripWorkDateYmd, jobLedgerIdsForReportsLookupKey])
 
   return {
     authUserId,

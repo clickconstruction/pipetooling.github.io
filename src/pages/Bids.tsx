@@ -49,6 +49,8 @@ import {
   type UnifiedNotesAddingKind,
 } from '../components/bidBoard/UnifiedBidCustomerNotes'
 import { BidBoardNotesPanel, type BidBoardNotesTab } from '../components/bids/BidBoardNotesPanel'
+import { BidBoardLostSummaryModal } from '../components/bids/BidBoardLostSummaryModal'
+import { GenerateUnitCostModal, GenerateUnitCostTriggerIcon } from '../components/bids/GenerateUnitCostModal'
 import { BidsWorkingBoard } from '../components/bids/BidsWorkingBoard'
 import { BidFormModal, type BidServiceTypeSwitchSibling } from '../components/bids/BidFormModal'
 import { BidSubmissionFollowupExpandableDetails } from '../components/bids/BidSubmissionFollowupExpandableDetails'
@@ -61,6 +63,7 @@ import { bidAttestationDisplayName, normalizeBidDateInput } from '../lib/bidDate
 import { buildBidBoardWeeklySentSummaries } from '../lib/bidBoardWeeklySentStats'
 import { BidBoardWeeklySentSection } from '../components/bids/BidBoardWeeklySentSection'
 import { BidBoardWeeklyEstimatorLaborDevSection } from '../components/bids/BidBoardWeeklyEstimatorLaborDevSection'
+import { computeBidPricingRows, coverLetterTotalsFromPricingRows, type ComputeBidPricingRowsResult } from '../lib/bidPricingRowCalculations'
 
 type GcBuilder = Database['public']['Tables']['bids_gc_builders']['Row']
 type Customer = Database['public']['Tables']['customers']['Row']
@@ -79,6 +82,7 @@ type PriceBookVersion = Database['public']['Tables']['price_book_versions']['Row
 type PriceBookEntry = Database['public']['Tables']['price_book_entries']['Row']
 type BidPricingAssignment = Database['public']['Tables']['bid_pricing_assignments']['Row']
 type BidCountRowCustomPrice = Database['public']['Tables']['bid_count_row_custom_prices']['Row']
+type BidCountRowSubmissionHide = Database['public']['Tables']['bid_count_row_submission_hides']['Row']
 type LaborBookVersion = Database['public']['Tables']['labor_book_versions']['Row']
 type LaborBookEntry = Database['public']['Tables']['labor_book_entries']['Row']
 type TakeoffBookVersion = Database['public']['Tables']['takeoff_book_versions']['Row']
@@ -87,6 +91,17 @@ type TakeoffBookEntryItem = Database['public']['Tables']['takeoff_book_entry_ite
 type TakeoffBookEntryWithItems = TakeoffBookEntry & { items: TakeoffBookEntryItem[] }
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator' | 'primary' | 'superintendent'
 type OutcomeOption = 'won' | 'lost' | 'started_or_complete' | ''
+
+function submissionHiddenIdsForVersion(
+  hides: readonly BidCountRowSubmissionHide[],
+  versionId: string,
+): Set<string> {
+  const s = new Set<string>()
+  for (const h of hides) {
+    if (h.price_book_version_id === versionId) s.add(h.count_row_id)
+  }
+  return s
+}
 
 function isBidEligibleForWorkingBoard(bid: BidWithBuilder, userId: string | undefined): boolean {
   if (!userId) return false
@@ -817,18 +832,13 @@ function BidWorkflowTabTitleWithPreview({ bid, previewEnabled, onOpenPreview, h2
   )
 }
 
-/** Bid Board “Bid #” cell: smaller first glyph of trade prefix, remainder + number at inherited size. */
+/** Bid Board “Bid #” cell: trade prefix (all letters) smaller than the numeric part. */
 function BidBoardBidNumberMark({ bidPrefix, bidNumber }: { bidPrefix: string; bidNumber: string }) {
   const pref = (bidPrefix || 'B').trim() || 'B'
-  const first = pref.slice(0, 1)
-  const rest = pref.slice(1)
   return (
     <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.05em', font: 'inherit' }}>
-      <span style={{ fontSize: '0.7em', lineHeight: 1, fontWeight: 600 }}>{first}</span>
-      <span>
-        {rest}
-        {bidNumber}
-      </span>
+      <span style={{ fontSize: '0.7em', lineHeight: 1, fontWeight: 600 }}>{pref}</span>
+      <span>{bidNumber}</span>
     </span>
   )
 }
@@ -1589,6 +1599,8 @@ export default function Bids() {
   const [scrollToContactFromBidBoard, setScrollToContactFromBidBoard] = useState(false)
   const [submissionSectionOpen, setSubmissionSectionOpen] = useState({ unsent: true, pending: true, won: true, startedOrComplete: true, lost: false })
   const [bidBoardSectionOpen, setBidBoardSectionOpen] = useState({ unsent: true, pending: true, won: true, startedOrComplete: true, lost: false })
+  const [lostSummaryModalOpen, setLostSummaryModalOpen] = useState(false)
+  const [lostSummaryInitialStaffTab, setLostSummaryInitialStaffTab] = useState<string | null>(null)
   const [bidBoardDeepLinkHighlightId, setBidBoardDeepLinkHighlightId] = useState<string | null>(null)
   const [bidBoardDeepLinkHighlightGen, setBidBoardDeepLinkHighlightGen] = useState(0)
   const [scoreboardDetailsExpanded, setScoreboardDetailsExpanded] = useState(false)
@@ -1605,6 +1617,16 @@ export default function Bids() {
       myRole === 'estimator',
     [myRole],
   )
+
+  const showLostModalLabor = useMemo(
+    () => myRole === 'dev' || myRole === 'master_technician',
+    [myRole],
+  )
+
+  const closeLostSummaryModal = useCallback(() => {
+    setLostSummaryModalOpen(false)
+    setLostSummaryInitialStaffTab(null)
+  }, [])
 
   const openSubmissionFollowupChecklistTask = useCallback(() => {
     const bid = selectedBidForSubmission
@@ -1930,6 +1952,7 @@ export default function Bids() {
   const [priceBookEntries, setPriceBookEntries] = useState<PriceBookEntryWithFixture[]>([])
   const [bidPricingAssignments, setBidPricingAssignments] = useState<BidPricingAssignment[]>([])
   const [bidCountRowCustomPrices, setBidCountRowCustomPrices] = useState<BidCountRowCustomPrice[]>([])
+  const [bidCountRowSubmissionHides, setBidCountRowSubmissionHides] = useState<BidCountRowSubmissionHide[]>([])
   const [selectedPricingVersionId, setSelectedPricingVersionId] = useState<string | null>(null)
   const pricingBidIdRef = useRef<string | null>(null)
   const [pricingCountRows, setPricingCountRows] = useState<BidCountRow[]>([])
@@ -1963,6 +1986,15 @@ export default function Bids() {
   const [pricingRowBreakdownModalCountRow, setPricingRowBreakdownModalCountRow] = useState<BidCountRow | null>(null)
   const [pricingViewModel, setPricingViewModel] = useState<'cost' | 'price'>('price')
   const [unitPriceEditValues, setUnitPriceEditValues] = useState<Record<string, string>>({})
+  const [generateUnitCostModalParams, setGenerateUnitCostModalParams] = useState<{
+    countRowId: string
+    totalRevenue: number
+    currentRowRevenue: number
+    currentPctOfTotal: number | null
+    count: number
+    isFixedPrice: boolean
+    fixtureLabel: string
+  } | null>(null)
   const [savingUnitPriceOverride, setSavingUnitPriceOverride] = useState<string | null>(null)
 
   // Cover Letter tab
@@ -3681,10 +3713,11 @@ export default function Bids() {
     if (versionId == null) {
       setBidPricingAssignments([])
       setBidCountRowCustomPrices([])
+      setBidCountRowSubmissionHides([])
       return
     }
     try {
-      const [assignmentsData, customPricesData] = await Promise.all([
+      const [assignmentsData, customPricesData, submissionHidesData] = await Promise.all([
         withSupabaseRetry(
           async () => {
             let q = supabase
@@ -3709,9 +3742,22 @@ export default function Bids() {
           },
           'fetch bid count row custom prices'
         ),
+        withSupabaseRetry(
+          async () => {
+            let q = supabase
+              .from('bid_count_row_submission_hides')
+              .select('*')
+              .eq('bid_id', bidId)
+              .eq('price_book_version_id', versionId)
+            if (signal && 'abortSignal' in q) q = (q as { abortSignal: (s: AbortSignal) => typeof q }).abortSignal(signal)
+            return await q
+          },
+          'fetch bid count row submission hides'
+        ),
       ])
       setBidPricingAssignments((assignmentsData as BidPricingAssignment[]) ?? [])
       setBidCountRowCustomPrices((customPricesData as BidCountRowCustomPrice[]) ?? [])
+      setBidCountRowSubmissionHides((submissionHidesData as BidCountRowSubmissionHide[]) ?? [])
     } catch (e) {
       const isAbort = (x: unknown) =>
         (x && typeof x === 'object' && 'name' in x && (x as { name: string }).name === 'AbortError') ||
@@ -3720,6 +3766,7 @@ export default function Bids() {
       setError(`Failed to load pricing assignments: ${e instanceof Error ? e.message : String(e)}`)
       setBidPricingAssignments([])
       setBidCountRowCustomPrices([])
+      setBidCountRowSubmissionHides([])
     }
   }
 
@@ -3930,6 +3977,30 @@ export default function Bids() {
     await loadBids()
   }
 
+  function resolvePricingEntryForCountRow(countRowId: string): PriceBookEntryWithFixture | null {
+    const versionId = selectedPricingVersionId
+    if (!versionId) return null
+    const existing = bidPricingAssignments.find(
+      (a) => a.count_row_id === countRowId && a.price_book_version_id === versionId,
+    )
+    const entriesById = new Map(priceBookEntries.map((e) => [e.id, e]))
+    if (existing) {
+      return entriesById.get(existing.price_book_entry_id) ?? null
+    }
+    const countRow = pricingCountRows.find((r) => r.id === countRowId)
+    if (!countRow) return null
+    return (
+      priceBookEntries.find(
+        (e) =>
+          (e.fixture_types?.name ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase(),
+      ) ?? null
+    )
+  }
+
+  function pricingRowCanToggleOmitFromSubmission(_countRowId: string): boolean {
+    return selectedPricingVersionId != null
+  }
+
   async function savePricingAssignment(countRowId: string, priceBookEntryId: string) {
     const bidId = selectedBidForPricing?.id
     const versionId = selectedPricingVersionId
@@ -3968,19 +4039,51 @@ export default function Bids() {
     const bidId = selectedBidForPricing?.id
     const versionId = selectedPricingVersionId
     if (!bidId || !versionId) return
-    
+
     const existing = bidPricingAssignments.find(
       (a) => a.count_row_id === countRowId && a.price_book_version_id === versionId
     )
     if (!existing) return
-    
+
     const { error: err } = await supabase
       .from('bid_pricing_assignments')
       .update({ is_fixed_price: !existing.is_fixed_price })
       .eq('id', existing.id)
-    
+
     if (err) setError(err.message)
     else await loadBidPricingAssignments(bidId, versionId)
+  }
+
+  async function togglePricingRowOmitFromSubmission(countRowId: string) {
+    const bidId = selectedBidForPricing?.id
+    const versionId = selectedPricingVersionId
+    if (!bidId || !versionId) return
+    const existingHide = bidCountRowSubmissionHides.find(
+      (h) => h.count_row_id === countRowId && h.price_book_version_id === versionId,
+    )
+    setSavingPricingAssignment(countRowId)
+    try {
+      if (existingHide) {
+        const { error: err } = await supabase
+          .from('bid_count_row_submission_hides')
+          .delete()
+          .eq('bid_id', bidId)
+          .eq('count_row_id', countRowId)
+          .eq('price_book_version_id', versionId)
+        if (err) setError(err.message)
+        else await loadBidPricingAssignments(bidId, versionId)
+      } else {
+        const { error: err } = await supabase.from('bid_count_row_submission_hides').insert({
+          bid_id: bidId,
+          count_row_id: countRowId,
+          price_book_version_id: versionId,
+        })
+        if (err) setError(err.message)
+        else await loadBidPricingAssignments(bidId, versionId)
+      }
+    } finally {
+      setSavingPricingAssignment(null)
+    }
   }
 
   async function updateUnitPriceOverride(countRowId: string, value: number | null) {
@@ -3988,9 +4091,7 @@ export default function Bids() {
     const versionId = selectedPricingVersionId
     if (!bidId || !versionId) return
     const existing = bidPricingAssignments.find((a) => a.count_row_id === countRowId && a.price_book_version_id === versionId)
-    const entriesById = new Map(priceBookEntries.map((e) => [e.id, e]))
-    const countRow = pricingCountRows.find((r) => r.id === countRowId)
-    const entry = existing ? entriesById.get(existing.price_book_entry_id) : (countRow ? priceBookEntries.find((e) => (e.fixture_types?.name ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase()) : null)
+    const entry = resolvePricingEntryForCountRow(countRowId)
     const existingCustom = bidCountRowCustomPrices.find((c) => c.count_row_id === countRowId && c.price_book_version_id === versionId)
 
     setSavingUnitPriceOverride(countRowId)
@@ -5487,24 +5588,49 @@ export default function Bids() {
         ? Number((pricingCostEstimate as any).estimator_cost_flat_amount)
         : pricingCountRows.length * (Number((pricingCostEstimate as any)?.estimator_cost_per_count) || 10)
       const totalCost = totalMaterials + laborCost + drivingCost + estimatorCost
-      const entriesById = new Map(priceBookEntries.map((e) => [e.id, e]))
-      let totalRevenue = 0
-      const rows = pricingCountRows.map((countRow) => {
-        const assignment = bidPricingAssignments.find((a) => a.count_row_id === countRow.id)
-        const entry = assignment ? entriesById.get(assignment.price_book_entry_id) : priceBookEntries.find((e) => (e.fixture_types?.name ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase())
-        const customPrice = bidCountRowCustomPrices.find((c) => c.count_row_id === countRow.id)?.unit_price
-        const laborRow = pricingLaborRows.find((l) => (l.fixture ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase())
-        const count = Number(countRow.count)
-        const laborHrs = laborRow ? laborRowHours(laborRow) : 0
-        const laborCost = laborHrs * rate
-        const allocatedMaterials = totalLaborHours > 0 ? totalMaterials * (laborHrs / totalLaborHours) : 0
-        const cost = laborCost + allocatedMaterials
-        const unitPrice = assignment?.unit_price_override ?? (entry ? Number(entry.total_price) : (customPrice ?? 0))
-        const isFixedPrice = assignment?.is_fixed_price ?? false
-        const revenue = isFixedPrice ? unitPrice : count * unitPrice
-        totalRevenue += revenue
-        const margin = revenue > 0 ? ((revenue - cost) / revenue) * 100 : null
-        return { countRow, entry, count, unitPrice, isFixedPrice, cost, revenue, margin }
+      const taxPercentPrint = parseFloat(costEstimatePOModalTaxPercent || '8.25') || 0
+      const assignmentsForVersionPrint = bidPricingAssignments.filter(
+        (a) => a.price_book_version_id === selectedPricingVersionId,
+      )
+      const customMapPrint = new Map<string, number>()
+      for (const cp of bidCountRowCustomPrices) {
+        if (cp.price_book_version_id === selectedPricingVersionId) {
+          customMapPrint.set(cp.count_row_id, Number(cp.unit_price))
+        }
+      }
+      const hiddenPrint = submissionHiddenIdsForVersion(bidCountRowSubmissionHides, selectedPricingVersionId)
+      const pricingPrint = computeBidPricingRows({
+        countRows: pricingCountRows,
+        assignments: assignmentsForVersionPrint.map((a) => ({
+          count_row_id: a.count_row_id,
+          price_book_entry_id: a.price_book_entry_id,
+          is_fixed_price: a.is_fixed_price ?? false,
+          unit_price_override: a.unit_price_override,
+        })),
+        entries: priceBookEntries,
+        customUnitPriceByCountRowId: customMapPrint,
+        laborRows: pricingLaborRows,
+        totalMaterials,
+        laborRate: rate,
+        taxPercent: taxPercentPrint,
+        materialsFromTakeoffByCountRowId: pricingFixtureMaterialsFromTakeoff,
+        hiddenSubmissionCountRowIds: hiddenPrint,
+      })
+      const totalRevenue = pricingPrint.totalRevenue
+      const rows = pricingPrint.rows.map((pr) => {
+        const assignment = assignmentsForVersionPrint.find((a) => a.count_row_id === pr.countRow.id)
+        const entry = pr.entry as PriceBookEntryWithFixture | undefined
+        const isFixedPrice = assignment?.is_fixed_price === true
+        return {
+          countRow: pr.countRow as BidCountRow,
+          entry,
+          count: pr.count,
+          unitPrice: pr.unitPrice,
+          isFixedPrice,
+          cost: pr.cost,
+          revenue: pr.revenue,
+          margin: pr.marginPct,
+        }
       })
       const tableRows = rows
         .map(
@@ -5590,44 +5716,45 @@ export default function Bids() {
     const teamLaborCost = teamLaborCostByBidId.get(selectedBidForPricing.id) ?? 0
     const totalBidCost = totalMaterials + laborCostAll + drivingCost + estimatorCost + teamLaborCost
 
-    const entriesById = new Map(priceBookEntries.map((e) => [e.id, e]))
-    let totalRevenue = 0
-    const rowCalcs = pricingCountRows.map((countRow) => {
-      const assignment = bidPricingAssignments.find((a) => a.count_row_id === countRow.id)
-      const entry = assignment
-        ? entriesById.get(assignment.price_book_entry_id)
-        : priceBookEntries.find((e) => (e.fixture_types?.name ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase())
-      const customPrice = bidCountRowCustomPrices.find((c) => c.count_row_id === countRow.id)?.unit_price
-      const laborRow = pricingLaborRows.find((l) => (l.fixture ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase())
-      const count = Number(countRow.count)
-      const laborHrs = laborRow ? laborRowHours(laborRow) : 0
-      const laborCost = laborHrs * rate
-      const materialsFromTakeoff = pricingFixtureMaterialsFromTakeoff[countRow.id]
-      const materialsBeforeTax =
-        materialsFromTakeoff != null
-          ? materialsFromTakeoff
-          : totalLaborHours > 0
-            ? totalMaterials * (laborHrs / totalLaborHours)
-            : 0
-      const materialsWithTax =
-        materialsFromTakeoff != null ? materialsBeforeTax * (1 + taxPercent / 100) : materialsBeforeTax
-      const unitPrice = assignment?.unit_price_override ?? (entry ? Number(entry.total_price) : (customPrice ?? 0))
-      const isFixedPrice = assignment?.is_fixed_price ?? false
-      const revenue = isFixedPrice ? unitPrice : count * unitPrice
-      totalRevenue += revenue
-      const lineCost = laborCost + materialsWithTax
-      const margin = revenue > 0 ? ((revenue - lineCost) / revenue) * 100 : null
-      return {
-        fixture: countRow.fixture ?? '',
-        count,
-        priceBookEntry: entry?.fixture_types?.name ?? '',
-        fixedPrice: isFixedPrice,
-        unitPrice,
-        ourCost: lineCost,
-        revenue,
-        marginPct: margin,
+    const assignmentsForVersionCsv = bidPricingAssignments.filter(
+      (a) => a.price_book_version_id === selectedPricingVersionId,
+    )
+    const customMapCsv = new Map<string, number>()
+    for (const cp of bidCountRowCustomPrices) {
+      if (cp.price_book_version_id === selectedPricingVersionId) {
+        customMapCsv.set(cp.count_row_id, Number(cp.unit_price))
       }
+    }
+    const hiddenCsv = submissionHiddenIdsForVersion(bidCountRowSubmissionHides, selectedPricingVersionId)
+    const pricingCsv = computeBidPricingRows({
+      countRows: pricingCountRows,
+      assignments: assignmentsForVersionCsv.map((a) => ({
+        count_row_id: a.count_row_id,
+        price_book_entry_id: a.price_book_entry_id,
+        is_fixed_price: a.is_fixed_price ?? false,
+        unit_price_override: a.unit_price_override,
+      })),
+      entries: priceBookEntries,
+      customUnitPriceByCountRowId: customMapCsv,
+      laborRows: pricingLaborRows,
+      totalMaterials,
+      laborRate: rate,
+      taxPercent,
+      materialsFromTakeoffByCountRowId: pricingFixtureMaterialsFromTakeoff,
+      hiddenSubmissionCountRowIds: hiddenCsv,
     })
+    const totalRevenue = pricingCsv.totalRevenue
+    const rowCalcs = pricingCsv.rows.map((pr) => ({
+      fixture: pr.countRow.fixture ?? '',
+      count: pr.count,
+      priceBookEntry: pr.entry?.fixture_types?.name ?? '',
+      fixedPrice: pr.assignment?.is_fixed_price === true,
+      unitPrice: pr.unitPrice,
+      ourCost: pr.cost,
+      revenue: pr.revenue,
+      marginPct: pr.marginPct,
+      pctOfTotalDisplay: pr.pctOfGrandTotal,
+    }))
 
     const headers = [
       'Fixture or Tie-in',
@@ -5642,7 +5769,7 @@ export default function Bids() {
     ]
     const lines = [headers.map((h) => csvEscapeField(h)).join(',')]
     for (const r of rowCalcs) {
-      const pctOf = totalRevenue > 0 ? (r.revenue / totalRevenue) * 100 : null
+      const pctOf = r.pctOfTotalDisplay
       lines.push(
         [
           csvEscapeField(r.fixture),
@@ -5699,10 +5826,11 @@ export default function Bids() {
       bodyContent = '<p style="color:#6b7280">Select a price book version and ensure Counts and Cost Estimate are set up.</p>'
     } else {
       const versionIds = priceBookVersions.map((v) => v.id)
-      const [entriesResult, assignmentsResult, customPricesResult] = await Promise.all([
+      const [entriesResult, assignmentsResult, customPricesResult, submissionHidesResult] = await Promise.all([
         supabase.from('price_book_entries').select('*, fixture_types(name)').in('version_id', versionIds),
         supabase.from('bid_pricing_assignments').select('*').eq('bid_id', selectedBidForPricing.id),
         supabase.from('bid_count_row_custom_prices').select('*').eq('bid_id', selectedBidForPricing.id).in('price_book_version_id', versionIds),
+        supabase.from('bid_count_row_submission_hides').select('*').eq('bid_id', selectedBidForPricing.id).in('price_book_version_id', versionIds),
       ])
       const { data: allEntries, error: entriesErr } = entriesResult
       if (entriesErr) {
@@ -5712,6 +5840,11 @@ export default function Bids() {
       const allCustomPrices = (customPricesResult.data as BidCountRowCustomPrice[]) ?? []
       if (customPricesResult.error) {
         setError(`Failed to load custom prices: ${customPricesResult.error.message}`)
+        return
+      }
+      const allSubmissionHides = (submissionHidesResult.data as BidCountRowSubmissionHide[]) ?? []
+      if (submissionHidesResult.error) {
+        setError(`Failed to load submission hides: ${submissionHidesResult.error.message}`)
         return
       }
       const allAssignments = (assignmentsResult.data as BidPricingAssignment[]) ?? []
@@ -5739,36 +5872,52 @@ export default function Bids() {
         ? Number((pricingCostEstimate as any).estimator_cost_flat_amount)
         : pricingCountRows.length * (Number((pricingCostEstimate as any)?.estimator_cost_per_count) || 10)
       const totalCost = totalMaterials + laborCost + drivingCost + estimatorCost
+      const taxPctAll = parseFloat(costEstimatePOModalTaxPercent || '8.25') || 0
       const sections: string[] = []
       for (let i = 0; i < priceBookVersions.length; i++) {
         const version = priceBookVersions[i]!
         const entries = entriesByVersion.get(version.id) ?? []
-        const entriesById = new Map(entries.map((e) => [e.id, e]))
-        const assignmentForVersion = (countRowId: string) =>
-          allAssignments.find((a) => a.count_row_id === countRowId && a.price_book_version_id === version.id)
-        const customPriceForVersion = (countRowId: string) =>
-          allCustomPrices.find((c) => c.count_row_id === countRowId && c.price_book_version_id === version.id)?.unit_price
-        let totalRevenue = 0
-        const rows = pricingCountRows.map((countRow) => {
-          const assignment = assignmentForVersion(countRow.id)
-          const entry = assignment
-            ? entriesById.get(assignment.price_book_entry_id)
-            : entries.find((e) => (e.fixture_types?.name ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase())
-          const customPrice = customPriceForVersion(countRow.id)
-          const laborRow = pricingLaborRows.find((l) => (l.fixture ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase())
-          const count = Number(countRow.count)
-          const laborHrs = laborRow
-            ? count * (Number(laborRow.rough_in_hrs_per_unit) + Number(laborRow.top_out_hrs_per_unit) + Number(laborRow.trim_set_hrs_per_unit))
-            : 0
-          const laborCost = laborHrs * rate
-          const allocatedMaterials = totalLaborHours > 0 ? totalMaterials * (laborHrs / totalLaborHours) : 0
-          const cost = laborCost + allocatedMaterials
-          const unitPrice = assignment?.unit_price_override ?? (entry ? Number(entry.total_price) : (customPrice ?? 0))
-          const isFixedPrice = assignment?.is_fixed_price ?? false
-          const revenue = isFixedPrice ? unitPrice : count * unitPrice
-          totalRevenue += revenue
-          const margin = revenue > 0 ? ((revenue - cost) / revenue) * 100 : null
-          return { countRow, entry, count, unitPrice, isFixedPrice, cost, revenue, margin }
+        const assignsV = allAssignments.filter((a) => a.price_book_version_id === version.id)
+        const customMapV = new Map<string, number>()
+        for (const cp of allCustomPrices) {
+          if (cp.price_book_version_id === version.id) {
+            customMapV.set(cp.count_row_id, Number(cp.unit_price))
+          }
+        }
+        const hiddenV = submissionHiddenIdsForVersion(allSubmissionHides, version.id)
+        const pricingPv = computeBidPricingRows({
+          countRows: pricingCountRows,
+          assignments: assignsV.map((a) => ({
+            count_row_id: a.count_row_id,
+            price_book_entry_id: a.price_book_entry_id,
+            is_fixed_price: a.is_fixed_price ?? false,
+            unit_price_override: a.unit_price_override,
+          })),
+          entries,
+          customUnitPriceByCountRowId: customMapV,
+          laborRows: pricingLaborRows,
+          totalMaterials,
+          laborRate: rate,
+          taxPercent: taxPctAll,
+          materialsFromTakeoffByCountRowId: pricingFixtureMaterialsFromTakeoff,
+          hiddenSubmissionCountRowIds: hiddenV,
+        })
+        const totalRevenue = pricingPv.totalRevenue
+        const rows = pricingPv.rows.map((pr) => {
+          const assignment =
+            assignsV.find((a) => a.count_row_id === pr.countRow.id)
+          const entry = pr.entry as PriceBookEntryWithFixture | undefined
+          const isFixedPrice = assignment?.is_fixed_price === true
+          return {
+            countRow: pr.countRow as BidCountRow,
+            entry,
+            count: pr.count,
+            unitPrice: pr.unitPrice,
+            isFixedPrice,
+            cost: pr.cost,
+            revenue: pr.revenue,
+            margin: pr.marginPct,
+          }
         })
         const tableRows = rows
           .map(
@@ -5984,6 +6133,9 @@ export default function Bids() {
     let reviewGroupCostEstimateAmount: number | null = null
     let reviewGroupHasCostEstimate = false
     const reviewGroupPricingByVersion: Array<{ versionName: string; revenue: number; margin: number | null; complete: boolean }> = []
+    let reviewPdfLaborRows: CostEstimateLaborRow[] = []
+    let reviewPdfTotalMaterials = 0
+    let reviewPdfLaborRate = 0
     const { data: countDataReview } = await supabase.from('bids_count_rows').select('*').eq('bid_id', bidId).order('sequence_order', { ascending: true })
     const countRowsReview = (countDataReview as BidCountRow[]) ?? []
     const { data: estForReview } = await supabase.from('cost_estimates').select('*').eq('bid_id', bidId).maybeSingle()
@@ -5999,6 +6151,9 @@ export default function Bids() {
       const laborRowsR = (laborResR.data as CostEstimateLaborRow[]) ?? []
       const totalMaterialsR = (roughR ?? 0) + (topR ?? 0) + (trimR ?? 0)
       const rateR = estForReviewData.labor_rate != null ? Number(estForReviewData.labor_rate) : 0
+      reviewPdfLaborRows = laborRowsR
+      reviewPdfTotalMaterials = totalMaterialsR
+      reviewPdfLaborRate = rateR
       const totalHoursR = laborRowsR.reduce(
         (s, r) => s + laborRowHours(r),
         0
@@ -6013,6 +6168,12 @@ export default function Bids() {
         : countRowsReview.length * (Number((estForReviewData as any)?.estimator_cost_per_count) || 10)
       reviewGroupCostEstimateAmount = totalMaterialsR + (totalHoursR * rateR) + drivingCostR + estimatorCostR
     }
+    const [customPdfRes, hidesPdfRes] = await Promise.all([
+      supabase.from('bid_count_row_custom_prices').select('*').eq('bid_id', bidId),
+      supabase.from('bid_count_row_submission_hides').select('*').eq('bid_id', bidId),
+    ])
+    const allBidCustomPricesPdf = (customPdfRes.data as BidCountRowCustomPrice[]) ?? []
+    const allBidSubmissionHidesPdf = (hidesPdfRes.data as BidCountRowSubmissionHide[]) ?? []
     for (const v of priceBookVersions) {
       const [entriesResR, assignResR] = await Promise.all([
         supabase.from('price_book_entries').select('*, fixture_types(name)').eq('version_id', v.id),
@@ -6021,15 +6182,35 @@ export default function Bids() {
       const entriesR = (entriesResR.data as PriceBookEntryWithFixture[]) ?? []
       entriesR.sort((a, b) => (a.fixture_types?.name ?? '').localeCompare(b.fixture_types?.name ?? '', undefined, { numeric: true }))
       const assignmentsR = (assignResR.data as BidPricingAssignment[]) ?? []
-      const entriesByIdR = new Map(entriesR.map((e) => [e.id, e]))
-      let totalRevenueR = 0
-      let completeR = true
-      for (const row of countRowsReview) {
-        const assignment = assignmentsR.find((a) => a.count_row_id === row.id)
-        const entry = assignment ? entriesByIdR.get(assignment.price_book_entry_id) : entriesR.find((e) => (e.fixture_types?.name ?? '').toLowerCase() === (row.fixture ?? '').toLowerCase())
-        if (!entry) completeR = false
-        totalRevenueR += Number(row.count) * (entry ? Number(entry.total_price) : 0)
-      }
+      const customMapR = new Map(
+        (allBidCustomPricesPdf ?? [])
+          .filter((c) => c.price_book_version_id === v.id)
+          .map((c) => [c.count_row_id, Number(c.unit_price)]),
+      )
+      const hiddenR = submissionHiddenIdsForVersion(allBidSubmissionHidesPdf, v.id)
+      const computedR = computeBidPricingRows({
+        countRows: countRowsReview,
+        assignments: assignmentsR.map((a) => ({
+          count_row_id: a.count_row_id,
+          price_book_entry_id: a.price_book_entry_id,
+          is_fixed_price: a.is_fixed_price ?? false,
+          unit_price_override: a.unit_price_override,
+        })),
+        entries: entriesR,
+        customUnitPriceByCountRowId: customMapR,
+        laborRows: reviewPdfLaborRows,
+        totalMaterials: reviewPdfTotalMaterials,
+        laborRate: reviewPdfLaborRate,
+        taxPercent: 8.25,
+        materialsFromTakeoffByCountRowId: {},
+        hiddenSubmissionCountRowIds: hiddenR,
+      })
+      const totalRevenueR = computedR.totalRevenue
+      const completeR = computedR.rows.every(
+        (pr) =>
+          pr.entry != null ||
+          customMapR.has(pr.countRow.id),
+      )
       const marginR = completeR && totalRevenueR > 0 && reviewGroupCostEstimateAmount != null
         ? (totalRevenueR - reviewGroupCostEstimateAmount) / totalRevenueR * 100
         : null
@@ -6084,37 +6265,75 @@ export default function Bids() {
     y += lineHeight * 2
     doc.setFontSize(11)
 
+    let approvalPricingForCover: ComputeBidPricingRowsResult | null = null
     const versionId = b.selected_price_book_version_id ?? null
     const { data: countData } = await supabase.from('bids_count_rows').select('*').eq('bid_id', bidId).order('sequence_order', { ascending: true })
     const countRows = (countData as BidCountRow[]) ?? []
     let pricingContent = 'No price book selected or no count rows.'
     if (versionId && countRows.length > 0) {
-      const [entriesRes, assignRes] = await Promise.all([
+      const [entriesRes, assignRes, customRes, hidesRes] = await Promise.all([
         supabase.from('price_book_entries').select('*, fixture_types(name)').eq('version_id', versionId),
         supabase.from('bid_pricing_assignments').select('*').eq('bid_id', bidId).eq('price_book_version_id', versionId),
+        supabase.from('bid_count_row_custom_prices').select('*').eq('bid_id', bidId).eq('price_book_version_id', versionId),
+        supabase.from('bid_count_row_submission_hides').select('*').eq('bid_id', bidId).eq('price_book_version_id', versionId),
       ])
       const entries = (entriesRes.data as PriceBookEntryWithFixture[]) ?? []
       entries.sort((a, b) => (a.fixture_types?.name ?? '').localeCompare(b.fixture_types?.name ?? '', undefined, { numeric: true }))
       const assignments = (assignRes.data as BidPricingAssignment[]) ?? []
-      const entriesById = new Map(entries.map((e) => [e.id, e]))
-      let totalRevenue = 0
+      const customPricesP2 = (customRes.data as BidCountRowCustomPrice[]) ?? []
+      const submissionHidesP2 = (hidesRes.data as BidCountRowSubmissionHide[]) ?? []
+      const hiddenP2 = submissionHiddenIdsForVersion(submissionHidesP2, versionId)
+      const customMapP2 = new Map(customPricesP2.map((c) => [c.count_row_id, Number(c.unit_price)]))
+
+      let laborRowsP2: CostEstimateLaborRow[] = []
+      let totalMatP2 = 0
+      let rateP2 = 0
+      const estQuickData = ((await supabase.from('cost_estimates').select('*').eq('bid_id', bidId).maybeSingle()).data) as CostEstimate | null
+      if (estQuickData) {
+        const [lrP2, r0, t0, tr0] = await Promise.all([
+          supabase.from('cost_estimate_labor_rows').select('*').eq('cost_estimate_id', estQuickData.id).order('sequence_order', { ascending: true }),
+          estQuickData.purchase_order_id_rough_in ? loadPOTotal(estQuickData.purchase_order_id_rough_in) : Promise.resolve(0),
+          estQuickData.purchase_order_id_top_out ? loadPOTotal(estQuickData.purchase_order_id_top_out) : Promise.resolve(0),
+          estQuickData.purchase_order_id_trim_set ? loadPOTotal(estQuickData.purchase_order_id_trim_set) : Promise.resolve(0),
+        ])
+        laborRowsP2 = (lrP2.data as CostEstimateLaborRow[]) ?? []
+        totalMatP2 = (r0 ?? 0) + (t0 ?? 0) + (tr0 ?? 0)
+        rateP2 = estQuickData.labor_rate != null ? Number(estQuickData.labor_rate) : 0
+      }
+
+      approvalPricingForCover = computeBidPricingRows({
+        countRows,
+        assignments: assignments.map((a) => ({
+          count_row_id: a.count_row_id,
+          price_book_entry_id: a.price_book_entry_id,
+          is_fixed_price: a.is_fixed_price ?? false,
+          unit_price_override: a.unit_price_override,
+        })),
+        entries,
+        customUnitPriceByCountRowId: customMapP2,
+        laborRows: laborRowsP2,
+        totalMaterials: totalMatP2,
+        laborRate: rateP2,
+        taxPercent: 8.25,
+        materialsFromTakeoffByCountRowId: {},
+        hiddenSubmissionCountRowIds: hiddenP2,
+      })
+      const totalRevenue = approvalPricingForCover.totalRevenue
+
       const versionName = priceBookVersions.find((v) => v.id === versionId)?.name ?? '—'
       push(`Price book: ${versionName}`)
       y += lineHeight
       const pricingColWidths = [48, 18, 48, 40, 48]
       const pricingRows: string[][] = []
-      for (const row of countRows) {
-        const assignment = assignments.find((a) => a.count_row_id === row.id)
-        const entry = assignment ? entriesById.get(assignment.price_book_entry_id) : entries.find((e) => (e.fixture_types?.name ?? '').toLowerCase() === (row.fixture ?? '').toLowerCase())
-        const unitPrice = entry ? Number(entry.total_price) : 0
-        const revenue = Number(row.count) * unitPrice
-        totalRevenue += revenue
+      for (const pr of approvalPricingForCover.rows) {
+        if (pr.omitFromSubmissionDocuments) continue
+        const entry = pr.entry as PriceBookEntryWithFixture | undefined
         pricingRows.push([
-          row.fixture ?? '',
-          String(row.count),
-          (entry as PriceBookEntryWithFixture | undefined)?.fixture_types?.name ?? '—',
-          `$${Math.round(unitPrice).toLocaleString('en-US')}`,
-          `$${Math.round(revenue).toLocaleString('en-US')}`,
+          pr.countRow.fixture ?? '',
+          String(pr.count),
+          entry?.fixture_types?.name ?? '—',
+          `$${Math.round(pr.unitPrice).toLocaleString('en-US')}`,
+          `$${Math.round(pr.revenue).toLocaleString('en-US')}`,
         ])
       }
       y = drawTable(y, pricingColWidths, ['Fixture', 'Count', 'Entry', 'Per Unit', 'Revenue'], pricingRows, true, 'landscape')
@@ -6242,23 +6461,10 @@ export default function Bids() {
     const projectAddressVal = b.address ?? '—'
     let coverLetterRevenue = 0
     const fixtureRows: { fixture: string; count: number }[] = []
-    if (versionId && countRows.length > 0) {
-      const entriesRaw = (await supabase.from('price_book_entries').select('*, fixture_types(name)').eq('version_id', versionId)).data as PriceBookEntryWithFixture[] ?? []
-      const entries = [...entriesRaw].sort((a, b) => (a.fixture_types?.name ?? '').localeCompare(b.fixture_types?.name ?? '', undefined, { numeric: true }))
-      const assignments = (await supabase.from('bid_pricing_assignments').select('*').eq('bid_id', bidId).eq('price_book_version_id', versionId)).data as BidPricingAssignment[] ?? []
-      const customPrices = (await supabase.from('bid_count_row_custom_prices').select('*').eq('bid_id', bidId).eq('price_book_version_id', versionId)).data as BidCountRowCustomPrice[] ?? []
-      const entriesById = new Map(entries.map((e) => [e.id, e]))
-      countRows.forEach((countRow) => {
-        const assignment = assignments.find((a) => a.count_row_id === countRow.id)
-        const entry = assignment ? entriesById.get(assignment.price_book_entry_id) : entries.find((e) => (e.fixture_types?.name ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase())
-        const customPrice = customPrices.find((c) => c.count_row_id === countRow.id)?.unit_price
-        const count = Number(countRow.count)
-        const unitPrice = assignment?.unit_price_override ?? (entry ? Number(entry.total_price) : (customPrice ?? 0))
-        const isFixedPrice = assignment?.is_fixed_price ?? false
-        const revenue = isFixedPrice ? unitPrice : count * unitPrice
-        coverLetterRevenue += revenue
-        fixtureRows.push({ fixture: countRow.fixture ?? '', count: count })
-      })
+    if (approvalPricingForCover) {
+      const totals = coverLetterTotalsFromPricingRows(approvalPricingForCover.rows)
+      coverLetterRevenue = totals.revenueSum
+      fixtureRows.push(...totals.fixtureRows)
     }
     const useCustomAmount = coverLetterUseCustomAmountByBid[b.id] === true
     const customAmountStr = (coverLetterCustomAmountByBid[b.id] ?? '').replace(/,/g, '').trim()
@@ -7582,6 +7788,25 @@ export default function Bids() {
     loadRole()
   }, [authUser?.id])
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    if (params.get('lostSummary') !== '1') return
+    const tabUid = params.get('lostSummaryTab')?.trim() || null
+    setLostSummaryInitialStaffTab(tabUid)
+    setBidBoardSectionOpen((p) => ({ ...p, lost: true }))
+    setLostSummaryModalOpen(true)
+    setActiveTab('bid-board')
+    setSearchParams(
+      (p) => {
+        const next = new URLSearchParams(p)
+        next.delete('lostSummary')
+        next.delete('lostSummaryTab')
+        return next
+      },
+      { replace: true },
+    )
+  }, [location.search, setSearchParams])
+
   const BIDS_TABS = ['bid-board', 'builder-review', 'working', 'bid-costs', 'counts', 'takeoffs', 'cost-estimate', 'pricing', 'cover-letter', 'submission-followup', 'rfi', 'change-order', 'lien-release'] as const
 
   useEffect(() => {
@@ -8462,6 +8687,7 @@ export default function Bids() {
       pricingBidIdRef.current = null
       setBidPricingAssignments([])
       setBidCountRowCustomPrices([])
+      setBidCountRowSubmissionHides([])
       setPricingCountRows([])
       setPricingCostEstimate(null)
       setPricingLaborRows([])
@@ -8681,6 +8907,15 @@ export default function Bids() {
     setDeleteBidModalOpen(false)
     setBidServiceTypeSwitchSiblings({})
     clearBidDateSentAttestationFlow()
+  }
+
+  async function saveLossReasonFromLostSummaryModal(bidId: string, lossReason: string) {
+    const loss_reason = lossReason.trim() || null
+    await withSupabaseRetry(
+      async () => supabase.from('bids').update({ loss_reason }).eq('id', bidId),
+      'bid board lost summary loss_reason',
+    )
+    await loadBids()
   }
 
   async function refreshBidServiceTypeSwitchSiblings() {
@@ -9647,6 +9882,12 @@ export default function Bids() {
     return buckets
   }, [filteredBidsForBidBoard])
 
+  const lostBidsMissingLossReasonCount = useMemo(() => {
+    return bidBoardBuckets.lost.filter(
+      (b) => !((b as { loss_reason?: string | null }).loss_reason ?? '').trim(),
+    ).length
+  }, [bidBoardBuckets.lost])
+
   const bidBoardStaffOutcomeByRole = useMemo(
     () => computeBidBoardStaffOutcomeStatsByRole(filteredBidsForBidBoard),
     [filteredBidsForBidBoard]
@@ -10315,6 +10556,32 @@ export default function Bids() {
           </div>
         </td>
       </tr>
+        {bid.outcome === 'lost' ? (
+          <tr
+            aria-label={`Loss reason: ${(bid as { loss_reason?: string | null }).loss_reason?.trim() || 'not recorded'}`}
+            style={{ background: '#f9fafb' }}
+          >
+            <td
+              colSpan={14}
+              style={{
+                padding: '0.5rem 1rem 0.5rem 2rem',
+                borderTop: '1px solid #e5e7eb',
+                borderBottom: notesExpanded ? undefined : '1px solid #e5e7eb',
+                verticalAlign: 'top',
+                fontSize: '0.8125rem',
+                lineHeight: 1.45,
+                color: '#374151',
+                whiteSpace: 'normal',
+                wordBreak: 'break-word',
+              }}
+            >
+              <span style={{ fontWeight: 600, color: '#111827' }}>Why did we lose? </span>
+              <span style={{ color: (bid as { loss_reason?: string | null }).loss_reason?.trim() ? '#374151' : '#9ca3af' }}>
+                {(bid as { loss_reason?: string | null }).loss_reason?.trim() || '—'}
+              </span>
+            </td>
+          </tr>
+        ) : null}
         {notesExpanded ? (
           <tr id={`bid-board-notes-${bid.id}`} style={{ background: '#f9fafb' }}>
             <td colSpan={14} style={{ padding: '1rem', borderTop: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb', verticalAlign: 'top' }}>
@@ -10367,6 +10634,22 @@ export default function Bids() {
             {error}
           </div>
         )}
+
+        <GenerateUnitCostModal
+          open={generateUnitCostModalParams != null}
+          onClose={() => setGenerateUnitCostModalParams(null)}
+          fixtureLabel={generateUnitCostModalParams?.fixtureLabel}
+          totalRevenue={generateUnitCostModalParams?.totalRevenue ?? 0}
+          currentRowRevenue={generateUnitCostModalParams?.currentRowRevenue ?? 0}
+          currentPctOfTotal={generateUnitCostModalParams?.currentPctOfTotal ?? null}
+          count={generateUnitCostModalParams?.count ?? 0}
+          isFixedPrice={generateUnitCostModalParams?.isFixedPrice ?? false}
+          onApply={async (price) => {
+            const p = generateUnitCostModalParams
+            if (!p) return
+            await updateUnitPriceOverride(p.countRowId, price)
+          }}
+        />
 
         {staffOutcomeDrilldown && (
           <div
@@ -11111,15 +11394,116 @@ export default function Bids() {
                 const isOpen = bidBoardSectionOpen[key]
                 return (
                   <div key={key}>
-                    <button
-                      type="button"
-                      onClick={() => toggleBidBoardSection(key)}
-                      aria-expanded={isOpen}
-                      style={{ margin: 0, fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
-                    >
-                      <span aria-hidden>{isOpen ? '\u25BC' : '\u25B6'}</span>
-                      {label} ({sectionBids.length})
-                    </button>
+                    {key === 'lost' ? (
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => toggleBidBoardSection(key)}
+                          aria-expanded={isOpen}
+                          style={{
+                            margin: 0,
+                            fontSize: '1rem',
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            padding: 0,
+                            border: 'none',
+                            background: 'none',
+                            cursor: 'pointer',
+                            color: 'inherit',
+                          }}
+                        >
+                          <span aria-hidden>{isOpen ? '\u25BC' : '\u25B6'}</span>
+                          {label} ({sectionBids.length})
+                        </button>
+                        {isOpen ? (
+                          <span style={{ position: 'relative', display: 'inline-flex' }}>
+                            <button
+                              type="button"
+                              onClick={() => setLostSummaryModalOpen(true)}
+                              aria-label={
+                                lostBidsMissingLossReasonCount > 0
+                                  ? `Open bid tabs summary for lost bids; ${lostBidsMissingLossReasonCount} lost without a recorded reason for loss`
+                                  : 'Open bid tabs summary for lost bids'
+                              }
+                              title={
+                                lostBidsMissingLossReasonCount > 0
+                                  ? `Open bid tabs summary for lost bids (${lostBidsMissingLossReasonCount} missing reason for loss)`
+                                  : 'Open bid tabs summary for lost bids'
+                              }
+                              style={{
+                                padding: '0.35rem 0.75rem',
+                                fontSize: '0.8125rem',
+                                borderRadius: 4,
+                                border: '1px solid #d1d5db',
+                                background: '#fff',
+                                cursor: 'pointer',
+                                color: '#374151',
+                              }}
+                            >
+                              Bid Tabs on Lost
+                            </button>
+                            {lostBidsMissingLossReasonCount > 0 ? (
+                              <span
+                                aria-hidden
+                                style={{
+                                  position: 'absolute',
+                                  top: -4,
+                                  right: -4,
+                                  minWidth: '0.875rem',
+                                  height: '0.875rem',
+                                  padding: lostBidsMissingLossReasonCount > 9 ? '0 3px' : 0,
+                                  borderRadius: 999,
+                                  background: '#f59e0b',
+                                  color: '#fff',
+                                  fontSize: '0.5625rem',
+                                  fontWeight: 700,
+                                  lineHeight: '0.875rem',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  pointerEvents: 'none',
+                                  boxSizing: 'content-box',
+                                }}
+                              >
+                                {lostBidsMissingLossReasonCount > 99 ? '99+' : lostBidsMissingLossReasonCount}
+                              </span>
+                            ) : null}
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => toggleBidBoardSection(key)}
+                        aria-expanded={isOpen}
+                        style={{
+                          margin: 0,
+                          fontSize: '1rem',
+                          fontWeight: 600,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          padding: 0,
+                          border: 'none',
+                          background: 'none',
+                          cursor: 'pointer',
+                          color: 'inherit',
+                        }}
+                      >
+                        <span aria-hidden>{isOpen ? '\u25BC' : '\u25B6'}</span>
+                        {label} ({sectionBids.length})
+                      </button>
+                    )}
                     {isOpen && (
                       <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'auto', marginTop: '0.25rem' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1200 }}>
@@ -11141,6 +11525,23 @@ export default function Bids() {
                   </div>
                 )
               })}
+              <BidBoardLostSummaryModal
+                open={lostSummaryModalOpen}
+                onClose={closeLostSummaryModal}
+                initialStaffTabUserId={lostSummaryInitialStaffTab}
+                lostBids={bidBoardBuckets.lost}
+                ledgerPrefixMap={ledgerPrefixMap}
+                showLaborColumn={showLostModalLabor}
+                onSaveLossReason={saveLossReasonFromLostSummaryModal}
+                onOpenBid={(bid) => {
+                  closeLostSummaryModal()
+                  openEditBid(bid)
+                }}
+                onPreviewBid={(bid) => {
+                  closeLostSummaryModal()
+                  bidPreview?.openBidPreviewFromBid(bid)
+                }}
+              />
               <BidBoardWeeklySentSection weeks={bidBoardWeeklySentSummaries} bids={filteredBidsForBidBoard} />
               {myRole === 'dev' && <BidBoardWeeklyEstimatorLaborDevSection weeks={bidBoardWeeklySentSummaries} />}
               <div style={{ marginTop: '1.5rem' }}>
@@ -15259,48 +15660,76 @@ export default function Bids() {
                 const teamLaborCostByBidId = new Map(teamLaborDataForBids.map((r) => [r.bidId, r.bidCost]))
                 const teamLaborCost = selectedBidForPricing?.id ? (teamLaborCostByBidId.get(selectedBidForPricing.id) ?? 0) : 0
                 const totalCost = totalMaterials + laborCost + drivingCost + estimatorCost + teamLaborCost
-                const entriesById = new Map(priceBookEntries.map((e) => [e.id, e]))
-                let totalRevenue = 0
-                const rows = pricingCountRows.map((countRow) => {
-                  const assignment = bidPricingAssignments.find((a) => a.count_row_id === countRow.id)
-                  const entry = assignment ? entriesById.get(assignment.price_book_entry_id) : priceBookEntries.find((e) => (e.fixture_types?.name ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase())
-                  const customPrice = bidCountRowCustomPrices.find((c) => c.count_row_id === countRow.id)?.unit_price
-                  const laborRow = pricingLaborRows.find((l) => (l.fixture ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase())
-                  const count = Number(countRow.count)
-                  const laborHrs = laborRow ? laborRowHours(laborRow) : 0
-                  const laborCost = laborHrs * rate
-                  const materialsFromTakeoff = pricingFixtureMaterialsFromTakeoff[countRow.id]
-                  const materialsBeforeTax = materialsFromTakeoff != null
-                    ? materialsFromTakeoff
-                    : (totalLaborHours > 0 ? totalMaterials * (laborHrs / totalLaborHours) : 0)
-                  const materialsWithTax = materialsFromTakeoff != null
-                    ? materialsBeforeTax * (1 + taxPercent / 100)
-                    : materialsBeforeTax
-                  const taxAmount = materialsFromTakeoff != null ? materialsBeforeTax * (taxPercent / 100) : 0
-                  const cost = laborCost + materialsWithTax
-                  const unitPrice = assignment?.unit_price_override ?? (entry ? Number(entry.total_price) : (customPrice ?? 0))
-                  const isFixedPrice = assignment?.is_fixed_price ?? false
-                  const revenue = isFixedPrice ? unitPrice : count * unitPrice
-                  totalRevenue += revenue
-                  const margin = revenue > 0 ? ((revenue - cost) / revenue) * 100 : null
-                  const flag = marginFlag(margin)
+                const assignmentsForVersion = bidPricingAssignments.filter(
+                  (a) => a.price_book_version_id === selectedPricingVersionId,
+                )
+                const customUnitPriceByCountRowId = new Map<string, number>()
+                for (const cp of bidCountRowCustomPrices) {
+                  if (cp.price_book_version_id === selectedPricingVersionId) {
+                    customUnitPriceByCountRowId.set(cp.count_row_id, Number(cp.unit_price))
+                  }
+                }
+                const hiddenPricingTab = submissionHiddenIdsForVersion(
+                  bidCountRowSubmissionHides,
+                  selectedPricingVersionId,
+                )
+                const pricingCalcResult = computeBidPricingRows({
+                  countRows: pricingCountRows,
+                  assignments: assignmentsForVersion.map((a) => ({
+                    count_row_id: a.count_row_id,
+                    price_book_entry_id: a.price_book_entry_id,
+                    is_fixed_price: a.is_fixed_price ?? false,
+                    unit_price_override: a.unit_price_override,
+                  })),
+                  entries: priceBookEntries,
+                  customUnitPriceByCountRowId,
+                  laborRows: pricingLaborRows,
+                  totalMaterials,
+                  laborRate: rate,
+                  taxPercent,
+                  materialsFromTakeoffByCountRowId: pricingFixtureMaterialsFromTakeoff,
+                  hiddenSubmissionCountRowIds: hiddenPricingTab,
+                })
+
+                const totalRevenue = pricingCalcResult.totalRevenue
+                const rows = pricingCalcResult.rows.map((pr) => {
+                  const laborRow = pricingLaborRows.find(
+                    (l) =>
+                      (l.fixture ?? '').toLowerCase() === (pr.countRow.fixture ?? '').toLowerCase(),
+                  )
+                  const customPrice =
+                    bidCountRowCustomPrices.find(
+                      (c) =>
+                        c.count_row_id === pr.countRow.id &&
+                        c.price_book_version_id === selectedPricingVersionId,
+                    )?.unit_price ?? null
+                  const assignment = assignmentsForVersion.find((a) => a.count_row_id === pr.countRow.id)
+                  const materialsFromTakeoff = pricingFixtureMaterialsFromTakeoff[pr.countRow.id]
+                  const taxAmount =
+                    materialsFromTakeoff != null ? pr.materialsBeforeTax * (taxPercent / 100) : 0
+                  const marginVal = pr.marginPct
+                  const flag = marginFlag(marginVal)
                   return {
-                    countRow,
-                    entry,
+                    countRow: pr.countRow as BidCountRow,
+                    entry: pr.entry as PriceBookEntryWithFixture | undefined,
                     laborRow,
-                    count,
-                    cost,
-                    unitPrice,
-                    revenue,
-                    margin,
+                    count: pr.count,
+                    cost: pr.cost,
+                    unitPrice: pr.unitPrice,
+                    isFixedPrice: pr.isFixedPrice,
+                    revenue: pr.revenue,
+                    margin: marginVal,
                     flag,
                     assignment,
-                    customPrice: customPrice ?? null,
-                    materialsBeforeTax,
-                    materialsWithTax,
+                    customPrice,
+                    materialsBeforeTax: pr.materialsBeforeTax,
+                    materialsWithTax: pr.materialsWithTax,
                     taxAmount,
-                    laborCost,
+                    laborCost: pr.laborCost,
                     materialsFromTakeoff: materialsFromTakeoff ?? null,
+                    pctOfGrandTotal: pr.pctOfGrandTotal,
+                    omitFromSubmissionDocuments: pr.omitFromSubmissionDocuments,
+                    canToggleOmitSubmission: pricingRowCanToggleOmitFromSubmission(pr.countRow.id),
                   }
                 })
                 return (
@@ -15367,11 +15796,7 @@ export default function Bids() {
                       </thead>
                       <tbody>
                         {rows.map((row) => (
-                          <tr
-                            key={row.countRow.id}
-                            style={{ borderBottom: '1px solid #e5e7eb', cursor: 'pointer' }}
-                            onClick={() => setPricingRowBreakdownModalCountRow(row.countRow)}
-                          >
+                          <tr key={row.countRow.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                             <td style={{ padding: '0.75rem' }}>{row.countRow.fixture ?? ''}</td>
                             <td style={{ padding: '0.75rem', textAlign: 'center' }}>{row.count}</td>
                             <td style={{ padding: '0.75rem', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
@@ -15543,40 +15968,106 @@ export default function Bids() {
                                 `$${formatCurrency(row.cost)}`
                               ) : (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', justifyContent: 'flex-end' }}>
-                                  <input
-                                    type="text"
-                                    inputMode="decimal"
-                                    value={unitPriceEditValues[row.countRow.id] ?? (row.unitPrice > 0 ? formatCurrency(row.unitPrice) : '')}
-                                    onFocus={() => {
-                                      if (unitPriceEditValues[row.countRow.id] == null) {
-                                        setUnitPriceEditValues((prev) => ({ ...prev, [row.countRow.id]: row.unitPrice > 0 ? row.unitPrice.toFixed(2) : '' }))
-                                      }
-                                    }}
-                                    onChange={(e) => setUnitPriceEditValues((prev) => ({ ...prev, [row.countRow.id]: e.target.value }))}
-                                    onBlur={() => {
-                                      const raw = (unitPriceEditValues[row.countRow.id] ?? String(row.unitPrice)).replace(/,/g, '')
-                                      const v = parseFloat(raw)
-                                      const bookPrice = row.entry ? Number(row.entry.total_price) : 0
-                                      if (raw.trim() === '' || isNaN(v)) {
-                                        updateUnitPriceOverride(row.countRow.id, null)
-                                      } else if (row.entry && Math.abs(v - bookPrice) <= 0.001) {
-                                        updateUnitPriceOverride(row.countRow.id, null)
-                                      } else {
-                                        updateUnitPriceOverride(row.countRow.id, v)
-                                      }
-                                    }}
-                                    disabled={savingUnitPriceOverride === row.countRow.id}
-                                    placeholder={row.entry ? `$${formatCurrency(row.entry.total_price)}` : '—'}
-                                    style={{
-                                      width: '7rem',
-                                      padding: '0.35rem 0.5rem',
-                                      border: '1px solid #d1d5db',
-                                      borderRadius: 4,
-                                      textAlign: 'right',
-                                      background: (row.assignment?.unit_price_override != null || row.customPrice != null) ? '#fef9c3' : 'white',
-                                      fontSize: '0.875rem'
-                                    }}
-                                  />
+                                  {(() => {
+                                    const unitCostDisplayStr =
+                                      unitPriceEditValues[row.countRow.id] ??
+                                      (row.unitPrice > 0 ? formatCurrency(row.unitPrice) : '')
+                                    const showGenerateUnitCostIcon =
+                                      unitCostDisplayStr.trim() === '' &&
+                                      savingUnitPriceOverride !== row.countRow.id
+                                    return (
+                                      <div style={{ position: 'relative', display: 'inline-block' }}>
+                                        {showGenerateUnitCostIcon ?
+                                          <button
+                                            type="button"
+                                            aria-label="Line share of total percent"
+                                            title="Set unit from line share of current bid total (percent)"
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              setGenerateUnitCostModalParams({
+                                                countRowId: row.countRow.id,
+                                                totalRevenue,
+                                                currentRowRevenue: row.revenue,
+                                                currentPctOfTotal: row.pctOfGrandTotal,
+                                                count: row.count,
+                                                isFixedPrice: row.isFixedPrice,
+                                                fixtureLabel: row.countRow.fixture ?? '',
+                                              })
+                                            }}
+                                            onMouseDown={(e) => e.stopPropagation()}
+                                            style={{
+                                              position: 'absolute',
+                                              left: 4,
+                                              top: '50%',
+                                              transform: 'translateY(-50%)',
+                                              padding: 0,
+                                              margin: 0,
+                                              border: 'none',
+                                              background: 'transparent',
+                                              cursor: 'pointer',
+                                              color: '#6b7280',
+                                              lineHeight: 0,
+                                              zIndex: 1,
+                                            }}
+                                          >
+                                            <GenerateUnitCostTriggerIcon />
+                                          </button>
+                                        : null}
+                                        <input
+                                          type="text"
+                                          inputMode="decimal"
+                                          value={unitCostDisplayStr}
+                                          onFocus={() => {
+                                            if (unitPriceEditValues[row.countRow.id] == null) {
+                                              setUnitPriceEditValues((prev) => ({
+                                                ...prev,
+                                                [row.countRow.id]: row.unitPrice > 0 ? row.unitPrice.toFixed(2) : '',
+                                              }))
+                                            }
+                                          }}
+                                          onChange={(e) =>
+                                            setUnitPriceEditValues((prev) => ({
+                                              ...prev,
+                                              [row.countRow.id]: e.target.value,
+                                            }))
+                                          }
+                                          onBlur={() => {
+                                            const raw = (
+                                              unitPriceEditValues[row.countRow.id] ?? String(row.unitPrice)
+                                            ).replace(/,/g, '')
+                                            const v = parseFloat(raw)
+                                            const bookPrice = row.entry ? Number(row.entry.total_price) : 0
+                                            if (raw.trim() === '' || isNaN(v)) {
+                                              updateUnitPriceOverride(row.countRow.id, null)
+                                            } else if (row.entry && Math.abs(v - bookPrice) <= 0.001) {
+                                              updateUnitPriceOverride(row.countRow.id, null)
+                                            } else {
+                                              updateUnitPriceOverride(row.countRow.id, v)
+                                            }
+                                          }}
+                                          disabled={savingUnitPriceOverride === row.countRow.id}
+                                          placeholder={
+                                            row.entry ? `$${formatCurrency(row.entry.total_price)}` : '—'
+                                          }
+                                          style={{
+                                            width: '7rem',
+                                            paddingTop: '0.35rem',
+                                            paddingBottom: '0.35rem',
+                                            paddingRight: '0.5rem',
+                                            paddingLeft: showGenerateUnitCostIcon ? '1.6rem' : '0.5rem',
+                                            border: '1px solid #d1d5db',
+                                            borderRadius: 4,
+                                            textAlign: 'right',
+                                            background:
+                                              row.assignment?.unit_price_override != null || row.customPrice != null ?
+                                                '#fef9c3'
+                                              : 'white',
+                                            fontSize: '0.875rem',
+                                          }}
+                                        />
+                                      </div>
+                                    )
+                                  })()}
                                   {(row.assignment?.unit_price_override != null || row.customPrice != null) && (
                                     <button
                                       type="button"
@@ -15588,9 +16079,12 @@ export default function Bids() {
                                         padding: '0.15rem',
                                         background: 'none',
                                         border: 'none',
-                                        cursor: savingUnitPriceOverride === row.countRow.id ? 'not-allowed' : 'pointer',
+                                        cursor:
+                                          savingUnitPriceOverride === row.countRow.id ?
+                                            'not-allowed'
+                                          : 'pointer',
                                         color: '#6b7280',
-                                        fontSize: '0.75rem'
+                                        fontSize: '0.75rem',
                                       }}
                                     >
                                       Reset
@@ -15599,11 +16093,130 @@ export default function Bids() {
                                 </div>
                               )}
                             </td>
-                            <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(row.revenue)}</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                              {pricingViewModel === 'cost'
-                                ? (row.margin != null ? `${row.margin.toFixed(1)}%` : '—')
-                                : (totalRevenue > 0 ? `${((row.revenue / totalRevenue) * 100).toFixed(1)}%` : '—')}
+                            <td
+                              style={{ padding: '0.75rem', textAlign: 'right', cursor: 'pointer' }}
+                              role="button"
+                              tabIndex={0}
+                              title="Cost breakdown"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setPricingRowBreakdownModalCountRow(row.countRow)
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault()
+                                  setPricingRowBreakdownModalCountRow(row.countRow)
+                                }
+                              }}
+                            >
+                              ${formatCurrency(row.revenue)}
+                            </td>
+                            <td
+                              style={{ padding: '0.75rem', textAlign: 'center' }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {pricingViewModel === 'cost' ?
+                                row.margin != null ?
+                                  `${row.margin.toFixed(1)}%`
+                                : '—'
+                              : <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                                  {(() => {
+                                    const pctDisplay =
+                                      row.pctOfGrandTotal != null ? `${row.pctOfGrandTotal.toFixed(1)}%` : '—'
+                                    const pctTextStyle = { fontSize: '0.875rem' as const }
+                                    const toggleInteractive =
+                                      row.canToggleOmitSubmission &&
+                                      savingPricingAssignment !== row.countRow.id
+                                    if (toggleInteractive) {
+                                      return (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            void togglePricingRowOmitFromSubmission(row.countRow.id)
+                                          }}
+                                          aria-pressed={row.omitFromSubmissionDocuments}
+                                          aria-label={
+                                            row.omitFromSubmissionDocuments ?
+                                              'Include line in Cover Letter fixture list'
+                                            : 'Hide line from Cover Letter fixture list'
+                                          }
+                                          title={
+                                            row.omitFromSubmissionDocuments ?
+                                              'Hidden from Cover Letter fixture list — click to restore'
+                                            : 'Click to hide from Cover Letter fixture list (included in totals)'
+                                          }
+                                          style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '0.35rem',
+                                            padding: 0,
+                                            margin: 0,
+                                            border: 'none',
+                                            borderRadius: 0,
+                                            background: 'transparent',
+                                            cursor: 'pointer',
+                                            font: 'inherit',
+                                            color:
+                                              row.omitFromSubmissionDocuments ? '#2563eb' : '#374151',
+                                            lineHeight: 1.25,
+                                          }}
+                                          onMouseEnter={(e) => {
+                                            e.currentTarget.style.textDecoration = 'underline'
+                                          }}
+                                          onMouseLeave={(e) => {
+                                            e.currentTarget.style.textDecoration = 'none'
+                                          }}
+                                        >
+                                          <span style={pctTextStyle}>{pctDisplay}</span>
+                                          {row.omitFromSubmissionDocuments ?
+                                            <svg
+                                              xmlns="http://www.w3.org/2000/svg"
+                                              viewBox="0 0 640 640"
+                                              width={16}
+                                              height={16}
+                                              aria-hidden
+                                            >
+                                              <path
+                                                fill="currentColor"
+                                                d="M73 39.1C63.6 29.7 48.4 29.7 39.1 39.1C29.8 48.5 29.7 63.7 39 73.1L567 601.1C576.4 610.5 591.6 610.5 600.9 601.1C610.2 591.7 610.3 576.5 600.9 567.2L504.5 470.8C507.2 468.4 509.9 466 512.5 463.6C559.3 420.1 590.6 368.2 605.5 332.5C608.8 324.6 608.8 315.8 605.5 307.9C590.6 272.2 559.3 220.2 512.5 176.8C465.4 133.1 400.7 96.2 319.9 96.2C263.1 96.2 214.3 114.4 173.9 140.4L73 39.1zM208.9 175.1C241 156.2 278.1 144 320 144C385.2 144 438.8 173.6 479.9 211.7C518.4 247.4 545 290 558.5 320C544.9 350 518.3 392.5 479.9 428.3C476.8 431.1 473.7 433.9 470.5 436.7L425.8 392C439.8 371.5 448 346.7 448 320C448 249.3 390.7 192 320 192C293.3 192 268.5 200.2 248 214.2L208.9 175.1zM390.9 357.1L282.9 249.1C294 243.3 306.6 240 320 240C364.2 240 400 275.8 400 320C400 333.4 396.7 346 390.9 357.1zM135.4 237.2L101.4 203.2C68.8 240 46.4 279 34.5 307.7C31.2 315.6 31.2 324.4 34.5 332.3C49.4 368 80.7 420 127.5 463.4C174.6 507.1 239.3 544 320.1 544C357.4 544 391.3 536.1 421.6 523.4L384.2 486C364.2 492.4 342.8 496 320 496C254.8 496 201.2 466.4 160.1 428.3C121.6 392.6 95 350 81.5 320C91.9 296.9 110.1 266.4 135.5 237.2z"
+                                              />
+                                            </svg>
+                                          : null}
+                                        </button>
+                                      )
+                                    }
+                                    return (
+                                      <span
+                                        style={{
+                                          ...pctTextStyle,
+                                          color:
+                                            savingPricingAssignment === row.countRow.id ?
+                                              '#9ca3af'
+                                            : !row.canToggleOmitSubmission ?
+                                              '#9ca3af'
+                                            : '#374151',
+                                          opacity:
+                                            savingPricingAssignment === row.countRow.id ?
+                                              0.7
+                                            : !row.canToggleOmitSubmission ?
+                                              0.55
+                                            : 1,
+                                        }}
+                                        title={
+                                          savingPricingAssignment === row.countRow.id ?
+                                            'Saving…'
+                                          : !row.canToggleOmitSubmission ?
+                                            'Select a price book version to change submission visibility.'
+                                          : undefined
+                                        }
+                                      >
+                                        {pctDisplay}
+                                      </span>
+                                    )
+                                  })()}
+                                </div>
+                              }
                             </td>
                             <td style={{ padding: '0.75rem' }}>
                               {pricingViewModel === 'cost' && row.flag && (
@@ -16218,18 +16831,50 @@ export default function Bids() {
             const customerAddress = customer?.address ?? '—'
             const projectNameVal = bid.project_name ?? '—'
             const projectAddressVal = bid.address ?? '—'
-            const entriesById = new Map(priceBookEntries.map((e) => [e.id, e]))
+            const assignmentsCover = bidPricingAssignments.filter(
+              (a) => a.price_book_version_id === selectedPricingVersionId,
+            )
+            const customUnitPriceByCountRowIdCover = new Map<string, number>()
+            for (const cp of bidCountRowCustomPrices) {
+              if (cp.price_book_version_id === selectedPricingVersionId) {
+                customUnitPriceByCountRowIdCover.set(cp.count_row_id, Number(cp.unit_price))
+              }
+            }
+            const totalMaterialsCover =
+              pricingCostEstimate ?
+                (pricingMaterialTotalRoughIn ?? 0) + (pricingMaterialTotalTopOut ?? 0) + (pricingMaterialTotalTrimSet ?? 0)
+              : 0
+            const rateCover = pricingCostEstimate ? (pricingLaborRate ?? 0) : 0
+            const taxPercentCover = parseFloat(costEstimatePOModalTaxPercent || '8.25') || 0
+
             let coverLetterRevenue = 0
-            pricingCountRows.forEach((countRow) => {
-              const assignment = bidPricingAssignments.find((a) => a.count_row_id === countRow.id)
-              const entry = assignment ? entriesById.get(assignment.price_book_entry_id) : priceBookEntries.find((e) => (e.fixture_types?.name ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase())
-              const customPrice = bidCountRowCustomPrices.find((c) => c.count_row_id === countRow.id)?.unit_price
-              const count = Number(countRow.count)
-              const unitPrice = assignment?.unit_price_override ?? (entry ? Number(entry.total_price) : (customPrice ?? 0))
-              const isFixedPrice = assignment?.is_fixed_price ?? false
-              const revenue = isFixedPrice ? unitPrice : count * unitPrice
-              coverLetterRevenue += revenue
-            })
+            let fixtureRows: { fixture: string; count: number }[] = []
+            if (selectedPricingVersionId && pricingCountRows.length > 0) {
+              const hiddenCover = submissionHiddenIdsForVersion(
+                bidCountRowSubmissionHides,
+                selectedPricingVersionId,
+              )
+              const computedCover = computeBidPricingRows({
+                countRows: pricingCountRows,
+                assignments: assignmentsCover.map((a) => ({
+                  count_row_id: a.count_row_id,
+                  price_book_entry_id: a.price_book_entry_id,
+                  is_fixed_price: a.is_fixed_price ?? false,
+                  unit_price_override: a.unit_price_override,
+                })),
+                entries: priceBookEntries,
+                customUnitPriceByCountRowId: customUnitPriceByCountRowIdCover,
+                laborRows: pricingLaborRows,
+                totalMaterials: totalMaterialsCover,
+                laborRate: rateCover,
+                taxPercent: taxPercentCover,
+                materialsFromTakeoffByCountRowId: pricingFixtureMaterialsFromTakeoff,
+                hiddenSubmissionCountRowIds: hiddenCover,
+              })
+              const totalsCover = coverLetterTotalsFromPricingRows(computedCover.rows)
+              coverLetterRevenue = totalsCover.revenueSum
+              fixtureRows = totalsCover.fixtureRows
+            }
             const useCustomAmount = coverLetterUseCustomAmountByBid[bid.id] === true
             const customAmountStr = (coverLetterCustomAmountByBid[bid.id] ?? '').replace(/,/g, '').trim()
             const customAmountNum = customAmountStr ? parseFloat(customAmountStr) : NaN
@@ -16237,7 +16882,6 @@ export default function Bids() {
             const isBidValueSynced = bid.bid_value != null && bid.bid_value === effectiveRevenue
             const revenueWords = numberToWords(effectiveRevenue).toUpperCase()
             const revenueNumber = `$${formatCurrency(effectiveRevenue)}`
-            const fixtureRows = pricingCountRows.map((r) => ({ fixture: r.fixture ?? '', count: Number(r.count) }))
             const inclusions = coverLetterInclusionsByBid[bid.id] ?? ''
             const inclusionsDisplay = coverLetterInclusionsByBid[bid.id] ?? ''
             const exclusions = coverLetterExclusionsByBid[bid.id] ?? ''

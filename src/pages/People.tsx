@@ -291,8 +291,8 @@ type HoursTabSectionId =
   | 'teams'
   | 'sharing'
 
-/** Sections with chevron open/close state (`payTools` is a fixed top toolbar, not collapsible). */
-type HoursTabCollapsibleSectionId = Exclude<HoursTabSectionId, 'payTools'>
+/** Sections with chevron open/close state (`payTools` toolbar and `week` range are always visible). */
+type HoursTabCollapsibleSectionId = Exclude<HoursTabSectionId, 'payTools' | 'week'>
 
 const HOURS_TAB_SECTION_SCROLL_ID: Record<HoursTabSectionId, string> = {
   week: 'people-hours-week',
@@ -307,7 +307,6 @@ const HOURS_TAB_SECTION_SCROLL_ID: Record<HoursTabSectionId, string> = {
 }
 
 const INITIAL_HOURS_TAB_SECTIONS_OPEN: Record<HoursTabCollapsibleSectionId, boolean> = {
-  week: true,
   clockStrip: true,
   sessions: true,
   grid: true,
@@ -648,7 +647,7 @@ export default function People() {
   )
 
   const jumpToHoursTabSection = useCallback((id: HoursTabSectionId) => {
-    if (id !== 'payTools') {
+    if (id !== 'payTools' && id !== 'week') {
       setHoursTabSectionsOpen((prev) => ({ ...prev, [id]: true }))
     }
     const domId = HOURS_TAB_SECTION_SCROLL_ID[id]
@@ -8025,6 +8024,16 @@ export default function People() {
   const hoursDays = getDaysInRange(hoursDateStart, hoursDateEnd)
   const matrixDays = hoursDays
 
+  const pendingUnapprovedCountByWorkDate = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const s of pendingClockSessions) {
+      const wd = s.work_date
+      if (!wd) continue
+      counts[wd] = (counts[wd] ?? 0) + 1
+    }
+    return counts
+  }, [pendingClockSessions])
+
   const { jobHighlightPeople, jobHighlightCells } = useMemo(() => {
     const people = new Set<string>()
     const cells = new Set<string>()
@@ -9167,22 +9176,68 @@ export default function People() {
                         <th style={{ padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>Office parts ($)</th>
                       </>
                     ) : null}
-                    <th style={{ padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>Office Total ($) / Hours</th>
-                    <th
-                      style={{
-                        padding: '0.5rem',
-                        borderBottom: '1px solid #e5e7eb',
-                        borderLeft: '1px solid #d1d5db',
-                      }}
-                    >
-                      Field Total ($) / Hours
-                    </th>
-                    <th
-                      style={{ padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}
-                      title="Office Total ($) ÷ Field Total ($); — when field total is $0"
-                    >
-                      Overhead factor
-                    </th>
+                    {overheadTableSimpleView ? (
+                      <>
+                        <th
+                          style={{
+                            padding: '0.5rem',
+                            borderBottom: '1px solid #e5e7eb',
+                            borderLeft: '1px solid #d1d5db',
+                          }}
+                          title="Office Total ($) as a percentage of Field Total ($); — when field total is $0"
+                        >
+                          Overhead %
+                        </th>
+                        <th
+                          style={{
+                            padding: '0.5rem',
+                            borderBottom: '1px solid #e5e7eb',
+                            borderLeft: '1px solid #d1d5db',
+                          }}
+                        >
+                          Office Total ($) / Hours
+                        </th>
+                        <th
+                          style={{
+                            padding: '0.5rem',
+                            borderBottom: '1px solid #e5e7eb',
+                            borderLeft: '1px solid #d1d5db',
+                          }}
+                        >
+                          Field Total ($) / Hours
+                        </th>
+                      </>
+                    ) : (
+                      <>
+                        <th
+                          style={{
+                            padding: '0.5rem',
+                            borderBottom: '1px solid #e5e7eb',
+                          }}
+                        >
+                          Office Total ($) / Hours
+                        </th>
+                        <th
+                          style={{
+                            padding: '0.5rem',
+                            borderBottom: '1px solid #e5e7eb',
+                            borderLeft: '1px solid #d1d5db',
+                          }}
+                          title="Office Total ($) as a percentage of Field Total ($); — when field total is $0"
+                        >
+                          Overhead %
+                        </th>
+                        <th
+                          style={{
+                            padding: '0.5rem',
+                            borderBottom: '1px solid #e5e7eb',
+                            borderLeft: '1px solid #d1d5db',
+                          }}
+                        >
+                          Field Total ($) / Hours
+                        </th>
+                      </>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -9234,38 +9289,96 @@ export default function People() {
                                 </td>
                               </>
                             ) : null}
-                            <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6' }}>
-                              <button
-                                type="button"
-                                aria-label={`Office total for ${row.work_date}: ${formatCurrency(row.totalUsd)}, ${row.totalLaborHours.toFixed(2)} hours office and bid labor`}
-                                onClick={() => setOverheadBreakdownModal({ workDate: row.work_date, scope: 'total' })}
-                                style={{ ...overheadValueCellButtonStyle, fontWeight: 600 }}
-                              >
-                                {formatCurrency(row.totalUsd)}
-                                <span style={{ fontWeight: 400 }}> · {row.totalLaborHours.toFixed(2)}h</span>
-                              </button>
-                            </td>
-                            <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6', borderLeft: '1px solid #d1d5db' }}>
-                              <button
-                                type="button"
-                                aria-label={`Field total for ${row.work_date}: ${formatCurrency(row.otherJobsUsd)}, ${row.otherJobsLaborHours.toFixed(2)} hours jobs-ledger labor`}
-                                onClick={() => setOverheadBreakdownModal({ workDate: row.work_date, scope: 'otherJobs' })}
-                                style={overheadValueCellButtonStyle}
-                              >
-                                {formatCurrency(row.otherJobsUsd)}
-                                <span style={{ fontWeight: 400 }}> · {row.otherJobsLaborHours.toFixed(2)}h</span>
-                              </button>
-                            </td>
-                            <td
-                              style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6' }}
-                              aria-label={
-                                overheadFactor == null
-                                  ? `Overhead factor for ${row.work_date}: not available (field total dollars is zero)`
-                                  : `Overhead factor for ${row.work_date}: ${overheadFactor.toFixed(2)} times, office total divided by field total dollars`
-                              }
-                            >
-                              {overheadFactor == null ? '—' : `${overheadFactor.toFixed(2)}×`}
-                            </td>
+                            {overheadTableSimpleView ? (
+                              <>
+                                <td
+                                  style={{
+                                    padding: '0.5rem',
+                                    borderBottom: '1px solid #f3f4f6',
+                                    borderLeft: '1px solid #d1d5db',
+                                  }}
+                                  aria-label={
+                                    overheadFactor == null
+                                      ? `Overhead % for ${row.work_date}: not available (field total dollars is zero)`
+                                      : `Overhead % for ${row.work_date}: ${Math.round(overheadFactor * 100)} percent, office total divided by field total dollars`
+                                  }
+                                >
+                                  {overheadFactor == null ? '—' : `${Math.round(overheadFactor * 100)}%`}
+                                </td>
+                                <td
+                                  style={{
+                                    padding: '0.5rem',
+                                    borderBottom: '1px solid #f3f4f6',
+                                    borderLeft: '1px solid #d1d5db',
+                                  }}
+                                >
+                                  <button
+                                    type="button"
+                                    aria-label={`Office total for ${row.work_date}: ${formatCurrency(row.totalUsd)}, ${row.totalLaborHours.toFixed(2)} hours office and bid labor`}
+                                    onClick={() => setOverheadBreakdownModal({ workDate: row.work_date, scope: 'total' })}
+                                    style={{ ...overheadValueCellButtonStyle, fontWeight: 600 }}
+                                  >
+                                    {formatCurrency(row.totalUsd)}
+                                    <span style={{ fontWeight: 400 }}> · {row.totalLaborHours.toFixed(2)}h</span>
+                                  </button>
+                                </td>
+                                <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6', borderLeft: '1px solid #d1d5db' }}>
+                                  <button
+                                    type="button"
+                                    aria-label={`Field total for ${row.work_date}: ${formatCurrency(row.otherJobsUsd)}, ${row.otherJobsLaborHours.toFixed(2)} hours jobs-ledger labor`}
+                                    onClick={() => setOverheadBreakdownModal({ workDate: row.work_date, scope: 'otherJobs' })}
+                                    style={{ ...overheadValueCellButtonStyle, fontWeight: 600 }}
+                                  >
+                                    {formatCurrency(row.otherJobsUsd)}
+                                    <span style={{ fontWeight: 400 }}> · {row.otherJobsLaborHours.toFixed(2)}h</span>
+                                  </button>
+                                </td>
+                              </>
+                            ) : (
+                              <>
+                                <td
+                                  style={{
+                                    padding: '0.5rem',
+                                    borderBottom: '1px solid #f3f4f6',
+                                  }}
+                                >
+                                  <button
+                                    type="button"
+                                    aria-label={`Office total for ${row.work_date}: ${formatCurrency(row.totalUsd)}, ${row.totalLaborHours.toFixed(2)} hours office and bid labor`}
+                                    onClick={() => setOverheadBreakdownModal({ workDate: row.work_date, scope: 'total' })}
+                                    style={{ ...overheadValueCellButtonStyle, fontWeight: 600 }}
+                                  >
+                                    {formatCurrency(row.totalUsd)}
+                                    <span style={{ fontWeight: 400 }}> · {row.totalLaborHours.toFixed(2)}h</span>
+                                  </button>
+                                </td>
+                                <td
+                                  style={{
+                                    padding: '0.5rem',
+                                    borderBottom: '1px solid #f3f4f6',
+                                    borderLeft: '1px solid #d1d5db',
+                                  }}
+                                  aria-label={
+                                    overheadFactor == null
+                                      ? `Overhead % for ${row.work_date}: not available (field total dollars is zero)`
+                                      : `Overhead % for ${row.work_date}: ${Math.round(overheadFactor * 100)} percent, office total divided by field total dollars`
+                                  }
+                                >
+                                  {overheadFactor == null ? '—' : `${Math.round(overheadFactor * 100)}%`}
+                                </td>
+                                <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6', borderLeft: '1px solid #d1d5db' }}>
+                                  <button
+                                    type="button"
+                                    aria-label={`Field total for ${row.work_date}: ${formatCurrency(row.otherJobsUsd)}, ${row.otherJobsLaborHours.toFixed(2)} hours jobs-ledger labor`}
+                                    onClick={() => setOverheadBreakdownModal({ workDate: row.work_date, scope: 'otherJobs' })}
+                                    style={{ ...overheadValueCellButtonStyle, fontWeight: 600 }}
+                                  >
+                                    {formatCurrency(row.otherJobsUsd)}
+                                    <span style={{ fontWeight: 400 }}> · {row.otherJobsLaborHours.toFixed(2)}h</span>
+                                  </button>
+                                </td>
+                              </>
+                            )}
                           </tr>
                       )
                     })
@@ -9659,9 +9772,9 @@ export default function People() {
                     <strong>Field Total ($) / Hours</strong> is separate: same column shows <strong>dollars</strong>{' '}
                     (jobs-ledger labor plus materials on those jobs) and <strong>jobs-ledger labor hours</strong> only (not
                     bid-only time; materials add no hours). Rules: Mercury / supply / tally as above. It is{' '}
-                    <strong>not</strong> included in overhead <strong>Total ($)</strong>. <strong>Overhead factor</strong> is{' '}
-                    <strong>Office Total ($) ÷ Field Total ($)</strong> that day (overhead dollars per dollar of field-total
-                    activity)—not margin; <strong>—</strong> when field total is $0.
+                    <strong>not</strong> included in overhead <strong>Total ($)</strong>. <strong>Overhead %</strong> is{' '}
+                    <strong>Office Total ($) ÷ Field Total ($) × 100</strong> that day (office total as a percent of field-total
+                    dollars)—not margin; <strong>—</strong> when field total is $0.
                   </p>
                   {overheadSettingsLoading ? (
                     <p style={{ margin: 0, color: '#6b7280' }}>Loading setting…</p>
@@ -10711,104 +10824,18 @@ export default function People() {
             </>
           ) : null}
           <div style={HOURS_TAB_SECTIONS_STACK}>
-          {canAccessHours ? (
-          <section id="people-hours-clock-strip" style={HOURS_TAB_SECTION_SHELL}>
-            <div style={hoursTabSectionHeaderGap(hoursTabSectionsOpen.clockStrip)}>
-              <button
-                type="button"
-                aria-expanded={hoursTabSectionsOpen.clockStrip}
-                onClick={() => setHoursTabSectionsOpen((p) => ({ ...p, clockStrip: !p.clockStrip }))}
-                style={HOURS_TAB_SECTION_TOGGLE_BTN}
-              >
-                <span aria-hidden style={HOURS_TAB_SECTION_CHEVRON}>{hoursTabSectionsOpen.clockStrip ? '▼' : '▶'}</span>
-                Currently clocked in
-              </button>
-            </div>
-            {hoursTabSectionsOpen.clockStrip ? <PeopleHoursDashboardClockStrip onSessionsChanged={() => loadAllClockSessionsRef.current?.()} /> : null}
-          </section>
-          ) : null}
-          <section id="people-hours-week" style={HOURS_TAB_SECTION_SHELL}>
-            <div style={hoursTabSectionHeaderGap(hoursTabSectionsOpen.week)}>
-              <button
-                type="button"
-                aria-expanded={hoursTabSectionsOpen.week}
-                onClick={() => setHoursTabSectionsOpen((p) => ({ ...p, week: !p.week }))}
-                style={HOURS_TAB_SECTION_TOGGLE_BTN}
-              >
-                <span aria-hidden style={HOURS_TAB_SECTION_CHEVRON}>{hoursTabSectionsOpen.week ? '▼' : '▶'}</span>
-                Week range
-              </button>
-            </div>
-            {hoursTabSectionsOpen.week ? (
-            narrowViewport ? (
-            <div style={{ marginBottom: '0.5rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'space-between' }}>
-                <button
-                  type="button"
-                  aria-label="Previous week"
-                  onClick={() => shiftHoursWeek(-1)}
-                  style={{ padding: '0.35rem 0.65rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '1.125rem', lineHeight: 1 }}
-                >
-                  ‹
-                </button>
-                <span style={{ fontSize: '0.875rem', textAlign: 'center', flex: 1, minWidth: 0 }}>
-                  {formatDateRangeLabel(hoursDateStart, hoursDateEnd)}
-                </span>
-                <button
-                  type="button"
-                  aria-label="Next week"
-                  onClick={() => shiftHoursWeek(1)}
-                  style={{ padding: '0.35rem 0.65rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '1.125rem', lineHeight: 1 }}
-                >
-                  ›
-                </button>
-              </div>
-              <details style={{ marginTop: '0.35rem' }}>
-                <summary style={{ fontSize: '0.8125rem', cursor: 'pointer', color: '#374151' }}>Custom dates</summary>
-                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.5rem', alignItems: 'center' }}>
-                  <label>
-                    <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Start</span>
-                    <input type="date" value={hoursDateStart} onChange={(e) => setHoursDateStart(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-                  </label>
-                  <label>
-                    <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>End</span>
-                    <input type="date" value={hoursDateEnd} onChange={(e) => setHoursDateEnd(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-                  </label>
-                </div>
-              </details>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-              <label>
-                <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Start</span>
-                <input type="date" value={hoursDateStart} onChange={(e) => setHoursDateStart(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-              </label>
-              <label>
-                <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>End</span>
-                <input type="date" value={hoursDateEnd} onChange={(e) => setHoursDateEnd(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-              </label>
-              <button
-                type="button"
-                onClick={() => shiftHoursWeek(-1)}
-                style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
-              >
-                ← last week
-              </button>
-              <button
-                type="button"
-                onClick={() => shiftHoursWeek(1)}
-                style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
-              >
-                next week →
-              </button>
-            </div>
-            )
-            ) : null}
-          </section>
           <div
+            id="people-hours-sections-nav"
             role="navigation"
             aria-label="Hours sections"
-            style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '0.35rem',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '100%',
+            }}
           >
             {canAccessHours ? (
               <button type="button" onClick={() => jumpToHoursTabSection('clockStrip')} style={{ padding: '0.25rem 0.55rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#f3f4f6', cursor: 'pointer', fontSize: '0.8125rem' }}>
@@ -10853,6 +10880,156 @@ export default function People() {
               </button>
             ) : null}
           </div>
+          {canAccessHours ? (
+          <section id="people-hours-clock-strip" style={HOURS_TAB_SECTION_SHELL}>
+            <div style={hoursTabSectionHeaderGap(hoursTabSectionsOpen.clockStrip)}>
+              <button
+                type="button"
+                aria-expanded={hoursTabSectionsOpen.clockStrip}
+                onClick={() => setHoursTabSectionsOpen((p) => ({ ...p, clockStrip: !p.clockStrip }))}
+                style={HOURS_TAB_SECTION_TOGGLE_BTN}
+              >
+                <span aria-hidden style={HOURS_TAB_SECTION_CHEVRON}>{hoursTabSectionsOpen.clockStrip ? '▼' : '▶'}</span>
+                Currently clocked in
+              </button>
+            </div>
+            {hoursTabSectionsOpen.clockStrip ? <PeopleHoursDashboardClockStrip onSessionsChanged={() => loadAllClockSessionsRef.current?.()} /> : null}
+          </section>
+          ) : null}
+          <section id="people-hours-week" aria-labelledby="people-hours-week-heading" style={HOURS_TAB_SECTION_ANCHOR_STYLE}>
+            <h3
+              id="people-hours-week-heading"
+              style={{
+                margin: '0 0 0.75rem 0',
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                color: '#111827',
+                lineHeight: 1.25,
+                textAlign: 'left',
+              }}
+            >
+              Week range
+            </h3>
+            {narrowViewport ? (
+            <div
+              style={{
+                marginBottom: '0.5rem',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                width: '100%',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'center', width: '100%', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  aria-label="Previous week"
+                  onClick={() => shiftHoursWeek(-1)}
+                  style={{ padding: '0.35rem 0.65rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '1.125rem', lineHeight: 1 }}
+                >
+                  ‹
+                </button>
+                <span style={{ fontSize: '0.875rem', textAlign: 'center', minWidth: 0 }}>
+                  {formatDateRangeLabel(hoursDateStart, hoursDateEnd)}
+                </span>
+                <button
+                  type="button"
+                  aria-label="Next week"
+                  onClick={() => shiftHoursWeek(1)}
+                  style={{ padding: '0.35rem 0.65rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '1.125rem', lineHeight: 1 }}
+                >
+                  ›
+                </button>
+              </div>
+              <details style={{ marginTop: '0.35rem', width: '100%', maxWidth: '100%' }}>
+                <summary style={{ fontSize: '0.8125rem', cursor: 'pointer', color: '#374151', textAlign: 'center' }}>
+                  Custom dates
+                </summary>
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: '0.75rem',
+                    flexWrap: 'wrap',
+                    marginTop: '0.5rem',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                  }}
+                >
+                  <label
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.25rem',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <span style={{ fontSize: '0.875rem', textAlign: 'center' }}>Start</span>
+                    <input type="date" value={hoursDateStart} onChange={(e) => setHoursDateStart(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  </label>
+                  <label
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.25rem',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <span style={{ fontSize: '0.875rem', textAlign: 'center' }}>End</span>
+                    <input type="date" value={hoursDateEnd} onChange={(e) => setHoursDateEnd(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  </label>
+                </div>
+              </details>
+            </div>
+          ) : (
+            <div
+              style={{
+                display: 'flex',
+                gap: '1rem',
+                alignItems: 'center',
+                marginBottom: '0.5rem',
+                flexWrap: 'wrap',
+                justifyContent: 'center',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => shiftHoursWeek(-1)}
+                style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
+              >
+                ← last week
+              </button>
+              <label
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.25rem',
+                  alignItems: 'center',
+                }}
+              >
+                <span style={{ fontSize: '0.875rem', textAlign: 'center' }}>Start</span>
+                <input type="date" value={hoursDateStart} onChange={(e) => setHoursDateStart(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+              </label>
+              <label
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.25rem',
+                  alignItems: 'center',
+                }}
+              >
+                <span style={{ fontSize: '0.875rem', textAlign: 'center' }}>End</span>
+                <input type="date" value={hoursDateEnd} onChange={(e) => setHoursDateEnd(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+              </label>
+              <button
+                type="button"
+                onClick={() => shiftHoursWeek(1)}
+                style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
+              >
+                next week →
+              </button>
+            </div>
+            )}
+          </section>
           {canAccessHours && (
           <>
           <section id="people-hours-sessions" style={HOURS_TAB_SECTION_SHELL}>
@@ -11992,11 +12169,11 @@ export default function People() {
                   <thead style={{ background: '#f9fafb' }}>
                     <tr>
                       {canAccessPay && (
-                        <th style={{ padding: '0.5rem 0.35rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb', position: 'sticky', left: 0, background: '#f9fafb', minWidth: 36 }} title="Hours reviewed (use Review Hours to mark)">
+                        <th style={{ padding: '0.5rem 0.35rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb', position: 'sticky', left: 0, top: 0, zIndex: 6, background: '#f9fafb', minWidth: 36 }} title="Hours reviewed (use Review Hours to mark)">
                           ✓
                         </th>
                       )}
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', position: 'sticky', left: canAccessPay ? 36 : 0, background: '#f9fafb' }}>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', position: 'sticky', left: canAccessPay ? 36 : 0, top: 0, zIndex: 6, background: '#f9fafb' }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                           Person
                           <button
@@ -12054,7 +12231,7 @@ export default function People() {
                         const weekday = dt.toLocaleDateString(undefined, { weekday: 'short' })
                         const monthDay = dt.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })
                         return (
-                          <th key={d} style={{ padding: '0.5rem 0.35rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', minWidth: 70 }}>
+                          <th key={d} style={{ padding: '0.5rem 0.35rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', minWidth: 70, position: 'sticky', top: 0, zIndex: 5, background: '#f9fafb' }}>
                             <span className="cost-matrix-date-header">
                               <span>{weekday}</span>
                               <span> {monthDay}</span>
@@ -12063,6 +12240,77 @@ export default function People() {
                         )
                       })}
                     </tr>
+                    {canAccessHours ? (
+                      <tr>
+                        {canAccessPay ? (
+                          <th
+                            scope="col"
+                            style={{
+                              padding: '0.25rem 0.35rem',
+                              textAlign: 'center',
+                              borderBottom: '1px solid #e5e7eb',
+                              position: 'sticky',
+                              left: 0,
+                              top: '2.875rem',
+                              zIndex: 6,
+                              background: '#f9fafb',
+                              minWidth: 36,
+                            }}
+                          />
+                        ) : null}
+                        <th
+                          scope="col"
+                          style={{
+                            padding: '0.25rem 0.75rem',
+                            textAlign: 'left',
+                            borderBottom: '1px solid #e5e7eb',
+                            position: 'sticky',
+                            left: canAccessPay ? 36 : 0,
+                            top: '2.875rem',
+                            zIndex: 6,
+                            background: '#f9fafb',
+                            fontSize: '0.75rem',
+                            fontWeight: 500,
+                            color: '#6b7280',
+                          }}
+                        >
+                          Unapproved
+                        </th>
+                        {matrixDays.map((d) => {
+                          const n = pendingUnapprovedCountByWorkDate[d] ?? 0
+                          const dt = new Date(d + 'T12:00:00')
+                          const longDate = dt.toLocaleDateString(undefined, {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                          })
+                          return (
+                            <th
+                              key={`matrix-unapproved-${d}`}
+                              scope="col"
+                              style={{
+                                padding: '0.25rem 0.35rem',
+                                textAlign: 'right',
+                                borderBottom: '1px solid #e5e7eb',
+                                minWidth: 70,
+                                fontSize: '0.75rem',
+                                fontWeight: n > 0 ? 600 : 400,
+                                color: n > 0 ? '#b45309' : '#9ca3af',
+                                whiteSpace: 'nowrap',
+                                position: 'sticky',
+                                top: '2.875rem',
+                                zIndex: 4,
+                                background: '#f9fafb',
+                              }}
+                              aria-label={`Unapproved sessions on ${longDate}: ${n}`}
+                            >
+                              {n}
+                            </th>
+                          )
+                        })}
+                      </tr>
+                    ) : null}
                   </thead>
                   <tbody>
                     {showPeopleForMatrix.map((personName, idx) => {

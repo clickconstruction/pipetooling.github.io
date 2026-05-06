@@ -98,7 +98,13 @@ function parseBankingView(params: URLSearchParams, role: BankingPageRole): Banki
   if (role === 'assistant' || role === 'master_technician') {
     const tabRaw = params.get('tab')
     const mercuryTab: MercuryBankingTab =
-      tabRaw === 'drag_sort' ? 'drag_sort' : tabRaw === 'accounting' ? 'accounting' : 'sorting'
+      tabRaw === 'drag_sort'
+        ? 'drag_sort'
+        : tabRaw === 'accounting'
+          ? 'accounting'
+          : tabRaw === 'sorting'
+            ? 'sorting'
+            : 'accounting'
     return { product: 'mercury', mercuryTab, stripeTab: 'invoices' }
   }
   if (role !== 'dev') {
@@ -116,7 +122,7 @@ function parseBankingView(params: URLSearchParams, role: BankingPageRole): Banki
     }
   }
 
-  let mercuryTab: MercuryBankingTab = 'ledger'
+  let mercuryTab: MercuryBankingTab = 'accounting'
   if (tabRaw === 'sorting') mercuryTab = 'sorting'
   else if (tabRaw === 'drag_sort') mercuryTab = 'drag_sort'
   else if (tabRaw === 'accounting') mercuryTab = 'accounting'
@@ -1142,7 +1148,7 @@ export default function Banking() {
       (prev) => {
         const p = new URLSearchParams(prev)
         p.set('product', 'mercury')
-        p.set('tab', 'sorting')
+        p.set('tab', 'accounting')
         return p
       },
       { replace: true },

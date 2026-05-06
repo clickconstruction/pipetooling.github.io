@@ -423,7 +423,9 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 - Other Jobs tabs hidden (Sub Sheet Ledger, Teams Summary)
 
 **Dashboard**:
-- Recent Reports section (same as masters)
+- Recent Reports section (same as masters); **primary** defaults **collapsed** and does **not** auto-expand when reports are unread (**`RECENT_FEATURES`** **v2.494**)
+- **My Bids** section (estimator/account-manager bids); title **My Bids (`n`)** after load; **primary** defaults **collapsed** (**`RECENT_FEATURES`** **v2.494**)
+**Unallocated bank deposits** — **Dashboard** blue banner uses **`canRoleSeeArBankUnallocatedDashboardBanner`** (**dev** + **assistant** only; **master_technician** does not — **`RECENT_FEATURES`** **v2.497**). **Quickfill** / **`/accounts-receivable`** still use **`canRoleSeeArBankUnallocatedOrgNudge`** (**dev**, **master_technician**, **assistant**; excludes **primary**). **Bank Payments** / AR on **Jobs → Stages** uses **`canRoleUseArBankCount`** when applicable
 - Send task form (create and assign checklist tasks)
 - ChecklistAddModal ("detail send") available when canSendTask is true
 
@@ -557,6 +559,9 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 | NCNS from team **My Time** day editor (clock strip): **`record_ncns_and_reject_sessions_for_day`** rejects all **closed** sessions for that **`work_date`** when any exist, inserts **`attendance_incidents`**; if **no** sessions but assignee has **`job_schedule_blocks`** on that date, inserts incident only (**`scheduled_without_clock`** in **`metadata`**); duplicate NCNS same day rejected; **approved** hours removed from **`people_hours`** when sessions exist; **two-step** UI confirm (payroll + trust) when any session was approved; **RPC** also allowed for **team lead** for subject (same as approve/revoke), UI shown for **dev / master / assistant** with clock strip scope only | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **Copy day job mix** on Dashboard **Clocked in today** (**Mix** toggle, **`CopyDayJobMixModal`**, **`leader_replace_clock_session_cluster_mixed`**): same strip roles as **Everyone / Organization** — **dev / master_technician / assistant** only | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **Stale tally staff follow-up** (Dashboard blue banner + modal — same stale/unlinked Mercury rules as personal stale banner; rows limited to users allowed by **`staff_can_view_user_for_tally_followup`**: **dev** any target; **master_technician** self, adopted assistants, or users on **master’s** jobs as team members; **assistant** adopting masters, same-master assistants via **`assistants_share_master`**, or users on **jobs** whose **`master_user_id`** is any master who adopted the assistant; **`list_stale_unlinked_mercury_transactions_for_tally_staff`** / **`replace_mercury_job_splits_for_linked_card_as_staff`** / **`search_jobs_for_tally_mercury_assign_as_user`**) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Unallocated bank deposits** banner (**Dashboard** tally row only; **`canRoleSeeArBankUnallocatedDashboardBanner`**; navigates **`/accounts-receivable`**) — **not** shown to **primary** (they may still use **Jobs → Stages** AR) | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Unallocated bank deposits** banner (**Quickfill** **Warnings** when that section is shown; **`canRoleSeeArBankUnallocatedOrgNudge`**; same **`/accounts-receivable`** navigation) — **not** shown to **primary** (**`RECENT_FEATURES`** **v2.494**; Dashboard vs master split **v2.497**) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **My Bids** (Dashboard collapsible; **My Bids (`n`)** after load) | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
 | Rejected clock sessions (org-wide, review/delete) | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
 **Header vs Dashboard inbox**: **Subcontractor** and **helpers** share the **header** buttons with office roles via [`headerTaskDispatchEstimatorEligible.ts`](src/lib/headerTaskDispatchEstimatorEligible.ts) but they **do not** see Dashboard inbox cards unless they have a row in **`dispatch_group_members`** / **`estimator_group_members`** (unusual). Sending does not imply inbox access.

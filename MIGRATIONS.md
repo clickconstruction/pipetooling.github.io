@@ -5,12 +5,12 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-05-01
+last_updated: 2026-05-07
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: ~97
-date_range: "Through March 24, 2027"
+total_migrations: ~99
+date_range: "Through May 21, 2027"
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
 key_sections:
@@ -36,7 +36,7 @@ key_sections:
     description: "How to revert changes"
 
 quick_navigation:
-  - "[Latest Changes](#recent-migrations) - July 2026 · April 2026"
+  - "[Latest Changes](#recent-migrations) - May 2027 · July 2026 · April 2026"
   - "[By Category](#migrations-by-category) - Grouped by system"
   - "[Best Practices](#migration-best-practices) - How to migrate safely"
   - "[Rollback](#rollback-procedures) - Reverting changes"
@@ -90,7 +90,28 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ## Recent Migrations
 
+### May 2027
+
+#### May 21, 2027
+
+**`20270521120000_bid_count_row_submission_hides.sql`**
+- **Purpose**: **Bids** **Pricing** — sparse **`bid_count_row_submission_hides`** (**`bid_id`**, **`count_row_id`**, **`price_book_version_id`**, PK composite; index on **`bid_id`, `price_book_version_id`**). Row present ⇒ omit fixture from **Cover Letter** + **Approval** pricing-grid lists only; totals unchanged. **RLS**: **`can_access_bid_for_pricing(bid_id)`** for pricing-capable roles. **Backfill** from **`bid_pricing_assignments.omit_from_submission_documents`**, then clears that flag on assignments.
+- **Impact**: **[`Bids.tsx`](src/pages/Bids.tsx)** loads/toggles hides; **`computeBidPricingRows`** + **`hiddenSubmissionCountRowIds`** ([`bidPricingRowCalculations.ts`](src/lib/bidPricingRowCalculations.ts)); PDF/print (**v2.499** in **`RECENT_FEATURES.md`**). **`npm run gen-types:linked`** after **`db push`**.
+- **Category**: Bids / Pricing / RLS
+
+**`20270521120100_drop_bid_pricing_assignments_omit_from_submission_documents.sql`**
+- **Purpose**: **DROP** **`bid_pricing_assignments.omit_from_submission_documents`** (canonical hides are **`bid_count_row_submission_hides`**). **`duplicate_bid_to_service_type`** updated to **`INSERT`** matching hide rows after count-row map (same **`price_book_version_id`** semantics as source bid).
+- **Impact**: Duplicate-bid UX in **[`BidFormModal.tsx`](src/components/bids/BidFormModal.tsx)** / related flows preserves per-version omit state; regenerate **`src/types/database.ts`**.
+- **Category**: Bids / Pricing / functions
+
 ### May 2026
+
+#### May 5, 2026
+
+**`20260505231245_list_mercury_drag_sort_label_assignment_counts.sql`**
+- **Purpose**: Banking **Mercury** **Accounting** — **`list_mercury_drag_sort_label_assignment_counts()`** returns **`label_id`** + **`assignment_count`** from **`mercury_transaction_drag_sort_assignments`** (**`GROUP BY label_id`**). **`SECURITY INVOKER`** + assignments **SELECT RLS** (banking staff). Labels with zero assignments omit from result (UI treats missing as **0**).
+- **Impact**: [`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx); [`AccountingRuleFormModal.tsx`](src/components/banking/AccountingRuleFormModal.tsx) (**SearchableSelect** ordering). **`npm run gen-types:linked`** after **`db push`** if typings regenerated from remote.
+- **Category**: Banking / Mercury / RPC
 
 #### May 4, 2026
 

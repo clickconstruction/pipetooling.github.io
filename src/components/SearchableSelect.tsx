@@ -11,6 +11,8 @@ import {
 import { createPortal } from 'react-dom'
 
 const LIST_MAX_HEIGHT_PX = 140
+const DEFAULT_LIST_OPTION_PADDING = '0.6rem 0.75rem'
+const DEFAULT_LIST_OPTION_FONT_SIZE = '0.875rem'
 const DROPDOWN_MARGIN_PX = 2
 const PORTAL_Z_INDEX = 1100
 
@@ -110,6 +112,14 @@ export type SearchableSelectProps = {
    * in the same layout slot; the portaled panel lists options only (no second search field).
    */
   searchReplacesTrigger?: boolean
+  /** Max height (px) of the scrollable options list; default 140. */
+  listMaxHeightPx?: number
+  /** CSS padding for each option row button; default `0.6rem 0.75rem`. */
+  listOptionPadding?: string
+  /** CSS font-size for option row text; default `0.875rem`. */
+  listOptionFontSize?: string
+  /** Minimum dropdown width (px); list width is max(trigger, this, 120), capped to viewport. */
+  listMinWidthPx?: number
 }
 
 /** List rows for the open panel; may hide empty option while selection is still empty. */
@@ -232,8 +242,13 @@ export function SearchableSelect({
   listAriaLabel = 'Options',
   portalZIndex = PORTAL_Z_INDEX,
   searchReplacesTrigger: searchReplacesTriggerProp = false,
+  listMaxHeightPx,
+  listOptionPadding = DEFAULT_LIST_OPTION_PADDING,
+  listOptionFontSize = DEFAULT_LIST_OPTION_FONT_SIZE,
+  listMinWidthPx,
 }: SearchableSelectProps) {
   const searchReplacesTrigger = searchReplacesTriggerProp && searchable
+  const resolvedListMaxHeightPx = listMaxHeightPx ?? LIST_MAX_HEIGHT_PX
   const reactId = useId()
   const baseId = idProp ?? reactId
   const listId = `${baseId}-listbox`
@@ -314,7 +329,11 @@ export function SearchableSelect({
       return
     }
     const rect = el.getBoundingClientRect()
-    const width = Math.min(Math.max(rect.width, 120), window.innerWidth - 16)
+    const widthBase =
+      listMinWidthPx !== undefined
+        ? Math.max(rect.width, listMinWidthPx, 120)
+        : Math.max(rect.width, 120)
+    const width = Math.min(widthBase, window.innerWidth - 16)
     let left = rect.left
     if (left + width > window.innerWidth - 8) {
       left = Math.max(8, window.innerWidth - width - 8)
@@ -324,7 +343,7 @@ export function SearchableSelect({
     const spaceBelow = window.innerHeight - rect.bottom
     const spaceAbove = rect.top
     const extraPortalSearchRow = searchable && !searchReplacesTrigger ? 52 : 0
-    const reserve = LIST_MAX_HEIGHT_PX + DROPDOWN_MARGIN_PX + extraPortalSearchRow
+    const reserve = resolvedListMaxHeightPx + DROPDOWN_MARGIN_PX + extraPortalSearchRow
     const placeBelow = spaceBelow >= reserve || spaceBelow >= spaceAbove
 
     const extraListAbove = searchable && !searchReplacesTrigger ? 48 : 0
@@ -332,12 +351,12 @@ export function SearchableSelect({
     if (placeBelow) {
       top = rect.bottom + DROPDOWN_MARGIN_PX
     } else {
-      top = rect.top - LIST_MAX_HEIGHT_PX - DROPDOWN_MARGIN_PX - extraListAbove
+      top = rect.top - resolvedListMaxHeightPx - DROPDOWN_MARGIN_PX - extraListAbove
       if (top < 8) top = 8
     }
 
     setListPosition({ top, left, width })
-  }, [open, searchable, searchReplacesTrigger])
+  }, [open, searchable, searchReplacesTrigger, resolvedListMaxHeightPx, listMinWidthPx])
 
   useLayoutEffect(() => {
     updateListPosition()
@@ -476,7 +495,7 @@ export function SearchableSelect({
   const listboxStyle = useMemo(
     () =>
       ({
-        maxHeight: LIST_MAX_HEIGHT_PX,
+        maxHeight: resolvedListMaxHeightPx,
         overflow: 'auto',
         listStyle: 'none',
         padding: 0,
@@ -486,7 +505,7 @@ export function SearchableSelect({
         background: 'white',
         boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
       }) as const,
-    []
+    [resolvedListMaxHeightPx],
   )
 
   const portalShellStyle = (pos: ListPosition): React.CSSProperties => ({
@@ -569,12 +588,12 @@ export function SearchableSelect({
                     style={{
                       width: '100%',
                       textAlign: 'left',
-                      padding: '0.6rem 0.75rem',
+                      padding: listOptionPadding,
                       border: 'none',
                       borderBottom: nextIsSep ? 'none' : '1px solid #f3f4f6',
                       background: idx === activeIndex ? '#eff6ff' : 'white',
                       cursor: 'pointer',
-                      fontSize: '0.875rem',
+                      fontSize: listOptionFontSize,
                     }}
                   >
                     {o.labelContent ?? o.label}
