@@ -7,6 +7,12 @@ import { arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '../lib/supabase'
 import { loadJsPDF } from '../lib/loadJsPDF'
+import { compareBidsForBidBoardDueDate } from '../lib/compareBidsForBidBoardDueDate'
+import {
+  buildOutcomeChangeBidNoteBody,
+  normalizedOutcomePayload,
+  resolveActorDisplayName,
+} from '../lib/outcomeChangeBidNote'
 import { fetchBidBoardNotesUnreadCounts } from '../lib/bidBoardNotesUnreadCounts'
 import { upsertBidNotesReadWatermark } from '../lib/userBidNotesReadState'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
@@ -1367,7 +1373,7 @@ function buildLienReleaseText(
 }
 
 export default function Bids() {
-  const { user: authUser } = useAuth()
+  const { user: authUser, profileName } = useAuth()
   const { showToast } = useToastContext()
   const newCustomerModal = useNewCustomerModal()
   const bidPreview = useBidPreview()
@@ -9168,6 +9174,43 @@ export default function Bids() {
     }
   }
 
+  async function insertOutcomeChangeBidNoteAfterSave(opts: {
+    bidId: string
+    previousOutcome: string | null
+    nextOutcome: string | null
+    lossReasonForNote: string | null
+  }) {
+    if (!authUser?.id) return
+    if (opts.previousOutcome === opts.nextOutcome) return
+    const occurredAt = new Date().toISOString()
+    const actorDisplay = resolveActorDisplayName(profileName, authUser.email ?? null)
+    const notes = buildOutcomeChangeBidNoteBody({
+      previousOutcome: opts.previousOutcome,
+      nextOutcome: opts.nextOutcome,
+      actorDisplayName: actorDisplay,
+      lossReason: opts.lossReasonForNote,
+    })
+    try {
+      await withSupabaseRetry(
+        async () =>
+          supabase.from('bids_submission_entries').insert({
+            bid_id: opts.bidId,
+            notes,
+            contact_method: null,
+            occurred_at: occurredAt,
+            created_by: authUser.id,
+          }),
+        'insert bid submission entry from win loss change'
+      )
+      await withSupabaseRetry(
+        async () => supabase.from('bids').update({ last_contact: occurredAt }).eq('id', opts.bidId),
+        'update bid last_contact from win loss change note'
+      )
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not add Win/Loss change note'), 'error')
+    }
+  }
+
   function handleLastContactClick(bid: BidWithBuilder) {
     setSelectedBidForSubmission(bid)
     setActiveTab('submission-followup')
@@ -9251,6 +9294,16 @@ export default function Bids() {
     setPendingBidDateSentAttestation(null)
     setPendingAttestationForDate(null)
     setPendingBidSentFollowupSubmissionNote(null)
+    const previousOutcomeForNote = editingBid ? (editingBid.outcome ?? null) : null
+    const nextOutcomeForNote = normalizedOutcomePayload(outcome)
+    if (bidIdForFollowup) {
+      await insertOutcomeChangeBidNoteAfterSave({
+        bidId: bidIdForFollowup,
+        previousOutcome: previousOutcomeForNote,
+        nextOutcome: nextOutcomeForNote,
+        lossReasonForNote: outcome === 'lost' ? (lossReason.trim() || null) : null,
+      })
+    }
     if (bidIdForFollowup && followupNoteToSave?.trim()) {
       await insertPendingBidSentFollowupSubmissionNoteAfterSave(bidIdForFollowup, followupNoteToSave)
     }
@@ -9345,6 +9398,14 @@ export default function Bids() {
     setPendingBidDateSentAttestation(null)
     setPendingAttestationForDate(null)
     setPendingBidSentFollowupSubmissionNote(null)
+    const previousOutcomeForNoteCounts = editingBid ? (editingBid.outcome ?? null) : null
+    const nextOutcomeForNoteCounts = normalizedOutcomePayload(outcome)
+    await insertOutcomeChangeBidNoteAfterSave({
+      bidId,
+      previousOutcome: previousOutcomeForNoteCounts,
+      nextOutcome: nextOutcomeForNoteCounts,
+      lossReasonForNote: outcome === 'lost' ? (lossReason.trim() || null) : null,
+    })
     if (followupNoteToSaveCounts?.trim()) {
       await insertPendingBidSentFollowupSubmissionNoteAfterSave(bidId, followupNoteToSaveCounts)
     }
@@ -9875,7 +9936,8 @@ export default function Bids() {
       startedOrComplete: [],
       lost: [],
     }
-    for (const bid of filteredBidsForBidBoard) {
+    const sortedForBoard = [...filteredBidsForBidBoard].sort(compareBidsForBidBoardDueDate)
+    for (const bid of sortedForBoard) {
       const k = getSubmissionSectionKey(bid)
       if (k) buckets[k].push(bid)
     }

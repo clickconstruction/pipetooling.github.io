@@ -158,6 +158,7 @@ Central hub for viewing and managing all bids. Provides high-level overview of b
   - Customer name (GC/Builder)
 - **Case-insensitive** matching
 - **Empty state** reflects active search query
+- Within each collapsible section, rows are ordered by **bid due date** ascending (earliest first); bids with **no due date set** (unmarked) appear **after** all dated rows in that section (**[`compareBidsForBidBoardDueDate`](src/lib/compareBidsForBidBoardDueDate.ts)**).
 
 #### Lost Bids
 - **Lost bids are always hidden** on the Bid Board (no toggle)
@@ -207,6 +208,7 @@ Column order (left to right; leading **expand** chevron opens inline **Notes** �
   3. Loss reason (when Lost); Start Date (when Won)
   4. Project Address (full width), then **Distance to Office (miles)** | **Plan Pages** (two-column row; map link by distance)
   5. Project Folder, Job Plans / Design Drawing Plan Date, Count Tooling / Bid Submission, GC/Builder (customer), Project Contact fields, Submitted to, financial fields, Last Contact, Notes, actions
+- **Win/Loss change log**: When **Win/Loss** is saved with a different value than before (including on a **New bid** first save), an automatic line is appended to **`bids_submission_entries`** (same place as **Bid notes**): human-readable from → to labels, **who made the change** (display name from **`useAuth` `profileName`**, else email), optional **Loss reason** when the new outcome is **Lost**, and **`bids.last_contact`** is set to that note’s **`occurred_at`**. Implementation: [`outcomeChangeBidNote.ts`](src/lib/outcomeChangeBidNote.ts), [`Bids.tsx`](src/pages/Bids.tsx) **`insertOutcomeChangeBidNoteAfterSave`** on **Save** / **Save and start Counts**.
 - **Copy Bid** (**Service Type** chip — **`RECENT_FEATURES.md`** **v2.493**): Opens a nested dialog titled **Copy Bid** (other-trade bids for the same address: **Open B…** on a saved sibling bid, **Copy to new … bid**). Bottom **Job** section: **Open Job** closes the overlay and opens the app-wide **New Job** form via **[`JobFormModalContext`](src/contexts/JobFormModalContext.tsx)** **`openNewJob({ prefillBidId })`**; **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)** runs **`applyPrefillFromBid`** after **`initDone`** (same outcome as **Jobs → New Job → Import** when a bid is chosen). **Open Job** stays disabled with *Save the bid first* until the current bid has an id.
 
 **Confirm bid sent (Bid Date Sent attestation)**:
