@@ -71,8 +71,8 @@ import { ContractBookIcon } from '../components/icons/ContractBookIcon'
 import { PayStubAdditionalModal } from '../components/pay/PayStubAdditionalModal'
 import { PayStubLessModal } from '../components/pay/PayStubLessModal'
 import { type PersonOffsetInitialDraft, PersonOffsetFormModal } from '../components/pay/PersonOffsetFormModal'
-import { CustomPayReportsModal } from '../components/pay/CustomPayReportsModal'
 import { DraftPayrollModal } from '../components/pay/DraftPayrollModal'
+import { DraftPayrollPersonHoursBreakdownModal } from '../components/pay/DraftPayrollPersonHoursBreakdownModal'
 import {
   type PayStubAdditionalLineRow,
   type PayStubDeductionRow,
@@ -80,6 +80,7 @@ import {
   sumPayStubAdditionalAmounts,
   sumPayStubDeductionAmounts,
 } from '../lib/payStubDeductions'
+import { computePayReportAssignmentsBreakdown } from '../lib/payReportAssignmentsBreakdown'
 import { stripPrevailingWageTag } from '../lib/payStubPrevailingWageLine'
 import { findPersonUserDuplicates, mergePersonIntoUser } from '../lib/mergePersonUserDuplicates'
 import {
@@ -264,6 +265,8 @@ const Z_PEOPLE_PAY_MODAL = 1100
 const Z_PEOPLE_PAY_MODAL_NESTED = 1200
 /** Above Record payment / nested pay dialogs when opening PersonOffsetFormModal from Pay History. */
 const Z_PEOPLE_OFFSET_FORM = 1210
+/** Above Draft Payroll when opening per-person hours / job breakdown. */
+const Z_PEOPLE_DRAFT_PAYROLL_HOURS_BREAKDOWN = 1215
 
 /** Display order for People → Users tab sections (master roster + user-only roles + devs last). */
 type UsersTabSection = { type: 'personKind'; kind: PersonKind } | { type: 'dev' }
@@ -730,7 +733,6 @@ export default function People() {
     return Number(payConfig[payStubAdditionalModalStub.person_name]?.hourly_wage ?? 0)
   }, [payStubAdditionalModalStub, payConfig])
   const [payStubsLoading, setPayStubsLoading] = useState(false)
-  const [payStubGeneratorPerson, setPayStubGeneratorPerson] = useState('')
   const [payStubPeriodStart, setPayStubPeriodStart] = useState(() => {
     const d = new Date()
     const day = d.getDay()
@@ -754,10 +756,10 @@ export default function People() {
   const [generatingPayStubPerson, setGeneratingPayStubPerson] = useState<string | null>(null)
   const [bulkGeneratingPayStubs, setBulkGeneratingPayStubs] = useState(false)
   const [draftPayrollModalOpen, setDraftPayrollModalOpen] = useState(false)
+  const [draftPayrollHoursBreakdownPerson, setDraftPayrollHoursBreakdownPerson] = useState<string | null>(null)
   const [draftPayrollPendingApprovalCount, setDraftPayrollPendingApprovalCount] = useState<number | null>(null)
   const [draftPayrollPendingApprovalLoading, setDraftPayrollPendingApprovalLoading] = useState(false)
   const [draftPayrollPendingApprovalError, setDraftPayrollPendingApprovalError] = useState<string | null>(null)
-  const [customPayReportsModalOpen, setCustomPayReportsModalOpen] = useState(false)
   const draftPayrollRealtimeSnapRef = useRef({
     draftOpen: false,
     activeTab: '' as string,
@@ -3415,69 +3417,6 @@ export default function People() {
     setPayStubCalendarData({ earnedByDate, paidByDate })
   }
 
-  function computePayReportAssignmentsBreakdown(
-    personName: string,
-    dayRows: Array<{ work_date: string; hours: number }>,
-    crewByDatePerson: Record<string, CrewJobRow>,
-    crewBidsByDatePerson: Record<string, CrewBidRow>,
-    jobsMap: Record<string, { hcp_number: string; job_name: string; job_address: string }>,
-    bidsMap: Record<string, { bid_number: string; project_name: string; address: string }>
-  ): Array<{ date: string; hours: number; jobsText: string }> {
-    function getEffectiveJobAssignments(pn: string, workDate: string): CrewJobAssignment[] {
-      const key = `${workDate}:${pn}`
-      const row = crewByDatePerson[key]
-      if (!row) return []
-      if (row.crew_lead_person_name) {
-        const leadKey = `${workDate}:${row.crew_lead_person_name}`
-        const leadRow = crewByDatePerson[leadKey]
-        return leadRow?.job_assignments ?? []
-      }
-      return row.job_assignments
-    }
-    function getEffectiveBidAssignments(pn: string, workDate: string): CrewBidAssignment[] {
-      const key = `${workDate}:${pn}`
-      const row = crewBidsByDatePerson[key]
-      if (!row) return []
-      if (row.crew_lead_person_name) {
-        const leadKey = `${workDate}:${row.crew_lead_person_name}`
-        const leadRow = crewBidsByDatePerson[leadKey]
-        return leadRow?.bid_assignments ?? []
-      }
-      return row.bid_assignments
-    }
-    function jobLabel(jobId: string): string {
-      const d = jobsMap[jobId]
-      if (!d) return jobId.slice(0, 8)
-      const jobNum = (d.hcp_number ?? '').trim()
-      const jobName = (d.job_name ?? '').trim()
-      if (jobNum && jobName) return `Job ${jobNum} (${jobName})`
-      return jobNum || jobName || (d.job_address ?? '').trim() || jobId.slice(0, 8)
-    }
-    function bidLabel(bidId: string): string {
-      const d = bidsMap[bidId]
-      if (!d) return bidId.slice(0, 8)
-      const bidNum = (d.bid_number ?? '').trim()
-      const projectName = (d.project_name ?? '').trim()
-      if (bidNum && projectName) return `Bid ${bidNum} (${projectName})`
-      return bidNum || projectName || (d.address ?? '').trim() || bidId.slice(0, 8)
-    }
-    return dayRows.map((r) => {
-      const jobAssignments = getEffectiveJobAssignments(personName, r.work_date)
-      const bidAssignments = getEffectiveBidAssignments(personName, r.work_date)
-      const jobParts = jobAssignments.map((a) => {
-        const hrs = r.hours * (a.pct / 100)
-        return `${jobLabel(a.job_id)} ${hrs.toFixed(2)} hrs`
-      })
-      const bidParts = bidAssignments.map((a) => {
-        const hrs = r.hours * (a.pct / 100)
-        return `${bidLabel(a.bid_id)} ${hrs.toFixed(2)} hrs`
-      })
-      const parts = [...jobParts, ...bidParts]
-      if (parts.length === 0) return { date: r.work_date, hours: r.hours, jobsText: '—' }
-      return { date: r.work_date, hours: r.hours, jobsText: parts.join(', ') }
-    })
-  }
-
   async function getVehiclesForPersonInPeriod(
     personName: string,
     periodStart: string,
@@ -3723,11 +3662,11 @@ export default function People() {
   }
 
   async function generatePayStub(
-    personOverride?: string,
+    personNameArg: string,
     options?: { openPreview?: boolean },
   ): Promise<boolean> {
     const openPreview = options?.openPreview !== false
-    const personName = (personOverride ?? payStubGeneratorPerson)?.trim()
+    const personName = personNameArg.trim()
     if (!authUser?.id || !personName) return false
     const start = payStubPeriodStart
     const end = payStubPeriodEnd
@@ -4512,6 +4451,10 @@ export default function People() {
       periodEnd: payStubPeriodEnd,
     }
   }, [draftPayrollModalOpen, activeTab, canAccessPay, payStubPeriodStart, payStubPeriodEnd])
+
+  useEffect(() => {
+    if (!draftPayrollModalOpen) setDraftPayrollHoursBreakdownPerson(null)
+  }, [draftPayrollModalOpen])
 
   useEffect(() => {
     if (!draftPayrollModalOpen || !canAccessPay) {
@@ -7093,42 +7036,6 @@ export default function People() {
     payStubAdditionalByStubId,
   ])
 
-  /** Generate Pay Reports preview: dates where another stub (same person, overlapping period) already has installments. */
-  const payPreviewOtherStubHintByDate = useMemo(() => {
-    const map = new Map<string, { hintText: string; stubIds: string[] }>()
-    const personName = payStubGeneratorPerson.trim()
-    if (!personName || payStubPeriodStart > payStubPeriodEnd) return map
-    const days = getDaysInRange(payStubPeriodStart, payStubPeriodEnd)
-    const sameAsGenerator = (s: PayStubRow) =>
-      s.period_start === payStubPeriodStart && s.period_end === payStubPeriodEnd
-    for (const date of days) {
-      const candidates = payStubs.filter((s) => {
-        if (s.person_name.trim() !== personName) return false
-        if (sameAsGenerator(s)) return false
-        if (s.period_start > date || s.period_end < date) return false
-        const paid = sumPayStubPaymentAmounts(payStubPaymentsByStubId[s.id] ?? [])
-        return paid > 0
-      })
-      if (candidates.length === 0) continue
-      candidates.sort((a, b) => {
-        const ca = a.created_at ?? ''
-        const cb = b.created_at ?? ''
-        return cb.localeCompare(ca)
-      })
-      const primary = candidates[0]
-      if (!primary) continue
-      const periodLabel = ledgerPayPeriodShortLabel(primary.period_start, primary.period_end)
-      const more = candidates.length - 1
-      const stubIds = candidates.map((c) => c.id)
-      const hintText =
-        more > 0
-          ? `Installments on report ${periodLabel} (+${more} more)`
-          : `Installments on report ${periodLabel}`
-      map.set(date, { hintText, stubIds })
-    }
-    return map
-  }, [payStubGeneratorPerson, payStubPeriodStart, payStubPeriodEnd, payStubs, payStubPaymentsByStubId])
-
   const teamsFiltered = useMemo(
     () =>
       teams.map((t) => ({
@@ -8363,7 +8270,7 @@ export default function People() {
             }}
             style={tabStyle(activeTab === 'pay_stubs')}
           >
-            Pay History
+            Payroll
           </button>
         )}
         {canAccessPay && (
@@ -10009,31 +9916,13 @@ export default function People() {
                 <div
                   style={{
                     display: 'flex',
-                    justifyContent: 'flex-start',
+                    justifyContent: 'flex-end',
                     alignItems: 'center',
                     flexWrap: 'wrap',
                     gap: '0.75rem',
                     width: '100%',
                   }}
                 >
-                  <button
-                    type="button"
-                    onClick={() => setCustomPayReportsModalOpen(true)}
-                    disabled={showPeopleForHours.length === 0}
-                    title={showPeopleForHours.length === 0 ? 'In Hours, open People pay config and check Show in Hours for people to track' : undefined}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      fontSize: '0.9375rem',
-                      background: showPeopleForHours.length === 0 ? '#9ca3af' : '#3b82f6',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: 6,
-                      cursor: showPeopleForHours.length === 0 ? 'not-allowed' : 'pointer',
-                      fontWeight: 500,
-                    }}
-                  >
-                    Generate Custom Pay Report
-                  </button>
                   <button
                     type="button"
                     onClick={() => {
@@ -10045,7 +9934,6 @@ export default function People() {
                     disabled={showPeopleForHours.length === 0}
                     title={showPeopleForHours.length === 0 ? 'In Hours, open People pay config and check Show in Hours for people to track' : undefined}
                     style={{
-                      marginLeft: 'auto',
                       padding: '0.5rem 1rem',
                       fontSize: '0.9375rem',
                       background: showPeopleForHours.length === 0 ? '#9ca3af' : '#3b82f6',
@@ -10095,7 +9983,7 @@ export default function People() {
                 </div>
                 {payStubs.length === 0 ? (
                   <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>
-                    No pay reports yet. Use Generate Custom Pay Report or Draft Payroll.
+                    No pay reports yet. Use Draft Payroll.
                   </p>
                 ) : ledgerFilteredPayStubs.length === 0 ? (
                   <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No pay reports match this search.</p>
@@ -10416,7 +10304,7 @@ export default function People() {
       ) : null}
 
       {payStubDeleteConfirm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: Z_PEOPLE_PAY_MODAL }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: Z_PEOPLE_PAY_MODAL_NESTED }}>
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 400 }}>
             <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Are you sure?</h2>
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
@@ -10671,28 +10559,6 @@ export default function People() {
         </div>
       )}
 
-      {customPayReportsModalOpen && activeTab === 'pay_stubs' && canAccessPay && (
-        <CustomPayReportsModal
-          open
-          onClose={() => setCustomPayReportsModalOpen(false)}
-          zIndex={Z_PEOPLE_PAY_MODAL}
-          peopleNames={showPeopleForHours}
-          person={payStubGeneratorPerson}
-          onChangePerson={setPayStubGeneratorPerson}
-          periodStart={payStubPeriodStart}
-          onChangePeriodStart={setPayStubPeriodStart}
-          periodEnd={payStubPeriodEnd}
-          onChangePeriodEnd={setPayStubPeriodEnd}
-          onGenerate={() => generatePayStub()}
-          getCostForPersonDate={getCostForPersonDate}
-          hoursDaysCorrect={hoursDaysCorrect}
-          payPreviewOtherStubHintByDate={payPreviewOtherStubHintByDate}
-          payStubs={payStubs}
-          onViewStub={(stub) => void viewPayStub(stub as PayStubRow)}
-          showToast={showToast}
-        />
-      )}
-
       {draftPayrollModalOpen && activeTab === 'pay_stubs' && canAccessPay && (
         <DraftPayrollModal
           open
@@ -10726,12 +10592,32 @@ export default function People() {
           }}
           onViewStub={(stub) => void viewPayStub(stub)}
           onRecordPayment={openPayStubMarkPaidModal}
+          canDeletePayReports={isDev}
+          onRequestDeleteStub={(stub) => setPayStubDeleteConfirm(stub)}
+          deletingPayStubId={deletingPayStubId}
           markingPayStubId={markingPayStubId}
           generatingPayStubPerson={generatingPayStubPerson}
           showToast={showToast}
           onNavigateToHoursForReviewDate={navigateToHoursForReviewDate}
+          onOpenHoursBreakdown={(name) => setDraftPayrollHoursBreakdownPerson(name)}
         />
       )}
+
+      {draftPayrollHoursBreakdownPerson &&
+      draftPayrollModalOpen &&
+      activeTab === 'pay_stubs' &&
+      canAccessPay ? (
+        <DraftPayrollPersonHoursBreakdownModal
+          open
+          personName={draftPayrollHoursBreakdownPerson}
+          periodStart={payStubPeriodStart}
+          periodEnd={payStubPeriodEnd}
+          hourlyWage={Number(payConfig[draftPayrollHoursBreakdownPerson]?.hourly_wage ?? 0)}
+          isSalary={payConfig[draftPayrollHoursBreakdownPerson]?.is_salary ?? false}
+          zIndex={Z_PEOPLE_DRAFT_PAYROLL_HOURS_BREAKDOWN}
+          onClose={() => setDraftPayrollHoursBreakdownPerson(null)}
+        />
+      ) : null}
 
 
       {activeTab === 'hours' && canOpenHoursTab && (
@@ -10850,13 +10736,13 @@ export default function People() {
               Week
             </button>
             {canAccessHours ? (
-              <button type="button" onClick={() => jumpToHoursTabSection('sessions')} style={{ padding: '0.25rem 0.55rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#f3f4f6', cursor: 'pointer', fontSize: '0.8125rem' }}>
-                Sessions
+              <button type="button" onClick={() => jumpToHoursTabSection('grid')} style={{ padding: '0.25rem 0.55rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#f3f4f6', cursor: 'pointer', fontSize: '0.8125rem' }}>
+                Hours grid
               </button>
             ) : null}
             {canAccessHours ? (
-              <button type="button" onClick={() => jumpToHoursTabSection('grid')} style={{ padding: '0.25rem 0.55rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#f3f4f6', cursor: 'pointer', fontSize: '0.8125rem' }}>
-                Hours grid
+              <button type="button" onClick={() => jumpToHoursTabSection('sessions')} style={{ padding: '0.25rem 0.55rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#f3f4f6', cursor: 'pointer', fontSize: '0.8125rem' }}>
+                Sessions
               </button>
             ) : null}
             {canAccessPay || canViewCostMatrixShared ? (
@@ -11032,272 +10918,6 @@ export default function People() {
           </section>
           {canAccessHours && (
           <>
-          <section id="people-hours-sessions" style={HOURS_TAB_SECTION_SHELL}>
-            <div style={hoursTabSectionHeaderGap(hoursTabSectionsOpen.sessions)}>
-              <button
-                type="button"
-                aria-expanded={hoursTabSectionsOpen.sessions}
-                onClick={() => setHoursTabSectionsOpen((p) => ({ ...p, sessions: !p.sessions }))}
-                style={HOURS_TAB_SECTION_TOGGLE_BTN}
-              >
-                <span aria-hidden style={HOURS_TAB_SECTION_CHEVRON}>{hoursTabSectionsOpen.sessions ? '▼' : '▶'}</span>
-                Clock sessions
-              </button>
-            </div>
-            {hoursTabSectionsOpen.sessions ? (
-            <>
-          <div style={{ marginBottom: '0.75rem', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
-            <input
-              type="search"
-              value={hoursClockSessionsSearch}
-              onChange={(e) => setHoursClockSessionsSearch(e.target.value)}
-              placeholder="Search name, notes, job/bid, date…"
-              aria-label="Search clock sessions"
-              style={{
-                flex: '1 1 220px',
-                minWidth: 160,
-                padding: '0.35rem 0.5rem',
-                border: '1px solid #d1d5db',
-                borderRadius: 4,
-                fontSize: '0.875rem',
-              }}
-            />
-            {hoursClockSessionsSearching ? (
-              <button
-                type="button"
-                onClick={() => setHoursClockSessionsSearch('')}
-                style={{
-                  padding: '0.35rem 0.5rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: 4,
-                  background: 'white',
-                  cursor: 'pointer',
-                  fontSize: '0.875rem',
-                }}
-              >
-                Clear
-              </button>
-            ) : null}
-            {showSalariedWorkdaysHoursButton ? (
-              <button
-                type="button"
-                onClick={() => setSalariedWorkdaysModalOpen(true)}
-                style={{
-                  marginLeft: 'auto',
-                  padding: '0.35rem 0.65rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: 4,
-                  background: '#f9fafb',
-                  cursor: 'pointer',
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
-                  color: '#374151',
-                  flexShrink: 0,
-                }}
-              >
-                Salaried workdays
-              </button>
-            ) : null}
-          </div>
-          {noClockSessionsMatchSearch ? (
-            <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>No sessions match this search.</p>
-          ) : null}
-          <div style={{ marginBottom: '0.75rem', border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
-            <div style={{ padding: '0.5rem 0.75rem', background: '#f9fafb', fontWeight: 600, fontSize: '0.875rem' }}>
-              {hoursClockSessionsSearching
-                ? `Active clock sessions (${activeClockSessionsFiltered.length} of ${activeClockSessions.length} matching)`
-                : `Active clock sessions (${activeClockSessions.length})`}
-            </div>
-            <ClockSessionsTable
-              sessions={activeClockSessionsFiltered}
-              showActionsColumn
-              locationVariant="full"
-              enableDurationColumnSort
-              onDurationClick={openHoursMyTimeFromSession}
-              emptyMessage={hoursClockSessionsSearching ? 'No matching sessions' : 'No active sessions'}
-              renderNotesSecondary={(s) => {
-                const label = formatClockSessionJobOrBidLabel(s, prefixMap)
-                return label ? (
-                  <span title={label.replace(/\n/g, ' ')} style={{ whiteSpace: 'pre-line' }}>
-                    {label}
-                  </span>
-                ) : null
-              }}
-              renderJob={() => (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'nowrap', minWidth: 0 }} />
-              )}
-              renderActions={(s) => {
-                const personName = s.users?.name?.trim() ?? 'Unknown'
-                return (
-                  <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditClockSession(s)
-                        setError(null)
-                      }}
-                      style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer' }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        if (!confirm(`Force clock out ${personName}?`)) return
-                        const now = new Date().toISOString()
-                        const { error } = await supabase.from('clock_sessions').update({ clocked_out_at: now }).eq('id', s.id)
-                        if (error) setError(error.message)
-                        else {
-                          showToast?.('Session clocked out', 'success')
-                          loadAllClockSessionsRef.current?.()
-                        }
-                      }}
-                      style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #dc2626', borderRadius: 4, background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}
-                    >
-                      Force clock out
-                    </button>
-                  </div>
-                )
-              }}
-            />
-          </div>
-          <div style={{ marginBottom: '0.75rem', border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
-            <div style={{ padding: '0.5rem 0.75rem', background: '#f9fafb', fontWeight: 600, fontSize: '0.875rem' }}>
-              {hoursClockSessionsSearching
-                ? `Pending sessions (${pendingApprovalClockSessionsFiltered.length} of ${pendingApprovalClockSessions.length} matching)`
-                : `Pending sessions (${pendingApprovalClockSessions.length})`}
-            </div>
-            <ClockSessionsTable
-              sessions={pendingApprovalClockSessionsFiltered}
-              showActionsColumn
-              locationVariant="full"
-              enableDurationColumnSort
-              onDurationClick={openHoursMyTimeFromSession}
-              emptyMessage={hoursClockSessionsSearching ? 'No matching sessions' : 'No sessions awaiting approval'}
-              renderNotesSecondary={(s) => {
-                const label = formatClockSessionJobOrBidLabel(s, prefixMap)
-                return label ? (
-                  <span title={label.replace(/\n/g, ' ')} style={{ whiteSpace: 'pre-line' }}>
-                    {label}
-                  </span>
-                ) : null
-              }}
-              renderJob={(s) => (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'nowrap', minWidth: 0 }}>
-                  <span style={{ flexShrink: 0 }}>
-                    <AssignSessionJobPopover
-                      session={s}
-                      onSaved={() => {
-                        showToast?.('Job assigned', 'success')
-                        loadAllClockSessionsRef.current?.()
-                      }}
-                      onError={(msg) => setError(msg)}
-                      dispatchScheduleAssigneeUserId={s.user_id}
-                      dispatchScheduleWorkDateYmd={s.work_date}
-                    />
-                  </span>
-                </div>
-              )}
-              renderActions={(s) => (
-                <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const { data, error } = await approveClockSessions([s.id])
-                      if (error) { setError(error.message); return }
-                      const result = (data ?? []) as Array<{ approved_count: number; error_message: string | null }>
-                      const row = result[0]
-                      if (row?.error_message) { setError(row.error_message); return }
-                      showToast?.(`Approved ${row?.approved_count ?? 0} session(s)`, 'success')
-                      loadAllClockSessionsRef.current?.()
-                      loadPeopleHoursRef.current?.()
-                    }}
-                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #22c55e', borderRadius: 4, background: '#f0fdf4', color: '#16a34a', cursor: 'pointer' }}
-                  >
-                    Approve
-                  </button>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      if (!confirm('Reject this clock session?')) return
-                      const { error } = await supabase.from('clock_sessions').update({ rejected_at: new Date().toISOString(), rejected_by: authUser?.id ?? null }).eq('id', s.id)
-                      if (error) setError(error.message)
-                      else { showToast?.('Session rejected', 'success'); loadAllClockSessionsRef.current?.() }
-                    }}
-                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #dc2626', borderRadius: 4, background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}
-                  >
-                    Reject
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditClockSession(s)
-                    }}
-                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer' }}
-                  >
-                    Edit
-                  </button>
-                </div>
-              )}
-            />
-          </div>
-          <ClockSessionsSection
-            title="Approved Sessions"
-            sessions={approvedClockSessionsFiltered}
-            enableDurationColumnSort
-            onDurationClick={openHoursMyTimeFromSession}
-            headerCountLabel={
-              hoursClockSessionsSearching
-                ? `${approvedClockSessionsFiltered.length} of ${approvedClockSessions.length} matching`
-                : undefined
-            }
-            headerCount={hoursClockSessionsSearching ? undefined : approvedClockSessions.length}
-            emptyMessage={hoursClockSessionsSearching ? 'No matching sessions' : 'No sessions'}
-            collapsedByDefault
-            showActionsColumn
-            renderActions={(s) => (
-              <button
-                type="button"
-                onClick={async () => {
-                  if (!confirm('Revoke this session? It will move back to Pending and remove its hours from Hours.')) return
-                  const { data, error } = await supabase.rpc('revoke_clock_sessions', { p_session_ids: [s.id] })
-                  if (error) { setError(error.message); return }
-                  const result = (data ?? []) as Array<{ revoked_count: number; error_message: string | null }>
-                  const row = result[0]
-                  if (row?.error_message) { setError(row.error_message); return }
-                  showToast?.(`Revoked ${row?.revoked_count ?? 0} session(s)`, 'success')
-                  loadAllClockSessionsRef.current?.()
-                  loadPeopleHoursRef.current?.()
-                }}
-                style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #f59e0b', borderRadius: 4, background: '#fffbeb', color: '#d97706', cursor: 'pointer' }}
-              >
-                Revoke
-              </button>
-            )}
-          />
-          <div id="people-hours-rejected">
-            <RejectedClockSessionsSection
-              sessions={rejectedClockSessionsFiltered}
-              headerCountLabel={
-                hoursClockSessionsSearching
-                  ? `${rejectedClockSessionsFiltered.length} of ${rejectedClockSessions.length} matching`
-                  : undefined
-              }
-              headerCount={hoursClockSessionsSearching ? undefined : rejectedClockSessions.length}
-              emptyMessage={hoursClockSessionsSearching ? 'No matching sessions' : undefined}
-              onDeleted={() => loadAllClockSessionsRef.current?.()}
-              onError={(message) => setError(message)}
-              canDeleteRejectedSessions={canAccessPay}
-              open={rejectedSectionOpen}
-              onToggle={() => setRejectedSectionOpen((o) => !o)}
-              onEdit={(s) => {
-                setEditClockSession(s)
-              }}
-            />
-          </div>
-            </>
-            ) : null}
-          </section>
           <section id="people-hours-grid" style={HOURS_TAB_SECTION_SHELL}>
             <div style={hoursTabSectionHeaderGap(hoursTabSectionsOpen.grid)}>
               <button
@@ -11842,6 +11462,272 @@ export default function People() {
             </div>
             </>
           )}
+            </>
+            ) : null}
+          </section>
+          <section id="people-hours-sessions" style={HOURS_TAB_SECTION_SHELL}>
+            <div style={hoursTabSectionHeaderGap(hoursTabSectionsOpen.sessions)}>
+              <button
+                type="button"
+                aria-expanded={hoursTabSectionsOpen.sessions}
+                onClick={() => setHoursTabSectionsOpen((p) => ({ ...p, sessions: !p.sessions }))}
+                style={HOURS_TAB_SECTION_TOGGLE_BTN}
+              >
+                <span aria-hidden style={HOURS_TAB_SECTION_CHEVRON}>{hoursTabSectionsOpen.sessions ? '▼' : '▶'}</span>
+                Clock sessions
+              </button>
+            </div>
+            {hoursTabSectionsOpen.sessions ? (
+            <>
+          <div style={{ marginBottom: '0.75rem', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
+            <input
+              type="search"
+              value={hoursClockSessionsSearch}
+              onChange={(e) => setHoursClockSessionsSearch(e.target.value)}
+              placeholder="Search name, notes, job/bid, date…"
+              aria-label="Search clock sessions"
+              style={{
+                flex: '1 1 220px',
+                minWidth: 160,
+                padding: '0.35rem 0.5rem',
+                border: '1px solid #d1d5db',
+                borderRadius: 4,
+                fontSize: '0.875rem',
+              }}
+            />
+            {hoursClockSessionsSearching ? (
+              <button
+                type="button"
+                onClick={() => setHoursClockSessionsSearch('')}
+                style={{
+                  padding: '0.35rem 0.5rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  background: 'white',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                }}
+              >
+                Clear
+              </button>
+            ) : null}
+            {showSalariedWorkdaysHoursButton ? (
+              <button
+                type="button"
+                onClick={() => setSalariedWorkdaysModalOpen(true)}
+                style={{
+                  marginLeft: 'auto',
+                  padding: '0.35rem 0.65rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  background: '#f9fafb',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  color: '#374151',
+                  flexShrink: 0,
+                }}
+              >
+                Salaried workdays
+              </button>
+            ) : null}
+          </div>
+          {noClockSessionsMatchSearch ? (
+            <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>No sessions match this search.</p>
+          ) : null}
+          <div style={{ marginBottom: '0.75rem', border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+            <div style={{ padding: '0.5rem 0.75rem', background: '#f9fafb', fontWeight: 600, fontSize: '0.875rem' }}>
+              {hoursClockSessionsSearching
+                ? `Active clock sessions (${activeClockSessionsFiltered.length} of ${activeClockSessions.length} matching)`
+                : `Active clock sessions (${activeClockSessions.length})`}
+            </div>
+            <ClockSessionsTable
+              sessions={activeClockSessionsFiltered}
+              showActionsColumn
+              locationVariant="full"
+              enableDurationColumnSort
+              onDurationClick={openHoursMyTimeFromSession}
+              emptyMessage={hoursClockSessionsSearching ? 'No matching sessions' : 'No active sessions'}
+              renderNotesSecondary={(s) => {
+                const label = formatClockSessionJobOrBidLabel(s, prefixMap)
+                return label ? (
+                  <span title={label.replace(/\n/g, ' ')} style={{ whiteSpace: 'pre-line' }}>
+                    {label}
+                  </span>
+                ) : null
+              }}
+              renderJob={() => (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'nowrap', minWidth: 0 }} />
+              )}
+              renderActions={(s) => {
+                const personName = s.users?.name?.trim() ?? 'Unknown'
+                return (
+                  <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditClockSession(s)
+                        setError(null)
+                      }}
+                      style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer' }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!confirm(`Force clock out ${personName}?`)) return
+                        const now = new Date().toISOString()
+                        const { error } = await supabase.from('clock_sessions').update({ clocked_out_at: now }).eq('id', s.id)
+                        if (error) setError(error.message)
+                        else {
+                          showToast?.('Session clocked out', 'success')
+                          loadAllClockSessionsRef.current?.()
+                        }
+                      }}
+                      style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #dc2626', borderRadius: 4, background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}
+                    >
+                      Force clock out
+                    </button>
+                  </div>
+                )
+              }}
+            />
+          </div>
+          <div style={{ marginBottom: '0.75rem', border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+            <div style={{ padding: '0.5rem 0.75rem', background: '#f9fafb', fontWeight: 600, fontSize: '0.875rem' }}>
+              {hoursClockSessionsSearching
+                ? `Pending sessions (${pendingApprovalClockSessionsFiltered.length} of ${pendingApprovalClockSessions.length} matching)`
+                : `Pending sessions (${pendingApprovalClockSessions.length})`}
+            </div>
+            <ClockSessionsTable
+              sessions={pendingApprovalClockSessionsFiltered}
+              showActionsColumn
+              locationVariant="full"
+              enableDurationColumnSort
+              onDurationClick={openHoursMyTimeFromSession}
+              emptyMessage={hoursClockSessionsSearching ? 'No matching sessions' : 'No sessions awaiting approval'}
+              renderNotesSecondary={(s) => {
+                const label = formatClockSessionJobOrBidLabel(s, prefixMap)
+                return label ? (
+                  <span title={label.replace(/\n/g, ' ')} style={{ whiteSpace: 'pre-line' }}>
+                    {label}
+                  </span>
+                ) : null
+              }}
+              renderJob={(s) => (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'nowrap', minWidth: 0 }}>
+                  <span style={{ flexShrink: 0 }}>
+                    <AssignSessionJobPopover
+                      session={s}
+                      onSaved={() => {
+                        showToast?.('Job assigned', 'success')
+                        loadAllClockSessionsRef.current?.()
+                      }}
+                      onError={(msg) => setError(msg)}
+                      dispatchScheduleAssigneeUserId={s.user_id}
+                      dispatchScheduleWorkDateYmd={s.work_date}
+                    />
+                  </span>
+                </div>
+              )}
+              renderActions={(s) => (
+                <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const { data, error } = await approveClockSessions([s.id])
+                      if (error) { setError(error.message); return }
+                      const result = (data ?? []) as Array<{ approved_count: number; error_message: string | null }>
+                      const row = result[0]
+                      if (row?.error_message) { setError(row.error_message); return }
+                      showToast?.(`Approved ${row?.approved_count ?? 0} session(s)`, 'success')
+                      loadAllClockSessionsRef.current?.()
+                      loadPeopleHoursRef.current?.()
+                    }}
+                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #22c55e', borderRadius: 4, background: '#f0fdf4', color: '#16a34a', cursor: 'pointer' }}
+                  >
+                    Approve
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!confirm('Reject this clock session?')) return
+                      const { error } = await supabase.from('clock_sessions').update({ rejected_at: new Date().toISOString(), rejected_by: authUser?.id ?? null }).eq('id', s.id)
+                      if (error) setError(error.message)
+                      else { showToast?.('Session rejected', 'success'); loadAllClockSessionsRef.current?.() }
+                    }}
+                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #dc2626', borderRadius: 4, background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}
+                  >
+                    Reject
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditClockSession(s)
+                    }}
+                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer' }}
+                  >
+                    Edit
+                  </button>
+                </div>
+              )}
+            />
+          </div>
+          <ClockSessionsSection
+            title="Approved Sessions"
+            sessions={approvedClockSessionsFiltered}
+            enableDurationColumnSort
+            onDurationClick={openHoursMyTimeFromSession}
+            headerCountLabel={
+              hoursClockSessionsSearching
+                ? `${approvedClockSessionsFiltered.length} of ${approvedClockSessions.length} matching`
+                : undefined
+            }
+            headerCount={hoursClockSessionsSearching ? undefined : approvedClockSessions.length}
+            emptyMessage={hoursClockSessionsSearching ? 'No matching sessions' : 'No sessions'}
+            collapsedByDefault
+            showActionsColumn
+            renderActions={(s) => (
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!confirm('Revoke this session? It will move back to Pending and remove its hours from Hours.')) return
+                  const { data, error } = await supabase.rpc('revoke_clock_sessions', { p_session_ids: [s.id] })
+                  if (error) { setError(error.message); return }
+                  const result = (data ?? []) as Array<{ revoked_count: number; error_message: string | null }>
+                  const row = result[0]
+                  if (row?.error_message) { setError(row.error_message); return }
+                  showToast?.(`Revoked ${row?.revoked_count ?? 0} session(s)`, 'success')
+                  loadAllClockSessionsRef.current?.()
+                  loadPeopleHoursRef.current?.()
+                }}
+                style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #f59e0b', borderRadius: 4, background: '#fffbeb', color: '#d97706', cursor: 'pointer' }}
+              >
+                Revoke
+              </button>
+            )}
+          />
+          <div id="people-hours-rejected">
+            <RejectedClockSessionsSection
+              sessions={rejectedClockSessionsFiltered}
+              headerCountLabel={
+                hoursClockSessionsSearching
+                  ? `${rejectedClockSessionsFiltered.length} of ${rejectedClockSessions.length} matching`
+                  : undefined
+              }
+              headerCount={hoursClockSessionsSearching ? undefined : rejectedClockSessions.length}
+              emptyMessage={hoursClockSessionsSearching ? 'No matching sessions' : undefined}
+              onDeleted={() => loadAllClockSessionsRef.current?.()}
+              onError={(message) => setError(message)}
+              canDeleteRejectedSessions={canAccessPay}
+              open={rejectedSectionOpen}
+              onToggle={() => setRejectedSectionOpen((o) => !o)}
+              onEdit={(s) => {
+                setEditClockSession(s)
+              }}
+            />
+          </div>
             </>
             ) : null}
           </section>

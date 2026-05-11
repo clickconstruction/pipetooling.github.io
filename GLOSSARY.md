@@ -711,16 +711,16 @@ When **Jobs** **Stages** **Last activity** shows **Stripe emailed customer** plu
 ### pay_stub_payments
 Physical installment rows against a generated pay stub: amount sent, optional sent-on date, optional memo. A database trigger prevents the sum of installment amounts from exceeding **Net Pay** (stub **gross_pay** minus **`pay_stub_deductions`** plus **`pay_stub_additional_lines`** `line_total`, within a small rounding tolerance).
 
-**Contrast with `pay_stub_days`**: Day rows allocate gross by **work date** (used in Annual Pay to Date: earned vs allocated). **`pay_stub_payments`** tracks **cash actually sent** and drives Pay History **Paid to date**, **Balance**, and Unpaid / Partial / Paid status (against **Net Pay**).
+**Contrast with `pay_stub_days`**: Day rows allocate gross by **work date** (used in Annual Pay to Date: earned vs allocated). **`pay_stub_payments`** tracks **cash actually sent** and drives People **Payroll** tab **Paid to date**, **Balance**, and Unpaid / Partial / Paid status (against **Net Pay**).
 
 **Client helpers**: `src/lib/payStubPayments.ts` (e.g. sum, remaining, fully paid).
 
-**See also**: `RECENT_FEATURES.md` → v2.172, v2.173, v2.174; `PROJECT_DOCUMENTATION.md` → People (Pay History).
+**See also**: `RECENT_FEATURES.md` → v2.172, v2.173, v2.174; `PROJECT_DOCUMENTATION.md` → People (**Payroll** tab).
 
 ### person_offsets
 Per-person **backcharges**, **damages**, and **employee credits** (`person_offsets.type`, migration **`20270408163000`**). Pending rows (`pay_stub_id` null) surface on printed pay reports; applied rows link to a pay stub. **Employee credit** records money owed *to* the employee (for example a payment overage captured as a pending offset). **Less** in `src/components/pay/PayStubLessModal.tsx` does not **Apply** employee credits as deductions.
 
-**See also**: `RECENT_FEATURES.md` → v2.252; `PROJECT_DOCUMENTATION.md` → People (Offsets, Pay History).
+**See also**: `RECENT_FEATURES.md` → v2.252; `PROJECT_DOCUMENTATION.md` → People (Offsets, **Payroll** tab).
 
 ### pay_stub_deductions
 **Less** lines on a pay stub: amounts subtracted from **gross_pay** as part of **Net Pay**. Each row is either **manual** (description + amount) or **offset** (linked to **`person_offsets`**). Sum of deductions cannot exceed gross; changing deductions is blocked if existing installments would exceed the new Net Pay (which also includes **Additional**).
@@ -732,7 +732,7 @@ Per-person **backcharges**, **damages**, and **employee credits** (`person_offse
 
 **Client helpers**: `src/lib/payStubDeductions.ts`, `src/lib/payStubPrevailingWageLine.ts`.
 
-**See also**: `RECENT_FEATURES.md` → v2.345, v2.174; `PROJECT_DOCUMENTATION.md` → People (Pay History); `MIGRATIONS.md` → `20260420051645`; `src/components/pay/PayStubAdditionalModal.tsx`.
+**See also**: `RECENT_FEATURES.md` → v2.345, v2.174; `PROJECT_DOCUMENTATION.md` → People (**Payroll** tab); `MIGRATIONS.md` → `20260420051645`; `src/components/pay/PayStubAdditionalModal.tsx`.
 
 ### Trigger
 Automatic database function that fires on INSERT, UPDATE, or DELETE operations.
@@ -932,7 +932,7 @@ Feature in Customers page for bulk-pasting customer data from spreadsheet.
 **Visibility**: Collapsed by default, hidden in Bids modal
 
 ### Quickfill (page)
-The **`/quickfill`** route — day-to-day workflow hub (section marks, hours, **Prospects**, **Stages: customer link & customer pictures** (`no-customer-stages` — empty–Stages-search lists + union metric, **`QuickfillStagesNoCustomerSection`**, **v2.413** / copy **v2.415**), schedule, inboxes, etc.). Not the same as **Quick Fill** (customer bulk paste). **Prospects** block: warmth pipeline + (for **dev** / **master** / **assistant**) a **30-day Team activity line chart** — **`RECENT_FEATURES.md`** v2.381 / v2.382, **`PROJECT_DOCUMENTATION.md`** (Quickfill), **`ACCESS_CONTROL.md`**.
+The **`/quickfill`** route — day-to-day workflow hub (section marks, hours, **Prospects**, **Stages: customer link & customer pictures** (`no-customer-stages` — empty–Stages-search lists + union metric, **`QuickfillStagesNoCustomerSection`**, **v2.413** / copy **v2.415**), schedule, inboxes, etc.). Not the same as **Quick Fill** (customer bulk paste). **Jump row** (buttons under the **`h1`**): one compact **last-marked** subline per section (**`RECENT_FEATURES`** **v2.513**). **Prospects** block: warmth pipeline + (for **dev** / **master** / **assistant**) a **30-day Team activity line chart** — **`RECENT_FEATURES.md`** v2.381 / v2.382, **`PROJECT_DOCUMENTATION.md`** (Quickfill), **`ACCESS_CONTROL.md`**.
 
 ### Expandable Row
 Table row that expands to show additional details.

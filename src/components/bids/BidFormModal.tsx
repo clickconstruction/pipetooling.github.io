@@ -114,6 +114,10 @@ export type BidFormModalProps = {
   setDeleteBidModalOpen: (value: boolean) => void
   setDeleteConfirmProjectName: (value: string) => void
   setError: Dispatch<SetStateAction<string | null>>
+  /** Hide bid from Unsent/Working surfaces (opens parent confirm). */
+  onRequestArchiveFromUnsentWorking?: () => void
+  showArchiveFromUnsentWorking?: boolean
+  archiveFromUnsentWorkingBusy?: boolean
   /** Sibling bids keyed by `service_type_id` (same customer + project name); for “open existing” in service-type switcher. */
   serviceTypeSwitchSiblings?: Record<string, BidServiceTypeSwitchSibling[]>
   onServiceTypeSwitchModalOpen?: () => void | Promise<void>
@@ -235,6 +239,9 @@ export function BidFormModal(props: BidFormModalProps) {
     setDeleteBidModalOpen,
     setDeleteConfirmProjectName,
     setError,
+    onRequestArchiveFromUnsentWorking,
+    showArchiveFromUnsentWorking = false,
+    archiveFromUnsentWorkingBusy = false,
     serviceTypeSwitchSiblings = {},
     onServiceTypeSwitchModalOpen,
     onDuplicateBidToServiceType,
@@ -891,13 +898,33 @@ export function BidFormModal(props: BidFormModalProps) {
                   Save and Open Counts
                 </button>
                 {editingBid && (
-                  <button
-                    type="button"
-                    onClick={() => { setDeleteBidModalOpen(true); setDeleteConfirmProjectName(''); setError(null) }}
-                    style={{ marginRight: 'auto', padding: '0.5rem 1rem', color: '#b91c1b', background: 'white', border: '1px solid #b91c1b', borderRadius: 4, cursor: 'pointer' }}
-                  >
-                    Delete bid
-                  </button>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginRight: 'auto' }}>
+                    {showArchiveFromUnsentWorking && onRequestArchiveFromUnsentWorking ? (
+                      <button
+                        type="button"
+                        onClick={() => onRequestArchiveFromUnsentWorking()}
+                        disabled={archiveFromUnsentWorkingBusy || savingBid}
+                        title="Hide from Working board, unsent lists, and clock quick picks (column placement kept)"
+                        style={{
+                          padding: '0.5rem 1rem',
+                          color: '#374151',
+                          background: 'white',
+                          border: '1px solid #d1d5db',
+                          borderRadius: 4,
+                          cursor: archiveFromUnsentWorkingBusy || savingBid ? 'wait' : 'pointer',
+                        }}
+                      >
+                        {archiveFromUnsentWorkingBusy ? 'Archiving…' : 'Archive from board'}
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => { setDeleteBidModalOpen(true); setDeleteConfirmProjectName(''); setError(null) }}
+                      style={{ padding: '0.5rem 1rem', color: '#b91c1b', background: 'white', border: '1px solid #b91c1b', borderRadius: 4, cursor: 'pointer' }}
+                    >
+                      Delete bid
+                    </button>
+                  </div>
                 )}
                 <button type="submit" disabled={!bidFormCanSubmit || savingBid} title={!bidFormCanSubmit ? `Required: ${bidFormMissingFields.join(', ')}` : undefined} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
                   {savingBid ? 'Saving…' : 'Save'}

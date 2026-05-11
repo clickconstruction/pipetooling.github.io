@@ -26,7 +26,15 @@ type BidWorkingPlacement = Database['public']['Tables']['bid_working_board_place
 
 export type BidsWorkingBoardBid = Pick<
   Database['public']['Tables']['bids']['Row'],
-  'id' | 'project_name' | 'address' | 'bid_number' | 'estimator_id' | 'account_manager_id' | 'service_type_id'
+  | 'id'
+  | 'project_name'
+  | 'address'
+  | 'bid_number'
+  | 'estimator_id'
+  | 'account_manager_id'
+  | 'service_type_id'
+  | 'working_board_archived_at'
+  | 'working_board_archived_by'
 > & {
   customers?: { id: string; name: string | null } | null
 }
@@ -291,7 +299,10 @@ function ColumnDropZone({ columnId, children }: ColumnDropZoneProps) {
 
 type BidsWorkingBoardProps = {
   userId: string
-  bids: BidsWorkingBoardBid[]
+  /** All bids that count for placements (includes working-board archived). */
+  eligibleBids: BidsWorkingBoardBid[]
+  /** Subset shown as cards (excludes archived). */
+  visibleBids: BidsWorkingBoardBid[]
   onLoadError: (message: string) => void
   onMutatedNotes: () => void
   onMutatedNotesCustomer: () => void
@@ -304,7 +315,8 @@ type BidsWorkingBoardProps = {
 
 export function BidsWorkingBoard({
   userId,
-  bids,
+  eligibleBids,
+  visibleBids,
   onLoadError,
   onMutatedNotes,
   onMutatedNotesCustomer,
@@ -328,11 +340,17 @@ export function BidsWorkingBoard({
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
-  const assignedBids = useMemo(() => {
-    return bids.filter((b) => b.estimator_id === userId || b.account_manager_id === userId)
-  }, [bids, userId])
+  const eligibleAssigned = useMemo(() => {
+    return eligibleBids.filter((b) => b.estimator_id === userId || b.account_manager_id === userId)
+  }, [eligibleBids, userId])
 
-  const bidMap = useMemo(() => new Map(assignedBids.map((b) => [b.id, b])), [assignedBids])
+  const visibleAssigned = useMemo(() => {
+    return visibleBids.filter((b) => b.estimator_id === userId || b.account_manager_id === userId)
+  }, [visibleBids, userId])
+
+  const visibleBidIdSet = useMemo(() => new Set(visibleAssigned.map((b) => b.id)), [visibleAssigned])
+
+  const bidMap = useMemo(() => new Map(visibleAssigned.map((b) => [b.id, b])), [visibleAssigned])
 
   const loadBoard = useCallback(async () => {
     if (!userId) return
@@ -385,7 +403,7 @@ export function BidsWorkingBoard({
       )
       const pl = (placements ?? []) as BidWorkingPlacement[]
 
-      const assignedIds = new Set(assignedBids.map((b) => b.id))
+      const assignedIds = new Set(eligibleAssigned.map((b) => b.id))
       const orphanBids = pl.filter((p) => !assignedIds.has(p.bid_id)).map((p) => p.bid_id)
       if (orphanBids.length > 0) {
         await withSupabaseRetry(
@@ -395,13 +413,13 @@ export function BidsWorkingBoard({
       }
       const plFiltered = pl.filter((p) => assignedIds.has(p.bid_id))
 
-      setColumnBidIds(buildColumnBidMap(sorted, plFiltered, assignedBids))
+      setColumnBidIds(buildColumnBidMap(sorted, plFiltered, eligibleAssigned))
     } catch (e: unknown) {
       onLoadError(e instanceof Error ? e.message : 'Failed to load Working board')
     } finally {
       setBoardLoading(false)
     }
-  }, [userId, assignedBids, onLoadError])
+  }, [userId, eligibleAssigned, onLoadError])
 
   useEffect(() => {
     void loadBoard()
@@ -417,8 +435,9 @@ export function BidsWorkingBoard({
       return
     }
     if (boardLoading) return
-    const inBoard = Object.values(columnBidIds).some((list) => list.includes(deepLinkBidId))
-    if (!inBoard) {
+    const inPlacement = Object.values(columnBidIds).some((list) => list.includes(deepLinkBidId))
+    const visibleOnBoard = inPlacement && visibleBidIdSet.has(deepLinkBidId)
+    if (!visibleOnBoard) {
       onDeepLinkHandled?.()
       return
     }
@@ -441,7 +460,7 @@ export function BidsWorkingBoard({
       workingDeepLinkHighlightTimeoutRef.current = null
     }, 2500)
     onDeepLinkHandled?.()
-  }, [deepLinkBidId, boardLoading, columnBidIds, onDeepLinkHandled])
+  }, [deepLinkBidId, boardLoading, columnBidIds, onDeepLinkHandled, visibleBidIdSet])
 
   useEffect(() => {
     return () => {
@@ -760,33 +779,38 @@ export function BidsWorkingBoard({
                 ) : null}
               </div>
               <ColumnDropZone columnId={col.id}>
-                <SortableContext items={columnBidIds[col.id] ?? []} strategy={verticalListSortingStrategy}>
-                  {(columnBidIds[col.id] ?? []).map((bidId) => {
-                    const bid = bidMap.get(bidId)
-                    if (!bid) return null
-                    return (
-                      <SortableWorkingCard
-                        key={bidId}
-                        bid={bid}
-                        expanded={expandedBidId === bidId}
-                        onToggleExpand={() => setExpandedBidId((cur) => (cur === bidId ? null : bidId))}
-                        onOpenPreviewBid={onOpenPreviewBid}
-                        isDeepLinkHighlight={bid.id === deepLinkHighlightBidId}
-                        deepLinkHighlightGen={deepLinkHighlightGen}
-                        notesContent={
-                          <BidBoardNotesPanel
-                            bid={bid}
-                            notesTab={notesTab}
-                            onNotesTabChange={setNotesTab}
-                            onLoadError={onLoadError}
-                            onMutated={onMutatedNotes}
-                            onMutatedCustomer={onMutatedNotesCustomer}
-                            idPrefix="working-board"
-                          />
-                        }
-                      />
-                    )
-                  })}
+                <SortableContext
+                  items={(columnBidIds[col.id] ?? []).filter((id) => visibleBidIdSet.has(id))}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {(columnBidIds[col.id] ?? [])
+                    .filter((id) => visibleBidIdSet.has(id))
+                    .map((bidId) => {
+                      const bid = bidMap.get(bidId)
+                      if (!bid) return null
+                      return (
+                        <SortableWorkingCard
+                          key={bidId}
+                          bid={bid}
+                          expanded={expandedBidId === bidId}
+                          onToggleExpand={() => setExpandedBidId((cur) => (cur === bidId ? null : bidId))}
+                          onOpenPreviewBid={onOpenPreviewBid}
+                          isDeepLinkHighlight={bid.id === deepLinkHighlightBidId}
+                          deepLinkHighlightGen={deepLinkHighlightGen}
+                          notesContent={
+                            <BidBoardNotesPanel
+                              bid={bid}
+                              notesTab={notesTab}
+                              onNotesTabChange={setNotesTab}
+                              onLoadError={onLoadError}
+                              onMutated={onMutatedNotes}
+                              onMutatedCustomer={onMutatedNotesCustomer}
+                              idPrefix="working-board"
+                            />
+                          }
+                        />
+                      )
+                    })}
                 </SortableContext>
               </ColumnDropZone>
               {idx < sortedCols.length - 1 ? (
@@ -841,7 +865,7 @@ export function BidsWorkingBoard({
         </div>
       )}
 
-      {assignedBids.length === 0 ? (
+      {eligibleAssigned.length === 0 ? (
         <p style={{ color: '#6b7280', fontSize: '0.875rem', marginTop: '0.75rem' }}>
           No bids assign you as Estimator or Account Man for this service type.
         </p>

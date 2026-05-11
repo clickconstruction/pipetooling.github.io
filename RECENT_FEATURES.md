@@ -7,19 +7,55 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-05-15
+last_updated: 2026-05-11
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.506+ (reverse chronological)"
+version_range: "v2.518+ (reverse chronological)"
 
 key_sections:
+  - name: "Latest Version (v2.518)"
+    line: ~1747
+    description: "Bids — Working-board archive only from Edit bid (Archive from board footer; confirm above modal)"
+  - name: "Latest Version (v2.517)"
+    line: ~1759
+    description: "Bids — working_board_archived_* schema + Archived modal + eligible/visible placements"
+  - name: "Latest Version (v2.516)"
+    line: ~1773
+    description: "Jobs Stages — Combine / Separate modal (toolbar right; migrate + split_job_ledger RPCs)"
+  - name: "Latest Version (v2.515)"
+    line: ~1783
+    description: "Jobs Migrate and Delete — merge source revenue into target (migrate_job_ledger_costs_and_delete); JobFormModal copy + toast"
+  - name: "Latest Version (v2.514)"
+    line: ~1746
+    description: "People Payroll tab label; Draft Payroll Cash Due, print summary + ISO week, hours breakdown modal, dev delete, grey View"
+  - name: "Latest Version (v2.513)"
+    line: ~1759
+    description: "Quickfill jump row — compact mark subline (e.g. 2d Name); Difficult people — minimal section chrome"
+  - name: "Latest Version (v2.512)"
+    line: ~1715
+    description: "Quickfill Office Arriving — per-day checks table + Realtime; Office Leaving JSON unchanged; app_settings UPDATE leaving key only"
+  - name: "Latest Version (v2.511)"
+    line: ~1715
+    description: "Quickfill Difficult people — daily_checks per company work_date; checkbox UI; items template dev-only UPDATE"
+  - name: "Latest Version (v2.510)"
+    line: ~1727
+    description: "Quickfill Difficult people initial items table (completed_* superseded in v2.511)"
+  - name: "Latest Version (v2.509)"
+    line: ~1717
+    description: "Schedule Dispatch hub — fetchTeamMemberUserIdsForJobIds chunks jobs_ledger_team_members.in(job_id) (150/job batch) to avoid PostgREST 400 Bad Request URL limits"
+  - name: "Latest Version (v2.508)"
+    line: ~1720
+    description: "Quickfill People Hours (new) — shared 11-day mini calendar + pending counts; pendingWorkDateRange spans visible pills (PeopleHoursClockStripMiniCalendar)"
+  - name: "Latest Version (v2.507)"
+    line: ~1715
+    description: "Bids Bid Board — compareBidsForBidBoardDueDate (due date ascending, unmarked last, id tie-break); Win/Loss save — bids_submission_entries audit line + last_contact via outcomeChangeBidNote / insertOutcomeChangeBidNoteAfterSave"
   - name: "Latest Version (v2.506)"
-    line: ~1695
+    line: ~1715
     description: "Banking Mercury — shared Counterparty frequency modal (MercuryCounterpartyFrequencyModal, counterpartyFrequenciesAboveMin); Accounting + Drag Sort ledger headers"
   - name: "Latest Version (v2.505)"
-    line: ~1710
+    line: ~1727
     description: "Banking Accounting Rules — Name/Label column header sort (aria-sort, sortAccountingRulesForTable); AccountingRuleFormModal SearchableSelect + list_mercury_drag_sort_label_assignment_counts"
   - name: "Latest Version (v2.504)"
     line: ~1722
@@ -1342,6 +1378,18 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.518 — **Bids** — **Working-board archive** — single entry **Archive from board** in **[`BidFormModal`](src/components/bids/BidFormModal.tsx)** footer (next to **Delete bid**); visibility from **saved** **`editingBid`** only (**[`bidEligibleForWorkingBoardArchive`](src/lib/workingBoardArchiveEligibility.ts)**, **`canUserArchiveBidOnWorkingBoard`**); **`promptArchiveWorkingBoardBid`** confirm overlay **`z-index` 1005** above the form; removed **Archive** from **[`BidsWorkingBoard`](src/components/bids/BidsWorkingBoard.tsx)** cards, Bid Board row, Submission **unsent** table; **`archiveWorkingBoardBid`** merges **`editingBid`** after **`loadBids`** when the form stays open](#latest-updates-v2518)
+**New:** [v2.517 — **Bids** — **Unsent/Working** **archive** — **`bids.working_board_archived_at`** / **`_by`** (**`20260511015410`**); **Bid Board** toolbar **Archived** modal (**[`BidWorkingBoardArchivedModal.tsx`](src/components/bids/BidWorkingBoardArchivedModal.tsx)**) + **Un-archive**; **eligible** vs **visible** bids in **[`BidsWorkingBoard.tsx`](src/components/bids/BidsWorkingBoard.tsx)** preserves **placements** for archived rows; **Clock In** quick picks (**[`fetchWorkingBoardClockBidPicks.ts`](src/lib/fetchWorkingBoardClockBidPicks.ts)**) + inbox badge + Bid Board **Unsent / Working Bids** + Submission **unsent** omit archived; deep link toast when archived](#latest-updates-v2517)
+**New:** [v2.516 — **Jobs** **Stages** — **Combine / Separate** — **[`JobsCombineSeparateModal`](src/components/jobs/JobsCombineSeparateModal.tsx)** on the **right** of the Stages toolbar (after **Total by Name**; narrow **C / S**); **Combine** **`migrate_job_ledger_costs_and_delete`**; **Separate** **`split_job_ledger_fixtures_to_new_job`** (**`20260511012922`**) — **Working** source, **Specific Work** + optional **clock_sessions**, new HCP/name/address; limitations callout (**`Jobs.tsx`**)](#latest-updates-v2516)
+**New:** [v2.515 — **Jobs** **Migrate and Delete** — **`migrate_job_ledger_costs_and_delete`** adds **source `revenue`** to **target `revenue`** before **`DELETE` source `jobs_ledger`**: migration **[`20260511011751_migrate_job_ledger_merge_target_revenue.sql`](supabase/migrations/20260511011751_migrate_job_ledger_merge_target_revenue.sql)**; **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)** migrate dialog + success toast](#latest-updates-v2515)
+**New:** [v2.514 — **People → Payroll** tab (**UI** rename from Pay History; **`?tab=pay_stubs`** unchanged); **Draft Payroll** — **Cash Due** column (**hours × wage**); grey **View**; **Print** — **Period … (Week N)** (**ISO** week via **`ymdAddDays` + `isoWeekNumberFromGregorianYmd`**), **`N of M paid · Total · Left`** summary (**left-aligned**); clickable **Hours** → **`DraftPayrollPersonHoursBreakdownModal`** (**`fetchDraftPayrollPersonBreakdown`**, **`payReportAssignmentsBreakdown.ts`**); **dev** trash beside **View** (ledger-parity delete confirm **`Z_PEOPLE_PAY_MODAL_NESTED`**)](#latest-updates-v2514)
+**New:** [v2.513 — **Quickfill** — section **jump** buttons: one **muted** subline (**compact** relative time + **marker** **name**, e.g. **`2d Taunya`**; button **`title`** / **`aria-label`** keep **Last marked … ago … by …**); **Difficult** **people** — removed intro, **Today's checklist** heading, template/role hint, **Added** meta, **`created_user`** join (**[`Quickfill.tsx`](src/pages/Quickfill.tsx)**, **`QuickfillDifficultPeopleSection.tsx`**)](#latest-updates-v2513)
+**New:** [v2.512 — **Quickfill** **Office Arriving** — **`quickfill_office_arriving_daily_checks`** per company **`work_date`**; **`QuickfillOfficeSection`** **arriving** **INSERT**/**DELETE** + **Realtime**; **Office Leaving** still **`quickfill_office_leaving_done`**; **`app_settings` UPDATE** staff policy **leaving** key only (**`20260510215603`**)](#latest-updates-v2512)
+**New:** [v2.511 — **Quickfill** **Difficult people** — **`quickfill_difficult_people_daily_checks`** per company **`work_date`**; Office-style **checkboxes**; **`denverCalendarDayKey`** + **`visibilitychange`** reload; template **`quickfill_difficult_people_items`** drops **`completed_*`** (**`20260510215023`**)](#latest-updates-v2511)
+**New:** [v2.510 — **Quickfill** **Difficult people** — **`quickfill_difficult_people_items`** (**[`QuickfillDifficultPeopleSection.tsx`](src/components/quickfill/QuickfillDifficultPeopleSection.tsx)**): dev **add** / **edit** / **delete**; **master_technician** / **assistant** **read** + **mark done**; **`Quickfill.tsx`** **`section_id`** **`difficult-people`** hidden from **estimator** ( **`sectionWouldRenderOnPage`** ); **RLS** + **`BEFORE UPDATE`** trigger **`quickfill_difficult_people_items_non_dev_update_guard`** (**`MIGRATIONS.md`** **`20260510213434`**)](#latest-updates-v2510)
+**New:** [v2.509 — **Schedule Dispatch** **hub** — **`fetchTeamMemberUserIdsForJobIds`** (**[`scheduleDispatchHub.ts`](src/lib/scheduleDispatchHub.ts)**): sequential **`jobs_ledger_team_members`** queries with **`in('job_id', …)`** limited to **`JOBS_LEDGER_TEAM_MEMBERS_JOB_ID_CHUNK`** (**150**) per request — avoids PostgREST **400 Bad Request** on large **`jobs_ledger`** hubs. **`ScheduleDispatchHubPage`** roster merge unchanged](#latest-updates-v2509)
+**New:** [v2.508 — **Quickfill** — **People Hours (new)** — **11-day mini calendar** + **unapproved counts** row (parity with **People → Hours** strip); shared **[`PeopleHoursClockStripMiniCalendar.tsx`](src/components/people/PeopleHoursClockStripMiniCalendar.tsx)**; **`pendingWorkDateRange`** spans all **11** visible pills — **[`QuickfillPeopleHoursNewSection.tsx`](src/components/quickfill/QuickfillPeopleHoursNewSection.tsx)**, **[`PeopleHoursDashboardClockStrip.tsx`](src/components/people/PeopleHoursDashboardClockStrip.tsx)**](#latest-updates-v2508)
+**New:** [v2.507 — **Bids** — **Bid Board** — **`compareBidsForBidBoardDueDate`**: **`bid_due_date`** ascending, **no due date** (unmarked) **after** dated rows (**`id`** tie-break); **Win/Loss** change on **Save** / **Save and start Counts** → **`bids_submission_entries`** audit **`notes`** + **`bids.last_contact`** (**`Changed by`** — **`profileName`** or session email fallback; optional **Loss reason** when **Lost**) — **`outcomeChangeBidNote.ts`**, **`insertOutcomeChangeBidNoteAfterSave`** in **[`Bids.tsx`](src/pages/Bids.tsx)** (before optional **Confirm bid sent** note)](#latest-updates-v2507)
 **New:** [v2.506 — **Banking** **Mercury** — **Counterparty frequency** modal — shared **[`MercuryCounterpartyFrequencyModal.tsx`](src/components/banking/MercuryCounterpartyFrequencyModal.tsx)** (**`counterpartyFrequenciesAboveMin`** in **[`bankingMercuryCounterpartyFrequency.ts`](src/lib/bankingMercuryCounterpartyFrequency.ts)** — **3+** transactions per trimmed name in the current ledger view, sorted by count **desc**); **Accounting** **Sorting Ledger** + **Drag Sort** **Counterparty** header (**[`BankingMercuryDragSortLedgerThead`](src/components/banking/bankingMercuryDragSortLedger.tsx)** **`onCounterpartyHeaderClick`**) — **[`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx)**, **[`BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx)**](#latest-updates-v2506)
 **New:** [v2.505 — **Banking** **Mercury** **Accounting** — **Rules** **Name** / **Label** headers toggle **asc**/**desc** sort (**`aria-sort`**, **`sortAccountingRulesForTable`**); **New/Edit rule** **`SearchableSelect`** + **`list_mercury_drag_sort_label_assignment_counts`** (**`MIGRATIONS.md`** **`20260505231245`**) — **[`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx)**, **[`AccountingRuleFormModal.tsx`](src/components/banking/AccountingRuleFormModal.tsx)**, **[`accountingRulesTableSearch.ts`](src/lib/accountingRulesTableSearch.ts)**](#latest-updates-v2505)
 **New:** [v2.504 — **Banking** **Mercury** **Accounting** — **Rules** — **Search rules…** filters the rules **table** by **Name** or **Label** (in-memory) — **[`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx)**, **[`accountingRulesTableSearch.ts`](src/lib/accountingRulesTableSearch.ts)**](#latest-updates-v2504)
@@ -1694,6 +1742,143 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.518)
+
+**Date**: 2026-05-11
+
+### **Bids** — **Working-board archive** in **Edit bid** only
+
+- **[`BidFormModal.tsx`](src/components/bids/BidFormModal.tsx)** — **`Archive from board`** outline button beside **Delete bid** when the parent passes **`showArchiveFromUnsentWorking`** (from **saved** **`editingBid`**, not draft fields), **`onRequestArchiveFromUnsentWorking`**, and optional busy flag; disabled while **`archiveFromUnsentWorkingBusy`** or **`savingBid`**.
+- **[`Bids.tsx`](src/pages/Bids.tsx)** — Wires **`promptArchiveWorkingBoardBid`** from the footer; working-board **confirm** overlay **`z-index` 1005** so it stacks above the modal (**~1000**). **`archiveWorkingBoardBid`** after success runs **`loadBids`** and updates **`setEditingBid`** when the open row matches so **`working_board_archived_at`** is reflected without a misleading **Archive** button.
+- **Removed** — Per-card **Archive** on **[`BidsWorkingBoard.tsx`](src/components/bids/BidsWorkingBoard.tsx)**; dev **Archive** on Bid Board table row and Submission **unsent** table (single entry point is **Edit bid**).
+
+---
+
+## Latest Updates (v2.517)
+
+**Date**: 2026-05-11
+
+### **Bids** — **Unsent/Working** archive (schema + lists)
+
+- **Schema** — **`bids.working_board_archived_at`**, **`working_board_archived_by`**; trigger clears both when the bid is **sent** or **outcome** is terminal (**[`20260511015410_bids_working_board_archive.sql`](supabase/migrations/20260511015410_bids_working_board_archive.sql)**).
+- **[`Bids.tsx`](src/pages/Bids.tsx)** — **Bid Board** search row: **Archived** (count) opens modal; **eligible** vs **visible** working bids; archived omitted from **Unsent / Working Bids**, **Submission** unsent list, **Bid Costs** unsent, **working** tab inbox tally; working URL deep link shows restore hint when archived.
+- **[`BidsWorkingBoard.tsx`](src/components/bids/BidsWorkingBoard.tsx)** — **eligibleBids** drive orphan/placement map, **visibleBids** drive rendered cards so placements are not deleted for archived rows. *(Per-card **Archive** removed in **v2.518** — use **Edit bid → Archive from board**.)*
+- **[`BidWorkingBoardArchivedModal.tsx`](src/components/bids/BidWorkingBoardArchivedModal.tsx)** — list + column title + **Un-archive**.
+- **[`fetchWorkingBoardClockBidPicks.ts`](src/lib/fetchWorkingBoardClockBidPicks.ts)** — excludes archived bids from **Working** column quick picks.
+
+---
+
+## Latest Updates (v2.516)
+
+**Date**: 2026-05-11
+
+### **Jobs** — **Stages** — **Combine / Separate** jobs
+
+- **[`Jobs.tsx`](src/pages/Jobs.tsx)** — Stages toolbar (**dev**, **master_technician**, **assistant**): **Combine / Separate** sits at the **right end** of the top toolbar row (**after** **Total by Name** and the other icon controls; **`useMatchMedia`** narrow label **C / S**). Opens **[`JobsCombineSeparateModal.tsx`](src/components/jobs/JobsCombineSeparateModal.tsx)** (`z-index` **1050**, above **Edit Job**). **Combine** — search **source** (removed) and **target** (kept); summary **Parts-style** / **Billed materials** / **Team labor**; confirm calls **`migrate_job_ledger_costs_and_delete`** (same RPC + guards as **Edit Job → Migrate and Delete**). **Separate** — search **Working** source; checkboxes for **Specific Work** (`jobs_ledger_fixtures`); optional **Clock sessions** repoint; new **HCP** / name / address; amber **Limitations** (v1: no auto-split tally / Mercury / supply % / crew JSON / schedule / reports); submit **`split_job_ledger_fixtures_to_new_job`** ([**`20260511012922_split_job_ledger_fixtures_to_new_job.sql`](supabase/migrations/20260511012922_split_job_ledger_fixtures_to_new_job.sql)**). Success: serialized **`loadJobs`** + toast; **Edit new job** follow-up uses **`JobFormModalContext`**.
+
+---
+
+## Latest Updates (v2.515)
+
+**Date**: 2026-05-11
+
+### **Jobs** — **Migrate and Delete** — merge **Job total** on target
+
+- **`migrate_job_ledger_costs_and_delete`** — After repointing child rows, **`UPDATE`** target **`jobs_ledger.revenue`** **`+=`** source **`revenue`** (both **`COALESCE`** to 0), then **`DELETE`** source job. Same transaction, auth, and billing guards as before ([**`20260511011751_migrate_job_ledger_merge_target_revenue.sql`](supabase/migrations/20260511011751_migrate_job_ledger_merge_target_revenue.sql)** replaces function).
+- **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)** — Migrate dialog explains **Job total (revenue)** is added to the target; success toast mentions **job total** and verifying **Specific Work** on the target.
+
+---
+
+## Latest Updates (v2.514)
+
+**Date**: 2026-05-10
+
+### People **Payroll** tab + **Draft Payroll** polish
+
+- **`People.tsx`** — Tab strip label **Payroll** (replaces **Pay History**). Internal route **`?tab=pay_stubs`** unchanged.
+- **[`DraftPayrollModal.tsx`](src/components/pay/DraftPayrollModal.tsx)** — Grid column **Cash Due** (**`hours × people_pay_config.hourly_wage`**, same as modal **`getCostForPersonDate`**); row **View** uses neutral grey (**`#6b7280`**) fill; **dev** **`PayStubDeleteIcon`** beside **View** opens shared **`payStubDeleteConfirm`** (**[`People.tsx`](src/pages/People.tsx)** **`Z_PEOPLE_PAY_MODAL_NESTED`** so confirm stacks above the modal).
+- **Print** — **`buildDraftPayrollPrintHtml`**: **`<title>`** / period line **`YYYY-MM-DD – YYYY-MM-DD (Week N)`** (Thursday midpoint ISO week — **`dateUtils`**); body **`Cash Due`** column; **`N of M paid · Total: $… | Left: $…`** roster summary (**same math as modal banner**, left-aligned **`.summary`**).
+- **Hours drill-down** — Non-zero **Hours** cells open **[`DraftPayrollPersonHoursBreakdownModal.tsx`](src/components/pay/DraftPayrollPersonHoursBreakdownModal.tsx)** (per calendar day: hours, dollars, crew job/bid split text). Data **`fetchDraftPayrollPersonBreakdown`** (**[`draftPayrollPersonBreakdown.ts`](src/lib/draftPayrollPersonBreakdown.ts)**) + **`withSupabaseRetry`**; breakdown composition **`computePayReportAssignmentsBreakdown`** (**[`payReportAssignmentsBreakdown.ts`](src/lib/payReportAssignmentsBreakdown.ts)** — extracted from **`People.tsx`** for parity with pay stub generation).
+
+---
+
+## Latest Updates (v2.513)
+
+**Date**: 2026-05-10
+
+### **Quickfill** — jump buttons + **Difficult people** chrome
+
+- **[`Quickfill.tsx`](src/pages/Quickfill.tsx)** — under the page **`h1`**, each section **jump** button shows a **single** gray subline: **`formatJumpMarkSublineRelative`** strips trailing **` ago`** from **`formatRelativeTime`**, then **`{compact} {marked_by_name}`** (no visible **`by`**). **`title`** and **`aria-label`** on the button still use **`Last marked {relative} by {name}`** (or **`Never marked`**) for hover and screen readers.
+- **[`QuickfillDifficultPeopleSection.tsx`](src/components/quickfill/QuickfillDifficultPeopleSection.tsx)** — removed intro paragraph (**internal staff / company calendar**), **Today's checklist** **`h3`**, gray **template / checkbox roles** line, and per-row **Added … · …** line; **`select`** no longer joins **`created_user`**.
+
+---
+
+## Latest Updates (v2.512)
+
+**Date**: 2026-05-10
+
+### **Quickfill** — **Office Arriving** — daily reset (company calendar)
+
+- **`20260510215603_quickfill_office_arriving_daily_checks.sql`**: **`quickfill_office_arriving_daily_checks`** (**`item_id`**, **`work_date`**, **`checked_at`**, **`checked_by`**); staff **RLS** mirrors **Difficult people** daily checks; **Realtime** publication. **`app_settings`**: **`authenticated_update_quickfill_office_leaving_done`** — **authenticated** may **UPDATE** only **`quickfill_office_leaving_done`** (arriving **done** JSON legacy / unused by UI).
+- **[`QuickfillOfficeSection.tsx`](src/components/quickfill/QuickfillOfficeSection.tsx)** — **Office Arriving**: load today’s checks, **visibilitychange** refetch, **INSERT**/**DELETE** toggles, **Remove** clears **all** **`work_date`** rows for that **`item_id`**; **Office Leaving** unchanged (**JSON** **`persistDone`**).
+
+---
+
+## Latest Updates (v2.511)
+
+**Date**: 2026-05-10
+
+### **Quickfill** — **Difficult people** — daily checkbox (company calendar)
+
+- **`20260510215023_quickfill_difficult_people_daily_checks.sql`**: **`quickfill_difficult_people_daily_checks`** (**`item_id`**, **`work_date`**, **`checked_at`**, **`checked_by`**); **CASCADE** delete with items. **Removes** **`completed_at`/`completed_by`**, completion trigger, and staff **UPDATE** on **`quickfill_difficult_people_items`** (**template** edits **dev-only**).
+- **[`QuickfillDifficultPeopleSection.tsx`](src/components/quickfill/QuickfillDifficultPeopleSection.tsx)** — **`denverCalendarDayKey`**: check/uncheck **INSERT**/**DELETE** for **today**; section metric = unchecked count **today**; **`visibilitychange`** refetch.
+
+---
+
+## Latest Updates (v2.510)
+
+**Date**: 2026-05-10
+
+### **Quickfill** — **Difficult people** — internal follow-up list (initial)
+
+- **`quickfill_difficult_people_items`** (**[`20260510213434_quickfill_difficult_people_items.sql`](supabase/migrations/20260510213434_quickfill_difficult_people_items.sql)**): first shipped with **`completed_*`** and a non-dev completion trigger — **superseded** by **v2.511** / **`20260510215023`**.
+
+---
+
+## Latest Updates (v2.509)
+
+**Date**: 2026-05-09
+
+### **Schedule Dispatch** — **hub** roster — chunked **`jobs_ledger_team_members`**
+
+- **`fetchTeamMemberUserIdsForJobIds`** in **[`scheduleDispatchHub.ts`](src/lib/scheduleDispatchHub.ts)** — **`JOBS_LEDGER_TEAM_MEMBERS_JOB_ID_CHUNK`** = **150**: sequential **`withSupabaseRetry`** **`select user_id`** + **`.in('job_id', slice)`** across all unique ids; **`user_id`** **dedupe** unchanged. Prevents intermittent **Bad Request** on very large **`jobs_ledger`** hubs (PostgREST **GET** **`in`** URL limits). **`ScheduleDispatchHubPage`** roster merge (**team** + **`fetchUsersTabUserIdsForScheduleDispatchHub`**) unchanged.
+
+---
+
+## Latest Updates (v2.508)
+
+**Date**: 2026-05-08
+
+### **Quickfill** — **People Hours (new)** — **11-day mini calendar** + aligned **pending fetch**
+
+- **[`PeopleHoursClockStripMiniCalendar.tsx`](src/components/people/PeopleHoursClockStripMiniCalendar.tsx)** — Shared **Jump to day in last 11 days** pills + row of **unapproved session counts** (same UX as **People → Hours → Currently clocked in**). Exports **`buildPeopleHoursClockStripMiniCalendarYmds`**, **`pendingWorkDateRangeFromMiniCalendarYmds`**.
+- **[`PeopleHoursDashboardClockStrip.tsx`](src/components/people/PeopleHoursDashboardClockStrip.tsx)** — Refactor: renders **`PeopleHoursClockStripMiniCalendar`** (behavior unchanged).
+- **[`QuickfillPeopleHoursNewSection.tsx`](src/components/quickfill/QuickfillPeopleHoursNewSection.tsx)** — Mini calendar **above** **Previous day** / **Next day** / **Today**; **`useNarrowViewport640`** for horizontal scroll on small viewports; **`pendingWorkDateRange`** = min/max of the **11** pill dates (replacing **`enCaWeekRangeContainingYmd`** for **`useDashboardMyTeamSectionState`**) so pill counts stay accurate. Pending breakdown empty copy references the mini-calendar range.
+
+---
+
+## Latest Updates (v2.507)
+
+**Date**: 2026-05-16
+
+### **Bids** — **Bid Board** row order + **Win/Loss** change audit notes
+
+- **[`compareBidsForBidBoardDueDate.ts`](src/lib/compareBidsForBidBoardDueDate.ts)** — Within each Bid Board collapsible section, bids sort by **`bid_due_date`** ascending (earliest first). Bids with **no due date** (unmarked) sort **after** all dated bids. **`id`** tie-break when dates match or both absent. **`Bids.tsx`** applies this to **`bidBoardBuckets`** after filters.
+- **[`outcomeChangeBidNote.ts`](src/lib/outcomeChangeBidNote.ts)** — Builds the **`notes`** body for programmatic outcome rows: readable **from → to** (**`formatOutcomeForBidNote`**), **Changed by** (**`resolveActorDisplayName`** from **`profileName`** or **`user.email`**), optional **Loss reason** line when outcome is **Lost**.
+- **[`Bids.tsx`](src/pages/Bids.tsx)** — After successful **`saveBid`** / **`saveBidAndOpenCounts`**, **`insertOutcomeChangeBidNoteAfterSave`** compares **`normalizedOutcomePayload(previous)` vs `normalizedOutcomePayload(saved)`**. When they differ (**new bid** vs first saved **`outcome`** included), **`withSupabaseRetry`** inserts **`bids_submission_entries`** (**`notes`**, **`occurred_at`**, **`contact_method`** **`NULL`**) and PATCHes **`bids.last_contact`** to **`occurred_at`**. Runs **before** the **Confirm bid sent** modal’s optional bid note so the confirm path can supersede **`last_contact`**.
+
 ---
 
 ## Latest Updates (v2.506)
@@ -2330,7 +2515,7 @@ when_to_read:
 - **Placement** — **[`PeopleHoursDashboardClockStrip.tsx`](src/components/people/PeopleHoursDashboardClockStrip.tsx)** renders above **Pending clock sessions** on **People → Hours** (**[`People.tsx`](src/pages/People.tsx)**). It wraps **`DashboardTeamActiveClockStrip`** with **`useDashboardMyTeamSectionState`** so parity with Dashboard **currently clocked in** / **My Time** tooling (**[**`Dashboard.tsx`](src/pages/Dashboard.tsx)** uses the same scope helpers module).
 - **Scope** — **Everyone** / **Organization** (**`stripScopeEligible`**: dev / master_technician / assistant) persists in **`dashboard_clock_strip_scope`** via **`readClockStripScopeFromStorage`** + **`dashboardClockStripScopeStorage.ts`** (**shared extraction** from Dashboard so one **localStorage** key applies to both surfaces).
 - **Strip day** — **`selectedYmd`** (**`denverCalendarDayKey`**) is passed into the hook as **`stripWorkDateYmd`** and into the strip as **`clockStripWorkDateYmd`**. **`pendingWorkDateRange`**, **`sessionsForPeopleStrip`**, and **`hideCurrentlyInTable`** keep **currently open** / **today-summary** semantics aligned with Dashboard only when the selected day equals **today** in company calendar mode; browsing another day shows that day’s **closed-session** snapshot without implying live clocks.
-- **Day navigation** — **Previous day \| Next day \| Today** (narrow **≤640px** stacks like **Quickfill** **People Hours (new)**). Helpers **`shiftWorkDateYmd`** and **`enCaWeekRangeContainingYmd`** live in **`peopleHoursClockStripSelectedDay.ts`** and are imported by **[`QuickfillPeopleHoursNewSection.tsx`](src/components/quickfill/QuickfillPeopleHoursNewSection.tsx)** (**no duplicated date math**).
+- **Day navigation** — **Previous day \| Next day \| Today** (narrow **≤640px** stacks like **Quickfill** **People Hours (new)**). **`shiftWorkDateYmd`** in **`peopleHoursClockStripSelectedDay.ts`**. (**Quickfill** later added the shared **11-day** mini strip + **`pendingWorkDateRange`** spanning those pills — **v2.508**.)
 - **Reload Hours grids** — Optional **`onSessionsChanged`** notifies **`People.tsx`** (**`loadAllClockSessionsRef`**) after strip-driven changes (e.g. approve flow, salary sync hooks, **NCNS** paths) so **Pending / Approved Sessions** lists stay current.
 - **Superintendent** — **`showStripSubjectMyTimeEditor`** extends **My Time** / **Edit time** eligibility on the strip to superintendent where the wrapping component allows (scope toggles remain staff-only).
 
@@ -3367,7 +3552,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 ### **Bids** — **Unsent/Working** board, **Clock In** quick picks, labels, tab layout
 
 - **DB** — [`20260422001732_bid_working_board_working_column.sql`](supabase/migrations/20260422001732_bid_working_board_working_column.sql): **`bid_working_board_columns.system_key`** may be **`working`**; backfill inserts **Working** at position **1** between **Inbox** and **Ready** (safe position bump + renumber). See **`MIGRATIONS.md`**.
-- **Kanban** — [`BidsWorkingBoard.tsx`](src/components/bids/BidsWorkingBoard.tsx): bootstrap **Inbox (0)**, **Working (1)**, **Ready for Submission (2)**; **Working** column shows muted hint **shows on clock** (tooltip explains Clock In quick picks).
+- **Kanban** — [`BidsWorkingBoard.tsx`](src/components/bids/BidsWorkingBoard.tsx): bootstrap **Inbox (0)**, **Working (1)**, **Ready for Submission (2)**; **Working** column shows muted hint **shows on clock** (tooltip explains Clock In quick picks). **Working-board archive** (soft-hide): use **Edit bid → Archive from board** (**v2.518**).
 - **Clock In** — [`fetchWorkingBoardClockBidPicks.ts`](src/lib/fetchWorkingBoardClockBidPicks.ts) + [`ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx): bids placed in the user’s **Working** column load as green quick-pick buttons **after** Dispatch schedule jobs (also **Update Focus** / **clock-out review** modals); **“no quick picks…”** toast counts Working bids.
 - **Bid Board** — First collapsible section label **Unsent / Working Bids** (**`BID_BOARD_UNSENT_SECTION_LABEL`** in [`Bids.tsx`](src/pages/Bids.tsx)); same label on **Submission & Followup** and dev **Bid Costs** unsent section.
 - **Tabs** — Bids **Working** tab button text **`Unsent/Working`** (**`BIDS_WORKING_TAB_LABEL`**); inbox count badge offset adjusted (**`top`/`right`**). Center tab strip: **Counts … Cover Letter** **|** **Submission & Followup** **|** **RFI …** (superintendent: still **Cost Estimate | RFI** with one separator).
@@ -3635,7 +3820,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 
 **Date**: 2026-04-21
 
-### **People** — **Pay History** — **Additional** — **prevailing wage** description UX
+### **People** — **Payroll** — **Additional** — **prevailing wage** description UX
 
 - **Behavior**: New prevailing-wage top-up rows store a **human-readable** **`description`** only (for example `Prevailing top-up YYYY-MM-DD: $…/hr − $…/hr`). **`source_clock_session_id`** links the line to the **clock session** and enforces **one row per stub per session** (migration **[`20260420051645_pay_stub_additional_lines_source_clock_session.sql`](supabase/migrations/20260420051645_pay_stub_additional_lines_source_clock_session.sql)**). The app **no longer** prefixes **`[pw:<uuid>] `** in **`description`** for dedup.
 - **Legacy**: Older rows may still have that prefix. **[`stripPrevailingWageTag`](src/lib/payStubPrevailingWageLine.ts)** removes it for the **Additional** modal (**`LineEditor`**, target line **`<select>`**, **Change Line to hit Target** saves) and for itemized **Additional** lines in **pay stub HTML** (**[`buildPayStubHtml`](src/pages/People.tsx)**). **[`parsePrevailingSessionId`](src/lib/payStubPrevailingWageLine.ts)** still reads the tag when present so **`existingLineForSession`** keeps working until a row is re-saved without the prefix.
@@ -3855,7 +4040,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 
 **Date**: 2026-04-17
 
-### **People** — **Pay History**: **Generate Custom Pay Report** modal; full-width ledger **Search**
+### **People** — **Payroll**: **Generate Custom Pay Report** modal; full-width ledger **Search**
 
 - **[`People.tsx`](src/pages/People.tsx)** — Toolbar row: **Generate Custom Pay Report** opens **[`CustomPayReportsModal`](src/components/pay/CustomPayReportsModal.tsx)** (bulk period + per-person status; **View** on stubs); **Draft Payroll** remains on the right. Ledger **Search** is full width with a helper line under **Ledger** (filtered unpaid count + balance sum). Empty ledger copy points users to **Generate Custom Pay Report** and **Draft Payroll** when no stubs match.
 
@@ -4813,7 +4998,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 
 **Date**: 2026-04-08
 
-### People — Pay History: Draft Payroll, crew data, employee credits, Record payment
+### People — Payroll: Draft Payroll, crew data, employee credits, Record payment
 
 - **Draft Payroll**: Opening **Draft Payroll** seeds the pay period with the **prior** Sunday–Saturday week (**`en-CA`**) via **`getPriorWeekPayStubRangeEnCa()`** in **[`People.tsx`](src/pages/People.tsx)**.
 - **Crew data for review**: While Draft Payroll is open, **`mergeCrewJobsForDateRange`** loads **`people_crew_jobs`** / **`people_crew_bids`** for that period and merges into **`crewJobsByDatePerson`**; **`draftPayrollCrewMergeFetchIdRef`** ignores stale async results.
@@ -5715,7 +5900,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 
 **Date**: 2026-03-29
 
-### People — Pay History (Ledger balance summary)
+### People — Payroll (Ledger balance summary)
 
 - Under **Ledger**, a line shows **N open** (stubs not fully paid vs Net Pay) and **total remaining** (sum of **Balance** for visible rows). **Search** filters both the table and the summary. [`src/pages/People.tsx`](src/pages/People.tsx) (`ledgerOpenBalanceSummary`).
 
@@ -5725,9 +5910,9 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 
 **Date**: 2026-03-29
 
-### People — Pay History (copy: Draft Payroll)
+### People — Payroll (copy: Draft Payroll)
 
-- Pay History → **Generate Pay Reports**: the bulk-period button and modal title are labeled **Draft Payroll** instead of **Run Payroll**. Internal state renamed `draftPayrollModalOpen` / `setDraftPayrollModalOpen` in [`src/pages/People.tsx`](src/pages/People.tsx). Behavior unchanged.
+- **Payroll** tab → **Generate Pay Reports**: the bulk-period button and modal title are labeled **Draft Payroll** instead of **Run Payroll**. Internal state renamed `draftPayrollModalOpen` / `setDraftPayrollModalOpen` in [`src/pages/People.tsx`](src/pages/People.tsx). Behavior unchanged.
 
 ---
 
@@ -5735,7 +5920,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 
 **Date**: 2026-03-29
 
-### People — Pay History (Additional lines, Net Pay)
+### People — Payroll (Additional lines, Net Pay)
 
 - **`pay_stub_additional_lines`**: Per-stub lines with `quantity`, `rate`, and generated `line_total` (nearest cent). **Net Pay** = gross − sum(**Less**) + sum(**Additional**). Triggers keep installment totals ≤ Net Pay when Additional changes (`validate_pay_stub_payments_vs_net` / `pay_stub_payments_enforce_total_fn` updated). Optional **`source_clock_session_id`** links a line to a **clock session** (prevailing-wage top-up); **`description`** is human-readable (**v2.345** — no **`[pw:uuid]`** prefix on new rows; legacy prefix stripped in UI and pay report HTML via [`stripPrevailingWageTag`](src/lib/payStubPrevailingWageLine.ts)).
 - **Ledger**: Column **Additional** (clickable, including **$0.00**) opens **Additional** modal ([`src/components/pay/PayStubAdditionalModal.tsx`](src/components/pay/PayStubAdditionalModal.tsx)): add/remove lines, quick flat amount (qty 1), **target total Additional** with solve for **rate** or **quantity** on a chosen line, **prevailing wage** table from **approved** sessions in the stub period. Locked when installments fully cover Net Pay.
@@ -5751,7 +5936,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 
 **Date**: 2026-03-29
 
-### People — Pay History (Less, Net Pay, installments vs net)
+### People — Payroll (Less, Net Pay, installments vs net)
 
 - **`pay_stub_deductions`**: Manual or offset-linked lines; **Net Pay** = gross − sum(deductions). Triggers: deductions total ≤ gross; installments total ≤ Net Pay; backfill from **`person_offsets`** already tied to a stub.
 - **Ledger**: Columns **Less** (always show dollar amount, including **$0.00**; click opens **Less** modal) and **Net Pay**; **Balance** and **Record payment** use Net Pay; Run Payroll “fully paid” uses Net Pay.
@@ -5767,7 +5952,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 
 **Date**: 2026-03-28
 
-### People — Pay History (partial payments per stub)
+### People — Payroll (partial payments per stub)
 
 - **`pay_stub_payments`**: Multiple installments per pay stub (`amount`, `paid_at`, `memo`, `created_by`); trigger prevents total paid from exceeding **`gross_pay`** (within one cent). RLS matches **`pay_stub_days`**. Migration backfills one row per stub that already had **`paid_at`** set.
 - **Ledger**: Columns **Paid to date**, **Balance**, **Payment** status (Unpaid / Partial / Paid); **Record payment** modal (amount + sent date + optional note). Detail icon lists installments with optional **Delete** per row.
@@ -5798,11 +5983,11 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 
 **Date**: 2026-03-27
 
-### People — Pay History (ledger and bulk pay reports)
+### People — Payroll (ledger and bulk pay reports)
 
 - **Ledger**: **Search** field filters rows by person name (case-insensitive substring). **Actions**: **Print** opens the pay stub HTML flow; **View** was removed from the ledger row (preview remains via **View** in the **Generate Pay Reports** modal). **Dev delete**: red trash icon only (no filled button); confirm in dialog. Person name still links to **Annual Pay to Date** (year calendar: earned vs paid by day).
 - **Generate Pay Reports** (bulk): Header bar uses **Last week** / **Next week** for the pay period; compact date inputs; centered period controls and “N of M paid · Total” summary above the people table; optional payment memo on mark-paid; **`src/index.css`** tightens WebKit date control spacing for the modal.
-- **Pay History layout**: **Generate Pay Reports** control is aligned on the right in the section header row with the heading.
+- **Payroll tab layout**: **Generate Pay Reports** control is aligned on the right in the section header row with the heading.
 
 **Files**: [`src/pages/People.tsx`](src/pages/People.tsx), [`src/components/pay/PayStubDeleteIcon.tsx`](src/components/pay/PayStubDeleteIcon.tsx), [`src/index.css`](src/index.css)
 
@@ -7401,7 +7586,7 @@ All buttons use `display: inline-flex`, `alignItems: center`, `justifyContent: c
 
 ### Quickfill – Section Navigation and Feedback Loop
 
-- **Section nav buttons**: Row of buttons below the title (Hours, Billing Awaiting Payments, Unpriced Fixtures, Crew Jobs / Bids, Unreachable Prospects, Supply Houses, Jobs Billing). Click to scroll to section. Each button shows "Last marked: X" and "by [user]" below.
+- **Section nav buttons**: Row of buttons below the title (labels follow current **`SECTIONS`** order). Click to scroll to section. Each button shows one muted subline under the label: compact relative time and marker name (e.g. **`2d Taunya`**), or **Never marked**; the button **`title`** / **`aria-label`** include full **Last marked …** wording (**`RECENT_FEATURES`** **v2.513**).
 - **Mark up to date**: Below each section, a "Mark [section] up to date!" button. When clicked: section collapses for 12 hours, nav button turns green. Button hidden when section is collapsed; re-marking collapses the section.
 - **Color states**: Nav buttons green (marked within 12h), yellow (12–30h), red (>30h or never).
 - **Open now**: Collapsed sections show "Open now" button to expand immediately. Collapsed message: "Marked up to date at X by [user]. Expands automatically in Yh."

@@ -58,6 +58,7 @@ import { BidBoardNotesPanel, type BidBoardNotesTab } from '../components/bids/Bi
 import { BidBoardLostSummaryModal } from '../components/bids/BidBoardLostSummaryModal'
 import { GenerateUnitCostModal, GenerateUnitCostTriggerIcon } from '../components/bids/GenerateUnitCostModal'
 import { BidsWorkingBoard } from '../components/bids/BidsWorkingBoard'
+import { BidWorkingBoardArchivedModal } from '../components/bids/BidWorkingBoardArchivedModal'
 import { BidFormModal, type BidServiceTypeSwitchSibling } from '../components/bids/BidFormModal'
 import { BidSubmissionFollowupExpandableDetails } from '../components/bids/BidSubmissionFollowupExpandableDetails'
 import { SupplyHouseWebsiteLink } from '../components/SupplyHouseWebsiteLink'
@@ -70,6 +71,11 @@ import { buildBidBoardWeeklySentSummaries } from '../lib/bidBoardWeeklySentStats
 import { BidBoardWeeklySentSection } from '../components/bids/BidBoardWeeklySentSection'
 import { BidBoardWeeklyEstimatorLaborDevSection } from '../components/bids/BidBoardWeeklyEstimatorLaborDevSection'
 import { computeBidPricingRows, coverLetterTotalsFromPricingRows, type ComputeBidPricingRowsResult } from '../lib/bidPricingRowCalculations'
+import {
+  bidEligibleForWorkingBoardArchive,
+  canUserArchiveBidOnWorkingBoard,
+  isBidEligibleForWorkingBoard,
+} from '../lib/workingBoardArchiveEligibility'
 
 type GcBuilder = Database['public']['Tables']['bids_gc_builders']['Row']
 type Customer = Database['public']['Tables']['customers']['Row']
@@ -107,17 +113,6 @@ function submissionHiddenIdsForVersion(
     if (h.price_book_version_id === versionId) s.add(h.count_row_id)
   }
   return s
-}
-
-function isBidEligibleForWorkingBoard(bid: BidWithBuilder, userId: string | undefined): boolean {
-  if (!userId) return false
-  return (
-    (bid.estimator_id === userId || bid.account_manager_id === userId) &&
-    !bid.bid_date_sent &&
-    bid.outcome !== 'won' &&
-    bid.outcome !== 'lost' &&
-    bid.outcome !== 'started_or_complete'
-  )
 }
 
 function formatBidStaffDisplayName(u: EstimatorUser | EstimatorUser[] | null | undefined): string {
@@ -1733,6 +1728,14 @@ export default function Bids() {
   )
 
   const [workingBoardDeepLinkBidId, setWorkingBoardDeepLinkBidId] = useState<string | null>(null)
+  const [workingBoardArchivedModalOpen, setWorkingBoardArchivedModalOpen] = useState(false)
+  const [archiveWorkingBoardBusyBidId, setArchiveWorkingBoardBusyBidId] = useState<string | null>(null)
+  const [workingBoardArchiveConfirmBidId, setWorkingBoardArchiveConfirmBidId] = useState<string | null>(null)
+  const [workingBoardArchiveConfirmLabel, setWorkingBoardArchiveConfirmLabel] = useState<string | null>(null)
+  const closeWorkingBoardArchiveConfirm = useCallback(() => {
+    setWorkingBoardArchiveConfirmBidId(null)
+    setWorkingBoardArchiveConfirmLabel(null)
+  }, [])
   const workingBoardPendingDeepLinkBidIdRef = useRef<string | null>(null)
   const workingDeepLinkAppliedBidIdRef = useRef<string | null>(null)
   const onWorkingBoardDeepLinkHandled = useCallback(() => {
@@ -2486,6 +2489,68 @@ export default function Bids() {
     setLastContactFromEntries(latestByBid)
     return rows
   }
+
+  const archiveWorkingBoardBid = useCallback(
+    async (bidId: string) => {
+      if (!authUser?.id) return
+      const bid = bids.find((b) => b.id === bidId)
+      if (!canUserArchiveBidOnWorkingBoard(bid, authUser.id, myRole)) {
+        showToast('You can only archive unsent bids that are not won, lost, or started/complete.', 'error')
+        return
+      }
+      setArchiveWorkingBoardBusyBidId(bidId)
+      try {
+        await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('bids')
+              .update({
+                working_board_archived_at: new Date().toISOString(),
+                working_board_archived_by: authUser.id,
+              })
+              .eq('id', bidId),
+          'archive working board bid',
+        )
+        const rows = await loadBids()
+        showToast('Archived. Restore from Bid Board → Archived.', 'success')
+        setEditingBid((prev) => {
+          if (!prev || prev.id !== bidId) return prev
+          const fresh = rows.find((b) => b.id === bidId)
+          return fresh ?? prev
+        })
+      } catch (e: unknown) {
+        showToast(formatErrorMessage(e, 'Failed to archive bid'), 'error')
+      } finally {
+        setArchiveWorkingBoardBusyBidId(null)
+      }
+    },
+    [authUser?.id, bids, myRole, showToast, loadBids, setEditingBid],
+  )
+
+  const promptArchiveWorkingBoardBid = useCallback(
+    (bidId: string) => {
+      if (!authUser?.id) return
+      const bid = bids.find((b) => b.id === bidId)
+      if (!canUserArchiveBidOnWorkingBoard(bid, authUser.id, myRole)) {
+        showToast('You can only archive unsent bids that are not won, lost, or started/complete.', 'error')
+        return
+      }
+      const label =
+        (bid?.project_name?.trim() || bid?.bid_number?.trim() || '').trim() || 'this bid'
+      setWorkingBoardArchiveConfirmBidId(bidId)
+      setWorkingBoardArchiveConfirmLabel(label)
+    },
+    [authUser?.id, bids, myRole, showToast],
+  )
+
+  useEffect(() => {
+    if (!workingBoardArchiveConfirmBidId) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeWorkingBoardArchiveConfirm()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [workingBoardArchiveConfirmBidId, closeWorkingBoardArchiveConfirm])
 
   function getCustomerDisplay(c: Customer): string {
     if (c.address) return `${c.name} - ${c.address}`
@@ -7925,6 +7990,16 @@ export default function Bids() {
         return
       }
       workingBoardPendingDeepLinkBidIdRef.current = null
+      if (wBid.working_board_archived_at) {
+        if (workingDeepLinkAppliedBidIdRef.current !== bidId) {
+          showToast(
+            'This bid is archived on your Working board. Open Bid Board → Archived to restore.',
+            'info'
+          )
+          workingDeepLinkAppliedBidIdRef.current = bidId
+        }
+        return
+      }
       if (!isBidEligibleForWorkingBoard(wBid, authUser.id)) {
         if (workingDeepLinkAppliedBidIdRef.current !== bidId) {
           showToast(
@@ -8022,6 +8097,16 @@ export default function Bids() {
     const pendingWBid = bids.find((b) => b.id === pendingW)
     if (!pendingWBid) return
     workingBoardPendingDeepLinkBidIdRef.current = null
+    if (pendingWBid.working_board_archived_at) {
+      if (workingDeepLinkAppliedBidIdRef.current !== pendingW) {
+        showToast(
+          'This bid is archived on your Working board. Open Bid Board → Archived to restore.',
+          'info'
+        )
+        workingDeepLinkAppliedBidIdRef.current = pendingW
+      }
+      return
+    }
     if (!isBidEligibleForWorkingBoard(pendingWBid, authUser.id)) {
       if (workingDeepLinkAppliedBidIdRef.current !== pendingW) {
         showToast(
@@ -9658,17 +9743,25 @@ export default function Bids() {
     return bids.length
   }, [bids])
 
-  const workingBoardBids = useMemo(() => {
+  const workingBoardEligibleBids = useMemo(() => {
     if (!authUser?.id) return []
     return bids.filter(
       (b) =>
         (b.estimator_id === authUser.id || b.account_manager_id === authUser.id) &&
-        !b.bid_date_sent &&
-        b.outcome !== 'won' &&
-        b.outcome !== 'lost' &&
-        b.outcome !== 'started_or_complete'
+        bidEligibleForWorkingBoardArchive(b),
     )
   }, [bids, authUser?.id])
+
+  const workingBoardVisibleBids = useMemo(() => {
+    return workingBoardEligibleBids.filter((b) => !b.working_board_archived_at)
+  }, [workingBoardEligibleBids])
+
+  const workingBoardArchivedBids = useMemo(() => {
+    if (myRole === 'dev') {
+      return bids.filter((b) => bidEligibleForWorkingBoardArchive(b) && !!b.working_board_archived_at)
+    }
+    return workingBoardEligibleBids.filter((b) => !!b.working_board_archived_at)
+  }, [bids, myRole, workingBoardEligibleBids])
 
   const bidsPrimaryTabsContainerStyle: CSSProperties = narrowViewport640
     ? {
@@ -9708,7 +9801,7 @@ export default function Bids() {
 
   const BIDS_WORKING_TAB_LABEL = 'Unsent/Working'
 
-  const { inboxCount: workingInboxCount } = useWorkingBoardInboxCount(authUser?.id, workingBoardBids)
+  const { inboxCount: workingInboxCount } = useWorkingBoardInboxCount(authUser?.id, workingBoardVisibleBids)
   const workingInboxBadgeText = workingInboxCount > 9 ? '9+' : String(workingInboxCount)
   const bidsWorkingTabButton = (
     <span
@@ -9793,7 +9886,9 @@ export default function Bids() {
       </button>
     ) : null
 
-  const submissionUnsent = filteredBidsForSubmission.filter((b) => !b.bid_date_sent && b.outcome !== 'won' && b.outcome !== 'lost' && b.outcome !== 'started_or_complete')
+  const submissionUnsent = filteredBidsForSubmission.filter(
+    (b) => bidEligibleForWorkingBoardArchive(b) && !b.working_board_archived_at,
+  )
   const submissionPending = filteredBidsForSubmission.filter((b) => b.bid_date_sent && b.outcome !== 'won' && b.outcome !== 'lost' && b.outcome !== 'started_or_complete')
   const submissionWon = filteredBidsForSubmission
     .filter((b) => b.outcome === 'won')
@@ -9848,7 +9943,14 @@ export default function Bids() {
     () => new Map(teamLaborDataForBids.map((r) => [r.bidId, r])),
     [teamLaborDataForBids]
   )
-  const bidCostsUnsent = bids.filter((b) => !b.bid_date_sent && b.outcome !== 'won' && b.outcome !== 'lost' && b.outcome !== 'started_or_complete')
+  const bidCostsUnsent = bids.filter(
+    (b) =>
+      !b.bid_date_sent &&
+      b.outcome !== 'won' &&
+      b.outcome !== 'lost' &&
+      b.outcome !== 'started_or_complete' &&
+      !b.working_board_archived_at
+  )
   const bidCostsPending = bids.filter((b) => b.bid_date_sent && b.outcome !== 'won' && b.outcome !== 'lost' && b.outcome !== 'started_or_complete')
   const bidCostsWon = bids.filter((b) => b.outcome === 'won')
   const bidCostsStartedOrComplete = bids.filter((b) => b.outcome === 'started_or_complete')
@@ -9939,7 +10041,9 @@ export default function Bids() {
     const sortedForBoard = [...filteredBidsForBidBoard].sort(compareBidsForBidBoardDueDate)
     for (const bid of sortedForBoard) {
       const k = getSubmissionSectionKey(bid)
-      if (k) buckets[k].push(bid)
+      if (!k) continue
+      if (k === 'unsent' && bid.working_board_archived_at) continue
+      buckets[k].push(bid)
     }
     return buckets
   }, [filteredBidsForBidBoard])
@@ -11424,6 +11528,76 @@ export default function Bids() {
         </div>
       </div>
 
+      {workingBoardArchiveConfirmBidId ? (
+        <div
+          role="dialog"
+          aria-modal
+          aria-labelledby="working-board-archive-confirm-title"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.35)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1005,
+            padding: '1rem',
+          }}
+          onClick={closeWorkingBoardArchiveConfirm}
+        >
+          <div
+            role="document"
+            style={{
+              background: '#fff',
+              borderRadius: 8,
+              maxWidth: 420,
+              width: '100%',
+              padding: '1.25rem',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="working-board-archive-confirm-title" style={{ margin: '0 0 0.75rem', fontSize: '1.125rem', fontWeight: 600 }}>
+              Archive this bid from Unsent/Working?
+            </h2>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}>
+              <strong style={{ color: '#111827' }}>{workingBoardArchiveConfirmLabel ?? 'this bid'}</strong> will be hidden from your Working
+              board, Bid Board unsent lists, and Clock In quick picks. Column placement stays on the board. Restore from{' '}
+              <strong>Bid Board</strong> → <strong>Archived</strong>.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={closeWorkingBoardArchiveConfirm}
+                style={{ padding: '0.5rem 0.85rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#f9fafb', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const id = workingBoardArchiveConfirmBidId
+                  if (!id) return
+                  closeWorkingBoardArchiveConfirm()
+                  void archiveWorkingBoardBid(id)
+                }}
+                style={{
+                  padding: '0.5rem 0.85rem',
+                  border: 'none',
+                  borderRadius: 4,
+                  background: '#2563eb',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                }}
+              >
+                Archive
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {/* Bid Board Tab */}
       {activeTab === 'bid-board' && (
         <div>
@@ -11442,6 +11616,13 @@ export default function Bids() {
                 style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
               >
                 Checklist
+              </button>
+              <button
+                type="button"
+                onClick={() => setWorkingBoardArchivedModalOpen(true)}
+                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+              >
+                Archived{workingBoardArchivedBids.length > 0 ? ` (${workingBoardArchivedBids.length})` : ''}
               </button>
             </div>
           </div>
@@ -11604,6 +11785,19 @@ export default function Bids() {
                   bidPreview?.openBidPreviewFromBid(bid)
                 }}
               />
+              {authUser?.id ? (
+                <BidWorkingBoardArchivedModal
+                  open={workingBoardArchivedModalOpen}
+                  onClose={() => setWorkingBoardArchivedModalOpen(false)}
+                  userId={authUser.id}
+                  archivedBids={workingBoardArchivedBids}
+                  orgWideColumnLabels={myRole === 'dev'}
+                  onUnarchived={() => { void loadBids() }}
+                  onOpenPreviewBid={(bid) => {
+                    bidPreview?.openBidPreviewFromBid(bid)
+                  }}
+                />
+              ) : null}
               <BidBoardWeeklySentSection weeks={bidBoardWeeklySentSummaries} bids={filteredBidsForBidBoard} />
               {myRole === 'dev' && <BidBoardWeeklyEstimatorLaborDevSection weeks={bidBoardWeeklySentSummaries} />}
               <div style={{ marginTop: '1.5rem' }}>
@@ -12425,7 +12619,8 @@ export default function Bids() {
           </p>
           <BidsWorkingBoard
             userId={authUser.id}
-            bids={workingBoardBids}
+            eligibleBids={workingBoardEligibleBids}
+            visibleBids={workingBoardVisibleBids}
             deepLinkBidId={workingBoardDeepLinkBidId}
             onDeepLinkHandled={onWorkingBoardDeepLinkHandled}
             onLoadError={(m) => setError(m)}
@@ -19568,6 +19763,16 @@ export default function Bids() {
         setDeleteBidModalOpen={setDeleteBidModalOpen}
         setDeleteConfirmProjectName={setDeleteConfirmProjectName}
         setError={setError}
+        showArchiveFromUnsentWorking={Boolean(
+          editingBid &&
+            !editingBid.working_board_archived_at &&
+            bidEligibleForWorkingBoardArchive(editingBid) &&
+            canUserArchiveBidOnWorkingBoard(editingBid, authUser?.id, myRole),
+        )}
+        archiveFromUnsentWorkingBusy={archiveWorkingBoardBusyBidId === editingBid?.id}
+        onRequestArchiveFromUnsentWorking={
+          editingBid ? () => promptArchiveWorkingBoardBid(editingBid.id) : undefined
+        }
         serviceTypeSwitchSiblings={bidServiceTypeSwitchSiblings}
         onServiceTypeSwitchModalOpen={refreshBidServiceTypeSwitchSiblings}
         onDuplicateBidToServiceType={duplicateBidToServiceTypeHandler}

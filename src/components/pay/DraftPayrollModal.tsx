@@ -13,6 +13,8 @@ import {
   sumPayStubAdditionalAmounts,
   sumPayStubDeductionAmounts,
 } from '../../lib/payStubDeductions'
+import { PayStubDeleteIcon } from './PayStubDeleteIcon'
+import { isoWeekNumberFromGregorianYmd, ymdAddDays } from '../../utils/dateUtils'
 
 /** Matches People Pay History `PayStubRow` so callbacks can pass stubs through to `viewPayStub` / `openPayStubMarkPaidModal`. */
 export type DraftPayrollPayStub = {
@@ -39,6 +41,71 @@ function getDaysInRange(start: string, end: string): string[] {
     d.setDate(d.getDate() + 1)
   }
   return days
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+function buildDraftPayrollPrintHtml(opts: {
+  periodStart: string
+  periodEnd: string
+  people: string[]
+  days: string[]
+  paidCount: number
+  rosterCount: number
+  totalAmount: number
+  leftUnpaid: number
+  getEffectiveHours: (person: string, date: string) => number
+  getCostForPersonDate: (person: string, date: string) => number
+}): string {
+  const rowsHtml = opts.people
+    .map((person) => {
+      const hours = opts.days.reduce((s, d) => s + opts.getEffectiveHours(person, d), 0)
+      const estGross = opts.days.reduce((s, d) => s + opts.getCostForPersonDate(person, d), 0)
+      return `<tr><td>${escapeHtml(person)}</td><td class="num">${hours.toFixed(2)}</td><td class="num">$${formatCurrency(estGross)}</td></tr>`
+    })
+    .join('')
+  const weekNum = isoWeekNumberFromGregorianYmd(ymdAddDays(opts.periodStart, 4))
+  const periodPlain =
+    weekNum === null
+      ? `${opts.periodStart} – ${opts.periodEnd}`
+      : `${opts.periodStart} – ${opts.periodEnd} (Week ${weekNum})`
+  const titleEscaped = escapeHtml(periodPlain)
+  const generated = escapeHtml(new Date().toLocaleString())
+  const summaryLine = `${opts.paidCount} of ${opts.rosterCount} paid · Total: $${formatCurrency(opts.totalAmount)} | Left: $${formatCurrency(opts.leftUnpaid)}`
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Draft Payroll ${titleEscaped}</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, sans-serif; margin: 1.25rem; color: #111827; }
+    h1 { font-size: 1.25rem; margin: 0 0 0.35rem; }
+    .period { color: #4b5563; margin: 0 0 1rem; font-size: 0.95rem; }
+    .summary { color: #6b7280; margin: 0 0 1rem; font-size: 0.875rem; text-align: left; }
+    table { border-collapse: collapse; width: 100%; max-width: 560px; }
+    th, td { border: 1px solid #e5e7eb; padding: 0.45rem 0.65rem; text-align: left; font-size: 0.9rem; }
+    th { background: #f9fafb; font-weight: 600; }
+    th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .footer { margin-top: 1.25rem; font-size: 0.8rem; color: #6b7280; }
+  </style>
+</head>
+<body>
+  <h1>Draft Payroll</h1>
+  <p class="period">Period ${titleEscaped}</p>
+  <p class="summary">${summaryLine}</p>
+  <table>
+    <thead><tr><th>Person</th><th class="num">Hours</th><th class="num">Cash Due</th></tr></thead>
+    <tbody>${rowsHtml}</tbody>
+  </table>
+  <p class="footer">Generated ${generated}</p>
+</body>
+</html>`
 }
 
 export type DraftPayrollModalProps = {
@@ -68,10 +135,14 @@ export type DraftPayrollModalProps = {
   onGenerateReport: (person: string) => void | Promise<void>
   onViewStub: (stub: DraftPayrollPayStub) => void | Promise<void>
   onRecordPayment: (stub: DraftPayrollPayStub) => void
+  canDeletePayReports: boolean
+  onRequestDeleteStub: (stub: DraftPayrollPayStub) => void
+  deletingPayStubId: string | null
   markingPayStubId: string | null
   generatingPayStubPerson: string | null
   showToast: (message: string, variant: 'success' | 'error' | 'warning' | 'info') => void
   onNavigateToHoursForReviewDate: (workDate: string, personName: string) => void
+  onOpenHoursBreakdown: (personName: string) => void
 }
 
 export function DraftPayrollModal({
@@ -101,18 +172,27 @@ export function DraftPayrollModal({
   onGenerateReport,
   onViewStub,
   onRecordPayment,
+  canDeletePayReports,
+  onRequestDeleteStub,
+  deletingPayStubId,
   markingPayStubId,
   generatingPayStubPerson,
   showToast,
   onNavigateToHoursForReviewDate,
+  onOpenHoursBreakdown,
 }: DraftPayrollModalProps) {
   const [reviewDaysDetail, setReviewDaysDetail] = useState<{
     personName: string
     items: RunPayrollReviewDayItem[]
   } | null>(null)
+  const [showZeroHours, setShowZeroHours] = useState(false)
 
   useEffect(() => {
     if (!open) setReviewDaysDetail(null)
+  }, [open])
+
+  useEffect(() => {
+    if (!open) setShowZeroHours(false)
   }, [open])
 
   useEffect(() => {
@@ -165,6 +245,48 @@ export function DraftPayrollModal({
     return estGross > 0 && !stub
   }).length
 
+  const filteredPeople =
+    showZeroHours
+      ? peopleNames
+      : peopleNames.filter((person) => days.reduce((s, d) => s + getEffectiveHours(person, d), 0) > 0)
+
+  const printDisabled =
+    peopleNames.length === 0 || start > end || bulkGenerating || filteredPeople.length === 0
+  const printDisabledTitle =
+    !printDisabled
+      ? 'Open a printable summary in a new tab'
+      : peopleNames.length > 0 && filteredPeople.length === 0
+        ? 'Enable Show 0 hours or pick a period with hours.'
+        : start > end
+          ? 'Invalid date range.'
+          : bulkGenerating
+            ? 'Wait for generation to finish.'
+            : undefined
+
+  function openDraftPayrollPrintTab() {
+    if (filteredPeople.length === 0) return
+    const win = window.open('', '_blank')
+    if (!win) {
+      showToast('Popup blocked — allow popups to open the print view.', 'warning')
+      return
+    }
+    win.document.write(
+      buildDraftPayrollPrintHtml({
+        periodStart: start,
+        periodEnd: end,
+        people: filteredPeople,
+        days,
+        paidCount,
+        rosterCount: peopleNames.length,
+        totalAmount,
+        leftUnpaid,
+        getEffectiveHours,
+        getCostForPersonDate,
+      }),
+    )
+    win.document.close()
+  }
+
   const reviewZ = zIndex + 1
 
   return (
@@ -191,24 +313,47 @@ export function DraftPayrollModal({
           }}
         >
           <div style={{ marginBottom: '0.35rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem', gap: '0.75rem' }}>
               <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Draft Payroll</h2>
-              <button
-                type="button"
-                onClick={onClose}
-                style={{
-                  padding: '0.25rem',
-                  border: 'none',
-                  background: 'none',
-                  cursor: 'pointer',
-                  fontSize: '1.25rem',
-                  lineHeight: 1,
-                  color: '#6b7280',
-                }}
-                aria-label="Close"
-              >
-                ×
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                <label
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    fontSize: '0.8125rem',
+                    color: '#374151',
+                    cursor: 'pointer',
+                    margin: 0,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={showZeroHours}
+                    onChange={(e) => setShowZeroHours(e.target.checked)}
+                    disabled={bulkGenerating}
+                    aria-label="Show people with zero hours"
+                  />
+                  Show 0 hours
+                </label>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  style={{
+                    padding: '0.25rem',
+                    border: 'none',
+                    background: 'none',
+                    cursor: 'pointer',
+                    fontSize: '1.25rem',
+                    lineHeight: 1,
+                    color: '#6b7280',
+                  }}
+                  aria-label="Close"
+                >
+                  ×
+                </button>
+              </div>
             </div>
             <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
               <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', fontSize: '0.8125rem', margin: 0 }}>
@@ -355,6 +500,25 @@ export function DraftPayrollModal({
                 >
                   {bulkGenerating ? 'Generating…' : 'Generate Remaining'}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => openDraftPayrollPrintTab()}
+                  disabled={printDisabled}
+                  title={printDisabledTitle}
+                  aria-label={printDisabledTitle ?? 'Print draft payroll summary in a new tab'}
+                  style={{
+                    padding: '0.35rem 0.75rem',
+                    fontSize: '0.8125rem',
+                    fontWeight: 500,
+                    background: printDisabled ? '#f3f4f6' : 'white',
+                    color: printDisabled ? '#9ca3af' : '#374151',
+                    border: '1px solid #d1d5db',
+                    borderRadius: 6,
+                    cursor: printDisabled ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  Print
+                </button>
                 <span style={{ fontSize: '0.8125rem', color: '#6b7280', textAlign: 'center' }}>
                   {bulkMissingCount === 0 ? 'No one needs a report for this period.' : `${bulkMissingCount} with hours and no report yet`}
                 </span>
@@ -367,12 +531,19 @@ export function DraftPayrollModal({
                       <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Person</th>
                       <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Status</th>
                       <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Hours</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Est. Gross</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Cash Due</th>
                       <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {peopleNames.map((person) => {
+                    {filteredPeople.length === 0 && peopleNames.length > 0 ? (
+                      <tr>
+                        <td colSpan={6} style={{ padding: '0.75rem', fontSize: '0.875rem', color: '#6b7280', textAlign: 'center' }}>
+                          Everyone has 0 hours for this period. Enable <strong>Show 0 hours</strong> to list them.
+                        </td>
+                      </tr>
+                    ) : null}
+                    {filteredPeople.map((person) => {
                       const stub = payStubs.find((s) => s.person_name === person && s.period_start <= end && s.period_end >= start)
                       const hours = days.reduce((s, d) => s + getEffectiveHours(person, d), 0)
                       const estGross = days.reduce((s, d) => s + getCostForPersonDate(person, d), 0)
@@ -460,7 +631,32 @@ export function DraftPayrollModal({
                               </span>
                             )}
                           </td>
-                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{hours.toFixed(2)}</td>
+                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>
+                            {hours > 0 ? (
+                              <button
+                                type="button"
+                                onClick={() => onOpenHoursBreakdown(person)}
+                                title="Day and job breakdown"
+                                aria-label={`Day and job breakdown for ${person}: ${hours.toFixed(2)} hours`}
+                                style={{
+                                  padding: 0,
+                                  margin: 0,
+                                  border: 'none',
+                                  background: 'none',
+                                  cursor: 'pointer',
+                                  color: '#2563eb',
+                                  textDecoration: 'underline',
+                                  fontSize: 'inherit',
+                                  fontVariantNumeric: 'tabular-nums',
+                                  fontFamily: 'inherit',
+                                }}
+                              >
+                                {hours.toFixed(2)}
+                              </button>
+                            ) : (
+                              <span style={{ fontVariantNumeric: 'tabular-nums', color: '#6b7280' }}>{hours.toFixed(2)}</span>
+                            )}
+                          </td>
                           <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(estGross)}</td>
                           <td style={{ padding: '0.5rem 0.75rem' }}>
                             {stub ? (
@@ -471,7 +667,7 @@ export function DraftPayrollModal({
                                   style={{
                                     padding: '2px 6px',
                                     fontSize: '0.8125rem',
-                                    background: '#3b82f6',
+                                    background: '#6b7280',
                                     color: 'white',
                                     border: 'none',
                                     borderRadius: 4,
@@ -480,6 +676,33 @@ export function DraftPayrollModal({
                                 >
                                   View
                                 </button>
+                                {canDeletePayReports ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => onRequestDeleteStub(stub)}
+                                    disabled={deletingPayStubId === stub.id}
+                                    title="Delete pay report"
+                                    aria-label="Delete pay report"
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      padding: 2,
+                                      background: 'none',
+                                      border: 'none',
+                                      borderRadius: 4,
+                                      color: deletingPayStubId === stub.id ? '#9ca3af' : '#dc2626',
+                                      cursor: deletingPayStubId === stub.id ? 'not-allowed' : 'pointer',
+                                      verticalAlign: 'middle',
+                                    }}
+                                  >
+                                    {deletingPayStubId === stub.id ? (
+                                      <span style={{ fontSize: '0.75rem', lineHeight: 1, color: '#9ca3af' }}>…</span>
+                                    ) : (
+                                      <PayStubDeleteIcon color="currentColor" size={16} />
+                                    )}
+                                  </button>
+                                ) : null}
                                 {!stubFullyPaid ? (
                                   <button
                                     type="button"

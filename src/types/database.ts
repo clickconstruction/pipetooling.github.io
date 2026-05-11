@@ -449,6 +449,8 @@ export type Database = {
           service_type_id: string
           submitted_to: string | null
           updated_at: string | null
+          working_board_archived_at: string | null
+          working_board_archived_by: string | null
         }
         Insert: {
           account_manager_id?: string | null
@@ -496,6 +498,8 @@ export type Database = {
           service_type_id: string
           submitted_to?: string | null
           updated_at?: string | null
+          working_board_archived_at?: string | null
+          working_board_archived_by?: string | null
         }
         Update: {
           account_manager_id?: string | null
@@ -543,6 +547,8 @@ export type Database = {
           service_type_id?: string
           submitted_to?: string | null
           updated_at?: string | null
+          working_board_archived_at?: string | null
+          working_board_archived_by?: string | null
         }
         Relationships: [
           {
@@ -634,6 +640,13 @@ export type Database = {
             columns: ["service_type_id"]
             isOneToOne: false
             referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_working_board_archived_by_fkey"
+            columns: ["working_board_archived_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -6829,6 +6842,113 @@ export type Database = {
         }
         Relationships: []
       }
+      quickfill_difficult_people_daily_checks: {
+        Row: {
+          checked_at: string
+          checked_by: string | null
+          item_id: string
+          work_date: string
+        }
+        Insert: {
+          checked_at?: string
+          checked_by?: string | null
+          item_id: string
+          work_date: string
+        }
+        Update: {
+          checked_at?: string
+          checked_by?: string | null
+          item_id?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quickfill_difficult_people_daily_checks_checked_by_fkey"
+            columns: ["checked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quickfill_difficult_people_daily_checks_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "quickfill_difficult_people_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quickfill_difficult_people_items: {
+        Row: {
+          action_text: string
+          created_at: string
+          created_by: string | null
+          id: string
+          person_id: string
+          reason_text: string
+        }
+        Insert: {
+          action_text: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          person_id: string
+          reason_text: string
+        }
+        Update: {
+          action_text?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          person_id?: string
+          reason_text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quickfill_difficult_people_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quickfill_difficult_people_items_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quickfill_office_arriving_daily_checks: {
+        Row: {
+          checked_at: string
+          checked_by: string | null
+          item_id: string
+          work_date: string
+        }
+        Insert: {
+          checked_at?: string
+          checked_by?: string | null
+          item_id: string
+          work_date: string
+        }
+        Update: {
+          checked_at?: string
+          checked_by?: string | null
+          item_id?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quickfill_office_arriving_daily_checks_checked_by_fkey"
+            columns: ["checked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quickfill_section_mark_events: {
         Row: {
           id: string
@@ -10319,6 +10439,17 @@ export type Database = {
       set_mercury_transaction_ar_returned: {
         Args: { p_mercury_transaction_id: string; p_returned: boolean }
         Returns: undefined
+      }
+      split_job_ledger_fixtures_to_new_job: {
+        Args: {
+          p_clock_session_ids?: string[]
+          p_fixture_ids: string[]
+          p_new_hcp: string
+          p_new_job_address: string
+          p_new_job_name: string
+          p_source_job_id: string
+        }
+        Returns: Json
       }
       split_own_clock_session_cluster: {
         Args: { p_segments: Json; p_session_ids: string[] }

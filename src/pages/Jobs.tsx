@@ -38,6 +38,7 @@ import {
 } from '../hooks/useArBankUnallocatedCount'
 import BankPaymentsModal from '../components/jobs/BankPaymentsModal'
 import JobBookModal from '../components/jobs/JobBookModal'
+import JobsCombineSeparateModal from '../components/jobs/JobsCombineSeparateModal'
 import StagesNoCustomerJobsModal from '../components/jobs/StagesNoCustomerJobsModal'
 import StagesAlertJobListModal from '../components/jobs/StagesAlertJobListModal'
 import JobBookIcon from '../components/icons/JobBookIcon'
@@ -1215,6 +1216,7 @@ export default function Jobs() {
   const [stagesNoJobPicturesModalOpen, setStagesNoJobPicturesModalOpen] = useState(false)
   const [stagesNoJobPicturesBtnHover, setStagesNoJobPicturesBtnHover] = useState(false)
   const [jobBookModalOpen, setJobBookModalOpen] = useState(false)
+  const [combineSeparateModalOpen, setCombineSeparateModalOpen] = useState(false)
   const [capableToBillModalOpen, setCapableToBillModalOpen] = useState(false)
   const [whenInvoiceBillModal, setWhenInvoiceBillModal] = useState<{
     invoiceId: string
@@ -6312,6 +6314,29 @@ ${totalsHtml}
                 />
               </svg>
             </button>
+            {(['dev', 'master_technician', 'assistant'] as const).some(
+              (r) => r === authRole || r === myRole,
+            ) ? (
+              <button
+                type="button"
+                onClick={() => setCombineSeparateModalOpen(true)}
+                title="Combine two jobs or split Specific Work into a new job"
+                aria-label="Combine or separate jobs"
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: 'white',
+                  color: '#1f2937',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  fontWeight: 500,
+                  whiteSpace: 'nowrap',
+                  fontSize: shortNewJobButtonLabel ? '0.8125rem' : undefined,
+                }}
+              >
+                {shortNewJobButtonLabel ? 'C / S' : 'Combine / Separate'}
+              </button>
+            ) : null}
             </div>
           </div>
           <div
@@ -14277,6 +14302,11 @@ ${totalsHtml}
         open={jobBookModalOpen}
         onClose={() => setJobBookModalOpen(false)}
         onDbError={(msg) => showToast(msg, 'error')}
+      />
+      <JobsCombineSeparateModal
+        open={combineSeparateModalOpen}
+        onClose={() => setCombineSeparateModalOpen(false)}
+        onAfterSuccess={() => void runJobsStagesSerializedPipeline(() => Promise.resolve(loadJobs()))}
       />
       <BilledBillViewModal
         invoice={viewBillInvoice}

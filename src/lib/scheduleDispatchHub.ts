@@ -2,6 +2,9 @@ import { supabase } from './supabase'
 import type { JobScheduleBlockRow } from './jobScheduleBlocks'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 
+/** PostgREST GET URL stays safe vs one giant `.in('job_id', …)` — same magnitude as Jobs Stages schedule search chunks. */
+const JOBS_LEDGER_TEAM_MEMBERS_JOB_ID_CHUNK = 150
+
 export type ScheduleDispatchHubJobRow = {
   id: string
   hcp_number: string | null
@@ -41,19 +44,22 @@ export async function fetchTeamMemberUserIdsForJobIds(
 ): Promise<{ data: string[]; error: string | null }> {
   const uniqueJobIds = [...new Set(jobIds)].filter(Boolean)
   if (uniqueJobIds.length === 0) return { data: [], error: null }
+  const seen = new Set<string>()
+  const ids: string[] = []
   try {
-    const data = await withSupabaseRetry(
-      async () =>
-        await supabase.from('jobs_ledger_team_members').select('user_id').in('job_id', uniqueJobIds),
-      'fetchTeamMemberUserIdsForJobIds',
-    )
-    const seen = new Set<string>()
-    const ids: string[] = []
-    for (const row of (data ?? []) as Array<{ user_id: string }>) {
-      const id = row.user_id
-      if (!id || seen.has(id)) continue
-      seen.add(id)
-      ids.push(id)
+    for (let i = 0; i < uniqueJobIds.length; i += JOBS_LEDGER_TEAM_MEMBERS_JOB_ID_CHUNK) {
+      const slice = uniqueJobIds.slice(i, i + JOBS_LEDGER_TEAM_MEMBERS_JOB_ID_CHUNK)
+      const rows = await withSupabaseRetry(
+        async () =>
+          await supabase.from('jobs_ledger_team_members').select('user_id').in('job_id', slice),
+        'fetchTeamMemberUserIdsForJobIds',
+      )
+      for (const row of (rows ?? []) as Array<{ user_id: string }>) {
+        const id = row.user_id
+        if (!id || seen.has(id)) continue
+        seen.add(id)
+        ids.push(id)
+      }
     }
     return { data: ids, error: null }
   } catch (e) {

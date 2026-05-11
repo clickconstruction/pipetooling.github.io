@@ -7,6 +7,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
+import { denverCalendarDayKey } from '../../utils/dateUtils'
 
 export type QuickfillOfficeSectionVariant = 'arriving' | 'leaving'
 
@@ -169,11 +170,14 @@ function SortableOfficeChecklistRow({
 
 export function QuickfillOfficeSection({ variant }: { variant: QuickfillOfficeSectionVariant }) {
   const { itemsKey, doneKey, metricSectionId } = VARIANT_KEYS[variant]
+  const isArriving = variant === 'arriving'
   const domPrefix = `quickfill-office-${variant}`
   const { role } = useAuth()
   const { showToast } = useToastContext()
   const [items, setItems] = useState<OfficeItem[]>([])
   const [done, setDone] = useState<Record<string, boolean>>({})
+  const [arrivingCheckedIds, setArrivingCheckedIds] = useState<Set<string>>(() => new Set())
+  const [arrivingWorkDateYmd, setArrivingWorkDateYmd] = useState('')
   const [loading, setLoading] = useState(true)
   const [savingDoneId, setSavingDoneId] = useState<string | null>(null)
   const [savingItems, setSavingItems] = useState(false)
@@ -188,6 +192,28 @@ export function QuickfillOfficeSection({ variant }: { variant: QuickfillOfficeSe
   const officeDragSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
   const loadOfficeSettings = useCallback(async () => {
+    if (isArriving) {
+      const ymd = denverCalendarDayKey(Date.now())
+      setArrivingWorkDateYmd(ymd)
+      const [settingsRows, checksRows] = await Promise.all([
+        withSupabaseRetry(
+          async () => supabase.from('app_settings').select('key, value_text').eq('key', itemsKey),
+          `load quickfill office arriving items`,
+        ),
+        withSupabaseRetry(
+          async () =>
+            supabase.from('quickfill_office_arriving_daily_checks').select('item_id').eq('work_date', ymd),
+          `load quickfill office arriving daily checks`,
+        ),
+      ])
+      const list = (settingsRows ?? []) as Array<{ key: string; value_text: string | null }>
+      const itemsText = list.find((r) => r.key === itemsKey)?.value_text ?? null
+      setItems(parseOfficeItems(itemsText))
+      setDone({})
+      const checkList = (checksRows ?? []) as { item_id: string }[]
+      setArrivingCheckedIds(new Set(checkList.map((r) => r.item_id)))
+      return
+    }
     const rows = await withSupabaseRetry(
       async () =>
         supabase.from('app_settings').select('key, value_text').in('key', [itemsKey, doneKey]),
@@ -202,7 +228,7 @@ export function QuickfillOfficeSection({ variant }: { variant: QuickfillOfficeSe
     }
     setItems(parseOfficeItems(itemsText))
     setDone(parseOfficeDone(doneText))
-  }, [itemsKey, doneKey, variant])
+  }, [itemsKey, doneKey, variant, isArriving])
 
   useEffect(() => {
     let cancelled = false
@@ -220,29 +246,55 @@ export function QuickfillOfficeSection({ variant }: { variant: QuickfillOfficeSe
   }, [loadOfficeSettings, showToast])
 
   useEffect(() => {
-    const channel = supabase
-      .channel(`quickfill-office-${variant}-app-settings`)
-      .on(
+    const channel = supabase.channel(`quickfill-office-${variant}-sync`)
+    channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'app_settings' },
+      (payload) => {
+        const key =
+          (payload.new as { key?: string } | null)?.key ?? (payload.old as { key?: string } | null)?.key
+        if (!key) return
+        if (key === itemsKey || (!isArriving && key === doneKey)) {
+          void loadOfficeSettings()
+        }
+      },
+    )
+    if (isArriving) {
+      channel.on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'app_settings' },
-        (payload) => {
-          const row = payload.new as { key?: string; value_text?: string | null } | null
-          if (!row?.key) return
-          if (row.key === itemsKey || row.key === doneKey) {
-            void loadOfficeSettings()
-          }
+        { event: '*', schema: 'public', table: 'quickfill_office_arriving_daily_checks' },
+        () => {
+          void loadOfficeSettings()
         },
       )
-      .subscribe()
+    }
+    channel.subscribe()
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [loadOfficeSettings, itemsKey, doneKey, variant])
+  }, [loadOfficeSettings, itemsKey, doneKey, variant, isArriving])
+
+  useEffect(() => {
+    if (!isArriving) return
+    const onVis = () => {
+      if (document.visibilityState === 'visible') void loadOfficeSettings()
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [isArriving, loadOfficeSettings])
 
   const openCount = useMemo(() => {
     if (items.length === 0) return 0
+    if (isArriving) return items.filter((i) => !arrivingCheckedIds.has(i.id)).length
     return items.filter((i) => !done[i.id]).length
-  }, [items, done])
+  }, [items, isArriving, arrivingCheckedIds, done])
+
+  const effectiveDone = useMemo(() => {
+    if (!isArriving) return done
+    const out: Record<string, boolean> = {}
+    for (const id of arrivingCheckedIds) out[id] = true
+    return out
+  }, [isArriving, done, arrivingCheckedIds])
 
   useReportQuickfillSectionMetric(metricSectionId, loading ? null : openCount, loading)
 
@@ -263,6 +315,43 @@ export function QuickfillOfficeSection({ variant }: { variant: QuickfillOfficeSe
   }
 
   async function onToggleItem(itemId: string, checked: boolean) {
+    if (isArriving) {
+      const ymd = arrivingWorkDateYmd || denverCalendarDayKey(Date.now())
+      setSavingDoneId(itemId)
+      try {
+        if (checked) {
+          await withSupabaseRetry(
+            async () =>
+              supabase.from('quickfill_office_arriving_daily_checks').insert({
+                item_id: itemId,
+                work_date: ymd,
+              }),
+            'save quickfill office arriving check',
+          )
+          setArrivingCheckedIds((prev) => new Set([...prev, itemId]))
+        } else {
+          await withSupabaseRetry(
+            async () =>
+              supabase
+                .from('quickfill_office_arriving_daily_checks')
+                .delete()
+                .eq('item_id', itemId)
+                .eq('work_date', ymd),
+            'clear quickfill office arriving check',
+          )
+          setArrivingCheckedIds((prev) => {
+            const next = new Set(prev)
+            next.delete(itemId)
+            return next
+          })
+        }
+      } catch (e: unknown) {
+        showToast(formatErrorMessage(e, 'Could not update checklist'), 'error')
+      } finally {
+        setSavingDoneId(null)
+      }
+      return
+    }
     setSavingDoneId(itemId)
     const next = { ...done }
     if (checked) next[itemId] = true
@@ -302,10 +391,25 @@ export function QuickfillOfficeSection({ variant }: { variant: QuickfillOfficeSe
     const nextDone = { ...done }
     delete nextDone[itemId]
     try {
+      if (isArriving) {
+        await withSupabaseRetry(
+          async () =>
+            supabase.from('quickfill_office_arriving_daily_checks').delete().eq('item_id', itemId),
+          'remove quickfill office arriving checks for item',
+        )
+      }
       await persistItems(nextItems)
-      await persistDone(nextDone)
+      if (isArriving) {
+        setArrivingCheckedIds((prev) => {
+          const n = new Set(prev)
+          n.delete(itemId)
+          return n
+        })
+      } else {
+        await persistDone(nextDone)
+        setDone(nextDone)
+      }
       setItems(nextItems)
-      setDone(nextDone)
     } catch (e: unknown) {
       showToast(formatErrorMessage(e, 'Could not remove task'), 'error')
     } finally {
@@ -335,7 +439,7 @@ export function QuickfillOfficeSection({ variant }: { variant: QuickfillOfficeSe
 
   const intro =
     variant === 'arriving'
-      ? 'Start the day with the workspace ready—clear surfaces, systems on, and a calm first impression for anyone walking in.'
+      ? 'Start the day with the workspace ready—clear surfaces, systems on, and a calm first impression for anyone walking in. Checkboxes apply to today only (company calendar) and clear overnight.'
       : 'Before you head out, leave the office tidy and predictable for tomorrow—reset shared spaces so the team can pick up smoothly.'
 
   const emptyNonDev =
@@ -365,7 +469,7 @@ export function QuickfillOfficeSection({ variant }: { variant: QuickfillOfficeSe
                   key={item.id}
                   item={item}
                   domPrefix={domPrefix}
-                  done={done}
+                  done={effectiveDone}
                   savingDoneId={savingDoneId}
                   savingItems={savingItems}
                   onToggleItem={onToggleItem}
@@ -391,7 +495,7 @@ export function QuickfillOfficeSection({ variant }: { variant: QuickfillOfficeSe
               <input
                 type="checkbox"
                 id={`${domPrefix}-${item.id}`}
-                checked={done[item.id] === true}
+                checked={effectiveDone[item.id] === true}
                 disabled={savingDoneId === item.id}
                 onChange={(e) => void onToggleItem(item.id, e.target.checked)}
                 style={{ flexShrink: 0 }}

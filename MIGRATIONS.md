@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-05-07
+last_updated: 2026-05-11
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -105,6 +105,40 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Category**: Bids / Pricing / functions
 
 ### May 2026
+
+#### May 11, 2026
+
+**`20260511015410_bids_working_board_archive.sql`**
+- **Purpose**: **`bids.working_board_archived_at`** / **`working_board_archived_by`** (soft-hide from Unsent/Working UI and clock quick picks; **`bid_working_board_placements`** unchanged). **`BEFORE INSERT OR UPDATE`** trigger clears archive when **`bid_date_sent`** is set or **`outcome`** is **`won`/`lost`/`started_or_complete`**. Partial index on **`working_board_archived_at`** where not null.
+- **Impact**: **[`Bids.tsx`](src/pages/Bids.tsx)**, **[`BidsWorkingBoard.tsx`](src/components/bids/BidsWorkingBoard.tsx)**, **[`BidFormModal.tsx`](src/components/bids/BidFormModal.tsx)** (**Archive from board** footer — **`RECENT_FEATURES.md`** **v2.518**), **[`BidWorkingBoardArchivedModal.tsx`](src/components/bids/BidWorkingBoardArchivedModal.tsx)**, **[`fetchWorkingBoardClockBidPicks.ts`](src/lib/fetchWorkingBoardClockBidPicks.ts)**; **`BIDS_SYSTEM.md`**, **`RECENT_FEATURES.md`** **v2.517** / **v2.518**. **`npm run gen-types:linked`** after **`db push`** (or sync **`database.ts`**).
+- **Category**: Bids / schema
+
+**`20260511012922_split_job_ledger_fixtures_to_new_job.sql`**
+- **Purpose**: **`split_job_ledger_fixtures_to_new_job`** — **`SECURITY DEFINER`**, source **working** only; no invoices/payments/collect flow; validates fixture + session IDs; **cannot** move **all** fixtures; revenue for moved lines matches app extended Specific Work math; **`INSERT`** new **`jobs_ledger`**, **`UPDATE`** fixtures + optional **`clock_sessions`**, subtract revenue from source, copy **`jobs_ledger_team_members`**; **`GRANT EXECUTE`** **`authenticated`** on full signature (incl. default **`p_clock_session_ids`**).
+- **Impact**: **[`JobsCombineSeparateModal.tsx`](src/components/jobs/JobsCombineSeparateModal.tsx)**, **[`Jobs.tsx`](src/pages/Jobs.tsx)** — Stages **Combine / Separate** control at the **right** end of the toolbar row (**`RECENT_FEATURES.md`** **v2.516**). **`npm run gen-types:linked`** after **`db push`**.
+- **Category**: Jobs / Billing / RPC
+
+**`20260511011751_migrate_job_ledger_merge_target_revenue.sql`**
+- **Purpose**: **`migrate_job_ledger_costs_and_delete`** — same repoint/merge/delete behavior as **`20270425120000`**, plus **`UPDATE`** target **`jobs_ledger.revenue`** **`+=`** source **`revenue`** (**`COALESCE`** both to 0) after team-member cleanup and before **`DELETE`** source **`jobs_ledger`**. **`COMMENT ON FUNCTION`** notes revenue merge.
+- **Impact**: **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)** migrate dialog + toast (**`RECENT_FEATURES.md`** **v2.515**). No RPC signature change; **`npm run gen-types:linked`** not required.
+- **Category**: Jobs / Billing / RPC
+
+#### May 10, 2026
+
+**`20260510215603_quickfill_office_arriving_daily_checks.sql`**
+- **Purpose**: **`quickfill_office_arriving_daily_checks`** — **PK** **`(item_id text, work_date)`**, **`checked_at`**, **`checked_by`** (default **`auth.uid()`** → **`users`**). **RLS**: **SELECT**/**INSERT**/**DELETE** for **`is_dev_or_master_or_assistant()`**; **INSERT** **`WITH CHECK`** **`checked_by = auth.uid()`**. **`supabase_realtime`** publication on the table. **`app_settings`**: replaces **`authenticated_update_quickfill_office_arriving_leaving_done`** with **`authenticated_update_quickfill_office_leaving_done`** (**`UPDATE`** only **`key = 'quickfill_office_leaving_done'`**; legacy **`quickfill_office_arriving_done`** row not client-updated).
+- **Impact**: **[`QuickfillOfficeSection.tsx`](src/components/quickfill/QuickfillOfficeSection.tsx)** — **Office Arriving** uses daily checks + **Realtime**; **Office Leaving** still JSON. **`ACCESS_CONTROL.md`**, **`RECENT_FEATURES.md`**. **`npm run gen-types:linked`** after **`db push`**.
+- **Category**: Quickfill / RLS / Realtime
+
+**`20260510215023_quickfill_difficult_people_daily_checks.sql`**
+- **Purpose**: **`quickfill_difficult_people_daily_checks`** — **PK** **`(item_id, work_date)`**, **`checked_at`**, **`checked_by`** (default **`auth.uid()`**). **RLS**: **SELECT**/**INSERT**/**DELETE** for **`is_dev_or_master_or_assistant()`**; **INSERT** **`WITH CHECK`** **`checked_by = auth.uid()`**. **Removes** from **`quickfill_difficult_people_items`**: **`completed_at`**, **`completed_by`**, completion **CHECK**, partial index, **`quickfill_difficult_people_items_non_dev_update_guard`** trigger/function; **UPDATE** on items **dev-only** (**`quickfill_difficult_people_items_update_dev`** replaces staff update policy).
+- **Impact**: **[`QuickfillDifficultPeopleSection.tsx`](src/components/quickfill/QuickfillDifficultPeopleSection.tsx)** — per–company-day checkboxes (**`denverCalendarDayKey`**); **`ACCESS_CONTROL.md`**, **`RECENT_FEATURES.md`**. **`npm run gen-types:linked`** after **`db push`**.
+- **Category**: Quickfill / People / RLS
+
+**`20260510213434_quickfill_difficult_people_items.sql`**
+- **Purpose**: **`quickfill_difficult_people_items`** — org-wide Quickfill follow-ups (**`person_id`** → **`people`**, **`action_text`**, **`reason_text`**, **`created_by`**). *(Initial release added **`completed_*`** + non-dev completion trigger; those are **dropped** by **`20260510215023`** in favor of **`quickfill_difficult_people_daily_checks`**.)* **RLS**: **SELECT** **`is_dev_or_master_or_assistant()`**; **INSERT**/**DELETE** **`is_dev()`**; **UPDATE** **dev-only** after **`20260510215023`**.
+- **Impact**: **[`QuickfillDifficultPeopleSection.tsx`](src/components/quickfill/QuickfillDifficultPeopleSection.tsx)**, **[`Quickfill.tsx`](src/pages/Quickfill.tsx)** **`difficult-people`** **`section_id`**; **`ACCESS_CONTROL.md`**, **`RECENT_FEATURES.md`**. **`npm run gen-types:linked`** after **`db push`**.
+- **Category**: Quickfill / People / RLS
 
 #### May 5, 2026
 
@@ -369,7 +403,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Purpose**: Link **`pay_stub_additional_lines`** to an originating **`clock_sessions`** row (for example **prevailing wage** top-up). **Partial unique index** on **`(pay_stub_id, source_clock_session_id)`** when **`source_clock_session_id`** is not null.
 - **Changes**: **`ALTER TABLE`** **`ADD COLUMN`** **`source_clock_session_id`** **`REFERENCES`** **`clock_sessions(id)`** **`ON DELETE SET NULL`**; **`CREATE UNIQUE INDEX`** **`pay_stub_additional_lines_stub_session_uniq`**
 - **Impact**: [`PayStubAdditionalModal.tsx`](src/components/pay/PayStubAdditionalModal.tsx), [`payStubPrevailingWageLine.ts`](src/lib/payStubPrevailingWageLine.ts); **`RECENT_FEATURES.md`** v2.345
-- **Category**: People / Pay History / RLS (column only; RLS unchanged)
+- **Category**: People / Payroll / RLS (column only; RLS unchanged)
 
 #### April 19, 2026
 
@@ -963,7 +997,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20270329150000_pay_stub_additional_lines.sql`**
 - **Purpose**: **Additional** pay on a stub (quantity × rate per line); **Net Pay** = `gross_pay` − sum(`pay_stub_deductions`) + sum(generated `line_total`); installments stay capped at Net Pay.
 - **Changes**: Create `pay_stub_additional_lines` (`line_total` generated as `round(quantity * rate, 2)` STORED); RLS same pattern as `pay_stub_deductions`; replace `validate_pay_stub_payments_vs_net` and `pay_stub_payments_enforce_total_fn` to add additional sum; AFTER trigger on additional lines mirroring deductions validation; update `pay_stub_payments` table comment.
-- **Impact**: Pay History **Additional** column + modal; Less modal receives **additionalSum** for net; print order Additional → Less → Net Pay
+- **Impact**: People **Payroll** tab **Additional** column + modal; Less modal receives **additionalSum** for net; print order Additional → Less → Net Pay
 - **Category**: People / Pay Stubs
 
 **`20270329180000_housing_units_and_possessions.sql`**
@@ -1939,19 +1973,19 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260328000000_pay_stubs_physical_payment.sql`**
 - **Purpose**: Track physical payment separately from stub creation; record when a pay stub was actually paid (cash, check, direct deposit)
 - **Changes**: Add `paid_at TIMESTAMPTZ` and `paid_by UUID REFERENCES users(id)` to `pay_stubs`; create UPDATE policy for pay access users (same predicate as SELECT/INSERT)
-- **Impact**: People > Pay History > Ledger shows Paid column with "Mark as paid" / "Paid [date]" + Unmark; users can record when they physically pay each person
+- **Impact**: People → Payroll → Ledger shows Paid column with "Mark as paid" / "Paid [date]" + Unmark; users can record when they physically pay each person
 - **Category**: People / Pay Stubs
 
 **`20260328052640_pay_stub_paid_note.sql`**
 - **Purpose**: Optional memo when marking a pay stub physically paid
 - **Changes**: Add `paid_note TEXT` to `pay_stubs`
-- **Impact**: Pay History mark-paid flow can store a short note
+- **Impact**: Payroll tab mark-paid flow can store a short note
 - **Category**: People / Pay Stubs
 
 **`20260328215252_pay_stub_payments.sql`**
 - **Purpose**: Multiple partial physical payments per pay stub (amount + paid date + memo)
 - **Changes**: Create `pay_stub_payments` (FK `pay_stubs` ON DELETE CASCADE, `amount` > 0, `paid_at`, memo, created_by); BEFORE INSERT/UPDATE trigger caps sum(amount) per stub to `gross_pay` + 0.01; RLS SELECT/INSERT/UPDATE/DELETE for pay access (same helpers as `pay_stub_days`); backfill one row per stub where `pay_stubs.paid_at` IS NOT NULL
-- **Impact**: People > Pay History ledger and Run Payroll use **Record payment**; installments can be removed one row at a time from the payment detail modal; fully paid = sum of installments ≥ gross; print/HTML pay report includes **Physical payments** block
+- **Impact**: People → Payroll ledger and Run Payroll use **Record payment**; installments can be removed one row at a time from the payment detail modal; fully paid = sum of installments ≥ gross; print/HTML pay report includes **Physical payments** block
 - **Category**: People / Pay Stubs
 
 #### March 29, 2026
@@ -1959,7 +1993,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260329002111_pay_stub_deductions.sql`**
 - **Purpose**: **Less** (deductions) per pay stub—manual lines or offset-linked; **Net Pay** = `gross_pay` − sum(deductions); cap installments at Net Pay
 - **Changes**: Create `pay_stub_deductions` (FK `pay_stubs` ON DELETE CASCADE, amount > 0, `source` manual|offset, optional FK `person_offsets`, description, created_by); partial UNIQUE on `person_offset_id`; BEFORE trigger: sum(deductions) ≤ gross; AFTER trigger: sum(`pay_stub_payments`) ≤ Net Pay; backfill one row per `person_offsets` where `pay_stub_id` IS NOT NULL; replace `pay_stub_payments_enforce_total_fn` to use Net Pay; RLS same as `pay_stub_payments`
-- **Impact**: Pay History ledger **Less** (click **$0.00** or amount → modal) and **Net Pay**; **Record payment** / trigger vs Net Pay; Run Payroll fully-paid uses Net Pay; print shows **Less** lines + **Net Pay**
+- **Impact**: Payroll ledger **Less** (click **$0.00** or amount → modal) and **Net Pay**; **Record payment** / trigger vs Net Pay; Run Payroll fully-paid uses Net Pay; print shows **Less** lines + **Net Pay**
 - **Category**: People / Pay Stubs
 
 #### March 27, 2026
@@ -1967,7 +2001,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260327000000_devs_delete_pay_stubs.sql`**
 - **Purpose**: Allow devs to delete pay stubs (e.g. to correct mistakes)
 - **Changes**: Create RLS policy "Devs can delete pay stubs" on `pay_stubs` using `public.is_dev()`; `pay_stub_days` cascade automatically via FK ON DELETE CASCADE
-- **Impact**: People > Pay History > Ledger shows a dev-only delete control (red trash icon); devs can remove erroneous pay stubs
+- **Impact**: People → Payroll → Ledger shows a dev-only delete control (red trash icon); devs can remove erroneous pay stubs
 - **Category**: People / Pay Stubs / RLS
 
 #### March 26, 2026
@@ -2051,15 +2085,15 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260315000000_create_pay_stub_days.sql`**
 - **Purpose**: Per-day allocation when pay stubs are generated; enables mismatch detection when hours change after payment
 - **Changes**: Create `pay_stub_days` table (pay_stub_id, person_name, work_date, hours_at_time, rate_at_time, paid_amount); RLS same as pay_stubs; backfill existing pay_stubs with daily allocations from current people_hours and pay_config
-- **Impact**: Generate flow now inserts pay_stub_days; clicking person name in Pay History ledger opens annual calendar modal (7×52 grid) with green/yellow/orange/gray day status; YTD earned, paid, unpaid totals
+- **Impact**: Generate flow now inserts pay_stub_days; clicking person name in Payroll ledger opens annual calendar modal (7×52 grid) with green/yellow/orange/gray day status; YTD earned, paid, unpaid totals
 - **Category**: People / Pay
 
 #### March 14, 2026
 
 **`20260314000000_create_pay_stubs.sql`**
-- **Purpose**: Ledger of generated pay stubs for employees; supports People → Pay History tab
+- **Purpose**: Ledger of generated pay stubs for employees; supports People → Payroll tab
 - **Changes**: Create `pay_stubs` table (id, person_name, period_start, period_end, hours_total, gross_pay, created_at, created_by); RLS same as people_hours (is_pay_approved_master OR is_assistant_of_pay_approved_master) for SELECT/INSERT
-- **Impact**: People page Pay History tab shows ledger and generator; users can create pay stubs by person and date range; print to PDF; HTML preview from bulk Generate Pay Reports (**View**) and related flows
+- **Impact**: People page Payroll tab shows ledger and generator; users can create pay stubs by person and date range; print to PDF; HTML preview from bulk Generate Pay Reports (**View**) and related flows
 - **Category**: People / Pay
 
 #### March 13, 2026
@@ -2541,7 +2575,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260314000000_create_pay_stubs.sql`**
 - **Purpose**: Ledger of generated pay stubs for employees
 - **Changes**: Created `pay_stubs` (person_name, period_start, period_end, hours_total, gross_pay, created_at, created_by); RLS same as people_hours
-- **Impact**: People → Pay History tab; ledger, generators, print; HTML **View** in bulk modal
+- **Impact**: People → Payroll tab; ledger, generators, print; HTML **View** in bulk modal
 - **Category**: People / Pay
 
 **`20260315000000_create_pay_stub_days.sql`**

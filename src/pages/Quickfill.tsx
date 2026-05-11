@@ -17,6 +17,7 @@ import { SupplyHousesSection } from '../components/quickfill/SupplyHousesSection
 import { BankingSortingSnapshotSection } from '../components/quickfill/BankingSortingSnapshotSection'
 import { HoursSection } from '../components/quickfill/HoursSection'
 import { QuickfillPeopleHoursNewSection } from '../components/quickfill/QuickfillPeopleHoursNewSection'
+import { QuickfillDifficultPeopleSection } from '../components/quickfill/QuickfillDifficultPeopleSection'
 import { QuickfillEmailInboxSection } from '../components/quickfill/QuickfillEmailInboxSection'
 import { QuickfillTextsSection } from '../components/quickfill/QuickfillTextsSection'
 import { QuickfillPhysicalInboxSection } from '../components/quickfill/QuickfillPhysicalInboxSection'
@@ -54,6 +55,7 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-office-arriving', sectionId: 'office-arriving', label: 'Office Arriving' },
   { id: 'quickfill-hours', sectionId: 'hours', label: 'People Hours (Old)' },
   { id: 'quickfill-people-hours-new', sectionId: 'people-hours-new', label: 'People Hours (new)' },
+  { id: 'quickfill-difficult-people', sectionId: 'difficult-people', label: 'Difficult people' },
   { id: 'quickfill-banking-sorting', sectionId: 'banking-sorting', label: 'Banking sorting' },
   { id: 'quickfill-crew-jobs', sectionId: 'crew-jobs', label: 'Crew Jobs / Bids' },
   { id: 'quickfill-billed-awaiting', sectionId: 'billed-awaiting', label: 'Billing Awaiting Payments' },
@@ -199,6 +201,12 @@ function formatRelativeTime(iso: string): string {
   if (hours < 24) return `${hours}h ago`
   if (days < 7) return `${days}d ago`
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+/** Jump-button subline: same buckets as formatRelativeTime but no " ago", space before name only (e.g. "2d Taunya"). */
+function formatJumpMarkSublineRelative(iso: string): string {
+  const s = formatRelativeTime(iso)
+  return s.endsWith(' ago') ? s.slice(0, -4) : s
 }
 
 function formatTime(iso: string): string {
@@ -632,6 +640,9 @@ function QuickfillPage() {
         return role != null && CAN_USE_SCHEDULE_DISPATCH_FOR_QUICKFILL_SCHEDULE.has(role)
       }
       if (sectionId === 'prospects') return canAccessProspects
+      if (sectionId === 'difficult-people') {
+        return role === 'dev' || role === 'master_technician' || role === 'assistant'
+      }
       return true
     },
     [
@@ -895,6 +906,24 @@ function QuickfillPage() {
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'people-hours-new', label: 'People Hours (new)' })}
           >
             <QuickfillPeopleHoursNewSection />
+          </QuickfillSectionWrapper>
+        )
+      case 'difficult-people':
+        return (
+          <QuickfillSectionWrapper
+            id={id}
+            sectionId={sectionId}
+            label={label}
+            bannerText={bannerText}
+            withTopDivider={withTopDivider}
+            color={getButtonColor(sectionMarks['difficult-people']?.marked_at ?? null)}
+            collapsed={isCollapsed('difficult-people') && !forceExpandedSections.has('difficult-people')}
+            mark={sectionMarks['difficult-people']}
+            onMarkUpToDate={() => void markSectionUpToDate('difficult-people')}
+            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'difficult-people']))}
+            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'difficult-people', label: 'Difficult people' })}
+          >
+            <QuickfillDifficultPeopleSection />
           </QuickfillSectionWrapper>
         )
       case 'banking-sorting':
@@ -1302,11 +1331,19 @@ function QuickfillPage() {
         {orderedSections.filter(({ sectionId }) => sectionWouldRenderOnPage(sectionId)).map(({ id, sectionId, label }) => {
           const mark = sectionMarks[sectionId]
           const color = getButtonColor(mark?.marked_at ?? null)
+          const byName = mark?.marked_by_name?.trim() ?? ''
+          const markRelative = mark ? formatRelativeTime(mark.marked_at) : ''
+          const sublineRelative = mark ? formatJumpMarkSublineRelative(mark.marked_at) : ''
+          const subline =
+            mark && byName ? `${sublineRelative} ${byName}` : mark ? sublineRelative : 'Never marked'
+          const lastMarkedTitle = mark ? `Last marked ${markRelative}${byName ? ` by ${byName}` : ''}` : 'Never marked'
           return (
             <div key={id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
               <button
                 type="button"
                 onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })}
+                title={lastMarkedTitle}
+                aria-label={`${label}: jump to section. ${lastMarkedTitle}`}
                 style={{
                   padding: '0.5rem 0.75rem',
                   borderRadius: 6,
@@ -1319,16 +1356,7 @@ function QuickfillPage() {
               >
                 {label}
               </button>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.125rem' }}>
-                <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                  {mark ? `Last marked: ${formatRelativeTime(mark.marked_at)}` : 'Never marked'}
-                </span>
-                {mark?.marked_by_name && (
-                  <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                    by {mark.marked_by_name}
-                  </span>
-                )}
-              </div>
+              <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>{subline}</span>
             </div>
           )
         })}

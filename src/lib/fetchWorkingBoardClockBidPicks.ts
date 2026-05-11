@@ -53,7 +53,8 @@ export async function fetchWorkingBoardClockBidPicks(userId: string | null | und
           .select(
             'id, bid_number, service_type_id, project_name, address, customers(name), bids_gc_builders(name), service_type:service_types(name)',
           )
-          .in('id', orderedIds),
+          .in('id', orderedIds)
+          .is('working_board_archived_at', null),
       'fetch bids for working board clock picks',
     )) as BidJoinRow[] | null
     const rows = bidRows ?? []

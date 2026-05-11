@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
 import {
@@ -6,7 +6,12 @@ import {
   stubNetPay,
   sumPayStubDeductionAmounts,
 } from '../../lib/payStubDeductions'
-import { isPayStubFullyPaid, sumPayStubPaymentAmounts, type PayStubPaymentRow } from '../../lib/payStubPayments'
+import {
+  isPayStubFullyPaid,
+  remainingPayStubBalance,
+  sumPayStubPaymentAmounts,
+  type PayStubPaymentRow,
+} from '../../lib/payStubPayments'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 
 type StubPick = {
@@ -63,6 +68,7 @@ export function PayStubLessModal({
   onSaved,
   showToast,
 }: PayStubLessModalProps) {
+  const manualAmountInputRef = useRef<HTMLInputElement>(null)
   const [pendingOffsets, setPendingOffsets] = useState<PendingOffsetRow[]>([])
   const [pendingLoading, setPendingLoading] = useState(false)
   const [manualAmount, setManualAmount] = useState('')
@@ -74,8 +80,10 @@ export function PayStubLessModal({
   const paidSum = stub ? sumPayStubPaymentAmounts(payments) : 0
   const dedSum = sumPayStubDeductionAmounts(deductions)
   const netPay = stub ? stubNetPay(stub.gross_pay, dedSum, additionalSum) : 0
+  const balanceRemaining = remainingPayStubBalance(netPay, paidSum)
   /** When installments fully cover Net Pay, lock Less edits (see Pay History plan). */
   const deductionsLocked = stub ? isPayStubFullyPaid(netPay, paidSum) : false
+  const balanceFillDisabled = deductionsLocked || savingManual || balanceRemaining <= 0
 
   const loadPending = useCallback(async () => {
     if (!stub) return
@@ -267,6 +275,75 @@ export function PayStubLessModal({
           Period {ledgerPeriodLabel(activeStub.period_start, activeStub.period_end)} · Gross ${formatCurrency(activeStub.gross_pay)} · Net Pay $
           {formatCurrency(netPay)}
         </p>
+        <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+          Installments apply to Net Pay (not Gross).
+        </p>
+        <div
+          style={{
+            marginBottom: '1rem',
+            padding: '0.75rem',
+            background: '#f9fafb',
+            borderRadius: 6,
+            border: '1px solid #e5e7eb',
+          }}
+        >
+          <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.35rem' }}>Payments on this report</div>
+          <div style={{ fontSize: '0.875rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+              <span style={{ color: '#374151' }}>Paid to date</span>
+              <span style={{ fontWeight: 600 }}>${formatCurrency(paidSum)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
+              <span style={{ color: '#374151' }}>Balance</span>
+              <button
+                type="button"
+                disabled={balanceFillDisabled}
+                aria-label="Fill Amount field with balance"
+                title={balanceFillDisabled ? undefined : 'Fill Amount field with balance'}
+                onClick={() => {
+                  setManualAmount(balanceRemaining.toFixed(2))
+                  queueMicrotask(() => manualAmountInputRef.current?.focus())
+                }}
+                style={{
+                  fontWeight: 600,
+                  margin: 0,
+                  padding: 0,
+                  border: 'none',
+                  background: 'none',
+                  color: balanceFillDisabled ? '#6b7280' : '#2563eb',
+                  cursor: balanceFillDisabled ? 'not-allowed' : 'pointer',
+                  textDecoration: balanceFillDisabled ? 'none' : 'underline',
+                  fontSize: 'inherit',
+                  fontFamily: 'inherit',
+                  textAlign: 'right',
+                }}
+              >
+                ${formatCurrency(balanceRemaining)}
+              </button>
+            </div>
+          </div>
+          {payments.length === 0 ? (
+            <p style={{ margin: '0.75rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>No payments recorded yet.</p>
+          ) : (
+            <ul style={{ margin: '0.75rem 0 0', paddingLeft: '1.2rem', fontSize: '0.8125rem', color: '#374151' }}>
+              {[...payments]
+                .sort((a, b) => a.paid_at.localeCompare(b.paid_at))
+                .map((p) => (
+                  <li key={p.id} style={{ marginBottom: '0.35rem' }}>
+                    <span style={{ fontWeight: 500 }}>${formatCurrency(Number(p.amount))}</span>
+                    {' · '}
+                    {new Date(p.paid_at).toLocaleDateString()}
+                    {p.memo?.trim() ? (
+                      <>
+                        {' · '}
+                        <span style={{ color: '#6b7280' }}>{p.memo.trim()}</span>
+                      </>
+                    ) : null}
+                  </li>
+                ))}
+            </ul>
+          )}
+        </div>
         {deductionsLocked ? (
           <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#059669', fontWeight: 500 }}>
             Installments fully cover Net Pay — add or remove charges only after adjusting payments.
@@ -315,6 +392,7 @@ export function PayStubLessModal({
           <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8125rem' }}>
             Amount ($)
             <input
+              ref={manualAmountInputRef}
               type="text"
               inputMode="decimal"
               value={manualAmount}

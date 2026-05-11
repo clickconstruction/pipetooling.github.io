@@ -4,6 +4,7 @@ import { DashboardMyTimeDayEditorModal } from '../DashboardMyTimeDayEditorModal'
 import { useAuth } from '../../hooks/useAuth'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
 import { useDashboardMyTeamSectionState } from '../../hooks/useDashboardMyTeamSectionState'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { useToastContext } from '../../contexts/ToastContext'
 import {
   denverCalendarDayKey,
@@ -13,7 +14,12 @@ import {
 import { syncSalaryClockSessionsForUserDay } from '../../lib/salaryScheduleSync'
 import { recordNotComingInForUserAsStaff } from '../../lib/notComingInTimeOff'
 import type { ClockSessionRow, DashboardStripSession } from '../../types/clockSessions'
-import { enCaWeekRangeContainingYmd, shiftWorkDateYmd } from '../../lib/peopleHoursClockStripSelectedDay'
+import { shiftWorkDateYmd } from '../../lib/peopleHoursClockStripSelectedDay'
+import {
+  buildPeopleHoursClockStripMiniCalendarYmds,
+  pendingWorkDateRangeFromMiniCalendarYmds,
+  PeopleHoursClockStripMiniCalendar,
+} from '../people/PeopleHoursClockStripMiniCalendar'
 
 const QUICKFILL_CLOCK_STRIP_SCOPE_KEY = 'quickfill_clock_strip_scope'
 
@@ -81,6 +87,7 @@ const assistanceNoticeStyle: CSSProperties = {
 
 export function QuickfillPeopleHoursNewSection() {
   const peopleHoursNavMobile = usePeopleHoursNavMobileLayout()
+  const narrowViewport640 = useNarrowViewport640()
   const { user: authUser, role } = useAuth()
   const { showToast } = useToastContext()
   const [selectedYmd, setSelectedYmd] = useState(() => denverCalendarDayKey(Date.now()))
@@ -104,13 +111,29 @@ export function QuickfillPeopleHoursNewSection() {
   const showStripSubjectMyTimeEditor = showClockStripScopeToggle || role === 'superintendent'
   const orgWideStripEnabled = showClockStripScopeToggle && clockStripScope === 'everyone'
 
-  const pendingWorkDateRange = useMemo(() => enCaWeekRangeContainingYmd(selectedYmd), [selectedYmd])
+  const todayDenver = denverCalendarDayKey(Date.now())
+  const miniCalendarYmds = useMemo(() => buildPeopleHoursClockStripMiniCalendarYmds(todayDenver), [todayDenver])
+  const pendingWorkDateRange = useMemo(
+    () => pendingWorkDateRangeFromMiniCalendarYmds(miniCalendarYmds, todayDenver),
+    [miniCalendarYmds, todayDenver],
+  )
 
   const myTeam = useDashboardMyTeamSectionState(authUser?.id, {
     orgWideStripEnabled,
     stripWorkDateYmd: selectedYmd,
     pendingWorkDateRange,
   })
+
+  const pendingUnapprovedCountByWorkDate = useMemo(() => {
+    const base = orgWideStripEnabled ? myTeam.orgWidePendingSessions : myTeam.pendingSessions
+    const counts: Record<string, number> = {}
+    for (const s of base) {
+      const wd = s.work_date
+      if (!wd) continue
+      counts[wd] = (counts[wd] ?? 0) + 1
+    }
+    return counts
+  }, [orgWideStripEnabled, myTeam.orgWidePendingSessions, myTeam.pendingSessions])
 
   const [pendingBreakdownOpen, setPendingBreakdownOpen] = useState(false)
 
@@ -165,7 +188,6 @@ export function QuickfillPeopleHoursNewSection() {
     return () => window.removeEventListener('keydown', onKey)
   }, [pendingBreakdownOpen])
 
-  const todayDenver = denverCalendarDayKey(Date.now())
   const showLiveCurrentlyIn = selectedYmd === todayDenver
 
   const sessionsForStrip = useMemo((): DashboardStripSession[] => {
@@ -322,7 +344,9 @@ export function QuickfillPeopleHoursNewSection() {
             </div>
             <div style={{ padding: '0.75rem 1.25rem 1.25rem' }}>
               {pendingApprovalBreakdown.length === 0 ? (
-                <p style={{ margin: 0, color: '#64748b', fontSize: '0.875rem' }}>No pending approvals in this week.</p>
+                <p style={{ margin: 0, color: '#64748b', fontSize: '0.875rem' }}>
+                  No pending approvals in the mini-calendar date range.
+                </p>
               ) : (
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                   <thead>
@@ -359,6 +383,15 @@ export function QuickfillPeopleHoursNewSection() {
           </div>
         </div>
       )}
+      <PeopleHoursClockStripMiniCalendar
+        miniCalendarYmds={miniCalendarYmds}
+        todayDenver={todayDenver}
+        selectedYmd={selectedYmd}
+        onSelectYmd={setSelectedYmd}
+        pendingUnapprovedCountByWorkDate={pendingUnapprovedCountByWorkDate}
+        countsLoading={myTeam.loadingSessions}
+        narrowViewport640={narrowViewport640}
+      />
       {peopleHoursNavMobile ? (
         <div style={{ marginBottom: 0 }}>
           <div

@@ -2892,7 +2892,10 @@ export default function JobFormModal({
       }
       onSavedRef.current?.()
       closeForm()
-      showToast('Costs moved to the target job; this job was removed.', 'success')
+      showToast(
+        'Costs and job total moved to the target job; this job was removed. Open the target job to verify Specific Work and Job Total.',
+        'success',
+      )
       return true
     } catch (err: unknown) {
       console.error('migrateJobLedgerCostsAndDelete', err)
@@ -6155,7 +6158,8 @@ export default function JobFormModal({
               Migrate costs and delete this job
             </h2>
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}>
-              Move labor, parts, materials, and related rows to another job, then remove{' '}
+              Move labor, parts, materials, Specific Work, and related rows to another job, add this job’s{' '}
+              <strong>Job total (revenue)</strong> to the target’s total, then remove{' '}
               <strong>HCP {(editing.hcp_number ?? '').trim() || '—'}</strong> —{' '}
               <strong>{(editing.job_name ?? '').trim() || '—'}</strong>. This cannot be undone.
             </p>
