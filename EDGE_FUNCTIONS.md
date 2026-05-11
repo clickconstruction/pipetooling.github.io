@@ -1257,6 +1257,26 @@ Per-recipient **`activity_scope`** + **`crew_filter`** + **`include_costs`** (fr
 
 ---
 
+### schedule-day-email-dispatch
+
+**Purpose**: pg_cron `*/15` — loads **`schedule_day_email_requests`** rows with **`status = pending`** and **`send_at <= now()`**, calls **`list_job_schedule_blocks_for_schedule_email(p_recipient, p_work_date)`** (Schedule Dispatch hub–parity visibility for that calendar day), builds HTML + plain text, sends to **`users.email`** via Resend, then sets **`sent`** / **`failed`**.
+
+**Endpoint**: `POST /functions/v1/schedule-day-email-dispatch`
+
+**Auth**: **`X-Cron-Secret`** **`CRON_SECRET`** (same as **`recurring-job-report-dispatch`**)
+
+**Secrets**: `SUPABASE_SERVICE_ROLE_KEY`, **`RESEND_API_KEY`**, `CRON_SECRET`
+
+**Cron**: **`20270522120000_schedule_day_email_requests_and_rpc.sql`** registers job **`schedule-day-email-dispatch`** with vault **`PROJECT_URL`** + **`CRON_SECRET`**.
+
+**Verify JWT**: `false` (`supabase/config.toml`)
+
+**Request**: Optional body `{"cron_secret":"..."}` or header **`X-Cron-Secret`**.
+
+**Success**: `{ "ok": true, "processed": n, "sent": k, "errors": [] }`
+
+---
+
 ### sync-salary-sessions
 
 **Purpose**: Materialize and close `clock_sessions` with `origin = 'salary_schedule'` for all users who have a row in `salary_work_schedule_templates`, for the current **America/Chicago** calendar date. Intended to run every 1–5 minutes via cron (same auth pattern as `send-scheduled-reminders`).

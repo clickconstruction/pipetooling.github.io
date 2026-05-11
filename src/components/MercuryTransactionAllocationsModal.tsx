@@ -14,6 +14,7 @@ import {
   type SearchableSelectOption,
   type SearchableSelectSelectableOption,
 } from './SearchableSelect'
+import { useAuth } from '../hooks/useAuth'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { formatBidLedgerShortLine, formatJobLedgerShortLine } from '../lib/ledgerDisplayPrefixes'
 
@@ -284,6 +285,7 @@ export function MercuryTransactionAllocationsModal({
   tallyActAsUserId = null,
 }: MercuryTransactionAllocationsModalProps) {
   const { showToast } = useToastContext()
+  const { user: authUser } = useAuth()
   const ledgerPrefixMap = useLedgerPrefixMap()
   const [lines, setLines] = useState<SplitLine[]>([])
   const [userId, setUserId] = useState<string>('')
@@ -303,7 +305,45 @@ export function MercuryTransactionAllocationsModal({
   const displayTotal = Math.abs(txAmount)
   const allocationSign = (txAmount === 0 ? 1 : Math.sign(txAmount)) as 1 | -1
 
-  const showStaffTallyDayContext = Boolean(tallySelfService && tallyActAsUserId && transaction?.posted_at)
+  /** Tally self-service + staff follow-up: show Dispatch schedule + clock-session quick picks for the calendar day of posted_at. */
+  const showTallyDayContext = Boolean(
+    tallySelfService && transaction?.posted_at && (tallyActAsUserId ?? authUser?.id),
+  )
+
+  const tallyScheduleHeadings = useMemo(() => {
+    if (!transaction?.posted_at) {
+      return {
+        scheduleTitle: 'Jobs on my schedule',
+        scheduleDateLine: null as string | null,
+        clockSessionsTitle: 'Clock sessions that day',
+      }
+    }
+    const ms = new Date(transaction.posted_at).getTime()
+    if (!Number.isFinite(ms)) {
+      return {
+        scheduleTitle: 'Jobs on my schedule',
+        scheduleDateLine: null,
+        clockSessionsTitle: 'Clock sessions that day',
+      }
+    }
+    const postedYmd = denverCalendarDayKey(ms)
+    const todayYmd = denverCalendarDayKey(Date.now())
+    const isToday = postedYmd === todayYmd
+    const dateLine = isToday
+      ? null
+      : new Intl.DateTimeFormat('en-US', {
+          timeZone: APP_CALENDAR_TZ,
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        }).format(new Date(ms))
+    return {
+      scheduleTitle: isToday ? 'Jobs on my schedule' : 'Jobs on my schedule that day',
+      scheduleDateLine: dateLine,
+      clockSessionsTitle: isToday ? 'Clock sessions today' : 'Clock sessions that day',
+    }
+  }, [transaction?.posted_at])
 
   // Re-seed only when the modal opens or the transaction / user identity changes — not when the parent
   // passes new object/array refs for the same row (e.g. stale tally follow-up rebuilds `transaction` each render).
@@ -375,7 +415,16 @@ export function MercuryTransactionAllocationsModal({
   }, [open, recentPersonPicksStorageKey])
 
   useEffect(() => {
-    if (!open || !tallySelfService || !tallyActAsUserId || !transaction?.posted_at) {
+    if (!open || !tallySelfService || !transaction?.posted_at) {
+      setStaffDayScheduleJobs([])
+      setStaffDaySessionJobs([])
+      setStaffDaySessionBids([])
+      setStaffDayContextLoading(false)
+      setStaffDayContextError(null)
+      return
+    }
+    const targetUserId = tallyActAsUserId ?? authUser?.id ?? null
+    if (!targetUserId) {
       setStaffDayScheduleJobs([])
       setStaffDaySessionJobs([])
       setStaffDaySessionBids([])
@@ -403,7 +452,7 @@ export function MercuryTransactionAllocationsModal({
     void (async () => {
       const errParts: string[] = []
       try {
-        const schedRes = await fetchDispatchScheduledJobsForAssigneeDay(tallyActAsUserId, workDateYmd)
+        const schedRes = await fetchDispatchScheduledJobsForAssigneeDay(targetUserId, workDateYmd)
         if (cancelled) return
         if (schedRes.error) errParts.push(schedRes.error)
         setStaffDayScheduleJobs(schedRes.data ?? [])
@@ -414,11 +463,11 @@ export function MercuryTransactionAllocationsModal({
             supabase
               .from('clock_sessions')
               .select('work_date, job_ledger_id, bid_id')
-              .eq('user_id', tallyActAsUserId)
+              .eq('user_id', targetUserId)
               .eq('work_date', workDateYmd)
               .is('rejected_at', null)
               .is('revoked_at', null),
-          'MercuryTransactionAllocationsModal staff tally day clock_sessions',
+          'MercuryTransactionAllocationsModal tally day clock_sessions',
         )
         if (cancelled) return
         const rows = (sessRows ?? []) as SessRow[]
@@ -532,7 +581,7 @@ export function MercuryTransactionAllocationsModal({
     return () => {
       cancelled = true
     }
-  }, [open, tallySelfService, tallyActAsUserId, transaction?.posted_at, transaction?.id, ledgerPrefixMap])
+  }, [open, tallySelfService, tallyActAsUserId, authUser?.id, transaction?.posted_at, transaction?.id, ledgerPrefixMap])
 
   const allocationSum = useMemo(() => {
     let sum = 0
@@ -940,7 +989,7 @@ export function MercuryTransactionAllocationsModal({
           </>
         ) : null}
 
-        {showStaffTallyDayContext ? (
+        {showTallyDayContext ? (
           <div style={{ marginBottom: '1rem' }}>
             {staffDayContextLoading ? (
               <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.5rem' }}>Loading schedule and sessions…</div>
@@ -951,8 +1000,13 @@ export function MercuryTransactionAllocationsModal({
 
             <div style={{ marginBottom: '0.75rem' }}>
               <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.35rem' }}>
-                Scheduled jobs that day
+                {tallyScheduleHeadings.scheduleTitle}
               </div>
+              {tallyScheduleHeadings.scheduleDateLine ? (
+                <div style={{ fontSize: '0.72rem', color: '#64748b', marginBottom: '0.35rem', fontWeight: 500 }}>
+                  {tallyScheduleHeadings.scheduleDateLine}
+                </div>
+              ) : null}
               {staffDayScheduleJobs.length === 0 && !staffDayContextLoading ? (
                 <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>None on schedule</div>
               ) : (
@@ -998,7 +1052,7 @@ export function MercuryTransactionAllocationsModal({
 
             <div style={{ marginBottom: '0.25rem' }}>
               <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.35rem' }}>
-                Clock sessions that day
+                {tallyScheduleHeadings.clockSessionsTitle}
               </div>
               {staffDaySessionJobs.length === 0 && staffDaySessionBids.length === 0 && !staffDayContextLoading ? (
                 <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>No job or bid on sessions</div>
@@ -1050,11 +1104,9 @@ export function MercuryTransactionAllocationsModal({
           </div>
         ) : null}
 
-        <div style={{ fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.35rem' }}>Job splits</div>
-        <p style={{ margin: '0 0 0.45rem', fontSize: '0.75rem', color: '#64748b' }}>
-          To move this charge to another job, remove the line for the current job and add the new job from search (amounts
-          must still sum to the transaction total).
-        </p>
+        <div style={{ fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.35rem', textAlign: 'center' }}>
+          Transaction's Job Assignment
+        </div>
         <input
           type="text"
           value={jobSearch}
@@ -1215,7 +1267,7 @@ export function MercuryTransactionAllocationsModal({
 
         <div style={{ fontSize: '0.8125rem', marginBottom: '1rem', color: lines.length > 0 ? (canSave ? '#059669' : '#b45309') : '#6b7280' }}>
           {lines.length === 0 ? (
-            'No job splits.'
+            'Adding multiple jobs splits the cost across those jobs. This happens rarely.'
           ) : displayTotal <= 0 ? (
             'Zero charge — remove job lines or adjust the transaction in Mercury.'
           ) : (

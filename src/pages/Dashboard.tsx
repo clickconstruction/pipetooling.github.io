@@ -4565,6 +4565,7 @@ export default function Dashboard() {
             showClockStripScopeToggle ? materializeSalarySessionForStrip : undefined
           }
           enableCopyDayJobMix={showClockStripScopeToggle}
+          enableScheduleDayEmail={showClockStripScopeToggle}
           clockStripWorkDateYmd={myTeam.clockStripWorkDateYmd}
         />
       )}
@@ -4988,6 +4989,7 @@ export default function Dashboard() {
             showClockStripScopeToggle ? materializeSalarySessionForStrip : undefined
           }
           enableCopyDayJobMix={showClockStripScopeToggle}
+          enableScheduleDayEmail={showClockStripScopeToggle}
           clockStripWorkDateYmd={myTeam.clockStripWorkDateYmd}
         />
       )}

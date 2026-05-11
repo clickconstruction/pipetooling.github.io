@@ -12,9 +12,24 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.518+ (reverse chronological)"
+version_range: "v2.523+ (reverse chronological)"
 
 key_sections:
+  - name: "Latest Version (v2.523)"
+    line: ~1756
+    description: "Email schedule modal — dev Send to any user (RLS dev policies)"
+  - name: "Latest Version (v2.522)"
+    line: ~1775
+    description: "Dashboard clock strip — Email schedule (queue dispatch blocks email; schedule-day-email-dispatch cron)"
+  - name: "Latest Version (v2.521)"
+    line: ~1775
+    description: "Mercury alloc modal — Transaction's Job Assignment UX; TallyPreClockOutModal — Continue only (no Skip for now)"
+  - name: "Latest Version (v2.520)"
+    line: ~1767
+    description: "Job Parts Tally Assign to jobs — self-service schedule + clock day context (MercuryTransactionAllocationsModal, fetchDispatchScheduledJobsForAssigneeDay, denverCalendarDayKey)"
+  - name: "Latest Version (v2.519)"
+    line: ~1747
+    description: "Dashboard Clock Out — TallyPreClockOutModal when unlinked Mercury; mercuryTxRowFromTally.ts + fetchRecentClockJobPicksForUser"
   - name: "Latest Version (v2.518)"
     line: ~1747
     description: "Bids — Working-board archive only from Edit bid (Archive from board footer; confirm above modal)"
@@ -1744,6 +1759,58 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
+## Latest Updates (v2.523)
+
+**Date**: 2026-05-11
+
+### **Email schedule** — dev **Send to** (queue for others)
+
+- **`dev`** — **[`ScheduleDayEmailModal.tsx`](src/components/ScheduleDayEmailModal.tsx)** **Send to** **`SearchableSelect`**: non-archived **`users`** (first 500 by name). Inserts **`schedule_day_email_requests`** with chosen **`recipient_user_id`**; **RLS** **[`20270523120000_dev_schedule_day_email_for_other.sql`](supabase/migrations/20270523120000_dev_schedule_day_email_for_other.sql)** (**`schedule_day_email_requests_insert_dev_any_recipient`**, **`schedule_day_email_requests_select_dev`**). Master/assistant unchanged (self only).
+
+---
+
+## Latest Updates (v2.522)
+
+**Date**: 2026-05-11
+
+### Dashboard — **Email schedule** on **Clocked in today** strip
+
+- **[`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)** — When **`enableScheduleDayEmail`** (**[`Dashboard.tsx`](src/pages/Dashboard.tsx)** mirrors **`showClockStripScopeToggle`** with **Mix**), **Email schedule** sits left of **Mix**. Opens **[`ScheduleDayEmailModal.tsx`](src/components/ScheduleDayEmailModal.tsx)** (**Schedule** at a Central wall time, **Queue soon** for a due-now row). Inserts **`schedule_day_email_requests`** (**`20270522120000_schedule_day_email_requests_and_rpc.sql`**; one **pending** row per recipient + **`work_date`**). **[`list_job_schedule_blocks_for_schedule_email`](supabase/migrations/20270522120000_schedule_day_email_requests_and_rpc.sql)** mirrors **`job_schedule_blocks`** SELECT for the recipient; **[`schedule-day-email-dispatch`](supabase/functions/schedule-day-email-dispatch/index.ts)** pg_cron `*/15` + Resend.
+
+---
+
+## Latest Updates (v2.521)
+
+**Date**: 2026-05-11
+
+### Job Parts Tally — **Assign** modal copy; pre–**Clock Out** gate footer
+
+- **[`MercuryTransactionAllocationsModal.tsx`](src/components/MercuryTransactionAllocationsModal.tsx)** — Section title **Transaction's Job Assignment** (centered). When there are no job lines yet, helper text explains that **adding multiple jobs splits the cost across those jobs** and that this is uncommon. Removed the old muted blurb about moving a charge by removing a line and adding a job from search.
+- **[`TallyPreClockOutModal.tsx`](src/components/tally/TallyPreClockOutModal.tsx)** — Footer: **Continue to clock out** only (**Skip for now** removed as redundant with the primary action). Backdrop click and **Escape** still call **`onContinueToClockOut`** (same as **Continue**).
+
+---
+
+## Latest Updates (v2.520)
+
+**Date**: 2026-05-11
+
+### Job Parts Tally — **Assign to jobs** shows **my Dispatch schedule** for the transaction day
+
+- **[`MercuryTransactionAllocationsModal.tsx`](src/components/MercuryTransactionAllocationsModal.tsx)** — When **`tallySelfService`** (self-service or stale follow-up), loads **`fetchDispatchScheduledJobsForAssigneeDay`** + same-day **`clock_sessions`** for **`tallyActAsUserId ?? auth user`**, keyed off **`denverCalendarDayKey(transaction.posted_at)`**. Section titles: **Jobs on my schedule** when the posted calendar day is today; otherwise **Jobs on my schedule that day** with a muted company-TZ date line; clock subsection mirrors (**Clock sessions today** / **Clock sessions that day**).
+
+---
+
+## Latest Updates (v2.519)
+
+**Date**: 2026-05-11
+
+### Dashboard **Clock Out** — assign Mercury spending first (optional gate)
+
+- **[`ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx)** — Non-salary **Clock Out** runs a gate: **`list_my_linked_mercury_transactions_for_tally`** + org floor **`job_tally_min_posted_ymd`** (**[`app_settings`](src/lib/appSettingsKeys.ts)**) + **`list_my_linked_mercury_debit_cards_for_tally`** + **[`fetchRecentClockJobPicksForUser`](src/lib/fetchRecentClockJobPicksForUser.ts)**; filters with **`filterTallyRowsToUnlinkedWithOptionalMinPosted`** in **[`mercuryTxRowFromTally.ts`](src/lib/mercuryTxRowFromTally.ts)** (same unlinked rule as Job Tally). If any rows → **[`TallyPreClockOutModal.tsx`](src/components/tally/TallyPreClockOutModal.tsx)** (**Assign your spending before you clock out**); **Assign** uses **`MercuryTransactionAllocationsModal`** **`tallySelfService`**; **Continue to clock out** (and backdrop / **Escape**) → existing **Review before clock out** (duplicate **Skip for now** removed in **v2.521**). Button shows **Checking…** while the gate runs; on RPC failure, toast + proceed to review.
+- **[`JobTally.tsx`](src/pages/JobTally.tsx)** — **`mercuryTxRowFromTallyRpc`**, **`tallyRowHasJobAllocations`**, **`tallyUniqueJobSplitEntries`** moved to shared **[`mercuryTxRowFromTally.ts`](src/lib/mercuryTxRowFromTally.ts)**.
+
+---
+
 ## Latest Updates (v2.518)
 
 **Date**: 2026-05-11
@@ -3109,7 +3176,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 - **`JobSummaryMercuryAllocationRow`** carries **`mercury_transaction_id`**; print-path mercury rows match ([`Jobs.tsx`](src/pages/Jobs.tsx)).
 - **[`JobSummaryDrilldownMercuryTable`](src/components/jobs/JobSummaryCostCellDrilldownModal.tsx)**: optional **Actions** column — **Reassign** (roles with **`canAccessBankingForParts`**) calls **`handleJobSummaryMercuryReassignFromDrilldown`** → **`loadMercuryAllocModalDataForTransaction`** → shared **`MercuryTransactionAllocationsModal`** (same as Parts **Assign**). Drilldown closes so the alloc modal stacks above.
 - **Save** (**`onPartsAllocSaved`**): clears drilldown; **`loadJobSummaryMercuryAllocationsForJob(jid, true)`** for source job and any **`job_id`** in saved splits; **`updateMercuryCardTotalForOneJob`** per touched job.
-- **[`MercuryTransactionAllocationsModal`](src/components/MercuryTransactionAllocationsModal.tsx)**: muted hint under **Job splits** — remove line + add new job from search to move allocation.
+- **[`MercuryTransactionAllocationsModal`](src/components/MercuryTransactionAllocationsModal.tsx)**: shared Mercury/job allocation modal (section **Transaction's Job Assignment** — see **`RECENT_FEATURES`** **v2.521**).
 
 ---
 

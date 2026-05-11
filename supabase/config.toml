@@ -504,6 +504,9 @@ verify_jwt = false
 [functions.recurring-job-report-dispatch]
 verify_jwt = false
 
+[functions.schedule-day-email-dispatch]
+verify_jwt = false
+
 # DB webhook / service role: Bearer is service role or TEAM_LEAD_CLOCK_WEBHOOK_SECRET in function.
 [functions.notify-team-lead-clock]
 verify_jwt = false

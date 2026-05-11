@@ -104,6 +104,20 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Duplicate-bid UX in **[`BidFormModal.tsx`](src/components/bids/BidFormModal.tsx)** / related flows preserves per-version omit state; regenerate **`src/types/database.ts`**.
 - **Category**: Bids / Pricing / functions
 
+#### May 22, 2027
+
+**`20270522120000_schedule_day_email_requests_and_rpc.sql`**
+- **Purpose**: **`schedule_day_email_requests`** (pending row per **`recipient_user_id`** + **`work_date`**, **`send_at`** UTC); **`can_access_project_row_for_user`**, **`list_job_schedule_blocks_for_schedule_email`** (mirrors **`job_schedule_blocks`** SELECT using viewer id); RLS (self rows; insert **dev**/**master_technician**/**assistant**); pg_cron **`schedule-day-email-dispatch`** → Edge ([**`EDGE_FUNCTIONS.md`**](EDGE_FUNCTIONS.md)). **[`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.522**.
+- **Impact**: **[`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)**, **[`ScheduleDayEmailModal.tsx`](src/components/ScheduleDayEmailModal.tsx)**; **`npm run gen-types:linked`** after **`db push`**.
+- **Category**: Dashboard / Schedule / Email / RLS
+
+#### May 23, 2027
+
+**`20270523120000_dev_schedule_day_email_for_other.sql`**
+- **Purpose**: RLS — **`schedule_day_email_requests_insert_dev_any_recipient`** (**`is_dev()`** + non-archived **`recipient_user_id`**); **`schedule_day_email_requests_select_dev`**. **[`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.523**.
+- **Impact**: **[`ScheduleDayEmailModal.tsx`](src/components/ScheduleDayEmailModal.tsx)** dev **Send to** picker.
+- **Category**: Dashboard / RLS
+
 ### May 2026
 
 #### May 11, 2026

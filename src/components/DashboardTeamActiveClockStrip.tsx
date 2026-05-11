@@ -50,6 +50,7 @@ import {
 import type { LedgerPrefixMap } from '../lib/ledgerDisplayPrefixes'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { CopyDayJobMixModal, CopyDayJobMixIcon } from './day-job-mix/CopyDayJobMixModal'
+import { ScheduleDayEmailModal } from './ScheduleDayEmailModal'
 import { JobsWorkedTodayReportIcon } from './icons/JobsWorkedTodayReportIcon'
 import ReportViewModal, { type ReportForView } from './ReportViewModal'
 import { reportForViewFromJobLedgerRow, type ReportForJobLedgerRow } from '../lib/reportForViewFromJobLedgerRow'
@@ -687,6 +688,7 @@ export function DashboardTeamActiveClockStrip({
   onMaterializeSalarySession,
   hideCurrentlyInTable = false,
   enableCopyDayJobMix = false,
+  enableScheduleDayEmail = false,
   clockStripWorkDateYmd,
   jobsWorkedTodayReportKeys = EMPTY_JOBS_WORKED_TODAY_REPORT_KEYS,
   jobsWorkedTodayReportIdByKey = EMPTY_JOBS_WORKED_TODAY_REPORT_ID_BY_KEY,
@@ -723,6 +725,8 @@ export function DashboardTeamActiveClockStrip({
   hideCurrentlyInTable?: boolean
   /** Dev / master / assistant: show copy job-mix mode on Clocked in today. */
   enableCopyDayJobMix?: boolean
+  /** Dev / master / assistant: schedule dispatch schedule email for this strip day. */
+  enableScheduleDayEmail?: boolean
   /** Strip `work_date` (YYYY-MM-DD), e.g. from my team hook `clockStripWorkDateYmd`. */
   clockStripWorkDateYmd?: string
   /** `(jobLedgerId:userId)` when user filed a report for that job on the strip calendar day. */
@@ -804,6 +808,7 @@ export function DashboardTeamActiveClockStrip({
     sourceUserId: string
     sourceDisplayName: string
   } | null>(null)
+  const [scheduleDayEmailOpen, setScheduleDayEmailOpen] = useState(false)
   const [stripViewingReport, setStripViewingReport] = useState<ReportForView | null>(null)
 
   const openJobsWorkedTodayReport = useCallback(
@@ -1104,7 +1109,8 @@ export function DashboardTeamActiveClockStrip({
   const scopeShowsOverlay = showScopeToggle && !!onClockStripScopeChange
   const showCurrentlyInTable = !hideCurrentlyInTable && sessions.length > 0
   const copyJobMixChrome = enableCopyDayJobMix === true && clockedInTodayRows.length > 0
-  const showClockedInHeaderChrome = showClockedInTodayToggle || copyJobMixChrome
+  const scheduleEmailChrome = enableScheduleDayEmail === true
+  const showClockedInHeaderChrome = showClockedInTodayToggle || copyJobMixChrome || scheduleEmailChrome
   const showStripTopRightBar = scopeShowsOverlay || showClockedInHeaderChrome
   const stripTableHostWithTopBar: CSSProperties = {
     ...stripTableHost,
@@ -1112,11 +1118,19 @@ export function DashboardTeamActiveClockStrip({
   }
   const stripTopRightHeaderReserve: CSSProperties =
     scopeShowsOverlay && showClockedInHeaderChrome
-      ? { paddingRight: 'clamp(14rem, 38vw, 22rem)' }
+      ? {
+          paddingRight: scheduleEmailChrome
+            ? 'clamp(17.5rem, 44vw, 27rem)'
+            : 'clamp(14rem, 38vw, 22rem)',
+        }
       : scopeShowsOverlay
         ? { paddingRight: 'clamp(8.5rem, 22vw, 10.5rem)' }
         : showClockedInHeaderChrome
-          ? { paddingRight: 'clamp(6.5rem, 18vw, 11rem)' }
+          ? {
+              paddingRight: scheduleEmailChrome
+                ? 'clamp(10rem, 22vw, 14rem)'
+                : 'clamp(6.5rem, 18vw, 11rem)',
+            }
           : {}
   const mergeClockedInHeaderIntoJobs =
     clockedInTodayExpandMode === 'collapsed' &&
@@ -1134,6 +1148,24 @@ export function DashboardTeamActiveClockStrip({
         flexShrink: 1,
       }}
     >
+      {scheduleEmailChrome ? (
+        <button
+          type="button"
+          onClick={() => {
+            if (authUserId) setScheduleDayEmailOpen(true)
+          }}
+          disabled={!authUserId}
+          title="Email a copy of the dispatch schedule for this day"
+          aria-label="Schedule email with dispatch blocks for this day"
+          style={{
+            ...scopeBtn(false),
+            ...stripClockedInChromeBtnLayout,
+            opacity: authUserId ? 1 : 0.45,
+          }}
+        >
+          Email schedule
+        </button>
+      ) : null}
       {copyJobMixChrome ? (
         <button
           type="button"
@@ -2712,6 +2744,17 @@ export function DashboardTeamActiveClockStrip({
       clockedInTodayRows={clockedInTodayRows}
       nowMs={nowMs}
       onApplied={() => onClockSessionsMutated?.()}
+    />
+  ) : null}
+  {authUserId && enableScheduleDayEmail ? (
+    <ScheduleDayEmailModal
+      open={scheduleDayEmailOpen}
+      onClose={() => setScheduleDayEmailOpen(false)}
+      workDateYmd={clockStripWorkDateResolved}
+      authUserId={authUserId}
+      onScheduled={() => {
+        onClockSessionsMutated?.()
+      }}
     />
   ) : null}
   <ReportViewModal

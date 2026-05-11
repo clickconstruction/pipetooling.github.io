@@ -1,8 +1,6 @@
 import { useEffect, useMemo } from 'react'
-import type { Database } from '../../types/database'
 import { parseTallyJobSplitsJson } from '../../lib/tallyJobSplits'
-
-type TallyLinkedMercuryRow = Database['public']['Functions']['list_my_linked_mercury_transactions_for_tally']['Returns'][number]
+import type { TallyLinkedMercuryRow } from '../../lib/mercuryTxRowFromTally'
 
 function rowHasJobSplit(row: TallyLinkedMercuryRow, jobId: string): boolean {
   const raw = row.job_splits

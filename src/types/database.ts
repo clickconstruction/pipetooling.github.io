@@ -7526,6 +7526,60 @@ export type Database = {
           },
         ]
       }
+      schedule_day_email_requests: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          error: string | null
+          id: string
+          recipient_user_id: string
+          send_at: string
+          sent_at: string | null
+          status: string
+          timezone: string
+          work_date: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          id?: string
+          recipient_user_id: string
+          send_at: string
+          sent_at?: string | null
+          status?: string
+          timezone?: string
+          work_date: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          id?: string
+          recipient_user_id?: string
+          send_at?: string
+          sent_at?: string | null
+          status?: string
+          timezone?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_day_email_requests_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_day_email_requests_recipient_user_id_fkey"
+            columns: ["recipient_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_types: {
         Row: {
           color: string | null
@@ -9322,6 +9376,10 @@ export type Database = {
             }
             Returns: boolean
           }
+      can_access_project_row_for_user: {
+        Args: { project_id_param: string; viewer_user_id: string }
+        Returns: boolean
+      }
       can_access_project_via_step: {
         Args: { step_id_param: string }
         Returns: boolean
@@ -9871,6 +9929,22 @@ export type Database = {
         Returns: {
           job_count: number
           master_user_id: string
+        }[]
+      }
+      list_job_schedule_blocks_for_schedule_email: {
+        Args: { p_recipient: string; p_work_date: string }
+        Returns: {
+          assignee_name: string
+          assignee_user_id: string
+          id: string
+          job_address: string
+          job_hcp_number: string
+          job_id: string
+          job_name: string
+          note: string
+          time_end: string
+          time_start: string
+          work_date: string
         }[]
       }
       list_jobs_for_tally: {

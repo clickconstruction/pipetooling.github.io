@@ -1,7 +1,5 @@
-import type { Database } from '../types/database'
+import type { TallyLinkedMercuryRow } from './mercuryTxRowFromTally'
 import { parseTallyJobSplitsJson } from './tallyJobSplits'
-
-type TallyLinkedMercuryRow = Database['public']['Functions']['list_my_linked_mercury_transactions_for_tally']['Returns'][number]
 
 function pushPart(parts: string[], v: string | null | undefined): void {
   if (typeof v !== 'string') return

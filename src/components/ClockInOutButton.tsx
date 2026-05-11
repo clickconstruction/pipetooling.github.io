@@ -35,6 +35,14 @@ import { canLeaveJobFieldReport } from '../lib/canLeaveJobFieldReport'
 import BidServiceTypeSearchToggles from './BidServiceTypeSearchToggles'
 import AdditionalReportModal from './AdditionalReportModal'
 import TeamFeedbackWizard from './team-feedback/TeamFeedbackWizard'
+import { TallyPreClockOutModal } from './tally/TallyPreClockOutModal'
+import type { Database } from '../types/database'
+import { APP_SETTINGS_KEY_JOB_TALLY_MIN_POSTED_YMD, normalizeJobTallyMinPostedYmd } from '../lib/appSettingsKeys'
+import {
+  type TallyLinkedMercuryRow,
+  filterTallyRowsToUnlinkedWithOptionalMinPosted,
+} from '../lib/mercuryTxRowFromTally'
+import { fetchRecentClockJobPicksForUser, type RecentClockJobPick } from '../lib/fetchRecentClockJobPicksForUser'
 
 function formatElapsed(seconds: number): string {
   const h = Math.floor(seconds / 3600)
@@ -51,6 +59,8 @@ type OpenSession = {
   job_ledger_id: string | null
   bid_id: string | null
 }
+
+type TallyLinkedDebitCardRow = Database['public']['Functions']['list_my_linked_mercury_debit_cards_for_tally']['Returns'][number]
 
 type TodaySession = {
   id: string
@@ -158,6 +168,12 @@ export default function ClockInOutButton({
   const [clockOutReviewError, setClockOutReviewError] = useState<string | null>(null)
   const [clockOutSaving, setClockOutSaving] = useState(false)
   const clockOutNotesRef = useRef<HTMLTextAreaElement>(null)
+  const tallyMinPostedYmdRef = useRef<string | null>(null)
+  const [tallyPreClockOutOpen, setTallyPreClockOutOpen] = useState(false)
+  const [clockOutTallyGateLoading, setClockOutTallyGateLoading] = useState(false)
+  const [tallyPreUnlinkedRows, setTallyPreUnlinkedRows] = useState<TallyLinkedMercuryRow[]>([])
+  const [tallyPreRecentJobs, setTallyPreRecentJobs] = useState<RecentClockJobPick[]>([])
+  const [tallyPreLinkedDebitCards, setTallyPreLinkedDebitCards] = useState<TallyLinkedDebitCardRow[]>([])
   const [unifiedSearchText, setUnifiedSearchText] = useState('')
   const [unifiedSearchResults, setUnifiedSearchResults] = useState<UnifiedSearchResult[]>([])
   const [selectedAssociation, setSelectedAssociation] = useState<UnifiedSearchResult | null>(null)
@@ -438,7 +454,7 @@ export default function ClockInOutButton({
   }, [updateFocusModalOpen])
 
   useEffect(() => {
-       if (!clockInModalOpen && !updateFocusModalOpen && !clockOutReviewOpen) {
+       if (!clockInModalOpen && !updateFocusModalOpen && !clockOutReviewOpen && !tallyPreClockOutOpen) {
       setAssignedJobsListLoading(false)
       setScheduledDispatchJobs([])
       setWorkingBoardBidPicks([])
@@ -451,7 +467,7 @@ export default function ClockInOutButton({
     setScheduledDispatchJobs([])
     setWorkingBoardBidPicks([])
     const scheduleYmd =
-      clockOutReviewOpen && openSession
+      (clockOutReviewOpen || tallyPreClockOutOpen) && openSession
         ? openSession.work_date.trim() || denverCalendarDayKey(new Date(openSession.clocked_in_at).getTime())
         : denverCalendarDayKey(Date.now())
     void (async () => {
@@ -523,6 +539,7 @@ export default function ClockInOutButton({
     clockInModalOpen,
     updateFocusModalOpen,
     clockOutReviewOpen,
+    tallyPreClockOutOpen,
     userId,
     openSession?.work_date,
     openSession?.clocked_in_at,
@@ -597,7 +614,7 @@ export default function ClockInOutButton({
 
   useEffect(() => {
     const t = setTimeout(() => {
-      if (!(clockInModalOpen || updateFocusModalOpen || clockOutReviewOpen)) return
+      if (!(clockInModalOpen || updateFocusModalOpen || clockOutReviewOpen || tallyPreClockOutOpen)) return
       if (!unifiedSearchText.trim()) {
         if (assignedJobsShownRef.current) {
           assignedJobsShownRef.current = false
@@ -635,6 +652,7 @@ export default function ClockInOutButton({
     clockInModalOpen,
     updateFocusModalOpen,
     clockOutReviewOpen,
+    tallyPreClockOutOpen,
     unifiedSearchText,
     enabledBidServiceTypeIds,
     subcontractorServiceTypeIds,
@@ -642,7 +660,7 @@ export default function ClockInOutButton({
   ])
 
   useEffect(() => {
-    if (!(clockInModalOpen || updateFocusModalOpen || clockOutReviewOpen)) return
+    if (!(clockInModalOpen || updateFocusModalOpen || clockOutReviewOpen || tallyPreClockOutOpen)) return
     const load = async () => {
       const { data: stData } = await supabase.from('service_types').select('id, name').order('sequence_order', { ascending: true })
       const types = (stData ?? []) as Array<{ id: string; name: string }>
@@ -693,7 +711,7 @@ export default function ClockInOutButton({
       }
     }
     void load()
-  }, [clockInModalOpen, updateFocusModalOpen, clockOutReviewOpen, authUser?.id])
+  }, [clockInModalOpen, updateFocusModalOpen, clockOutReviewOpen, tallyPreClockOutOpen, authUser?.id])
 
   useEffect(() => {
     if (updateFocusModalOpen) {
@@ -822,7 +840,7 @@ export default function ClockInOutButton({
   ])
 
   useEffect(() => {
-    if (!(updateFocusModalOpen || clockOutReviewOpen)) return
+    if (!(updateFocusModalOpen || clockOutReviewOpen || tallyPreClockOutOpen)) return
     const scrollY = window.scrollY
     const prevOverflow = document.body.style.overflow
     const prevPosition = document.body.style.position
@@ -844,7 +862,7 @@ export default function ClockInOutButton({
       document.body.style.right = prevRight
       window.scrollTo(0, scrollY)
     }
-  }, [updateFocusModalOpen, clockOutReviewOpen])
+  }, [updateFocusModalOpen, clockOutReviewOpen, tallyPreClockOutOpen])
 
   function handleOpenClockInModal() {
     if (!userId || !userName?.trim() || openSession) return
@@ -897,7 +915,7 @@ export default function ClockInOutButton({
     }
   }
 
-  function handleOpenClockOutReview() {
+  const openClockOutReviewModalOnly = useCallback(() => {
     if (salaryUiActive) return
     if (!openSession) return
     setSelectedAssociation(null)
@@ -907,7 +925,78 @@ export default function ClockInOutButton({
     setUnifiedSearchText('')
     setUnifiedSearchResults([])
     setClockOutReviewOpen(true)
-  }
+  }, [openSession, salaryUiActive])
+
+  const refreshTallyPreClockOutUnlinked = useCallback(async () => {
+    try {
+      const txData = await withSupabaseRetry(
+        () => supabase.rpc('list_my_linked_mercury_transactions_for_tally'),
+        'list tally for pre clock out refresh',
+      )
+      setTallyPreUnlinkedRows(
+        filterTallyRowsToUnlinkedWithOptionalMinPosted(
+          (txData ?? []) as TallyLinkedMercuryRow[],
+          tallyMinPostedYmdRef.current,
+        ),
+      )
+    } catch {
+      // leave list unchanged on failure
+    }
+  }, [])
+
+  const handleContinueFromTallyPreClockOut = useCallback(() => {
+    setTallyPreClockOutOpen(false)
+    openClockOutReviewModalOnly()
+  }, [openClockOutReviewModalOnly])
+
+  const handleClockOutClick = useCallback(async () => {
+    if (salaryUiActive) return
+    if (!openSession) return
+    setClockOutTallyGateLoading(true)
+    try {
+      const [settingsRow, txData, cardData, recentJobs] = await Promise.all([
+        withSupabaseRetry(
+          async () =>
+            supabase
+              .from('app_settings')
+              .select('value_text')
+              .eq('key', APP_SETTINGS_KEY_JOB_TALLY_MIN_POSTED_YMD)
+              .maybeSingle(),
+          'load job tally min posted for clock out gate',
+        ),
+        withSupabaseRetry(() => supabase.rpc('list_my_linked_mercury_transactions_for_tally'), 'list tally for pre clock out'),
+        withSupabaseRetry(
+          () => supabase.rpc('list_my_linked_mercury_debit_cards_for_tally'),
+          'list tally debit cards for pre clock out',
+        ),
+        fetchRecentClockJobPicksForUser(userId),
+      ])
+
+      const minPosted = normalizeJobTallyMinPostedYmd(
+        (settingsRow as { value_text: string | null } | null)?.value_text ?? null,
+      )
+      tallyMinPostedYmdRef.current = minPosted
+
+      const unlinked = filterTallyRowsToUnlinkedWithOptionalMinPosted(
+        (txData ?? []) as TallyLinkedMercuryRow[],
+        minPosted,
+      )
+      setTallyPreLinkedDebitCards((cardData ?? []) as TallyLinkedDebitCardRow[])
+      setTallyPreRecentJobs(recentJobs)
+
+      if (unlinked.length > 0) {
+        setTallyPreUnlinkedRows(unlinked)
+        setTallyPreClockOutOpen(true)
+      } else {
+        openClockOutReviewModalOnly()
+      }
+    } catch {
+      showToast('Could not check card assignments. Continuing to clock out.', 'warning')
+      openClockOutReviewModalOnly()
+    } finally {
+      setClockOutTallyGateLoading(false)
+    }
+  }, [openClockOutReviewModalOnly, openSession, salaryUiActive, showToast, userId])
 
   async function handleCompleteClockOutReview() {
     if (salaryUiActive) return
@@ -1375,9 +1464,9 @@ export default function ClockInOutButton({
           ) : (
           <button
             type="button"
-            onClick={handleOpenClockOutReview}
-            disabled={actionLoading || updateFocusLoading || clockOutSaving}
-            title="Clock out"
+            onClick={handleClockOutClick}
+            disabled={actionLoading || updateFocusLoading || clockOutSaving || clockOutTallyGateLoading}
+            title={clockOutTallyGateLoading ? 'Checking card assignments…' : 'Clock out'}
             style={{
               padding: '0.5rem 1rem',
               fontSize: '1rem',
@@ -1386,17 +1475,17 @@ export default function ClockInOutButton({
               borderRadius: 8,
               background: '#dc2626',
               color: 'white',
-              cursor: (actionLoading || updateFocusLoading || clockOutSaving) ? 'not-allowed' : 'pointer',
+              cursor: (actionLoading || updateFocusLoading || clockOutSaving || clockOutTallyGateLoading) ? 'not-allowed' : 'pointer',
               fontVariantNumeric: 'tabular-nums',
             }}
           >
-            {formatElapsed(totalSecondsToday)} — Clock Out
+            {clockOutTallyGateLoading ? 'Checking…' : `${formatElapsed(totalSecondsToday)} — Clock Out`}
           </button>
           )}
           <button
             type="button"
             onClick={handleOpenUpdateFocusModal}
-            disabled={actionLoading || updateFocusLoading || clockOutSaving}
+            disabled={actionLoading || updateFocusLoading || clockOutSaving || clockOutTallyGateLoading}
             title={
               salaryUiActive
                 ? 'Change job or bid focus for this shift'
@@ -1412,7 +1501,7 @@ export default function ClockInOutButton({
               borderRadius: 8,
               background: '#3b82f6',
               color: 'white',
-              cursor: (actionLoading || updateFocusLoading || clockOutSaving) ? 'not-allowed' : 'pointer',
+              cursor: (actionLoading || updateFocusLoading || clockOutSaving || clockOutTallyGateLoading) ? 'not-allowed' : 'pointer',
             }}
           >
             Update Focus
@@ -1789,6 +1878,16 @@ export default function ClockInOutButton({
           </div>
         </div>
       )}
+      <TallyPreClockOutModal
+        open={tallyPreClockOutOpen}
+        onContinueToClockOut={handleContinueFromTallyPreClockOut}
+        unlinkedRows={tallyPreUnlinkedRows}
+        recentJobs={tallyPreRecentJobs}
+        linkedDebitCards={tallyPreLinkedDebitCards}
+        onAfterAssignSaved={() => {
+          void refreshTallyPreClockOutUnlinked()
+        }}
+      />
       {clockOutReviewOpen && (
         <div
           role="dialog"
