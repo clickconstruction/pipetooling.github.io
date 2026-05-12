@@ -384,6 +384,9 @@ verify_jwt = false
 [functions.reverse-stripe-invoice-out-of-band-payment]
 verify_jwt = false
 
+[functions.stripe-invoice-agreed-write-down]
+verify_jwt = false
+
 [functions.stripe-webhook]
 verify_jwt = false
 

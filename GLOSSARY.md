@@ -75,6 +75,8 @@ when_to_read:
 - [Workflow Concepts](#workflow-concepts)
 - [Checklist](#checklist)
 - [Task Dispatch](#task-dispatch)
+- [Email schedule (Dashboard)](#email-schedule-dashboard)
+- [Recurring job report emails (Jobs)](#recurring-job-report-emails-jobs)
 - [Bids System](#bids-system)
 - [Materials System](#materials-system)
 - [PO Generator ledger](#po-generator-ledger)
@@ -332,6 +334,22 @@ Collapsible section in Dashboard Recently Completed Tasks where devs move task t
 ## Task Dispatch
 
 Short messages to internal **Dispatch** (a dev-configured set of **assistants**), separate from recurring checklist tasks. **Authenticated users** can insert **`dispatch_requests`** with **`from_user_id = auth.uid()`** (RLS). The **header** toolbar button is shown when [**`headerTaskDispatchEstimatorEligible.ts`**](src/lib/headerTaskDispatchEstimatorEligible.ts) passes — **dev**, **master_technician**, **assistant**, **estimator**, **subcontractor**, and **helpers** (**RECENT_FEATURES** v2.450). The modal titled **Message the Dispatch team** has: **Task** (required), **Reference (optional)** (job/bid search), and **Links (optional)** (URLs for `[1]`, `[2]` placeholders in the task text). Rows live in `dispatch_requests`. **Dispatch group** membership is `dispatch_group_members` (assistant users only; trigger-enforced). Devs edit the group in Settings. Dispatch members and devs see the **Dispatch inbox** on the Dashboard for open requests and can **mark closed**. When marking closed, user enters a **closed_note** (required in app). Closed requests can be **dismissed** per-user (hidden from that user's inbox); `dispatch_request_dismissals` table. **Inbox UI** (Dashboard, Quickfill, Checklist Review; parallel **Estimator inbox**): at **≤640px** [`useNarrowViewport640`](src/hooks/useNarrowViewport640.ts) stacks the title above message stats; **closed** rows put **Dismiss** beside the stats block; **Expand for thread** (only when the card has thread messages, `note_count` > 0) appears under **Dismiss** (**`RECENT_FEATURES`** **v2.452**). Push notifications use Edge Function **`notify-dispatch-request`** so the member list is not exposed to clients. The Edge gateway should use **`verify_jwt = false`** for that function in **`supabase/config.toml`** (JWT validated inside the function, same pattern as **`notify-estimator-request`**); otherwise the client can see **401** before the function runs.
+
+---
+
+## Email schedule (Dashboard)
+
+**One-off** email of **Schedule Dispatch**–style **`job_schedule_blocks`** for a single calendar **`work_date`**, queued from the **Clocked in today** strip ([**`ScheduleDayEmailModal.tsx`**](src/components/ScheduleDayEmailModal.tsx) → **`schedule_day_email_requests`**). Not recurring: at most one **pending** row per **`recipient_user_id` + `work_date`**. **Schedule** sets a future **`send_at`**; **Queue soon** sets **`send_at`** immediately so pg_cron **`schedule-day-email-dispatch`** (~every 15 minutes) can pick it up.
+
+**Distinct from** [**Jobs → Reports → Recurring Email Reports**](#recurring-job-report-emails-jobs): those are **scheduled digests** of field / clock activity (**`recurring_job_report_schedules`**), with **Daily summary** / **Weekly summary** wording in the email body—not the same table or Edge function.
+
+**Roles**: **dev**, **master_technician**, and **assistant** when the strip shows the control; **dev** may set **`recipient_user_id`** to another non-archived **`users`** row (RLS **`schedule_day_email_requests_insert_dev_any_recipient`**).
+
+**See**: `RECENT_FEATURES.md` → v2.522, v2.523; `PROJECT_DOCUMENTATION.md` → Dashboard §8; `EDGE_FUNCTIONS.md` → **schedule-day-email-dispatch**; `ACCESS_CONTROL.md` → dev capabilities + Dashboard matrix.
+
+## Recurring job report emails (Jobs)
+
+Scheduled **field-activity** emails configured under **Jobs → Reports → Recurring Email Reports** (`recurring_job_report_schedules`, `recurring_job_report_schedule_recipients`). Uses **`recurring-job-report-dispatch`**, not **`schedule-day-email-dispatch`**.
 
 ---
 

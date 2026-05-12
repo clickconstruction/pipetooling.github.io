@@ -62,6 +62,7 @@ import type { JobBillingContext } from '../../lib/jobBillingContext'
 import { useBillCustomerModal } from '../../contexts/BillCustomerModalContext'
 import { useNewProjectModal } from '../../contexts/NewProjectModalContext'
 import BilledBillViewModal, { type InvoiceWithJobForBillView } from './BilledBillViewModal'
+import AgreedWriteDownModal from './AgreedWriteDownModal'
 import { StripeInvoiceSharePanel } from './StripeInvoiceSharePanel'
 import { loadTeamLaborData, type TeamLaborRow } from '../../utils/teamLabor'
 import { laborItemsSubtotal } from '../../lib/peopleLaborJobItemLineCost'
@@ -599,6 +600,9 @@ export default function JobFormModal({
   const [initDone, setInitDone] = useState(false)
   const [editing, setEditing] = useState<JobWithDetails | null>(null)
   const [billViewInvoice, setBillViewInvoice] = useState<InvoiceWithJobForBillView | null>(null)
+  const [agreedWriteDownInvoice, setAgreedWriteDownInvoice] = useState<
+    Database['public']['Tables']['jobs_ledger_invoices']['Row'] | null
+  >(null)
   const editingIdRef = useRef<string | null>(null)
   editingIdRef.current = editing?.id ?? null
 
@@ -723,6 +727,20 @@ export default function JobFormModal({
       })
     })
   }, [])
+  const canApplyAgreedWriteDown = useMemo(
+    () =>
+      authRole === 'dev' ||
+      authRole === 'master_technician' ||
+      authRole === 'assistant' ||
+      authRole === 'primary',
+    [authRole],
+  )
+  const agreedWriteDownInvoicePaidSum = useMemo(() => {
+    if (!agreedWriteDownInvoice) return 0
+    return payments
+      .filter((p) => p.invoice_id === agreedWriteDownInvoice.id)
+      .reduce((s, p) => s + (Number(p.amount) || 0), 0)
+  }, [agreedWriteDownInvoice, payments])
   const [materials, setMaterials] = useState<MaterialRow[]>([{ id: crypto.randomUUID(), description: '', amount: 0 }])
   const [fixtures, setFixtures] = useState<FixtureRow[]>([
     { id: crypto.randomUUID(), name: '', count: 1, line_unit_price: null, line_description: '' },
@@ -4682,7 +4700,7 @@ export default function JobFormModal({
                             }}
                             style={{ marginLeft: 8, padding: '0.15rem 0.35rem', fontSize: '0.75rem', background: '#e5e7eb', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                           >
-                            View in Stages
+                            See in Stages
                           </button>
                           <button
                             type="button"
@@ -4798,6 +4816,16 @@ export default function JobFormModal({
                               fontWeight: 500,
                             }
                             const parentCellPad = hasDetailLine ? '0.5rem 0.75rem 0.1rem' : '0.5rem 0.75rem'
+                            const paidOnOutstandingInv = payments
+                              .filter((p) => p.invoice_id === inv.id)
+                              .reduce((s, p) => s + (Number(p.amount) || 0), 0)
+                            const outstandingWriteDownRoom =
+                              Number(inv.amount ?? 0) - paidOnOutstandingInv
+                            const showSeeInStages =
+                              arr.length !== 1 ||
+                              jobTotalBidDollars <= 0 ||
+                              Math.round(Number(inv.amount ?? 0) * 100) !==
+                                Math.round(jobTotalBidDollars * 100)
                             return (
                               <Fragment key={inv.id}>
                                 <tr style={{ borderBottom: hasDetailLine ? 'none' : rowSep }}>
@@ -4824,16 +4852,18 @@ export default function JobFormModal({
                                         width: '100%',
                                       }}
                                     >
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          onClose()
-                                          navigate(`/jobs?tab=stages&stagesInvoice=${encodeURIComponent(inv.id)}`)
-                                        }}
-                                        style={btnGray}
-                                      >
-                                        Stages
-                                      </button>
+                                      {showSeeInStages ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            onClose()
+                                            navigate(`/jobs?tab=stages&stagesInvoice=${encodeURIComponent(inv.id)}`)
+                                          }}
+                                          style={btnGray}
+                                        >
+                                          See in Stages
+                                        </button>
+                                      ) : null}
                                       {hasStripeShare ? (
                                         <button
                                           type="button"
@@ -4863,6 +4893,33 @@ export default function JobFormModal({
                                           omitCustomerPayPage
                                           omitOpenInStripe
                                         />
+                                      ) : null}
+                                      {canApplyAgreedWriteDown ? (
+                                        <button
+                                          type="button"
+                                          disabled={outstandingWriteDownRoom <= 0.005}
+                                          title={
+                                            outstandingWriteDownRoom <= 0.005
+                                              ? 'No room for a discount (billed amount equals payments on this line).'
+                                              : 'Lower billed amount (agreed discount; Stripe uses a credit note).'
+                                          }
+                                          onClick={() => setAgreedWriteDownInvoice(inv)}
+                                          style={{
+                                            padding: '0.15rem 0.45rem',
+                                            fontSize: '0.75rem',
+                                            borderRadius: 4,
+                                            border: 'none',
+                                            fontWeight: 600,
+                                            cursor:
+                                              outstandingWriteDownRoom <= 0.005 ? 'not-allowed' : 'pointer',
+                                            background:
+                                              outstandingWriteDownRoom <= 0.005 ? '#93c5fd' : '#2563eb',
+                                            color: '#ffffff',
+                                            opacity: outstandingWriteDownRoom <= 0.005 ? 0.85 : 1,
+                                          }}
+                                        >
+                                          Add discount
+                                        </button>
                                       ) : null}
                                     </div>
                                   </td>
@@ -6487,6 +6544,20 @@ export default function JobFormModal({
       )}
     </div>
 
+      <AgreedWriteDownModal
+        open={agreedWriteDownInvoice != null}
+        onClose={() => setAgreedWriteDownInvoice(null)}
+        invoice={agreedWriteDownInvoice}
+        paidOnInvoice={agreedWriteDownInvoicePaidSum}
+        isStripeHosted={(agreedWriteDownInvoice?.stripe_invoice_id ?? '').trim().length > 0}
+        overlayZIndex={JOB_FORM_BILL_VIEW_OVERLAY_Z_INDEX}
+        onSuccess={async () => {
+          const jobId = editing?.id ?? editingIdRef.current
+          if (jobId) refreshEditingJobAndHydratePayments(jobId)
+          showToast('Discount applied.', 'success')
+          onSavedRef.current?.()
+        }}
+      />
       <BilledBillViewModal
         invoice={billViewInvoice}
         onAfterStripeDetailsLoaded={refetchEditingFromBillView}

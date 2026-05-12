@@ -107,7 +107,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 #### May 22, 2027
 
 **`20270522120000_schedule_day_email_requests_and_rpc.sql`**
-- **Purpose**: **`schedule_day_email_requests`** (pending row per **`recipient_user_id`** + **`work_date`**, **`send_at`** UTC); **`can_access_project_row_for_user`**, **`list_job_schedule_blocks_for_schedule_email`** (mirrors **`job_schedule_blocks`** SELECT using viewer id); RLS (self rows; insert **dev**/**master_technician**/**assistant**); pg_cron **`schedule-day-email-dispatch`** → Edge ([**`EDGE_FUNCTIONS.md`**](EDGE_FUNCTIONS.md)). **[`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.522**.
+- **Purpose**: **`schedule_day_email_requests`** (pending row per **`recipient_user_id`** + **`work_date`**, **`send_at`** UTC); **`can_access_project_row_for_user`**, **`list_job_schedule_blocks_for_schedule_email`** (mirrors **`job_schedule_blocks`** SELECT using viewer id); RLS (recipients see own rows; **INSERT** self-only for **master_technician**/**assistant** and base **dev** path — **dev → any non-archived recipient** added in **`20270523120000_dev_schedule_day_email_for_other.sql`**); pg_cron **`schedule-day-email-dispatch`** → Edge ([**`EDGE_FUNCTIONS.md`**](EDGE_FUNCTIONS.md)). **[`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.522**.
 - **Impact**: **[`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)**, **[`ScheduleDayEmailModal.tsx`](src/components/ScheduleDayEmailModal.tsx)**; **`npm run gen-types:linked`** after **`db push`**.
 - **Category**: Dashboard / Schedule / Email / RLS
 
@@ -117,6 +117,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Purpose**: RLS — **`schedule_day_email_requests_insert_dev_any_recipient`** (**`is_dev()`** + non-archived **`recipient_user_id`**); **`schedule_day_email_requests_select_dev`**. **[`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.523**.
 - **Impact**: **[`ScheduleDayEmailModal.tsx`](src/components/ScheduleDayEmailModal.tsx)** dev **Send to** picker.
 - **Category**: Dashboard / RLS
+
+**`20270523140000_agreed_write_down_billed_invoice.sql`**
+- **Purpose**: **`jobs_ledger_invoices`** — **`agreed_write_down_note`**, **`agreed_write_down_at`**, **`agreed_write_down_by`** (**`auth.users`**), **`agreed_write_down_previous_amount`**, **`agreed_write_down_stripe_credit_note_id`**. **`apply_agreed_write_down_to_billed_invoice`** (**JWT**, **`billed`** rows **without** **`stripe_invoice_id`**). **`service_apply_agreed_write_down_from_stripe`** (**`service_role`** only; Stripe Edge path after credit note). **[`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.524**.
+- **Impact**: **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)**, **[`AgreedWriteDownModal.tsx`](src/components/jobs/AgreedWriteDownModal.tsx)**; **[`stripe-invoice-agreed-write-down`](supabase/functions/stripe-invoice-agreed-write-down/index.ts)**; **[`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md)**. **`npm run gen-types:linked`** after **`db push`**.
+- **Category**: Jobs / Billing / Stripe / RPC
 
 ### May 2026
 

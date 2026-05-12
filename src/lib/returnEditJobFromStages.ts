@@ -1,4 +1,4 @@
-/** Session flag set when leaving Edit Job via Ready to Bill "View in Stages"; Jobs Stages tab shows "Back to Edit Job". */
+/** Session flag set when leaving Edit Job via Ready to Bill "See in Stages"; Jobs Stages tab shows "Back to Edit Job". */
 
 export const RETURN_EDIT_JOB_SESSION_KEY = 'pipetooling_return_edit_job'
 

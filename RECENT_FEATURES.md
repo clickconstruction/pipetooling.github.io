@@ -12,9 +12,12 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.523+ (reverse chronological)"
+version_range: "v2.524+ (reverse chronological)"
 
 key_sections:
+  - name: "Latest Version (v2.524)"
+    line: ~1762
+    description: "Edit Job — Outstanding billing Discount (RPC + Stripe credit note Edge)"
   - name: "Latest Version (v2.523)"
     line: ~1756
     description: "Email schedule modal — dev Send to any user (RLS dev policies)"
@@ -728,7 +731,7 @@ key_sections:
     description: "Jobs Stages: linked quote in Job column footer (estimates.job_ledger_id); loadJobs + pickLinkedEstimateForStagesBanner; project strip unchanged"
   - name: "Latest Version (v2.285)"
     line: ~1346
-    description: "Edit Job Billing: Outstanding billing table (date + (+n), Stages/Bill, Stripe share icons, full-width Note/Memo row); Payments received (Date, Amount ($), Memo; Stripe row vs header, Record Payment); Partial invoice layout; StripeInvoiceSharePanel inlineRow"
+    description: "Edit Job Billing: Outstanding billing table (date + (+n), See in Stages / Bill — See in Stages omitted when one billed row equals Job Total from Specific Work, Stripe share icons, full-width Note/Memo row); Payments received (Date, Amount ($), Memo; Stripe row vs header, Record Payment); Partial invoice layout; StripeInvoiceSharePanel inlineRow"
   - name: "Latest Version (v2.284)"
     line: ~1357
     description: "Banking: product+tab URL (Mercury Ledger/Sorting vs Stripe Invoices/Data, dev-only Stripe); BankingStripeInvoicesPanel + BankingStripeWebhookEventsPanel; Jobs Stages: narrow loadJobs customer param, thread stats chunk 200 + generation guard, 320ms debounce"
@@ -1759,6 +1762,19 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
+## Latest Updates (v2.524)
+
+**Date**: 2026-05-11
+
+### **Edit Job** — **Outstanding billing** — **Discount**
+
+- **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)** — **Actions** row per **billed** line: **Discount** ( **`dev`** / **`master_technician`** / **`assistant`** / **`primary`**; disabled when open balance on the line is ~0). Opens **[`AgreedWriteDownModal.tsx`](src/components/jobs/AgreedWriteDownModal.tsx)** (**new total**, **note** ≥ 3 chars). Success: **`refreshEditingJobAndHydratePayments`** + toast.
+- **Non-Stripe** — RPC **`apply_agreed_write_down_to_billed_invoice`** (**[`20270523140000_agreed_write_down_billed_invoice.sql`](supabase/migrations/20270523140000_agreed_write_down_billed_invoice.sql)**): lowers **`jobs_ledger_invoices.amount`** with validation vs payments on the invoice; audit **`agreed_write_down_*`**; may mark invoice/job **paid** when **`payments_made >= revenue`**. Rejects rows with **`stripe_invoice_id`** (use Edge path).
+- **Stripe-hosted** — Edge **`stripe-invoice-agreed-write-down`** (**[`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md)**): **`creditNotes.create`** for the concession, **`invoices.retrieve`**, then **`service_apply_agreed_write_down_from_stripe`** (service role) to align **`amount`** and audit (append credit note id to note). Rejects if Stripe invoice is already **paid**.
+- **Tests** — **[`agreedWriteDownBounds.ts`](src/lib/agreedWriteDownBounds.ts)** (**[`agreedWriteDownBounds.test.ts`](src/lib/agreedWriteDownBounds.test.ts)**).
+
+---
+
 ## Latest Updates (v2.523)
 
 **Date**: 2026-05-11
@@ -1775,7 +1791,7 @@ when_to_read:
 
 ### Dashboard — **Email schedule** on **Clocked in today** strip
 
-- **[`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)** — When **`enableScheduleDayEmail`** (**[`Dashboard.tsx`](src/pages/Dashboard.tsx)** mirrors **`showClockStripScopeToggle`** with **Mix**), **Email schedule** sits left of **Mix**. Opens **[`ScheduleDayEmailModal.tsx`](src/components/ScheduleDayEmailModal.tsx)** (**Schedule** at a Central wall time, **Queue soon** for a due-now row). Inserts **`schedule_day_email_requests`** (**`20270522120000_schedule_day_email_requests_and_rpc.sql`**; one **pending** row per recipient + **`work_date`**). **[`list_job_schedule_blocks_for_schedule_email`](supabase/migrations/20270522120000_schedule_day_email_requests_and_rpc.sql)** mirrors **`job_schedule_blocks`** SELECT for the recipient; **[`schedule-day-email-dispatch`](supabase/functions/schedule-day-email-dispatch/index.ts)** pg_cron `*/15` + Resend.
+- **[`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)** — When **`enableScheduleDayEmail`** (**[`Dashboard.tsx`](src/pages/Dashboard.tsx)** mirrors **`showClockStripScopeToggle`** with **Mix**), **Email schedule** sits left of **Mix**. Opens **[`ScheduleDayEmailModal.tsx`](src/components/ScheduleDayEmailModal.tsx)** (**Schedule** at a Central wall time, **Queue soon** for a due-now row). Inserts **`schedule_day_email_requests`** (**`20270522120000_schedule_day_email_requests_and_rpc.sql`**; one **pending** row per recipient + **`work_date`**). **[`list_job_schedule_blocks_for_schedule_email`](supabase/migrations/20270522120000_schedule_day_email_requests_and_rpc.sql)** mirrors **`job_schedule_blocks`** SELECT for the recipient; **[`schedule-day-email-dispatch`](supabase/functions/schedule-day-email-dispatch/index.ts)** pg_cron `*/15` + Resend. Distinct from **Jobs → Reports → Recurring Email Reports** (**`recurring-job-report-dispatch`**, activity digests).
 
 ---
 
@@ -4671,7 +4687,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 
 ### Edit Job — **Billing**: **Outstanding billing** table; **Payments received** chrome; **Partial invoice** layout; **`StripeInvoiceSharePanel`** toolbar
 
-- **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)** — **Partial invoice** card (no **Partial invoice** title) sits **above** **Outstanding billing** (after **Ready to Bill** when present): **Make Invoice:** / **Create invoice** centered; gray helper *Break off an amount to send through Ready to Bill. Job stays in Working.* only (**Remaining (billable)** / **Use full remaining** hidden). **Outstanding billing** (billed invoices): columns **Date**, **Billed**, **Actions** (`table-layout: fixed`, spread columns). **Date**: [`formatWorkDateYmdMonthDayShort`](src/utils/dateUtils.ts) (e.g. **Apr 10**) plus **`(+n)`** from [`invoiceCreatedCalendarDayOffset`](src/lib/invoiceCreatedRelative.ts) (company calendar days since invoice **`created_at`**). **Actions**: **Stages**, **Bill** (opens View Bill when Stripe hosted invoice exists); **[`StripeInvoiceSharePanel`](src/components/jobs/StripeInvoiceSharePanel.tsx)** copy / SMS / email as compact **icons** in the same row (`omitPaymentLinksLabel`, `unboxed`, `inlineRow`); **Customer pay page** / **Open in Stripe** omitted (use **Bill**). **Outside send note** + **Stripe invoice memo**: optional **second table row**, full width (`colSpan` 3), default background (no gray “card”, no rule above the row). **Payments received**: section title **Payments received** (matches **Outstanding billing** `h4` + `overflow-x` wrapper); table columns **Date**, **Amount ($)**, **Memo**; gray **`thead`** only—body rows use default background; **Stripe-linked** payment rows: **blue left inset** only (not header-colored fill); **Record Payment** right-aligned; no divider rule between payments table and **Record Payment** block.
+- **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)** — **Partial invoice** card (no **Partial invoice** title) sits **above** **Outstanding billing** (after **Ready to Bill** when present): **Make Invoice:** / **Create invoice** centered; gray helper *Break off an amount to send through Ready to Bill. Job stays in Working.* only (**Remaining (billable)** / **Use full remaining** hidden). **Outstanding billing** (billed invoices): columns **Date**, **Billed**, **Actions** (`table-layout: fixed`, spread columns). **Date**: [`formatWorkDateYmdMonthDayShort`](src/utils/dateUtils.ts) (e.g. **Apr 10**) plus **`(+n)`** from [`invoiceCreatedCalendarDayOffset`](src/lib/invoiceCreatedRelative.ts) (company calendar days since invoice **`created_at`**). **Actions**: **See in Stages** (omitted when there is exactly one billed row and its amount equals **Job Total** from Specific Work in the form), **Bill** (opens View Bill when Stripe hosted invoice exists); **[`StripeInvoiceSharePanel`](src/components/jobs/StripeInvoiceSharePanel.tsx)** copy / SMS / email as compact **icons** in the same row (`omitPaymentLinksLabel`, `unboxed`, `inlineRow`); **Customer pay page** / **Open in Stripe** omitted (use **Bill**). **Outside send note** + **Stripe invoice memo**: optional **second table row**, full width (`colSpan` 3), default background (no gray “card”, no rule above the row). **Payments received**: section title **Payments received** (matches **Outstanding billing** `h4` + `overflow-x` wrapper); table columns **Date**, **Amount ($)**, **Memo**; gray **`thead`** only—body rows use default background; **Stripe-linked** payment rows: **blue left inset** only (not header-colored fill); **Record Payment** right-aligned; no divider rule between payments table and **Record Payment** block.
 - **[`StripeInvoiceSharePanel.tsx`](src/components/jobs/StripeInvoiceSharePanel.tsx)** — **`inlineRow`**: no extra top margin / inner row stretch when icons sit beside sibling buttons; **compact** payment-link icons use tighter padding and **gap: 0** so the cluster is narrow in **Actions**.
 
 ---
@@ -7857,7 +7873,7 @@ All buttons use `display: inline-flex`, `alignItems: center`, `justifyContent: c
 
 ### Jobs – Partial Invoices (Option A)
 
-- **Edit Job modal**: New **Create partial invoice** section (after Remaining, before Save): amount input (validated ≤ Remaining), Create invoice button. Lists open invoices (ready_to_bill, billed) with "View in Stages".
+- **Edit Job modal**: New **Create partial invoice** section (after Remaining, before Save): amount input (validated ≤ Remaining), Create invoice button. Lists open invoices (ready_to_bill, billed) with "See in Stages".
 - **Database**: `jobs_ledger_invoices` table (job_id, amount, status: ready_to_bill | billed | paid); RPC `mark_invoice_paid(p_invoice_id)` inserts payment, updates payments_made, marks invoice paid.
 - **Stages tab**: **Working** unchanged (jobs). **Ready to Bill** and **Billed** now show **invoices** (not jobs): each row shows job info + invoice amount; Mark as Billed, Mark Paid, Send back. **Paid in Full** unchanged (jobs where payments_made ≥ revenue). Removed "Ready for Billing" from Working; invoices created from Edit Job only.
 - **Dashboard**: Ready to Bill and Waiting for Payment sections now display **invoice rows** (job name, HCP, address, invoice amount); Mark as Billed, Mark Paid, Send back use invoice actions.

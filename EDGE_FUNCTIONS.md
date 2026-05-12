@@ -105,6 +105,7 @@ when_to_read:
    - [get-stripe-invoice-details](#get-stripe-invoice-details)
    - [record-stripe-invoice-out-of-band-payment](#record-stripe-invoice-out-of-band-payment)
    - [reverse-stripe-invoice-out-of-band-payment](#reverse-stripe-invoice-out-of-band-payment)
+   - [stripe-invoice-agreed-write-down](#stripe-invoice-agreed-write-down)
    - [preview-stripe-invoice](#preview-stripe-invoice)
    - [void-stripe-invoice-for-revert](#void-stripe-invoice-for-revert)
    - [stripe-webhook](#stripe-webhook)
@@ -1259,7 +1260,9 @@ Per-recipient **`activity_scope`** + **`crew_filter`** + **`include_costs`** (fr
 
 ### schedule-day-email-dispatch
 
-**Purpose**: pg_cron `*/15` — loads **`schedule_day_email_requests`** rows with **`status = pending`** and **`send_at <= now()`**, calls **`list_job_schedule_blocks_for_schedule_email(p_recipient, p_work_date)`** (Schedule Dispatch hub–parity visibility for that calendar day), builds HTML + plain text, sends to **`users.email`** via Resend, then sets **`sent`** / **`failed`**.
+**Purpose**: pg_cron `*/15` — loads **`schedule_day_email_requests`** rows with **`status = pending`** and **`send_at <= now()`**, calls **`list_job_schedule_blocks_for_schedule_email(p_recipient, p_work_date)`** (Schedule Dispatch hub–parity visibility for that calendar day), builds HTML + plain text, sends to the **recipient**’s **`users.email`** (row **`recipient_user_id`**) via Resend, then sets **`sent`** / **`failed`**.
+
+**Who queues rows** (client **`INSERT`** + RLS — not decided by this Edge function): **master_technician** and **assistant** — **self** only; **dev** — may set **`recipient_user_id`** to any non-archived **`users`** row (**`schedule_day_email_requests_insert_dev_any_recipient`**, migration **`20270523120000_dev_schedule_day_email_for_other.sql`**). Cron dispatch always uses **`recipient_user_id`** for the Resend **To** address and for **`p_recipient`** on the blocks RPC (independent of **`created_by`**).
 
 **Endpoint**: `POST /functions/v1/schedule-day-email-dispatch`
 
@@ -1862,6 +1865,48 @@ interface ReverseStripeInvoiceOobBody {
 **Webhook**: Subscribe to **`credit_note.created`** so [`stripe-webhook`](supabase/functions/stripe-webhook/index.ts) can **`invoices.retrieve`** and **`syncJobsLedgerStripeInvoiceStatus`**.
 
 **Gateway JWT**: [`supabase/config.toml`](supabase/config.toml) **`verify_jwt = false`**. Deploy with **`supabase functions deploy reverse-stripe-invoice-out-of-band-payment --no-verify-jwt`**.
+
+---
+
+### stripe-invoice-agreed-write-down
+
+**Purpose**: Apply an **agreed discount** on a **billed** **Stripe-hosted** **`jobs_ledger_invoices`** row: validates the requested **new total** against Stripe **`amount_paid`** / **`amount_remaining`**, creates a Stripe **credit note** (**`reason: customer_request`**, metadata **`pipetooling_write_down`**), **retrieves** the invoice again, and calls RPC **`service_apply_agreed_write_down_from_stripe`** to set **`jobs_ledger_invoices.amount`** (and audit **`agreed_write_down_*`**) from **`(amount_paid + amount_remaining) / 100`**. Non-Stripe rows use **`apply_agreed_write_down_to_billed_invoice`** from the app instead.
+
+**Endpoint**: `POST /functions/v1/stripe-invoice-agreed-write-down`
+
+**Authentication**: Bearer JWT; role **`dev`** / **`master_technician`** / **`assistant`** / **`primary`**. RLS **`SELECT`** on the invoice row.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, Stripe secret for the chosen mode.
+
+#### Request body
+
+```typescript
+interface Body {
+  jobs_ledger_invoice_id: string
+  /** New total obligation in USD after discount (must be < current paid+remaining, ≥ amount already paid). */
+  new_total_dollars: number
+  note: string // min 3 characters; stored in audit note (credit note id appended server-side)
+  stripe_mode?: 'test' | 'live'
+}
+```
+
+#### Success (200)
+
+```json
+{
+  "ok": true,
+  "stripe_credit_note_id": "cn_…",
+  "new_amount": 1505.12
+}
+```
+
+#### Errors
+
+- **400** — Not **billed**, missing **`stripe_invoice_id`**, Stripe invoice already **paid**, **new_total** not below current obligation or below **`amount_paid`**, or discount exceeds **`amount_remaining`**.
+- **401** / **403** — Missing/invalid JWT or role.
+- **502** — Stripe API or **`service_apply_agreed_write_down_from_stripe`** failure (credit note may exist; check Stripe and DB).
+
+**Gateway JWT**: [`supabase/config.toml`](supabase/config.toml) **`verify_jwt = false`**. Deploy with **`supabase functions deploy stripe-invoice-agreed-write-down --no-verify-jwt`**.
 
 ---
 

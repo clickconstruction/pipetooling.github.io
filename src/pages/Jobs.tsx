@@ -842,7 +842,7 @@ export default function Jobs() {
   activeTabRef.current = activeTab
   const [users, setUsers] = useState<UserRow[]>([])
   const [people, setPeople] = useState<Person[]>([])
-  /** Set after Ready to Bill → View in Stages; cleared on timeout, dismiss, tab change, or reopening Edit Job. */
+  /** Set after Ready to Bill → See in Stages; cleared on timeout, dismiss, tab change, or reopening Edit Job. */
   const [returnEditBannerJobId, setReturnEditBannerJobId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   /** Full org job list for Job Summary tab (all statuses, ignores `?customer=`). */

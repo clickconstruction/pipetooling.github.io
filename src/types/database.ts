@@ -3443,6 +3443,11 @@ export type Database = {
       }
       jobs_ledger_invoices: {
         Row: {
+          agreed_write_down_at: string | null
+          agreed_write_down_by: string | null
+          agreed_write_down_note: string | null
+          agreed_write_down_previous_amount: number | null
+          agreed_write_down_stripe_credit_note_id: string | null
           amount: number
           billed_at: string | null
           created_at: string | null
@@ -3462,6 +3467,11 @@ export type Database = {
           stripe_invoice_status: string | null
         }
         Insert: {
+          agreed_write_down_at?: string | null
+          agreed_write_down_by?: string | null
+          agreed_write_down_note?: string | null
+          agreed_write_down_previous_amount?: number | null
+          agreed_write_down_stripe_credit_note_id?: string | null
           amount: number
           billed_at?: string | null
           created_at?: string | null
@@ -3481,6 +3491,11 @@ export type Database = {
           stripe_invoice_status?: string | null
         }
         Update: {
+          agreed_write_down_at?: string | null
+          agreed_write_down_by?: string | null
+          agreed_write_down_note?: string | null
+          agreed_write_down_previous_amount?: number | null
+          agreed_write_down_stripe_credit_note_id?: string | null
           amount?: number
           billed_at?: string | null
           created_at?: string | null
@@ -9312,6 +9327,14 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_agreed_write_down_to_billed_invoice: {
+        Args: {
+          p_invoice_id: string
+          p_new_amount: number
+          p_note: string
+        }
+        Returns: Json
+      }
       approve_clock_sessions: {
         Args: { p_session_ids: string[] }
         Returns: {
@@ -10513,6 +10536,16 @@ export type Database = {
       set_mercury_transaction_ar_returned: {
         Args: { p_mercury_transaction_id: string; p_returned: boolean }
         Returns: undefined
+      }
+      service_apply_agreed_write_down_from_stripe: {
+        Args: {
+          p_actor_user_id: string
+          p_invoice_id: string
+          p_new_amount: number
+          p_note: string
+          p_stripe_credit_note_id: string
+        }
+        Returns: Json
       }
       split_job_ledger_fixtures_to_new_job: {
         Args: {
