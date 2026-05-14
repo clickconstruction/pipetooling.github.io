@@ -24,6 +24,7 @@ import { parseCustomerImport } from '../../utils/parseCustomerImport'
 import { nameSimilarity } from '../../utils/nameSimilarity'
 import { formatPostgrestOrUnknownError, withSupabaseRetry } from '../../utils/errorHandling'
 import { formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
+import AutosizeTextarea from '../AutosizeTextarea'
 import CustomerAcceptanceRecordModal from '../estimates/CustomerAcceptanceRecordModal'
 import { MoneyDecimalAmountInput } from '../MoneyDecimalAmountInput'
 import type { Database } from '../../types/database'
@@ -153,8 +154,13 @@ type FixtureRow = {
   line_description: string
 }
 
+/** Collapses newlines and internal whitespace; trims ends. Single logical line for DB / Stripe. */
+function normalizeFixtureDisplayName(raw: string): string {
+  return (raw ?? '').replace(/\s+/g, ' ').trim()
+}
+
 function fixtureRowHasUserContent(row: FixtureRow): boolean {
-  if ((row.name ?? '').trim() !== '') return true
+  if (normalizeFixtureDisplayName(row.name ?? '') !== '') return true
   if ((row.line_description ?? '').trim() !== '') return true
   if (row.line_unit_price != null && Number.isFinite(Number(row.line_unit_price))) return true
   const c = Number(row.count)
@@ -2732,12 +2738,12 @@ export default function JobFormModal({
           })
         }
         await supabase.from('jobs_ledger_fixtures').delete().eq('job_id', editing.id)
-        const validFixtures = fixtures.filter((f) => (f.name ?? '').trim())
+        const validFixtures = fixtures.filter((f) => normalizeFixtureDisplayName(f.name ?? '').length > 0)
         for (const [i, f] of validFixtures.entries()) {
           const unit = f.line_unit_price
           await supabase.from('jobs_ledger_fixtures').insert({
             job_id: editing.id,
-            name: f.name.trim(),
+            name: normalizeFixtureDisplayName(f.name ?? ''),
             count: f.count,
             sequence_order: i,
             line_unit_price: unit != null && unit > 0 ? unit : null,
@@ -2835,12 +2841,12 @@ export default function JobFormModal({
               sequence_order: i,
             })
           }
-          const validFixturesIns = fixtures.filter((f) => (f.name ?? '').trim())
+          const validFixturesIns = fixtures.filter((f) => normalizeFixtureDisplayName(f.name ?? '').length > 0)
           for (const [i, f] of validFixturesIns.entries()) {
             const unit = f.line_unit_price
             await supabase.from('jobs_ledger_fixtures').insert({
               job_id: jobId,
-              name: f.name.trim(),
+              name: normalizeFixtureDisplayName(f.name ?? ''),
               count: f.count,
               sequence_order: i,
               line_unit_price: unit != null && unit > 0 ? unit : null,
@@ -3963,7 +3969,7 @@ export default function JobFormModal({
                 : {}),
             }}
           >
-            <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#374151', marginBottom: '0.75rem' }}>Specific Work (Fixtures / Tie-ins / Repair)</div>
+            <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#374151', marginBottom: '0.75rem' }}>Specific Work or Materials (Fixtures / Tie-ins / Repair)</div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>
               <colgroup>
                 <col />
@@ -3993,6 +3999,7 @@ export default function JobFormModal({
               </thead>
               <tbody>
                 {fixtures.map((row, idx) => {
+                  const nameFieldId = `job-fixture-name-${row.id}`
                   const descFieldId = `job-fixture-desc-${row.id}`
                   const stripeLenDescId = `job-fixture-stripe-len-${row.id}`
                   const scopeTrim = (row.line_description ?? '').trim()
@@ -4006,13 +4013,39 @@ export default function JobFormModal({
                   return (
                     <Fragment key={row.id}>
                       <tr style={{ borderBottom: 'none' }}>
-                        <td style={{ padding: '0.625rem 0.75rem', paddingBottom: '0.35rem' }}>
-                          <input
-                            type="text"
+                        <td
+                          style={{
+                            padding: '0.625rem 0.75rem',
+                            paddingBottom: '0.35rem',
+                            minWidth: 0,
+                            verticalAlign: 'top',
+                          }}
+                        >
+                          <label htmlFor={nameFieldId} style={FIXTURE_SCOPE_FIELD_LABEL_VISUALLY_HIDDEN}>
+                            Specific work or materials
+                          </label>
+                          <AutosizeTextarea
+                            minRows={1}
+                            extraLines={0}
+                            id={nameFieldId}
                             value={row.name}
                             onChange={(e) => updateFixtureRow(row.id, { name: e.target.value })}
-                            placeholder="Fixture or tie-in name"
-                            style={{ width: '100%', padding: '0.375rem 0.625rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem' }}
+                            onBlur={() => {
+                              const next = normalizeFixtureDisplayName(row.name ?? '')
+                              if (next !== row.name) updateFixtureRow(row.id, { name: next })
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') e.preventDefault()
+                            }}
+                            placeholder="Specific work or materials"
+                            style={{
+                              padding: '0.375rem 0.625rem',
+                              border: '1px solid #d1d5db',
+                              borderRadius: 6,
+                              fontSize: '0.875rem',
+                              lineHeight: 1.4,
+                              fontFamily: 'inherit',
+                            }}
                           />
                         </td>
                         <td
@@ -4023,6 +4056,7 @@ export default function JobFormModal({
                             paddingRight: '0.625rem',
                             textAlign: 'right',
                             whiteSpace: 'nowrap',
+                            verticalAlign: 'top',
                           }}
                         >
                           <input
@@ -4048,14 +4082,14 @@ export default function JobFormModal({
                             paddingRight: '0.375rem',
                             paddingBottom: '0.35rem',
                             paddingLeft: '0.625rem',
-                            verticalAlign: 'middle',
+                            verticalAlign: 'top',
                           }}
                         >
                           <div
                             style={{
                               display: 'flex',
                               width: '100%',
-                              alignItems: 'center',
+                              alignItems: 'flex-start',
                               justifyContent: 'flex-start',
                               gap: 4,
                               flexWrap: 'nowrap',

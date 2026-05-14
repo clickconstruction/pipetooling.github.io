@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
 import './authPublicLanding.css'
 
-const DEFAULT_TITLE_LINK_TEXT = 'PipeTooling joins Click'
+const DEFAULT_TITLE_LINK_TEXT = 'PipeTooling by Click'
 
-const DEFAULT_TITLE_ARIA_LABEL = 'Visit Click Plumbing (opens in new tab)'
+const DEFAULT_TITLE_ARIA_LABEL = 'PipeTooling by Click — visit Click Plumbing (opens in new tab)'
 
 export type AuthPublicLandingLayoutProps = {
   children: ReactNode

@@ -1,9 +1,13 @@
+import { APP_SETTINGS_KEY_STRIPE_INVOICE_FOOTER_PRESETS_V1 } from './appSettingsKeys'
+import { supabase } from './supabase'
+import { withSupabaseRetry } from '../utils/errorHandling'
+
 /** Keep in sync with `supabase/functions/_shared/stripeInvoiceFooter.ts` (Edge). */
 export const STRIPE_INVOICE_FOOTER_MAX_CHARS = 5000
 
 const LS_KEY_STRIPE_INVOICE_FOOTER_PRESETS = 'pipetooling-stripe-invoice-footer-presets'
 
-/** Shipped defaults (repo). Dev overrides in localStorage layer on top per field. */
+/** Shipped defaults (repo). Org/local sparse overrides layer on top per field. */
 export const STRIPE_INVOICE_FOOTER_PRESET_PLUMBING = `Click Plumbing and Electrical
 Reliable service today, innovative solutions for tomorrow.
 Ph: 801-252-5155
@@ -33,44 +37,173 @@ function capFooter(s: string): string {
   return s.slice(0, STRIPE_INVOICE_FOOTER_MAX_CHARS)
 }
 
-/** Raw overrides from localStorage (capped); missing fields mean “use shipped default”. */
-export function readStripeInvoiceFooterPresetsFromStorage(): StripeInvoiceFooterPresetStored {
+/** Pinned overrides for this tab session after fetch/save (`undefined` = use local mirror until first fetch). */
+let sessionOverrides: StripeInvoiceFooterPresetStored | undefined
+
+export function parseStripeInvoiceFooterStoredJson(parsed: unknown): StripeInvoiceFooterPresetStored {
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return {}
+  }
+  const o = parsed as Record<string, unknown>
+  const out: StripeInvoiceFooterPresetStored = {}
+  if (typeof o.plumbing === 'string') out.plumbing = capFooter(o.plumbing)
+  if (typeof o.electrical === 'string') out.electrical = capFooter(o.electrical)
+  return out
+}
+
+function persistLocalMirror(overrides: StripeInvoiceFooterPresetStored): void {
+  if (typeof window === 'undefined') return
   try {
-    const raw = localStorage.getItem(LS_KEY_STRIPE_INVOICE_FOOTER_PRESETS)
+    if (Object.keys(overrides).length === 0) {
+      window.localStorage.removeItem(LS_KEY_STRIPE_INVOICE_FOOTER_PRESETS)
+      return
+    }
+    window.localStorage.setItem(LS_KEY_STRIPE_INVOICE_FOOTER_PRESETS, JSON.stringify(overrides))
+  } catch {
+    /* quota / private mode */
+  }
+}
+
+function readOverridesFromLocalMirrorOnly(): StripeInvoiceFooterPresetStored {
+  if (typeof window === 'undefined') return {}
+  try {
+    const raw = window.localStorage.getItem(LS_KEY_STRIPE_INVOICE_FOOTER_PRESETS)
     if (!raw) return {}
-    const parsed = JSON.parse(raw) as unknown
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
-    const o = parsed as Record<string, unknown>
-    const out: StripeInvoiceFooterPresetStored = {}
-    if (typeof o.plumbing === 'string') out.plumbing = capFooter(o.plumbing)
-    if (typeof o.electrical === 'string') out.electrical = capFooter(o.electrical)
-    return out
+    return parseStripeInvoiceFooterStoredJson(JSON.parse(raw) as unknown)
   } catch {
     return {}
   }
 }
 
-/** Persist dev edits: only stores values that differ from shipped presets; removes key when empty. */
-export function saveStripeInvoiceFooterPresetsFromForm(plumbingDraft: string, electricalDraft: string): void {
+function applySessionPin(overrides: StripeInvoiceFooterPresetStored): void {
+  sessionOverrides = { ...overrides }
+  persistLocalMirror(sessionOverrides)
+}
+
+function sparseOverridesFromDraft(
+  plumbingDraft: string,
+  electricalDraft: string,
+): StripeInvoiceFooterPresetStored {
+  const p = capFooter(plumbingDraft)
+  const e = capFooter(electricalDraft)
+  const toStore: StripeInvoiceFooterPresetStored = {}
+  if (p !== STRIPE_INVOICE_FOOTER_PRESET_PLUMBING) toStore.plumbing = p
+  if (e !== STRIPE_INVOICE_FOOTER_PRESET_ELECTRICAL) toStore.electrical = e
+  return toStore
+}
+
+function normalizedHasPersistablePayload(s: StripeInvoiceFooterPresetStored): boolean {
+  return Object.keys(s).length > 0
+}
+
+async function deleteStripeInvoiceFooterPresetsFromAppSettings(): Promise<void> {
+  await withSupabaseRetry(
+    async () =>
+      supabase.from('app_settings').delete().eq('key', APP_SETTINGS_KEY_STRIPE_INVOICE_FOOTER_PRESETS_V1),
+    'delete_stripe_invoice_footer_presets_app_settings',
+  )
+}
+
+export async function upsertStripeInvoiceFooterPresetsToAppSettings(
+  sparse: StripeInvoiceFooterPresetStored,
+): Promise<void> {
+  if (!normalizedHasPersistablePayload(sparse)) {
+    await deleteStripeInvoiceFooterPresetsFromAppSettings()
+    return
+  }
+  await withSupabaseRetry(
+    async () =>
+      supabase.from('app_settings').upsert(
+        {
+          key: APP_SETTINGS_KEY_STRIPE_INVOICE_FOOTER_PRESETS_V1,
+          value_text: JSON.stringify(sparse),
+        },
+        { onConflict: 'key' },
+      ),
+    'upsert_stripe_invoice_footer_presets_app_settings',
+  )
+}
+
+/**
+ * Loads org presets into session pin + local mirror.
+ * Remote wins when a row exists; when no row, uses local mirror and optionally dev-uploads.
+ */
+export async function fetchStripeInvoiceFooterPresetsFromAppSettings(opts?: {
+  authRole?: string | null
+}): Promise<{ rowExists: boolean }> {
   try {
-    const p = capFooter(plumbingDraft)
-    const e = capFooter(electricalDraft)
-    const toStore: StripeInvoiceFooterPresetStored = {}
-    if (p !== STRIPE_INVOICE_FOOTER_PRESET_PLUMBING) toStore.plumbing = p
-    if (e !== STRIPE_INVOICE_FOOTER_PRESET_ELECTRICAL) toStore.electrical = e
-    if (Object.keys(toStore).length === 0) {
-      localStorage.removeItem(LS_KEY_STRIPE_INVOICE_FOOTER_PRESETS)
-    } else {
-      localStorage.setItem(LS_KEY_STRIPE_INVOICE_FOOTER_PRESETS, JSON.stringify(toStore))
+    const data = (await withSupabaseRetry(
+      async () =>
+        supabase
+          .from('app_settings')
+          .select('value_text')
+          .eq('key', APP_SETTINGS_KEY_STRIPE_INVOICE_FOOTER_PRESETS_V1)
+          .maybeSingle(),
+      'fetch_stripe_invoice_footer_presets_app_settings',
+    )) as { value_text: string | null } | null
+
+    if (data != null) {
+      const text = data.value_text
+      if (text != null && text.trim() !== '') {
+        try {
+          const parsed: unknown = JSON.parse(text)
+          applySessionPin(parseStripeInvoiceFooterStoredJson(parsed))
+        } catch {
+          applySessionPin({})
+        }
+      } else {
+        applySessionPin({})
+      }
+      return { rowExists: true }
     }
+
+    const localOnly = readOverridesFromLocalMirrorOnly()
+    applySessionPin(localOnly)
+    if (opts?.authRole === 'dev' && normalizedHasPersistablePayload(localOnly)) {
+      try {
+        await upsertStripeInvoiceFooterPresetsToAppSettings(localOnly)
+      } catch {
+        /* RLS or network; keep local mirror only */
+      }
+    }
+    return { rowExists: false }
   } catch {
-    /* private mode / quota */
+    return { rowExists: false }
   }
 }
 
-export function resetStripeInvoiceFooterPresetsToBuiltins(): void {
+/**
+ * Sparse override layer (capped); missing fields mean “use shipped default”.
+ * Uses session pin after fetch/save; otherwise local mirror.
+ */
+export function readStripeInvoiceFooterPresetsFromStorage(): StripeInvoiceFooterPresetStored {
+  if (sessionOverrides !== undefined) {
+    return { ...sessionOverrides }
+  }
+  return readOverridesFromLocalMirrorOnly()
+}
+
+/** Persist dev/org edits: sparse layer; updates DB then session + mirror. */
+export async function saveStripeInvoiceFooterPresetsFromForm(
+  plumbingDraft: string,
+  electricalDraft: string,
+): Promise<void> {
+  const sparse = sparseOverridesFromDraft(plumbingDraft, electricalDraft)
+  await upsertStripeInvoiceFooterPresetsToAppSettings(sparse)
+  applySessionPin(sparse)
+}
+
+export async function resetStripeInvoiceFooterPresetsToBuiltins(): Promise<void> {
+  sessionOverrides = undefined
   try {
-    localStorage.removeItem(LS_KEY_STRIPE_INVOICE_FOOTER_PRESETS)
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(LS_KEY_STRIPE_INVOICE_FOOTER_PRESETS)
+    }
+  } catch {
+    /* ignore */
+  }
+  try {
+    await deleteStripeInvoiceFooterPresetsFromAppSettings()
   } catch {
     /* ignore */
   }

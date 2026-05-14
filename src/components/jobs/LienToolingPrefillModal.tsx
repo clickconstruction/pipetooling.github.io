@@ -8,9 +8,10 @@ import {
   type LienToolingFormPage,
   type LienToolingPrefillState,
 } from '../../lib/lienToolingPrefillUrl'
-import { getPhysicalInvoiceIssuerDraft } from '../../lib/physicalInvoiceIssuer'
+import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraft } from '../../lib/physicalInvoiceIssuer'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useAuth } from '../../hooks/useAuth'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -128,11 +129,26 @@ export default function LienToolingPrefillModal({
   senderNameFallback: string
   authEmail: string
 }) {
+  const { role: authRole } = useAuth()
   const { showToast } = useToastContext()
   const [formType, setFormType] = useState<LienToolingFormPage>('demand-letter')
   const [draft, setDraft] = useState<LienToolingPrefillState>({})
+  const [issuerGen, setIssuerGen] = useState(0)
 
-  const issuer = useMemo(() => (open ? getPhysicalInvoiceIssuerDraft() : null), [open])
+  const issuer = useMemo(() => (open ? getPhysicalInvoiceIssuerDraft() : null), [open, issuerGen])
+
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    void (async () => {
+      await fetchPhysicalInvoiceIssuerFromAppSettings({ authRole })
+      if (cancelled) return
+      setIssuerGen((g) => g + 1)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, authRole])
 
   const rebuildDraft = useCallback(
     (page: LienToolingFormPage) => {

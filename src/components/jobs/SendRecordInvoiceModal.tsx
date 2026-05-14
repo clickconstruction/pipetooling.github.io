@@ -19,6 +19,7 @@ import {
   STRIPE_INVOICE_LINE_DESCRIPTION_MAX,
 } from '../../lib/stripeInvoiceLineDescription'
 import {
+  fetchStripeInvoiceFooterPresetsFromAppSettings,
   getStripeInvoiceFooterDefaultOnOpen,
   getStripeInvoiceFooterPresetElectrical,
   getStripeInvoiceFooterPresetPlumbing,
@@ -61,10 +62,12 @@ import {
   BILL_CUSTOMER_MEMO_MAX_CHARS,
   billCustomerMemoActivePresetId,
   billCustomerMemoSummaryLine,
+  fetchBillCustomerMemoPresetsFromAppSettings,
   getBillCustomerMemoDefaultOnOpen,
   listBillCustomerMemoPresets,
   type BillCustomerMemoPreset,
 } from '../../lib/billCustomerMemoPresets'
+import { fetchPhysicalInvoiceIssuerFromAppSettings } from '../../lib/physicalInvoiceIssuer'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { SendRecordInvoicePayload } from './SendRecordInvoiceModal.types'
 
@@ -367,6 +370,7 @@ export default function SendRecordInvoiceModal({
   const [memoSectionOpen, setMemoSectionOpen] = useState(false)
   const [physicalInvoiceFooter, setPhysicalInvoiceFooter] = useState(() => getPhysicalInvoiceFooterDefaultOnOpen())
   const [physicalFooterPresetsGeneration, setPhysicalFooterPresetsGeneration] = useState(0)
+  const [billCustomerMemoPresetsGeneration, setBillCustomerMemoPresetsGeneration] = useState(0)
   const [physicalFooterSectionOpen, setPhysicalFooterSectionOpen] = useState(false)
   const [stripeSubmitting, setStripeSubmitting] = useState(false)
   const [stripeError, setStripeError] = useState<string | null>(null)
@@ -408,7 +412,7 @@ export default function SendRecordInvoiceModal({
 
   const activeStripeFooterPreset = stripeInvoiceFooterActivePreset(stripeInvoiceFooter)
   const physicalFooterPresets = useMemo(() => listPhysicalInvoiceFooterPresets(), [open, physicalFooterPresetsGeneration])
-  const memoPresets = useMemo(() => listBillCustomerMemoPresets(), [open])
+  const memoPresets = useMemo(() => listBillCustomerMemoPresets(), [open, billCustomerMemoPresetsGeneration])
 
   const applyMemoPresetToBoth = useCallback((body: string) => {
     const b = body.slice(0, BILL_CUSTOMER_MEMO_MAX_CHARS)
@@ -481,10 +485,20 @@ export default function SendRecordInvoiceModal({
     if (!open) return
     let cancelled = false
     void (async () => {
-      await fetchPhysicalInvoiceFooterPresetsFromAppSettings({ authRole })
+      await Promise.all([
+        fetchPhysicalInvoiceFooterPresetsFromAppSettings({ authRole }),
+        fetchStripeInvoiceFooterPresetsFromAppSettings({ authRole }),
+        fetchBillCustomerMemoPresetsFromAppSettings({ authRole }),
+        fetchPhysicalInvoiceIssuerFromAppSettings({ authRole }),
+      ])
       if (cancelled) return
       setPhysicalFooterPresetsGeneration((g) => g + 1)
       setPhysicalInvoiceFooter(getPhysicalInvoiceFooterDefaultOnOpen())
+      setStripeInvoiceFooter(getStripeInvoiceFooterDefaultOnOpen())
+      setBillCustomerMemoPresetsGeneration((g) => g + 1)
+      const memoDefaultAfterFetch = getBillCustomerMemoDefaultOnOpen()
+      setExternalNote(memoDefaultAfterFetch)
+      setStripeMemo(memoDefaultAfterFetch)
     })()
     return () => {
       cancelled = true

@@ -14,8 +14,9 @@ import {
   buildAiaPrefillFromJob,
 } from '../../lib/aiaG702G703Template'
 import { fetchAndFillAiaTemplate } from '../../lib/fillAiaG702G703Workbook'
-import { getPhysicalInvoiceIssuerDraft } from '../../lib/physicalInvoiceIssuer'
+import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraft } from '../../lib/physicalInvoiceIssuer'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useAuth } from '../../hooks/useAuth'
 
 function triggerDownloadArrayBuffer(ab: ArrayBuffer, filename: string): void {
   const blob = new Blob([ab], {
@@ -94,6 +95,7 @@ export default function AiaG702G703Modal({
   job: JobWithDetails | LimitedJobDetailSnapshot | null
   hcpForFilename: string
 }) {
+  const { role: authRole } = useAuth()
   const { showToast } = useToastContext()
   const [form, setForm] = useState<Record<AiaFieldKey, string>>(emptyFormState)
   const [generating, setGenerating] = useState(false)
@@ -115,8 +117,16 @@ export default function AiaG702G703Modal({
 
   useEffect(() => {
     if (!open || !job) return
-    applyPrefill()
-  }, [open, job, applyPrefill])
+    let cancelled = false
+    void (async () => {
+      await fetchPhysicalInvoiceIssuerFromAppSettings({ authRole })
+      if (cancelled) return
+      applyPrefill()
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, job, authRole, applyPrefill])
 
   const titleId = 'aia-g702-g703-modal-title'
 

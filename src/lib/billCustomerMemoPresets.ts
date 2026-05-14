@@ -1,10 +1,13 @@
+import { APP_SETTINGS_KEY_BILL_CUSTOMER_MEMO_PRESETS_V1 } from './appSettingsKeys'
+import { supabase } from './supabase'
 import { normalizePhysicalInvoiceFooterPlainText } from './physicalInvoiceDocument'
 import { STRIPE_INVOICE_FOOTER_MAX_CHARS } from './stripeInvoiceFooter'
+import { withSupabaseRetry } from '../utils/errorHandling'
 
 /** Same cap as Stripe invoice footer / physical invoice footer (invoice description memo). */
 export const BILL_CUSTOMER_MEMO_MAX_CHARS = STRIPE_INVOICE_FOOTER_MAX_CHARS
 
-/** Max dev-added presets (localStorage) per browser. */
+/** Max dev-added presets per organization (`app_settings`). */
 export const BILL_CUSTOMER_MEMO_CUSTOM_PRESET_MAX = 20
 
 export const BILL_CUSTOMER_MEMO_SHIPPED_LABEL_STANDARD = 'Standard'
@@ -50,11 +53,30 @@ const BUILTIN_DEFS: Array<{
   { id: 'alternate', label: BILL_CUSTOMER_MEMO_SHIPPED_LABEL_ALTERNATE, shippedBody: BILL_CUSTOMER_MEMO_PRESET_ALTERNATE },
 ]
 
-type NormalizedBillCustomerMemoStorage = {
+export type NormalizedBillCustomerMemoStorage = {
   builtinOverrides: Partial<Record<BillCustomerMemoBuiltinId, string>>
   builtinLabelOverrides: Partial<Record<BillCustomerMemoBuiltinId, string>>
   customPresets: BillCustomerMemoCustomPreset[]
+  /** `null` = standard (default on open). */
   defaultPresetId: string | null
+}
+
+const EMPTY_NORMALIZED: NormalizedBillCustomerMemoStorage = {
+  builtinOverrides: {},
+  builtinLabelOverrides: {},
+  customPresets: [],
+  defaultPresetId: null,
+}
+
+let sessionNormalized: NormalizedBillCustomerMemoStorage | undefined
+
+function cloneNormalized(n: NormalizedBillCustomerMemoStorage): NormalizedBillCustomerMemoStorage {
+  return {
+    builtinOverrides: { ...n.builtinOverrides },
+    builtinLabelOverrides: { ...n.builtinLabelOverrides },
+    customPresets: n.customPresets.map((p) => ({ ...p })),
+    defaultPresetId: n.defaultPresetId,
+  }
 }
 
 function capMemoBody(raw: string): string {
@@ -88,6 +110,115 @@ function parseBuiltinLabelOverrides(raw: unknown): Partial<Record<BillCustomerMe
   return out
 }
 
+/** Parses stored `v: 2` JSON shape. Invalid input yields empty normalized storage. */
+export function parseBillCustomerMemoStoredJson(parsed: unknown): NormalizedBillCustomerMemoStorage {
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return cloneNormalized(EMPTY_NORMALIZED)
+  }
+  const o = parsed as Record<string, unknown>
+  if (o.v !== 2) {
+    return cloneNormalized(EMPTY_NORMALIZED)
+  }
+  const v2 = o as BillCustomerMemoLsV2
+  const builtinOverrides: Partial<Record<BillCustomerMemoBuiltinId, string>> = {}
+  if (v2.builtinOverrides && typeof v2.builtinOverrides === 'object' && !Array.isArray(v2.builtinOverrides)) {
+    const bo = v2.builtinOverrides as Record<string, unknown>
+    if (typeof bo.standard === 'string') builtinOverrides.standard = capMemoBody(bo.standard)
+    if (typeof bo.alternate === 'string') builtinOverrides.alternate = capMemoBody(bo.alternate)
+  }
+  const builtinLabelOverrides = parseBuiltinLabelOverrides(v2.builtinLabelOverrides)
+  let customPresets: BillCustomerMemoCustomPreset[] = []
+  if (Array.isArray(v2.customPresets)) {
+    customPresets = v2.customPresets
+      .filter(
+        (row): row is BillCustomerMemoCustomPreset =>
+          row != null &&
+          typeof row === 'object' &&
+          typeof (row as BillCustomerMemoCustomPreset).id === 'string' &&
+          typeof (row as BillCustomerMemoCustomPreset).label === 'string' &&
+          typeof (row as BillCustomerMemoCustomPreset).body === 'string',
+      )
+      .map(normalizeCustomPreset)
+      .slice(0, BILL_CUSTOMER_MEMO_CUSTOM_PRESET_MAX)
+  }
+  let defaultPresetId: string | null = null
+  if (typeof v2.defaultPresetId === 'string' && v2.defaultPresetId.trim().length > 0) {
+    const d = v2.defaultPresetId.trim()
+    defaultPresetId = d === 'standard' ? null : d
+  }
+  return { builtinOverrides, builtinLabelOverrides, customPresets, defaultPresetId }
+}
+
+function normalizedHasPersistablePayload(data: NormalizedBillCustomerMemoStorage): boolean {
+  const hasBodyOv = Object.keys(data.builtinOverrides).length > 0
+  const hasLabelOv = Object.keys(data.builtinLabelOverrides).length > 0
+  const hasCustom = data.customPresets.length > 0
+  const hasNonStandardDefault = data.defaultPresetId != null && data.defaultPresetId !== 'standard'
+  return hasBodyOv || hasLabelOv || hasCustom || hasNonStandardDefault
+}
+
+function buildSparseV2OrNull(data: NormalizedBillCustomerMemoStorage): BillCustomerMemoLsV2 | null {
+  const hasBodyOv = Object.keys(data.builtinOverrides).length > 0
+  const hasLabelOv = Object.keys(data.builtinLabelOverrides).length > 0
+  const hasCustom = data.customPresets.length > 0
+  const hasNonStandardDefault = data.defaultPresetId != null && data.defaultPresetId !== 'standard'
+
+  if (!hasBodyOv && !hasLabelOv && !hasCustom && !hasNonStandardDefault) {
+    return null
+  }
+
+  return {
+    v: 2,
+    builtinOverrides: hasBodyOv ? data.builtinOverrides : undefined,
+    builtinLabelOverrides: hasLabelOv ? data.builtinLabelOverrides : undefined,
+    customPresets: hasCustom ? data.customPresets : undefined,
+    defaultPresetId: hasNonStandardDefault ? data.defaultPresetId! : undefined,
+  }
+}
+
+function persistLocalMirrorFromNormalized(data: NormalizedBillCustomerMemoStorage): void {
+  if (typeof window === 'undefined') return
+  try {
+    const sparse = buildSparseV2OrNull(data)
+    if (!sparse) {
+      window.localStorage.removeItem(LS_KEY_BILL_CUSTOMER_MEMO_PRESETS)
+      return
+    }
+    window.localStorage.setItem(LS_KEY_BILL_CUSTOMER_MEMO_PRESETS, JSON.stringify(sparse))
+  } catch {
+    /* quota */
+  }
+}
+
+function applySessionCacheAndPersistLocalMirror(data: NormalizedBillCustomerMemoStorage): void {
+  sessionNormalized = cloneNormalized(data)
+  persistLocalMirrorFromNormalized(sessionNormalized)
+}
+
+function readNormalizedFromLocalMirrorOnly(): NormalizedBillCustomerMemoStorage {
+  if (typeof window === 'undefined') return cloneNormalized(EMPTY_NORMALIZED)
+  try {
+    const raw = window.localStorage.getItem(LS_KEY_BILL_CUSTOMER_MEMO_PRESETS)
+    if (!raw) return cloneNormalized(EMPTY_NORMALIZED)
+    const parsed: unknown = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return cloneNormalized(EMPTY_NORMALIZED)
+    }
+    const o = parsed as Record<string, unknown>
+    if (o.v !== 2) return cloneNormalized(EMPTY_NORMALIZED)
+    return parseBillCustomerMemoStoredJson(parsed)
+  } catch {
+    return cloneNormalized(EMPTY_NORMALIZED)
+  }
+}
+
+function readNormalizedStorage(): NormalizedBillCustomerMemoStorage {
+  if (sessionNormalized !== undefined) {
+    return cloneNormalized(sessionNormalized)
+  }
+  return readNormalizedFromLocalMirrorOnly()
+}
+
 function buildPresetsFromNormalized(n: NormalizedBillCustomerMemoStorage): BillCustomerMemoPreset[] {
   const builtins: BillCustomerMemoPreset[] = BUILTIN_DEFS.map((b) => {
     const overrideLabel = n.builtinLabelOverrides[b.id]
@@ -107,105 +238,89 @@ function buildPresetsFromNormalized(n: NormalizedBillCustomerMemoStorage): BillC
   return [...builtins, ...custom]
 }
 
-function readNormalizedStorage(): NormalizedBillCustomerMemoStorage {
-  try {
-    const raw = localStorage.getItem(LS_KEY_BILL_CUSTOMER_MEMO_PRESETS)
-    if (!raw) {
-      return {
-        builtinOverrides: {},
-        builtinLabelOverrides: {},
-        customPresets: [],
-        defaultPresetId: null,
-      }
-    }
-    const parsed = JSON.parse(raw) as unknown
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      return {
-        builtinOverrides: {},
-        builtinLabelOverrides: {},
-        customPresets: [],
-        defaultPresetId: null,
-      }
-    }
-    const o = parsed as Record<string, unknown>
-    if (o.v !== 2) {
-      return {
-        builtinOverrides: {},
-        builtinLabelOverrides: {},
-        customPresets: [],
-        defaultPresetId: null,
-      }
-    }
-    const v2 = o as BillCustomerMemoLsV2
-    const builtinOverrides: Partial<Record<BillCustomerMemoBuiltinId, string>> = {}
-    if (v2.builtinOverrides && typeof v2.builtinOverrides === 'object' && !Array.isArray(v2.builtinOverrides)) {
-      const bo = v2.builtinOverrides as Record<string, unknown>
-      if (typeof bo.standard === 'string') builtinOverrides.standard = capMemoBody(bo.standard)
-      if (typeof bo.alternate === 'string') builtinOverrides.alternate = capMemoBody(bo.alternate)
-    }
-    const builtinLabelOverrides = parseBuiltinLabelOverrides(v2.builtinLabelOverrides)
-    let customPresets: BillCustomerMemoCustomPreset[] = []
-    if (Array.isArray(v2.customPresets)) {
-      customPresets = v2.customPresets
-        .filter(
-          (row): row is BillCustomerMemoCustomPreset =>
-            row != null &&
-            typeof row === 'object' &&
-            typeof (row as BillCustomerMemoCustomPreset).id === 'string' &&
-            typeof (row as BillCustomerMemoCustomPreset).label === 'string' &&
-            typeof (row as BillCustomerMemoCustomPreset).body === 'string',
-        )
-        .map(normalizeCustomPreset)
-        .slice(0, BILL_CUSTOMER_MEMO_CUSTOM_PRESET_MAX)
-    }
-    let defaultPresetId: string | null = null
-    if (typeof v2.defaultPresetId === 'string' && v2.defaultPresetId.trim().length > 0) {
-      const d = v2.defaultPresetId.trim()
-      defaultPresetId = d === 'standard' ? null : d
-    }
-    return { builtinOverrides, builtinLabelOverrides, customPresets, defaultPresetId }
-  } catch {
-    return {
-      builtinOverrides: {},
-      builtinLabelOverrides: {},
-      customPresets: [],
-      defaultPresetId: null,
-    }
-  }
-}
-
-function persistV2(data: {
-  builtinOverrides: Partial<Record<BillCustomerMemoBuiltinId, string>>
-  builtinLabelOverrides: Partial<Record<BillCustomerMemoBuiltinId, string>>
-  customPresets: BillCustomerMemoCustomPreset[]
-  defaultPresetId: string | null
-}): void {
-  const hasBodyOv = Object.keys(data.builtinOverrides).length > 0
-  const hasLabelOv = Object.keys(data.builtinLabelOverrides).length > 0
-  const hasCustom = data.customPresets.length > 0
-  const hasNonStandardDefault = data.defaultPresetId != null && data.defaultPresetId !== 'standard'
-
-  if (!hasBodyOv && !hasLabelOv && !hasCustom && !hasNonStandardDefault) {
-    localStorage.removeItem(LS_KEY_BILL_CUSTOMER_MEMO_PRESETS)
-    return
-  }
-
-  const toWrite: BillCustomerMemoLsV2 = {
-    v: 2,
-    builtinOverrides: hasBodyOv ? data.builtinOverrides : undefined,
-    builtinLabelOverrides: hasLabelOv ? data.builtinLabelOverrides : undefined,
-    customPresets: hasCustom ? data.customPresets : undefined,
-    defaultPresetId: hasNonStandardDefault ? data.defaultPresetId! : undefined,
-  }
-  localStorage.setItem(LS_KEY_BILL_CUSTOMER_MEMO_PRESETS, JSON.stringify(toWrite))
-}
-
 function effectiveDefaultPresetId(n: NormalizedBillCustomerMemoStorage): string {
   const raw = n.defaultPresetId ?? 'standard'
   const customIds = new Set(n.customPresets.map((p) => p.id))
   if (raw === 'standard' || raw === 'alternate') return raw
   if (customIds.has(raw)) return raw
   return 'standard'
+}
+
+async function deleteBillCustomerMemoPresetsFromAppSettings(): Promise<void> {
+  await withSupabaseRetry(
+    async () =>
+      supabase.from('app_settings').delete().eq('key', APP_SETTINGS_KEY_BILL_CUSTOMER_MEMO_PRESETS_V1),
+    'delete_bill_customer_memo_presets_app_settings',
+  )
+}
+
+export async function upsertBillCustomerMemoPresetsToAppSettings(
+  normalized: NormalizedBillCustomerMemoStorage,
+): Promise<void> {
+  const sparse = buildSparseV2OrNull(normalized)
+  if (!sparse) {
+    await deleteBillCustomerMemoPresetsFromAppSettings()
+    return
+  }
+  await withSupabaseRetry(
+    async () =>
+      supabase.from('app_settings').upsert(
+        {
+          key: APP_SETTINGS_KEY_BILL_CUSTOMER_MEMO_PRESETS_V1,
+          value_text: JSON.stringify(sparse),
+        },
+        { onConflict: 'key' },
+      ),
+    'upsert_bill_customer_memo_presets_app_settings',
+  )
+}
+
+export async function fetchBillCustomerMemoPresetsFromAppSettings(opts?: {
+  authRole?: string | null
+}): Promise<{ rowExists: boolean }> {
+  try {
+    const data = (await withSupabaseRetry(
+      async () =>
+        supabase
+          .from('app_settings')
+          .select('value_text')
+          .eq('key', APP_SETTINGS_KEY_BILL_CUSTOMER_MEMO_PRESETS_V1)
+          .maybeSingle(),
+      'fetch_bill_customer_memo_presets_app_settings',
+    )) as { value_text: string | null } | null
+
+    if (data != null) {
+      const text = data.value_text
+      if (text != null && text.trim() !== '') {
+        try {
+          const parsed: unknown = JSON.parse(text)
+          const next =
+            parsed != null && typeof parsed === 'object' && !Array.isArray(parsed) && (parsed as { v?: unknown }).v === 2
+              ? parseBillCustomerMemoStoredJson(parsed)
+              : cloneNormalized(EMPTY_NORMALIZED)
+          applySessionCacheAndPersistLocalMirror(next)
+        } catch {
+          applySessionCacheAndPersistLocalMirror(cloneNormalized(EMPTY_NORMALIZED))
+        }
+      } else {
+        applySessionCacheAndPersistLocalMirror(cloneNormalized(EMPTY_NORMALIZED))
+      }
+      return { rowExists: true }
+    }
+
+    const localOnly = readNormalizedFromLocalMirrorOnly()
+    applySessionCacheAndPersistLocalMirror(localOnly)
+    if (opts?.authRole === 'dev' && normalizedHasPersistablePayload(localOnly)) {
+      try {
+        await upsertBillCustomerMemoPresetsToAppSettings(localOnly)
+      } catch {
+        /* RLS / network */
+      }
+    }
+    return { rowExists: false }
+  } catch {
+    return { rowExists: false }
+  }
 }
 
 export function listBillCustomerMemoPresets(): BillCustomerMemoPreset[] {
@@ -262,58 +377,75 @@ export function getBillCustomerMemoSettingsDraft(): {
   }
 }
 
-export function saveBillCustomerMemoPresetsState(opts: {
+function computeNormalizedFromSaveOpts(opts: {
   standardBody: string
   alternateBody: string
   standardLabel: string
   alternateLabel: string
   customPresets: BillCustomerMemoCustomPreset[]
   defaultPresetId: string
-}): void {
-  try {
-    const standard = capMemoBody(opts.standardBody)
-    const alternate = capMemoBody(opts.alternateBody)
-    const shippedStd = capMemoBody(BUILTIN_DEFS.find((b) => b.id === 'standard')!.shippedBody)
-    const shippedAlt = capMemoBody(BUILTIN_DEFS.find((b) => b.id === 'alternate')!.shippedBody)
-    const shippedStdLabel = BUILTIN_DEFS.find((b) => b.id === 'standard')!.label
-    const shippedAltLabel = BUILTIN_DEFS.find((b) => b.id === 'alternate')!.label
+}): NormalizedBillCustomerMemoStorage {
+  const standard = capMemoBody(opts.standardBody)
+  const alternate = capMemoBody(opts.alternateBody)
+  const shippedStd = capMemoBody(BUILTIN_DEFS.find((b) => b.id === 'standard')!.shippedBody)
+  const shippedAlt = capMemoBody(BUILTIN_DEFS.find((b) => b.id === 'alternate')!.shippedBody)
+  const shippedStdLabel = BUILTIN_DEFS.find((b) => b.id === 'standard')!.label
+  const shippedAltLabel = BUILTIN_DEFS.find((b) => b.id === 'alternate')!.label
 
-    const builtinOverrides: Partial<Record<BillCustomerMemoBuiltinId, string>> = {}
-    if (standard !== shippedStd) builtinOverrides.standard = standard
-    if (alternate !== shippedAlt) builtinOverrides.alternate = alternate
+  const builtinOverrides: Partial<Record<BillCustomerMemoBuiltinId, string>> = {}
+  if (standard !== shippedStd) builtinOverrides.standard = standard
+  if (alternate !== shippedAlt) builtinOverrides.alternate = alternate
 
-    const stdL = capLabel(opts.standardLabel)
-    const altL = capLabel(opts.alternateLabel)
-    const builtinLabelOverrides: Partial<Record<BillCustomerMemoBuiltinId, string>> = {}
-    if (stdL.length > 0 && stdL !== shippedStdLabel) builtinLabelOverrides.standard = stdL
-    if (altL.length > 0 && altL !== shippedAltLabel) builtinLabelOverrides.alternate = altL
+  const stdL = capLabel(opts.standardLabel)
+  const altL = capLabel(opts.alternateLabel)
+  const builtinLabelOverrides: Partial<Record<BillCustomerMemoBuiltinId, string>> = {}
+  if (stdL.length > 0 && stdL !== shippedStdLabel) builtinLabelOverrides.standard = stdL
+  if (altL.length > 0 && altL !== shippedAltLabel) builtinLabelOverrides.alternate = altL
 
-    const customPresets = opts.customPresets
-      .map(normalizeCustomPreset)
-      .filter((p) => p.label.length > 0 && p.body.trim().length > 0)
-      .slice(0, BILL_CUSTOMER_MEMO_CUSTOM_PRESET_MAX)
+  const customPresets = opts.customPresets
+    .map(normalizeCustomPreset)
+    .filter((p) => p.label.length > 0 && p.body.trim().length > 0)
+    .slice(0, BILL_CUSTOMER_MEMO_CUSTOM_PRESET_MAX)
 
-    const customIds = new Set(customPresets.map((p) => p.id))
-    let defaultPresetId = opts.defaultPresetId.trim()
-    if (defaultPresetId !== 'standard' && defaultPresetId !== 'alternate' && !customIds.has(defaultPresetId)) {
-      defaultPresetId = 'standard'
-    }
-    const defaultToStore: string | null = defaultPresetId === 'standard' ? null : defaultPresetId
+  const customIds = new Set(customPresets.map((p) => p.id))
+  let defaultPresetId = opts.defaultPresetId.trim()
+  if (defaultPresetId !== 'standard' && defaultPresetId !== 'alternate' && !customIds.has(defaultPresetId)) {
+    defaultPresetId = 'standard'
+  }
+  const defaultToStore: string | null = defaultPresetId === 'standard' ? null : defaultPresetId
 
-    persistV2({
-      builtinOverrides,
-      builtinLabelOverrides,
-      customPresets,
-      defaultPresetId: defaultToStore,
-    })
-  } catch {
-    /* private mode / quota */
+  return {
+    builtinOverrides,
+    builtinLabelOverrides,
+    customPresets,
+    defaultPresetId: defaultToStore,
   }
 }
 
-export function resetBillCustomerMemoPresetsToBuiltins(): void {
+export async function saveBillCustomerMemoPresetsState(opts: {
+  standardBody: string
+  alternateBody: string
+  standardLabel: string
+  alternateLabel: string
+  customPresets: BillCustomerMemoCustomPreset[]
+  defaultPresetId: string
+}): Promise<void> {
+  const normalized = computeNormalizedFromSaveOpts(opts)
+  await upsertBillCustomerMemoPresetsToAppSettings(normalized)
+  applySessionCacheAndPersistLocalMirror(normalized)
+}
+
+export async function resetBillCustomerMemoPresetsToBuiltins(): Promise<void> {
+  sessionNormalized = undefined
   try {
-    localStorage.removeItem(LS_KEY_BILL_CUSTOMER_MEMO_PRESETS)
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(LS_KEY_BILL_CUSTOMER_MEMO_PRESETS)
+    }
+  } catch {
+    /* ignore */
+  }
+  try {
+    await deleteBillCustomerMemoPresetsFromAppSettings()
   } catch {
     /* ignore */
   }

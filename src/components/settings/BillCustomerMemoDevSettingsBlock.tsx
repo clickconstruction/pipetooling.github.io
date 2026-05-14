@@ -1,19 +1,24 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useAuth } from '../../hooks/useAuth'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import {
   BILL_CUSTOMER_MEMO_CUSTOM_PRESET_MAX,
   BILL_CUSTOMER_MEMO_LABEL_MAX_CHARS,
   BILL_CUSTOMER_MEMO_MAX_CHARS,
   BILL_CUSTOMER_MEMO_SHIPPED_LABEL_ALTERNATE,
   BILL_CUSTOMER_MEMO_SHIPPED_LABEL_STANDARD,
+  fetchBillCustomerMemoPresetsFromAppSettings,
   getBillCustomerMemoSettingsDraft,
   saveBillCustomerMemoPresetsState,
   type BillCustomerMemoCustomPreset,
 } from '../../lib/billCustomerMemoPresets'
 
 export default function BillCustomerMemoDevSettingsBlock() {
+  const { role: authRole } = useAuth()
   const { showToast } = useToastContext()
   const [open, setOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [standardText, setStandardText] = useState(() => getBillCustomerMemoSettingsDraft().standardBody)
   const [alternateText, setAlternateText] = useState(() => getBillCustomerMemoSettingsDraft().alternateBody)
   const [standardLabel, setStandardLabel] = useState(() => getBillCustomerMemoSettingsDraft().standardLabel)
@@ -49,6 +54,19 @@ export default function BillCustomerMemoDevSettingsBlock() {
     setCustomRows(d.customPresets)
   }, [])
 
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    void (async () => {
+      await fetchBillCustomerMemoPresetsFromAppSettings({ authRole })
+      if (cancelled) return
+      reloadFromStorage()
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, authRole, reloadFromStorage])
+
   const inputStyle = {
     width: '100%',
     boxSizing: 'border-box' as const,
@@ -62,13 +80,7 @@ export default function BillCustomerMemoDevSettingsBlock() {
     <div style={{ marginBottom: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
       <button
         type="button"
-        onClick={() => {
-          setOpen((prev) => {
-            const next = !prev
-            if (next) reloadFromStorage()
-            return next
-          })
-        }}
+        onClick={() => setOpen((prev) => !prev)}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -96,8 +108,9 @@ export default function BillCustomerMemoDevSettingsBlock() {
           }}
         >
           <p style={{ margin: '0 0 0.75rem', color: '#6b7280', fontSize: '0.875rem', lineHeight: 1.5 }}>
-            Overrides apply to Bill Customer <strong>Memo</strong> on Stripe, HouseCall Pro, and Physical tabs on this
-            browser only. Shipped defaults are empty until you save text here.
+            These presets apply <strong>organization-wide</strong> for Bill Customer <strong>Memo</strong> on Stripe,
+            HouseCall Pro, and Physical tabs (all signed-in users). Shipped defaults stay empty until you save overrides
+            here.
           </p>
           <p style={{ margin: '0 0 0.65rem', fontSize: '0.8125rem', fontWeight: 600, color: '#374151' }}>
             Builtin: standard
@@ -345,26 +358,37 @@ export default function BillCustomerMemoDevSettingsBlock() {
             </div>
             <button
               type="button"
+              disabled={saving}
               onClick={() => {
-                const resolvedDefault = defaultPresetSelectOptions.some((o) => o.id === defaultPresetId)
-                  ? defaultPresetId
-                  : 'standard'
-                saveBillCustomerMemoPresetsState({
-                  standardBody: standardText,
-                  alternateBody: alternateText,
-                  standardLabel,
-                  alternateLabel,
-                  customPresets: customRows,
-                  defaultPresetId: resolvedDefault,
-                })
-                reloadFromStorage()
-                showToast('Bill Customer memo presets saved for this browser.', 'success')
+                void (async () => {
+                  const resolvedDefault = defaultPresetSelectOptions.some((o) => o.id === defaultPresetId)
+                    ? defaultPresetId
+                    : 'standard'
+                  setSaving(true)
+                  try {
+                    await saveBillCustomerMemoPresetsState({
+                      standardBody: standardText,
+                      alternateBody: alternateText,
+                      standardLabel,
+                      alternateLabel,
+                      customPresets: customRows,
+                      defaultPresetId: resolvedDefault,
+                    })
+                    reloadFromStorage()
+                    showToast('Bill Customer memo presets saved for your organization.', 'success')
+                  } catch (e) {
+                    showToast(formatErrorMessage(e, 'Save failed'), 'error')
+                  } finally {
+                    setSaving(false)
+                  }
+                })()
               }}
               style={{
                 padding: '0.35rem 0.75rem',
                 fontSize: '0.875rem',
-                cursor: 'pointer',
+                cursor: saving ? 'not-allowed' : 'pointer',
                 fontWeight: 500,
+                opacity: saving ? 0.65 : 1,
               }}
             >
               Save

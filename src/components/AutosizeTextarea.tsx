@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, type TextareaHTMLAttributes } from 'react'
+import { useCallback, useLayoutEffect, useRef, type TextareaHTMLAttributes } from 'react'
 
 export type AutosizeTextareaProps = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'rows'> & {
   minRows?: number
@@ -24,14 +24,30 @@ export default function AutosizeTextarea({
 }: AutosizeTextareaProps) {
   const ref = useRef<HTMLTextAreaElement>(null)
 
-  useLayoutEffect(() => {
+  const syncHeight = useCallback(() => {
     const el = ref.current
     if (!el) return
     el.style.height = 'auto'
     const contentH = el.scrollHeight
     const pad = Math.max(0, extraLines) * lineHeightPx(el)
     el.style.height = `${contentH + pad}px`
-  }, [value, minRows, extraLines])
+  }, [extraLines])
+
+  useLayoutEffect(() => {
+    syncHeight()
+  }, [value, minRows, syncHeight])
+
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => {
+      syncHeight()
+    })
+    ro.observe(el)
+    return () => {
+      ro.disconnect()
+    }
+  }, [syncHeight])
 
   return (
     <textarea

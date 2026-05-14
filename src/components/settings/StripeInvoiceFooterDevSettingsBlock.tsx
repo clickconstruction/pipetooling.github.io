@@ -1,6 +1,9 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useAuth } from '../../hooks/useAuth'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import {
+  fetchStripeInvoiceFooterPresetsFromAppSettings,
   getStripeInvoiceFooterPresetElectrical,
   getStripeInvoiceFooterPresetPlumbing,
   saveStripeInvoiceFooterPresetsFromForm,
@@ -8,8 +11,10 @@ import {
 } from '../../lib/stripeInvoiceFooter'
 
 export default function StripeInvoiceFooterDevSettingsBlock() {
+  const { role: authRole } = useAuth()
   const { showToast } = useToastContext()
   const [open, setOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [plumbingText, setPlumbingText] = useState(() => getStripeInvoiceFooterPresetPlumbing())
   const [electricalText, setElectricalText] = useState(() => getStripeInvoiceFooterPresetElectrical())
 
@@ -18,17 +23,24 @@ export default function StripeInvoiceFooterDevSettingsBlock() {
     setElectricalText(getStripeInvoiceFooterPresetElectrical())
   }, [])
 
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    void (async () => {
+      await fetchStripeInvoiceFooterPresetsFromAppSettings({ authRole })
+      if (cancelled) return
+      reloadFromStorage()
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, authRole, reloadFromStorage])
+
   return (
     <div style={{ marginBottom: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
       <button
         type="button"
-        onClick={() => {
-          setOpen((prev) => {
-            const next = !prev
-            if (next) reloadFromStorage()
-            return next
-          })
-        }}
+        onClick={() => setOpen((prev) => !prev)}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -56,7 +68,8 @@ export default function StripeInvoiceFooterDevSettingsBlock() {
           }}
         >
           <p style={{ margin: '0 0 0.75rem', color: '#6b7280', fontSize: '0.875rem', lineHeight: 1.5 }}>
-            Overrides apply to Bill Customer footer presets on this browser only. Shipped defaults remain in the repo.
+            These presets apply <strong>organization-wide</strong> for Bill Customer <strong>Stripe</strong> invoice
+            footers (all signed-in users). Shipped defaults remain in the repo until you save overrides here.
           </p>
           <label htmlFor="stripe-footer-preset-plumbing" style={{ display: 'block', fontWeight: 600, fontSize: '0.875rem', marginBottom: 4 }}>
             Plumbing
@@ -109,16 +122,27 @@ export default function StripeInvoiceFooterDevSettingsBlock() {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
             <button
               type="button"
+              disabled={saving}
               onClick={() => {
-                saveStripeInvoiceFooterPresetsFromForm(plumbingText, electricalText)
-                reloadFromStorage()
-                showToast('Stripe footer presets saved for this browser.', 'success')
+                void (async () => {
+                  setSaving(true)
+                  try {
+                    await saveStripeInvoiceFooterPresetsFromForm(plumbingText, electricalText)
+                    reloadFromStorage()
+                    showToast('Stripe footer presets saved for your organization.', 'success')
+                  } catch (e) {
+                    showToast(formatErrorMessage(e, 'Save failed'), 'error')
+                  } finally {
+                    setSaving(false)
+                  }
+                })()
               }}
               style={{
                 padding: '0.35rem 0.75rem',
                 fontSize: '0.875rem',
-                cursor: 'pointer',
+                cursor: saving ? 'not-allowed' : 'pointer',
                 fontWeight: 500,
+                opacity: saving ? 0.65 : 1,
               }}
             >
               Save

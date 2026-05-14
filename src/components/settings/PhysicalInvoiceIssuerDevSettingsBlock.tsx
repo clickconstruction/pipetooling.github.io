@@ -1,19 +1,37 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useAuth } from '../../hooks/useAuth'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import {
+  fetchPhysicalInvoiceIssuerFromAppSettings,
   getPhysicalInvoiceIssuerDraft,
   savePhysicalInvoiceIssuerDraft,
   type PhysicalInvoiceIssuer,
 } from '../../lib/physicalInvoiceIssuer'
 
 export default function PhysicalInvoiceIssuerDevSettingsBlock() {
+  const { role: authRole } = useAuth()
   const { showToast } = useToastContext()
   const [open, setOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [draft, setDraft] = useState<PhysicalInvoiceIssuer>(() => getPhysicalInvoiceIssuerDraft())
 
   const reload = useCallback(() => {
     setDraft(getPhysicalInvoiceIssuerDraft())
   }, [])
+
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    void (async () => {
+      await fetchPhysicalInvoiceIssuerFromAppSettings({ authRole })
+      if (cancelled) return
+      reload()
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, authRole, reload])
 
   const inputStyle = {
     width: '100%',
@@ -28,13 +46,7 @@ export default function PhysicalInvoiceIssuerDevSettingsBlock() {
     <div style={{ marginBottom: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
       <button
         type="button"
-        onClick={() => {
-          setOpen((prev) => {
-            const next = !prev
-            if (next) reload()
-            return next
-          })
-        }}
+        onClick={() => setOpen((prev) => !prev)}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -56,8 +68,8 @@ export default function PhysicalInvoiceIssuerDevSettingsBlock() {
       {open ? (
         <div style={{ padding: '0 1rem 1rem' }}>
           <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
-            Shown on detailed physical invoices (header, address block, page 2 tagline / license). Stored in this
-            browser only.
+            Shown on detailed physical invoices (header, address block, page 2 tagline / license). Applies{' '}
+            <strong>organization-wide</strong> for all signed-in users.
           </p>
           <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: 4 }}>Company name</label>
           <input
@@ -97,17 +109,28 @@ export default function PhysicalInvoiceIssuerDevSettingsBlock() {
           />
           <button
             type="button"
+            disabled={saving}
             onClick={() => {
-              savePhysicalInvoiceIssuerDraft(draft)
-              showToast('Company invoice block saved.', 'success')
+              void (async () => {
+                setSaving(true)
+                try {
+                  await savePhysicalInvoiceIssuerDraft(draft)
+                  reload()
+                  showToast('Physical invoice company block saved for your organization.', 'success')
+                } catch (e) {
+                  showToast(formatErrorMessage(e, 'Save failed'), 'error')
+                } finally {
+                  setSaving(false)
+                }
+              })()
             }}
             style={{
               padding: '0.5rem 1rem',
-              background: '#2563eb',
+              background: saving ? '#93c5fd' : '#2563eb',
               color: 'white',
               border: 'none',
               borderRadius: 4,
-              cursor: 'pointer',
+              cursor: saving ? 'not-allowed' : 'pointer',
               fontWeight: 500,
             }}
           >
