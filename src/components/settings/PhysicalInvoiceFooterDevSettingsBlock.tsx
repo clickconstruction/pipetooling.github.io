@@ -1,6 +1,9 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useAuth } from '../../hooks/useAuth'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import {
+  fetchPhysicalInvoiceFooterPresetsFromAppSettings,
   getPhysicalInvoiceFooterSettingsDraft,
   PHYSICAL_INVOICE_FOOTER_CUSTOM_PRESET_MAX,
   PHYSICAL_INVOICE_FOOTER_LABEL_MAX_CHARS,
@@ -12,8 +15,10 @@ import {
 } from '../../lib/physicalInvoiceFooter'
 
 export default function PhysicalInvoiceFooterDevSettingsBlock() {
+  const { role: authRole } = useAuth()
   const { showToast } = useToastContext()
   const [open, setOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [standardText, setStandardText] = useState(() => getPhysicalInvoiceFooterSettingsDraft().standardBody)
   const [alternateText, setAlternateText] = useState(() => getPhysicalInvoiceFooterSettingsDraft().alternateBody)
   const [standardLabel, setStandardLabel] = useState(() => getPhysicalInvoiceFooterSettingsDraft().standardLabel)
@@ -49,6 +54,19 @@ export default function PhysicalInvoiceFooterDevSettingsBlock() {
     setCustomRows(d.customPresets)
   }, [])
 
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    void (async () => {
+      await fetchPhysicalInvoiceFooterPresetsFromAppSettings({ authRole })
+      if (cancelled) return
+      reloadFromStorage()
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, authRole, reloadFromStorage])
+
   const inputStyle = {
     width: '100%',
     boxSizing: 'border-box' as const,
@@ -62,13 +80,7 @@ export default function PhysicalInvoiceFooterDevSettingsBlock() {
     <div style={{ marginBottom: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
       <button
         type="button"
-        onClick={() => {
-          setOpen((prev) => {
-            const next = !prev
-            if (next) reloadFromStorage()
-            return next
-          })
-        }}
+        onClick={() => setOpen((prev) => !prev)}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -96,8 +108,9 @@ export default function PhysicalInvoiceFooterDevSettingsBlock() {
           }}
         >
           <p style={{ margin: '0 0 0.75rem', color: '#6b7280', fontSize: '0.875rem', lineHeight: 1.5 }}>
-            Overrides apply to Bill Customer <strong>Physical invoice</strong> footer presets on this browser only.
-            Shipped defaults remain in the repo. (Independent of Stripe plumbing / electrical presets.)
+            These presets apply <strong>organization-wide</strong> for Bill Customer <strong>Physical invoice</strong>{' '}
+            (all signed-in users). Shipped defaults remain in the repo until you save overrides here. Independent of Stripe
+            plumbing / electrical presets.
           </p>
           <p style={{ margin: '0 0 0.65rem', fontSize: '0.8125rem', fontWeight: 600, color: '#374151' }}>
             Builtin: standard
@@ -346,26 +359,37 @@ export default function PhysicalInvoiceFooterDevSettingsBlock() {
             </button>
             <button
               type="button"
+              disabled={saving}
               onClick={() => {
-                const resolvedDefault = defaultPresetSelectOptions.some((o) => o.id === defaultPresetId)
-                  ? defaultPresetId
-                  : 'standard'
-                savePhysicalInvoiceFooterPresetsState({
-                  standardBody: standardText,
-                  alternateBody: alternateText,
-                  standardLabel,
-                  alternateLabel,
-                  customPresets: customRows,
-                  defaultPresetId: resolvedDefault,
-                })
-                reloadFromStorage()
-                showToast('Physical invoice footer presets saved for this browser.', 'success')
+                void (async () => {
+                  const resolvedDefault = defaultPresetSelectOptions.some((o) => o.id === defaultPresetId)
+                    ? defaultPresetId
+                    : 'standard'
+                  setSaving(true)
+                  try {
+                    await savePhysicalInvoiceFooterPresetsState({
+                      standardBody: standardText,
+                      alternateBody: alternateText,
+                      standardLabel,
+                      alternateLabel,
+                      customPresets: customRows,
+                      defaultPresetId: resolvedDefault,
+                    })
+                    reloadFromStorage()
+                    showToast('Physical invoice footer presets saved for your organization.', 'success')
+                  } catch (e) {
+                    showToast(formatErrorMessage(e, 'Save failed'), 'error')
+                  } finally {
+                    setSaving(false)
+                  }
+                })()
               }}
               style={{
                 padding: '0.35rem 0.75rem',
                 fontSize: '0.875rem',
-                cursor: 'pointer',
+                cursor: saving ? 'not-allowed' : 'pointer',
                 fontWeight: 500,
+                opacity: saving ? 0.65 : 1,
               }}
             >
               Save

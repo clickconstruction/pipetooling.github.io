@@ -50,6 +50,7 @@ import {
   physicalInvoicePdfToBase64,
 } from '../../lib/physicalInvoicePdf'
 import {
+  fetchPhysicalInvoiceFooterPresetsFromAppSettings,
   getPhysicalInvoiceFooterDefaultOnOpen,
   listPhysicalInvoiceFooterPresets,
   PHYSICAL_INVOICE_FOOTER_MAX_CHARS,
@@ -365,6 +366,7 @@ export default function SendRecordInvoiceModal({
   const [lineOnBillSectionOpen, setLineOnBillSectionOpen] = useState(false)
   const [memoSectionOpen, setMemoSectionOpen] = useState(false)
   const [physicalInvoiceFooter, setPhysicalInvoiceFooter] = useState(() => getPhysicalInvoiceFooterDefaultOnOpen())
+  const [physicalFooterPresetsGeneration, setPhysicalFooterPresetsGeneration] = useState(0)
   const [physicalFooterSectionOpen, setPhysicalFooterSectionOpen] = useState(false)
   const [stripeSubmitting, setStripeSubmitting] = useState(false)
   const [stripeError, setStripeError] = useState<string | null>(null)
@@ -405,7 +407,7 @@ export default function SendRecordInvoiceModal({
   }, [job?.id])
 
   const activeStripeFooterPreset = stripeInvoiceFooterActivePreset(stripeInvoiceFooter)
-  const physicalFooterPresets = useMemo(() => listPhysicalInvoiceFooterPresets(), [open])
+  const physicalFooterPresets = useMemo(() => listPhysicalInvoiceFooterPresets(), [open, physicalFooterPresetsGeneration])
   const memoPresets = useMemo(() => listBillCustomerMemoPresets(), [open])
 
   const applyMemoPresetToBoth = useCallback((body: string) => {
@@ -474,6 +476,20 @@ export default function SendRecordInvoiceModal({
     }
     setStripeFixtureMultiLineAvailable(null)
   }, [open, job?.id, job?.customer_email, invoice?.id])
+
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    void (async () => {
+      await fetchPhysicalInvoiceFooterPresetsFromAppSettings({ authRole })
+      if (cancelled) return
+      setPhysicalFooterPresetsGeneration((g) => g + 1)
+      setPhysicalInvoiceFooter(getPhysicalInvoiceFooterDefaultOnOpen())
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, authRole])
 
   useEffect(() => {
     if (!open || !job?.id) {

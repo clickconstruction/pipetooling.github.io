@@ -22,6 +22,12 @@ export const APP_SETTINGS_KEY_MAP_DEFAULT_VIEW_V1 = 'map_default_view_v1' as con
 /** UUID of `jobs_ledger.id` for People → Overhead “office job” (non–revenue work bucket). Dev writes; readers use Overhead tab. */
 export const APP_SETTINGS_KEY_OVERHEAD_OFFICE_JOB_LEDGER_ID_V1 = 'overhead_office_job_ledger_id_v1' as const
 
+/**
+ * JSON in `value_text`: physical invoice footer presets (`v: 2` — builtins/alternate/custom/defaultPresetId).
+ * Dev writes via Settings; all authenticated users read (Bill Customer Physical tab).
+ */
+export const APP_SETTINGS_KEY_PHYSICAL_INVOICE_FOOTER_PRESETS_V1 = 'physical_invoice_footer_presets_v1' as const
+
 export function isValidYmd(s: string): boolean {
   return /^(\d{4})-(\d{2})-(\d{2})$/.test(s.trim())
 }
