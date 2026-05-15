@@ -13,8 +13,8 @@ describe('parseStripeInvoiceLinesSnapshot', () => {
     const out = parseStripeInvoiceLinesSnapshot(raw)
     expect(out).not.toBeNull()
     expect(out!.lines).toHaveLength(1)
-    expect(out!.lines[0].description).toBe('Item A')
-    expect(out!.lines[0].source).toBeUndefined()
+    expect(out!.lines[0]!.description).toBe('Item A')
+    expect(out!.lines[0]!.source).toBeUndefined()
   })
 
   it('parses fixture source on lines', () => {
@@ -33,7 +33,7 @@ describe('parseStripeInvoiceLinesSnapshot', () => {
     }
     const out = parseStripeInvoiceLinesSnapshot(raw)
     expect(out).not.toBeNull()
-    expect(out!.lines[0].source).toEqual({
+    expect(out!.lines[0]!.source).toEqual({
       kind: 'fixture',
       jobs_ledger_fixture_id: 'fx-uuid',
     })
@@ -49,7 +49,7 @@ describe('parseStripeInvoiceLinesSnapshot', () => {
     }
     const out = parseStripeInvoiceLinesSnapshot(raw)
     expect(out).not.toBeNull()
-    expect(out!.lines[0].source).toEqual({ kind: 'single_line' })
+    expect(out!.lines[0]!.source).toEqual({ kind: 'single_line' })
   })
 
   it('ignores invalid source object', () => {
@@ -62,6 +62,6 @@ describe('parseStripeInvoiceLinesSnapshot', () => {
     }
     const out = parseStripeInvoiceLinesSnapshot(raw)
     expect(out).not.toBeNull()
-    expect(out!.lines[0].source).toBeUndefined()
+    expect(out!.lines[0]!.source).toBeUndefined()
   })
 })
